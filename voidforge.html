@@ -422,6 +422,22 @@
   #msBox summary { cursor: pointer; font-weight: 600; }
   #msBox summary small { display: block; font-weight: 400; font-size: 13.5px; color: var(--muted); }
   #msBox select, #msBox input[type=text] { min-width: 0; }
+
+  #startGate { position: fixed; inset: 0; z-index: 100; background: rgba(4,4,8,.78); display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(3px); }
+  body.light #startGate { background: rgba(30,34,48,.55); }
+  #startGate .sg-box { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--warn-text); border-radius: 14px; max-width: 560px; width: 100%; padding: 22px 24px 20px; box-shadow: 0 20px 60px rgba(0,0,0,.5); max-height: 94vh; overflow: auto; }
+  #startGate h2 { font-size: 20px; letter-spacing: .5px; margin-bottom: 4px; }
+  #startGate .sg-sub { color: var(--muted); font-size: 14.5px; margin-bottom: 14px; line-height: 1.5; }
+  .sg-item { display: flex; gap: 12px; padding: 10px 12px; margin-bottom: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; font-size: 14.5px; line-height: 1.55; }
+  .sg-ico { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: var(--warn-text); color: #000; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 14px; margin-top: 1px; }
+  body.light .sg-ico { color: #fff; }
+  .sg-fix { display: block; margin-top: 3px; color: var(--muted); font-size: 13.5px; }
+  .sg-fix b { color: var(--success); }
+  body.light .sg-fix b { color: #0a7d4b; }
+  #startGate .sg-go { display: block; width: 100%; margin: 14px 0 0; padding: 12px; font-size: 15px; }
+  #startGate .sg-foot { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+  .before-card .bc-grid { display: grid; gap: 8px; margin-top: 10px; }
+  .forge-note { margin: 8px 0 0; padding: 8px 12px; font-size: 13.5px; color: var(--muted); border-left: 3px solid var(--warn-text); background: var(--surface2); border-radius: 6px; line-height: 1.5; }
   .ms-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
   .ms-big { text-align: center; font-size: 34px; font-weight: 800; letter-spacing: .04em; margin: 6px 0 0; color: var(--text); }
   .ms-big small { display: block; font-size: 13px; font-weight: 500; letter-spacing: 0; color: var(--muted); }
@@ -573,9 +589,14 @@
     AIR-GAPPED USE ONLY for real funds.<br>
     Never enter a real seed on a connected device.<br>
     Always verify with a second offline tool before trusting real Bitcoin.
-    <div id="disclaimer" style="margin-top:8px; font-size:13.5px; opacity:.9;">Provided as is, without warranty. You alone are responsible for your funds and backups. Lost words or passphrase mean lost funds. Test the backup and start with a small amount.</div>
+    <div id="disclaimer" style="margin-top:8px; font-size:13.5px; opacity:.9;">VOIDFORGE is an educational tool and has not been independently audited. Provided as is, without warranty. You alone are responsible for your funds and backups. Lost words or passphrase mean lost funds. Test the backup and start with a small amount.</div>
   </div>
 
+  <div class="card before-card" id="beforeCard"><h2><span class="ico">&#9888;</span> BEFORE YOU MAKE REAL KEYS</h2>
+<p class="sub">Three ways a computer can quietly keep your secrets, and the simple fix for each.</p><div class="bc-grid">
+<div class="sg-item"><div class="sg-ico">1</div><div><b>Your computer may keep a copy of your keys.</b> It can write memory to the hard drive (swap files, hibernation) without asking, and the browser cannot stop it.<span class="sg-fix"><b>What to do:</b> for real money, use an offline computer with an encrypted drive, and turn hibernation off.</span></div></div>
+<div class="sg-item"><div class="sg-ico">2</div><div><b>Copying can leak.</b> Clipboard history can keep what you copy or paste, and may sync it to your other devices.<span class="sg-fix"><b>What to do:</b> write seeds on paper; avoid copy and paste for anything secret, and turn clipboard history off.</span></div></div>
+<div class="sg-item"><div class="sg-ico">3</div><div><b>Keys can stay in memory after you finish.</b> Wiping the page is a precaution, not a guarantee.<span class="sg-fix"><b>What to do:</b> when you are done, close the browser and restart the computer.</span></div></div></div></div>
   <div class="card" id="cardGen">
     <h2>MAKE A SEED</h2>
     <p class="sub">Pick 12 or 24 words, enter your dice rolls or coin flips, then press FORGE SEED and write the words on paper.</p>
@@ -591,7 +612,7 @@
       <div class="gtitle" id="gTitle">Step 1 of 5</div>
       <div class="gdots" id="gDots"><i></i><i></i><i></i><i></i><i></i></div>
       <div class="gstep" data-gs="1"><h3>Choose how your seed is made</h3>
-        <p>Your wallet starts as a very large random number. Real dice (or a coin) are how you create it yourself, instead of trusting a computer to pick it. First choose the length: <b>12 words</b> is strong enough for almost everyone and needs about 50 dice rolls. <b>24 words</b> is the longest option and needs about 99 rolls. Then choose <b>dice</b> (easier for most people) or <b>coin</b> (many more flips). If you have physical word tiles, use the <b>Word draw</b> box instead.</p></div>
+        <p>Your wallet starts as a very large random number. Real dice (or a coin) are how you create it yourself, instead of trusting a computer to pick it. First choose the length: <b>12 words</b> is strong enough for almost everyone and needs about 50 dice rolls. <b>24 words</b> is the longest option and needs about 99 rolls. Then choose <b>dice</b> (easier for most people) or <b>coin</b> (many more flips). If you have physical word tiles, use the <b>Word draw</b> box instead. <b>Making real keys?</b> Read BEFORE YOU MAKE REAL KEYS just above this card first.</p></div>
       <div class="gstep" data-gs="2"><h3>Roll your dice</h3>
         <p>Roll a real die, then tap the number it shows. Do not make numbers up: people are bad at being random, and the whole point is that nobody could guess your rolls. You need <b id="gNeed">50</b> <span id="gUnit">rolls</span>. The bar fills as you go, and NEXT unlocks when you have enough. Curious how rolls become words? Try the demo switch below the bar. Make sure nobody can see your screen.</p></div>
       <div class="gstep" data-gs="3"><h3>Optional: add a passphrase</h3>
@@ -662,6 +683,7 @@
     <div id="rollChart" data-g="2" class="rc" role="img" aria-label="Chart of how many times each face came up" style="display:none;"></div>
     <div class="btn-row" data-g="4">
       <button id="forgeBtn" onclick="generate()" disabled>FORGE SEED</button>
+      <p class="forge-note">Making real keys? Use an offline computer, keep clipboard history off, and restart when you are done.</p>
       <button class="secondary" onclick="clearAll()">CLEAR</button>
       <button class="secondary small" onclick="toggleSelfTests()">SELF-TEST</button>
     </div>
@@ -969,6 +991,7 @@
 
   <div class="card" id="about">
     <h2>ABOUT &amp; DOCS</h2>
+    <p class="sub">VOIDFORGE is an <b>educational tool</b>. It is open source, works fully offline and is meant to be read, but it has <b>not been independently audited</b>. Use it to learn and to make keys you understand, practise first, and start real money with a small amount.</p>
     <details>
       <summary>How to use</summary>
       <ol>
@@ -2822,7 +2845,7 @@ function printSeed(){
   add("ps-info", document.getElementById("fingerprint").textContent + "\n" + document.getElementById("address").textContent + "\n" + passLine("printed"));
   add("ps-fields", "Words checked against the screen:  ____\nDate made:                         ____________\nCoin: 1 means ______, 0 means ______ (coin only)\nRolls / flips string stored:       ____________\nPassphrase stored separately:      ____________\nBackup location:                   ____________");
   add("ps-rule", "");
-  add("ps-warn", "Anyone who has these words controls the funds.\nNever photograph them or type them on a connected device.\nLost words cannot be recovered. Check this backup with VERIFY.");
+  add("ps-warn", "Anyone who has these words controls the funds.\nNever photograph them or type them on a connected device.\nLost words cannot be recovered. Check this backup with VERIFY.\nWhen you are done, close the browser and restart the computer.");
   document.body.classList.add("print-seed");
   let done = false;
   const cleanup = () => { if(done) return; done = true; document.body.classList.remove("print-seed"); po.textContent = ""; };
@@ -3211,8 +3234,15 @@ window.addEventListener("offline", updateOnlineWarning);
 updateOnlineWarning();
 updateCount();
 
-document.addEventListener("DOMContentLoaded", () => {
+// The "Before you make real keys" notice shows once each time the file is opened. One click closes it, then the cursor goes to the rolls box.
+function startGateClose(){
+  const g = document.getElementById("startGate"); if(g) g.remove();
   document.getElementById("rolls").focus({preventScroll: true});
+}
+document.addEventListener("keydown", (e) => { if(e.key === "Escape" && document.getElementById("startGate")) startGateClose(); });
+document.addEventListener("DOMContentLoaded", () => {
+  const go = document.getElementById("sgGo");
+  if(go) go.focus({preventScroll: true}); else document.getElementById("rolls").focus({preventScroll: true});
 });
 
 const DIE_PIPS = {1:[[50,50]], 2:[[28,28],[72,72]], 3:[[26,26],[50,50],[74,74]], 4:[[28,28],[72,28],[28,72],[72,72]],
@@ -3435,5 +3465,13 @@ function wdShow(st, wc){
 document.getElementById("noJs").style.display = "none";
 
 </script>
+<div id="startGate" role="dialog" aria-modal="true" aria-labelledby="sgT"><div class="sg-box">
+<h2 id="sgT">Before you make real keys</h2>
+<p class="sg-sub">VOIDFORGE is an educational tool. It works fully offline and never stores anything, and its code is open to read, but it has <b>not been independently audited</b>. Your computer, though, can keep secrets. Three things worth knowing first:</p>
+<div class="sg-item"><div class="sg-ico">1</div><div><b>Your computer may keep a copy of your keys.</b> It can write memory to the hard drive (swap files, hibernation) without asking, and the browser cannot stop it.<span class="sg-fix"><b>What to do:</b> for real money, use an offline computer with an encrypted drive, and turn hibernation off.</span></div></div>
+<div class="sg-item"><div class="sg-ico">2</div><div><b>Copying can leak.</b> Clipboard history can keep what you copy or paste, and may sync it to your other devices.<span class="sg-fix"><b>What to do:</b> write seeds on paper; avoid copy and paste for anything secret, and turn clipboard history off.</span></div></div>
+<div class="sg-item"><div class="sg-ico">3</div><div><b>Keys can stay in memory after you finish.</b> Wiping the page is a precaution, not a guarantee.<span class="sg-fix"><b>What to do:</b> when you are done, close the browser and restart the computer.</span></div></div>
+<button type="button" class="sg-go" id="sgGo" onclick="startGateClose()">I understand, let's go</button>
+<p class="sg-foot">Practising with a test seed? Nothing here applies. For real money, start with a small amount. This shows once each time you open the file.</p></div></div>
 </body>
 </html>

@@ -69,7 +69,7 @@ const expect = {
   c128: entropyToMnemonic(sha(C128).slice(0, 16), wordlist),
 };
 
-async function probe(w) {
+async function probe(w, mutated) {
   const fails = [], $ = (id) => w.document.getElementById(id);
   const mode = (m) => { const e = w.document.querySelector(`input[name=mode][value=${m}]`); e.checked = true; e.onchange(); };
   const words = (n) => { const e = w.document.querySelector(`input[name=words][value="${n}"]`); e.checked = true; e.onchange(); };
@@ -791,7 +791,15 @@ async function probe(w) {
   const parts = expect.d50.split(' '); parts[11] = parts[11] === 'zoo' ? 'abandon' : 'zoo';
   const corrupted = parts.join(' ');
   if ((await w.checkPhrase(corrupted)).ok !== validateMnemonic(corrupted, wordlist)) fails.push('checker rejects bad checksum');
-  { const f0 = (w.__focus || []).find((x) => x[0] === 'rolls'); if (!f0 || !f0[1] || f0[1].preventScroll !== true) fails.push('page open: rolls box focused without scrolling'); }
+  { const w2 = loadPage(mutated, (win) => { win.__focus = []; win.HTMLElement.prototype.focus = function (o) { win.__focus.push([this.id, o]); }; });
+    await ready(w2); await new Promise((r) => setTimeout(r, 100));
+    const fo = w2.__focus.find((x) => x[0] === 'sgGo'); if (!fo || !fo[1] || fo[1].preventScroll !== true || w2.__focus.some((x) => x[0] === 'rolls')) fails.push('page open: the notice button is focused without scrolling');
+    const g = w2.document.getElementById('startGate'); if (!g || g.getAttribute('role') !== 'dialog' || g.getAttribute('aria-modal') !== 'true' || g.querySelectorAll('.sg-item').length !== 3 || !/not been independently audited/.test(g.textContent) || !/educational tool/.test(g.textContent)) fails.push('notice: dialog with the three warnings and the audit note');
+    if (!/BEFORE YOU MAKE REAL KEYS/.test(w2.document.getElementById('beforeCard').textContent) || w2.document.getElementById('beforeCard').querySelectorAll('.sg-item').length !== 3) fails.push('notice: page card repeats the warnings');
+    const w3 = loadPage(mutated, () => {}); await ready(w3); w3.document.dispatchEvent(new w3.KeyboardEvent('keydown', { key: 'Escape' })); if (w3.document.getElementById('startGate')) fails.push('notice: Escape closes it');
+    w2.__focus.length = 0; w2.startGateClose();
+    const fc = w2.__focus.find((x) => x[0] === 'rolls'); if (w2.document.getElementById('startGate') || !fc || !fc[1] || fc[1].preventScroll !== true) fails.push('notice: closing removes it and focuses the rolls box without scrolling');
+    if (!/educational tool/.test(w2.document.getElementById('disclaimer').textContent)) fails.push('notice: disclaimer calls it an educational tool'); }
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
   return fails;
@@ -803,7 +811,7 @@ async function detect(mutated) {
   await ready(w);
   const badge = w.document.getElementById('selfTestBadge').textContent;
   if (!/PASSED/.test(badge)) return { by: 'self-test gate' };
-  let f; try { f = await probe(w); } catch (e) { return { by: 'end-to-end probe (page error: ' + String(e && e.message).slice(0, 60) + ')' }; }
+  let f; try { f = await probe(w, mutated); } catch (e) { return { by: 'end-to-end probe (page error: ' + String(e && e.message).slice(0, 60) + ')' }; }
   if (process.env.MUT_DEBUG && f.length) console.log('PROBE FAILS:', f);
   return f.length ? { by: 'end-to-end probe (' + f[0] + ')' } : { by: null };
 }
@@ -1462,7 +1470,11 @@ const M = [
   ['sp: box shown for a multisig cosigner key', 'document.getElementById("spBox").style.display = M ? "none" : "";', 'document.getElementById("spBox").style.display = "";'],
   ['sp: address left after clearing', '["wZpub","wDescR","wDescC","wFirst","spAddr"]', '["wZpub","wDescR","wDescC","wFirst"]'],
   ['sp: not refreshed for account or network', 'document.getElementById("spAddr").textContent = spA;', 'document.getElementById("spAddr").textContent = document.getElementById("spAddr").textContent || spA;'],
-  ['page open: scrolls down to the rolls box', 'getElementById("rolls").focus({preventScroll: true});', 'getElementById("rolls").focus();'],
+  ['page close: scrolls down to the rolls box', 'if(g) g.remove();\n  document.getElementById("rolls").focus({preventScroll: true});', 'if(g) g.remove();\n  document.getElementById("rolls").focus();'],
+  ['page open: notice button scrolls the page', 'if(go) go.focus({preventScroll: true});', 'if(go) go.focus();'],
+  ['notice: closing does not remove it', 'if(g) g.remove();', 'if(g) g.id = "startGate";'],
+  ['notice: Escape does nothing', 'if(e.key === "Escape" && document.getElementById("startGate")) startGateClose();', ''],
+  ['notice: never focuses the button', 'if(go) go.focus({preventScroll: true}); else', 'if(false) go.focus({preventScroll: true}); else'],
   ['multisig: reset leaves the QR on screen', 'ms = null; msHideQr();', 'ms = null;'],
   ['multisig: saved key shows no picture', 'if(k) showFpIcon(ic.id, k.fp);', ''],
   ['QR: version 13 table', '13:[22,[[8,37],[1,38]]]', '13:[22,[[8,37],[1,37]]]'],
