@@ -297,6 +297,49 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   R.ok(bad === 0, `${n} transactions (raw and PSBT, RBF on and off, locktime, OP_RETURN data, mainnet and testnet) are read the same as by the independent library, including the transaction ID (${bad} mismatches)`);
 }
 
+// 2g3. Compare two transactions: signer-change check and fee-bump check, transactions built by @scure/btc-signer
+{
+  const K = (n) => new Uint8Array(32).fill(n), pubE = (n) => secp256k1.getPublicKey(K(n), true);
+  const mk = ({ seq = 0xfffffffd, ins = [[1, 90000n], [2, 70000n]], outs = [[31, 100000n], [32, 58000n]], chg = 32 }) => {
+    const t = new btc.Transaction({ allowUnknownOutputs: true });
+    ins.forEach(([k, a], i) => t.addInput({ txid: nc.createHash('sha256').update('coin' + k).digest('hex'), index: i, sequence: seq, witnessUtxo: { script: btc.p2wpkh(pubE(30)).script, amount: a } }));
+    outs.forEach(([k, a]) => t.addOutput(k === chg ? { script: btc.p2wpkh(pubE(k)).script, amount: a, bip32Derivation: [[pubE(k), { fingerprint: 0xdeadbeef, path: [0x80000054] }]] } : { script: btc.p2wpkh(pubE(k)).script, amount: a }));
+    return t;
+  };
+  const cmp = async (a, b) => w.compareTx(await w.inspectPsbt(new Uint8Array(a.toPSBT(0)), 'main'), await w.inspectPsbt(new Uint8Array(b.toPSBT(0)), 'main'));
+  let bad = 0, n = 0; const chk = (name, ok) => { n++; if (!ok) { bad++; console.log('COMPARE MISMATCH', name); } };
+  const A = mk({});
+  // 1. the signer returns the same transaction with signatures added
+  const signed = mk({}); signed.updateInput(0, { partialSig: [[pubE(30), new Uint8Array(71).fill(1)]] }, true);
+  let t = await cmp(A, signed); chk('same id', t.includes('The transaction ID is the same') && /SIGNER CHECK: unchanged/.test(t) && /0 signatures -> 1 signature/.test(t) && !/DIFFERENT/.test(t));
+  chk('same id equals independent id', (await w.inspectPsbt(new Uint8Array(A.toPSBT(0)), 'main')).txid === A.id);
+  // 2. a plain fee bump: change gets smaller, same payment
+  t = await cmp(A, mk({ outs: [[31, 100000n], [32, 56000n]] })); chk('plain bump', /ID.*DIFFERENT/.test(t) && /the second pays 0\.00002000 BTC.*MORE/.test(t) && /plain fee bump/.test(t) && !/NOT look like/.test(t) && /OK    The output that got smaller .* is marked as this wallet's own change/.test(t) && /NOT CHECKED/.test(t));
+  // 2b. the same bump but the shrinking output is not marked as change: still allowed, with a warning
+  const noFp = mk({ chg: 99 }); t = await cmp(noFp, mk({ chg: 99, outs: [[31, 100000n], [32, 56000n]] })); chk('bump without change info', /NOTE  The output that got smaller .* is not marked as change/.test(t) && /plain fee bump/.test(t));
+  // 3. an output was redirected to another address (the attack this check is for)
+  t = await cmp(A, mk({ outs: [[33, 100000n], [32, 58000n]] })); chk('redirected output', /FAIL  Payments changed: an output changed address|FAIL  Payments changed: more than one output differs/.test(t) && /does NOT look like a plain fee bump/.test(t) || /Payments changed/.test(t));
+  chk('redirected shows both', /only in the first:  0\.00100000 BTC \(100000 sats\) to /.test(t) && /only in the second: 0\.00100000 BTC \(100000 sats\) to /.test(t));
+  // 4. the payment amount was raised at the expense of the change
+  t = await cmp(A, mk({ outs: [[31, 110000n], [32, 48000n]] })); chk('payment raised', /Payments changed|more than one output differs/.test(t) && /does NOT look like a plain fee bump/.test(t));
+  // 5. a new output appeared
+  t = await cmp(A, mk({ ins: [[1, 90000n], [2, 70000n], [7, 10000n]], outs: [[31, 100000n], [32, 58000n], [34, 8000n]] })); chk('new output', /Payments changed: a new output appeared/.test(t) && /does NOT look like/.test(t));
+  // 6. the second pays less fee
+  t = await cmp(A, mk({ outs: [[31, 100000n], [32, 60000n]] })); chk('lower fee', /LESS/.test(t) && /FAIL  The second does not pay a higher fee/.test(t) && /does NOT look like/.test(t));
+  // 7. the original does not allow replacement
+  t = await cmp(mk({ seq: 0xffffffff }), mk({ outs: [[31, 100000n], [32, 56000n]] })); chk('not rbf', /FAIL  The first does not allow replacement/.test(t) && /does NOT look like/.test(t));
+  // 8. no shared coin
+  t = await cmp(A, mk({ ins: [[5, 90000n], [6, 70000n]], outs: [[31, 100000n], [32, 56000n]] })); chk('no shared coin', /FAIL  The second does not spend any of the same coins/.test(t) && /only in the second: [0-9a-f]{64}:0/.test(t) && /does NOT look like/.test(t));
+  // 9. an input was added (allowed in a replacement)
+  t = await cmp(A, mk({ ins: [[1, 90000n], [2, 70000n], [7, 20000n]], outs: [[31, 100000n], [32, 76000n]] })); chk('input added', /OK    The second spends at least one of the same coins/.test(t) && /only in the second: [0-9a-f]{64}:2 \(0\.00020000 BTC/.test(t) && /plain fee bump/.test(t) && !/NOT look like/.test(t) && /OK    The output that grew \(an extra coin was added\)/.test(t));
+  t = await cmp(mk({ chg: 99 }), mk({ chg: 99, ins: [[1, 90000n], [2, 70000n], [7, 20000n]], outs: [[31, 100000n], [32, 76000n]] })); chk('input added, output not marked as change', /Payments changed: an output to .* got MORE money and is not marked as change/.test(t) && /does NOT look like/.test(t));
+  t = await cmp(A, mk({ outs: [[31, 100000n], [32, 60000n]] })); chk('output grew with no added coin', /FAIL  The second does not pay a higher fee/.test(t) && /got MORE money and no coin was added/.test(t) && /does NOT look like/.test(t));
+  // 10. fee unknown: no clean verdict
+  const bare = new btc.Transaction({ allowUnknownOutputs: true }); bare.addInput({ txid: nc.createHash('sha256').update('coin1').digest('hex'), index: 0, sequence: 0xfffffffd }); bare.addOutput({ script: btc.p2wpkh(pubE(31)).script, amount: 1000n });
+  t = await cmp(bare, mk({})); chk('unknown fee', /NO CLEAN VERDICT/.test(t) && /cannot be compared/.test(t));
+  R.ok(bad === 0, `${n} compare-two-transactions checks (signer unchanged, plain fee bump, redirected payment, raised payment, new output, lower fee, no RBF, no shared coin, added input, unknown fee) behave as designed on transactions from the independent library (${bad} mismatches)`);
+}
+
 // 2h. SeedQR and CompactSeedQR (for SeedSigner): digits and bytes from independent code, every QR matrix against the
 // independent Python `qrcode` library (what SeedSigner uses), decoded again with jsQR, and the hand-copy guide read back.
 {

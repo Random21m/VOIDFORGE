@@ -937,6 +937,21 @@
       <div class="status" id="psbtStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <pre id="psbtOut" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13.5px; margin:8px 0 0;"></pre>
     </details>
+    <details id="cmpBox">
+      <summary>Compare two transactions<span class="tag tag-ro">READ ONLY</span><small>Did the signer change anything? Is a fee bump a plain fee bump?</small></summary>
+      <p class="hint" style="margin:8px 0;">Paste the transaction you <b>sent</b> and the one that <b>came back</b> (from your signer or wallet). Or paste an original and its fee-bump replacement. This lists every difference in plain words. <b>It only reads and compares. It cannot sign and sends nothing anywhere.</b></p>
+      <label style="display:block; font-size:13px; color:var(--muted);">First (the original, or what you sent)</label>
+      <textarea id="cmpA" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="First transaction (PSBT or raw hex)" placeholder="PSBT (base64 or hex) or raw transaction hex"></textarea>
+      <label style="display:block; font-size:13px; color:var(--muted); margin-top:6px;">Second (the replacement, or what came back)</label>
+      <textarea id="cmpB" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Second transaction (PSBT or raw hex)" placeholder="PSBT (base64 or hex) or raw transaction hex"></textarea>
+      <div style="display:flex; gap:6px; align-items:center; margin-top:6px; flex-wrap:wrap;">
+        <select id="cmpNet" aria-label="Network" style="width:auto; flex:none;"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
+        <button type="button" class="secondary" id="cmpBtn" onclick="runCompare()">COMPARE</button>
+        <button type="button" class="secondary small" onclick="clearCompare(true)">CLEAR</button>
+      </div>
+      <div class="status" id="cmpStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+      <pre id="cmpOut" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13.5px; margin:8px 0 0;"></pre>
+    </details>
     <details id="childBox">
       <summary>Child seed (BIP85)<span class="tag tag-secret">SECRET</span><small>Make a separate new seed from this one, for another wallet.</small></summary>
       <p class="hint" style="margin:8px 0;">Makes a brand new seed phrase from the parent words (and passphrase) typed above, for a separate wallet, using the BIP85 standard. The same parent, word count and index always give the same child. <b>The child is as secret as the parent.</b> It is only shown here: there is no copy, save or print for it. Use the same safety steps as for a new seed, and keep the parent safe: if you lose the parent you lose every child.</p>
@@ -2033,6 +2048,7 @@ async function inspectPsbt(bytes, net){
   if(glob.some(x=>x.type===0xfb && x.key.length===0 && x.val.length===4 && (x.val[0]|x.val[1]|x.val[2]|x.val[3])!==0)) throw new Error("PSBT version 2 is not supported by this inspector; export version 0.");
   if(!txRec) throw new Error("No unsigned transaction found in this PSBT.");
   const tx=psbtParseTx(txRec.val), res={version:tx.version, locktime:tx.locktime, ins:[], outs:[]};
+  res.txid=hex((await sha256bytes(await sha256bytes(txRec.val))).reverse());
   for(let i=0;i<tx.ins.length;i++){
     const m=psbtReadMap(r), inp={txid:tx.ins[i].txid, vout:tx.ins[i].vout, seq:tx.ins[i].seq, amount:null, sigs:m.filter(x=>x.type===2).length, final:m.some(x=>x.type===7||x.type===8)};
     const wu=m.find(x=>x.type===1), nw=m.find(x=>x.type===0);
@@ -2106,6 +2122,77 @@ function psbtReport(res, fpWallet){
   L.push("");
   L.push(psbtVerdict(res, fpWallet));
   return L.join("\n");
+}
+// ================= Compare two transactions (read-only): signer-change check and plain fee-bump (RBF) check =================
+function cmpCoin(x){ return x.txid + ":" + x.vout; }
+function cmpTakeMatches(from, other){ // outputs of `from` that have no exact (address and amount) partner in `other`
+  const pool=other.slice(), left=[];
+  for(const o of from){ const i=pool.findIndex(y=>y.address===o.address && y.amount===o.amount); if(i>=0) pool.splice(i,1); else left.push(o); }
+  return left;
+}
+function compareTx(a, b){
+  const L=[], sameId=!!a.txid && a.txid===b.txid;
+  L.push("First transaction ID:  " + a.txid + "\nSecond transaction ID: " + b.txid);
+  L.push(sameId ? "The transaction ID is the same, so inputs, outputs, amounts, version, locktime and sequence numbers are all identical." : "The transaction IDs are DIFFERENT, so something in the transaction itself changed.");
+  const ia=a.ins.map(cmpCoin), ib=b.ins.map(cmpCoin);
+  const gone=a.ins.filter(x=>!ib.includes(cmpCoin(x))), fresh=b.ins.filter(x=>!ia.includes(cmpCoin(x)));
+  const outGone=cmpTakeMatches(a.outs, b.outs), outNew=cmpTakeMatches(b.outs, a.outs);
+  const show=(o)=>btcText(o.amount) + " to " + o.address;
+  L.push("");
+  L.push("INPUTS: " + (gone.length===0 && fresh.length===0 ? "the same " + a.ins.length + " coin" + (a.ins.length===1?"":"s") + " in both." : ""));
+  gone.forEach(x=>L.push("  only in the first:  " + cmpCoin(x) + (x.amount!==null ? " (" + btcText(x.amount) + ")" : "")));
+  fresh.forEach(x=>L.push("  only in the second: " + cmpCoin(x) + (x.amount!==null ? " (" + btcText(x.amount) + ")" : "")));
+  L.push("OUTPUTS: " + (outGone.length===0 && outNew.length===0 ? "the same " + a.outs.length + " output" + (a.outs.length===1?"":"s") + " (address and amount) in both." : ""));
+  outGone.forEach(o=>L.push("  only in the first:  " + show(o)));
+  outNew.forEach(o=>L.push("  only in the second: " + show(o)));
+  if(a.fee!==null && b.fee!==null){ const d=b.fee-a.fee; L.push("FEE: first " + btcText(a.fee) + ", second " + btcText(b.fee) + (d===0n ? " (the same)." : d>0n ? ", the second pays " + btcText(d) + " MORE." : ", the second pays " + btcText(-d) + " LESS.")); }
+  else L.push("FEE: cannot be compared because a fee is unknown (a raw transaction or a PSBT without the coin amounts).");
+  if(a.version!==b.version) L.push("VERSION: first " + a.version + ", second " + b.version + ".");
+  if(a.locktime!==b.locktime) L.push("LOCKTIME: first " + a.locktime + ", second " + b.locktime + ".");
+  const sa=(x)=>x.final ? "finalized" : x.sigs + " signature" + (x.sigs===1?"":"s");
+  const sigDiff=[]; a.ins.forEach(x=>{ const y=b.ins.find(z=>cmpCoin(z)===cmpCoin(x)); if(y && sa(x)!==sa(y)) sigDiff.push("  " + cmpCoin(x) + ": " + sa(x) + " -> " + sa(y)); });
+  L.push("SIGNATURES: " + (sigDiff.length ? "" : "same state on every shared input."));
+  sigDiff.forEach(x=>L.push(x));
+  L.push("");
+  let verdict;
+  if(sameId){
+    verdict="SIGNER CHECK: unchanged. The signer did not alter the payment: same ID, so same coins, same addresses, same amounts, same fee.";
+  } else {
+    const shared=a.ins.length-gone.length, rbfOk=!!a.rbf, feeKnown=a.fee!==null && b.fee!==null, feeOk=feeKnown && b.fee>a.fee;
+    let keptOk=true, why="";
+    if(outGone.length>1 || outNew.length>1){ keptOk=false; why="more than one output differs"; }
+    else if(outGone.length===1 && outNew.length===1){ if(outGone[0].address!==outNew[0].address){ keptOk=false; why="an output changed address"; } else if(outNew[0].amount>=outGone[0].amount && !(fresh.length>0 && (outNew[0].fps.length || outGone[0].fps.length))){ keptOk=false; why="an output to " + outGone[0].address + " got MORE money" + (fresh.length>0 ? " and is not marked as change" : " and no coin was added to pay for it"); } }
+    else if(outGone.length===0 && outNew.length===1){ keptOk=false; why="a new output appeared"; }
+    L.push("FEE-BUMP (REPLACEMENT) CHECK");
+    L.push((shared>0?"  OK    ":"  FAIL  ") + (shared>0 ? "The second spends at least one of the same coins." : "The second does not spend any of the same coins, so it is not a replacement."));
+    L.push((rbfOk?"  OK    ":"  FAIL  ") + (rbfOk ? "The first allows replacement (RBF)." : "The first does not allow replacement (RBF), so the network would refuse the second."));
+    L.push((feeKnown ? (feeOk?"  OK    ":"  FAIL  ") : "  FAIL  ") + (!feeKnown ? "The fees cannot be compared." : feeOk ? "The second pays a higher fee." : "The second does not pay a higher fee."));
+    L.push((keptOk?"  OK    ":"  FAIL  ") + (keptOk ? "Everyone who was paid is still paid the same, except at most the change output (smaller, or larger if a coin was added)." : "Payments changed: " + why + "."));
+    const shrank = outGone.length===1 && outNew.length===1 && keptOk ? outGone[0] : null;
+    if(shrank){ const grew=outNew[0].amount>=shrank.amount, word=grew ? "grew (an extra coin was added)" : "got smaller", mine=shrank.fps.length>0 || outNew[0].fps.length>0;
+      L.push((mine ? "  OK    " : "  NOTE  ") + (mine ? "The output that " + word + " (" + shrank.address + ") is marked as this wallet's own change." : "The output that " + word + " (" + shrank.address + ") is not marked as change. Make sure it is YOUR change and not a payment.")); }
+    L.push("  NOT CHECKED  the fee rate against the original (needs the transaction size) and the network's minimum increase.");
+    const all=shared>0 && rbfOk && feeOk && keptOk;
+    verdict = all ? "SIGNER CHECK: changed, but it looks like a plain fee bump: same payments, more fee. Check the new fee is what you chose."
+      : feeKnown ? "SIGNER CHECK: CHANGED, and it does NOT look like a plain fee bump. If this came back from a signer you did not ask to change anything, do not sign or broadcast it."
+      : "NO CLEAN VERDICT: the transaction changed and the fees cannot be compared, so it cannot be called a plain fee bump. Do not sign or broadcast it until you know why.";
+  }
+  L.push(verdict);
+  return L.join("\n");
+}
+function clearCompare(all){
+  const o=document.getElementById("cmpOut"); o.textContent=""; o.style.display="none";
+  const t=document.getElementById("cmpStatus"); t.textContent=""; t.className="status";
+  if(all){ document.getElementById("cmpA").value=""; document.getElementById("cmpB").value=""; }
+}
+async function runCompare(){
+  if(!gateOk()) return;
+  clearCompare(false);
+  const st=document.getElementById("cmpStatus"), o=document.getElementById("cmpOut"), net=document.getElementById("cmpNet").value;
+  const one=async(id,label)=>{ try { return await inspectPsbt(psbtFromText(document.getElementById(id).value), net); } catch(e){ throw new Error(label + ": " + e.message); } };
+  try { const a=await one("cmpA","First transaction"), b=await one("cmpB","Second transaction");
+    st.className="status ok"; st.textContent="Compared. Read the result below."; o.textContent=compareTx(a,b); o.style.display="block"; }
+  catch(e){ st.className="status bad"; st.textContent=e.message; }
 }
 function jumpTo(id){ const e=document.getElementById(id); if(e) e.scrollIntoView({behavior:"smooth", block:"start"}); }
 function clearPsbt(all){
@@ -3048,6 +3135,8 @@ document.getElementById("wAcct").addEventListener("input", refreshWatch);
 document.getElementById("childWords").addEventListener("change", clearChild);
 document.getElementById("lwInput").addEventListener("input", () => clearLastWords(false));
 document.getElementById("psbtInput").addEventListener("input", () => clearPsbt(false));
+document.getElementById("cmpA").addEventListener("input", () => clearCompare(false));
+document.getElementById("cmpB").addEventListener("input", () => clearCompare(false));
 document.getElementById("psbtNet").addEventListener("change", () => clearPsbt(false));
 document.getElementById("tapRow").addEventListener("click", (e) => { const b = e.target.closest ? e.target.closest("button.tap") : null; if(!b) return; b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop"); });
 document.getElementById("psbtFile").addEventListener("change", (e) => { onPsbtFile(e.target.files[0]); });
