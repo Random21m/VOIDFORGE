@@ -2096,12 +2096,12 @@ function psbtReport(res, fpWallet){
   L.push("");
   res.ins.forEach((x,i)=>{ L.push("INPUT " + i + ": " + (x.amount===null ? "amount unknown (the PSBT does not include the coin being spent)" : btcText(x.amount)) + (x.address ? "\n   from " + x.address : "") + "\n   coin " + x.txid + ":" + x.vout + "\n   " + (x.final ? "finalized" : x.sigs + " signature" + (x.sigs===1?"":"s") + " so far")); });
   L.push("");
-  res.outs.forEach((x,i)=>{ L.push("OUTPUT " + i + ": " + btcText(x.amount) + "\n   to " + x.address + (x.script && x.script[0]===0x6a ? "\n   data note: " + opReturnText(x.script) + "\n   (this output carries data, not money, and cannot be spent)" : "") + (x.fps.length ? "\n   has wallet key information (fingerprint " + [...new Set(x.fps)].join(", ") + "): usually this wallet's own change" + (fpWallet && x.fps.includes(fpWallet) ? ", and it matches the wallet typed above" : "") : "\n   no wallet key information: treat as a payment to someone else")); });
+  res.outs.forEach((x,i)=>{ L.push("OUTPUT " + i + ": " + btcText(x.amount) + "\n   to " + x.address + (x.script && x.script[0]===0x6a ? "\n   data note: " + opReturnText(x.script) + "\n   (this output carries data, not money, and cannot be spent)" : "") + (x.fps.length ? "\n   has wallet key information (fingerprint " + [...new Set(x.fps)].join(", ") + "): usually this wallet's own change" + (fpWallet && x.fps.includes(fpWallet) ? ", and it matches the wallet typed above" : "") : (x.script && x.script[0]===0x6a ? "" : "\n   no wallet key information: treat as a payment to someone else"))); });
   L.push("");
   L.push(res.fee===null ? "FEE: cannot be worked out because some inputs have no amount." : "FEE: " + btcText(res.fee) + (res.totalOut>0n ? " (" + (Number(res.fee*10000n/res.totalOut)/100).toFixed(2) + "% of the total of all outputs)" : ""));
   L.push(res.rbf ? "REPLACEABLE (RBF): yes. While it is unconfirmed it can be replaced by a version that pays a higher fee." : "REPLACEABLE (RBF): no. It cannot be replaced by a higher-fee version, so a low fee cannot be bumped.");
   if(res.locktime>0 && res.ins.some(x=>x.seq!==0xffffffff)) L.push("LOCKTIME: it cannot be mined before " + (res.locktime<500000000 ? "block " + res.locktime : new Date(res.locktime*1000).toISOString().slice(0,16).replace("T"," ") + " UTC") + ".");
-  if(res.raw) L.push("This is a raw transaction" + (res.ins.some(x=>x.final) ? " that is already signed" : "") + ", not a PSBT. Its ID would be " + res.txid + ".");
+  if(res.raw) L.push("This is a raw transaction" + (res.ins.some(x=>x.final) ? " that is already signed" : "") + ", not a PSBT. Its transaction ID is " + res.txid + ".");
   if(res.trailing) L.push("Note: extra data follows the PSBT; it was ignored.");
   L.push("");
   L.push(psbtVerdict(res, fpWallet));

@@ -140,6 +140,46 @@ async function probe(w) {
   try { const K = (n) => new Uint8Array(32).fill(n), pubE = (n) => secp256k1.getPublicKey(K(n), true), pubS = (n) => schnorr.getPublicKey(K(n));
     const kinds = { p2wpkh: (n) => btc.p2wpkh(pubE(n)), p2pkh: (n) => btc.p2pkh(pubE(n)), p2tr: (n) => btc.p2tr(pubS(n)), p2sh: (n) => btc.p2sh(btc.p2wpkh(pubE(n))), p2wsh: (n) => btc.p2wsh(btc.p2ms(1, [pubE(n), pubE(n + 1)])) };
     const insp = async (bytes, net = 'main') => w.inspectPsbt(new Uint8Array(bytes), net);
+    // checks list, RBF, locktime, raw transactions, OP_RETURN data (independent builder and txid)
+    { const mk = (seq, lock, outAmt, inAmts = [90000n, 70000n], note = 'hello') => { const t = new btc.Transaction({ allowUnknownOutputs: true, lockTime: lock });
+        inAmts.forEach((a, i) => t.addInput({ txid: '0102' + '22'.repeat(30), index: i, sequence: seq, witnessUtxo: { script: kinds.p2wpkh(30).script, amount: a } }));
+        t.addOutput({ script: kinds.p2wpkh(31).script, amount: outAmt }); const d = Buffer.from(note, 'latin1'); t.addOutput({ script: Uint8Array.from([0x6a, d.length, ...d]), amount: 0n }); return t; };
+      const rep = async (t) => w.psbtReport(await insp(t.toPSBT(0)), null);
+      const good = mk(0xfffffffd, 0, 158000n), gr = await insp(good.toPSBT(0)), gt = w.psbtReport(gr, null);
+      if (gr.rbf !== true || !/REPLACEABLE \(RBF\): yes/.test(gt)) fails.push('rbf: sequence below final signals replaceable');
+      const fin = mk(0xffffffff, 0, 158000n), fr = await insp(fin.toPSBT(0)); if (fr.rbf !== false || !/REPLACEABLE \(RBF\): no/.test(w.psbtReport(fr, null))) fails.push('rbf: final sequence is not replaceable');
+      const mid = mk(0xfffffffe, 0, 158000n); if ((await insp(mid.toPSBT(0))).rbf !== false) fails.push('rbf: sequence fffffffe is not replaceable');
+      if (!/no problems found/.test(gt) || /NO CLEAN VERDICT/.test(gt)) fails.push('verdict: a complete small-fee transaction has a clean result');
+      if (!/data note: 5 bytes: 68656c6c6f = "hello"/.test(gt)) fails.push('op_return: data shown as hex and text');
+      if (/= "/.test(await rep(mk(0xfffffffd, 0, 158000n, undefined, 'a\u0001b')))) fails.push('op_return: non-text data is not shown as text');
+      if (!/LOCKTIME: it cannot be mined before block 850000/.test(await rep(mk(0xfffffffd, 850000, 158000n)))) fails.push('locktime: block height shown');
+      if (!/LOCKTIME: it cannot be mined before 2023-11-14 22:13 UTC/.test(await rep(mk(0xfffffffd, 1700000000, 158000n)))) fails.push('locktime: date shown');
+      if (/LOCKTIME/.test(await rep(mk(0xffffffff, 850000, 158000n)))) fails.push('locktime: ignored when every input is final');
+      if (!/FAIL  The fee is 5% or more/.test(await rep(mk(0xfffffffd, 0, 108000n))) || !/NO CLEAN VERDICT/.test(await rep(mk(0xfffffffd, 0, 108000n)))) fails.push('verdict: fee of 5% or more blocks a clean result');
+      if (/5% or more/.test(await rep(mk(0xfffffffd, 0, 150001n, [150001n + 7000n])))) fails.push('verdict: a fee under 5% is not flagged');
+      if (!/FAIL  The outputs add up to MORE/.test(await rep(mk(0xfffffffd, 0, 200000n))) || !/NO CLEAN VERDICT/.test(await rep(mk(0xfffffffd, 0, 200000n)))) fails.push('verdict: outputs above inputs blocks a clean result');
+      const unk = new btc.Transaction({ allowUnknownOutputs: true }); unk.addInput({ txid: '33'.repeat(32), index: 0 }); unk.addOutput({ script: kinds.p2wpkh(31).script, amount: 1000n });
+      const ut = await rep(unk); if (!/FAIL  1 of 1 input amounts are unknown/.test(ut) || !/NO CLEAN VERDICT/.test(ut) || !/FAIL  The fee cannot be worked out/.test(ut)) fails.push('verdict: unknown input amount blocks a clean result');
+      const odd = mk(0xfffffffd, 0, 158000n); odd.addOutput({ script: Uint8Array.from([0x51, 0x02, 1, 2]), amount: 0n }); const ot = await rep(odd);
+      if (!/FAIL  1 output has a script this tool cannot turn into an address/.test(ot) || !/NO CLEAN VERDICT/.test(ot)) fails.push('verdict: unrecognized output script blocks a clean result');
+      if ((gt.match(/treat as a payment to someone else/g) || []).length !== 1) fails.push('op_return: a data note is not called a payment');
+      for (const [len, op] of [[80, [0x4c, 80]], [300, [0x4d, 0x2c, 0x01]]]) { const big = mk(0xfffffffd, 0, 158000n); big.addOutput({ script: Uint8Array.from([0x6a, ...op, ...new Uint8Array(len).fill(0x41)]), amount: 0n });
+        if (!new RegExp('data note: ' + len + ' bytes: ').test(await rep(big))) fails.push('op_return: push of ' + len + ' bytes decoded'); }
+      if (!/NOTE  No output is marked as change/.test(gt) || /FAIL  No output/.test(gt)) fails.push('verdict: no change output is a note, not a failure');
+      // raw transactions: unsigned (txid from the independent library) and signed segwit (txid computed from the legacy serialization)
+      const ru = await insp(good.unsignedTx);
+      if (!ru.raw || ru.txid !== good.id || ru.fee !== null || ru.outs[0].amount !== 158000n || ru.ins[1].vout !== 1 || ru.ins[0].txid !== '0102' + '22'.repeat(30) || ru.rbf !== true) fails.push('raw: unsigned transaction read, txid equals the independent id');
+      if (!/NO CLEAN VERDICT/.test(w.psbtReport(ru, null)) || !/This is a raw transaction, not a PSBT\. Its transaction ID is /.test(w.psbtReport(ru, null))) fails.push('raw: report has the id and no clean verdict');
+      { const spk = Buffer.from(bhex.encode(kinds.p2wpkh(31).script), 'hex'), head = Buffer.concat([Buffer.from('02000000', 'hex')]);
+        const vin = Buffer.from('01' + '44'.repeat(32) + '00000000' + '00' + 'fdffffff', 'hex'), vout = Buffer.concat([Buffer.from('01a00f000000000000' + '16', 'hex'), spk]), lt = Buffer.from('00000000', 'hex');
+        const wit = Buffer.concat([Buffer.from('0203010203' + '21', 'hex'), Buffer.alloc(33, 2)]);
+        const signed = Buffer.concat([head, Buffer.from('0001', 'hex'), vin, vout, wit, lt]), stripped = Buffer.concat([head, vin, vout, lt]);
+        const wantId = bhex.encode(Uint8Array.from(nc.createHash('sha256').update(nc.createHash('sha256').update(stripped).digest()).digest()).reverse());
+        $('psbtInput').value = signed.toString('hex'); await w.runPsbt(); const o = $('psbtOut').textContent, rr = await insp(signed);
+        if (!rr.raw || !rr.ins[0].final || rr.ins.length !== 1 || rr.outs.length !== 1 || rr.outs[0].amount !== 4000n || rr.rbf !== true || rr.txid !== wantId) fails.push('raw: signed segwit transaction read, witness skipped, txid ignores the witness');
+        if (!/already signed/.test(o) || !o.includes(wantId)) fails.push('raw: signed state and id shown in the report');
+        const bad1 = Uint8Array.from([...signed, 0]); let m1 = ''; try { await insp(bad1); } catch (e) { m1 = e.message; } if (!/not a PSBT/.test(m1)) fails.push('raw: extra bytes after a transaction are refused'); }
+    }
     // every script type, mainnet and testnet, against the independent decoder
     for (const test of [false, true]) { const NET = test ? btc.TEST_NETWORK : btc.NETWORK, ad = (sc) => btc.Address(NET).encode(btc.OutScript.decode(sc));
       for (const [ik, ok] of [['p2wpkh', 'p2tr'], ['p2tr', 'p2wsh'], ['p2pkh', 'p2sh'], ['p2sh', 'p2pkh'], ['p2wsh', 'p2wpkh']]) {
@@ -814,7 +854,8 @@ const M = [
   ['psbt: 4-byte length prefix not read', 'if(f===0xfe) return r.u32();', 'if(f===0xfe) return r.byte();'],
   ['psbt: 64-bit amount byte order', 'for(let i=7;i>=0;i--) v=(v<<8n)|BigInt(b[o+i]);', 'for(let i=0;i<8;i++) v=(v<<8n)|BigInt(b[o+i]);'],
   ['psbt: 32-bit numbers read as signed', 'const v=(b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]<<24))>>>0; o+=4; return v; },', 'const v=(b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]<<24)); o+=4; return v; },'],
-  ['psbt: txid not reversed', 'hex(Uint8Array.from(r.bytes(32)).reverse())', 'hex(Uint8Array.from(r.bytes(32)))'],
+  ['psbt: txid not reversed', 'hex(Uint8Array.from(r.bytes(32)).reverse()), vout=r.u32(), sl=r.varint(); r.bytes(sl); tx.ins.push', 'hex(Uint8Array.from(r.bytes(32))), vout=r.u32(), sl=r.varint(); r.bytes(sl); tx.ins.push'],
+  ['raw: input txid not reversed', 'hex(Uint8Array.from(r.bytes(32)).reverse()), vout=r.u32(), sl=r.varint(); r.bytes(sl); res.ins.push', 'hex(Uint8Array.from(r.bytes(32))), vout=r.u32(), sl=r.varint(); r.bytes(sl); res.ins.push'],
   ['psbt: output amount skipped (always 0)', 'const value=r.i64(), sl=r.varint(); tx.outs.push({value, script:r.bytes(sl)});', 'const value=(r.i64(),0n), sl=r.varint(); tx.outs.push({value, script:r.bytes(sl)});'],
   ['psbt: segwit marker of previous tx not handled', 'if(n===0){ r.byte(); seg=true; n=r.varint(); }', 'if(false){ r.byte(); seg=true; n=r.varint(); }'],
   ['psbt: previous transaction output chosen by the wrong index', 'psbtParseTxOutputs(nw.val)[tx.ins[i].vout]', 'psbtParseTxOutputs(nw.val)[0]'],
@@ -827,7 +868,7 @@ const M = [
   ['psbt: data-carrier output shown as an address', 'if(script.length>0 && script[0]===0x6a) return "OP_RETURN', 'if(false) return "OP_RETURN'],
   ['psbt: network ignored for addresses', 'const N=NETS[net||"main"];\n  if(script.length===25', 'const N=NETS.main;\n  if(script.length===25'],
   ['psbt: hex input not recognized', 'if(/^70736274ff/i.test(t) && /^[0-9a-f]+$/i.test(t) && t.length%2===0) return fromHex(t.toLowerCase());', 'if(false) return fromHex(t.toLowerCase());'],
-  ['psbt: marker not checked', 'if(bytes.length<5 || !magic.every((x,i)=>bytes[i]===x)) throw', 'if(false) throw'],
+  ['psbt: marker not checked', 'if(bytes.length<5 || !magic.every((x,i)=>bytes[i]===x)){', 'if(false){'],
   ['psbt: version 2 not refused', 'if(glob.some(x=>x.type===0xfb &&', 'if(false && glob.some(x=>x.type===0xfb &&'],
   ['psbt: missing unsigned transaction not reported', 'if(!txRec) throw new Error("No unsigned transaction found in this PSBT.");', 'if(!txRec) txRec={val:new Uint8Array(0)};'],
   ['psbt: signatures not counted', 'sigs:m.filter(x=>x.type===2).length', 'sigs:0'],
@@ -836,7 +877,7 @@ const M = [
   ['psbt: taproot key information ignored', 'if(x.type===7 && x.val.length>=5){', 'if(false && x.val.length>=5){'],
   ['psbt: taproot leaf hashes not skipped', 'q.bytes(32*nh); out.fps.push(hex(q.bytes(4)));', 'out.fps.push(hex(q.bytes(4)));'],
   ['psbt: trailing data not noticed', 'if(!r.done) res.trailing=true;', ''],
-  ['psbt: output total wrong', 'res.totalOut=res.outs.reduce((a,o)=>a+o.amount,0n);', 'res.totalOut=res.outs.reduce((a,o)=>a+o.amount,1n);'],
+  ['psbt: output total wrong', 'res.totalOut=res.outs.reduce((a,o)=>a+o.amount,0n);\n  res.fee=res.ins.every', 'res.totalOut=res.outs.reduce((a,o)=>a+o.amount,1n);\n  res.fee=res.ins.every'],
   ['psbt: fee wrong when some inputs are unknown', 'res.fee=res.ins.every(x=>x.amount!==null) ?', 'res.fee=res.ins.some(x=>x.amount!==null) ?'],
   ['psbt: fee sign flipped', 'res.ins.reduce((a,x)=>a+x.amount,0n)-res.totalOut : null;', 'res.totalOut-res.ins.reduce((a,x)=>a+x.amount,0n) : null;'],
   ['psbt: BTC text not padded to 8 decimals', '(v%100000000n).toString().padStart(8,"0")', '(v%100000000n).toString()'],
@@ -1266,6 +1307,30 @@ const M = [
   ['multisig: 1-of-N allowed to start', 'if(m < 2){ err.textContent', 'if(m < 1){ err.textContent'],
   ['multisig: account range not checked', '|| parseInt(raw, 10) > 2147483647){ err.textContent = "The account must', '|| false){ err.textContent = "The account must'],
   ['multisig: account number not used', 'account: parseInt(raw, 10), keys: []', 'account: 0, keys: []'],
+  ['rbf: psbt threshold', 'res.ins.reduce((a,x)=>a+x.amount,0n)-res.totalOut : null;\n  res.rbf=res.ins.some(x=>x.seq<0xfffffffe);', 'res.ins.reduce((a,x)=>a+x.amount,0n)-res.totalOut : null;\n  res.rbf=res.ins.some(x=>x.seq<0xffffffff);'],
+  ['rbf: raw threshold', 'res.fee=null;\n  res.rbf=res.ins.some(x=>x.seq<0xfffffffe);', 'res.fee=null;\n  res.rbf=res.ins.some(x=>x.seq<0xffffffff);'],
+  ['rbf: wording flipped', 'res.rbf ? "REPLACEABLE (RBF): yes.', '!res.rbf ? "REPLACEABLE (RBF): yes.'],
+  ['locktime: shown when inputs final', 'res.locktime>0 && res.ins.some(x=>x.seq!==0xffffffff)', 'res.locktime>0'],
+  ['locktime: block or date', 'res.locktime<500000000', 'res.locktime<100000'],
+  ['locktime: date format', '.slice(0,16).replace("T"," ")', '.slice(0,10).replace("T"," ")'],
+  ['verdict: fee 5% line', 'add(res.fee*20n<res.totalOut, res.fee*20n<res.totalOut ?', 'add(res.fee*20n<res.totalOut*2n, res.fee*20n<res.totalOut*2n ?'],
+  ['verdict: fee 5% too strict', 'add(res.fee*20n<res.totalOut, res.fee*20n<res.totalOut ?', 'add(res.fee*30n<res.totalOut, res.fee*30n<res.totalOut ?'],
+  ['verdict: negative fee passes', 'add(res.fee>=0n, res.fee>=0n ?', 'add(true, res.fee>=0n ?'],
+  ['verdict: unknown inputs pass', 'add(unknownIn===0,', 'add(true,'],
+  ['verdict: unknown fee passes', '} else add(false, "The fee cannot be worked out.", true);', '} else add(true, "The fee cannot be worked out.", true);'],
+  ['verdict: odd outputs pass', 'add(odd===0,', 'add(true,'],
+  ['verdict: notes block', 'bad=C.filter(x=>!x.ok&&x.blocking)', 'bad=C.filter(x=>!x.ok)'],
+  ['verdict: change note', 'add(withKeys>0,', 'add(true,'],
+  ['verdict: clean text', 'bad.length ? "VERDICT: NO CLEAN VERDICT.', 'bad.length>9 ? "VERDICT: NO CLEAN VERDICT.'],
+  ['op_return: printable test', 'c>=32&&c<127', 'c>=0&&c<127'],
+  ['op_return: pushdata1', 'op===0x4c && i<script.length', 'op===0x4d && i<script.length'],
+  ['op_return: pushdata2', 'op===0x4d && i+1<script.length', 'op===0x4c && i+1<script.length'],
+  ['op_return: data note skips payment line', 'x.script && x.script[0]===0x6a ? "" :', 'false ? "" :'],
+  ['raw: txid byte order', 'res.txid=hex((await sha256bytes(await sha256bytes(stripped))).reverse());', 'res.txid=hex((await sha256bytes(await sha256bytes(stripped))));'],
+  ['raw: segwit body offset', 'const bodyStart=seg?6:4;', 'const bodyStart=seg?5:4;'],
+  ['raw: witness means signed', 'if(k>0) x.final=true;', ''],
+  ['raw: trailing bytes accepted', 'res.locktime=r.u32(); if(!r.done) throw new Error("not a transaction");', 'res.locktime=r.u32();'],
+  ['raw: hex detection', '/^0[0-9a-f]000000/i.test(t)', '/^9[0-9a-f]000000/i.test(t)'],
   ['multisig slider: N cap', 'const MS_MAX = 15;', 'const MS_MAX = 99;'],
   ['multisig slider: M pushes N up', 'if(m > parseInt(msEl("msN").value, 10)) msEl("msN").value = String(m);', ''],
   ['multisig slider: M clamped to N', 'm = msClamp(msEl("msM").value, 1, n);', 'm = msClamp(msEl("msM").value, 1, MS_MAX);'],
