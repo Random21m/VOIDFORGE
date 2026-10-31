@@ -962,7 +962,7 @@
     </details>
     <details id="psbtBox">
       <summary>Inspect a transaction (PSBT)<span class="tag tag-ro">READ ONLY</span><small>See where the money goes and the fee before signing.</small></summary>
-      <p class="hint" style="margin:8px 0;">Shows what a partly signed Bitcoin transaction (PSBT) from a wallet app would do: where the money comes from, where it goes, and the fee, so you can check it before signing on your hardware wallet. <b>This only reads and displays. It cannot sign, never uses your seed words, and sends nothing.</b> Paste the PSBT (base64 or hex) or choose the .psbt file. If you typed your words above, outputs that carry this wallet&rsquo;s key information are marked.</p>
+      <p class="hint" style="margin:8px 0;">Shows what a partly signed Bitcoin transaction (PSBT) from a wallet app would do: where the money comes from, where it goes, and the fee, so you can check it before signing on your hardware wallet. <b>This only reads and displays. It cannot sign, never uses your seed words, and sends nothing.</b> Paste the PSBT (base64 or hex) or choose the .psbt file. If you typed your words above, outputs that carry this wallet&rsquo;s key information are marked. It also checks any signatures it finds: whether two of them share a <b>nonce</b> (a repeated secret number that lets anyone work out the private key) and whether a signature covers the whole transaction.</p>
       <textarea id="psbtInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="PSBT (base64 or hex)" placeholder="Paste the PSBT here (starts with cHNidP8 or 70736274ff)"></textarea>
       <div style="display:flex; gap:6px; align-items:center; margin-top:6px; flex-wrap:wrap;">
         <input type="file" id="psbtFile" accept=".psbt,application/octet-stream" aria-label="Choose a PSBT file" style="flex:1; min-width:0;">
@@ -1097,6 +1097,7 @@
     <details>
       <summary>Changelog</summary>
       <ul>
+        <li><b>1.24.0</b> &mdash; <b>Signature checks.</b> The read-only transaction checker and the compare box now look at the signatures inside a transaction. They warn if two different signatures share a nonce (a repeated secret number that would let anyone work out a private key; the compare box also looks across both transactions) and if any signature, or a signing request, uses a sighash type other than ALL, which would let others change parts of the transaction after it is signed. ECDSA and Schnorr (taproot) signatures are both read. Public data only; no seed, key or address math changed.</li>
         <li><b>1.23.0</b> &mdash; <b>Easier to trust and easier to learn.</b> (1) A short <b>notice</b> now greets first-time visitors: this is an educational tool, not independently audited, so practise first and start real money small. It closes with one click or Escape. (2) <b>Practice mode</b> in CHECK A BACKUP gives you a throwaway 12-word phrase to write down, hides it, and checks that your paper copy matches, naming any word that is wrong, so you can rehearse before it matters. The phrase is random, is not a real seed, and is forgotten when cleared. (3) A <b>Privacy</b> section in About explains what the page keeps (only your light/dark choice and text size), what it never sends, and the only ways anything leaves. (4) REVIEW.md now invites outside reviewers. No seed, key or address math changed.</li>
         <li><b>1.22.0</b> &mdash; <b>Check a transaction more carefully, and an easier multisig control.</b> (1) The <b>transaction checker</b> now also reads a raw transaction, says whether it can be replaced with a higher-fee version (RBF), shows any locktime, decodes data notes (OP_RETURN), and ends with a list of checks and a verdict. If it cannot fully check something, it says <b>NO CLEAN VERDICT</b> instead of looking reassuring. (2) A new <b>Compare two transactions</b> box shows whether a signer changed anything between what you sent and what came back, and whether a fee bump is a plain fee bump. (3) The <b>multisig</b> setup is now one slider with two handles, from 2 to 15 keys, with a big live &ldquo;2-of-3&rdquo; label and one-click popular setups. Everything here only reads and displays. Words, fingerprints, addresses, keys and descriptors are identical to v1.21.0.</li>
         <li><b>1.21.0</b> &mdash; <b>Easier to use, plus three additions.</b> (1) The <b>multisig card</b> now moves up directly above the seed maker while you set up, so progress, instructions and the seed maker are together, and the page scrolls to the finished wallet when the last key is saved. (2) A loud red <b>TESTNET</b> banner on the Watch-only box whenever Testnet is chosen. (3) <b>Import into Bitcoin Core</b> (advanced), in the Watch-only box: two ready-to-copy commands that make an empty watch-only wallet and load the descriptors, with a choice of scanning from now or from the beginning. (4) A <b>Silent Payment address</b> (BIP-352) box in the Watch-only box, with a limited-wallet-support warning; it is tested against all of the official test vectors and an independent library. Also: a softer grey-blue light theme, and the About text now says Coldcard&rsquo;s documented dice example gives the same words as VOIDFORGE. Seeds, fingerprints, addresses, keys and descriptors are identical to v1.20.1.</li>
@@ -1144,7 +1145,7 @@
   <footer>
     SHA256(rolls or flips) → BIP39 • Same method as SeedSigner and Coldcard dice modes<br>
     Enter your rolls or flips, generate the seed, then compare it and the fingerprint with a second tool on an offline device<br>
-    <span style="font-size:13.5px; margin-top:6px; display:inline-block;">VOIDFORGE v1.23.0 &bull; source: github.com/Random21m/voidforge (no links on this page by design)</span>
+    <span style="font-size:13.5px; margin-top:6px; display:inline-block;">VOIDFORGE v1.24.0 &bull; source: github.com/Random21m/voidforge (no links on this page by design)</span>
   </footer>
 </div>
 
@@ -2070,16 +2071,44 @@ function psbtFromText(text){
   throw new Error("Paste the PSBT as base64 (starts with cHNidP8) or hex (starts with 70736274ff), or choose the file.");
 }
 // A raw transaction (what a wallet broadcasts): read-only. It has no amounts for the coins being spent, so the fee cannot be worked out.
+// ---- Signatures found in a transaction (public data): used for the nonce-reuse and sighash checks ----
+function sigDer(b){ // DER ECDSA signature plus one sighash byte, or null when b is not exactly that
+  if(b.length<9 || b.length>73 || b[0]!==0x30 || b[1]!==b.length-3 || b[2]!==2) return null;
+  const rl=b[3]; if(rl<1 || rl>33 || 4+rl+2>b.length-1 || b[4+rl]!==2) return null;
+  const sl=b[5+rl]; if(sl<1 || 6+rl+sl!==b.length-1) return null;
+  const strip=(x)=>{ let i=0; while(i<x.length-1 && x[i]===0) i++; return x.slice(i); };
+  const r=strip(b.slice(4,4+rl)), sv=strip(b.slice(6+rl,6+rl+sl)); if(r.length>32 || sv.length>32) return null;
+  return {kind:"ECDSA", r:hex(r).padStart(64,"0"), s:hex(sv).padStart(64,"0"), sighash:b[b.length-1]};
+}
+function sigSchnorr(b){ // 64 bytes (default sighash) or 65 bytes (explicit sighash, never 0)
+  if(b.length===64) return {kind:"Schnorr", r:hex(b.slice(0,32)), s:hex(b.slice(32)), sighash:0};
+  if(b.length===65 && b[64]!==0) return {kind:"Schnorr", r:hex(b.slice(0,32)), s:hex(b.slice(32,64)), sighash:b[64]};
+  return null;
+}
+function scriptPushes(b){ const out=[]; let i=0; while(i<b.length){ const op=b[i++]; let len; if(op>=1&&op<=75) len=op; else if(op===0x4c&&i<b.length) len=b[i++]; else if(op===0x4d&&i+1<b.length){ len=b[i]|(b[i+1]<<8); i+=2; } else continue; if(i+len>b.length) break; out.push(b.slice(i,i+len)); i+=len; } return out; }
+function sigsFromScriptSig(b, input){ return scriptPushes(b).map(sigDer).filter(Boolean).map(x=>Object.assign(x,{input})); }
+function sigsFromWitness(items, input){
+  const out=items.map(sigDer).filter(Boolean);
+  if(!out.length && (items.length===1 || (items.length===2 && items[1].length>0 && items[1][0]===0x50))){ const t=sigSchnorr(items[0]); if(t) out.push(t); }
+  return out.map(x=>Object.assign(x,{input}));
+}
+function sigsFromFinalWitness(val, input){ try { const q=psbtReader(val), n=q.varint(), it=[]; for(let i=0;i<n;i++) it.push(q.bytes(q.varint())); return sigsFromWitness(it, input); } catch(e){ return []; } }
+function nonceReuse(sigs){ // groups of different signatures that share the same R value
+  const by=new Map(); sigs.forEach(x=>{ if(!by.has(x.r)) by.set(x.r,[]); by.get(x.r).push(x); });
+  const bad=[]; by.forEach((g,r)=>{ if(new Set(g.map(x=>x.kind+x.s)).size>1) bad.push({r, sigs:g}); }); return bad;
+}
+function sighashName(k,h){ const base=h&0x1f, ac=(h&0x80)?" + ANYONECANPAY":""; return (k==="Schnorr"&&h===0) ? "ALL (default)" : (base===1?"ALL":base===2?"NONE":base===3?"SINGLE":"unknown (0x"+h.toString(16)+")")+ac; }
+function sighashOdd(k,h){ return !(h===1 || (k==="Schnorr" && h===0)); }
 async function inspectRawTx(bytes, net){
-  const r=psbtReader(bytes), res={raw:true, ins:[], outs:[]}; res.version=r.u32();
+  const r=psbtReader(bytes), res={raw:true, ins:[], outs:[], sigs:[]}; res.version=r.u32();
   let seg=false, n=r.varint(); if(n===0){ if(r.byte()!==1) throw new Error("not a transaction"); seg=true; n=r.varint(); }
   if(n===0 || n>100000) throw new Error("not a transaction");
   const bodyStart=seg?6:4;
-  for(let i=0;i<n;i++){ const txid=hex(Uint8Array.from(r.bytes(32)).reverse()), vout=r.u32(), sl=r.varint(); r.bytes(sl); res.ins.push({txid, vout, amount:null, seq:r.u32(), scriptSig:sl, final:false, sigs:0}); }
+  for(let i=0;i<n;i++){ const txid=hex(Uint8Array.from(r.bytes(32)).reverse()), vout=r.u32(), sl=r.varint(), ss=r.bytes(sl); res.ins.push({txid, vout, amount:null, seq:r.u32(), scriptSig:sl, final:false, sigs:0}); res.sigs.push(...sigsFromScriptSig(ss, i)); }
   n=r.varint(); if(n===0 || n>100000) throw new Error("not a transaction");
   for(let i=0;i<n;i++){ const value=r.i64(), sl=r.varint(), script=r.bytes(sl); res.outs.push({amount:value, script, address:await psbtAddress(script, net), fps:[]}); }
   const bodyEnd=r.pos;
-  if(seg) for(const x of res.ins){ const k=r.varint(); for(let j=0;j<k;j++) r.bytes(r.varint()); if(k>0) x.final=true; }
+  if(seg) res.ins.forEach((x,i)=>{ const k=r.varint(), it=[]; for(let j=0;j<k;j++) it.push(r.bytes(r.varint())); if(k>0) x.final=true; res.sigs.push(...sigsFromWitness(it, i)); });
   for(const x of res.ins) if(x.scriptSig>0) x.final=true;
   res.locktime=r.u32(); if(!r.done) throw new Error("not a transaction");
   const stripped=new Uint8Array(4+(bodyEnd-bodyStart)+4); stripped.set(bytes.slice(0,4),0); stripped.set(bytes.slice(bodyStart,bodyEnd),4); stripped.set(bytes.slice(bytes.length-4),4+bodyEnd-bodyStart);
@@ -2099,11 +2128,18 @@ async function inspectPsbt(bytes, net){
   const glob=psbtReadMap(r), txRec=glob.find(x=>x.type===0 && x.key.length===0);
   if(glob.some(x=>x.type===0xfb && x.key.length===0 && x.val.length===4 && (x.val[0]|x.val[1]|x.val[2]|x.val[3])!==0)) throw new Error("PSBT version 2 is not supported by this inspector; export version 0.");
   if(!txRec) throw new Error("No unsigned transaction found in this PSBT.");
-  const tx=psbtParseTx(txRec.val), res={version:tx.version, locktime:tx.locktime, ins:[], outs:[]};
+  const tx=psbtParseTx(txRec.val), res={version:tx.version, locktime:tx.locktime, ins:[], outs:[], sigs:[]};
   res.txid=hex((await sha256bytes(await sha256bytes(txRec.val))).reverse());
   for(let i=0;i<tx.ins.length;i++){
     const m=psbtReadMap(r), inp={txid:tx.ins[i].txid, vout:tx.ins[i].vout, seq:tx.ins[i].seq, amount:null, sigs:m.filter(x=>x.type===2).length, final:m.some(x=>x.type===7||x.type===8)};
     const wu=m.find(x=>x.type===1), nw=m.find(x=>x.type===0);
+    for(const x of m){
+      if(x.type===2){ const g=sigDer(x.val); if(g) res.sigs.push(Object.assign(g,{input:i})); }
+      else if(x.type===0x13 || x.type===0x14){ const g=sigSchnorr(x.val); if(g) res.sigs.push(Object.assign(g,{input:i})); }
+      else if(x.type===7) res.sigs.push(...sigsFromScriptSig(x.val, i));
+      else if(x.type===8) res.sigs.push(...sigsFromFinalWitness(x.val, i));
+      else if(x.type===3 && x.val.length===4) inp.sighashReq=x.val[0]|(x.val[1]<<8)|(x.val[2]<<16)|(x.val[3]<<24);
+    }
     if(wu){ const q=psbtReader(wu.val); inp.amount=q.i64(); inp.script=q.bytes(q.varint()); }
     else if(nw){ const o=psbtParseTxOutputs(nw.val)[tx.ins[i].vout]; if(o){ inp.amount=o.value; inp.script=o.script; } }
     if(inp.script) inp.address=await psbtAddress(inp.script, net);
@@ -2147,6 +2183,11 @@ function psbtChecks(res, fpWallet){
   const odd=res.outs.filter(x=>/^Unrecognized script/.test(x.address)).length;
   add(odd===0, odd===0 ? "Every output is a normal address or a data note." : odd + " output" + (odd===1?" has":"s have") + " a script this tool cannot turn into an address.", true);
   if(res.trailing) add(false, "Extra data follows the PSBT.", true);
+  const sg=res.sigs||[];
+  if(sg.length>=2){ const nr=nonceReuse(sg); add(nr.length===0, nr.length===0 ? "No two of the " + sg.length + " signatures share a nonce (R value)." : "NONCE REUSED: " + nr.length + " nonce value" + (nr.length===1?" is":"s are") + " shared by different signatures (inputs " + [...new Set(nr.flatMap(g=>g.sigs.map(x=>x.input)))].join(", ") + "). Whoever made them leaked a private key. Do not use this wallet's keys again, and move the funds.", true); }
+  const oddSig=sg.filter(x=>sighashOdd(x.kind,x.sighash)), oddReq=res.ins.map((x,i)=>({x,i})).filter(o=>o.x.sighashReq!==undefined && o.x.sighashReq!==1 && o.x.sighashReq!==0);
+  if(sg.length || oddReq.length){ const bad=oddSig.length+oddReq.length;
+    add(bad===0, bad===0 ? "Every signature covers the whole transaction (sighash ALL)." : bad + " signature" + (bad===1?"":"s") + " or signing request" + (bad===1?"":"s") + " use a sighash type other than ALL (" + [...new Set(oddSig.map(x=>"input " + x.input + ": " + sighashName(x.kind,x.sighash)).concat(oddReq.map(o=>"input " + o.i + " asks for " + sighashName("ECDSA",o.x.sighashReq))))].join("; ") + "). That lets other people change parts of the transaction after it is signed. Continue only if you set this up on purpose.", true); }
   const withKeys=res.outs.filter(x=>x.fps.length).length;
   if(!res.raw) add(withKeys>0, withKeys>0 ? withKeys + " output" + (withKeys===1?" is":"s are") + " marked as this wallet's own change." : "No output is marked as change. Everything not sent to someone goes to the fee, so check that you meant to send all of it.", false);
   return C;
@@ -2228,6 +2269,11 @@ function compareTx(a, b){
     verdict = all ? "SIGNER CHECK: changed, but it looks like a plain fee bump: same payments, more fee. Check the new fee is what you chose."
       : feeKnown ? "SIGNER CHECK: CHANGED, and it does NOT look like a plain fee bump. If this came back from a signer you did not ask to change anything, do not sign or broadcast it."
       : "NO CLEAN VERDICT: the transaction changed and the fees cannot be compared, so it cannot be called a plain fee bump. Do not sign or broadcast it until you know why.";
+  }
+  const allS=(a.sigs||[]).concat(b.sigs||[]);
+  if(allS.length>=2){ const nr=nonceReuse(allS);
+    if(nr.length){ L.push("NONCE CHECK: FAIL. " + nr.length + " nonce value" + (nr.length===1?" is":"s are") + " shared by different signatures across the two transactions. That leaks a private key. Do not use the keys again and move the funds."); verdict="NONCE REUSE FOUND. " + verdict; }
+    else L.push("NONCE CHECK: OK. No two different signatures across the " + allS.length + " found share a nonce (R value).");
   }
   L.push(verdict);
   return L.join("\n");

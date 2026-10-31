@@ -210,6 +210,57 @@ async function probe(w, mutated) {
       $('cmpB').value = $('cmpA').value; await w.runCompare(); $('cmpA').dispatchEvent(new w.Event('input')); if ($('cmpOut').textContent !== '') fails.push('compare: editing the first box clears the result');
       await w.runCompare(); $('cmpB').dispatchEvent(new w.Event('input')); if ($('cmpOut').textContent !== '') fails.push('compare: editing the second box clears the result');
     }
+    // signatures: nonce reuse and sighash checks
+    { const enc = (x) => { let b = Buffer.from(x.toString(16).padStart(64, '0'), 'hex'); while (b.length > 1 && b[0] === 0) b = b.slice(1); if (b[0] & 0x80) b = Buffer.concat([Buffer.from([0]), b]); return Buffer.concat([Buffer.from([2, b.length]), b]); };
+      const der = (r, sv, sh = 1) => { const body = Buffer.concat([enc(r), enc(sv)]); return new Uint8Array(Buffer.concat([Buffer.from([0x30, body.length]), body, Buffer.from([sh])])); };
+      const R1 = 0x8123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdefn, R2 = 0x7223456789abcdef0123456789abcdef0123456789abcdef0123456789abcdefn, RS = 1n << 200n, S1 = 0x9111111111111111111111111111111111111111111111111111111111111111n, S2 = 0x2222222222222222222222222222222222222222222222222222222222222222n;
+      const mk = (nin, spk = kinds.p2wpkh(30).script) => { const t = new btc.Transaction({ allowUnknownOutputs: true }); for (let i = 0; i < nin; i++) t.addInput({ txid: nc.createHash('sha256').update('s' + i).digest('hex'), index: 0, sequence: 0xfffffffd, witnessUtxo: { script: spk, amount: 50000n } }); t.addOutput({ script: kinds.p2wpkh(31).script, amount: BigInt(nin) * 50000n - 100n }); return t; };
+      const rep = async (t) => w.psbtReport(await insp(t.toPSBT(0)), null), ps = (t, i, sig) => t.updateInput(i, { partialSig: [[pubE(30), sig]] }, true);
+      const vi = (n) => Buffer.from([n]);
+      const rawTx = (ins) => { const seg = ins.some((x) => x.wit); const parts = [Buffer.from('01000000', 'hex')]; if (seg) parts.push(Buffer.from('0001', 'hex')); parts.push(vi(ins.length));
+        ins.forEach((x, i) => parts.push(Buffer.alloc(32, 0x50 + i), Buffer.alloc(4), vi(x.ss.length), x.ss, Buffer.from('fdffffff', 'hex')));
+        parts.push(Buffer.from('01a00f00000000000016', 'hex'), Buffer.from(kinds.p2wpkh(31).script)); if (seg) ins.forEach((x) => { const wi = x.wit || []; parts.push(vi(wi.length)); wi.forEach((y) => parts.push(vi(y.length), Buffer.from(y))); }); parts.push(Buffer.alloc(4)); return Buffer.concat(parts); };
+      let tt = mk(2); ps(tt, 0, der(R1, S1)); ps(tt, 1, der(R1, S2)); let o = await rep(tt);
+      if (!/NONCE REUSED: 1 nonce value is shared by different signatures \(inputs 0, 1\)/.test(o) || !/FAIL  NONCE REUSED/.test(o) || !/NO CLEAN VERDICT/.test(o)) fails.push('sig: the same nonce in two different signatures is flagged');
+      tt = mk(2); ps(tt, 0, der(R1, S1)); ps(tt, 1, der(R1, S1)); o = await rep(tt); if (!/No two of the 2 signatures share a nonce/.test(o) || /NONCE REUSED/.test(o)) fails.push('sig: an identical signature twice is not reuse');
+      tt = mk(2); ps(tt, 0, der(R1, S1)); ps(tt, 1, der(R2, S2)); o = await rep(tt); if (!/No two of the 2 signatures share a nonce/.test(o) || !/no problems found/.test(o)) fails.push('sig: different nonces are fine');
+      tt = mk(1); ps(tt, 0, der(R1, S1)); o = await rep(tt); if (/share a nonce|NONCE/.test(o) || !/Every signature covers the whole transaction/.test(o)) fails.push('sig: one signature gives no nonce line');
+      { const q = await insp(((x) => (ps(x, 0, der(R1, S1)), ps(x, 1, der(RS, S2)), x.toPSBT(0)))(mk(2))); if (q.sigs.length !== 2 || q.sigs[0].r !== R1.toString(16) || q.sigs[1].r !== RS.toString(16).padStart(64, '0') || q.sigs[0].s !== S1.toString(16) || q.sigs[1].s !== S2.toString(16).padStart(64, '0') || q.sigs[0].kind !== 'ECDSA' || q.sigs[1].input !== 1) fails.push('sig: DER values, padding and input numbers read exactly'); }
+      { const bad = der(R1, S1); for (const [name, f] of [['total length', (b) => { b[1]--; }], ['r tag', (b) => { b[2] = 3; }], ['s tag', (b) => { b[4 + b[3]] = 3; }], ['s length', (b) => { b[5 + b[3]]++; }], ['marker', (b) => { b[0] = 0x31; }]]) { const c = Uint8Array.from(bad); f(c); const t = mk(1); ps(t, 0, c); const q = await insp(t.toPSBT(0)); if (q.sigs.length !== 0) fails.push('sig: damaged DER (' + name + ') is not a signature'); } }
+      for (const [sh, nm] of [[2, 'NONE'], [3, 'SINGLE'], [0x81, 'ALL \\+ ANYONECANPAY'], [0x82, 'NONE \\+ ANYONECANPAY'], [0x83, 'SINGLE \\+ ANYONECANPAY']]) { tt = mk(1); ps(tt, 0, der(R1, S1, sh)); o = await rep(tt); if (!new RegExp('input 0: ' + nm + '[;)]').test(o) || !/FAIL  1 signature or signing request use a sighash type other than ALL/.test(o) || !/NO CLEAN VERDICT/.test(o)) fails.push('sig: sighash ' + sh + ' flagged by name'); }
+      tt = mk(1); ps(tt, 0, der(R1, S1, 5)); o = await rep(tt); if (!/unknown \(0x5\)/.test(o)) fails.push('sig: unknown sighash named');
+      tt = mk(1); tt.updateInput(0, { sighashType: 2 }, true); o = await rep(tt); if (!/input 0 asks for NONE/.test(o) || !/NO CLEAN VERDICT/.test(o)) fails.push('sig: a signing request for NONE is flagged');
+      for (const v of [0, 1]) { tt = mk(1); tt.updateInput(0, { sighashType: v }, true); o = await rep(tt); if (!/no problems found/.test(o)) fails.push('sig: a signing request for ' + v + ' is fine'); }
+      // taproot (Schnorr): key-path and script-path signatures, 64 and 65 bytes
+      const xo = pubS(40), tr = btc.p2tr(xo).script, s64a = Uint8Array.from(Buffer.concat([Buffer.alloc(32, 7), Buffer.alloc(32, 1)])), s64b = Uint8Array.from(Buffer.concat([Buffer.alloc(32, 7), Buffer.alloc(32, 2)])), s64c = Uint8Array.from(Buffer.concat([Buffer.alloc(32, 8), Buffer.alloc(32, 2)]));
+      tt = mk(2, tr); tt.updateInput(0, { tapKeySig: s64a }, true); tt.updateInput(1, { tapKeySig: s64b }, true); o = await rep(tt); if (!/NONCE REUSED: 1 nonce value is shared by different signatures \(inputs 0, 1\)/.test(o)) fails.push('sig: a repeated Schnorr nonce is flagged');
+      tt = mk(2, tr); tt.updateInput(0, { tapKeySig: s64a }, true); tt.updateInput(1, { tapKeySig: s64c }, true); o = await rep(tt); if (!/No two of the 2 signatures share/.test(o) || !/Every signature covers/.test(o)) fails.push('sig: different Schnorr nonces and the default sighash are fine');
+      tt = mk(2, tr); tt.updateInput(0, { tapScriptSig: [[{ pubKey: xo, leafHash: new Uint8Array(32) }, s64a]] }, true); tt.updateInput(1, { tapScriptSig: [[{ pubKey: xo, leafHash: new Uint8Array(32) }, s64b]] }, true); o = await rep(tt); if (!/NONCE REUSED/.test(o)) fails.push('sig: a repeated Schnorr nonce in script-path signatures is flagged');
+      tt = mk(1, tr); tt.updateInput(0, { tapKeySig: new Uint8Array([...s64a, 2]) }, true); o = await rep(tt); if (!/input 0: NONE;|input 0: NONE\)/.test(o)) fails.push('sig: Schnorr sighash NONE flagged');
+      tt = mk(1, tr); tt.updateInput(0, { tapKeySig: new Uint8Array([...s64a, 1]) }, true); o = await rep(tt); if (!/Every signature covers/.test(o)) fails.push('sig: Schnorr explicit ALL is fine');
+      { const q = await insp(((x) => (x.updateInput(0, { tapKeySig: new Uint8Array([...s64a, 0]) }, true), x.toPSBT(0)))(mk(1, tr))); if (q.sigs.length !== 0) fails.push('sig: a 65-byte Schnorr signature with sighash byte 0 is not accepted'); }
+      { const q = await insp(((x) => (x.updateInput(0, { tapKeySig: s64a }, true), x.toPSBT(0)))(mk(1, tr))); if (q.sigs.length !== 1 || q.sigs[0].r !== '07'.repeat(32) || q.sigs[0].s !== '01'.repeat(32) || q.sigs[0].kind !== 'Schnorr' || q.sigs[0].sighash !== 0) fails.push('sig: Schnorr values read exactly'); }
+      // finalized PSBT inputs and raw transactions: scriptSig pushes, witness items, annex
+      const pk33 = Uint8Array.from(Buffer.concat([Buffer.from([3]), Buffer.alloc(32, 9)])), big1 = der(R1, S1), big2 = der(R1, S2);
+      tt = mk(2); tt.updateInput(0, { finalScriptWitness: [big1, pk33] }, true); tt.updateInput(1, { finalScriptWitness: [big2, pk33] }, true); o = await rep(tt); if (!/NONCE REUSED: 1 nonce value is shared by different signatures \(inputs 0, 1\)/.test(o)) fails.push('sig: reuse in finalized witnesses of a PSBT is flagged');
+      tt = mk(2); tt.updateInput(0, { finalScriptSig: Buffer.concat([vi(big1.length), big1, vi(33), pk33]) }, true); tt.updateInput(1, { finalScriptSig: Buffer.concat([vi(big2.length), big2, vi(33), pk33]) }, true); o = await rep(tt); if (!/NONCE REUSED: 1 nonce value is shared by different signatures \(inputs 0, 1\)/.test(o)) fails.push('sig: reuse in finalized scriptSigs of a PSBT is flagged');
+      let rr = await insp(rawTx([{ ss: Buffer.alloc(0), wit: [big1, pk33] }, { ss: Buffer.alloc(0), wit: [big2, pk33] }])); o = w.psbtReport(rr, null); if (rr.sigs.length !== 2 || rr.sigs[1].input !== 1 || !/NONCE REUSED: 1 nonce value is shared by different signatures \(inputs 0, 1\)/.test(o)) fails.push('sig: reuse in the witnesses of a raw transaction is flagged');
+      rr = await insp(rawTx([{ ss: Buffer.concat([vi(big1.length), big1, vi(33), pk33]) }, { ss: Buffer.concat([vi(big2.length), big2, vi(33), pk33]) }])); o = w.psbtReport(rr, null); if (rr.sigs.length !== 2 || rr.sigs[1].input !== 1 || !/NONCE REUSED: 1 nonce value is shared by different signatures \(inputs 0, 1\)/.test(o)) fails.push('sig: reuse in the scriptSigs of a raw transaction is flagged');
+      for (const [name, pre] of [['PUSHDATA1', Buffer.from([0x4c, big1.length])], ['PUSHDATA2', Buffer.from([0x4d, big1.length, 0])]]) { rr = await insp(rawTx([{ ss: Buffer.concat([pre, big1, vi(33), pk33]) }])); if (rr.sigs.length !== 1 || rr.sigs[0].s !== S1.toString(16)) fails.push('sig: a signature pushed with ' + name + ' is found'); }
+      rr = await insp(rawTx([{ ss: Buffer.concat([vi(big1.length), big1, vi(33), pk33]) }])); if (big1.length < 73 || rr.sigs.length !== 1) fails.push('sig: a 73-byte signature in a direct push is found');
+      rr = await insp(rawTx([{ ss: Buffer.alloc(0), wit: [s64a] }, { ss: Buffer.alloc(0), wit: [s64b] }])); if (rr.sigs.length !== 2 || rr.sigs[0].kind !== 'Schnorr' || !/NONCE REUSED/.test(w.psbtReport(rr, null))) fails.push('sig: a taproot key-path witness in a raw transaction is read');
+      rr = await insp(rawTx([{ ss: Buffer.alloc(0), wit: [s64a, Buffer.from([0x50, 1, 2])] }])); if (rr.sigs.length !== 1) fails.push('sig: a taproot witness with an annex is read');
+      rr = await insp(rawTx([{ ss: Buffer.alloc(0), wit: [s64a, Buffer.from([0x51, 1, 2])] }])); if (rr.sigs.length !== 0) fails.push('sig: two witness items that are not signature plus annex are not read as Schnorr');
+      rr = await insp(rawTx([{ ss: Buffer.alloc(0), wit: [Buffer.concat([Buffer.from([4]), Buffer.alloc(64, 0x22)]), pk33] }])); if (rr.sigs.length !== 0) fails.push('sig: an uncompressed public key is not a signature');
+      rr = await insp(rawTx([{ ss: Buffer.alloc(0), wit: [Buffer.concat([Buffer.from([4]), Buffer.alloc(64, 0x22)])] }])); if (rr.sigs.length !== 1) fails.push('sig: a single 65-byte witness item is read as a Schnorr signature (only the taproot key-path form)');
+      // nonceReuse itself, and the compare box
+      if (w.nonceReuse([{ kind: 'ECDSA', r: 'a', s: '1' }, { kind: 'ECDSA', r: 'a', s: '1' }]).length !== 0 || w.nonceReuse([{ kind: 'ECDSA', r: 'a', s: '1' }, { kind: 'ECDSA', r: 'a', s: '2' }]).length !== 1 || w.nonceReuse([{ kind: 'ECDSA', r: 'a', s: '1' }, { kind: 'ECDSA', r: 'b', s: '2' }]).length !== 0 || w.nonceReuse([{ kind: 'ECDSA', r: 'a', s: '1' }, { kind: 'Schnorr', r: 'a', s: '1' }]).length !== 1) fails.push('sig: nonceReuse groups by R and ignores identical signatures');
+      const tA = mk(1), tB = mk(1); ps(tA, 0, der(R1, S1)); ps(tB, 0, der(R1, S2));
+      let ct = w.compareTx(await insp(tA.toPSBT(0)), await insp(tB.toPSBT(0))); const lines = ct.split('\n');
+      if (!/NONCE CHECK: FAIL. 1 nonce value is shared/.test(ct) || !/^NONCE REUSE FOUND\. /.test(lines[lines.length - 1])) fails.push('sig: compare finds a nonce shared across two transactions');
+      ct = w.compareTx(await insp(tA.toPSBT(0)), await insp(tA.toPSBT(0))); if (/NONCE CHECK: FAIL|NONCE REUSE FOUND/.test(ct) || !/NONCE CHECK: OK/.test(ct)) fails.push('sig: compare of one signature (twice the same) raises nothing');
+      const tC = mk(1); ps(tC, 0, der(R2, S2)); ct = w.compareTx(await insp(tA.toPSBT(0)), await insp(tC.toPSBT(0))); if (!/NONCE CHECK: OK. No two different signatures across the 2 found share a nonce/.test(ct) || /NONCE REUSE FOUND/.test(ct)) fails.push('sig: compare with different nonces is fine');
+    }
     // every script type, mainnet and testnet, against the independent decoder
     for (const test of [false, true]) { const NET = test ? btc.TEST_NETWORK : btc.NETWORK, ad = (sc) => btc.Address(NET).encode(btc.OutScript.decode(sc));
       for (const [ik, ok] of [['p2wpkh', 'p2tr'], ['p2tr', 'p2wsh'], ['p2pkh', 'p2sh'], ['p2sh', 'p2pkh'], ['p2wsh', 'p2wpkh']]) {
@@ -909,7 +960,7 @@ const M = [
   ['psbt: 64-bit amount byte order', 'for(let i=7;i>=0;i--) v=(v<<8n)|BigInt(b[o+i]);', 'for(let i=0;i<8;i++) v=(v<<8n)|BigInt(b[o+i]);'],
   ['psbt: 32-bit numbers read as signed', 'const v=(b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]<<24))>>>0; o+=4; return v; },', 'const v=(b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]<<24)); o+=4; return v; },'],
   ['psbt: txid not reversed', 'hex(Uint8Array.from(r.bytes(32)).reverse()), vout=r.u32(), sl=r.varint(); r.bytes(sl); tx.ins.push', 'hex(Uint8Array.from(r.bytes(32))), vout=r.u32(), sl=r.varint(); r.bytes(sl); tx.ins.push'],
-  ['raw: input txid not reversed', 'hex(Uint8Array.from(r.bytes(32)).reverse()), vout=r.u32(), sl=r.varint(); r.bytes(sl); res.ins.push', 'hex(Uint8Array.from(r.bytes(32))), vout=r.u32(), sl=r.varint(); r.bytes(sl); res.ins.push'],
+  ['raw: input txid not reversed', 'hex(Uint8Array.from(r.bytes(32)).reverse()), vout=r.u32(), sl=r.varint(), ss=r.bytes(sl); res.ins.push', 'hex(Uint8Array.from(r.bytes(32))), vout=r.u32(), sl=r.varint(), ss=r.bytes(sl); res.ins.push'],
   ['psbt: output amount skipped (always 0)', 'const value=r.i64(), sl=r.varint(); tx.outs.push({value, script:r.bytes(sl)});', 'const value=(r.i64(),0n), sl=r.varint(); tx.outs.push({value, script:r.bytes(sl)});'],
   ['psbt: segwit marker of previous tx not handled', 'if(n===0){ r.byte(); seg=true; n=r.varint(); }', 'if(false){ r.byte(); seg=true; n=r.varint(); }'],
   ['psbt: previous transaction output chosen by the wrong index', 'psbtParseTxOutputs(nw.val)[tx.ins[i].vout]', 'psbtParseTxOutputs(nw.val)[0]'],
@@ -1486,6 +1537,54 @@ const M = [
   ['sp: box shown for a multisig cosigner key', 'document.getElementById("spBox").style.display = M ? "none" : "";', 'document.getElementById("spBox").style.display = "";'],
   ['sp: address left after clearing', '["wZpub","wDescR","wDescC","wFirst","spAddr"]', '["wZpub","wDescR","wDescC","wFirst"]'],
   ['sp: not refreshed for account or network', 'document.getElementById("spAddr").textContent = spA;', 'document.getElementById("spAddr").textContent = document.getElementById("spAddr").textContent || spA;'],
+  ['sig: DER marker', 'b[0]!==0x30 ||', 'b[0]!==0x31 ||'],
+  ['sig: DER total length', 'b[1]!==b.length-3 ||', 'false ||'],
+  ['sig: DER r tag', 'b[2]!==2) return null;', 'false) return null;'],
+  ['sig: DER s tag', 'b[4+rl]!==2) return null;', 'false) return null;'],
+  ['sig: DER s length', '6+rl+sl!==b.length-1) return null;', 'false) return null;'],
+  ['sig: DER leading zero kept', 'while(i<x.length-1 && x[i]===0) i++;', ''],
+  ['sig: r not padded', 'r:hex(r).padStart(64,"0")', 'r:hex(r)'],
+  ['sig: s not padded', 's:hex(sv).padStart(64,"0")', 's:hex(sv)'],
+  ['sig: sighash byte ignored', 'sighash:b[b.length-1]};', 'sighash:1};'],
+  ['sig: schnorr explicit sighash 0 accepted', 'b[64]!==0)', 'true)'],
+  ['sig: schnorr R and s swapped', 'r:hex(b.slice(0,32)), s:hex(b.slice(32)), sighash:0}', 'r:hex(b.slice(32)), s:hex(b.slice(0,32)), sighash:0}'],
+  ['sig: any witness read as schnorr', 'items.length===1 ||', 'items.length>=1 ||'],
+  ['sig: annex marker', 'items[1][0]===0x50', 'items[1][0]===0x51'],
+  ['sig: PUSHDATA1 not parsed', 'op===0x4c&&i<b.length', 'false'],
+  ['sig: PUSHDATA2 not parsed', 'op===0x4d&&i+1<b.length', 'false'],
+  ['sig: direct push range', 'op>=1&&op<=75) len=op;', 'op>=1&&op<=70) len=op;'],
+  ['sig: reuse flags identical signatures', 'if(new Set(g.map(x=>x.kind+x.s)).size>1) bad.push', 'if(g.length>1) bad.push'],
+  ['sig: reuse ignores different s', 'g.map(x=>x.kind+x.s)', 'g.map(x=>x.kind)'],
+  ['sig: reuse never grouped', 'if(!by.has(x.r)) by.set(x.r,[]);', 'by.set(x.r,[]);'],
+  ['sig: ANYONECANPAY not named', '(h&0x80)?" + ANYONECANPAY":""', '""'],
+  ['sig: sighash base not masked', 'const base=h&0x1f', 'const base=h'],
+  ['sig: NONE and SINGLE swapped', 'base===2?"NONE":base===3?"SINGLE"', 'base===3?"NONE":base===2?"SINGLE"'],
+  ['sig: schnorr default flagged', '!(h===1 || (k==="Schnorr" && h===0))', '!(h===1)'],
+  ['sig: sighash never odd', '!(h===1 || (k==="Schnorr" && h===0))', 'false'],
+  ['sig: ALL flagged', '!(h===1 || (k==="Schnorr" && h===0))', '!(k==="Schnorr" && h===0)'],
+  ['sig: nonce check on one signature', 'if(sg.length>=2){ const nr', 'if(sg.length>=1){ const nr'],
+  ['sig: nonce check needs three', 'if(sg.length>=2){ const nr', 'if(sg.length>=3){ const nr'],
+  ['sig: nonce reuse not blocking', 'Do not use this wallet\'s keys again, and move the funds.", true); }', 'Do not use this wallet\'s keys again, and move the funds.", false); }'],
+  ['sig: nonce reuse inputs not listed', '[...new Set(nr.flatMap(g=>g.sigs.map(x=>x.input)))].join(", ")', '""'],
+  ['sig: nonce reuse always ok', 'add(nr.length===0, nr.length===0 ?', 'add(true, nr.length===0 ?'],
+  ['sig: sighash request 0 flagged', 'o.x.sighashReq!==1 && o.x.sighashReq!==0', 'o.x.sighashReq!==1'],
+  ['sig: sighash request ignored', 'o.x.sighashReq!==undefined &&', 'false &&'],
+  ['sig: sighash not blocking', 'Continue only if you set this up on purpose.", true); }', 'Continue only if you set this up on purpose.", false); }'],
+  ['sig: sighash count wrong', 'const bad=oddSig.length+oddReq.length;', 'const bad=oddSig.length;'],
+  ['sig: sighash request offset', 'x.type===3 && x.val.length===4', 'x.type===4 && x.val.length===4'],
+  ['sig: partial signatures not read', 'if(x.type===2){ const g=sigDer(x.val);', 'if(x.type===22){ const g=sigDer(x.val);'],
+  ['sig: tap key signature not read', 'else if(x.type===0x13 || x.type===0x14)', 'else if(x.type===0x14)'],
+  ['sig: tap script signature not read', 'else if(x.type===0x13 || x.type===0x14)', 'else if(x.type===0x13)'],
+  ['sig: final scriptSig not read', 'else if(x.type===7) res.sigs.push', 'else if(x.type===70) res.sigs.push'],
+  ['sig: final witness not read', 'else if(x.type===8) res.sigs.push', 'else if(x.type===80) res.sigs.push'],
+  ['sig: raw scriptSig input number', 'sigsFromScriptSig(ss, i)', 'sigsFromScriptSig(ss, 0)'],
+  ['sig: raw witness input number', 'sigsFromWitness(it, i)', 'sigsFromWitness(it, 0)'],
+  ['sig: raw witness not read', 'res.sigs.push(...sigsFromWitness(it, i));', ''],
+  ['sig: raw scriptSig not read', 'res.sigs.push(...sigsFromScriptSig(ss, i));', ''],
+  ['sig: compare ignores second transaction', 'const allS=(a.sigs||[]).concat(b.sigs||[]);', 'const allS=(a.sigs||[]);'],
+  ['sig: compare needs three', 'if(allS.length>=2){ const nr', 'if(allS.length>=3){ const nr'],
+  ['sig: compare verdict not changed', 'verdict="NONCE REUSE FOUND. " + verdict;', ''],
+  ['sig: compare never fails', 'if(nr.length){ L.push("NONCE CHECK: FAIL.', 'if(false){ L.push("NONCE CHECK: FAIL.'],
   ['practice: word positions', 'if(got[i] !== w) bad.push(i+1);', 'if(got[i] !== w) bad.push(i);'],
   ['practice: count not checked', 'if(got.length !== expected.length)', 'if(false)'],
   ['practice: case not ignored', 'typed.trim().toLowerCase().split(', 'typed.trim().split('],

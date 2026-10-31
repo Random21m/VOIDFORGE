@@ -305,6 +305,75 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   R.ok(bad === 0, `${n} transactions (raw and PSBT, RBF on and off, locktime, OP_RETURN data, mainnet and testnet) are read the same as by the independent library, including the transaction ID (${bad} mismatches)`);
 }
 
+// 2g4. Signatures in a transaction: nonce reuse and sighash checks, with signatures made by @noble/curves and @scure/btc-signer
+{
+  const K = (n) => new Uint8Array(32).fill(n), pubE = (n) => secp256k1.getPublicKey(K(n), true);
+  const N = secp256k1.CURVE.n, mod = (a, m = N) => ((a % m) + m) % m;
+  const inv = (a) => { let [r0, r1, s0, s1] = [N, mod(a), 0n, 1n]; while (r1) { const q = r0 / r1; [r0, r1] = [r1, r0 - q * r1]; [s0, s1] = [s1, s0 - q * s1]; } return mod(s0); };
+  const big = (b) => BigInt('0x' + bhex.encode(b));
+  // ECDSA with a CHOSEN nonce k (the failure being detected): returns DER + sighash byte
+  const sigK = (priv, z, k, sh = 1) => { const R = secp256k1.ProjectivePoint.BASE.multiply(k).toAffine(), r = mod(R.x), s0 = mod(inv(k) * (big(z) + r * big(priv))), s = s0 > N / 2n ? N - s0 : s0; return { r, s, der: new Uint8Array([...new secp256k1.Signature(r, s).toDERRawBytes(), sh]) }; };
+  const mkTx = (nin, spk) => { const t = new btc.Transaction({ allowUnknownOutputs: true }); for (let i = 0; i < nin; i++) t.addInput({ txid: nc.createHash('sha256').update('c' + i).digest('hex'), index: 0, sequence: 0xfffffffd, witnessUtxo: { script: spk, amount: 50000n } }); t.addOutput({ script: btc.p2wpkh(pubE(31)).script, amount: 50000n * BigInt(nin) - 100n }); return t; };
+  const run = async (t, hexIn) => w.psbtReport(await w.inspectPsbt(hexIn ? new Uint8Array(Buffer.from(hexIn, 'hex')) : new Uint8Array(t.toPSBT(0)), 'main'), null);
+  let n = 0, bad = 0; const chk = (name, ok) => { n++; if (!ok) { bad++; console.log('SIG MISMATCH', name); } };
+  const spk = btc.p2wpkh(pubE(30)).script, priv = K(30);
+  // 1. real signatures from the independent library: all different nonces, sighash ALL, in a PSBT and in the final raw transaction
+  { const t = mkTx(3, spk); t.sign(priv); t.finalize();
+    const raw = bhex.encode(t.extract()), rr = await w.inspectPsbt(new Uint8Array(Buffer.from(raw, 'hex')), 'main');
+    const want = [...Array(3).keys()].map((i) => secp256k1.Signature.fromDER(bhex.encode(t.getInput(i).finalScriptWitness[0].slice(0, -1))).r);
+    chk('raw: finds 3 signatures', rr.sigs.length === 3 && rr.sigs.every((x, i) => x.kind === 'ECDSA' && x.sighash === 1 && BigInt('0x' + x.r) === want[i]));
+    const txt = w.psbtReport(rr, null); chk('raw: nonce check ok', /No two of the 3 signatures share a nonce/.test(txt) && /Every signature covers the whole transaction/.test(txt) && !/NONCE REUSED/.test(txt));
+    const t2 = mkTx(3, spk); t2.sign(priv); const ptxt = await run(t2);
+    chk('psbt: partial signatures read, nonces distinct', /No two of the 3 signatures share a nonce/.test(ptxt) && /Every signature covers/.test(ptxt)); }
+  // 2. nonce reuse: the same k for two different messages leaks the private key (proved below), and the inspector flags it
+  { const z1 = sha('message one'), z2 = sha('message two'), k = 123456789123456789n;
+    const a = sigK(priv, z1, k), b = sigK(priv, z2, k);
+    // anyone can recover the key from the two signatures (low-S normalisation may have flipped either s, so try each sign)
+    const rec = [[1n, 1n], [1n, -1n], [-1n, 1n], [-1n, -1n]].map(([f1, f2]) => { const s1 = mod(f1 * a.s), s2 = mod(f2 * b.s), kk = mod((big(z1) - big(z2)) * inv(s1 - s2)); return mod((s1 * kk - big(z1)) * inv(a.r)); });
+    chk('reuse really leaks the key (independent math)', a.r === b.r && rec.includes(big(priv)));
+    const t = mkTx(2, spk); t.updateInput(0, { partialSig: [[pubE(30), a.der]] }, true); t.updateInput(1, { partialSig: [[pubE(30), b.der]] }, true);
+    let txt = await run(t); chk('reuse flagged', /NONCE REUSED: 1 nonce value is shared by different signatures \(inputs 0, 1\)/.test(txt) && /FAIL  NONCE REUSED/.test(txt) && /NO CLEAN VERDICT/.test(txt));
+    // the same signature twice is not reuse; a different nonce is not reuse
+    const t3 = mkTx(2, spk); t3.updateInput(0, { partialSig: [[pubE(30), a.der]] }, true); t3.updateInput(1, { partialSig: [[pubE(30), a.der]] }, true);
+    txt = await run(t3); chk('identical signature twice is not flagged', /No two of the 2 signatures share a nonce/.test(txt));
+    const c = sigK(priv, z2, k + 1n), t4 = mkTx(2, spk); t4.updateInput(0, { partialSig: [[pubE(30), a.der]] }, true); t4.updateInput(1, { partialSig: [[pubE(30), c.der]] }, true);
+    txt = await run(t4); chk('different nonces not flagged', /No two of the 2 signatures share a nonce/.test(txt));
+    // reuse across two different keys is flagged too, and reuse across two transactions in the compare box
+    const e = sigK(K(33), z2, k), t5 = mkTx(2, spk); t5.updateInput(0, { partialSig: [[pubE(30), a.der]] }, true); t5.updateInput(1, { partialSig: [[pubE(33), e.der]] }, true);
+    txt = await run(t5); chk('reuse across keys flagged', /NONCE REUSED/.test(txt));
+    const tA = mkTx(1, spk), tB = mkTx(1, spk); tA.updateInput(0, { partialSig: [[pubE(30), a.der]] }, true); tB.updateInput(0, { partialSig: [[pubE(30), b.der]] }, true);
+    const ct = w.compareTx(await w.inspectPsbt(new Uint8Array(tA.toPSBT(0)), 'main'), await w.inspectPsbt(new Uint8Array(tB.toPSBT(0)), 'main'));
+    chk('reuse across two transactions flagged in compare', /NONCE CHECK: FAIL/.test(ct) && /^NONCE REUSE FOUND/m.test(ct.split('\n').slice(-1)[0] ? ct.split('\n').slice(-1)[0] : ''));
+    const ctOk = w.compareTx(await w.inspectPsbt(new Uint8Array(tA.toPSBT(0)), 'main'), await w.inspectPsbt(new Uint8Array(tA.toPSBT(0)), 'main'));
+    chk('compare with itself: nonce check not raised', !/NONCE CHECK: FAIL/.test(ctOk) && !/NONCE REUSE FOUND/.test(ctOk)); }
+  // 3. sighash: every non-ALL type is flagged, in signatures and in unsigned requests
+  for (const [sh, name] of [[2, 'NONE'], [3, 'SINGLE'], [0x81, 'ALL \\+ ANYONECANPAY'], [0x83, 'SINGLE \\+ ANYONECANPAY'], [0x82, 'NONE \\+ ANYONECANPAY']]) {
+    const g = sigK(priv, sha('sh' + sh), 777n + BigInt(sh), sh), t = mkTx(1, spk); t.updateInput(0, { partialSig: [[pubE(30), g.der]] }, true);
+    const txt = await run(t); chk('sighash ' + sh, new RegExp('input 0: ' + name).test(txt) && /FAIL  1 signature or signing request use a sighash type other than ALL/.test(txt) && /NO CLEAN VERDICT/.test(txt));
+  }
+  { const t = mkTx(1, spk); t.updateInput(0, { sighashType: 2 }, true); const txt = await run(t); chk('sighash request NONE on an unsigned input', /input 0 asks for NONE/.test(txt) && /NO CLEAN VERDICT/.test(txt));
+    const t1 = mkTx(1, spk); t1.updateInput(0, { sighashType: 1 }, true); chk('sighash request ALL is fine', /no problems found/.test(await run(t1))); }
+  // 4. taproot: real Schnorr key-path signatures (64 bytes, default sighash) and a forced repeated nonce
+  { const xo = secp256k1.getPublicKey(K(40), true).slice(1), tr = btc.p2tr(xo), t = new btc.Transaction({ allowUnknownOutputs: true });
+    for (let i = 0; i < 2; i++) t.addInput({ txid: nc.createHash('sha256').update('t' + i).digest('hex'), index: 0, witnessUtxo: { script: tr.script, amount: 50000n }, tapInternalKey: xo });
+    t.addOutput({ script: btc.p2wpkh(pubE(31)).script, amount: 90000n }); t.sign(K(40)); t.finalize();
+    const rr = await w.inspectPsbt(new Uint8Array(t.extract()), 'main');
+    chk('taproot raw: two Schnorr signatures, default sighash, distinct R', rr.sigs.length === 2 && rr.sigs.every((x) => x.kind === 'Schnorr' && x.sighash === 0) && rr.sigs[0].r !== rr.sigs[1].r && /No two of the 2 signatures share a nonce/.test(w.psbtReport(rr, null)) && /sighash ALL/.test(w.psbtReport(rr, null)));
+    const k0 = 99999n, R = secp256k1.ProjectivePoint.BASE.multiply(k0).toAffine(), kk = R.y % 2n ? N - k0 : k0, P = schnorr.getPublicKey(K(40)), dd = (() => { const Pt = secp256k1.ProjectivePoint.fromPrivateKey(K(40)).toAffine(); return Pt.y % 2n ? N - big(K(40)) : big(K(40)); })();
+    const tag = (nm, ...m) => { const h = sha(nm); return nc.createHash('sha256').update(h).update(h).update(Buffer.concat(m)).digest(); };
+    const rx = Buffer.from(R.x.toString(16).padStart(64, '0'), 'hex'), sg = (msg) => { const e = BigInt('0x' + tag('BIP0340/challenge', rx, P, msg).toString('hex')) % N, s = mod(kk + e * dd); return new Uint8Array([...rx, ...Buffer.from(s.toString(16).padStart(64, '0'), 'hex')]); };
+    const s1 = sg(sha('m1')), s2 = sg(sha('m2')); chk('schnorr: both made signatures verify (independent)', schnorr.verify(s1, sha('m1'), P) && schnorr.verify(s2, sha('m2'), P));
+    const t2 = mkTx(2, tr.script); t2.updateInput(0, { tapKeySig: s1 }, true); t2.updateInput(1, { tapKeySig: s2 }, true);
+    const txt = await run(t2); chk('schnorr: repeated R flagged', /NONCE REUSED: 1 nonce value is shared/.test(txt));
+    const t3 = mkTx(1, tr.script); t3.updateInput(0, { tapKeySig: new Uint8Array([...s1, 0x02]) }, true); chk('schnorr: explicit sighash NONE flagged', /input 0: NONE/.test(await run(t3)));
+    const t4 = mkTx(1, tr.script); t4.updateInput(0, { tapKeySig: new Uint8Array([...s1, 0x01]) }, true); chk('schnorr: explicit sighash ALL fine', /Every signature covers/.test(await run(t4))); }
+  // 5. junk is never mistaken for a signature: 65-byte uncompressed public key in a witness, short garbage, a script push that looks like DER but is not
+  { const t = new btc.Transaction({ allowUnknownOutputs: true }); t.addInput({ txid: '11'.repeat(32), index: 0, witnessUtxo: { script: spk, amount: 5000n } }); t.addOutput({ script: spk, amount: 4000n });
+    const unsigned = bhex.encode(t.unsignedTx), withWit = '0100000000010111' + '11'.repeat(31) + '0000000000fdffffff' + '01a00f000000000000160014' + bhex.encode(spk.slice(2)) + '02' + '41' + '04' + '22'.repeat(64) + '21' + '03' + '33'.repeat(32) + '00000000';
+    const rr = await w.inspectPsbt(new Uint8Array(Buffer.from(withWit, 'hex')), 'main'); chk('uncompressed key and compressed key are not signatures', rr.sigs.length === 0 && !/signatures share/.test(w.psbtReport(rr, null))); }
+  R.ok(bad === 0, `${n} signature checks (nonce reuse in one transaction and across two, identical and different signatures, Schnorr and ECDSA, every non-ALL sighash type, requests, junk that is not a signature) agree with signatures made by the independent library (${bad} mismatches)`);
+}
+
 // 2g3. Compare two transactions: signer-change check and fee-bump check, transactions built by @scure/btc-signer
 {
   const K = (n) => new Uint8Array(32).fill(n), pubE = (n) => secp256k1.getPublicKey(K(n), true);
