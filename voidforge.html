@@ -905,6 +905,22 @@
   <div class="card" id="cardCheck">
     <h2>CHECK A BACKUP</h2>
     <p class="sub">Type the words from your backup to see that they are valid and match your wallet. Nothing is saved or sent.</p>
+    <details id="practiceBox">
+      <summary>Practise making a backup<span class="tag tag-ro">NO REAL KEYS</span><small>Rehearse writing words on paper and checking them, with a throwaway phrase.</small></summary>
+      <p class="hint" style="margin:8px 0;">Copying words by hand is where real backups go wrong. This gives you a random <b>practice phrase</b> to write on paper, hides it, then checks the copy you type back in. Do it once before the real thing. <b>The practice phrase is made on the spot and is only for practice: never put money on it.</b></p>
+      <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary" id="prStart" onclick="practiceStart()">START PRACTICE</button><button type="button" class="secondary small" onclick="practiceClear()">CLEAR</button></div>
+      <div id="prShow" style="display:none; margin-top:10px;">
+        <div class="ms-warn" style="margin:0 0 8px;"><b>PRACTICE ONLY. Never fund this phrase.</b> Write the 12 words on paper, in order, with a pen. Then press HIDE.</div>
+        <ol id="prWords" style="columns:2; margin:0 0 8px 22px; font-family:'Courier New',monospace; font-size:15px;"></ol>
+        <button type="button" class="small" id="prHide" onclick="practiceHide()">I HAVE WRITTEN THEM DOWN: HIDE</button>
+      </div>
+      <div id="prCheck" style="display:none; margin-top:10px;">
+        <p class="hint" style="margin:0 0 6px;">The words are hidden. Read your paper and type the 12 words back, in order.</p>
+        <textarea id="prInput" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Practice words typed from paper" placeholder="Type the 12 practice words from your paper"></textarea>
+        <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary" id="prCheckBtn" onclick="practiceCheck()">CHECK MY PAPER</button><button type="button" class="secondary small" onclick="practicePeek()">SHOW THE WORDS AGAIN</button></div>
+      </div>
+      <div class="status" id="prStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+    </details>
     <textarea id="phrase" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Type or paste your seed words to check..."></textarea>
     <div class="hint" style="margin:4px 0 0;">Also accepts a SeedSigner SeedQR digit string (48 or 96 digits) or CompactSeedQR hex. Type it in; do not scan a real seed QR with a connected phone.</div>
     <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
@@ -2218,6 +2234,45 @@ async function runCompare(){
     st.className="status ok"; st.textContent="Compared. Read the result below."; o.textContent=compareTx(a,b); o.style.display="block"; }
   catch(e){ st.className="status bad"; st.textContent=e.message; }
 }
+// ================= Backup practice (no real keys): a random throwaway phrase to write down, hide, and check =================
+let practice = null;
+async function practiceMake(entropy){ return (await entropyToMnemonic(entropy)).split(" "); }
+function practiceCompare(expected, typed){ // positions (1-based) that differ, or a count problem
+  const got = typed.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if(got.length !== expected.length) return {ok:false, msg:"You typed " + got.length + " word" + (got.length===1?"":"s") + "; the practice phrase has " + expected.length + ". Check for a missing or extra word."};
+  const bad = []; expected.forEach((w,i)=>{ if(got[i] !== w) bad.push(i+1); });
+  if(bad.length === 0) return {ok:true, msg:"Your paper copy matches, word for word. Do exactly this with a real backup: write, hide, read it back, check."};
+  return {ok:false, msg:"Word" + (bad.length===1?"":"s") + " " + bad.join(", ") + " do" + (bad.length===1?"es":"") + " not match. On a real backup, find and fix this before you trust the paper."};
+}
+function practiceStatus(cls, text){ const t=document.getElementById("prStatus"); t.className="status" + (cls?" "+cls:""); t.textContent=text; }
+function practiceRender(){
+  const ol=document.getElementById("prWords"); ol.textContent="";
+  practice.words.forEach(w=>{ const li=document.createElement("li"); li.textContent=w; ol.appendChild(li); });
+  document.getElementById("prShow").style.display="block"; document.getElementById("prCheck").style.display="none";
+}
+async function practiceStart(){
+  if(!gateOk()) return;
+  const e=new Uint8Array(16); crypto.getRandomValues(e);
+  practice={words:await practiceMake(e)};
+  document.getElementById("prInput").value=""; practiceStatus("","");
+  practiceRender();
+}
+function practiceHide(){
+  if(!practice) return;
+  document.getElementById("prWords").textContent=""; document.getElementById("prShow").style.display="none";
+  document.getElementById("prCheck").style.display="block"; document.getElementById("prInput").value=""; practiceStatus("","");
+}
+function practicePeek(){ if(!practice) return; practiceRender(); practiceStatus("","Showing the words again. Hide them when you are ready to try once more."); }
+function practiceCheck(){
+  if(!practice) return;
+  const r=practiceCompare(practice.words, document.getElementById("prInput").value);
+  practiceStatus(r.ok?"ok":"bad", r.msg);
+}
+function practiceClear(){
+  practice=null;
+  document.getElementById("prWords").textContent=""; document.getElementById("prInput").value="";
+  document.getElementById("prShow").style.display="none"; document.getElementById("prCheck").style.display="none"; practiceStatus("","");
+}
 function jumpTo(id){ const e=document.getElementById(id); if(e) e.scrollIntoView({behavior:"smooth", block:"start"}); }
 function clearPsbt(all){
   const o=document.getElementById("psbtOut"); o.textContent=""; o.style.display="none";
@@ -3159,6 +3214,7 @@ document.getElementById("wAcct").addEventListener("input", refreshWatch);
 document.getElementById("childWords").addEventListener("change", clearChild);
 document.getElementById("lwInput").addEventListener("input", () => clearLastWords(false));
 document.getElementById("psbtInput").addEventListener("input", () => clearPsbt(false));
+document.getElementById("prInput").addEventListener("input", () => practiceStatus("",""));
 document.getElementById("cmpA").addEventListener("input", () => clearCompare(false));
 document.getElementById("cmpB").addEventListener("input", () => clearCompare(false));
 document.getElementById("psbtNet").addEventListener("change", () => clearPsbt(false));

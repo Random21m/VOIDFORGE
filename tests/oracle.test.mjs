@@ -244,6 +244,14 @@ for (const len of [11, 14, 17, 20, 23, 11, 23, 14]) {
 }
 R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the independent brute-force validation (${bad} mismatches)`);
 
+// 2f2. Backup practice phrases equal @scure's mnemonic for the same entropy, and validate
+{
+  let bad = 0, n = 0;
+  for (let i = 0; i < 40; i++) { const e = new Uint8Array(nc.randomBytes(16)); const got = (await w.practiceMake(e)).join(' '); n++;
+    if (got !== entropyToMnemonic(e, wordlist) || !validateMnemonic(got, wordlist)) { bad++; console.log('PRACTICE MISMATCH', got); } }
+  R.ok(bad === 0, `${n} practice phrases equal the independent library's mnemonic for the same entropy and pass its checksum validation (${bad} mismatches)`);
+}
+
 // 2g. Read-only PSBT inspector against @scure/btc-signer (independent PSBT builder and decoder)
 {
   const K = (n) => new Uint8Array(32).fill(n), pubE = (n) => secp256k1.getPublicKey(K(n), true), pubS = (n) => schnorr.getPublicKey(K(n));

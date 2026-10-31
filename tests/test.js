@@ -448,6 +448,25 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       t4.w.msStart(); t4.w.msReset(); ok(ids()===before,'multisig: CLEAR ALL also puts the card back'); }
 
   }
+  { const tp=load(); await tp.ready(); const $=tp.$;
+    eq((await tp.w.practiceMake(new tp.w.Uint8Array(16))).join(' '),'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about','practice: the phrase is a valid 12-word BIP39 phrase made from the entropy');
+    const E=['abandon','ability','able','about'];
+    ok(tp.w.practiceCompare(E,'abandon ability able about').ok&&tp.w.practiceCompare(E,'  ABANDON  ability\nable about ').ok,'practice: a correct copy matches (case and spacing do not matter)');
+    ok(/Word 3 does not match/.test(tp.w.practiceCompare(E,'abandon ability zoo about').msg)&&/Words 2, 4 do not match/.test(tp.w.practiceCompare(E,'abandon zoo able zoo').msg),'practice: wrong words are named by position');
+    ok(/typed 3 words; the practice phrase has 4/.test(tp.w.practiceCompare(E,'abandon ability able').msg)&&/typed 5 words/.test(tp.w.practiceCompare(E,'abandon ability able about zoo').msg)&&/typed 1 word;/.test(tp.w.practiceCompare(E,'abandon').msg),'practice: a missing or extra word is reported by count');
+    ok(!tp.w.practiceCompare(E,'ability abandon able about').ok,'practice: right words in the wrong order do not match');
+    await tp.w.practiceStart(); const words=tp.w.eval('practice.words');
+    ok(words.length===12&&$('prWords').children.length===12&&$('prShow').style.display==='block'&&$('prCheck').style.display==='none'&&/Never fund this phrase/.test($('prShow').textContent),'practice: START shows 12 numbered words with a never-fund warning');
+    ok(words.every(w=>tp.w.eval('WORD_MAP')[w]!==undefined),'practice: every word is a real BIP39 word');
+    tp.w.practiceHide(); ok($('prWords').textContent===''&&$('prShow').style.display==='none'&&$('prCheck').style.display==='block'&&!tp.d.body.textContent.includes(words.join(' ')),'practice: HIDE removes the words from the page');
+    $('prInput').value=words.join(' '); tp.w.practiceCheck(); ok(/ok/.test($('prStatus').className)&&/matches, word for word/.test($('prStatus').textContent),'practice: the correct paper copy is confirmed');
+    $('prInput').value=words.map((w,i)=>i===4?'zoo':w).join(' '); tp.w.practiceCheck(); ok(/bad/.test($('prStatus').className)&&/Word 5 does not match/.test($('prStatus').textContent),'practice: a wrong word is flagged');
+    $('prInput').dispatchEvent(new tp.w.Event('input')); eq($('prStatus').textContent,'','practice: typing clears the result');
+    tp.w.practicePeek(); ok($('prWords').children.length===12&&$('prShow').style.display==='block','practice: SHOW THE WORDS AGAIN brings them back');
+    tp.w.practiceHide(); tp.w.practiceClear(); ok(tp.w.eval('practice')===null&&$('prWords').textContent===''&&$('prInput').value===''&&$('prShow').style.display==='none'&&$('prCheck').style.display==='none','practice: CLEAR forgets the phrase and empties the page');
+    tp.w.practiceCheck(); tp.w.practiceHide(); tp.w.practicePeek(); ok($('prShow').style.display==='none'&&$('prCheck').style.display==='none','practice: buttons do nothing before a practice starts');
+    const a=[],b=[]; for(let i=0;i<5;i++){ await tp.w.practiceStart(); a.push(tp.w.eval('practice.words.join(" ")')); } ok(new Set(a).size===5,'practice: each practice phrase is different');
+    ok(!/^abandon abandon/.test(a[0])&&a.every(x=>x.split(' ').length===12),'practice: phrases are random, not the well-known test phrase'); }
   { const tf=load({focusSpy:true}); await tf.ready(); await new Promise(r=>setTimeout(r,100));
     ok(tf.st.focus.some(x=>x[0]==='sgGo'&&x[1]&&x[1].preventScroll===true)&&!tf.st.focus.some(x=>x[0]==='rolls'),'opening the page focuses the notice button (not the rolls box) without scrolling');
     tf.st.focus.length=0; tf.w.startGateClose(); const f=tf.st.focus.find(x=>x[0]==='rolls'); ok(!!f&&f[1]&&f[1].preventScroll===true&&!tf.$('startGate'),'closing the notice removes it and focuses the rolls box without scrolling the page down to it');

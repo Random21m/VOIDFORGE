@@ -791,6 +791,22 @@ async function probe(w, mutated) {
   const parts = expect.d50.split(' '); parts[11] = parts[11] === 'zoo' ? 'abandon' : 'zoo';
   const corrupted = parts.join(' ');
   if ((await w.checkPhrase(corrupted)).ok !== validateMnemonic(corrupted, wordlist)) fails.push('checker rejects bad checksum');
+  { const $p = (id) => w.document.getElementById(id), E = ['abandon', 'ability', 'able', 'about'];
+    if ((await w.practiceMake(new w.Uint8Array(16))).join(' ') !== 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about') fails.push('practice: phrase made from entropy');
+    if (!w.practiceCompare(E, 'abandon ability able about').ok || !w.practiceCompare(E, '  ABANDON  ability\nable about ').ok) fails.push('practice: correct copy matches, case and spacing ignored');
+    if (!/Word 3 does not match/.test(w.practiceCompare(E, 'abandon ability zoo about').msg) || !/Words 2, 4 do not match/.test(w.practiceCompare(E, 'abandon zoo able zoo').msg)) fails.push('practice: wrong words named by position');
+    if (!/typed 3 words; the practice phrase has 4/.test(w.practiceCompare(E, 'abandon ability able').msg) || !/typed 1 word;/.test(w.practiceCompare(E, 'abandon').msg) || !/typed 5 words/.test(w.practiceCompare(E, 'abandon ability able about zoo').msg)) fails.push('practice: wrong word count reported');
+    if (w.practiceCompare(E, 'ability abandon able about').ok) fails.push('practice: wrong order does not match');
+    await w.practiceStart(); const pw = w.eval('practice.words');
+    if (pw.length !== 12 || $p('prWords').children.length !== 12 || $p('prShow').style.display !== 'block' || $p('prCheck').style.display !== 'none') fails.push('practice: start shows 12 words');
+    w.practiceHide(); if ($p('prWords').textContent !== '' || $p('prShow').style.display !== 'none' || $p('prCheck').style.display !== 'block') fails.push('practice: hide removes the words');
+    $p('prInput').value = pw.join(' '); w.practiceCheck(); if (!/ok/.test($p('prStatus').className) || !/matches, word for word/.test($p('prStatus').textContent)) fails.push('practice: correct copy confirmed');
+    $p('prInput').value = pw.map((x, i) => (i === 4 ? 'zoo' : x)).join(' '); w.practiceCheck(); if (!/bad/.test($p('prStatus').className) || !/Word 5 does not match/.test($p('prStatus').textContent)) fails.push('practice: wrong word flagged');
+    $p('prInput').dispatchEvent(new w.Event('input')); if ($p('prStatus').textContent !== '') fails.push('practice: typing clears the result');
+    w.practicePeek(); if ($p('prWords').children.length !== 12 || $p('prShow').style.display !== 'block') fails.push('practice: peek shows the words again');
+    w.practiceHide(); w.practiceClear(); if (w.eval('practice') !== null || $p('prWords').textContent !== '' || $p('prInput').value !== '' || $p('prShow').style.display !== 'none' || $p('prCheck').style.display !== 'none') fails.push('practice: clear forgets the phrase');
+    w.practiceCheck(); w.practiceHide(); w.practicePeek(); if ($p('prShow').style.display !== 'none' || $p('prCheck').style.display !== 'none') fails.push('practice: buttons do nothing before a practice starts');
+    const ph = new Set(); for (let i = 0; i < 4; i++) { await w.practiceStart(); ph.add(w.eval('practice.words.join(" ")')); } if (ph.size !== 4 || [...ph].some((x) => /^abandon abandon/.test(x))) fails.push('practice: phrases are random'); w.practiceClear(); }
   { const w2 = loadPage(mutated, (win) => { win.__focus = []; win.HTMLElement.prototype.focus = function (o) { win.__focus.push([this.id, o]); }; });
     await ready(w2); await new Promise((r) => setTimeout(r, 100));
     const fo = w2.__focus.find((x) => x[0] === 'sgGo'); if (!fo || !fo[1] || fo[1].preventScroll !== true || w2.__focus.some((x) => x[0] === 'rolls')) fails.push('page open: the notice button is focused without scrolling');
@@ -1470,6 +1486,19 @@ const M = [
   ['sp: box shown for a multisig cosigner key', 'document.getElementById("spBox").style.display = M ? "none" : "";', 'document.getElementById("spBox").style.display = "";'],
   ['sp: address left after clearing', '["wZpub","wDescR","wDescC","wFirst","spAddr"]', '["wZpub","wDescR","wDescC","wFirst"]'],
   ['sp: not refreshed for account or network', 'document.getElementById("spAddr").textContent = spA;', 'document.getElementById("spAddr").textContent = document.getElementById("spAddr").textContent || spA;'],
+  ['practice: word positions', 'if(got[i] !== w) bad.push(i+1);', 'if(got[i] !== w) bad.push(i);'],
+  ['practice: count not checked', 'if(got.length !== expected.length)', 'if(false)'],
+  ['practice: case not ignored', 'typed.trim().toLowerCase().split(', 'typed.trim().split('],
+  ['practice: plural wording', '"Word" + (bad.length===1?"":"s")', '"Word"'],
+  ['practice: word count plural', '"You typed " + got.length + " word" + (got.length===1?"":"s")', '"You typed " + got.length + " words"'],
+  ['practice: hide keeps the words', 'document.getElementById("prWords").textContent=""; document.getElementById("prShow").style.display="none";\n  document.getElementById("prCheck").style.display="block";', 'document.getElementById("prShow").style.display="none";\n  document.getElementById("prCheck").style.display="block";'],
+  ['practice: clear keeps the phrase', 'practice=null;\n  document.getElementById("prWords")', '\n  document.getElementById("prWords")'],
+  ['practice: no randomness', 'const e=new Uint8Array(16); crypto.getRandomValues(e);', 'const e=new Uint8Array(16);'],
+  ['practice: peek does nothing', 'function practicePeek(){ if(!practice) return; practiceRender();', 'function practicePeek(){ if(!practice) return;'],
+  ['practice: result always ok', 'practiceStatus(r.ok?"ok":"bad", r.msg);', 'practiceStatus("ok", r.msg);'],
+  ['practice: typing keeps the result', 'document.getElementById("prInput").addEventListener("input", () => practiceStatus("",""));', ''],
+  ['practice: start shows no words', 'document.getElementById("prShow").style.display="block"; document.getElementById("prCheck").style.display="none";', 'document.getElementById("prShow").style.display="none"; document.getElementById("prCheck").style.display="none";'],
+  ['practice: order ignored', 'if(got[i] !== w) bad.push(i+1);', 'if(!got.includes(w)) bad.push(i+1);'],
   ['page close: scrolls down to the rolls box', 'if(g) g.remove();\n  document.getElementById("rolls").focus({preventScroll: true});', 'if(g) g.remove();\n  document.getElementById("rolls").focus();'],
   ['page open: notice button scrolls the page', 'if(go) go.focus({preventScroll: true});', 'if(go) go.focus();'],
   ['notice: closing does not remove it', 'if(g) g.remove();', 'if(g) g.id = "startGate";'],
