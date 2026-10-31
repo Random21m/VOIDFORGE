@@ -149,13 +149,14 @@ async function probe(w) {
       if (gr.rbf !== true || !/REPLACEABLE \(RBF\): yes/.test(gt)) fails.push('rbf: sequence below final signals replaceable');
       const fin = mk(0xffffffff, 0, 158000n), fr = await insp(fin.toPSBT(0)); if (fr.rbf !== false || !/REPLACEABLE \(RBF\): no/.test(w.psbtReport(fr, null))) fails.push('rbf: final sequence is not replaceable');
       const mid = mk(0xfffffffe, 0, 158000n); if ((await insp(mid.toPSBT(0))).rbf !== false) fails.push('rbf: sequence fffffffe is not replaceable');
+      { const ruMid = await insp(mid.unsignedTx), ruFin = await insp(fin.unsignedTx); if (ruMid.rbf !== false || ruFin.rbf !== false || (await insp(good.unsignedTx)).rbf !== true) fails.push('rbf: raw transaction threshold'); }
       if (!/no problems found/.test(gt) || /NO CLEAN VERDICT/.test(gt)) fails.push('verdict: a complete small-fee transaction has a clean result');
       if (!/data note: 5 bytes: 68656c6c6f = "hello"/.test(gt)) fails.push('op_return: data shown as hex and text');
       if (/= "/.test(await rep(mk(0xfffffffd, 0, 158000n, undefined, 'a\u0001b')))) fails.push('op_return: non-text data is not shown as text');
       if (!/LOCKTIME: it cannot be mined before block 850000/.test(await rep(mk(0xfffffffd, 850000, 158000n)))) fails.push('locktime: block height shown');
       if (!/LOCKTIME: it cannot be mined before 2023-11-14 22:13 UTC/.test(await rep(mk(0xfffffffd, 1700000000, 158000n)))) fails.push('locktime: date shown');
       if (/LOCKTIME/.test(await rep(mk(0xffffffff, 850000, 158000n)))) fails.push('locktime: ignored when every input is final');
-      if (!/FAIL  The fee is 5% or more/.test(await rep(mk(0xfffffffd, 0, 108000n))) || !/NO CLEAN VERDICT/.test(await rep(mk(0xfffffffd, 0, 108000n)))) fails.push('verdict: fee of 5% or more blocks a clean result');
+      if (!/FAIL  The fee is 5% or more/.test(await rep(mk(0xfffffffd, 0, 150000n))) || !/NO CLEAN VERDICT/.test(await rep(mk(0xfffffffd, 0, 150000n)))) fails.push('verdict: fee of 5% or more blocks a clean result');
       if (/5% or more/.test(await rep(mk(0xfffffffd, 0, 150001n, [150001n + 7000n])))) fails.push('verdict: a fee under 5% is not flagged');
       if (!/FAIL  The outputs add up to MORE/.test(await rep(mk(0xfffffffd, 0, 200000n))) || !/NO CLEAN VERDICT/.test(await rep(mk(0xfffffffd, 0, 200000n)))) fails.push('verdict: outputs above inputs blocks a clean result');
       const unk = new btc.Transaction({ allowUnknownOutputs: true }); unk.addInput({ txid: '33'.repeat(32), index: 0 }); unk.addOutput({ script: kinds.p2wpkh(31).script, amount: 1000n });
@@ -179,6 +180,34 @@ async function probe(w) {
         if (!rr.raw || !rr.ins[0].final || rr.ins.length !== 1 || rr.outs.length !== 1 || rr.outs[0].amount !== 4000n || rr.rbf !== true || rr.txid !== wantId) fails.push('raw: signed segwit transaction read, witness skipped, txid ignores the witness');
         if (!/already signed/.test(o) || !o.includes(wantId)) fails.push('raw: signed state and id shown in the report');
         const bad1 = Uint8Array.from([...signed, 0]); let m1 = ''; try { await insp(bad1); } catch (e) { m1 = e.message; } if (!/not a PSBT/.test(m1)) fails.push('raw: extra bytes after a transaction are refused'); }
+    }
+    // compare two transactions: signer-change and fee-bump checks
+    { const mkc = ({ seq = 0xfffffffd, ins = [[1, 90000n], [2, 70000n]], outs = [[31, 100000n], [32, 58000n]], chg = 32 }) => { const t = new btc.Transaction({ allowUnknownOutputs: true });
+        ins.forEach(([k, a], i) => t.addInput({ txid: nc.createHash('sha256').update('coin' + k).digest('hex'), index: i, sequence: seq, witnessUtxo: { script: kinds.p2wpkh(30).script, amount: a } }));
+        outs.forEach(([k, a]) => t.addOutput(k === chg ? { script: kinds.p2wpkh(k).script, amount: a, bip32Derivation: [[pubE(k), { fingerprint: 0xdeadbeef, path: [0x80000054] }]] } : { script: kinds.p2wpkh(k).script, amount: a })); return t; };
+      const cmp = async (a, b) => w.compareTx(await insp(a.toPSBT(0)), await insp(b.toPSBT(0)));
+      const A = mkc({}), sg = mkc({}); sg.updateInput(0, { partialSig: [[pubE(30), new Uint8Array(71).fill(1)]] }, true);
+      let t = await cmp(A, sg); if (!/SIGNER CHECK: unchanged/.test(t) || !/0 signatures -> 1 signature/.test(t) || /DIFFERENT/.test(t)) fails.push('compare: same transaction with signatures added is unchanged');
+      if ((await insp(A.toPSBT(0))).txid !== A.id) fails.push('compare: psbt transaction id equals the independent id');
+      t = await cmp(A, mkc({ outs: [[31, 100000n], [32, 56000n]] })); if (!/DIFFERENT/.test(t) || !/the second pays 0\.00002000 BTC.*MORE/.test(t) || !/plain fee bump/.test(t) || !/OK    The output that got smaller .* is marked as this wallet's own change/.test(t)) fails.push('compare: plain fee bump recognised');
+      t = await cmp(A, mkc({})); if (!/SIGNER CHECK: unchanged/.test(t)) fails.push('compare: identical rebuilt transaction is unchanged');
+      const nofp = mkc({ chg: 99 }); t = await cmp(nofp, mkc({ chg: 99, outs: [[31, 100000n], [32, 56000n]] })); if (!/NOTE  The output that got smaller .* is not marked as change/.test(t)) fails.push('compare: shrinking output without change info is noted');
+      t = await cmp(A, mkc({ outs: [[33, 100000n], [32, 58000n]] })); if (!/Payments changed: an output changed address|more than one output differs/.test(t) || !/does NOT look like a plain fee bump/.test(t) || !/only in the first:  0\.00100000 BTC \(100000 sats\) to /.test(t)) fails.push('compare: redirected output is not a fee bump');
+      t = await cmp(A, mkc({ ins: [[1, 90000n], [2, 70000n], [7, 2000n]], outs: [[33, 100000n], [32, 58000n]] })); if (!/Payments changed: an output changed address/.test(t)) fails.push('compare: one output changing address is named');
+      t = await cmp(A, mkc({ outs: [[31, 90000n], [34, 8000n], [32, 56000n]] })); if (!/Payments changed: more than one output differs/.test(t)) fails.push('compare: more than one differing output');
+      t = await cmp(A, mkc({ outs: [[31, 100000n], [32, 60000n]] })); if (!/LESS/.test(t) || !/FAIL  The second does not pay a higher fee/.test(t) || !/got MORE money and no coin was added/.test(t) || !/does NOT look like/.test(t)) fails.push('compare: lower fee and grown output rejected');
+      t = await cmp(A, mkc({ ins: [[1, 90000n], [2, 70000n], [7, 10000n]], outs: [[31, 100000n], [32, 58000n], [34, 8000n]] })); if (!/Payments changed: a new output appeared/.test(t)) fails.push('compare: a new output is flagged');
+      t = await cmp(mkc({ seq: 0xffffffff }), mkc({ outs: [[31, 100000n], [32, 56000n]] })); if (!/FAIL  The first does not allow replacement/.test(t) || !/does NOT look like/.test(t)) fails.push('compare: no RBF rejected');
+      t = await cmp(A, mkc({ ins: [[5, 90000n], [6, 70000n]], outs: [[31, 100000n], [32, 56000n]] })); if (!/FAIL  The second does not spend any of the same coins/.test(t) || !/only in the second: [0-9a-f]{64}:0/.test(t) || !/does NOT look like/.test(t)) fails.push('compare: no shared coin rejected');
+      t = await cmp(A, mkc({ ins: [[1, 90000n], [2, 70000n], [7, 20000n]], outs: [[31, 100000n], [32, 76000n]] })); if (!/plain fee bump/.test(t) || /NOT look like/.test(t) || !/OK    The output that grew \(an extra coin was added\)/.test(t)) fails.push('compare: added coin with larger change is a fee bump');
+      t = await cmp(nofp, mkc({ chg: 99, ins: [[1, 90000n], [2, 70000n], [7, 20000n]], outs: [[31, 100000n], [32, 76000n]] })); if (!/got MORE money and is not marked as change/.test(t) || !/does NOT look like/.test(t)) fails.push('compare: larger unmarked output after an added coin is rejected');
+      t = await cmp(A, mkc({ ins: [[1, 90000n], [2, 70000n], [7, 20000n]], outs: [[31, 100000n], [32, 78000n]] })); if (!/FAIL  The second does not pay a higher fee/.test(t) || !/does NOT look like/.test(t) || /the second pays .* MORE/.test(t) || !/the same/.test(t)) fails.push('compare: equal fee is not a higher fee');
+      const bare = new btc.Transaction({ allowUnknownOutputs: true }); bare.addInput({ txid: nc.createHash('sha256').update('coin1').digest('hex'), index: 0, sequence: 0xfffffffd }); bare.addOutput({ script: kinds.p2wpkh(31).script, amount: 1000n });
+      t = await cmp(bare, A); if (!/NO CLEAN VERDICT/.test(t) || !/cannot be compared/.test(t)) fails.push('compare: unknown fee gives no clean verdict');
+      $('cmpA').value = 'zzz'; $('cmpB').value = Buffer.from(A.toPSBT(0)).toString('base64'); await w.runCompare(); if (!/^First transaction: /.test($('cmpStatus').textContent)) fails.push('compare: bad first transaction is named');
+      $('cmpA').value = Buffer.from(A.toPSBT(0)).toString('base64'); $('cmpB').value = 'zzz'; await w.runCompare(); if (!/^Second transaction: /.test($('cmpStatus').textContent)) fails.push('compare: bad second transaction is named');
+      $('cmpB').value = $('cmpA').value; await w.runCompare(); $('cmpA').dispatchEvent(new w.Event('input')); if ($('cmpOut').textContent !== '') fails.push('compare: editing the first box clears the result');
+      await w.runCompare(); $('cmpB').dispatchEvent(new w.Event('input')); if ($('cmpOut').textContent !== '') fails.push('compare: editing the second box clears the result');
     }
     // every script type, mainnet and testnet, against the independent decoder
     for (const test of [false, true]) { const NET = test ? btc.TEST_NETWORK : btc.NETWORK, ad = (sc) => btc.Address(NET).encode(btc.OutScript.decode(sc));
@@ -1331,6 +1360,24 @@ const M = [
   ['raw: witness means signed', 'if(k>0) x.final=true;', ''],
   ['raw: trailing bytes accepted', 'res.locktime=r.u32(); if(!r.done) throw new Error("not a transaction");', 'res.locktime=r.u32();'],
   ['raw: hex detection', '/^0[0-9a-f]000000/i.test(t)', '/^9[0-9a-f]000000/i.test(t)'],
+  ['compare: same id', 'sameId=!!a.txid && a.txid===b.txid', 'sameId=true'],
+  ['compare: shared coin', 'const shared=a.ins.length-gone.length', 'const shared=a.ins.length'],
+  ['compare: rbf required', 'rbfOk=!!a.rbf', 'rbfOk=true'],
+  ['compare: higher fee required', 'feeOk=feeKnown && b.fee>a.fee', 'feeOk=feeKnown && b.fee>=a.fee'],
+  ['compare: too many differing outputs', 'if(outGone.length>1 || outNew.length>1){', 'if(outGone.length>2 || outNew.length>2){'],
+  ['compare: output changed address', 'if(outGone[0].address!==outNew[0].address){', 'if(false){'],
+  ['compare: grown output needs an added coin', '!(fresh.length>0 && (outNew[0].fps.length || outGone[0].fps.length))', '!(true && (outNew[0].fps.length || outGone[0].fps.length))'],
+  ['compare: grown output needs change marking', '(outNew[0].fps.length || outGone[0].fps.length)))', '(true)))'],
+  ['compare: new output', 'else if(outGone.length===0 && outNew.length===1){ keptOk=false;', 'else if(outGone.length===0 && outNew.length===1){ keptOk=true;'],
+  ['compare: unknown fee verdict', ': feeKnown ? "SIGNER CHECK: CHANGED', ': true ? "SIGNER CHECK: CHANGED'],
+  ['compare: more or less', 'd>0n ? ", the second pays "', 'd<0n ? ", the second pays "'],
+  ['compare: signature changes shown', 'if(y && sa(x)!==sa(y))', 'if(false)'],
+  ['compare: outputs matched by amount', 'y.address===o.address && y.amount===o.amount', 'y.address===o.address'],
+  ['compare: change marking noted', 'mine=shrank.fps.length>0 || outNew[0].fps.length>0', 'mine=false'],
+  ['compare: which transaction is bad', 'throw new Error(label + ": " + e.message)', 'throw e'],
+  ['compare: first box clears result', 'document.getElementById("cmpA").addEventListener("input", () => clearCompare(false));', ''],
+  ['compare: second box clears result', 'document.getElementById("cmpB").addEventListener("input", () => clearCompare(false));', ''],
+  ['compare: psbt transaction id', 'res.txid=hex((await sha256bytes(await sha256bytes(txRec.val))).reverse());', 'res.txid=hex((await sha256bytes(await sha256bytes(txRec.val))));'],
   ['multisig slider: N cap', 'const MS_MAX = 15;', 'const MS_MAX = 99;'],
   ['multisig slider: M pushes N up', 'if(m > parseInt(msEl("msN").value, 10)) msEl("msN").value = String(m);', ''],
   ['multisig slider: M clamped to N', 'm = msClamp(msEl("msM").value, 1, n);', 'm = msClamp(msEl("msM").value, 1, MS_MAX);'],

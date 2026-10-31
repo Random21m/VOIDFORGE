@@ -213,6 +213,14 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       await PS(P1); t.$('psbtInput').dispatchEvent(new t.w.Event('input')); ok(t.$('psbtOut').textContent===''&&t.$('psbtStatus').textContent==='','editing the PSBT clears the report');
       { const F=new t.w.File([Buffer.from(P1,'base64')],'a.psbt'); await t.w.onPsbtFile(F); ok(/^Read OK/.test(t.$('psbtStatus').textContent)&&/FEE: 0\.00001000 BTC/.test(t.$('psbtOut').textContent),'PSBT inspector reads a .psbt file'); }
       { const F=new t.w.File([P1],'b.txt'); await t.w.onPsbtFile(F); ok(/^Read OK/.test(t.$('psbtStatus').textContent),'PSBT inspector reads a text file holding base64'); }
+      { const CM=async(x,y)=>{ t.$('cmpA').value=x; t.$('cmpB').value=y; await t.w.runCompare(); return [t.$('cmpStatus').textContent,t.$('cmpStatus').className,t.$('cmpOut').textContent,t.$('cmpOut').style.display]; };
+        let [a2,c2,o2,d2]=await CM(P1,P1); ok(/^Compared/.test(a2)&&/ok/.test(c2)&&d2==='block'&&/SIGNER CHECK: unchanged/.test(o2)&&/transaction ID is the same/.test(o2),'compare: the same transaction twice is reported unchanged');
+        [a2,c2,o2,d2]=await CM(P1,P2); ok(/DIFFERENT/.test(o2)&&/does not spend any of the same coins/.test(o2)&&/does NOT look like a plain fee bump/.test(o2),'compare: two unrelated transactions are reported as changed, not a fee bump');
+        [a2,c2,o2,d2]=await CM('not a psbt!!',P1); ok(/^First transaction: /.test(a2)&&/bad/.test(c2)&&d2==='none','compare: a bad first transaction is named');
+        [a2,c2,o2,d2]=await CM(P1,P1.slice(0,60)); ok(/^Second transaction: /.test(a2)&&/bad/.test(c2)&&d2==='none','compare: a bad second transaction is named');
+        await CM(P1,P1); t.$('cmpB').dispatchEvent(new t.w.Event('input')); ok(t.$('cmpOut').textContent===''&&t.$('cmpStatus').textContent==='','compare: editing a box clears the result');
+        await CM(P1,P1); t.$('cmpA').dispatchEvent(new t.w.Event('input')); ok(t.$('cmpOut').textContent==='','compare: editing the first box clears the result');
+        t.w.clearCompare(true); ok(t.$('cmpA').value===''&&t.$('cmpB').value===''&&t.$('cmpOut').textContent==='','compare: CLEAR empties both boxes and the result'); }
       t.w.clearPsbt(true); ok(t.$('psbtInput').value===''&&t.$('psbtOut').textContent==='','CLEAR empties the PSBT box and report'); }
     ok(/without warranty/.test(t.$('disclaimer').textContent)&&/Lost words or passphrase mean lost funds/.test(t.$('disclaimer').textContent)&&/provided &ldquo;as is&rdquo;|provided \u201cas is\u201d/.test(t.w.document.body.innerHTML.replace(/&ldquo;|&rdquo;/g,'\u201c')),'disclaimer is shown under the top warning and in Security notes');
     await new Promise(r=>setTimeout(r,50));
