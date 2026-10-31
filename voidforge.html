@@ -1033,6 +1033,17 @@
       </ol>
       <p class="hint" style="margin:8px 0 0;">A browser is not a hardware wallet. This checklist lowers the risk; it does not remove it, which is why we also ask you to test with a small amount first.</p>
     </details>
+    <details id="privacyBox">
+      <summary>Privacy: what this page does with your data<small>What it keeps, what it never sends, and the only ways anything leaves.</small></summary>
+      <ul>
+        <li><b>Nothing is sent anywhere.</b> The page has no code that talks to the internet, and a rule built into the file (a Content-Security-Policy) tells the browser to block all network access as a second line of defense. You can read the file to check; there is no server, no account and no tracking.</li>
+        <li><b>Only two things are remembered between visits:</b> your light or dark choice and your text size, in your browser&rsquo;s local storage. Your rolls, flips, words, passphrase and fingerprint are <i>never</i> stored. Close the page and they are gone from the page.</li>
+        <li><b>Your secrets live only in the page&rsquo;s memory while it is open.</b> The WIPE button and closing the tab clear them from the page, but not from anything your computer copied in the meantime (see the safety checklist above).</li>
+        <li><b>Things leave the page only when you press a button for them:</b> COPY (to your clipboard), PRINT, and DOWNLOAD. Each one makes a copy outside the page, so each is your call.</li>
+        <li><b>Secret and public are labelled.</b> Words, the passphrase and SeedQR are secret. The fingerprint, addresses, watch-only export and multisig descriptor are public data, safe to show a second computer, though they let others see your balance.</li>
+        <li><b>The practice phrase is not a real seed.</b> It is made fresh each time just to practise writing words down and is forgotten as soon as you clear it.</li>
+      </ul>
+    </details>
     <details id="multiHelp">
       <summary>How multisig works, and what it costs<small>Several keys, any M of them can spend. Read this before you set one up.</small></summary>
       <p class="hint" style="margin:8px 0;">A multisig wallet is built from <b>N separate seeds</b> and spends only when <b>M of them</b> agree. With 2-of-3 you can lose one seed, or have one stolen, and still be safe. It is the standard way to remove the &ldquo;one piece of paper&rdquo; risk.</p>
