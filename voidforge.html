@@ -1998,19 +1998,43 @@ async function psbtAddress(script, net){
 function psbtFromText(text){
   const t=text.replace(/\s+/g,"");
   if(/^70736274ff/i.test(t) && /^[0-9a-f]+$/i.test(t) && t.length%2===0) return fromHex(t.toLowerCase());
+  if(/^0[0-9a-f]000000/i.test(t) && /^[0-9a-f]+$/i.test(t) && t.length%2===0 && t.length>=20) return fromHex(t.toLowerCase()); // a raw transaction in hex
   if(/^[A-Za-z0-9+/]+={0,2}$/.test(t)){ const bin=atob(t), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
   throw new Error("Paste the PSBT as base64 (starts with cHNidP8) or hex (starts with 70736274ff), or choose the file.");
 }
+// A raw transaction (what a wallet broadcasts): read-only. It has no amounts for the coins being spent, so the fee cannot be worked out.
+async function inspectRawTx(bytes, net){
+  const r=psbtReader(bytes), res={raw:true, ins:[], outs:[]}; res.version=r.u32();
+  let seg=false, n=r.varint(); if(n===0){ if(r.byte()!==1) throw new Error("not a transaction"); seg=true; n=r.varint(); }
+  if(n===0 || n>100000) throw new Error("not a transaction");
+  const bodyStart=seg?6:4;
+  for(let i=0;i<n;i++){ const txid=hex(Uint8Array.from(r.bytes(32)).reverse()), vout=r.u32(), sl=r.varint(); r.bytes(sl); res.ins.push({txid, vout, amount:null, seq:r.u32(), scriptSig:sl, final:false, sigs:0}); }
+  n=r.varint(); if(n===0 || n>100000) throw new Error("not a transaction");
+  for(let i=0;i<n;i++){ const value=r.i64(), sl=r.varint(), script=r.bytes(sl); res.outs.push({amount:value, script, address:await psbtAddress(script, net), fps:[]}); }
+  const bodyEnd=r.pos;
+  if(seg) for(const x of res.ins){ const k=r.varint(); for(let j=0;j<k;j++) r.bytes(r.varint()); if(k>0) x.final=true; }
+  for(const x of res.ins) if(x.scriptSig>0) x.final=true;
+  res.locktime=r.u32(); if(!r.done) throw new Error("not a transaction");
+  const stripped=new Uint8Array(4+(bodyEnd-bodyStart)+4); stripped.set(bytes.slice(0,4),0); stripped.set(bytes.slice(bodyStart,bodyEnd),4); stripped.set(bytes.slice(bytes.length-4),4+bodyEnd-bodyStart);
+  res.txid=hex((await sha256bytes(await sha256bytes(stripped))).reverse());
+  res.totalOut=res.outs.reduce((a,o)=>a+o.amount,0n); res.fee=null;
+  res.rbf=res.ins.some(x=>x.seq<0xfffffffe);
+  return res;
+}
 async function inspectPsbt(bytes, net){
   const magic=[0x70,0x73,0x62,0x74,0xff];
-  if(bytes.length<5 || !magic.every((x,i)=>bytes[i]===x)) throw new Error("This is not a PSBT (it does not start with the PSBT marker).");
+  if(bytes.length<5 || !magic.every((x,i)=>bytes[i]===x)){
+    let raw=null; try { raw=await inspectRawTx(bytes, net); } catch(e){ raw=null; }
+    if(raw) return raw;
+    throw new Error("This is not a PSBT (it does not start with the PSBT marker).");
+  }
   const r=psbtReader(bytes); r.bytes(5);
   const glob=psbtReadMap(r), txRec=glob.find(x=>x.type===0 && x.key.length===0);
   if(glob.some(x=>x.type===0xfb && x.key.length===0 && x.val.length===4 && (x.val[0]|x.val[1]|x.val[2]|x.val[3])!==0)) throw new Error("PSBT version 2 is not supported by this inspector; export version 0.");
   if(!txRec) throw new Error("No unsigned transaction found in this PSBT.");
   const tx=psbtParseTx(txRec.val), res={version:tx.version, locktime:tx.locktime, ins:[], outs:[]};
   for(let i=0;i<tx.ins.length;i++){
-    const m=psbtReadMap(r), inp={txid:tx.ins[i].txid, vout:tx.ins[i].vout, amount:null, sigs:m.filter(x=>x.type===2).length, final:m.some(x=>x.type===7||x.type===8)};
+    const m=psbtReadMap(r), inp={txid:tx.ins[i].txid, vout:tx.ins[i].vout, seq:tx.ins[i].seq, amount:null, sigs:m.filter(x=>x.type===2).length, final:m.some(x=>x.type===7||x.type===8)};
     const wu=m.find(x=>x.type===1), nw=m.find(x=>x.type===0);
     if(wu){ const q=psbtReader(wu.val); inp.amount=q.i64(); inp.script=q.bytes(q.varint()); }
     else if(nw){ const o=psbtParseTxOutputs(nw.val)[tx.ins[i].vout]; if(o){ inp.amount=o.value; inp.script=o.script; } }
@@ -2018,7 +2042,7 @@ async function inspectPsbt(bytes, net){
     res.ins.push(inp);
   }
   for(let i=0;i<tx.outs.length;i++){
-    const m=psbtReadMap(r), out={amount:tx.outs[i].value, address:await psbtAddress(tx.outs[i].script, net), fps:[]};
+    const m=psbtReadMap(r), out={amount:tx.outs[i].value, script:tx.outs[i].script, address:await psbtAddress(tx.outs[i].script, net), fps:[]};
     for(const x of m){
       if(x.type===2 && x.val.length>=4) out.fps.push(hex(x.val.slice(0,4)));
       if(x.type===7 && x.val.length>=5){ const q=psbtReader(x.val), nh=q.varint(); q.bytes(32*nh); out.fps.push(hex(q.bytes(4))); }
@@ -2028,19 +2052,59 @@ async function inspectPsbt(bytes, net){
   if(!r.done) res.trailing=true;
   res.totalOut=res.outs.reduce((a,o)=>a+o.amount,0n);
   res.fee=res.ins.every(x=>x.amount!==null) ? res.ins.reduce((a,x)=>a+x.amount,0n)-res.totalOut : null;
+  res.rbf=res.ins.some(x=>x.seq<0xfffffffe);
   return res;
 }
 function btcText(sats){ const neg=sats<0n, v=neg?-sats:sats, w=v/100000000n, f=(v%100000000n).toString().padStart(8,"0"); return (neg?"-":"")+w+"."+f+" BTC ("+v+" sats)"; }
+function opReturnText(script){ // the data pushed after OP_RETURN, as hex and (when it is plain text) as text
+  const parts=[]; let i=1;
+  while(i<script.length){
+    const op=script[i++]; let len;
+    if(op>=1 && op<=75) len=op; else if(op===0x4c && i<script.length) len=script[i++]; else if(op===0x4d && i+1<script.length){ len=script[i]|(script[i+1]<<8); i+=2; } else return "(unusual data layout; not decoded)";
+    if(i+len>script.length) return "(cut short; not decoded)";
+    parts.push(script.slice(i,i+len)); i+=len;
+  }
+  if(!parts.length) return "(empty)";
+  return parts.map(b=>{ const t=[...b].every(c=>c>=32&&c<127) ? ' = "' + String.fromCharCode(...b) + '"' : ""; return b.length + " bytes: " + hex(b) + t; }).join("; ");
+}
+// The checks this tool can do. "Blocking" ones decide between a clean result and NO CLEAN VERDICT.
+function psbtChecks(res, fpWallet){
+  const C=[], add=(ok,text,blocking)=>C.push({ok,text,blocking:!!blocking});
+  const unknownIn=res.ins.filter(x=>x.amount===null).length;
+  add(unknownIn===0, unknownIn===0 ? "Every input amount is known." : unknownIn + " of " + res.ins.length + " input amounts are unknown" + (res.raw ? " (a raw transaction does not carry them)." : " (the PSBT does not include the coins being spent)."), true);
+  if(res.fee!==null){
+    add(res.fee>=0n, res.fee>=0n ? "The fee is worked out." : "The outputs add up to MORE than the inputs. This transaction is not valid.", true);
+    if(res.fee>=0n && res.totalOut>0n) add(res.fee*20n<res.totalOut, res.fee*20n<res.totalOut ? "The fee is under 5% of the total of all outputs." : "The fee is 5% or more of the total of all outputs. That is a very high fee: check it carefully.", true);
+  } else add(false, "The fee cannot be worked out.", true);
+  const odd=res.outs.filter(x=>/^Unrecognized script/.test(x.address)).length;
+  add(odd===0, odd===0 ? "Every output is a normal address or a data note." : odd + " output" + (odd===1?" has":"s have") + " a script this tool cannot turn into an address.", true);
+  if(res.trailing) add(false, "Extra data follows the PSBT.", true);
+  const withKeys=res.outs.filter(x=>x.fps.length).length;
+  if(!res.raw) add(withKeys>0, withKeys>0 ? withKeys + " output" + (withKeys===1?" is":"s are") + " marked as this wallet's own change." : "No output is marked as change. Everything not sent to someone goes to the fee, so check that you meant to send all of it.", false);
+  return C;
+}
+function psbtVerdict(res, fpWallet){
+  const C=psbtChecks(res, fpWallet), bad=C.filter(x=>!x.ok&&x.blocking);
+  const L=["CHECKS"]; C.forEach(x=>L.push((x.ok?"  OK    ":(x.blocking?"  FAIL  ":"  NOTE  ")) + x.text));
+  L.push(bad.length ? "VERDICT: NO CLEAN VERDICT. This tool could not fully check the transaction (see FAIL above). Do not treat it as safe because nothing else looked wrong."
+    : "VERDICT: no problems found by these checks. This does not prove the payment is what you meant: compare every address and amount with your wallet.");
+  return L.join("\n");
+}
 function psbtReport(res, fpWallet){
   const L=[];
   L.push("Transaction version " + res.version + ", locktime " + res.locktime + ", " + res.ins.length + " input" + (res.ins.length===1?"":"s") + ", " + res.outs.length + " output" + (res.outs.length===1?"":"s") + ".");
   L.push("");
   res.ins.forEach((x,i)=>{ L.push("INPUT " + i + ": " + (x.amount===null ? "amount unknown (the PSBT does not include the coin being spent)" : btcText(x.amount)) + (x.address ? "\n   from " + x.address : "") + "\n   coin " + x.txid + ":" + x.vout + "\n   " + (x.final ? "finalized" : x.sigs + " signature" + (x.sigs===1?"":"s") + " so far")); });
   L.push("");
-  res.outs.forEach((x,i)=>{ L.push("OUTPUT " + i + ": " + btcText(x.amount) + "\n   to " + x.address + (x.fps.length ? "\n   has wallet key information (fingerprint " + [...new Set(x.fps)].join(", ") + "): usually this wallet's own change" + (fpWallet && x.fps.includes(fpWallet) ? ", and it matches the wallet typed above" : "") : "\n   no wallet key information: treat as a payment to someone else")); });
+  res.outs.forEach((x,i)=>{ L.push("OUTPUT " + i + ": " + btcText(x.amount) + "\n   to " + x.address + (x.script && x.script[0]===0x6a ? "\n   data note: " + opReturnText(x.script) + "\n   (this output carries data, not money, and cannot be spent)" : "") + (x.fps.length ? "\n   has wallet key information (fingerprint " + [...new Set(x.fps)].join(", ") + "): usually this wallet's own change" + (fpWallet && x.fps.includes(fpWallet) ? ", and it matches the wallet typed above" : "") : "\n   no wallet key information: treat as a payment to someone else")); });
   L.push("");
   L.push(res.fee===null ? "FEE: cannot be worked out because some inputs have no amount." : "FEE: " + btcText(res.fee) + (res.totalOut>0n ? " (" + (Number(res.fee*10000n/res.totalOut)/100).toFixed(2) + "% of the total of all outputs)" : ""));
+  L.push(res.rbf ? "REPLACEABLE (RBF): yes. While it is unconfirmed it can be replaced by a version that pays a higher fee." : "REPLACEABLE (RBF): no. It cannot be replaced by a higher-fee version, so a low fee cannot be bumped.");
+  if(res.locktime>0 && res.ins.some(x=>x.seq!==0xffffffff)) L.push("LOCKTIME: it cannot be mined before " + (res.locktime<500000000 ? "block " + res.locktime : new Date(res.locktime*1000).toISOString().slice(0,16).replace("T"," ") + " UTC") + ".");
+  if(res.raw) L.push("This is a raw transaction" + (res.ins.some(x=>x.final) ? " that is already signed" : "") + ", not a PSBT. Its ID would be " + res.txid + ".");
   if(res.trailing) L.push("Note: extra data follows the PSBT; it was ignored.");
+  L.push("");
+  L.push(psbtVerdict(res, fpWallet));
   return L.join("\n");
 }
 function jumpTo(id){ const e=document.getElementById(id); if(e) e.scrollIntoView({behavior:"smooth", block:"start"}); }

@@ -270,6 +270,33 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   R.ok(bad === 0, `${n} PSBTs (every address type, mainnet and testnet) are read the same as by the independent library: inputs, outputs, addresses, fee (${bad} mismatches)`);
 }
 
+// 2g2. Raw transactions, RBF flag, locktime and OP_RETURN data against @scure/btc-signer (independent builder, txid and decoder)
+{
+  const K = (n) => new Uint8Array(32).fill(n), pubE = (n) => secp256k1.getPublicKey(K(n), true);
+  let n = 0, bad = 0;
+  for (const test of [false, true]) for (const [rbf, lock, msg] of [[true, 0, 'hello'], [false, 0, 'VOIDFORGE'], [true, 850000, 'x'], [false, 1700000000, 'a\u0001b']]) {
+    const NET = test ? btc.TEST_NETWORK : btc.NETWORK;
+    const tx = new btc.Transaction({ allowUnknownOutputs: true, lockTime: lock });
+    const sw = btc.p2wpkh(pubE(30)), amts = [90000n, 70000n];
+    amts.forEach((a, i) => tx.addInput({ txid: bhex.encode(nc.randomBytes(32)), index: i, sequence: rbf ? 0xfffffffd : 0xffffffff, witnessUtxo: { script: sw.script, amount: a } }));
+    tx.addOutput({ script: btc.p2wpkh(pubE(31)).script, amount: 108000n });
+    tx.addOutput({ script: btc.p2tr(secp256k1.getPublicKey(K(32), true).slice(1)).script, amount: 50000n });
+    const data = Uint8Array.from(Buffer.from(msg, 'latin1')), opr = Uint8Array.from([0x6a, data.length, ...data]);
+    tx.addOutput({ script: btc.OutScript.encode({ type: 'unknown', script: opr }), amount: 0n });
+    // an unsigned PSBT and an unsigned raw transaction (no witness) carry the same facts
+    const ps = await w.inspectPsbt(new Uint8Array(tx.toPSBT(0)), test ? 'test' : 'main'); n++;
+    const rawHex = bhex.encode(tx.unsignedTx), raw = await w.inspectPsbt(new Uint8Array(Buffer.from(rawHex, 'hex')), test ? 'test' : 'main'); n++;
+    const want = bhex.encode(btc.RawTx.decode ? btc.RawTx.decode(tx.unsignedTx) && nc.createHash('sha256').update(nc.createHash('sha256').update(tx.unsignedTx).digest()).digest().reverse() : []);
+    const okR = ps.rbf === rbf && raw.rbf === rbf && ps.locktime === lock && raw.locktime === lock && raw.raw === true && raw.fee === null && raw.txid === want && raw.txid === tx.id
+      && raw.outs.length === 3 && raw.outs[0].address === ps.outs[0].address && raw.outs[1].address === ps.outs[1].address && raw.outs[0].amount === 108000n
+      && raw.ins.every((x, i) => x.txid === ps.ins[i].txid && x.vout === i);
+    const txt = w.psbtReport(raw, null), ptxt = w.psbtReport(ps, null);
+    const okT = /NO CLEAN VERDICT/.test(txt) && /cannot be worked out/.test(txt) && /no problems found/.test(ptxt) && ptxt.includes(Buffer.from(data).toString('hex')) && (msg === 'a\u0001b' ? !ptxt.includes('= "') : ptxt.includes('= "' + msg + '"'));
+    if (!(okR && okT)) { bad++; console.log('RAW/RBF MISMATCH', test, rbf, lock, okR, okT); }
+  }
+  R.ok(bad === 0, `${n} transactions (raw and PSBT, RBF on and off, locktime, OP_RETURN data, mainnet and testnet) are read the same as by the independent library, including the transaction ID (${bad} mismatches)`);
+}
+
 // 2h. SeedQR and CompactSeedQR (for SeedSigner): digits and bytes from independent code, every QR matrix against the
 // independent Python `qrcode` library (what SeedSigner uses), decoded again with jsQR, and the hand-copy guide read back.
 {
