@@ -1,6 +1,6 @@
 # Review guide
 
-VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines in `voidforge.html`. Line numbers are approximate (v1.22.0).
+VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines in `voidforge.html`. Line numbers are approximate (v1.23.0).
 
 | What | Where | Look for |
 |---|---|---|
@@ -13,6 +13,8 @@ VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines
 | Find the last word | `lastWordCandidates`, `findLastWords` | Only lists words whose checksum is valid; checked against @scure brute force in `tests/oracle.test.mjs`. |
 | Read-only PSBT and raw-transaction inspector, checks and verdict | `inspectPsbt`, `inspectRawTx`, `psbtParseTx`, `psbtAddress`, `psbtChecks`, `psbtVerdict`, `psbtReport`, `opReturnText` | Parses BIP174 version 0 and displays it. No signing, no key use, no network; checked against @scure/btc-signer for every address type, and by about 38 mutations. |
 | Compare two transactions (signer-change and fee-bump checks) | `compareTx`, `runCompare` | Read-only. Reports every difference between two transactions; calls a replacement a plain fee bump only when it spends a shared coin, the first allows RBF, the fee is higher, and no one who was paid is paid differently (except the change). Checked against transactions built by @scure/btc-signer. |
+| Backup practice mode | `practiceMake`, `practiceCompare`, `practiceStart`, `practiceHide`, `practicePeek`, `practiceCheck`, `practiceClear` | Display only, and the phrase is a throwaway made from fresh random bytes, never your seed. Check that it is not derived from anything you typed and that `practiceClear` forgets it. Word positions are checked against @scure in `tests/oracle.test.mjs`. |
+| Start notice, privacy box | `startGateClose`, `#startGate`, `#privacyBox` | Display only. The notice must close with one click or Escape and must not touch the seed. The privacy box makes claims you can check: only `voidforge-theme` and `voidforge-big` are stored, and there are no network calls. |
 | Compare key/descriptor, address finder | `classifyRecorded`, `parseDescriptor`, `matchRecorded`, `walletIds`, `findAddress`, `checkAddress` | Display only; no secret leaves the page. Inputs are public data (zpub/xpub, descriptor, addresses). The comparison is exact string equality with keys the page derives itself; the descriptor checksum is verified. The finder re-derives addresses with the same functions the self-test checks. Covered by end-to-end probes against independent libraries and 28 new mutations. |
 | Taproot addresses (BIP86) | `taggedHash`, `taprootAddress`, `taprootAddressesFromSeed`, `bech32Encode` (bech32m constant) | Display only, public data. Key-path only (no script tree): output key = internal key + SHA256-tagged TapTweak. Self-test checks the three published BIP86 vectors and the BIP350 example; the oracle test compares 150 addresses with @scure/@noble. |
 | First five addresses, roll chart, 4-letter view | `addressesFromSeed`, `showAddrs`, `renderRollChart`, `toggleAbbr` | Display only. The addresses are public data derived the same way as the first address (m/84'/0'/0'/0/0 to 0/4). The chart and the 4-letter view are built with `textContent`/DOM nodes, no `innerHTML`, and never touch the seed. |
@@ -36,6 +38,10 @@ Tests worth reading too: `tests/oracle.test.mjs` compares the seed math with `@s
 Independent checks anyone can run: compare with SeedSigner's `tools/mnemonic.py`, or Ian Coleman's BIP39 tool run offline ("Base 10"/"Hex" mode for dice, "Binary" for coin flips).
 
 Known limits: the randomness meter only catches lazy input; the curve code is not constant-time; coin-mode test vectors come from an independent implementation of SeedSigner's method (SeedSigner publishes none); Coldcard is untested; tested in Chromium but not Firefox or Safari.
+
+## Outside reviewers wanted
+
+VOIDFORGE has **not been independently audited**. If you can read JavaScript or know Bitcoin key handling, please look at the table above and open an issue with what you find, even if it is only "I read X and it looks right". A review of the seed math (wordlist, roll to mnemonic, checksum) is the most valuable. Findings that disagree with the in-page self-test are the most useful of all. Say which version and file hash you read (see the README) so others can tell what was reviewed.
 
 ## Asking for a review (copy and adapt)
 
