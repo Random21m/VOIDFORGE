@@ -691,7 +691,7 @@ async function probe(w, mutated) {
     if ($('cardMulti').nextElementSibling !== $('cardGen')) fails.push('multisig: card sits above the seed maker during setup');
     w.msShowQr(); if ($('msQrBox').style.display !== '') fails.push('multisig: QR shown before reset');
     w.clearAll(); await slp(20); if (w.eval('ms') !== null || $('msDescR').textContent !== '' || $('msRun').style.display !== 'none' || $('msQrImg').innerHTML !== '' || $('msQrBox').style.display !== 'none' || $('msAddrs').textContent !== '') fails.push('multisig: CLEAR ALL forgets the setup');
-    if ($('cardGen').nextElementSibling !== $('cardMulti')) fails.push('multisig: card goes back after reset');
+    if ($('cardMulti').parentNode.id !== 'tp-tools' || $('cardMulti').previousElementSibling !== $('cardTools')) fails.push('multisig: card goes back to the Extra tools tab after reset');
     // 2-of-2 nested, testnet, all made here
     $('msN').value = '2'; w.msUpdateM(); $('msNet').value = 'test'; $('msType').value = 'ms-sh-wsh'; $('msAcct').value = '1'; w.msStart(); if (w.eval('ms.account') !== 1) fails.push('multisig: account number is used');
     if ($('msTestBan').style.display !== '' || !/TESTNET/.test($('msBanTitle').textContent)) fails.push('multisig: testnet banner');
@@ -843,6 +843,53 @@ async function probe(w, mutated) {
   const parts = expect.d50.split(' '); parts[11] = parts[11] === 'zoo' ? 'abandon' : 'zoo';
   const corrupted = parts.join(' ');
   if ((await w.checkPhrase(corrupted)).ok !== validateMnemonic(corrupted, wordlist)) fails.push('checker rejects bad checksum');
+  // v1.25.0 layout: tabs, Your seed panel, step bar, word slots, dice wait
+  { const on = (n) => !$('tp-' + n).classList.contains('tab-off'), sel = (n) => $('tab-' + n).getAttribute('aria-selected'), disp = (n) => w.getComputedStyle($('tp-' + n)).display;
+    const names = ['make', 'check', 'tools', 'about'];
+    w.showTab('make'); if (!names.every((n) => on(n) === (n === 'make') && sel(n) === String(n === 'make') && ($('tab-' + n).tabIndex === 0) === (n === 'make'))) fails.push('layout: Make a seed open first, others closed, tab stops follow');
+    w.showTab('tools'); if (!names.every((n) => on(n) === (n === 'tools') && sel(n) === String(n === 'tools') && ($('tab-' + n).tabIndex === 0) === (n === 'tools'))) fails.push('layout: showTab opens exactly one tab and updates aria-selected and tab stops');
+    if (disp('tools') === 'none' || disp('make') !== 'none' || disp('about') !== 'none') fails.push('layout: closed tabs are really hidden by the stylesheet');
+    w.showTab('nonsense'); if (!on('tools')) fails.push('layout: an unknown tab name changes nothing');
+    { let fo = []; const tb = $('tab-check'); tb.focus = () => fo.push(1); w.showTab('make'); w.showTab('check'); const n0 = fo.length; w.showTab('make'); w.showTab('check', null, true); if (n0 !== 0 || fo.length !== 1) fails.push('layout: focusTab moves focus to the tab only when asked'); delete tb.focus; }
+    w.showTab('make'); w.jumpTo('cardCheck'); if (!on('check')) fails.push('layout: jumpTo opens the tab that holds the target');
+    w.jumpTo('cardMulti'); if (!on('tools')) fails.push('layout: jumpTo opens Extra tools for multisig'); w.jumpTo('beforeCard'); if (!on('about')) fails.push('layout: jumpTo opens About for the safety card'); w.jumpTo('cardGen'); if (!on('make')) fails.push('layout: jumpTo opens Make a seed');
+    { let seen = 0; const el = $('cardCheck'); const orig = el.scrollIntoView; el.scrollIntoView = () => { seen++; }; w.showTab('make'); w.reveal(el); el.scrollIntoView = orig; if (seen !== 1 || !on('check')) fails.push('layout: reveal opens the tab and scrolls to the element once');
+      if (w.tabOfEl($('rolls')) !== 'make' || w.tabOfEl($('phrase')) !== 'check' || w.tabOfEl($('psbtInput')) !== 'tools' || w.tabOfEl($('disclaimer')) !== 'about' || w.tabOfEl($('printOnly')) !== null || w.tabOfEl(null) !== null) fails.push('layout: tabOfEl names the tab of an element, or none'); }
+    w.showTab('make'); $('tab-tools').dispatchEvent(new w.MouseEvent('click', { bubbles: true })); if (!on('tools')) fails.push('layout: clicking a tab opens it');
+    { w.showTab('make'); const key = (k) => { const ev = new w.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }); $('tabs').dispatchEvent(ev); return ev.defaultPrevented; };
+      Object.defineProperty(w.document, 'activeElement', { configurable: true, get: () => $('tab-' + names.find((n) => $('tab-' + n).tabIndex === 0)) });
+      const r1 = key('ArrowRight'); if (!on('check') || !r1) fails.push('layout: right arrow moves to the next tab and stops the page scrolling'); key('ArrowLeft'); if (!on('make')) fails.push('layout: left arrow moves back');
+      key('ArrowLeft'); if (!on('about')) fails.push('layout: left arrow wraps to the last tab'); key('ArrowRight'); if (!on('make')) fails.push('layout: right arrow wraps to the first tab');
+      key('End'); if (!on('about')) fails.push('layout: End opens the last tab'); key('Home'); if (!on('make')) fails.push('layout: Home opens the first tab');
+      if (key('x') || !on('make')) fails.push('layout: other keys do nothing and are not blocked'); delete w.document.activeElement; }
+    w.showTab('make'); $('strip').querySelector('button').click(); if (!on('about')) fails.push('layout: the one-line notice opens About & help');
+    w.showTab('make');
+    w.wipeSeed(); mode('dice'); words(12);
+    const big = () => $('bigCount'), sub = () => $('bigSub'), cur = () => [...w.document.querySelectorAll('#stepBar li')].map((l) => l.className || '-').join(','), setR = (v) => { $('rolls').value = v; $('rolls').oninput(); };
+    if (big().textContent !== '0 / 50' || big().className !== 'big-count short' || sub().textContent !== '50 more rolls to go' || sub().className !== 'big-sub short') fails.push('layout: counter starts at 0 / 50, red');
+    setR(D50.slice(0, 20)); if (big().textContent !== '20 / 50' || !/short/.test(big().className) || sub().textContent !== '30 more rolls to go' || $('rollCount').className !== 'short') fails.push('layout: counter red below the target');
+    setR(D50.slice(0, 49)); if (!/short/.test(big().className) || /met/.test(big().className) || sub().textContent !== '1 more rolls to go') fails.push('layout: counter still red one short');
+    setR(D50); if (big().textContent !== '50 / 50' || big().className !== 'big-count met' || sub().textContent !== 'Enough rolls. Press FORGE SEED.' || sub().className !== 'big-sub met' || $('rollCount').className !== 'met') fails.push('layout: counter green at the target with the next step named');
+    setR(D50 + '1'); if (big().textContent !== '51 / 50' || !/met/.test(big().className)) fails.push('layout: counter green when over the target');
+    words(24); if (big().textContent !== '51 / 99' || !/short/.test(big().className) || sub().textContent !== '48 more rolls to go') fails.push('layout: counter follows the 24-word target');
+    mode('coin'); words(12); setR('1'.repeat(100)); if (sub().textContent !== '28 more flips to go' || big().textContent !== '100 / 128') fails.push('layout: counter counts flips in coin mode'); setR('1'.repeat(128)); if (!/Enough flips/.test(sub().textContent)) fails.push('layout: counter says flips when met');
+    mode('dice'); words(12); setR('');
+    if (cur() !== 'done,cur,-,-,-' || w.document.querySelectorAll('#stepBar li[aria-current]').length !== 1 || w.document.querySelector('#stepBar li[aria-current]').getAttribute('data-s') !== '2') fails.push('layout: step bar starts at Roll with one step marked current');
+    setR(D50); if (cur() !== 'done,done,done,cur,-' || w.document.querySelector('#stepBar li[aria-current]').getAttribute('data-s') !== '4') fails.push('layout: step bar moves to Forge when there are enough rolls');
+    await w.generate(); if (cur() !== 'done,done,done,done,cur' || !/Seed made/.test(sub().textContent) || w.document.querySelector('#stepBar li[aria-current]').getAttribute('data-s') !== '5') fails.push('layout: step bar moves to Check once a seed exists');
+    const real = $('genResult').textContent.split('\n')[0].split(' ');
+    const cells = () => [...$('wordGrid').children];
+    if (cells().length !== 12 || cells().some((c) => c.classList.contains('empty')) || cells().map((c) => c.lastChild.textContent).join(' ') !== real.join(' ') || $('wordGrid').classList.contains('slots') || $('wordGrid').style.display !== 'grid' || $('genResult').classList.contains('nores')) fails.push('layout: forging replaces the empty slots with the real words');
+    words(24); if (cells().length !== 12 || cells().some((c) => c.classList.contains('empty'))) fails.push('layout: changing the length does not touch a made seed'); words(12);
+    w.wipeSeed();
+    if (cells().length !== 12 || !cells().every((c) => c.classList.contains('empty') && c.lastChild.textContent === '—') || cells().map((c) => c.firstChild.textContent).join(' ') !== Array.from({ length: 12 }, (_, i) => (i + 1) + '.').join(' ') || !$('wordGrid').classList.contains('slots') || $('wordGrid').style.display === 'grid' || $('wordGrid').textContent.includes(real[0]) || !$('genResult').classList.contains('nores') || cur() !== 'done,cur,-,-,-' || big().textContent !== '0 / 50') fails.push('layout: wiping restores twelve numbered empty slots, hides the result box, resets counter and steps');
+    words(24); if (cells().length !== 24 || cells()[23].firstChild.textContent !== '24.' || cells().some((c) => !c.classList.contains('empty'))) fails.push('layout: 24 empty slots for 24 words'); words(12); if (cells().length !== 12) fails.push('layout: back to 12 slots');
+    setR('555'); await w.generate(); if (cells().some((c) => !c.classList.contains('empty')) || $('genResult').classList.contains('nores') || !/more rolls/.test($('genResult').textContent) || $('genResult').dataset.seed) fails.push('layout: a "more rolls" message appears in the result box and no seed is made'); setR('');
+    { const t1 = loadPage(mutated, (win) => { win.__f = []; }); await ready(t1); const b1 = t1.document.body; if (!b1.classList.contains('dice-wait') || !t1.document.getElementById('startGate')) fails.push('layout: dice held back while the notice is open');
+      t1.startGateClose(); if (b1.classList.contains('dice-wait')) fails.push('layout: dice released when the notice closes');
+      const t2 = loadPage(mutated, () => {}); await ready(t2); t2.document.dispatchEvent(new t2.KeyboardEvent('keydown', { key: 'Escape' })); if (t2.document.body.classList.contains('dice-wait')) fails.push('layout: dice released when Escape closes the notice');
+      const t3 = loadPage(mutated, () => {}); await ready(t3); t3.document.getElementById('startGate').remove(); t3.document.dispatchEvent(new t3.Event('DOMContentLoaded')); if (t3.document.body.classList.contains('dice-wait')) fails.push('layout: dice not held back when there is no notice'); }
+  }
   { const $p = (id) => w.document.getElementById(id), E = ['abandon', 'ability', 'able', 'about'];
     if ((await w.practiceMake(new w.Uint8Array(16))).join(' ') !== 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about') fails.push('practice: phrase made from entropy');
     if (!w.practiceCompare(E, 'abandon ability able about').ok || !w.practiceCompare(E, '  ABANDON  ability\nable about ').ok) fails.push('practice: correct copy matches, case and spacing ignored');
