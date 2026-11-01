@@ -1,6 +1,6 @@
 # Review guide
 
-VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines in `voidforge.html`. Line numbers are approximate (v1.25.0).
+VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines in `voidforge.html`. Line numbers are approximate (v1.25.1).
 
 | What | Where | Look for |
 |---|---|---|
@@ -13,6 +13,7 @@ VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines
 | Find the last word | `lastWordCandidates`, `findLastWords` | Only lists words whose checksum is valid; checked against @scure brute force in `tests/oracle.test.mjs`. |
 | Read-only PSBT and raw-transaction inspector, checks and verdict | `inspectPsbt`, `inspectRawTx`, `psbtParseTx`, `psbtAddress`, `psbtChecks`, `psbtVerdict`, `psbtReport`, `opReturnText` | Parses BIP174 version 0 and displays it. No signing, no key use, no network; checked against @scure/btc-signer for every address type, and by about 38 mutations. |
 | Tabs, seed panel, word slots (display only) | `showTab`, `reveal`, `renderSlots`, `updateSeedPanel` | v1.25.0 moved the page into tabs. These functions only show/hide sections and draw the counter and empty slots; they never read or change the seed. Tests check that every control still exists inside a tab. |
+| Fairness test, Word finder (display only) | `faceTest`, `wdFindWord` | Chi-square p-values use exact formulas for 1 and 5 degrees of freedom (checked against scipy). The Word finder only indexes the BIP39 list; it never touches the seed. |
 | Signature checks (nonce reuse, sighash) | `sigDer`, `sigSchnorr`, `scriptPushes`, `sigsFromScriptSig`, `sigsFromWitness`, `nonceReuse`, `sighashName`, `sighashOdd`, and the two signature checks in `psbtChecks` and `compareTx` | Read-only, public data only: it never verifies or makes a signature, it only reads R values and sighash bytes. Check that DER parsing is strict (damaged encodings are ignored, not guessed at), that identical signatures are not called reuse, and that only the taproot key-path witness form is read as Schnorr. Limit: reuse is found only inside the transaction (or the two in the compare box) you paste in, not across the whole blockchain. `tests/oracle.test.mjs` builds real signatures with @noble/@scure and proves a repeated nonce leaks the key. |
 | Compare two transactions (signer-change and fee-bump checks) | `compareTx`, `runCompare` | Read-only. Reports every difference between two transactions; calls a replacement a plain fee bump only when it spends a shared coin, the first allows RBF, the fee is higher, and no one who was paid is paid differently (except the change). Checked against transactions built by @scure/btc-signer. |
 | Backup practice mode | `practiceMake`, `practiceCompare`, `practiceStart`, `practiceHide`, `practicePeek`, `practiceCheck`, `practiceClear` | Display only, and the phrase is a throwaway made from fresh random bytes, never your seed. Check that it is not derived from anything you typed and that `practiceClear` forgets it. Word positions are checked against @scure in `tests/oracle.test.mjs`. |
