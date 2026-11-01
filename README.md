@@ -7,6 +7,8 @@ An offline, educational tool that turns dice rolls or coin flips into a BIP39 se
 <p align="center"><a href="https://github.com/Random21m/voidforge/releases/latest"><b>&#11015; Download the latest release</b></a><br>
 Get <code>voidforge.html</code> and <code>SHA256SUMS</code> from the release page, check the hash, then copy the file to a USB stick for your offline computer. This is the only place to download it; there is no hosted web version, by design.</p>
 
+<p align="center"><a href="https://youtu.be/1K9MT0ki3Ds"><b>&#9654; Watch the video tutorial</b></a> (about 7 minutes, with a practice seed)</p>
+
 
 > **Not independently audited.** For serious amounts, generate on dedicated hardware (SeedSigner, Coldcard) and use VOIDFORGE to cross-check the words and fingerprint.
 
@@ -78,3 +80,7 @@ VOIDFORGE is free software provided **"as is", without warranty of any kind** (s
 - Want to review it? See [REVIEW.md](REVIEW.md).
 - Do not host this as a web page (no GitHub Pages). Download-only.
 - License: MIT
+
+## Support the project
+
+VOIDFORGE is free and always will be. If it helped you and you would like to chip in toward the time it takes to maintain it, you can send a few sats to the Lightning address `keywest@strike.me`. This is entirely optional: it does not buy support or priority, and nothing in the app asks for it. It appears nowhere in the app itself, by design.
