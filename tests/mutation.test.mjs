@@ -131,6 +131,24 @@ async function probe(w, mutated) {
       if (wo.key !== HDKey.fromMasterSeed(seedB, { private: 0, public: MV[net][type] }).derive(path).publicExtendedKey) fails.push(tag + ': key');
       if (wo.receive !== `[${wo.fp}/48h/${coin}h/${acct}h/${SC[type]}h]${HDKey.fromMasterSeed(seedB, { private: 0, public: net === 'test' ? 0x043587cf : 0x0488b21e }).derive(path).publicExtendedKey}`) fails.push(tag + ': key origin');
       if (wo.change !== '' || wo.first !== '') fails.push(tag + ': has no addresses'); } }
+  { // v1.26.0: five receiving addresses for every single-key type, both networks, checked with @scure/btc-signer (independent address encoder)
+    const seedF = mnemonicToSeedSync('legal winner thank year wave sausage worth useful legal winner thank yellow', 'x'), root = HDKey.fromMasterSeed(seedF);
+    const PURF = { wpkh: 84, 'sh-wpkh': 49, pkh: 44, tr: 86 };
+    for (const net of ['main', 'test']) for (const [type, acct] of [['wpkh', 0], ['sh-wpkh', 0], ['pkh', 0], ['tr', 0], ['wpkh', 5], ['sh-wpkh', 2], ['pkh', 1], ['tr', 9]]) {
+      const NETB = net === 'test' ? btc.TEST_NETWORK : btc.NETWORK, wo = await w.watchOnlyFromSeed(seedF, type, acct, net), tag = `five ${type} ${net} account ${acct}`;
+      if (!Array.isArray(wo.five) || wo.five.length !== 5) { fails.push(tag + ': five addresses'); continue; }
+      if (wo.first !== wo.five[0]) fails.push(tag + ': first is the first of five');
+      for (let i = 0; i < 5; i++) {
+        const k = root.derive(`m/${PURF[type]}'/${net === 'test' ? 1 : 0}'/${acct}'/0/${i}`), pk = k.publicKey;
+        const exp = type === 'wpkh' ? btc.p2wpkh(pk, NETB).address : type === 'pkh' ? btc.p2pkh(pk, NETB).address : type === 'sh-wpkh' ? btc.p2sh(btc.p2wpkh(pk, NETB), NETB).address : btc.p2tr(pk.slice(1), undefined, NETB).address;
+        if (wo.five[i] !== exp) fails.push(tag + ': address ' + i);
+      }
+      if (new Set(wo.five).size !== 5) fails.push(tag + ': five different addresses'); }
+    // the box shows all five, one per line, and clears them with the seed
+    await run('dice', 12, D50); $('wType').value = 'wpkh'; $('wNet').value = 'main'; $('wAcct').value = '0'; await w.refreshWatch();
+    if ($('wFirst').textContent.split('\n').length !== 5 || $('wFirst').textContent.split('\n').some((l) => !/^bc1q/.test(l))) fails.push('five addresses shown one per line');
+    $('wType').value = 'ms-wsh'; await w.refreshWatch(); if ($('wFirstGroup').style.display !== 'none') fails.push('multisig shows no addresses');
+    $('wType').value = 'wpkh'; await w.refreshWatch(); w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('wFirst').textContent !== '') fails.push('five addresses cleared with the seed'); }
   { const LW = async (x) => { $('lwInput').value = x; await w.findLastWords(); return [$('lwStatus').textContent, $('lwOut').textContent]; };
     let [a, o] = await LW('abandon '.repeat(10) + 'xyzzy'); if (!/^Unknown word: xyzzy/.test(a) || o !== '') fails.push('last word: unknown word is rejected');
     [a, o] = await LW('abandon '.repeat(11)); if (!/^128 words complete this 12-word phrase/.test(a) || o.split(/\s+/).length !== 128) fails.push('last word: 12-word list');

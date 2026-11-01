@@ -851,8 +851,10 @@
       <div class="wval" id="wZpub"></div>
       <button class="secondary small" onclick="copyWatch(this,'wZpub')">COPY KEY</button>
       <div id="wFirstGroup">
-      <div class="wlabel">First receiving address of this type and account (compare it in your app)</div>
-      <div class="wval" id="wFirst"></div>
+      <div class="wlabel">First 5 receiving addresses of this type and account (compare them in your app)</div>
+      <div class="wval" id="wFirst" style="white-space:pre-line"></div>
+      <button class="secondary small" onclick="copyWatch(this,'wFirst')">COPY ALL</button>
+      <div class="hint" style="margin:6px 0 0;">Your 12 or 24 words are the same for every address type. The type only decides which addresses your wallet app shows, so write down the type you chose (and the account number) with your backup.</div>
       </div>
       <div class="wlabel" id="wDescLabelR">Descriptor, receiving addresses: Sparrow, Nunchuk, Bitcoin Core</div>
       <div class="wval" id="wDescR"></div>
@@ -1695,13 +1697,14 @@ async function watchOnlyFromSeed(seed, type, account, net){
   if(M){
     const key=await base58check(ser(N.ver[type],4)), xpub=await base58check(ser(N.ver.other,4));
     const origin = fp + "/48h/" + N.coin + "h/" + account + "h/" + M.script + "h";
-    return {fp, xpub, zpub:key, key, receive:"[" + origin + "]" + xpub, change:"", first:""};
+    return {fp, xpub, zpub:key, key, receive:"[" + origin + "]" + xpub, change:"", first:"", five:[]};
   }
   const xpub=await base58check(ser(N.ver.other,3)), zpub=await base58check(ser(N.ver.wpkh,3)), key=await base58check(ser(T.purpose===84 ? N.ver.wpkh : T.purpose===49 ? N.ver["sh-wpkh"] : N.ver.other,3));
   const origin = fp + "/" + T.purpose + "h/" + N.coin + "h/" + account + "h";
   const d=(br)=>descriptorChecksum(descriptorWrap(type, origin, xpub, br));
-  const [rk,rc]=await ckdPriv(k,c,0,false), [fk]=await ckdPriv(rk,rc,0,false);
-  return {fp, xpub, zpub, key, receive:d(0), change:d(1), first:await addressFromKey(type, fk, net)};
+  const [rk,rc]=await ckdPriv(k,c,0,false), five=[];
+  for(let i=0;i<5;i++){ const [fk]=await ckdPriv(rk,rc,i,false); five.push(await addressFromKey(type, fk, net)); }
+  return {fp, xpub, zpub, key, receive:d(0), change:d(1), first:five[0], five};
 }
 // ---- Multisig (BIP48 / BIP67 sortedmulti) ----
 // Base58Check decode: returns the payload without its 4 checksum bytes, or throws.
@@ -2795,7 +2798,7 @@ async function refreshWatch(){
   document.getElementById("wZpub").textContent = w.key;
   document.getElementById("wDescR").textContent = w.receive;
   document.getElementById("wDescC").textContent = w.change;
-  document.getElementById("wFirst").textContent = w.first;
+  document.getElementById("wFirst").textContent = w.five.join("\n");
   const spA = await spAddressFromSeed(await mnemonicToSeed(watchCtx.mnemonic, watchCtx.pass), net, acct);
   if(mine !== watchSeq || !watchCtx) return;
   document.getElementById("spAddr").textContent = spA;
