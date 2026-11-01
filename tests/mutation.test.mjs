@@ -843,6 +843,20 @@ async function probe(w, mutated) {
   const parts = expect.d50.split(' '); parts[11] = parts[11] === 'zoo' ? 'abandon' : 'zoo';
   const corrupted = parts.join(' ');
   if ((await w.checkPhrase(corrupted)).ok !== validateMnemonic(corrupted, wordlist)) fails.push('checker rejects bad checksum');
+  // v1.25.1 fairness test (reference values from scipy.stats.chisquare)
+  { const mk = (c) => c.map((n, i) => String(i + 1).repeat(n)).join('');
+    for (const [c, x, pv] of [[[5,5,5,5,5,5],0,1],[[8,6,4,5,3,4],3.2,0.669183],[[10,6,5,4,3,2],8,0.156236],[[12,8,4,3,2,1],17.6,0.003492],[[15,12,9,6,3,0],21,0.00081],[[20,5,2,1,1,1],56.4,0]]) { const r = w.faceTest(mk(c), false); if (Math.abs(r.chi - x) > 1e-6 || Math.abs(r.p - pv) > 2e-6 || r.df !== 5) fails.push('fairness: dice chi-square and p match scipy for ' + c.join(',')); }
+    for (const [c, x, pv] of [[[15,5],5,0.025347],[[10,10],0,1],[[16,4],7.2,0.00729],[[18,2],12.8,0.000347]]) { const r = w.faceTest('1'.repeat(c[0]) + '0'.repeat(c[1]), true); if (Math.abs(r.chi - x) > 1e-6 || Math.abs(r.p - pv) > 2e-6 || r.df !== 1) fails.push('fairness: coin chi-square and p match scipy for ' + c.join(',')); }
+    const st = () => ($('rcStat') || {}).textContent || '';
+    w.wipeSeed(); mode('dice'); $('rolls').value = mk([5,5,5,5,5,4]); $('rolls').oninput(); if (st()) fails.push('fairness: dice test waits for 30 rolls');
+    $('rolls').value = mk([5,5,5,5,5,5]); $('rolls').oninput(); if (!/χ² = 0\.00, 5 degrees of freedom, p ≈ 1\.000\. Nothing unusual\. This cannot prove fairness\.$/.test(st())) fails.push('fairness: even counts text');
+    $('rolls').value = mk([12,8,4,3,2,1]); $('rolls').oninput(); if (!/p ≈ 0\.003\. Mildly unusual: a fair die does this about 1 time in 20\./.test(st())) fails.push('fairness: mild text for die');
+    $('rolls').value = mk([20,5,2,1,1,1]); $('rolls').oninput(); if (!/p ≈ below 0\.001\. Strong sign the counts are uneven\./.test(st())) fails.push('fairness: strong text');
+    $('rolls').value = mk([10,6,5,4,3,2]); $('rolls').oninput(); if (!/p ≈ 0\.156\. Nothing unusual/.test(st())) fails.push('fairness: p 0.156 is nothing unusual');
+    $('rolls').value = ''; $('rolls').oninput(); mode('coin');
+    $('rolls').value = '1'.repeat(14) + '0'.repeat(5); $('rolls').oninput(); if (st()) fails.push('fairness: coin test waits for 20 flips');
+    $('rolls').value = '1'.repeat(15) + '0'.repeat(5); $('rolls').oninput(); if (!/χ² = 5\.00, 1 degree of freedom, p ≈ 0\.025\. Mildly unusual: a fair coin does this/.test(st())) fails.push('fairness: coin text');
+    $('rolls').value = ''; $('rolls').oninput(); mode('dice'); }
   // v1.25.0 layout: tabs, Your seed panel, step bar, word slots, dice wait
   { const on = (n) => !$('tp-' + n).classList.contains('tab-off'), sel = (n) => $('tab-' + n).getAttribute('aria-selected'), disp = (n) => w.getComputedStyle($('tp-' + n)).display;
     const names = ['make', 'check', 'tools', 'about'];
