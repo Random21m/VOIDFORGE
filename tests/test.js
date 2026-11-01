@@ -532,6 +532,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ts.w.wipeSeed(); ok(cells().length===24&&cells().every(c=>c.classList.contains('empty'))&&!cells().some(c=>words.includes(c.lastChild.textContent)&&c.lastChild.textContent!=='\u2014')&&!ts.$('wordGrid').textContent.includes(words[0]+words[1]),'slots: wiping brings back empty slots and leaves none of the old words in the page');
     ts.set('555'); await ts.w.generate(); ok(cells().every(c=>c.classList.contains('empty'))&&!ts.$('genResult').classList.contains('nores')&&/more rolls/.test(ts.$('genResult').textContent),'slots: an "enter more rolls" message shows in the result box and the slots stay empty');
   }
+  ok([['make','MAKE','MAKE A SEED'],['check','CHECK','CHECK A BACKUP'],['tools','TOOLS','EXTRA TOOLS'],['about','ABOUT','ABOUT & HELP']].every(([t,sh,fl])=>html.includes('data-tab="'+t+'" aria-label="'+fl+'"><span class="lg">')&&html.includes('<span class="sh">'+sh+'</span>')),'tabs: every tab has a full name (screen readers, wide screens) and a short name for phones');
   ok(/body\.light \.tabs button \{ color: #fff; background: #0066cc/.test(html),'tabs: light mode shows white tab names on blue');
   { const td=load(); await td.ready(); ok(td.d.body.classList.contains('dice-wait')&&!!td.$('startGate'),'dice: held back while the notice is open');
     ok(/body\.dice-wait \.logo \.die, body\.dice-wait \.logo svg[^{]*\{\s*animation:\s*none !important/.test(html),'dice: the stylesheet pauses the falling dice while waiting');

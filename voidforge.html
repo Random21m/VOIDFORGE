@@ -529,6 +529,7 @@
   body.light .tabs button:hover { background: #0a74e0; color: #fff; opacity: 1; }
   body.light .tabs button[aria-selected="true"], body.light .tabs button[aria-selected="true"] small { color: #fff; }
   body.light .tabs button[aria-selected="true"] { background: #004a99; opacity: 1; border-bottom-color: #ffb800; }
+  .tabs button .sh { display: none; }
   .tab-off { display: none !important; }
   .card { scroll-margin-top: 72px; }
   .stepbar { list-style: none; display: flex; gap: 6px; margin: 0 0 12px; padding: 0; }
@@ -560,9 +561,9 @@
   @media (max-width: 860px) {
     #cardGen { display: block; }
     #cardGen .gen-right { position: static; margin-top: 14px; }
-    .tabs { overflow-x: auto; }
-    .tabs button { flex: 1 0 auto; padding-left: 12px; padding-right: 12px; white-space: nowrap; }
-    .tabs button small { display: none; }
+    .tabs button { padding-left: 4px; padding-right: 4px; white-space: nowrap; }
+    .tabs button small, .tabs button .lg { display: none; }
+    .tabs button .sh { display: inline; }
   }
   @media (max-width: 560px) {
     #topbar { flex-wrap: wrap; }
@@ -644,10 +645,10 @@
   
   <div class="strip" id="strip"><b>Educational, not independently audited.</b> <span>Use an offline computer, write seeds on paper, start with a small amount.</span> <button type="button" class="linklike" onclick="showTab('about','beforeCard')">Read before real keys &rarr;</button></div>
   <div class="tabs" id="tabs" role="tablist" aria-label="Sections">
-    <button type="button" role="tab" id="tab-make" aria-controls="tp-make" aria-selected="true" data-tab="make">MAKE A SEED<small>new wallet words from dice or coins</small></button>
-    <button type="button" role="tab" id="tab-check" aria-controls="tp-check" aria-selected="false" tabindex="-1" data-tab="check">CHECK A BACKUP<small>words, address or key you already have</small></button>
-    <button type="button" role="tab" id="tab-tools" aria-controls="tp-tools" aria-selected="false" tabindex="-1" data-tab="tools">EXTRA TOOLS<small>transactions, multisig, last word</small></button>
-    <button type="button" role="tab" id="tab-about" aria-controls="tp-about" aria-selected="false" tabindex="-1" data-tab="about">ABOUT &amp; HELP<small>how it works, privacy, changelog</small></button>
+    <button type="button" role="tab" id="tab-make" aria-controls="tp-make" aria-selected="true" data-tab="make" aria-label="MAKE A SEED"><span class="lg">MAKE A SEED</span><span class="sh">MAKE</span><small>new wallet words from dice or coins</small></button>
+    <button type="button" role="tab" id="tab-check" aria-controls="tp-check" aria-selected="false" tabindex="-1" data-tab="check" aria-label="CHECK A BACKUP"><span class="lg">CHECK A BACKUP</span><span class="sh">CHECK</span><small>words, address or key you already have</small></button>
+    <button type="button" role="tab" id="tab-tools" aria-controls="tp-tools" aria-selected="false" tabindex="-1" data-tab="tools" aria-label="EXTRA TOOLS"><span class="lg">EXTRA TOOLS</span><span class="sh">TOOLS</span><small>transactions, multisig, last word</small></button>
+    <button type="button" role="tab" id="tab-about" aria-controls="tp-about" aria-selected="false" tabindex="-1" data-tab="about" aria-label="ABOUT & HELP"><span class="lg">ABOUT &amp; HELP</span><span class="sh">ABOUT</span><small>how it works, privacy, changelog</small></button>
   </div>
   <div id="tp-make" class="tabpanel" role="tabpanel" aria-labelledby="tab-make">
   <ol class="stepbar" id="stepBar" aria-label="Where you are in making a seed"><li data-s="1">Choose</li><li data-s="2">Roll</li><li data-s="3">Passphrase</li><li data-s="4">Forge</li><li data-s="5">Check</li></ol>
