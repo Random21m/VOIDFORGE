@@ -677,6 +677,7 @@ async function probe(w, mutated) {
       const ks = mns.map((m) => accKey(m, "m/48'/0'/0'/2'")), want = [0, 1, 2].map((i) => btc.p2wsh(btc.p2ms(2, ks.map((k) => k.derive('m/0/' + i).publicKey).sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)))), btc.NETWORK).address);
       if ([...w.document.querySelectorAll('#msAddrs li')].map((l) => l.textContent).join() !== want.join()) fails.push('multisig: first three addresses'); }
     if ($('msOneDev').style.display !== 'none' || $('msBanner').style.display !== 'none' || $('msDone').style.display === 'none') fails.push('multisig: finished state (banner gone, mixed sources hide the one-device warning)');
+    { const sq = []; $('msQrBox').scrollIntoView = (o) => sq.push(o && o.block); w.msShowQr(); if (sq.length !== 1 || sq[0] !== 'nearest') fails.push('qr: multisig QR scrolls fully into view'); delete $('msQrBox').scrollIntoView; w.msHideQr(); }
     w.msShowQr(); if ($('msQrBox').style.display !== '' || !/81 x 81/.test($('msQrCaption').textContent)) fails.push('multisig: QR');
     { const tmp = w.document.createElement('div'); tmp.innerHTML = w.qrSvg(w.qrMatrix($('msDescR').textContent).rows); if (tmp.innerHTML !== $('msQrImg').innerHTML) fails.push('multisig: QR encodes the receive descriptor'); }
     w.msHideQr(); if ($('msQrBox').style.display !== 'none' || $('msQrImg').textContent !== '') fails.push('multisig: hide QR');
@@ -843,9 +844,16 @@ async function probe(w, mutated) {
   const parts = expect.d50.split(' '); parts[11] = parts[11] === 'zoo' ? 'abandon' : 'zoo';
   const corrupted = parts.join(' ');
   if ((await w.checkPhrase(corrupted)).ok !== validateMnemonic(corrupted, wordlist)) fails.push('checker rejects bad checksum');
+  // v1.25.1 QR boxes scroll fully into view and the stylesheet keeps the seed panel from covering content
+  { if (!/#cardGen \.gen-right \{ grid-column: 2; grid-row: 1 \/ span 2;[^}]*position: sticky/.test(mutated) || !/#cardGen \.gen-bottom \{ grid-column: 1; grid-row: 2;/.test(mutated)) fails.push('qr: the sticky seed panel must not slide over the content below');
+    if (!/#qrBox, #sqBox, #msQrBox \{ scroll-margin: 80px 0 20px; \}/.test(mutated)) fails.push('qr: QR boxes keep clear of the sticky tab bar');
+    const tq = loadPage(mutated, () => {}); await ready(tq); const seen = []; for (const id of ['qrBox', 'sqBox']) { const el = tq.document.getElementById(id); el.scrollIntoView = (o) => seen.push([id, o && o.block]); }
+    tq.document.getElementById('wDescR').textContent = 'wpkh(x)'; tq.showQr('wDescR', 'receive descriptor'); if (seen.length !== 1 || seen[0][0] !== 'qrBox' || seen[0][1] !== 'nearest') fails.push('qr: watch-only QR scrolls fully into view');
+    tq.document.getElementById('rolls').value = D50; tq.document.getElementById('rolls').oninput(); await tq.generate(); tq.showSeedQr('seedqr'); if (seen.length !== 2 || seen[1][0] !== 'sqBox' || seen[1][1] !== 'nearest') fails.push('qr: SeedQR scrolls fully into view'); }
   // v1.25.1 word finder (reference words from the python-mnemonic English list)
   { for (const [i, wd, n] of [['1','abandon',1],['2048','zoo',2048],['257','cactus',257],['680','female',680],['3 A 7','female',680],['3-a-7','female',680],['1 0 0','abandon',1],['8 F F','zoo',2048],['2 0 0','cactus',257],['300','century',300],[' 300 ','century',300],['8 0 0','theme',1793]]) { const r = w.wdFindWord(i); if (r.word !== wd || r.idx !== n - 1 || r.msg !== 'Word ' + n + ': ' + wd) fails.push('word finder: ' + JSON.stringify(i) + ' gives the right word'); }
-    for (const x of ['0','2049','9 0 0','0 0 0','3 G 7','abc','3 A','3 A 7 7','-']) { const r = w.wdFindWord(x); if (r.word !== undefined || r.msg.length < 10) fails.push('word finder: bad entry ' + JSON.stringify(x) + ' refused'); }
+    for (const x of ['9 0 0','0 0 0','3 G 7','abc','3 A','3 A 7 7','-']) { const r = w.wdFindWord(x); if (r.word !== undefined || r.idx !== undefined || r.msg !== 'Type a number from 1 to 2048, or a D8 roll (1-8) then two hex digits (0-F), like 3 A 7.') fails.push('word finder: bad entry ' + JSON.stringify(x) + ' refused with the hint'); }
+    for (const x of ['0','2049','99999']) { const r = w.wdFindWord(x); if (r.msg !== 'A word number is between 1 and 2048.' || r.idx !== undefined) fails.push('word finder: out-of-range number ' + x + ' explained'); }
     if (w.wdFindWord('').msg !== '' || w.wdFindWord('  ').msg !== '') fails.push('word finder: empty entry is silent');
     $('wdFind').value = '3 A 7'; w.wdFind(); if ($('wdFound').textContent !== 'Word 680: female') fails.push('word finder: shows the word'); $('wdFind').value = ''; w.wdFind(); if ($('wdFound').textContent !== '') fails.push('word finder: clears the line'); }
   // v1.25.1 fairness test (reference values from scipy.stats.chisquare)
@@ -857,6 +865,7 @@ async function probe(w, mutated) {
     $('rolls').value = mk([5,5,5,5,5,5]); $('rolls').oninput(); if (!/χ² = 0\.00, 5 degrees of freedom, p ≈ 1\.000\. Nothing unusual\. This cannot prove fairness\.$/.test(st())) fails.push('fairness: even counts text');
     $('rolls').value = mk([12,8,4,3,2,1]); $('rolls').oninput(); if (!/p ≈ 0\.003\. Mildly unusual: a fair die does this about 1 time in 20\./.test(st())) fails.push('fairness: mild text for die');
     $('rolls').value = mk([20,5,2,1,1,1]); $('rolls').oninput(); if (!/p ≈ below 0\.001\. Strong sign the counts are uneven\./.test(st())) fails.push('fairness: strong text');
+    $('rolls').value = mk([15,12,9,6,3,0]); $('rolls').oninput(); if (!/p ≈ below 0\.001\. Strong sign/.test(st())) fails.push('fairness: p 0.0008 is already a strong sign');
     $('rolls').value = mk([10,6,5,4,3,2]); $('rolls').oninput(); if (!/p ≈ 0\.156\. Nothing unusual/.test(st())) fails.push('fairness: p 0.156 is nothing unusual');
     $('rolls').value = ''; $('rolls').oninput(); mode('coin');
     $('rolls').value = '1'.repeat(14) + '0'.repeat(5); $('rolls').oninput(); if (st()) fails.push('fairness: coin test waits for 20 flips');
@@ -1756,6 +1765,13 @@ const M = [
   ['finder: wrong message', '"Word " + (idx + 1) + ": " + WORDLIST[idx]', '"Word " + idx + ": " + WORDLIST[idx]'],
   ['finder: empty entry complains', 'if(!r) return {msg: ""};', 'if(false) return {msg: ""};'],
   ['finder: page line not updated', 'document.getElementById("wdFound").textContent = wdFindWord(document.getElementById("wdFind").value).msg;', 'document.getElementById("wdFound").textContent = "";'],
+  ['qr: seed panel covers content again', '#cardGen .gen-right { grid-column: 2; grid-row: 1 / span 2;', '#cardGen .gen-right { grid-column: 2; grid-row: 1;'],
+  ['qr: bottom area spans under the panel', '#cardGen .gen-bottom { grid-column: 1; grid-row: 2;', '#cardGen .gen-bottom { grid-column: 1 / -1; grid-row: 2;'],
+  ['qr: no margin under the tab bar', '#qrBox, #sqBox, #msQrBox { scroll-margin: 80px 0 20px; }', '#qrBox, #sqBox, #msQrBox { scroll-margin: 0; }'],
+  ['qr: watch-only QR not scrolled', '  document.getElementById("qrBox").style.display = "";\n  scrollQrIntoView("qrBox");', '  document.getElementById("qrBox").style.display = "";'],
+  ['qr: SeedQR not scrolled', '  document.getElementById("sqBox").style.display = "";\n  scrollQrIntoView("sqBox");', '  document.getElementById("sqBox").style.display = "";'],
+  ['qr: multisig QR not scrolled', '  msEl("msQrBox").style.display = "";\n  scrollQrIntoView("msQrBox");', '  msEl("msQrBox").style.display = "";'],
+  ['qr: scrolls to the top edge', 'el.scrollIntoView({behavior: "smooth", block: "nearest"})', 'el.scrollIntoView({behavior: "smooth", block: "start"})'],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

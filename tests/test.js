@@ -555,10 +555,17 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     // reference words from the python-mnemonic library's English list
     const W=[["1","abandon",1],["2048","zoo",2048],["257","cactus",257],["680","female",680],["3 A 7","female",680],["3-a-7","female",680],["1 0 0","abandon",1],["8 F F","zoo",2048],["2 0 0","cactus",257],["300","century",300],[" 300 ","century",300]];
     ok(W.every(([i,wd,n])=>{const r=F(i);return r.word===wd&&r.idx===n-1&&r.msg==='Word '+n+': '+wd;}),'word finder: numbers and D8 + hex dice give the right BIP39 words');
-    ok(['0','2049','9 0 0','3 G 7','abc','3 A','3 A 7 7','-'].every(x=>F(x).word===undefined&&F(x).msg.length>10),'word finder: bad entries give a hint and no word');
+    ok(['9 0 0','0 0 0','3 G 7','abc','3 A','3 A 7 7','-'].every(x=>F(x).word===undefined&&F(x).idx===undefined&&F(x).msg==='Type a number from 1 to 2048, or a D8 roll (1-8) then two hex digits (0-F), like 3 A 7.'),'word finder: bad entries give a hint and no word');
+    ok(['0','2049','99999'].every(x=>F(x).msg==='A word number is between 1 and 2048.'&&F(x).idx===undefined),'word finder: out-of-range numbers are explained');
     ok(F('').msg===''&&F('   ').msg==='','word finder: empty entry says nothing');
     tw.w.document.getElementById('wdFind').value='3 A 7'; tw.w.wdFind(); ok(tw.$('wdFound').textContent==='Word 680: female','word finder: shows the word on the page');
     ok(tw.$('wdFind').closest('#tp-make')!==null,'word finder: lives in the Make a seed tab'); }
+  ok(/#cardGen \.gen-right \{ grid-column: 2; grid-row: 1 \/ span 2;[^}]*position: sticky/.test(html)&&/#cardGen \.gen-bottom \{ grid-column: 1; grid-row: 2;/.test(html),'layout: the sticky Your seed panel sits beside all the content and never slides over it (QR codes were hidden behind it)');
+  ok(/#qrBox, #sqBox, #msQrBox \{ scroll-margin: 80px 0 20px; \}/.test(html),'layout: QR boxes keep clear of the sticky tab bar when scrolled to');
+  { const tq=load(); await tq.ready(); const seen=[]; const spy=(id)=>{const el=tq.$(id); el.scrollIntoView=(o)=>seen.push([id,o&&o.block]);};
+    ['qrBox','sqBox'].forEach(spy); tq.w.document.getElementById('wDescR').textContent='wpkh(x)'; tq.w.showQr('wDescR','receive descriptor');
+    ok(seen.length===1&&seen[0][0]==='qrBox'&&seen[0][1]==='nearest','QR: showing the watch-only QR scrolls it fully into view');
+    tq.set(rnd(50)); await tq.w.generate(); tq.w.showSeedQr('seedqr'); ok(seen.length===2&&seen[1][0]==='sqBox'&&seen[1][1]==='nearest','QR: showing the SeedQR scrolls it fully into view'); }
   ok(/body\.light \.tabs button \{ color: #fff; background: #0066cc/.test(html),'tabs: light mode shows white tab names on blue');
   { const td=load(); await td.ready(); ok(td.d.body.classList.contains('dice-wait')&&!!td.$('startGate'),'dice: held back while the notice is open');
     ok(/body\.dice-wait \.logo \.die, body\.dice-wait \.logo svg[^{]*\{\s*animation:\s*none !important/.test(html),'dice: the stylesheet pauses the falling dice while waiting');

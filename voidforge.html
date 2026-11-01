@@ -541,8 +541,9 @@
   body.guided .stepbar { display: none; }
   #cardGen { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); column-gap: 22px; }
   #cardGen .gen-left { grid-column: 1; grid-row: 1; min-width: 0; }
-  #cardGen .gen-right { grid-column: 2; grid-row: 1; min-width: 0; position: sticky; top: 76px; align-self: start; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
-  #cardGen .gen-bottom { grid-column: 1 / -1; min-width: 0; }
+  #cardGen .gen-right { grid-column: 2; grid-row: 1 / span 2; min-width: 0; position: sticky; top: 76px; align-self: start; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  #cardGen .gen-bottom { grid-column: 1; grid-row: 2; min-width: 0; }
+  #qrBox, #sqBox, #msQrBox { scroll-margin: 80px 0 20px; }
   .seed-title { font-size: 12px; font-weight: 800; letter-spacing: 2px; color: var(--accent); }
   .big-count { font-size: 34px; font-weight: 800; line-height: 1.15; margin-top: 2px; }
   .big-sub { font-size: 13.5px; font-weight: 600; margin-bottom: 10px; }
@@ -2638,6 +2639,8 @@ async function finishSeed(mnemonic, ctx){
   } catch(e) { clearWatch(); }
   if(ms) msBanner();
 }
+// After a QR code opens, make sure all of it is on screen (clear of the sticky tab bar), not cut off at the bottom.
+function scrollQrIntoView(id){ const el = document.getElementById(id); if(!el) return; try { el.scrollIntoView({behavior: "smooth", block: "nearest"}); } catch(e) {} }
 function showQr(id, label){
   const t = document.getElementById(id).textContent;
   if(!t) return alert("Generate a seed first");
@@ -2645,6 +2648,7 @@ function showQr(id, label){
   document.getElementById("qrImg").innerHTML = qrSvg(q.rows);
   document.getElementById("qrCaption").textContent = "QR code for the " + label + " (public key only). Scan it with your watch-only wallet app. If the app cannot scan it, use COPY instead.";
   document.getElementById("qrBox").style.display = "";
+  scrollQrIntoView("qrBox");
 }
 function hideQr(){
   document.getElementById("qrImg").textContent = ""; document.getElementById("qrCaption").textContent = "";
@@ -2660,6 +2664,7 @@ function showSeedQr(kind){
   document.getElementById("sqImg").innerHTML = qrSvg(q.rows);
   document.getElementById("sqCaption").textContent = seedQrName(kind) + " for these " + words.length + " words, " + q.rows.length + " x " + q.rows.length + " squares. SECRET: anyone who scans it controls the funds. Scan it only with an offline device.";
   document.getElementById("sqBox").style.display = "";
+  scrollQrIntoView("sqBox");
 }
 function hideSeedQr(){
   sqKind = null; sqRows = null; closeSqGuide();
@@ -3367,6 +3372,7 @@ function msShowQr(){
   msEl("msQrImg").innerHTML = qrSvg(q.rows);
   msEl("msQrCaption").textContent = "QR code of the " + ms.m + "-of-" + ms.n + " descriptor (" + q.rows.length + " x " + q.rows.length + " squares, public keys only). Big QR codes are hard to scan on a small screen: if your app cannot read it, use COPY.";
   msEl("msQrBox").style.display = "";
+  scrollQrIntoView("msQrBox");
 }
 function msHideQr(){ msEl("msQrImg").textContent = ""; msEl("msQrCaption").textContent = ""; msEl("msQrBox").style.display = "none"; }
 function msSheetText(){
