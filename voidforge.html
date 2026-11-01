@@ -505,14 +505,74 @@
   #wdOut { margin-top: 10px; }
   .wd-row { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; padding: 3px 0; border-bottom: 1px dashed var(--border); word-break: break-word; }
   .wd-key { color: var(--accent); font-weight: 700; }
+
+  /* ---- v1.25.0 layout: top bar, one-line notice, tabs, two-column Make a seed ---- */
+  .container { max-width: 1100px; }
+  #topbar { max-width: 1076px; }
+  #topbar .dl-btn { background: #00ff9d; color: #000; font-weight: 700; }
+  #topbar .dl-btn .dl-long { }
+  header { margin-bottom: 8px; }
+  #statusLine { margin-bottom: 4px; }
+  .strip { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 4px 0 12px; padding: 7px 12px; border: 1px solid var(--warn-text); border-radius: 10px; font-size: 13px; background: var(--surface); }
+  .strip b { color: var(--warn-text); }
+  .strip .linklike { margin: 0 0 0 auto; padding: 0; background: none; border: none; color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: 0; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; box-shadow: none; }
+  .tabs { display: flex; gap: 4px; margin: 0 0 14px; border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 4; background: var(--bg); padding-top: 4px; }
+  .tabs button { flex: 1 1 0; min-width: 0; margin: 0 0 -2px; padding: 9px 8px 8px; background: none; border: none; border-bottom: 3px solid transparent; border-radius: 0; color: var(--muted); font-size: 14px; font-weight: 700; letter-spacing: .4px; box-shadow: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .tabs button small { font-weight: 400; font-size: 11.5px; letter-spacing: 0; color: var(--muted); }
+  .tabs button:hover { color: var(--text); }
+  .tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+  .tabs button[aria-selected="true"] small { color: var(--accent); }
+  .tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .tab-off { display: none !important; }
+  .card { scroll-margin-top: 72px; }
+  .stepbar { list-style: none; display: flex; gap: 6px; margin: 0 0 12px; padding: 0; }
+  .stepbar li { flex: 1 1 0; text-align: center; font-size: 12.5px; font-weight: 700; padding: 7px 6px; border-radius: 8px; background: var(--surface2); color: var(--muted); }
+  .stepbar li.done { color: var(--ok-text); }
+  .stepbar li.done::before { content: "\2713  "; }
+  .stepbar li.cur { background: var(--accent); color: #001018; }
+  body.light .stepbar li.cur { color: #fff; }
+  body.guided .stepbar { display: none; }
+  #cardGen { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); column-gap: 22px; }
+  #cardGen .gen-left { grid-column: 1; grid-row: 1; min-width: 0; }
+  #cardGen .gen-right { grid-column: 2; grid-row: 1; min-width: 0; position: sticky; top: 76px; align-self: start; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  #cardGen .gen-bottom { grid-column: 1 / -1; min-width: 0; }
+  .seed-title { font-size: 12px; font-weight: 800; letter-spacing: 2px; color: var(--accent); }
+  .big-count { font-size: 34px; font-weight: 800; line-height: 1.15; margin-top: 2px; }
+  .big-sub { font-size: 13.5px; font-weight: 600; margin-bottom: 10px; }
+  .big-count.short, .big-sub.short { color: var(--bad-text); }
+  .big-count.met, .big-sub.met { color: var(--ok-text); }
+  .big-count.met::before { content: "\2713  "; }
+  #rollCount.short { color: var(--bad-text) !important; }
+  #rollCount.met { color: var(--ok-text) !important; }
+  #wordGrid.slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #wordGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 520px) { #cardGen .gen-right #wordGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .wcell.empty { opacity: .55; animation: none; }
+  #genResult.nores { display: none; }
+  #tp-about { max-width: 860px; margin-left: auto; margin-right: auto; }
+  body.dice-wait .logo .die, body.dice-wait .logo svg, body.dice-wait .logo .die::after { animation: none !important; opacity: 0; }
+  @media (max-width: 860px) {
+    #cardGen { display: block; }
+    #cardGen .gen-right { position: static; margin-top: 14px; }
+    .tabs { overflow-x: auto; }
+    .tabs button { flex: 1 0 auto; padding-left: 12px; padding-right: 12px; white-space: nowrap; }
+    .tabs button small { display: none; }
+  }
+  @media (max-width: 560px) {
+    #topbar { flex-wrap: wrap; }
+    body { padding-top: 96px; }
+    #topbar .dl-btn .dl-long { display: none; }
+    .stepbar li { font-size: 11px; padding: 6px 2px; }
+  }
 </style>
 </head>
-<body>
+<body class="dice-wait">
 <div id="topbar">
 <button class="guide-btn" id="guideBtn" onclick="toggleGuide()" aria-pressed="false">GUIDE ME</button>
 <button class="size-btn" id="sizeBtn" onclick="toggleSize()" aria-pressed="false">TEXT A+</button>
 <button class="print-btn" onclick="printSeed()">PRINT SEED</button>
 <button class="theme-toggle" onclick="toggleTheme()">DARK</button>
+<button class="dl-btn" onclick="downloadTool()">DOWNLOAD<span class="dl-long"> FOR USB</span></button>
 </div>
 <div id="tipBox" role="tooltip"></div>
 <div class="container">
@@ -573,31 +633,20 @@
     <h1>VOIDFORGE</h1>
     <div class="subtitle">DICE / COIN ENTROPY → SEED, BACKUP &amp; WALLET SETUP</div>
     <div id="guideNew">New here? <button type="button" class="secondary small" onclick="toggleGuide()">GUIDE ME</button> walks you through making a seed one screen at a time.</div>
-    <div class="steps">Start here</div>
-    <div class="start">
-      <button type="button" onclick="jumpTo('cardGen')">MAKE A SEED<small>new wallet words from dice or coins</small></button>
-      <button type="button" onclick="jumpTo('cardCheck')">CHECK A BACKUP<small>words, address or key you already have</small></button>
-      <button type="button" onclick="jumpTo('cardTools')">EXTRA TOOLS<small>last word, transaction, child seed</small></button>
-    </div>
   </header>
 
   
-  <div style="text-align:center; margin-bottom:12px;">
-    <button onclick="downloadTool()" style="background:#00ff9d; color:#000; font-weight:700;">DOWNLOAD FOR USB</button>
+  <div class="strip" id="strip"><b>Educational, not independently audited.</b> <span>Use an offline computer, write seeds on paper, start with a small amount.</span> <button type="button" class="linklike" onclick="showTab('about','beforeCard')">Read before real keys &rarr;</button></div>
+  <div class="tabs" id="tabs" role="tablist" aria-label="Sections">
+    <button type="button" role="tab" id="tab-make" aria-controls="tp-make" aria-selected="true" data-tab="make">MAKE A SEED<small>new wallet words from dice or coins</small></button>
+    <button type="button" role="tab" id="tab-check" aria-controls="tp-check" aria-selected="false" tabindex="-1" data-tab="check">CHECK A BACKUP<small>words, address or key you already have</small></button>
+    <button type="button" role="tab" id="tab-tools" aria-controls="tp-tools" aria-selected="false" tabindex="-1" data-tab="tools">EXTRA TOOLS<small>transactions, multisig, last word</small></button>
+    <button type="button" role="tab" id="tab-about" aria-controls="tp-about" aria-selected="false" tabindex="-1" data-tab="about">ABOUT &amp; HELP<small>how it works, privacy, changelog</small></button>
   </div>
-  <div class="warning">
-    AIR-GAPPED USE ONLY for real funds.<br>
-    Never enter a real seed on a connected device.<br>
-    Always verify with a second offline tool before trusting real Bitcoin.
-    <div id="disclaimer" style="margin-top:8px; font-size:13.5px; opacity:.9;">VOIDFORGE is an educational tool and has not been independently audited. Provided as is, without warranty. You alone are responsible for your funds and backups. Lost words or passphrase mean lost funds. Test the backup and start with a small amount.</div>
-  </div>
-
-  <div class="card before-card" id="beforeCard"><h2><span class="ico">&#9888;</span> BEFORE YOU MAKE REAL KEYS</h2>
-<p class="sub">Three ways a computer can quietly keep your secrets, and the simple fix for each.</p><div class="bc-grid">
-<div class="sg-item"><div class="sg-ico">1</div><div><b>Your computer may keep a copy of your keys.</b> It can write memory to the hard drive (swap files, hibernation) without asking, and the browser cannot stop it.<span class="sg-fix"><b>What to do:</b> for real money, use an offline computer with an encrypted drive, and turn hibernation off.</span></div></div>
-<div class="sg-item"><div class="sg-ico">2</div><div><b>Copying can leak.</b> Clipboard history can keep what you copy or paste, and may sync it to your other devices.<span class="sg-fix"><b>What to do:</b> write seeds on paper; avoid copy and paste for anything secret, and turn clipboard history off.</span></div></div>
-<div class="sg-item"><div class="sg-ico">3</div><div><b>Keys can stay in memory after you finish.</b> Wiping the page is a precaution, not a guarantee.<span class="sg-fix"><b>What to do:</b> when you are done, close the browser and restart the computer.</span></div></div></div></div>
+  <div id="tp-make" class="tabpanel" role="tabpanel" aria-labelledby="tab-make">
+  <ol class="stepbar" id="stepBar" aria-label="Where you are in making a seed"><li data-s="1">Choose</li><li data-s="2">Roll</li><li data-s="3">Passphrase</li><li data-s="4">Forge</li><li data-s="5">Check</li></ol>
   <div class="card" id="cardGen">
+   <div class="gen-left">
     <h2>MAKE A SEED</h2>
     <p class="sub">Pick 12 or 24 words, enter your dice rolls or coin flips, then press FORGE SEED and write the words on paper.</p>
 
@@ -681,6 +730,9 @@
     <div id="rollHistory" data-g="2" style="font-size:12.5px;color:var(--muted);margin-top:6px;min-height:16px;"></div>
     <div id="diceVisual" data-g="2" style="font-size:30px; letter-spacing:4px; margin-top:4px; min-height:28px;"></div>
     <div id="rollChart" data-g="2" class="rc" role="img" aria-label="Chart of how many times each face came up" style="display:none;"></div>
+   </div>
+   <div class="gen-right" id="genRight">
+    <div class="seed-head"><div class="seed-title">YOUR SEED</div><div id="bigCount" class="big-count short" aria-live="polite"></div><div id="bigSub" class="big-sub short"></div></div>
     <div class="btn-row" data-g="4">
       <button id="forgeBtn" onclick="generate()" disabled>FORGE SEED</button>
       <p class="forge-note">Making real keys? Use an offline computer, keep clipboard history off, and restart when you are done.</p>
@@ -692,7 +744,7 @@
     <div id="abbrNote" data-g="4" class="hint" aria-live="polite"></div>
     <div id="passNote" data-g="4"></div>
     <div id="nextStep" data-g="4" aria-live="polite"></div>
-    <div class="result" id="genResult" data-g="4" role="status">—</div>
+    <div class="result nores" id="genResult" data-g="4" role="status">—</div>
     <div class="btn-row" style="margin-top:6px;" data-g="4">
       <button class="secondary small" id="abbrBtn" onclick="toggleAbbr()">SHOW FIRST 4 LETTERS</button>
       <button class="secondary small" onclick="sendToVerify()">SEND TO CHECK</button>
@@ -702,6 +754,8 @@
     </div>
     <div data-g="4 5" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;"><div class="fp" id="fingerprint"></div><div id="fpIcon" class="lh" title="Fingerprint picture (LifeHash): the same picture Sparrow Wallet shows for this fingerprint"></div></div>
     <div id="address" data-g="4 5" style="margin-top:6px; font-size:13.5px; word-break:break-all; color:var(--muted);"></div>
+   </div>
+   <div class="gen-bottom">
     <details id="addrBox" data-g="5" style="display:none; margin-top:8px;">
       <summary>First 5 receiving addresses, SegWit and Taproot (to compare in another wallet)</summary>
       <ol id="addrList" class="addr-list"></ol>
@@ -821,10 +875,114 @@
       </details>
       <p class="hint" style="margin:8px 0 0;">In your wallet app choose &ldquo;watch-only&rdquo;, &ldquo;import xpub/zpub&rdquo; or &ldquo;import descriptor&rdquo; and paste. Then check that its first receiving address equals the First receive address shown above. See RECOVERY.md for steps per app.</p>
     </details>
-    <div id="printOnly"></div>
-    <div id="printQr"></div>
     <div class="status" id="testResults" style="white-space:pre-wrap; font-family:monospace; font-size:12.5px; font-weight:400;"></div>
-    
+   </div>
+  </div>
+  </div>
+
+  <div id="tp-check" class="tabpanel tab-off" role="tabpanel" aria-labelledby="tab-check">
+  <div class="card" id="cardCheck">
+    <h2>CHECK A BACKUP</h2>
+    <p class="sub">Type the words from your backup to see that they are valid and match your wallet. Nothing is saved or sent.</p>
+    <details id="practiceBox">
+      <summary>Practise making a backup<span class="tag tag-ro">NO REAL KEYS</span><small>Rehearse writing words on paper and checking them, with a throwaway phrase.</small></summary>
+      <p class="hint" style="margin:8px 0;">Copying words by hand is where real backups go wrong. This gives you a random <b>practice phrase</b> to write on paper, hides it, then checks the copy you type back in. Do it once before the real thing. <b>The practice phrase is made on the spot and is only for practice: never put money on it.</b></p>
+      <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary" id="prStart" onclick="practiceStart()">START PRACTICE</button><button type="button" class="secondary small" onclick="practiceClear()">CLEAR</button></div>
+      <div id="prShow" style="display:none; margin-top:10px;">
+        <div class="ms-warn" style="margin:0 0 8px;"><b>PRACTICE ONLY. Never fund this phrase.</b> Write the 12 words on paper, in order, with a pen. Then press HIDE.</div>
+        <ol id="prWords" style="columns:2; margin:0 0 8px 36px; padding:0; font-family:'Courier New',monospace; font-size:15px;"></ol>
+        <button type="button" class="small" id="prHide" onclick="practiceHide()">I HAVE WRITTEN THEM DOWN: HIDE</button>
+      </div>
+      <div id="prCheck" style="display:none; margin-top:10px;">
+        <p class="hint" style="margin:0 0 6px;">The words are hidden. Read your paper and type the 12 words back, in order.</p>
+        <textarea id="prInput" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Practice words typed from paper" placeholder="Type the 12 practice words from your paper"></textarea>
+        <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary" id="prCheckBtn" onclick="practiceCheck()">CHECK MY PAPER</button><button type="button" class="secondary small" onclick="practicePeek()">SHOW THE WORDS AGAIN</button></div>
+      </div>
+      <div class="status" id="prStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+    </details>
+    <textarea id="phrase" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Type or paste your seed words to check..."></textarea>
+    <div class="hint" style="margin:4px 0 0;">Also accepts a SeedSigner SeedQR digit string (48 or 96 digits) or CompactSeedQR hex. Type it in; do not scan a real seed QR with a connected phone.</div>
+    <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
+      <input type="password" id="verifyPass" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Passphrase (if you used one)" style="flex:1; min-width:0;">
+      <button type="button" class="secondary small" onclick="toggleVerifyPassphrase(this)">SHOW</button>
+    </div>
+    <input type="text" id="verifyRecorded" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="What your wallet app shows (optional)" style="margin-top:6px;">
+    <div class="hint" style="margin:4px 0 0;">Optional: paste the fingerprint, first address, zpub or descriptor your wallet app showed, and VERIFY tells you MATCH or NO MATCH.</div>
+    <div class="btn-row" style="margin-top:8px;">
+      <button id="verifyBtn" onclick="verify()" disabled>VERIFY</button>
+    </div>
+    <div id="verifyIcons" style="display:flex; gap:18px; margin-top:8px;">
+      <div id="vFig0" style="display:none; text-align:center;"><div id="vIcon0" class="lh" style="margin-top:0"></div><div class="hint">no passphrase</div></div>
+      <div id="vFig1" style="display:none; text-align:center;"><div id="vIcon1" class="lh" style="margin-top:0"></div><div class="hint">with passphrase</div></div>
+    </div>
+    <div class="status" id="verifyStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-all;"></div>
+    <div class="status" id="verifyMatch" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+    <div style="margin-top:14px;">
+      <div class="hint" style="margin:0 0 6px;"><b>Is this address yours?</b> Paste a receive or change address from a wallet app (bc1q SegWit, bc1p Taproot, 3 nested SegWit or 1 legacy; the box on the right is the account, almost always 0). It is searched in the wallet made by the words and passphrase above.</div>
+      <div style="display:flex; gap:6px;"><input type="text" id="checkAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Address (bc1q, bc1p, 3 or 1)" style="flex:1; min-width:0;"><input type="text" id="checkAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number (almost always 0)" style="width:56px; flex:none;"></div>
+      <div class="btn-row" style="margin-top:8px;"><button type="button" class="secondary" id="checkAddrBtn" onclick="checkAddress()">CHECK ADDRESS</button></div>
+      <div class="status" id="addrCheckStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+    </div>
+  </div>
+  </div>
+
+  <div id="tp-tools" class="tabpanel tab-off" role="tabpanel" aria-labelledby="tab-tools">
+  <div class="card tools" id="cardTools">
+    <h2>EXTRA TOOLS</h2>
+    <p class="sub">Optional helpers. They only display; none of them can spend or sign.</p>
+    <details id="lwBox">
+      <summary>Find the last word<small>You have all but the last word of a seed: list the words that fit.</small></summary>
+      <p class="hint" style="margin:8px 0;">If you have all but the last word of a seed phrase (11, 14, 17, 20 or 23 words), this lists every word that makes the checksum valid. The last word is partly a checksum, so only about 1 in 16 of the 2048 words fits (128 for 12 words). It does not tell you which one you had: a valid last word is not necessarily yours. Type the words from your own backup; they are not saved or sent.</p>
+      <textarea id="lwInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="All words except the last" placeholder="Type the first 11 (or 14, 17, 20, 23) words"></textarea>
+      <div style="display:flex; gap:6px; margin-top:6px;">
+        <button type="button" class="secondary" id="lwBtn" onclick="findLastWords()">FIND LAST WORD</button>
+        <button type="button" class="secondary small" onclick="clearLastWords(true)">CLEAR</button>
+      </div>
+      <div class="status" id="lwStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+      <pre id="lwOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+    </details>
+    <details id="psbtBox">
+      <summary>Inspect a transaction (PSBT)<span class="tag tag-ro">READ ONLY</span><small>See where the money goes and the fee before signing.</small></summary>
+      <p class="hint" style="margin:8px 0;">Shows what a partly signed Bitcoin transaction (PSBT) from a wallet app would do: where the money comes from, where it goes, and the fee, so you can check it before signing on your hardware wallet. <b>This only reads and displays. It cannot sign, never uses your seed words, and sends nothing.</b> Paste the PSBT (base64 or hex) or choose the .psbt file. If you typed your words above, outputs that carry this wallet&rsquo;s key information are marked. It also checks any signatures it finds: whether two of them share a <b>nonce</b> (a repeated secret number that lets anyone work out the private key) and whether a signature covers the whole transaction.</p>
+      <textarea id="psbtInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="PSBT (base64 or hex)" placeholder="Paste the PSBT here (starts with cHNidP8 or 70736274ff)"></textarea>
+      <div style="display:flex; gap:6px; align-items:center; margin-top:6px; flex-wrap:wrap;">
+        <input type="file" id="psbtFile" accept=".psbt,application/octet-stream" aria-label="Choose a PSBT file" style="flex:1; min-width:0;">
+        <select id="psbtNet" aria-label="Network" style="width:auto; flex:none;"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
+      </div>
+      <div style="display:flex; gap:6px; margin-top:6px;">
+        <button type="button" class="secondary" id="psbtBtn" onclick="runPsbt()">INSPECT</button>
+        <button type="button" class="secondary small" onclick="clearPsbt(true)">CLEAR</button>
+      </div>
+      <div class="status" id="psbtStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+      <pre id="psbtOut" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13.5px; margin:8px 0 0;"></pre>
+    </details>
+    <details id="cmpBox">
+      <summary>Compare two transactions<span class="tag tag-ro">READ ONLY</span><small>Did the signer change anything? Is a fee bump a plain fee bump?</small></summary>
+      <p class="hint" style="margin:8px 0;">Paste the transaction you <b>sent</b> and the one that <b>came back</b> (from your signer or wallet). Or paste an original and its fee-bump replacement. This lists every difference in plain words. <b>It only reads and compares. It cannot sign and sends nothing anywhere.</b></p>
+      <label style="display:block; font-size:13px; color:var(--muted);">First (the original, or what you sent)</label>
+      <textarea id="cmpA" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="First transaction (PSBT or raw hex)" placeholder="PSBT (base64 or hex) or raw transaction hex"></textarea>
+      <label style="display:block; font-size:13px; color:var(--muted); margin-top:6px;">Second (the replacement, or what came back)</label>
+      <textarea id="cmpB" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Second transaction (PSBT or raw hex)" placeholder="PSBT (base64 or hex) or raw transaction hex"></textarea>
+      <div style="display:flex; gap:6px; align-items:center; margin-top:6px; flex-wrap:wrap;">
+        <select id="cmpNet" aria-label="Network" style="width:auto; flex:none;"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
+        <button type="button" class="secondary" id="cmpBtn" onclick="runCompare()">COMPARE</button>
+        <button type="button" class="secondary small" onclick="clearCompare(true)">CLEAR</button>
+      </div>
+      <div class="status" id="cmpStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+      <pre id="cmpOut" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13.5px; margin:8px 0 0;"></pre>
+    </details>
+    <details id="childBox">
+      <summary>Child seed (BIP85)<span class="tag tag-secret">SECRET</span><small>Make a separate new seed from this one, for another wallet.</small></summary>
+      <p class="hint" style="margin:8px 0;">Makes a brand new seed phrase from the parent words (and passphrase) typed above, for a separate wallet, using the BIP85 standard. The same parent, word count and index always give the same child. <b>The child is as secret as the parent.</b> It is only shown here: there is no copy, save or print for it. Use the same safety steps as for a new seed, and keep the parent safe: if you lose the parent you lose every child.</p>
+      <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+        <select id="childWords" aria-label="Child seed length" style="width:auto; flex:none;"><option value="12">12 words</option><option value="18">18 words</option><option value="24">24 words</option></select>
+        <input type="text" id="childIndex" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Child index" placeholder="Index" style="width:90px; flex:none;">
+        <button type="button" class="secondary" id="childBtn" onclick="deriveChild()">DERIVE CHILD SEED</button>
+        <button type="button" class="secondary small" onclick="clearChild()">HIDE</button>
+      </div>
+      <div class="status" id="childStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+      <pre id="childOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+    </details>
   </div>
 
   <div class="card" id="cardMulti">
@@ -901,109 +1059,21 @@
       </div>
     </details>
   </div>
-
-  <div class="card" id="cardCheck">
-    <h2>CHECK A BACKUP</h2>
-    <p class="sub">Type the words from your backup to see that they are valid and match your wallet. Nothing is saved or sent.</p>
-    <details id="practiceBox">
-      <summary>Practise making a backup<span class="tag tag-ro">NO REAL KEYS</span><small>Rehearse writing words on paper and checking them, with a throwaway phrase.</small></summary>
-      <p class="hint" style="margin:8px 0;">Copying words by hand is where real backups go wrong. This gives you a random <b>practice phrase</b> to write on paper, hides it, then checks the copy you type back in. Do it once before the real thing. <b>The practice phrase is made on the spot and is only for practice: never put money on it.</b></p>
-      <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary" id="prStart" onclick="practiceStart()">START PRACTICE</button><button type="button" class="secondary small" onclick="practiceClear()">CLEAR</button></div>
-      <div id="prShow" style="display:none; margin-top:10px;">
-        <div class="ms-warn" style="margin:0 0 8px;"><b>PRACTICE ONLY. Never fund this phrase.</b> Write the 12 words on paper, in order, with a pen. Then press HIDE.</div>
-        <ol id="prWords" style="columns:2; margin:0 0 8px 36px; padding:0; font-family:'Courier New',monospace; font-size:15px;"></ol>
-        <button type="button" class="small" id="prHide" onclick="practiceHide()">I HAVE WRITTEN THEM DOWN: HIDE</button>
-      </div>
-      <div id="prCheck" style="display:none; margin-top:10px;">
-        <p class="hint" style="margin:0 0 6px;">The words are hidden. Read your paper and type the 12 words back, in order.</p>
-        <textarea id="prInput" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Practice words typed from paper" placeholder="Type the 12 practice words from your paper"></textarea>
-        <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary" id="prCheckBtn" onclick="practiceCheck()">CHECK MY PAPER</button><button type="button" class="secondary small" onclick="practicePeek()">SHOW THE WORDS AGAIN</button></div>
-      </div>
-      <div class="status" id="prStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-    </details>
-    <textarea id="phrase" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Type or paste your seed words to check..."></textarea>
-    <div class="hint" style="margin:4px 0 0;">Also accepts a SeedSigner SeedQR digit string (48 or 96 digits) or CompactSeedQR hex. Type it in; do not scan a real seed QR with a connected phone.</div>
-    <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
-      <input type="password" id="verifyPass" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Passphrase (if you used one)" style="flex:1; min-width:0;">
-      <button type="button" class="secondary small" onclick="toggleVerifyPassphrase(this)">SHOW</button>
-    </div>
-    <input type="text" id="verifyRecorded" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="What your wallet app shows (optional)" style="margin-top:6px;">
-    <div class="hint" style="margin:4px 0 0;">Optional: paste the fingerprint, first address, zpub or descriptor your wallet app showed, and VERIFY tells you MATCH or NO MATCH.</div>
-    <div class="btn-row" style="margin-top:8px;">
-      <button id="verifyBtn" onclick="verify()" disabled>VERIFY</button>
-    </div>
-    <div id="verifyIcons" style="display:flex; gap:18px; margin-top:8px;">
-      <div id="vFig0" style="display:none; text-align:center;"><div id="vIcon0" class="lh" style="margin-top:0"></div><div class="hint">no passphrase</div></div>
-      <div id="vFig1" style="display:none; text-align:center;"><div id="vIcon1" class="lh" style="margin-top:0"></div><div class="hint">with passphrase</div></div>
-    </div>
-    <div class="status" id="verifyStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-all;"></div>
-    <div class="status" id="verifyMatch" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-    <div style="margin-top:14px;">
-      <div class="hint" style="margin:0 0 6px;"><b>Is this address yours?</b> Paste a receive or change address from a wallet app (bc1q SegWit, bc1p Taproot, 3 nested SegWit or 1 legacy; the box on the right is the account, almost always 0). It is searched in the wallet made by the words and passphrase above.</div>
-      <div style="display:flex; gap:6px;"><input type="text" id="checkAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Address (bc1q, bc1p, 3 or 1)" style="flex:1; min-width:0;"><input type="text" id="checkAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number (almost always 0)" style="width:56px; flex:none;"></div>
-      <div class="btn-row" style="margin-top:8px;"><button type="button" class="secondary" id="checkAddrBtn" onclick="checkAddress()">CHECK ADDRESS</button></div>
-      <div class="status" id="addrCheckStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-    </div>
   </div>
 
-  <div class="card tools" id="cardTools">
-    <h2>EXTRA TOOLS</h2>
-    <p class="sub">Optional helpers. They only display; none of them can spend or sign.</p>
-    <details id="lwBox">
-      <summary>Find the last word<small>You have all but the last word of a seed: list the words that fit.</small></summary>
-      <p class="hint" style="margin:8px 0;">If you have all but the last word of a seed phrase (11, 14, 17, 20 or 23 words), this lists every word that makes the checksum valid. The last word is partly a checksum, so only about 1 in 16 of the 2048 words fits (128 for 12 words). It does not tell you which one you had: a valid last word is not necessarily yours. Type the words from your own backup; they are not saved or sent.</p>
-      <textarea id="lwInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="All words except the last" placeholder="Type the first 11 (or 14, 17, 20, 23) words"></textarea>
-      <div style="display:flex; gap:6px; margin-top:6px;">
-        <button type="button" class="secondary" id="lwBtn" onclick="findLastWords()">FIND LAST WORD</button>
-        <button type="button" class="secondary small" onclick="clearLastWords(true)">CLEAR</button>
-      </div>
-      <div class="status" id="lwStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-      <pre id="lwOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
-    </details>
-    <details id="psbtBox">
-      <summary>Inspect a transaction (PSBT)<span class="tag tag-ro">READ ONLY</span><small>See where the money goes and the fee before signing.</small></summary>
-      <p class="hint" style="margin:8px 0;">Shows what a partly signed Bitcoin transaction (PSBT) from a wallet app would do: where the money comes from, where it goes, and the fee, so you can check it before signing on your hardware wallet. <b>This only reads and displays. It cannot sign, never uses your seed words, and sends nothing.</b> Paste the PSBT (base64 or hex) or choose the .psbt file. If you typed your words above, outputs that carry this wallet&rsquo;s key information are marked. It also checks any signatures it finds: whether two of them share a <b>nonce</b> (a repeated secret number that lets anyone work out the private key) and whether a signature covers the whole transaction.</p>
-      <textarea id="psbtInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="PSBT (base64 or hex)" placeholder="Paste the PSBT here (starts with cHNidP8 or 70736274ff)"></textarea>
-      <div style="display:flex; gap:6px; align-items:center; margin-top:6px; flex-wrap:wrap;">
-        <input type="file" id="psbtFile" accept=".psbt,application/octet-stream" aria-label="Choose a PSBT file" style="flex:1; min-width:0;">
-        <select id="psbtNet" aria-label="Network" style="width:auto; flex:none;"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
-      </div>
-      <div style="display:flex; gap:6px; margin-top:6px;">
-        <button type="button" class="secondary" id="psbtBtn" onclick="runPsbt()">INSPECT</button>
-        <button type="button" class="secondary small" onclick="clearPsbt(true)">CLEAR</button>
-      </div>
-      <div class="status" id="psbtStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-      <pre id="psbtOut" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13.5px; margin:8px 0 0;"></pre>
-    </details>
-    <details id="cmpBox">
-      <summary>Compare two transactions<span class="tag tag-ro">READ ONLY</span><small>Did the signer change anything? Is a fee bump a plain fee bump?</small></summary>
-      <p class="hint" style="margin:8px 0;">Paste the transaction you <b>sent</b> and the one that <b>came back</b> (from your signer or wallet). Or paste an original and its fee-bump replacement. This lists every difference in plain words. <b>It only reads and compares. It cannot sign and sends nothing anywhere.</b></p>
-      <label style="display:block; font-size:13px; color:var(--muted);">First (the original, or what you sent)</label>
-      <textarea id="cmpA" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="First transaction (PSBT or raw hex)" placeholder="PSBT (base64 or hex) or raw transaction hex"></textarea>
-      <label style="display:block; font-size:13px; color:var(--muted); margin-top:6px;">Second (the replacement, or what came back)</label>
-      <textarea id="cmpB" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Second transaction (PSBT or raw hex)" placeholder="PSBT (base64 or hex) or raw transaction hex"></textarea>
-      <div style="display:flex; gap:6px; align-items:center; margin-top:6px; flex-wrap:wrap;">
-        <select id="cmpNet" aria-label="Network" style="width:auto; flex:none;"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
-        <button type="button" class="secondary" id="cmpBtn" onclick="runCompare()">COMPARE</button>
-        <button type="button" class="secondary small" onclick="clearCompare(true)">CLEAR</button>
-      </div>
-      <div class="status" id="cmpStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-      <pre id="cmpOut" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13.5px; margin:8px 0 0;"></pre>
-    </details>
-    <details id="childBox">
-      <summary>Child seed (BIP85)<span class="tag tag-secret">SECRET</span><small>Make a separate new seed from this one, for another wallet.</small></summary>
-      <p class="hint" style="margin:8px 0;">Makes a brand new seed phrase from the parent words (and passphrase) typed above, for a separate wallet, using the BIP85 standard. The same parent, word count and index always give the same child. <b>The child is as secret as the parent.</b> It is only shown here: there is no copy, save or print for it. Use the same safety steps as for a new seed, and keep the parent safe: if you lose the parent you lose every child.</p>
-      <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-        <select id="childWords" aria-label="Child seed length" style="width:auto; flex:none;"><option value="12">12 words</option><option value="18">18 words</option><option value="24">24 words</option></select>
-        <input type="text" id="childIndex" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Child index" placeholder="Index" style="width:90px; flex:none;">
-        <button type="button" class="secondary" id="childBtn" onclick="deriveChild()">DERIVE CHILD SEED</button>
-        <button type="button" class="secondary small" onclick="clearChild()">HIDE</button>
-      </div>
-      <div class="status" id="childStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-      <pre id="childOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
-    </details>
+  <div id="tp-about" class="tabpanel tab-off" role="tabpanel" aria-labelledby="tab-about">
+  <div class="warning">
+    AIR-GAPPED USE ONLY for real funds.<br>
+    Never enter a real seed on a connected device.<br>
+    Always verify with a second offline tool before trusting real Bitcoin.
+    <div id="disclaimer" style="margin-top:8px; font-size:13.5px; opacity:.9;">VOIDFORGE is an educational tool and has not been independently audited. Provided as is, without warranty. You alone are responsible for your funds and backups. Lost words or passphrase mean lost funds. Test the backup and start with a small amount.</div>
   </div>
 
+  <div class="card before-card" id="beforeCard"><h2><span class="ico">&#9888;</span> BEFORE YOU MAKE REAL KEYS</h2>
+<p class="sub">Three ways a computer can quietly keep your secrets, and the simple fix for each.</p><div class="bc-grid">
+<div class="sg-item"><div class="sg-ico">1</div><div><b>Your computer may keep a copy of your keys.</b> It can write memory to the hard drive (swap files, hibernation) without asking, and the browser cannot stop it.<span class="sg-fix"><b>What to do:</b> for real money, use an offline computer with an encrypted drive, and turn hibernation off.</span></div></div>
+<div class="sg-item"><div class="sg-ico">2</div><div><b>Copying can leak.</b> Clipboard history can keep what you copy or paste, and may sync it to your other devices.<span class="sg-fix"><b>What to do:</b> write seeds on paper; avoid copy and paste for anything secret, and turn clipboard history off.</span></div></div>
+<div class="sg-item"><div class="sg-ico">3</div><div><b>Keys can stay in memory after you finish.</b> Wiping the page is a precaution, not a guarantee.<span class="sg-fix"><b>What to do:</b> when you are done, close the browser and restart the computer.</span></div></div></div></div>
 
   <div class="card" id="about">
     <h2>ABOUT &amp; DOCS</h2>
@@ -1141,6 +1211,10 @@
       </ul>
     </details>
   </div>
+  </div>
+
+  <div id="printOnly"></div>
+  <div id="printQr"></div>
 
   <footer>
     SHA256(rolls or flips) → BIP39 • Same method as SeedSigner and Coldcard dice modes<br>
@@ -1288,6 +1362,8 @@ function updateCount(){
     ? "\u2248 " + Math.floor(bits) + " bits of entropy IF every " + (isCoin ? "flip" : "roll") + " was fair and independent (a 12-word seed uses 128, a 24-word seed 256). Bad dice or habits mean less."
     : "";
   updateRollHistory(rolls);
+  if(!hasSeed()) renderSlots();
+  updateSeedPanel();
 }
 document.getElementById("rolls").oninput = updateCount;
 document.querySelectorAll('input[name="words"]').forEach(r=>r.onchange=updateCount);
@@ -2331,7 +2407,7 @@ function practiceClear(){
   document.getElementById("prWords").textContent=""; document.getElementById("prInput").value="";
   document.getElementById("prShow").style.display="none"; document.getElementById("prCheck").style.display="none"; practiceStatus("","");
 }
-function jumpTo(id){ const e=document.getElementById(id); if(e) e.scrollIntoView({behavior:"smooth", block:"start"}); }
+function jumpTo(id){ reveal(document.getElementById(id)); }
 function clearPsbt(all){
   const o=document.getElementById("psbtOut"); o.textContent=""; o.style.display="none";
   const t=document.getElementById("psbtStatus"); t.textContent=""; t.className="status";
@@ -2731,7 +2807,7 @@ async function sendToVerify(){
   const box = document.getElementById("phrase");
   box.value = words;
   await verify();
-  if(box.scrollIntoView) box.scrollIntoView({behavior:"smooth", block:"center"});
+  reveal(box, {behavior:"smooth", block:"center"});
 }
 function copyFingerprint(btn){
   const m = document.getElementById("fingerprint").textContent.match(/: ([0-9a-f]{8})/);
@@ -2917,26 +2993,80 @@ function updateAbbrNote(){
 function setResult(text, words){
   demoOff(); wdWipe();
   const g = document.getElementById("genResult"), grid = document.getElementById("wordGrid");
-  g.textContent = text; grid.textContent = "";
+  g.textContent = text; g.classList.toggle("nores", text === "\u2014"); grid.textContent = "";
   hideExplain(); { const eb = document.getElementById("explainBox"); eb.style.display = (words && [12,24].includes(words.length)) ? "" : "none"; eb.open = false; }
   hideSeedQr(); { const sq = document.getElementById("seedQrBox"); sq.style.display = (words && [12,24].includes(words.length)) ? "" : "none"; sq.open = false; }
   if(words){
     g.dataset.seed = "1"; g.classList.add("sr");
     words.forEach((w, i) => { const c = document.createElement("div"); c.className = "wcell"; const n = document.createElement("b"); n.textContent = (i + 1) + "."; c.appendChild(n); const ws = document.createElement("span"); ws.className = "wtxt"; ws.dataset.w = w; ws.textContent = abbrOn ? w.slice(0, 4) : w; c.appendChild(ws); grid.appendChild(c); });
-    grid.style.display = "grid"; updateAbbrNote();
+    grid.classList.remove("slots"); grid.style.display = "grid"; updateAbbrNote();
     document.getElementById("passNote").textContent = text.split("\n").slice(-1)[0];
     if(guideOn) guideRender();
     document.getElementById("nextStep").textContent = "Write these " + words.length + " words down in order, then check your backup below. PRINT SEED prints them.";
   } else {
-    delete g.dataset.seed; g.classList.remove("sr"); grid.style.display = "none"; updateAbbrNote();
+    delete g.dataset.seed; g.classList.remove("sr"); grid.style.display = ""; grid.classList.remove("slots"); renderSlots(); updateAbbrNote();
     document.getElementById("passNote").textContent = ""; document.getElementById("nextStep").textContent = "";
     clearWatch();
     clearFpIcons();
     if(guideOn) guideRender();
   }
+  updateSeedPanel();
   if(ms) msBanner();
 }
 function hasSeed(){ return document.getElementById("genResult").dataset.seed === "1"; }
+
+// ---- Tabs (v1.25.0): one section at a time. Every control still exists; hiding a tab only hides it from view. ----
+const TAB_NAMES = ["make", "check", "tools", "about"];
+function showTab(name, targetId, focusTab){
+  if(TAB_NAMES.indexOf(name) < 0) return;
+  TAB_NAMES.forEach(t => {
+    const on = t === name, panel = document.getElementById("tp-" + t), btn = document.getElementById("tab-" + t);
+    panel.classList.toggle("tab-off", !on); btn.setAttribute("aria-selected", on ? "true" : "false"); btn.tabIndex = on ? 0 : -1;
+  });
+  if(focusTab) document.getElementById("tab-" + name).focus();
+  const e = targetId ? document.getElementById(targetId) : null;
+  if(e) e.scrollIntoView({behavior: "smooth", block: "start"});
+}
+function tabOfEl(el){ const p = el && el.closest ? el.closest(".tabpanel") : null; return p ? p.id.slice(3) : null; }
+// Scrolls to an element, first opening the tab it lives in.
+function reveal(el, opts){
+  if(!el) return;
+  const t = tabOfEl(el);
+  if(t && document.getElementById("tp-" + t).classList.contains("tab-off")) showTab(t);
+  try { el.scrollIntoView(opts || {behavior: "smooth", block: "start"}); } catch(e) {}
+}
+document.getElementById("tabs").addEventListener("click", (e) => {
+  const b = e.target.closest ? e.target.closest("button[data-tab]") : null; if(!b) return;
+  showTab(b.getAttribute("data-tab"));
+  const bar = document.getElementById("tabs"); if(bar.getBoundingClientRect().top <= 1) bar.scrollIntoView({block: "start"});
+});
+document.getElementById("tabs").addEventListener("keydown", (e) => {
+  const keys = {ArrowRight: 1, ArrowLeft: -1, Home: "first", End: "last"}; if(!(e.key in keys)) return;
+  const cur = TAB_NAMES.indexOf(document.activeElement && document.activeElement.getAttribute ? document.activeElement.getAttribute("data-tab") : "make");
+  const i = keys[e.key] === "first" ? 0 : keys[e.key] === "last" ? TAB_NAMES.length - 1 : (cur + keys[e.key] + TAB_NAMES.length) % TAB_NAMES.length;
+  e.preventDefault(); showTab(TAB_NAMES[i], null, true);
+});
+
+// ---- Your seed panel (v1.25.0): roll counter (red until enough, then green with a tick), step bar, numbered word slots ----
+function renderSlots(){
+  const grid = document.getElementById("wordGrid"); if(hasSeed()) return;
+  const n = parseInt(document.querySelector('input[name="words"]:checked').value, 10) === 24 ? 24 : 12;
+  if(grid.classList.contains("slots") && grid.children.length === n && !grid.style.display) return;
+  grid.textContent = ""; grid.style.display = ""; grid.classList.add("slots");
+  for(let i = 0; i < n; i++){ const c = document.createElement("div"); c.className = "wcell empty"; const b = document.createElement("b"); b.textContent = (i + 1) + "."; const sp = document.createElement("span"); sp.textContent = "\u2014"; c.appendChild(b); c.appendChild(sp); grid.appendChild(c); }
+}
+function updateSeedPanel(){
+  const n = clean(document.getElementById("rolls").value).length;
+  const need = getNeeded(document.querySelector('input[name="words"]:checked').value);
+  const unit = getMode() === "coin" ? "flips" : "rolls", met = n >= need, seed = hasSeed();
+  const bc = document.getElementById("bigCount"), bs = document.getElementById("bigSub"), rc = document.getElementById("rollCount");
+  bc.textContent = n + " / " + need; bc.className = "big-count " + (met ? "met" : "short");
+  bs.textContent = seed ? "Seed made. Write the words down." : met ? "Enough " + unit + ". Press FORGE SEED." : (need - n) + " more " + unit + " to go";
+  bs.className = "big-sub " + (met ? "met" : "short"); rc.className = met ? "met" : "short";
+  const cur = seed ? 5 : met ? 4 : 2;
+  document.querySelectorAll("#stepBar li").forEach(li => { const k = +li.getAttribute("data-s"); li.className = k < cur ? "done" : k === cur ? "cur" : ""; if(k === cur) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current"); });
+}
+
 function togglePassphrase(btn){
   const el = document.getElementById("passphrase"), el2 = document.getElementById("passphrase2");
   const show = el.type === "password";
@@ -3072,7 +3202,7 @@ function msStart(){
   if(!/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647){ err.textContent = "The account must be a whole number from 0 to 2147483647 (almost always 0)."; return; }
   ms = {m, n, type: msEl("msType").value, net: msEl("msNet").value, account: parseInt(raw, 10), keys: [], mode: "make", busy: false, done: false};
   msEl("msBox").open = true; msDock(true); msRender();
-  try { msEl("cardMulti").scrollIntoView({behavior: "smooth", block: "start"}); } catch(e) {}
+  reveal(msEl("cardMulti"));
 }
 // While a multisig setup is running, its card sits directly above the seed maker so progress, instructions and seed maker are all in one place.
 // START OVER puts it back where it was.
@@ -3097,7 +3227,7 @@ function msReset(){
 function msCancel(){
   if(ms && ms.keys.length && !confirm("Start over? The public keys collected so far will be forgotten here (your seed backups are not affected).")) return;
   msReset();
-  try { msEl("cardMulti").scrollIntoView({behavior: "smooth", block: "start"}); } catch(e) {}
+  reveal(msEl("cardMulti"));
 }
 function msBanner(){
   const b = msEl("msBanner");
@@ -3197,7 +3327,7 @@ async function msFinish(){
   addrs.forEach(a => { const li = document.createElement("li"); li.textContent = a; ol.appendChild(li); });
   msEl("msOneDev").style.display = ms.keys.every(k => k.src === "made") ? "" : "none";
   msEl("msDone").style.display = "";
-  try { msEl("msDone").scrollIntoView({behavior: "smooth", block: "start"}); } catch(e) {}
+  reveal(msEl("msDone"));
   msBanner();
 }
 function msCopy(btn, id){
@@ -3351,12 +3481,13 @@ updateCount();
 // The "Before you make real keys" notice shows once each time the file is opened. One click closes it, then the cursor goes to the rolls box.
 function startGateClose(){
   const g = document.getElementById("startGate"); if(g) g.remove();
+  document.body.classList.remove("dice-wait");
   document.getElementById("rolls").focus({preventScroll: true});
 }
 document.addEventListener("keydown", (e) => { if(e.key === "Escape" && document.getElementById("startGate")) startGateClose(); });
 document.addEventListener("DOMContentLoaded", () => {
   const go = document.getElementById("sgGo");
-  if(go) go.focus({preventScroll: true}); else document.getElementById("rolls").focus({preventScroll: true});
+  if(go) go.focus({preventScroll: true}); else { document.body.classList.remove("dice-wait"); document.getElementById("rolls").focus({preventScroll: true}); }
 });
 
 const DIE_PIPS = {1:[[50,50]], 2:[[28,28],[72,72]], 3:[[26,26],[50,50],[74,74]], 4:[[28,28],[72,28],[28,72],[72,72]],
