@@ -846,6 +846,8 @@ async function probe(w, mutated) {
   if ((await w.checkPhrase(corrupted)).ok !== validateMnemonic(corrupted, wordlist)) fails.push('checker rejects bad checksum');
   // v1.25.1 QR boxes scroll fully into view and the stylesheet keeps the seed panel from covering content
   { if (!/#cardGen \.gen-right \{ grid-column: 2; grid-row: 1 \/ span 2;[^}]*position: sticky/.test(mutated) || !/#cardGen \.gen-bottom \{ grid-column: 1; grid-row: 2;/.test(mutated)) fails.push('qr: the sticky seed panel must not slide over the content below');
+    if (!/\.tabpanel \[id\] \{ scroll-margin-top: 84px; \}/.test(mutated)) fails.push('qr: jumped-to sections keep clear of the sticky tab bar');
+    if (!/@media \(min-width: 861px\) \{ #cardGen \.gen-right \{ max-height: calc\(100vh - 92px\); overflow-y: auto;/.test(mutated)) fails.push('qr: a tall seed panel scrolls inside itself so its bottom buttons stay reachable');
     if (!/#qrBox, #sqBox, #msQrBox \{ scroll-margin: 80px 0 20px; \}/.test(mutated)) fails.push('qr: QR boxes keep clear of the sticky tab bar');
     const tq = loadPage(mutated, () => {}); await ready(tq); const seen = []; for (const id of ['qrBox', 'sqBox']) { const el = tq.document.getElementById(id); el.scrollIntoView = (o) => seen.push([id, o && o.block]); }
     tq.document.getElementById('wDescR').textContent = 'wpkh(x)'; tq.showQr('wDescR', 'receive descriptor'); if (seen.length !== 1 || seen[0][0] !== 'qrBox' || seen[0][1] !== 'nearest') fails.push('qr: watch-only QR scrolls fully into view');
@@ -1776,6 +1778,9 @@ const M = [
   ['verify: wipes the master fingerprint picture', '  const st = document.getElementById("verifyStatus");\n  clearVerifyIcons();', '  const st = document.getElementById("verifyStatus");\n  clearFpIcons();'],
   ['verify: old pictures stay', '  const st = document.getElementById("verifyStatus");\n  clearVerifyIcons();', '  const st = document.getElementById("verifyStatus");'],
   ['icons: clear-all leaves the master picture', 'function clearFpIcons(){\n  document.getElementById("fpIcon").textContent = "";', 'function clearFpIcons(){\n  '],
+  ['panel: tall panel cannot be scrolled', '{ max-height: calc(100vh - 92px); overflow-y: auto;', '{ max-height: none; overflow-y: visible;'],
+  ['panel: panel height not limited', 'max-height: calc(100vh - 92px); overflow-y: auto;', 'overflow-y: auto;'],
+  ['jump: sections hide under the tab bar', '.tabpanel [id] { scroll-margin-top: 84px; }', '.tabpanel [id] { scroll-margin-top: 0; }'],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
