@@ -423,9 +423,12 @@
   #msBox summary small { display: block; font-weight: 400; font-size: 13.5px; color: var(--muted); }
   #msBox select, #msBox input[type=text] { min-width: 0; }
 
-  #startGate { position: fixed; inset: 0; z-index: 100; background: rgba(4,4,8,.78); display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(3px); }
+  #startGate { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100; background: rgba(4,4,8,.78); display: none; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(3px); }
+  body.js-ok #startGate { display: flex; }
   body.light #startGate { background: rgba(30,34,48,.55); }
-  #startGate .sg-box { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--warn-text); border-radius: 14px; max-width: 560px; width: 100%; padding: 22px 24px 20px; box-shadow: 0 20px 60px rgba(0,0,0,.5); max-height: 94vh; overflow: auto; }
+  #startGate .sg-box { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--warn-text); border-radius: 14px; max-width: 560px; width: 100%; padding: 22px 24px 20px; box-shadow: 0 20px 60px rgba(0,0,0,.5); max-height: 100%; overflow: hidden; display: flex; flex-direction: column; }
+  #startGate .sg-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-right: 2px; }
+  #startGate .sg-go, #startGate .sg-foot { flex: none; }
   #startGate h2 { font-size: 20px; letter-spacing: .5px; margin-bottom: 4px; }
   #startGate .sg-sub { color: var(--muted); font-size: 14.5px; margin-bottom: 14px; line-height: 1.5; }
   .sg-item { display: flex; gap: 12px; padding: 10px 12px; margin-bottom: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; font-size: 14.5px; line-height: 1.55; }
@@ -3763,14 +3766,17 @@ function wdShow(st, wc){
 }
 // Reached only if the whole script parsed and ran: hide the "script is not running" notice.
 document.getElementById("noJs").style.display = "none";
+// Only now show the start notice: if this script could not run (file previews, blocked scripts) the notice would have a button that does nothing and would hide the red warning above.
+document.body.classList.add("js-ok");
 
 </script>
-<div id="startGate" role="dialog" aria-modal="true" aria-labelledby="sgT"><div class="sg-box">
+<div id="startGate" role="dialog" aria-modal="true" aria-labelledby="sgT"><div class="sg-box"><div class="sg-body" tabindex="0" aria-label="Before you make real keys: things to know">
 <h2 id="sgT">Before you make real keys</h2>
 <p class="sg-sub">VOIDFORGE is an educational tool. It works fully offline and never stores anything, and its code is open to read, but it has <b>not been independently audited</b>. Your computer, though, can keep secrets. Three things worth knowing first:</p>
 <div class="sg-item"><div class="sg-ico">1</div><div><b>Your computer may keep a copy of your keys.</b> It can write memory to the hard drive (swap files, hibernation) without asking, and the browser cannot stop it.<span class="sg-fix"><b>What to do:</b> for real money, use an offline computer with an encrypted drive, and turn hibernation off.</span></div></div>
 <div class="sg-item"><div class="sg-ico">2</div><div><b>Copying can leak.</b> Clipboard history can keep what you copy or paste, and may sync it to your other devices.<span class="sg-fix"><b>What to do:</b> write seeds on paper; avoid copy and paste for anything secret, and turn clipboard history off.</span></div></div>
 <div class="sg-item"><div class="sg-ico">3</div><div><b>Keys can stay in memory after you finish.</b> Wiping the page is a precaution, not a guarantee.<span class="sg-fix"><b>What to do:</b> when you are done, close the browser and restart the computer.</span></div></div>
+</div>
 <button type="button" class="sg-go" id="sgGo" onclick="startGateClose()">I understand, let's go</button>
 <p class="sg-foot">Practising with a test seed? Nothing here applies. For real money, start with a small amount. This shows once each time you open the file.</p></div></div>
 </body>

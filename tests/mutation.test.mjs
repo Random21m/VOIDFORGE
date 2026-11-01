@@ -846,6 +846,9 @@ async function probe(w, mutated) {
   if ((await w.checkPhrase(corrupted)).ok !== validateMnemonic(corrupted, wordlist)) fails.push('checker rejects bad checksum');
   // v1.25.1 QR boxes scroll fully into view and the stylesheet keeps the seed panel from covering content
   { if (!/#cardGen \.gen-right \{ grid-column: 2; grid-row: 1 \/ span 2;[^}]*position: sticky/.test(mutated) || !/#cardGen \.gen-bottom \{ grid-column: 1; grid-row: 2;/.test(mutated)) fails.push('qr: the sticky seed panel must not slide over the content below');
+    { const tg = loadPage(mutated, () => {}); await ready(tg); const gb = tg.document.querySelector('.sg-body'), go = tg.document.getElementById('sgGo'); if (!gb || gb.contains(go) || go.parentNode !== gb.parentNode) fails.push('notice: the button must stay outside the scrolling text'); else if (gb.getAttribute('tabindex') !== '0' || !/things to know/.test(gb.getAttribute('aria-label') || '')) fails.push('notice: the scrolling text is keyboard reachable and named');
+      if (!tg.document.body.classList.contains('js-ok') || !/#startGate \{[^}]*display: none;/.test(mutated) || !/body\.js-ok #startGate \{ display: flex; \}/.test(mutated)) fails.push('notice: only shown once the script has run');
+      if (!/#startGate \.sg-box \{[^}]*max-height: 100%; overflow: hidden; display: flex; flex-direction: column;/.test(mutated) || !/#startGate \.sg-body \{ flex: 1 1 auto; min-height: 0; overflow-y: auto;/.test(mutated) || !/#startGate \.sg-go, #startGate \.sg-foot \{ flex: none; \}/.test(mutated)) fails.push('notice: the box fits the screen and only the text scrolls'); }
     if (!/\.tabpanel \[id\] \{ scroll-margin-top: 84px; \}/.test(mutated)) fails.push('qr: jumped-to sections keep clear of the sticky tab bar');
     if (!/@media \(min-width: 861px\) \{ #cardGen \.gen-right \{ max-height: calc\(100vh - 92px\); overflow-y: auto;/.test(mutated)) fails.push('qr: a tall seed panel scrolls inside itself so its bottom buttons stay reachable');
     if (!/#qrBox, #sqBox, #msQrBox \{ scroll-margin: 80px 0 20px; \}/.test(mutated)) fails.push('qr: QR boxes keep clear of the sticky tab bar');
@@ -1781,6 +1784,14 @@ const M = [
   ['panel: tall panel cannot be scrolled', '{ max-height: calc(100vh - 92px); overflow-y: auto;', '{ max-height: none; overflow-y: visible;'],
   ['panel: panel height not limited', 'max-height: calc(100vh - 92px); overflow-y: auto;', 'overflow-y: auto;'],
   ['jump: sections hide under the tab bar', '.tabpanel [id] { scroll-margin-top: 84px; }', '.tabpanel [id] { scroll-margin-top: 0; }'],
+  ['notice: button back inside the scrolling text', '</div>\n<button type="button" class="sg-go" id="sgGo"', '<button type="button" class="sg-go" id="sgGo"'],
+  ['notice: box taller than the screen', 'max-height: 100%; overflow: hidden; display: flex; flex-direction: column; }', 'max-height: 94vh; overflow: auto; }'],
+  ['notice: text does not scroll', 'flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;', 'flex: 1 1 auto; min-height: 0; overflow-y: hidden; overscroll-behavior: contain;'],
+  ['notice: button can shrink away', '#startGate .sg-go, #startGate .sg-foot { flex: none; }', '#startGate .sg-go, #startGate .sg-foot { flex: 0 1 auto; }'],
+  ['notice: scrolling text not keyboard reachable', '<div class="sg-body" tabindex="0" aria-label="Before you make real keys: things to know">', '<div class="sg-body">'],
+  ['notice: shown even if the script never ran', '  body.js-ok #startGate { display: flex; }', '  body.js-ok #startGate { display: flex; }\n  #startGate { display: flex !important; }'],
+  ['notice: never shown', 'document.body.classList.add("js-ok");', 'void 0;'],
+  ['notice: visible by default', 'z-index: 100; background: rgba(4,4,8,.78); display: none;', 'z-index: 100; background: rgba(4,4,8,.78); display: flex;'],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
