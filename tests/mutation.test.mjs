@@ -147,6 +147,7 @@ async function probe(w, mutated) {
     // the box shows all five, one per line, and clears them with the seed
     await run('dice', 12, D50); $('wType').value = 'wpkh'; $('wNet').value = 'main'; $('wAcct').value = '0'; await w.refreshWatch();
     if ($('wFirst').textContent.split('\n').length !== 5 || $('wFirst').textContent.split('\n').some((l) => !/^bc1q/.test(l))) fails.push('five addresses shown one per line');
+    if ($('wFirst').style.whiteSpace !== 'pre-line') fails.push('five addresses keep their line breaks'); if (!w.document.querySelector("button[onclick=\"copyWatch(this,'wFirst')\"]") || !/COPY ALL/.test(w.document.querySelector("button[onclick=\"copyWatch(this,'wFirst')\"]").textContent)) fails.push('COPY ALL copies the five addresses');
     $('wType').value = 'ms-wsh'; await w.refreshWatch(); if ($('wFirstGroup').style.display !== 'none') fails.push('multisig shows no addresses');
     $('wType').value = 'wpkh'; await w.refreshWatch(); w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('wFirst').textContent !== '') fails.push('five addresses cleared with the seed'); }
   { const LW = async (x) => { $('lwInput').value = x; await w.findLastWords(); return [$('lwStatus').textContent, $('lwOut').textContent]; };
@@ -1027,7 +1028,7 @@ const M = [
   ['watch: ypub version bytes wrong', '"sh-wpkh":[0x04,0x9d,0x7c,0xb2], other:XPUB_VER', '"sh-wpkh":[0x04,0x9d,0x7c,0xb3], other:XPUB_VER'],
   ['watch: taproot purpose wrong', 'tr:{purpose:86,', 'tr:{purpose:84,'],
   ['watch: nested descriptor not wrapped in sh()', 'type === "sh-wpkh" ? "sh(wpkh(" + inner + "))"', 'type === "sh-wpkh" ? "wpkh(" + inner + ")"'],
-  ['watch: first address uses the wrong type', 'first:await addressFromKey(type, fk, net)', 'first:await addressFromKey("wpkh", fk, net)'],
+  ['watch: first address uses the wrong type', 'five.push(await addressFromKey(type, fk, net))', 'five.push(await addressFromKey("wpkh", fk, net))'],
   ['net: testnet bech32 prefix wrong', 'test:{coin:1, hrp:"tb",', 'test:{coin:1, hrp:"bc",'],
   ['net: testnet coin type wrong', 'test:{coin:1,', 'test:{coin:0,'],
   ['net: testnet legacy version byte wrong', 'pkh:0x6f,', 'pkh:0x00,'],
@@ -1811,6 +1812,14 @@ const M = [
   ['notice: shown even if the script never ran', '  body.js-ok #startGate { display: flex; }', '  body.js-ok #startGate { display: flex; }\n  #startGate { display: flex !important; }'],
   ['notice: never shown', 'document.body.classList.add("js-ok");', 'void 0;'],
   ['notice: visible by default', 'z-index: 100; background: rgba(4,4,8,.78); display: none;', 'z-index: 100; background: rgba(4,4,8,.78); display: flex;'],
+  // v1.26.0 five receiving addresses
+  ['five: only four addresses', 'for(let i=0;i<5;i++){ const [fk]', 'for(let i=0;i<4;i++){ const [fk]'],
+  ['five: always the first address', 'ckdPriv(rk,rc,i,false); five.push', 'ckdPriv(rk,rc,0,false); five.push'],
+  ['five: first is not the first of five', 'first:five[0], five}', 'first:five[1], five}'],
+  ['five: only one shown', 'w.five.join("\\n")', 'w.five.slice(0,1).join("\\n")'],
+  ['five: lines run together', 'id="wFirst" style="white-space:pre-line"', 'id="wFirst"'],
+  ['five: COPY ALL copies the wrong box', "onclick=\"copyWatch(this,'wFirst')\">COPY ALL", "onclick=\"copyWatch(this,'wZpub')\">COPY ALL"],
+  ['five: address 5 uses another branch', 'ckdPriv(rk,rc,i,false); five.push', 'ckdPriv(rk,rc,i+(i>3?1:0),false); five.push'],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
