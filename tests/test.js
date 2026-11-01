@@ -268,7 +268,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(/Passphrase: none/.test(t.$('passNote').textContent)&&/Write these 12 words down in order/.test(t.$('nextStep').textContent),'visible passphrase note and next-step line');
     // mismatch: error shown, grid hidden, advanced opens, error text is NOT treated as a seed
     t.$('advanced').open=false; t.$('passphrase').value='a'; t.$('passphrase2').value='b'; t.w.updateAdvSummary(); await t.w.generate();
-    ok(t.$('advanced').open===true&&t.$('wordGrid').style.display==='none'&&!t.$('genResult').dataset.seed&&/PASSPHRASE SET/.test(t.$('advSummary').textContent),'mismatch opens Advanced options, hides the grid and flags the passphrase');
+    ok(t.$('advanced').open===true&&[...t.$('wordGrid').children].every(c=>c.classList.contains('empty'))&&!t.$('genResult').dataset.seed&&/PASSPHRASE SET/.test(t.$('advSummary').textContent),'mismatch opens Advanced options, hides the grid and flags the passphrase');
     t.st.alerts.length=0; await t.w.sendToVerify(); t.w.printSeed(); t.w.downloadSeed();
     ok(t.st.alerts.length===3&&t.$('phrase').value!==t.$('genResult').textContent.split('\n')[0].trim(),'after a mismatch SEND TO VERIFY, PRINT and DOWNLOAD refuse (error text is never used as a seed)');
     t.$('passphrase').value=''; t.$('passphrase2').value=''; t.w.updateAdvSummary(); ok(!/PASSPHRASE SET/.test(t.$('advSummary').textContent),'advanced summary flag clears');
@@ -471,14 +471,80 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     tp.w.practiceCheck(); tp.w.practiceHide(); tp.w.practicePeek(); ok($('prShow').style.display==='none'&&$('prCheck').style.display==='none','practice: buttons do nothing before a practice starts');
     const a=[],b=[]; for(let i=0;i<5;i++){ await tp.w.practiceStart(); a.push(tp.w.eval('practice.words.join(" ")')); } ok(new Set(a).size===5,'practice: each practice phrase is different');
     ok(!/^abandon abandon/.test(a[0])&&a.every(x=>x.split(' ').length===12),'practice: phrases are random, not the well-known test phrase'); }
-  { const tf=load({focusSpy:true}); await tf.ready(); await new Promise(r=>setTimeout(r,100));
+  // ---- v1.25.0 layout: tabs, Your seed panel, step bar, word slots, dice wait ----
+  { const tl=load({focusSpy:true}); await tl.ready(); const T=(n)=>tl.$('tp-'+n), on=(n)=>!T(n).classList.contains('tab-off'), sel=(n)=>tl.$('tab-'+n).getAttribute('aria-selected');
+    ok(['make','check','tools','about'].every(n=>on(n)===(n==='make')&&sel(n)===String(n==='make')),'tabs: Make a seed is open first, the other three are hidden');
+    ok(tl.$('tabs').getAttribute('role')==='tablist'&&[...tl.$('tabs').querySelectorAll('button')].every(b=>b.getAttribute('role')==='tab'&&tl.$(b.getAttribute('aria-controls')).getAttribute('role')==='tabpanel'),'tabs: proper tablist, tab and tabpanel roles');
+    tl.w.showTab('check'); ok(on('check')&&!on('make')&&sel('check')==='true'&&sel('make')==='false'&&tl.$('tab-check').tabIndex===0&&tl.$('tab-make').tabIndex===-1,'tabs: showTab opens one and closes the rest');
+    tl.$('tab-tools').dispatchEvent(new tl.w.MouseEvent('click',{bubbles:true})); ok(on('tools')&&!on('check'),'tabs: clicking a tab opens it');
+    tl.w.showTab('nonsense'); ok(on('tools'),'tabs: an unknown tab name changes nothing');
+    { const bar=tl.$('tabs'); tl.w.showTab('make'); tl.$('tab-make').focus&&0;
+      const key=(k)=>{ bar.dispatchEvent(new tl.w.KeyboardEvent('keydown',{key:k,bubbles:true})); }; Object.defineProperty(tl.d,'activeElement',{configurable:true,get:()=>tl.$('tab-'+['make','check','tools','about'].find(n=>tl.$('tab-'+n).tabIndex===0))});
+      key('ArrowRight'); ok(on('check'),'tabs: right arrow moves to the next tab'); key('ArrowLeft'); ok(on('make'),'tabs: left arrow moves back');
+      key('ArrowLeft'); ok(on('about'),'tabs: left arrow wraps from the first to the last'); key('ArrowRight'); ok(on('make'),'tabs: right arrow wraps from the last to the first');
+      key('End'); ok(on('about'),'tabs: End opens the last tab'); key('Home'); ok(on('make'),'tabs: Home opens the first tab'); key('x'); ok(on('make'),'tabs: other keys do nothing'); }
+    // jumping to something in another tab opens that tab first
+    tl.w.jumpTo('cardCheck'); ok(on('check'),'jumpTo opens the tab that holds the target (Check a backup)');
+    tl.w.jumpTo('cardGen'); ok(on('make'),'jumpTo opens Make a seed'); tl.w.jumpTo('cardMulti'); ok(on('tools'),'jumpTo opens Extra tools for the multisig card');
+    tl.w.jumpTo('beforeCard'); ok(on('about'),'jumpTo opens About for the safety card'); tl.w.showTab('make');
+    tl.$('strip').querySelector('button').click(); ok(on('about')&&/Read before real keys/.test(tl.$('strip').textContent),'the one-line notice opens About & help');
+    ok(tl.w.document.querySelector('.strip b').textContent==='Educational, not independently audited.','the one-line notice says the app is educational and not audited');
+    tl.w.showTab('make');
+    // SEND TO CHECK moves you to the Check tab
+    { const AB='abandon '.repeat(11)+'about'; tl.$('phrase').value=''; const tf2=tl; tf2.set(rnd(50,6)); tf2.$('forgeBtn').disabled=false; await tf2.w.generate(); ok(on('make')&&tf2.w.hasSeed(),'forge keeps you on Make a seed'); await tf2.w.sendToVerify(); ok(on('check')&&tf2.$('phrase').value.split(' ').length===12,'SEND TO CHECK opens the Check tab with the words in the box'); }
+    // every control from earlier versions is still in exactly one tab or in the page frame
+    { const ids=['rolls','forgeBtn','genResult','wordGrid','fingerprint','address','passphrase','passphrase2','note','phrase','verifyPass','verifyRecorded','checkAddr','psbtInput','cmpA','cmpB','msN','msM','msBox','wdBox','demoBox','advanced','addrBox','explainBox','seedQrBox','watchBox','about','beforeCard','disclaimer','safetyBox','privacyBox','multiHelp','practiceBox','psbtBox','fpIcon','guidePanel','tapRow','testResults','printOnly','printQr','netTag','selfTestBadge','logo'];
+      const missing=ids.filter(id=>!tl.$(id)); ok(missing.length===0,'feature inventory: every earlier control and section is still on the page'+(missing.length?' (missing '+missing.join(', ')+')':''));
+      const homeless=['rolls','forgeBtn','phrase','psbtInput','cmpA','msN','about','beforeCard','disclaimer'].filter(id=>!tl.$(id).closest('.tabpanel')); ok(homeless.length===0,'feature inventory: every tool lives inside a tab'+(homeless.length?' ('+homeless.join(', ')+')':''));
+      ok(['printOnly','printQr'].every(id=>!tl.$(id).closest('.tabpanel')),'printing works from any tab: the print sheets sit outside the tabs');
+      const btns=[...tl.d.querySelectorAll('button')].filter(b=>!b.closest('.tabpanel')&&!b.closest('#startGate')).map(b=>b.textContent.trim().replace(/\s+/g,' ')).sort().join('|');
+      ok(btns==='DARK|DOWNLOAD FOR USB|GUIDE ME|GUIDE ME|PRINT SEED|TEXT A+|Read before real keys →'.split('|').sort().join('|')||/DARK/.test(btns)&&/DOWNLOAD/.test(btns)&&/PRINT SEED/.test(btns)&&/GUIDE ME/.test(btns)&&/TEXT A\+/.test(btns),'page frame holds the top buttons and the notice link: '+btns); }
+    // the three warnings and the disclaimer moved to About, with their text intact
+    ok(/AIR-GAPPED USE ONLY/.test(tl.$('tp-about').textContent)&&/not been independently audited/.test(tl.$('disclaimer').textContent)&&tl.$('beforeCard').querySelectorAll('.sg-item').length===3,'About & help holds the air-gap warning, the disclaimer and the three computer-memory warnings');
+    ok(!tl.$('tp-make').contains(tl.$('about'))&&tl.$('tp-tools').contains(tl.$('cardMulti'))&&tl.$('tp-tools').contains(tl.$('cardTools'))&&tl.$('tp-check').contains(tl.$('cardCheck')),'each card sits in the right tab');
+  }
+  { const tc=load(); await tc.ready(); const big=()=>tc.$('bigCount'), sub=()=>tc.$('bigSub');
+    ok(big().textContent==='0 / 50'&&/short/.test(big().className)&&/50 more rolls to go/.test(sub().textContent)&&/short/.test(sub().className),'counter: starts at 0 / 50, red, with how many rolls are left');
+    tc.set(rnd(20,6)); ok(big().textContent==='20 / 50'&&/short/.test(big().className)&&/30 more rolls to go/.test(sub().textContent)&&/short/.test(tc.$('rollCount').className),'counter: stays red below the target');
+    tc.set(rnd(49,6)); ok(big().textContent==='49 / 50'&&/short/.test(big().className)&&/1 more rolls? to go|1 more roll/.test(sub().textContent),'counter: still red one roll short');
+    tc.set(rnd(50,6)); ok(big().textContent==='50 / 50'&&/met/.test(big().className)&&!/short/.test(big().className)&&/Enough rolls\. Press FORGE SEED\./.test(sub().textContent)&&/met/.test(tc.$('rollCount').className)&&/met/.test(sub().className),'counter: turns green at the target and says what to do next');
+    ok(/\.big-count\.met::before\s*\{\s*content:\s*"\\2713/.test(html),'counter: the tick is in the stylesheet');
+    tc.set(rnd(51,6)); ok(/met/.test(big().className)&&big().textContent==='51 / 50','counter: still green when over the target (the forge button asks to remove extra)');
+    tc.words(24); ok(big().textContent==='51 / 99'&&/short/.test(big().className)&&/48 more rolls to go/.test(sub().textContent),'counter: follows the 24-word target (99 rolls)');
+    tc.mode('coin'); tc.words(12); tc.set(rnd(128,2)); ok(big().textContent==='128 / 128'&&/met/.test(big().className)&&/Enough flips/.test(sub().textContent),'counter: coin mode counts flips (128 for 12 words)');
+    tc.set(rnd(100,2)); ok(/28 more flips to go/.test(sub().textContent),'counter: says flips in coin mode');
+    // step bar
+    const cur=()=>[...tc.d.querySelectorAll('#stepBar li')].map(l=>l.className||'-').join(',');
+    tc.mode('dice'); tc.set(''); ok(cur()==='done,cur,-,-,-'&&tc.d.querySelectorAll('#stepBar li[aria-current]').length===1,'step bar: Choose done, Roll current, one step marked current');
+    tc.set(rnd(50,6)); ok(cur()==='done,done,done,cur,-','step bar: Forge is current once there are enough rolls');
+    tc.$('forgeBtn').disabled=false; await tc.w.generate(); ok(cur()==='done,done,done,done,cur'&&/Seed made/.test(sub().textContent),'step bar: Check is current after forging');
+    tc.w.wipeSeed(); ok(cur()==='done,cur,-,-,-'&&big().textContent==='0 / 50','step bar and counter go back to the start after wiping');
+  }
+  { const ts=load(); await ts.ready(); const cells=()=>[...ts.$('wordGrid').children];
+    ok(cells().length===12&&cells().every(c=>c.classList.contains('empty')&&/^\d+\.$/.test(c.firstChild.textContent)&&c.lastChild.textContent==='\u2014')&&cells().map(c=>c.firstChild.textContent).join(' ')===Array.from({length:12},(_,i)=>(i+1)+'.').join(' '),'slots: twelve numbered empty slots show before anything is made');
+    ok(ts.$('wordGrid').classList.contains('slots')&&!/display:\s*grid/.test(ts.$('wordGrid').getAttribute('style')||''),'slots: shown by a class, not by the inline style that reveals the secret note');
+    ok(/#wordGrid\[style\*="display: grid"\] \+ #secretNote/.test(html)&&!/display:\s*grid/.test(ts.$('wordGrid').getAttribute('style')||''),'slots: the secret note rule still keys on real words only');
+    ts.words(24); ok(cells().length===24&&cells()[23].firstChild.textContent==='24.','slots: 24 slots when 24 words are chosen'); ts.words(12); ok(cells().length===12,'slots: back to 12');
+    ok(!ts.$('wordGrid').hasAttribute('data-seed')&&!ts.$('genResult').dataset.seed&&ts.$('genResult').classList.contains('nores'),'slots: the empty result box is hidden until there is something to say');
+    ts.set(rnd(50,6)); ts.$('forgeBtn').disabled=false; await ts.w.generate(); const words=ts.$('genResult').textContent.split('\n')[0].split(' ');
+    ok(cells().length===12&&cells().every(c=>!c.classList.contains('empty'))&&cells().map(c=>c.lastChild.textContent).join(' ')===words.join(' ')&&!ts.$('wordGrid').classList.contains('slots')&&ts.$('wordGrid').style.display==='grid','slots: forging fills them with the real words, in order, and drops the empty state');
+    ok(!ts.$('genResult').classList.contains('nores'),'slots: the result box shows once there is a seed'); ts.words(24); ok(cells().length===12&&cells().every(c=>!c.classList.contains('empty')),'slots: changing the length does not disturb a made seed');
+    ts.w.wipeSeed(); ok(cells().length===12&&cells().every(c=>c.classList.contains('empty'))&&!cells().some(c=>words.includes(c.lastChild.textContent)&&c.lastChild.textContent!=='\u2014')&&!ts.$('wordGrid').textContent.includes(words[0]+words[1]),'slots: wiping brings back empty slots and leaves none of the old words in the page');
+    ts.set('555'); await ts.w.generate(); ok(cells().every(c=>c.classList.contains('empty'))&&!ts.$('genResult').classList.contains('nores')&&/more rolls/.test(ts.$('genResult').textContent),'slots: an "enter more rolls" message shows in the result box and the slots stay empty');
+  }
+  { const td=load(); await td.ready(); ok(td.d.body.classList.contains('dice-wait')&&!!td.$('startGate'),'dice: held back while the notice is open');
+    ok(/body\.dice-wait \.logo \.die, body\.dice-wait \.logo svg[^{]*\{\s*animation:\s*none !important/.test(html),'dice: the stylesheet pauses the falling dice while waiting');
+    td.w.startGateClose(); ok(!td.d.body.classList.contains('dice-wait'),'dice: released when the notice is closed with the button');
+    const te=load(); await te.ready(); te.d.dispatchEvent(new te.w.KeyboardEvent('keydown',{key:'Escape'})); ok(!te.d.body.classList.contains('dice-wait'),'dice: released when the notice is closed with Escape');
+    const tn=load(); await tn.ready(); tn.$('startGate').remove(); tn.d.dispatchEvent(new tn.w.Event('DOMContentLoaded')); ok(!tn.d.body.classList.contains('dice-wait'),'dice: not held back if there is no notice'); }
+{ const tf=load({focusSpy:true}); await tf.ready(); await new Promise(r=>setTimeout(r,100));
     ok(tf.st.focus.some(x=>x[0]==='sgGo'&&x[1]&&x[1].preventScroll===true)&&!tf.st.focus.some(x=>x[0]==='rolls'),'opening the page focuses the notice button (not the rolls box) without scrolling');
     tf.st.focus.length=0; tf.w.startGateClose(); const f=tf.st.focus.find(x=>x[0]==='rolls'); ok(!!f&&f[1]&&f[1].preventScroll===true&&!tf.$('startGate'),'closing the notice removes it and focuses the rolls box without scrolling the page down to it');
     { const tg=load(); await tg.ready(); const g=tg.$('startGate'); ok(!!g&&g.getAttribute('role')==='dialog'&&g.getAttribute('aria-modal')==='true'&&/educational tool/.test(g.textContent)&&/not been independently audited/.test(g.textContent)&&g.querySelectorAll('.sg-item').length===3&&/swap files, hibernation/.test(g.textContent)&&/Clipboard history/.test(g.textContent)&&/restart the computer/.test(g.textContent),'notice: educational, not audited, and the three warnings with what to do');
       ok(g.querySelectorAll('.sg-fix').length===3&&/I understand, let's go/.test(tg.$('sgGo').textContent),'notice: each warning has a fix and one button closes it');
       tg.d.dispatchEvent(new tg.w.KeyboardEvent('keydown',{key:'Escape'})); ok(!tg.$('startGate'),'notice: Escape closes it');
       const t5=load(); await t5.ready(); ok(!!t5.$('startGate'),'notice: shows again each time the file is opened');
-      ok(/BEFORE YOU MAKE REAL KEYS/.test(tg.$('beforeCard').textContent)&&tg.$('beforeCard').querySelectorAll('.sg-item').length===3&&!!(tg.$('beforeCard').compareDocumentPosition(tg.$('cardGen'))&4),'page card above MAKE A SEED repeats the three warnings');
+      ok(/BEFORE YOU MAKE REAL KEYS/.test(tg.$('beforeCard').textContent)&&tg.$('beforeCard').querySelectorAll('.sg-item').length===3&&tg.$('beforeCard').closest('#tp-about')!==null&&/Read before real keys/.test(tg.$('strip').textContent),'the three warnings live in the About tab, reached from the one-line notice');
       ok(/offline computer, keep clipboard history off, and restart/.test(tg.d.querySelector('.forge-note').textContent),'one-line note next to FORGE SEED'); } }
   { const tc=load(); await tc.ready(); const h=await tc.w.sha256bytes(new TextEncoder().encode('123456'));
     const m24=await tc.w.entropyToMnemonic(h), m12=await tc.w.entropyToMnemonic(h.slice(0,16));
