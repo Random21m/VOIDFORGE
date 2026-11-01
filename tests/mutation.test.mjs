@@ -1708,6 +1708,20 @@ const M = [
   ['dice-wait css: dice still move', 'body.dice-wait .logo .die, body.dice-wait .logo svg, body.dice-wait .logo .die::after { animation: none !important; opacity: 0; }', 'body.dice-wait .logo .die { opacity: 1; }'],
   ['strip: link goes nowhere', 'onclick="showTab(\'about\',\'beforeCard\')"', 'onclick="showTab(\'make\')"'],
   ['css: closed tab still shown', '.tab-off { display: none !important; }', '.tab-off { display: block; }'],
+  ['fairness: chi not squared', 'chi += (c - exp) * (c - exp) / exp; }\n  const erfc', 'chi += Math.abs(c - exp) / exp; }\n  const erfc'],
+  ['fairness: wrong expected share', 'const k = isCoin ? 2 : 6, n = rolls.length, exp = n / k; let chi = 0;\n  for(const f of', 'const k = isCoin ? 2 : 6, n = rolls.length, exp = n / 2; let chi = 0;\n  for(const f of'],
+  ['fairness: dice p drops the extra term', 'Math.sqrt(2 * chi / Math.PI) * Math.exp(-chi / 2) * (1 + chi / 3)', 'Math.sqrt(2 * chi / Math.PI) * Math.exp(-chi / 2)'],
+  ['fairness: coin uses dice formula', 'const p = isCoin ? erfc(', 'const p = false ? erfc('],
+  ['fairness: wrong degrees of freedom', 'df: k - 1};', 'df: k};'],
+  ['fairness: p not clamped high', 'Math.min(1, Math.max(0, p))', 'Math.max(0, p)'],
+  ['fairness: shown too early', 'if(rolls.length >= (isCoin ? 20 : 30)){\n    const ft', 'if(rolls.length >= (isCoin ? 20 : 10)){\n    const ft'],
+  ['fairness: coin threshold', 'if(rolls.length >= (isCoin ? 20 : 30)){\n    const ft', 'if(rolls.length >= (isCoin ? 40 : 30)){\n    const ft'],
+  ['fairness: strong cutoff', 'ft.p < 0.001 ? "Strong sign', 'ft.p < 0.0001 ? "Strong sign'],
+  ['fairness: mild cutoff', 'ft.p < 0.05 ? "Mildly unusual', 'ft.p < 0.5 ? "Mildly unusual'],
+  ['fairness: caveat dropped', ' This cannot prove fairness.";', ' ";'],
+  ['fairness: tiny p shown as number', '(ft.p < 0.001 ? "below 0.001" : ft.p.toFixed(3))', 'ft.p.toFixed(3)'],
+  ['fairness: plural degree', '(ft.df === 1 ? " degree" : " degrees")', '" degrees"'],
+  ['fairness: coin wording', '"Mildly unusual: a fair " + (isCoin ? "coin" : "die")', '"Mildly unusual: a fair " + "die"'],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

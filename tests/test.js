@@ -533,6 +533,24 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ts.set('555'); await ts.w.generate(); ok(cells().every(c=>c.classList.contains('empty'))&&!ts.$('genResult').classList.contains('nores')&&/more rolls/.test(ts.$('genResult').textContent),'slots: an "enter more rolls" message shows in the result box and the slots stay empty');
   }
   ok([['make','MAKE','MAKE A SEED'],['check','CHECK','CHECK A BACKUP'],['tools','TOOLS','EXTRA TOOLS'],['about','ABOUT','ABOUT & HELP']].every(([t,sh,fl])=>html.includes('data-tab="'+t+'" aria-label="'+fl+'"><span class="lg">')&&html.includes('<span class="sh">'+sh+'</span>')),'tabs: every tab has a full name (screen readers, wide screens) and a short name for phones');
+  { const tf2=load(); await tf2.ready(); const mk=(c)=>c.map((n,i)=>String(i+1).repeat(n)).join('');
+    // reference values from scipy.stats.chisquare (independent library)
+    const D=[[[5,5,5,5,5,5],0,1],[[8,6,4,5,3,4],3.2,0.669183],[[10,6,5,4,3,2],8,0.156236],[[12,8,4,3,2,1],17.6,0.003492],[[15,12,9,6,3,0],21,0.00081],[[20,5,2,1,1,1],56.4,0]];
+    ok(D.every(([c,x,pv])=>{const r=tf2.w.faceTest(mk(c),false);return Math.abs(r.chi-x)<1e-6&&Math.abs(r.p-pv)<2e-6&&r.df===5;}),'fairness test: dice chi-square and p-value match scipy (5 degrees of freedom)');
+    const C=[[[15,5],5,0.025347],[[10,10],0,1],[[16,4],7.2,0.00729],[[18,2],12.8,0.000347]];
+    ok(C.every(([c,x,pv])=>{const r=tf2.w.faceTest('1'.repeat(c[0])+'0'.repeat(c[1]),true);return Math.abs(r.chi-x)<1e-6&&Math.abs(r.p-pv)<2e-6&&r.df===1;}),'fairness test: coin chi-square and p-value match scipy (1 degree of freedom)');
+    const show=(v,coin)=>{ if(coin) tf2.w.document.querySelector('input[name="mode"][value="coin"]').click(); tf2.set(v); return (tf2.$('rcStat')||{}).textContent||''; };
+    tf2.w.confirm=()=>true; tf2.w.document.querySelector('input[name="mode"][value="dice"]').checked=true;
+    ok(show(mk([4,4,4,4,4,4].map(x=>x+1)).slice(0,29))==='','fairness test: not shown before 30 rolls');
+    ok(/\u03c7\u00b2 = 0\.00, 5 degrees of freedom, p \u2248 1\.000\. Nothing unusual\./.test(show(mk([5,5,5,5,5,5]))),'fairness test: even counts say nothing unusual, with the numbers');
+    ok(/p \u2248 0\.156\. Nothing unusual/.test(show(mk([10,6,5,4,3,2]))),'fairness test: p 0.156 is nothing unusual');
+    ok(/Mildly unusual: a fair die does this about 1 time in 20/.test(show(mk([12,8,4,3,2,1]))),'fairness test: p between 0.001 and 0.05 is mildly unusual');
+    ok(/p \u2248 below 0\.001\. Strong sign/.test(show(mk([20,5,2,1,1,1]))),'fairness test: tiny p is a strong sign');
+    ok(/cannot prove fairness/.test(tf2.$('rcStat').textContent),'fairness test: says it cannot prove fairness');
+    tf2.set(''); tf2.w.document.querySelector('input[name="mode"][value="coin"]').click(); tf2.w.document.querySelector('input[name="mode"][value="coin"]').dispatchEvent(new tf2.w.Event('change',{bubbles:true}));
+    tf2.set('1'.repeat(14)+'0'.repeat(5)); ok(!tf2.$('rcStat'),'fairness test: coin test waits for 20 flips');
+    tf2.set('1'.repeat(15)+'0'.repeat(5)); ok(/\u03c7\u00b2 = 5\.00, 1 degree of freedom, p \u2248 0\.025\. Mildly unusual: a fair coin does this/.test((tf2.$('rcStat')||{}).textContent||''),'fairness test: coin result with its numbers and the word coin'); }
+
   ok(/body\.light \.tabs button \{ color: #fff; background: #0066cc/.test(html),'tabs: light mode shows white tab names on blue');
   { const td=load(); await td.ready(); ok(td.d.body.classList.contains('dice-wait')&&!!td.$('startGate'),'dice: held back while the notice is open');
     ok(/body\.dice-wait \.logo \.die, body\.dice-wait \.logo svg[^{]*\{\s*animation:\s*none !important/.test(html),'dice: the stylesheet pauses the falling dice while waiting');
