@@ -2741,9 +2741,13 @@ async function showFpIcon(iconId, fp, figId){
   try { document.getElementById(iconId).innerHTML = lifeHashSvg(await lifeHash(fp)); if(figId) document.getElementById(figId).style.display = ""; }
   catch(e) { document.getElementById(iconId).textContent = ""; }
 }
-function clearFpIcons(){
-  for(const id of ["fpIcon","vIcon0","vIcon1"]) document.getElementById(id).textContent = "";
+function clearVerifyIcons(){
+  for(const id of ["vIcon0","vIcon1"]) document.getElementById(id).textContent = "";
   for(const id of ["vFig0","vFig1"]) document.getElementById(id).style.display = "none";
+}
+function clearFpIcons(){
+  document.getElementById("fpIcon").textContent = "";
+  clearVerifyIcons();
 }
 function clearAddrs(){
   document.getElementById("addrList").textContent = ""; document.getElementById("trList").textContent = "";
@@ -3392,7 +3396,7 @@ function msPrint(){
 async function verify(){
   if(!gateOk()) return;
   const st = document.getElementById("verifyStatus");
-  clearFpIcons();
+  clearVerifyIcons();
   const r = await checkPhrase(document.getElementById("phrase").value);
   st.className = "status " + (r.ok ? "ok" : "bad");
   st.textContent = r.msg;
