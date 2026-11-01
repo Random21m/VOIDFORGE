@@ -843,6 +843,11 @@ async function probe(w, mutated) {
   const parts = expect.d50.split(' '); parts[11] = parts[11] === 'zoo' ? 'abandon' : 'zoo';
   const corrupted = parts.join(' ');
   if ((await w.checkPhrase(corrupted)).ok !== validateMnemonic(corrupted, wordlist)) fails.push('checker rejects bad checksum');
+  // v1.25.1 word finder (reference words from the python-mnemonic English list)
+  { for (const [i, wd, n] of [['1','abandon',1],['2048','zoo',2048],['257','cactus',257],['680','female',680],['3 A 7','female',680],['3-a-7','female',680],['1 0 0','abandon',1],['8 F F','zoo',2048],['2 0 0','cactus',257],['300','century',300],[' 300 ','century',300],['8 0 0','theme',1793]]) { const r = w.wdFindWord(i); if (r.word !== wd || r.idx !== n - 1 || r.msg !== 'Word ' + n + ': ' + wd) fails.push('word finder: ' + JSON.stringify(i) + ' gives the right word'); }
+    for (const x of ['0','2049','9 0 0','0 0 0','3 G 7','abc','3 A','3 A 7 7','-']) { const r = w.wdFindWord(x); if (r.word !== undefined || r.msg.length < 10) fails.push('word finder: bad entry ' + JSON.stringify(x) + ' refused'); }
+    if (w.wdFindWord('').msg !== '' || w.wdFindWord('  ').msg !== '') fails.push('word finder: empty entry is silent');
+    $('wdFind').value = '3 A 7'; w.wdFind(); if ($('wdFound').textContent !== 'Word 680: female') fails.push('word finder: shows the word'); $('wdFind').value = ''; w.wdFind(); if ($('wdFound').textContent !== '') fails.push('word finder: clears the line'); }
   // v1.25.1 fairness test (reference values from scipy.stats.chisquare)
   { const mk = (c) => c.map((n, i) => String(i + 1).repeat(n)).join('');
     for (const [c, x, pv] of [[[5,5,5,5,5,5],0,1],[[8,6,4,5,3,4],3.2,0.669183],[[10,6,5,4,3,2],8,0.156236],[[12,8,4,3,2,1],17.6,0.003492],[[15,12,9,6,3,0],21,0.00081],[[20,5,2,1,1,1],56.4,0]]) { const r = w.faceTest(mk(c), false); if (Math.abs(r.chi - x) > 1e-6 || Math.abs(r.p - pv) > 2e-6 || r.df !== 5) fails.push('fairness: dice chi-square and p match scipy for ' + c.join(',')); }
@@ -1736,6 +1741,21 @@ const M = [
   ['fairness: tiny p shown as number', '(ft.p < 0.001 ? "below 0.001" : ft.p.toFixed(3))', 'ft.p.toFixed(3)'],
   ['fairness: plural degree', '(ft.df === 1 ? " degree" : " degrees")', '" degrees"'],
   ['fairness: coin wording', '"Mildly unusual: a fair " + (isCoin ? "coin" : "die")', '"Mildly unusual: a fair " + "die"'],
+  ['finder: number lower bound', 'if(n < 1 || n > 2048)', 'if(n < 0 || n > 2048)'],
+  ['finder: number upper bound', 'if(n < 1 || n > 2048)', 'if(n < 1 || n > 2049)'],
+  ['finder: number off by one', 'idx = n - 1;\n  } else if', 'idx = n;\n  } else if'],
+  ['finder: D8 base off', '(parseInt(t[0], 10) - 1) * 256', '(parseInt(t[0], 10)) * 256'],
+  ['finder: D8 weight', '(parseInt(t[0], 10) - 1) * 256', '(parseInt(t[0], 10) - 1) * 255'],
+  ['finder: D8 accepts 9', '/^[1-8][0-9A-F]{2}$/.test(t)', '/^[1-9][0-9A-F]{2}$/.test(t)'],
+  ['finder: D8 accepts 0', '/^[1-8][0-9A-F]{2}$/.test(t)', '/^[0-8][0-9A-F]{2}$/.test(t)'],
+  ['finder: hex digits too narrow', '/^[1-8][0-9A-F]{2}$/.test(t)', '/^[1-8][0-9A-E]{2}$/.test(t)'],
+  ['finder: separators not ignored', 't = r.replace(/[\\s,.\\-]/g, "")', 't = r.replace(/[,.]/g, "")'],
+  ['finder: lower case rejected', 'const r = String(raw).trim().toUpperCase()', 'const r = String(raw).trim()'],
+  ['finder: digits with spaces read as a number', 'if(/^[0-9]+$/.test(r)){', 'if(/^[0-9 ]+$/.test(r)){'],
+  ['finder: hex taken as decimal', 'parseInt(t.slice(1), 16)', 'parseInt(t.slice(1), 10)'],
+  ['finder: wrong message', '"Word " + (idx + 1) + ": " + WORDLIST[idx]', '"Word " + idx + ": " + WORDLIST[idx]'],
+  ['finder: empty entry complains', 'if(!r) return {msg: ""};', 'if(false) return {msg: ""};'],
+  ['finder: page line not updated', 'document.getElementById("wdFound").textContent = wdFindWord(document.getElementById("wdFind").value).msg;', 'document.getElementById("wdFound").textContent = "";'],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

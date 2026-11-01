@@ -694,6 +694,12 @@
       <div style="display:flex; gap:8px; align-items:center; margin-top:8px;"><label for="wdLen" style="font-weight:600;">Seed length</label><select id="wdLen" aria-label="Seed length" style="flex:1; min-width:0;" onchange="wdUpdate()"><option value="12">12 words (draw 11 + 7 flips)</option><option value="24">24 words (draw 23 + 3 flips)</option></select></div>
       <textarea id="wdWords" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The words you drew" placeholder="Type the words you drew, in order (first four letters are enough)" oninput="wdUpdate()" style="margin-top:8px;"></textarea>
       <input type="text" id="wdFlips" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Your coin flips as 1 and 0" placeholder="Your coin flips as 1 and 0" oninput="wdUpdate()" style="margin-top:6px;">
+      <div style="margin-top:8px;">
+        <label for="wdFind" style="font-weight:600;">Word finder</label>
+        <div class="hint" style="margin:2px 0 4px;">Using dice instead of tiles? Type a word number (1&ndash;2048), or a D8 roll followed by two 16-sided dice (0&ndash;F), written with a space between them, such as <b>3 A 7</b> (a plain number with no spaces is a word number). The word number is (D8 &minus; 1) &times; 256 + the two hex digits + 1. For the final word of a 24-word seed, a last D8 roll gives 3 bits: write it as flips (1 = 000, 2 = 001 ... 8 = 111).</div>
+        <input type="text" id="wdFind" inputmode="text" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Word number or D8 plus two hex dice" placeholder="Word number, or D8 + two hex dice like 3 A 7" oninput="wdFind()">
+        <div id="wdFound" class="hint" aria-live="polite" style="margin:4px 0 0; font-weight:600;"></div>
+      </div>
       <div id="wdCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
       <div id="wdMsg" class="hint" aria-live="polite" style="margin:4px 0 0; color:var(--danger);"></div>
       <div class="hint" style="margin:4px 0 0;">The passphrase (if any) comes from Advanced options below. Coin: pick which side is 1 and keep it the same for every flip.</div>
@@ -3682,6 +3688,21 @@ function wdClear(){
   document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";
   wdWipe(); wdUpdate();
 }
+// Word finder (v1.25.1): a word number 1-2048, or a D8 roll plus two hex digits, gives the BIP39 word. Display only; it does not touch the seed.
+function wdFindWord(raw){
+  const r = String(raw).trim().toUpperCase(), t = r.replace(/[\s,.\-]/g, "");
+  if(!r) return {msg: ""};
+  let idx;
+  if(/^[0-9]+$/.test(r)){
+    const n = parseInt(r, 10);
+    if(n < 1 || n > 2048) return {msg: "A word number is between 1 and 2048."};
+    idx = n - 1;
+  } else if(/^[1-8][0-9A-F]{2}$/.test(t)){
+    idx = (parseInt(t[0], 10) - 1) * 256 + parseInt(t.slice(1), 16);
+  } else return {msg: "Type a number from 1 to 2048, or a D8 roll (1-8) then two hex digits (0-F), like 3 A 7."};
+  return {idx: idx, word: WORDLIST[idx], msg: "Word " + (idx + 1) + ": " + WORDLIST[idx]};
+}
+function wdFind(){ document.getElementById("wdFound").textContent = wdFindWord(document.getElementById("wdFind").value).msg; }
 function wdUpdate(){
   const wc = +document.getElementById("wdLen").value, need = wdNeeds(wc);
   const flipsEl = document.getElementById("wdFlips"), cleaned = flipsEl.value.replace(/[^01]/g, "");

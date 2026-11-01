@@ -551,6 +551,14 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     tf2.set('1'.repeat(14)+'0'.repeat(5)); ok(!tf2.$('rcStat'),'fairness test: coin test waits for 20 flips');
     tf2.set('1'.repeat(15)+'0'.repeat(5)); ok(/\u03c7\u00b2 = 5\.00, 1 degree of freedom, p \u2248 0\.025\. Mildly unusual: a fair coin does this/.test((tf2.$('rcStat')||{}).textContent||''),'fairness test: coin result with its numbers and the word coin'); }
 
+  { const tw=load(); await tw.ready(); const F=(x)=>tw.w.wdFindWord(x);
+    // reference words from the python-mnemonic library's English list
+    const W=[["1","abandon",1],["2048","zoo",2048],["257","cactus",257],["680","female",680],["3 A 7","female",680],["3-a-7","female",680],["1 0 0","abandon",1],["8 F F","zoo",2048],["2 0 0","cactus",257],["300","century",300],[" 300 ","century",300]];
+    ok(W.every(([i,wd,n])=>{const r=F(i);return r.word===wd&&r.idx===n-1&&r.msg==='Word '+n+': '+wd;}),'word finder: numbers and D8 + hex dice give the right BIP39 words');
+    ok(['0','2049','9 0 0','3 G 7','abc','3 A','3 A 7 7','-'].every(x=>F(x).word===undefined&&F(x).msg.length>10),'word finder: bad entries give a hint and no word');
+    ok(F('').msg===''&&F('   ').msg==='','word finder: empty entry says nothing');
+    tw.w.document.getElementById('wdFind').value='3 A 7'; tw.w.wdFind(); ok(tw.$('wdFound').textContent==='Word 680: female','word finder: shows the word on the page');
+    ok(tw.$('wdFind').closest('#tp-make')!==null,'word finder: lives in the Make a seed tab'); }
   ok(/body\.light \.tabs button \{ color: #fff; background: #0066cc/.test(html),'tabs: light mode shows white tab names on blue');
   { const td=load(); await td.ready(); ok(td.d.body.classList.contains('dice-wait')&&!!td.$('startGate'),'dice: held back while the notice is open');
     ok(/body\.dice-wait \.logo \.die, body\.dice-wait \.logo svg[^{]*\{\s*animation:\s*none !important/.test(html),'dice: the stylesheet pauses the falling dice while waiting');
