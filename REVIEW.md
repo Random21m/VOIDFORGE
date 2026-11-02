@@ -36,6 +36,8 @@ VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines
 | Outputs | `generate` ~658, `downloadTool` ~788, print/download | Seed or passphrase leaving the page unexpectedly. |
 | Network | whole file | `fetch`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, external `src`/`href`, CSP meta (line 5). |
 
+**Stale-result guard (v1.26.1):** `inputSig`, `staleCheck` and `seedSig` record the inputs (rolls, word count, mode, both passphrases) at the moment of FORGE. If any of them changes afterwards, the words, fingerprint, address and watch-only data are cleared, so what is on screen (and what DOWNLOAD saves) always belongs to the inputs that made it. A Word draw seed depends on the passphrase only. The saved file uses the rolls remembered from FORGE, not whatever is in the box now.
+
 Tests worth reading too: `tests/oracle.test.mjs` compares the seed math with `@scure` on random inputs, and `tests/mutation.test.mjs` shows which deliberate breaks the in-page self-test catches and which only the CI probe catches.
 
 Independent checks anyone can run: compare with SeedSigner's `tools/mnemonic.py`, or Ian Coleman's BIP39 tool run offline ("Base 10"/"Hex" mode for dice, "Binary" for coin flips).
