@@ -164,6 +164,7 @@ async function probe(w, mutated) {
     await forge(); w.undoRoll(); if (on()) fails.push('stale: UNDO clears the result');
     await forge(); words(24); if (!gone()) fails.push('stale: changing the word count clears everything'); words(12);
     await forge(); mode('coin'); if (!gone()) fails.push('stale: switching dice/coin clears everything'); mode('dice');
+    await forge('1'.repeat(50)); mode('coin'); if (!gone()) fails.push('stale: switching dice/coin clears even when the cleaned rolls look the same'); mode('dice');
     { let blob = null; const o1 = w.URL.createObjectURL, o2 = w.HTMLAnchorElement.prototype.click; w.URL.createObjectURL = (b) => { blob = b; return 'blob:x'; }; w.URL.revokeObjectURL = () => {}; w.HTMLAnchorElement.prototype.click = function () {};
       await forge(D50.replace(/(.)/g, '$1 ')); w.downloadSeed(); const txt = blob ? await new Promise((res) => { const fr = new w.FileReader(); fr.onload = () => res(fr.result); fr.readAsText(blob); }) : '';
       if (!txt.endsWith('Input: ' + D50)) fails.push('stale: the saved file records the rolls that made the words'); w.URL.createObjectURL = o1; w.HTMLAnchorElement.prototype.click = o2; }
