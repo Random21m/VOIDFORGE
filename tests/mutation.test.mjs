@@ -150,6 +150,28 @@ async function probe(w, mutated) {
     if ($('wFirst').style.whiteSpace !== 'pre-line') fails.push('five addresses keep their line breaks'); if (!w.document.querySelector("button[onclick=\"copyWatch(this,'wFirst')\"]") || !/COPY ALL/.test(w.document.querySelector("button[onclick=\"copyWatch(this,'wFirst')\"]").textContent)) fails.push('COPY ALL copies the five addresses');
     $('wType').value = 'ms-wsh'; await w.refreshWatch(); if ($('wFirstGroup').style.display !== 'none') fails.push('multisig shows no addresses');
     $('wType').value = 'wpkh'; await w.refreshWatch(); w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('wFirst').textContent !== '') fails.push('five addresses cleared with the seed'); }
+  { // v1.26.1 stale-result guard: the result on screen always belongs to the inputs that made it
+    const on = () => $('genResult').dataset.seed === '1', gone = () => !on() && !/[0-9a-f]{8}/.test($('fingerprint').textContent) && $('address').textContent === '' && !$('wZpub').textContent && $('wordGrid').querySelectorAll('.wcell:not(.empty)').length === 0;
+    const ev = (id) => $(id).dispatchEvent(new w.Event('input', { bubbles: true }));
+    w.clearAll(); await new Promise((r2) => setTimeout(r2, 20));
+    const forge = async (rolls = D50, pw = '') => { await run('dice', 12, rolls, pw); };
+    await forge(); if (!on()) fails.push('stale: a seed is made');
+    w.updateCount(); w.hideExplain(); w.updateCount(); $('passphrase').value = ''; ev('passphrase'); $('rolls').value = D50 + ' x y'; w.updateCount(); if (!on()) fails.push('stale: no real change keeps the result');
+    $('passphrase').value = 'x'; ev('passphrase'); if (!gone() || !/changed the rolls/.test($('genResult').textContent)) fails.push('stale: a passphrase edit clears everything');
+    await forge(); $('passphrase2').value = 'y'; ev('passphrase2'); if (!gone()) fails.push('stale: a confirm-passphrase edit clears everything');
+    await forge(D50, 'pp'); $('passphrase').value = 'pq'; ev('passphrase'); if (on()) fails.push('stale: editing an existing passphrase clears the result');
+    await forge(); $('rolls').value = D50.slice(0, 49) + (D50[49] === '1' ? '2' : '1'); w.updateCount(); if (!gone()) fails.push('stale: changing a roll clears everything');
+    await forge(); w.undoRoll(); if (on()) fails.push('stale: UNDO clears the result');
+    await forge(); words(24); if (!gone()) fails.push('stale: changing the word count clears everything'); words(12);
+    await forge(); mode('coin'); if (!gone()) fails.push('stale: switching dice/coin clears everything'); mode('dice');
+    { let blob = null; const o1 = w.URL.createObjectURL, o2 = w.HTMLAnchorElement.prototype.click; w.URL.createObjectURL = (b) => { blob = b; return 'blob:x'; }; w.URL.revokeObjectURL = () => {}; w.HTMLAnchorElement.prototype.click = function () {};
+      await forge(D50.replace(/(.)/g, '$1 ')); w.downloadSeed(); const txt = blob ? await new Promise((res) => { const fr = new w.FileReader(); fr.onload = () => res(fr.result); fr.readAsText(blob); }) : '';
+      if (!txt.endsWith('Input: ' + D50)) fails.push('stale: the saved file records the rolls that made the words'); w.URL.createObjectURL = o1; w.HTMLAnchorElement.prototype.click = o2; }
+    { const A11 = 'abandon '.repeat(11); $('wdLen').value = '12'; $('wdWords').value = A11; $('wdFlips').value = '0000000'; $('passphrase').value = ''; $('passphrase2').value = ''; w.wdUpdate(); await w.wdGenerate();
+      if (!on()) fails.push('stale: a Word draw seed is made');
+      $('rolls').value = '1234'; w.updateCount(); words(24); words(12); mode('coin'); mode('dice'); if (!on()) fails.push('stale: rolls, length and mode do not matter to a Word draw seed');
+      $('passphrase').value = 'z'; ev('passphrase'); if (on()) fails.push('stale: a passphrase edit clears a Word draw seed'); }
+    w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); }
   { const LW = async (x) => { $('lwInput').value = x; await w.findLastWords(); return [$('lwStatus').textContent, $('lwOut').textContent]; };
     let [a, o] = await LW('abandon '.repeat(10) + 'xyzzy'); if (!/^Unknown word: xyzzy/.test(a) || o !== '') fails.push('last word: unknown word is rejected');
     [a, o] = await LW('abandon '.repeat(11)); if (!/^128 words complete this 12-word phrase/.test(a) || o.split(/\s+/).length !== 128) fails.push('last word: 12-word list');
@@ -1281,7 +1303,7 @@ const M = [
   ['guide: button state not shown', 'b.setAttribute("aria-pressed", guideOn ? "true" : "false"); b.textContent = guideOn ? "GUIDE: ON" : "GUIDE ME";', 'b.textContent = guideOn ? "GUIDE: ON" : "GUIDE ME";'],
   ['guide: body class not toggled', 'document.body.classList.toggle("guided", guideOn);', ''],
   ['guide: FORGE does not refresh the guide', '    if(guideOn) guideRender();\n    document.getElementById("nextStep").textContent = "Write these', '    document.getElementById("nextStep").textContent = "Write these'],
-  ['guide: roll count does not refresh the guide', 'function updateCount(){\n  if(guideOn) guideRender();\n', 'function updateCount(){\n'],
+  ['guide: roll count does not refresh the guide', 'function updateCount(){\n  staleCheck();\n  if(guideOn) guideRender();\n', 'function updateCount(){\n  staleCheck();\n'],
   ['terms: hover does not show', 'document.addEventListener("mouseover", e => { const t = term(e); if(t) show(t); });', ''],
   ['terms: moving away does not hide', 'document.addEventListener("mouseout", e => { if(term(e)) hide(); });', ''],
   ['terms: focus does not show', 'document.addEventListener("focusin", e => { const t = term(e); if(t) show(t); });', ''],
@@ -1462,7 +1484,7 @@ const M = [
   ["explain: old steps kept after a new FORGE", "  hideExplain(); { const eb", "  { const eb"],
   ["explain: box offered for any length", "eb.style.display = (words && [12,24].includes(words.length)) ? \"\" : \"none\";", "eb.style.display = (words) ? \"\" : \"none\";"],
   ["explain: box opened after FORGE", "eb.open = false; }", "eb.open = true; }"],
-  ["explain: no context kept for the steps", "  exCtx = ctx;\n", ""],
+  ["explain: no context kept for the steps", "  exCtx = ctx; seedKind", "  seedKind"],
   ["print sheet: wrong grid class", "add(\"ps-grid ps-\" + ws.length, \"\")", "add(\"ps-grid ps-12\", \"\")"],
   ["print sheet: box numbers not padded", "add(\"ps-n\", String(i + 1).padStart(2, \"0\"), c)", "add(\"ps-n\", String(i + 1), c)"],
   ["print sheet: first word printed in every box", "add(\"ps-w\", w, c)", "add(\"ps-w\", ws[0], c)"],
@@ -1828,6 +1850,23 @@ const M = [
   ['exit guide: button does nothing', 'id="gExit" onclick="toggleGuide()"', 'id="gExit" onclick=""'],
   ['exit guide: button moved into step 1 only', '<div class="gtop"><div class="gtitle" id="gTitle">Step 1 of 5</div><button type="button" class="secondary small" id="gExit" onclick="toggleGuide()">EXIT GUIDE</button></div>', '<div class="gtop"><div class="gtitle" id="gTitle">Step 1 of 5</div></div>'],
   ['exit guide: button label wrong', '>EXIT GUIDE</button>', '>GUIDE</button>'],
+  // v1.26.1 stale-result guard
+  ["stale: guard never fires", "  if(seedSig === null || !hasSeed() || inputSig(seedKind) === seedSig) return;", "  return;"],
+  ["stale: never recorded", "seedSig = inputSig(seedKind);", "seedSig = null;"],
+  ["stale: passphrase box not watched", "[\"passphrase\", \"passphrase2\"].forEach(id => document.getElementById(id).addEventListener(\"input\", staleCheck));", "[\"passphrase2\"].forEach(id => document.getElementById(id).addEventListener(\"input\", staleCheck));"],
+  ["stale: confirm box not watched", "[\"passphrase\", \"passphrase2\"].forEach(id => document.getElementById(id).addEventListener(\"input\", staleCheck));", "[\"passphrase\"].forEach(id => document.getElementById(id).addEventListener(\"input\", staleCheck));"],
+  ["stale: no passphrase watching at all", "[\"passphrase\", \"passphrase2\"].forEach(id => document.getElementById(id).addEventListener(\"input\", staleCheck));", "[].forEach(id => document.getElementById(id).addEventListener(\"input\", staleCheck));"],
+  ["stale: updateCount does not check", "function updateCount(){\n  staleCheck();", "function updateCount(){"],
+  ["stale: rolls missing from signature", "clean(v(\"rolls\"))", "\"\""],
+  ["stale: word count missing from signature", "\"|\" + document.querySelector('input[name=\"words\"]:checked').value + \"|\" + clean(v(\"rolls\"))", "\"|\" + clean(v(\"rolls\"))"],
+  ["stale: mode missing from signature", "\"rolls|\" + getMode() + \"|\"", "\"rolls|\" + \"|\""],
+  ["stale: first passphrase missing from signature", "JSON.stringify([v(\"passphrase\"), v(\"passphrase2\")])", "JSON.stringify([v(\"passphrase2\")])"],
+  ["stale: confirm passphrase missing from signature", "JSON.stringify([v(\"passphrase\"), v(\"passphrase2\")])", "JSON.stringify([v(\"passphrase\")])"],
+  ["stale: word draw seed treated like rolls", "  if(kind === \"wd\") return \"wd|\" + pass;", "  "],
+  ["stale: kind always rolls", "seedKind = ctx ? \"rolls\" : \"wd\";", "seedKind = \"rolls\";"],
+  ["stale: fingerprint and address left", "  document.getElementById(\"fingerprint\").textContent = \"\"; document.getElementById(\"address\").textContent = \"\";\n}\nfunction updateCount", "\n}\nfunction updateCount"],
+  ["stale: no message", "setResult(\"You changed the rolls, the word count or the passphrase after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.\");", "setResult(\"\\u2014\");"],
+  ["stale: download uses typed rolls", "const rolls = (exCtx && exCtx.rolls) || document.getElementById(\"rolls\").value;", "const rolls = document.getElementById(\"rolls\").value;"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
