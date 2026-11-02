@@ -163,6 +163,30 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // --- download seed: confirm, no passphrase ---
   t.w.downloadSeed(); const txt=await blobText(t.w,t.st.blob);
   ok(t.st.confirms>=2&&txt.includes(words)&&!txt.includes('SECRETPASS'),'DOWNLOAD seed asks first and omits passphrase');
+  { // stale-result guard (v1.26.1): what is on screen always belongs to the inputs that made it
+    const g=load(); await g.ready(); await g.ready();
+    const seedOn=()=>g.$('genResult').dataset.seed==='1', fpOn=()=>/[0-9a-f]{8}/.test(g.$('fingerprint').textContent), adOn=()=>/bc1q/.test(g.$('address').textContent);
+    const first=()=>g.$('genResult').textContent.split('\n')[0];
+    const forge=async(r,pw='')=>{ g.mode('dice'); g.words(12); g.set(r); g.$('passphrase').value=pw; g.$('passphrase2').value=pw; await g.w.generate(); };
+    const typePass=(v)=>{ g.$('passphrase').value=v; g.$('passphrase').dispatchEvent(new g.w.Event('input',{bubbles:true})); };
+    const R1=rnd(50,6); await forge(R1); const W1=first();
+    ok(seedOn()&&fpOn()&&adOn()&&g.d.querySelectorAll('#wordGrid .wcell').length===12,'stale guard: a made seed shows words, fingerprint and address');
+    g.w.updateCount(); g.w.hideExplain(); g.w.updateCount(); typePass(''); g.set(R1+'x y z'); ok(seedOn()&&first()===W1&&fpOn()&&adOn(),'stale guard: no change (same passphrase, ignored characters, explainer closed) keeps the result');
+    typePass('abc'); ok(!seedOn()&&!fpOn()&&!adOn()&&g.d.querySelectorAll('#wordGrid .wcell:not(.empty)').length===0&&g.$('watchBox').style.display==='none'&&/changed the rolls, the word count or the passphrase/.test(g.$('genResult').textContent)&&!g.$('wZpub').textContent,'stale guard: typing a passphrase after FORGE clears the words, fingerprint, address and watch-only keys');
+    g.st.alerts.length=0; g.w.downloadSeed(); ok(g.st.alerts.some(m=>/Generate a seed first/.test(m)),'stale guard: DOWNLOAD refuses after the inputs changed');
+    typePass(''); await g.w.generate(); ok(seedOn()&&first()===W1,'stale guard: pressing FORGE again with the same rolls gives the same words');
+    g.set(R1.slice(0,49)+(R1[49]==='1'?'2':'1')); ok(!seedOn()&&!fpOn()&&!adOn(),'stale guard: changing a roll after FORGE clears the result');
+    await forge(R1); g.set(R1.slice(0,-1)); ok(!seedOn()&&!fpOn()&&!adOn(),'stale guard: removing a roll after FORGE clears the result');
+    await forge(R1); g.w.undoRoll(); ok(!seedOn(),'stale guard: UNDO after FORGE clears the result');
+    await forge(R1); g.words(24); ok(!seedOn()&&!fpOn()&&g.d.querySelectorAll('#wordGrid .wcell').length===24&&g.d.querySelectorAll('#wordGrid .wcell:not(.empty)').length===0,'stale guard: changing the word count after FORGE clears the result');
+    await forge(R1); g.mode('coin'); ok(!seedOn()&&!fpOn(),'stale guard: switching dice/coin after FORGE clears the result'); g.mode('dice');
+    await forge(R1,'p1'); g.$('passphrase2').value='p2'; g.$('passphrase2').dispatchEvent(new g.w.Event('input',{bubbles:true})); ok(!seedOn(),'stale guard: editing the confirm-passphrase box also clears the result');
+    { const sp=R1.replace(/(.)/g,'$1 '); await forge(sp); g.w.downloadSeed(); const txt=await blobText(g.w,g.st.blob); ok(txt.endsWith('Input: '+R1)||txt.includes('Input: '+R1+'\n'),'stale guard: the saved file records the rolls that made the words (cleaned), not what is typed now'); }
+    { const A11='abandon '.repeat(11); g.$('wdLen').value='12'; g.$('wdWords').value=A11; g.$('wdFlips').value='0000000'; g.$('passphrase').value=''; g.$('passphrase2').value=''; g.w.wdUpdate(); await g.w.wdGenerate();
+      ok(seedOn()&&/abandon/.test(first()),'stale guard: a seed from the Word draw box exists');
+      g.set(rnd(10,6)); g.words(24); g.words(12); g.mode('coin'); g.mode('dice'); ok(seedOn(),'stale guard: rolls, word count and mode do not matter to a Word draw seed');
+      typePass('zzz'); ok(!seedOn()&&!fpOn(),'stale guard: a passphrase edit does clear a Word draw seed'); }
+    ok(g.errors.length===0,'stale guard: no page errors'); }
   // --- download tool: clean copy, no seed ---
   t.w.downloadTool(); const page=await blobText(t.w,t.st.blob);
   ok(!page.includes(words.split(' ').slice(0,4).join(' ')),'DOWNLOAD FOR USB copy contains no generated seed');
@@ -535,7 +559,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(!ts.$('wordGrid').hasAttribute('data-seed')&&!ts.$('genResult').dataset.seed&&ts.$('genResult').classList.contains('nores'),'slots: the empty result box is hidden until there is something to say');
     ts.set(rnd(50,6)); ts.$('forgeBtn').disabled=false; await ts.w.generate(); const words=ts.$('genResult').textContent.split('\n')[0].split(' ');
     ok(cells().length===12&&cells().every(c=>!c.classList.contains('empty'))&&cells().map(c=>c.lastChild.textContent).join(' ')===words.join(' ')&&!ts.$('wordGrid').classList.contains('slots')&&ts.$('wordGrid').style.display==='grid','slots: forging fills them with the real words, in order, and drops the empty state');
-    ok(!ts.$('genResult').classList.contains('nores'),'slots: the result box shows once there is a seed'); ts.words(24); ok(cells().length===12&&cells().every(c=>!c.classList.contains('empty')),'slots: changing the length does not disturb a made seed (still the 12 real words)');
+    ok(!ts.$('genResult').classList.contains('nores'),'slots: the result box shows once there is a seed'); ts.words(24); ok(!ts.$('genResult').dataset.seed&&cells().length===24&&cells().every(c=>c.classList.contains('empty'))&&/changed the rolls/.test(ts.$('genResult').textContent),'slots: changing the length after FORGE clears the old 12 words and shows 24 empty slots (no stale seed under a different length)');
     ts.w.wipeSeed(); ok(cells().length===24&&cells().every(c=>c.classList.contains('empty'))&&!cells().some(c=>words.includes(c.lastChild.textContent)&&c.lastChild.textContent!=='\u2014')&&!ts.$('wordGrid').textContent.includes(words[0]+words[1]),'slots: wiping brings back empty slots and leaves none of the old words in the page');
     ts.set('555'); await ts.w.generate(); ok(cells().every(c=>c.classList.contains('empty'))&&!ts.$('genResult').classList.contains('nores')&&/more rolls/.test(ts.$('genResult').textContent),'slots: an "enter more rolls" message shows in the result box and the slots stay empty');
   }
