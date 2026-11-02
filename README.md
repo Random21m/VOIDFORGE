@@ -99,4 +99,4 @@ VOIDFORGE is free software provided **"as is", without warranty of any kind** (s
 
 ## Support the project
 
-VOIDFORGE is free and always will be. If it helped you and you would like to chip in toward the time it takes to maintain it, you can send a few sats to the Lightning address `keywest@strike.me`. This is entirely optional: it does not buy support or priority, and nothing in the app asks for it. The same address is in the maintainer's GitHub profile bio, so you can compare the two before sending anything. It appears nowhere in the app itself, by design.
+VOIDFORGE is free and always will be. If it helped you and you would like to chip in toward the time it takes to maintain it, you can send a few sats to the Lightning address `dev@pay.stormkite.app`. This is entirely optional: it does not buy support or priority, and nothing in the app asks for it. The same address is in the maintainer's GitHub profile bio, so you can compare the two before sending anything. It appears nowhere in the app itself, by design.
