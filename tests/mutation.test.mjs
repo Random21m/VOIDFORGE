@@ -1860,7 +1860,7 @@ const M = [
   ["stale: updateCount does not check", "function updateCount(){\n  staleCheck();", "function updateCount(){"],
   ["stale: rolls missing from signature", "clean(v(\"rolls\"))", "\"\""],
   ["stale: word count missing from signature", "\"|\" + document.querySelector('input[name=\"words\"]:checked').value + \"|\" + clean(v(\"rolls\"))", "\"|\" + clean(v(\"rolls\"))"],
-  ["stale: mode missing from signature", "\"rolls|\" + getMode() + \"|\"", "\"rolls|\" + \"|\""],
+  ["stale: mode missing from signature", "\"rolls|\" + getMode() + \"|\"", "\"rolls|\" + \"|\"", true],  // equivalent: switching dice/coin always empties the rolls box (or reverts the switch), so the rolls part of the signature already changes
   ["stale: first passphrase missing from signature", "JSON.stringify([v(\"passphrase\"), v(\"passphrase2\")])", "JSON.stringify([v(\"passphrase2\")])"],
   ["stale: confirm passphrase missing from signature", "JSON.stringify([v(\"passphrase\"), v(\"passphrase2\")])", "JSON.stringify([v(\"passphrase\")])"],
   ["stale: word draw seed treated like rolls", "  if(kind === \"wd\") return \"wd|\" + pass;", "  "],
