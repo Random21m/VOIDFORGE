@@ -361,6 +361,10 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(!B.classList.contains('guided')&&!t.d.querySelector('.gh')&&/GUIDE ME/.test(t.$('guideBtn').textContent),'guide is off by default and hides nothing');
     t.w.toggleGuide(); t.w.guideStep(-4); ok(B.classList.contains('guided')&&t.$('rolls').classList.contains('gh')&&!t.$('wordRadios').classList.contains('gh'),'GUIDE ME shows one screen at a time');
     t.$('rolls').value=''; t.w.guideStep(1); ok(t.$('gNext').disabled,'guide: NEXT is locked until enough rolls');
+    { const gx=t.$('gExit'); ok(!!gx&&t.$('guidePanel').contains(gx)&&/EXIT GUIDE/.test(gx.textContent)&&!gx.closest('.gstep')&&!gx.disabled,'guide: an EXIT GUIDE button sits in the always-visible top of the guide panel, not inside one step');
+      for(const n of [1,2,3,4,5]){ t.w.guideN=n; t.w.guideRender(); ok(t.$('guidePanel').contains(gx)&&gx.offsetParent!==undefined&&!gx.closest('.gh'),'guide step '+n+': EXIT GUIDE is still there'); }
+      t.w.guideN=3; t.w.guideRender(); gx.click(); ok(!B.classList.contains('guided')&&!t.d.querySelector('.gh')&&/GUIDE ME/.test(t.$('guideBtn').textContent)&&t.$('guideBtn').getAttribute('aria-pressed')==='false','clicking EXIT GUIDE turns the guide off and shows everything again');
+      t.w.toggleGuide(); }
     t.w.toggleGuide(); ok(!t.d.querySelector('.gh')&&!B.classList.contains('guided'),'turning the guide off shows everything again');
     const terms=[...t.d.querySelectorAll('.term')]; ok(terms.length>=6&&terms.every(e=>e.tabIndex===0&&e.dataset.tip.length>40),'explained words are focusable and have a plain explanation');
     t.w.toggleSize(); ok(B.classList.contains('big'),'TEXT A+ enlarges the page'); t.w.toggleSize(); ok(!B.classList.contains('big'),'TEXT A- restores it'); }

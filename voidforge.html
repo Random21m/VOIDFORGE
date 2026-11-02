@@ -342,6 +342,7 @@
   #guidePanel { display: none; margin: 10px 0 14px; background: var(--surface2); border: 1px solid var(--accent); border-radius: 12px; padding: 12px 14px; }
   body.guided #guidePanel { display: block; }
   body.guided #guideNew { display: none; }
+  #guidePanel .gtop { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
   #guidePanel .gtitle { font-size: 12.5px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
   #guidePanel h3 { font-size: 17px; margin: 4px 0 6px; }
   #guidePanel p { font-size: 13px; line-height: 1.5; margin: 0 0 6px; }
@@ -671,7 +672,7 @@
       <div class="ms-bad" id="msBanErr"></div>
     </div>
     <div id="guidePanel" aria-live="polite">
-      <div class="gtitle" id="gTitle">Step 1 of 5</div>
+      <div class="gtop"><div class="gtitle" id="gTitle">Step 1 of 5</div><button type="button" class="secondary small" id="gExit" onclick="toggleGuide()">EXIT GUIDE</button></div>
       <div class="gdots" id="gDots"><i></i><i></i><i></i><i></i><i></i></div>
       <div class="gstep" data-gs="1"><h3>Choose how your seed is made</h3>
         <p>Your wallet starts as a very large random number. Real dice (or a coin) are how you create it yourself, instead of trusting a computer to pick it. First choose the length: <b>12 words</b> is strong enough for almost everyone and needs about 50 dice rolls. <b>24 words</b> is the longest option and needs about 99 rolls. Then choose <b>dice</b> (easier for most people) or <b>coin</b> (many more flips). If you have physical word tiles, use the <b>Word draw</b> box instead. <b>Making real keys?</b> Read BEFORE YOU MAKE REAL KEYS just above this card first.</p></div>
@@ -1188,6 +1189,7 @@
     <details>
       <summary>Changelog</summary>
       <ul>
+        <li><b>1.26.1</b> &mdash; <b>A way out of GUIDE ME.</b> Once GUIDE ME was on, the only way to turn it off was the small button at the top of the page, which scrolls out of sight. The guide card now has an <b>EXIT GUIDE</b> button on every step. Nothing else changed: words, fingerprints, addresses, keys and descriptors are identical to v1.26.0.</li>
         <li><b>1.26.0</b> &mdash; <b>Five addresses.</b> The Watch-only box now shows the first five receiving addresses for the address type, account and network you pick (native SegWit, Taproot, nested SegWit or legacy), with a COPY ALL button, so you can compare them in your wallet app. A short note explains that your words do not depend on the address type, so write the type down with your backup. Words, fingerprints, keys and descriptors are unchanged.</li>
         <li><b>1.25.1</b> &mdash; <b>Polish and fixes.</b> (1) QR codes were sometimes partly hidden behind the &ldquo;Your seed&rdquo; panel; the panel now sits beside the content, every QR scrolls fully into view, and a tall panel scrolls inside itself so COPY and DOWNLOAD stay reachable. (2) The master fingerprint picture no longer disappears after VERIFY or SEND TO CHECK. (3) Solid, readable tabs in both light and dark mode, with short tab names on phones so all four fit. (4) New <b>fairness test</b> under the roll chart: a Pearson chi-square number and p-value, explained in plain words (it cannot prove fairness). (5) New <b>Word finder</b> in the Word draw box: type a word number, or a D8 roll and two hex dice, to look up the BIP39 word. (6) Sections no longer hide under the sticky tab bar when the page jumps to them, a few green texts in light mode are darker for contrast, and an automated accessibility scan is clean on every tab. (7) <b>Phones:</b> the start notice&rsquo;s button is now always on screen (it could sit below the visible area), and the notice only appears once the page&rsquo;s script is running, so a phone that blocks scripts (a file preview, say) shows the red warning instead of a button that does nothing. Words, fingerprints, addresses, keys and descriptors are identical to v1.25.0.</li>
         <li><b>1.25.0</b> &mdash; <b>Compact layout.</b> The page is now four tabs (Make a seed, Check a backup, Extra tools, About &amp; help) instead of one long scroll, with a sticky &ldquo;Your seed&rdquo; panel that shows the roll counter, numbered word slots and a five-step bar. The counter is red until you have enough rolls or flips, then green with a tick. The rolling dice now wait until you click &ldquo;I understand, let&rsquo;s go&rdquo; (or press Escape). Every feature, the theme and the dice are unchanged; printing works from any tab.</li>
@@ -1243,7 +1245,7 @@
   <footer>
     SHA256(rolls or flips) → BIP39 • Same method as SeedSigner and Coldcard dice modes<br>
     Enter your rolls or flips, generate the seed, then compare it and the fingerprint with a second tool on an offline device<br>
-    <span style="font-size:13.5px; margin-top:6px; display:inline-block;">VOIDFORGE v1.26.0 &bull; source: github.com/Random21m/voidforge (no links on this page by design)</span>
+    <span style="font-size:13.5px; margin-top:6px; display:inline-block;">VOIDFORGE v1.26.1 &bull; source: github.com/Random21m/voidforge (no links on this page by design)</span>
   </footer>
 </div>
 

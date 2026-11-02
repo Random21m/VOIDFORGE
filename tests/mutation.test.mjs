@@ -530,6 +530,9 @@ async function probe(w, mutated) {
     $('rolls').value = D50; $('rolls').oninput(); if (nextOff()) fails.push('guide: NEXT unlocks with enough rolls');
     $('advanced').open = false; w.guideStep(1); if (!/step 3 of 5/.test($('gTitle').textContent) || gh('advanced') || !$('advanced').open || nextOff()) fails.push('guide: step 3 shows the passphrase box and can be skipped');
     w.guideStep(-1); if (!/step 2 of 5/.test($('gTitle').textContent)) fails.push('guide: BACK goes back one step');
+    { const gx = $('gExit'); if (!gx || !$('guidePanel').contains(gx) || gx.closest('.gstep') || !/EXIT GUIDE/.test(gx.textContent)) fails.push('guide: EXIT GUIDE button is in the always-visible top of the panel');
+      for (const n of [1, 2, 3, 4, 5]) { w.guideN = n; w.guideRender(); if (!gx || gx.closest('.gh') || $('guidePanel').querySelectorAll('.gstep').length !== 5 || gx.closest('.gstep')) fails.push('guide: EXIT GUIDE present on step ' + n); }
+      w.guideN = 2; w.guideRender(); if (gx) gx.click(); if (B.classList.contains('guided') || w.document.querySelectorAll('.gh').length || $('guideBtn').getAttribute('aria-pressed') !== 'false' || $('guideBtn').textContent !== 'GUIDE ME') fails.push('guide: EXIT GUIDE turns the guide off and shows everything'); w.toggleGuide(); w.guideStep(1); }
     w.guideStep(1); w.guideStep(1); if (!/step 4 of 5/.test($('gTitle').textContent) || gh('wordGrid') || gh('forgeBtn'.replace('forgeBtn', 'genResult')) || !gh('rolls') || !nextOff()) fails.push('guide: step 4 locked until FORGE');
     w.guideStep(1); if (/step 5/.test($('gTitle').textContent)) fails.push('guide: cannot skip FORGE');
     await w.generate(); if (nextOff()) fails.push('guide: FORGE unlocks NEXT');
@@ -1820,6 +1823,10 @@ const M = [
   ['five: lines run together', 'id="wFirst" style="white-space:pre-line"', 'id="wFirst"'],
   ['five: COPY ALL copies the wrong box', "onclick=\"copyWatch(this,'wFirst')\">COPY ALL", "onclick=\"copyWatch(this,'wZpub')\">COPY ALL"],
   ['five: address 5 uses another branch', 'ckdPriv(rk,rc,i,false); five.push', 'ckdPriv(rk,rc,i+(i>3?1:0),false); five.push'],
+  // v1.26.1 EXIT GUIDE
+  ['exit guide: button does nothing', 'id="gExit" onclick="toggleGuide()"', 'id="gExit" onclick=""'],
+  ['exit guide: button moved into step 1 only', '<div class="gtop"><div class="gtitle" id="gTitle">Step 1 of 5</div><button type="button" class="secondary small" id="gExit" onclick="toggleGuide()">EXIT GUIDE</button></div>', '<div class="gtop"><div class="gtitle" id="gTitle">Step 1 of 5</div></div>'],
+  ['exit guide: button label wrong', '>EXIT GUIDE</button>', '>GUIDE</button>'],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
