@@ -12,6 +12,21 @@ Get <code>voidforge.html</code> and <code>SHA256SUMS</code> from the release pag
 
 > **Not independently audited.** For serious amounts, generate on dedicated hardware (SeedSigner, Coldcard) and use VOIDFORGE to cross-check the words and fingerprint.
 
+## What it looks like
+
+<p align="center"><img src="docs/screenshots/1-start.png" alt="The VOIDFORGE start screen: neon dice, the Make a seed tab, and the offline status check" width="760"></p>
+
+<p align="center"><img src="docs/screenshots/3-seed.png" alt="A practice seed after FORGE SEED: 50 dice rolls entered, the entropy check, and the 12 words" width="760"></p>
+
+<table align="center"><tr>
+<td align="center"><img src="docs/screenshots/2-guide.png" alt="GUIDE ME walks through the steps one at a time, with an EXIT GUIDE button" width="370"><br><sub>GUIDE ME, one step at a time</sub></td>
+<td align="center"><img src="docs/screenshots/4-watch-only.png" alt="The watch-only box with the public key, first five addresses and descriptors" width="370"><br><sub>Watch-only keys and first five addresses</sub></td>
+</tr></table>
+
+<p align="center"><img src="docs/screenshots/5-phone.png" alt="VOIDFORGE on a phone screen" width="260"><br><sub>On a phone: good for learning and practice, not for real funds.</sub></p>
+
+The seed in these pictures is a practice seed made for the screenshots. Never use it, and never use any seed you have seen published.
+
 ## Disclaimer: please read
 
 VOIDFORGE is free software provided **"as is", without warranty of any kind** (see [LICENSE](LICENSE)). You are solely responsible for your own funds, your backups and how you use it. The author is not liable for any loss.
