@@ -1364,7 +1364,24 @@ function renderRollChart(rolls, isCoin){
   box.style.display = "";
   box.setAttribute("aria-label", "Counts: " + faces.map((f, i) => f + " came up " + counts[i] + " times").join(", "));
 }
+// Stale-result guard (v1.26.1): the words, fingerprint and address on screen always belong to the inputs that made them.
+// If the rolls, word count, dice/coin choice or passphrase change after FORGE, the old result is cleared so it can never be
+// mistaken for (or downloaded as) the result of the new inputs.
+let seedSig = null, seedKind = "";
+function inputSig(kind){
+  const v = id => document.getElementById(id).value;
+  const pass = JSON.stringify([v("passphrase"), v("passphrase2")]);
+  if(kind === "wd") return "wd|" + pass;  // a seed from the Word draw box depends on the passphrase only
+  return "rolls|" + getMode() + "|" + document.querySelector('input[name="words"]:checked').value + "|" + clean(v("rolls")) + "|" + pass;
+}
+function staleCheck(){
+  if(seedSig === null || !hasSeed() || inputSig(seedKind) === seedSig) return;
+  seedSig = null;
+  setResult("You changed the rolls, the word count or the passphrase after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.");
+  document.getElementById("fingerprint").textContent = ""; document.getElementById("address").textContent = "";
+}
 function updateCount(){
+  staleCheck();
   if(guideOn) guideRender();
   if(document.getElementById("demoOn").checked) demoRefresh();
   const n = clean(document.getElementById("rolls").value).length;
@@ -1405,6 +1422,7 @@ function updateCount(){
   updateSeedPanel();
 }
 document.getElementById("rolls").oninput = updateCount;
+["passphrase", "passphrase2"].forEach(id => document.getElementById(id).addEventListener("input", staleCheck));
 document.querySelectorAll('input[name="words"]').forEach(r=>r.onchange=updateCount);
 
 function undoRoll(){
@@ -2621,8 +2639,9 @@ async function generate(){
 // Everything that happens once the seed words exist (shared by dice/coin and Word draw): show them, fingerprint, addresses, watch-only.
 async function finishSeed(mnemonic, ctx){
   const pass = document.getElementById("passphrase").value;
+  seedSig = null;
   setResult(mnemonic + "\n\nPassphrase: " + (pass ? "used (" + Array.from(pass).length + " characters, not shown here)" : "none"), mnemonic.split(" "));
-  exCtx = ctx;
+  exCtx = ctx; seedKind = ctx ? "rolls" : "wd"; seedSig = inputSig(seedKind);
   const fpEl = document.getElementById("fingerprint"), adEl = document.getElementById("address");
   fpEl.textContent = "Master fingerprint: computing..."; adEl.textContent = "";
   clearWatch(); clearFpIcons();
@@ -3479,7 +3498,7 @@ function downloadSeed() {
   if (!hasSeed()) return alert("Generate a seed first");
   const text = document.getElementById("genResult").textContent;
   if (!confirm("This saves your seed and rolls to a PLAIN-TEXT file. Only do this on a trusted offline computer. The passphrase is not saved. Continue?")) return;
-  const rolls = document.getElementById("rolls").value;
+  const rolls = (exCtx && exCtx.rolls) || document.getElementById("rolls").value; // the rolls that made these words, not whatever is typed now
   const full = text + "\n\n" + document.getElementById("fingerprint").textContent + "\n" + document.getElementById("address").textContent + "\n" + passLine("saved") + "\n\nInput: " + rolls;
   const blob = new Blob([full], {type: "text/plain"});
   const a = document.createElement("a");
