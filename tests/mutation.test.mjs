@@ -674,6 +674,7 @@ async function probe(w, mutated) {
     if (cubes.map(c => c.parentNode.parentNode.getAttribute('style')).join('|') !== '--dl:0.14s; --fx:-46px; --ry:-34deg|--dl:0s; --fx:0px; --ry:-30deg|--dl:0.28s; --fx:46px; --ry:-26deg') fails.push('logo: dice fall from spread-out spots and land at slightly different angles');
     { const rule = n => (mutated.match(new RegExp('\\.logo \\.' + n + ' \\{[^}]*\\}')) || [''])[0], roll = (mutated.match(/@keyframes dieRoll \{[\s\S]*?\n  \}/) || [''])[0];
       if (!/preserve-3d/.test(rule('cube')) || !/preserve-3d/.test(rule('fl')) || /opacity|filter/.test(rule('cube') + rule('fl') + roll) || roll.length < 200) fails.push('logo: the cube keeps its 3D (opacity or filter on the cube flattens it)'); }
+    if (!/\.logo \{[^}]*position: relative; z-index: 0;/.test(mutated) || !/#statusLine \{ position: relative; z-index: 1;/.test(mutated)) fails.push('logo: the falling dice pass behind the status line text, not over it');
     if (lg.classList.contains('again')) fails.push('logo: starts on the first roll'); w.rollLogo(); if (!lg.classList.contains('again')) fails.push('logo: tapping rolls again'); w.rollLogo(); if (lg.classList.contains('again')) fails.push('logo: second tap rolls again');
     lg.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); if (!lg.classList.contains('again')) fails.push('logo: Enter key rolls');
     lg.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true })); if (!lg.classList.contains('again')) fails.push('logo: other keys do not roll');
@@ -1425,6 +1426,8 @@ const M = [
   ['logo: dice start in the same spot', 'fx:"-46px"', 'fx:"-10px"'],
   ['logo: dice land at the same angle', 'ry:"-34deg"', 'ry:"-30deg"'],
   ['logo: dice fall at the same moment', 'dl:"0.14s"', 'dl:"0s"'],
+  ['logo: dice fall over the status text', '#statusLine { position: relative; z-index: 1;', '#statusLine { position: relative;'],
+  ['logo: dice not their own layer', '.logo { --S: 46px; position: relative; z-index: 0;', '.logo { --S: 46px; position: relative;'],
   ['logo: cube flattened by opacity', '.logo .cube { position: absolute;', '.logo .cube { opacity: .99; position: absolute;'],
   ['logo: shadow restart (CSS only)', '.logo.again .die::after { animation-name: dieShadow2; }', '.logo.again .die::after { animation-name: dieShadow; }', true],
   ['word draw: exact words not matched', '  if(Object.prototype.hasOwnProperty.call(WORD_MAP, tok)) return WORD_MAP[tok];\n', ''],

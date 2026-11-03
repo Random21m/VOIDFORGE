@@ -267,7 +267,7 @@
   #selfTestBadge.bad { color: var(--danger); }
   body.light #selfTestBadge.ok, body.light .status.ok { color: #07683a; }
   button:disabled { opacity: .55; cursor: not-allowed; }
-  #statusLine { display: flex; justify-content: center; gap: 4px 14px; flex-wrap: wrap; margin-bottom: 12px; }
+  #statusLine { position: relative; z-index: 1; display: flex; justify-content: center; gap: 4px 14px; flex-wrap: wrap; margin-bottom: 12px; }
   #statusLine #netTag, #statusLine #selfTestBadge { margin: 0; }
   #secretNote { display: none; }
   #wordGrid[style*="display: grid"] + #secretNote { display: block; }
@@ -365,7 +365,7 @@
   body.guided .gh { display: none !important; }
   @media print { body, body.big { zoom: 1 !important; } .guide-btn, .size-btn, #guidePanel, #guideNew, #tipBox { display: none !important; } }
 
-  .logo { --S: 46px; display: inline-flex; align-items: flex-end; justify-content: center; gap: 26px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; padding: 14px 14px 18px; }
+  .logo { --S: 46px; position: relative; z-index: 0; display: inline-flex; align-items: flex-end; justify-content: center; gap: 26px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; padding: 14px 14px 18px; }
   .logo .die { position: relative; display: block; width: var(--S); height: var(--S); perspective: 520px; perspective-origin: 50% 20%; animation: dieGlow 2s linear both, dieFade 2s linear both; animation-delay: var(--dl, 0s); }
   .logo .die::after { content: ""; position: absolute; left: 4%; right: 4%; bottom: -13px; height: 11px; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(0,240,255,.55), rgba(255,0,170,.22) 62%, transparent 74%); opacity: 0; animation: dieShadow 2s linear both; animation-delay: var(--dl, 0s); }
   .logo .fl { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: block; transform-style: preserve-3d; animation: dieFloat 6s ease-in-out calc(var(--dl, 0s) + 2.6s) infinite; }
