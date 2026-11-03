@@ -694,7 +694,7 @@
       <div class="gstep" data-gs="4"><h3>Forge the seed and write it down</h3>
         <p>Press <b>FORGE SEED</b>. Your rolls are scrambled together into your seed words. Write the words on paper, in order, with a pen. <b>Never</b> take a photo, type them into a connected device, or store them in a cloud. Anyone who has these words has your money. NEXT unlocks once the words are shown.</p></div>
       <div class="gstep" data-gs="5"><h3>Check it and make a backup</h3>
-        <p>Last step, and the most important. Compare the <span class="term" tabindex="0" data-tip="A short code (8 characters) that identifies your seed without revealing it. Wallet apps show it too, so you can see you have the same seed.">fingerprint</span> and first address in a second wallet app, make a paper backup if you like (SeedQR or the printed sheet), then open the <b>CHECK A BACKUP</b> tab to type your words back in. Start with a small amount first.</p></div>
+        <p>Last step, and the most important. Compare the <span class="term" tabindex="0" data-tip="A short code (8 characters) that identifies your seed without revealing it. Wallet apps show it too, so you can see you have the same seed.">fingerprint</span> and first address in a second wallet app, make a paper backup if you like (SeedQR or the printed sheet), then press <b>START DRILL</b> in the Restore drill below: it hides the words on screen and has you type them back from your paper. (The <b>CHECK A BACKUP</b> tab can also check words you already have.) Start with a small amount first.</p></div>
       <div class="gnav"><button type="button" class="secondary small" id="gBack" onclick="guideStep(-1)">&larr; BACK</button><span id="guideWhy"></span><button type="button" class="small" id="gNext" onclick="guideStep(1)">NEXT &rarr;</button></div>
     </div>
     <div class="radio-group" id="wordRadios" data-g="1">
@@ -1212,6 +1212,7 @@
     <details>
       <summary>Changelog</summary>
       <ul>
+        <li><b>1.27.0</b> &mdash; <b>Restore drill.</b> After FORGE SEED, a new <b>Restore drill</b> card (in the Check step) hides the words on screen and has you type them back from your paper. The page tells you which word <i>positions</i> are wrong, never what the right word is, so it tests the paper and not your memory of the screen. If the seed has a passphrase you type that too. When everything matches, the page shows the master fingerprint your paper rebuilds. Changing or clearing the seed ends the drill and wipes what you typed. Nothing is stored. Nothing else changed: for the same inputs, words, fingerprints, addresses, keys and descriptors are identical to v1.26.2.</li>
         <li><b>1.26.2</b> &mdash; <b>Clearer buttons.</b> CLEAR is now red, because it wipes the page, and SELF-TEST is now green, because it shows the page is working. The footer spells the project name the way GitHub now does. Nothing else changed: for the same inputs, words, fingerprints, addresses, keys and descriptors are identical to v1.26.1.</li>
         <li><b>1.26.1</b> &mdash; <b>Stale results fixed, and a way out of GUIDE ME.</b> Reported privately by a user: after FORGE, editing the rolls, the word count or the passphrase left the old words, fingerprint and address on screen, so they could be saved or copied as if they belonged to the new entries. Now any such edit clears the old result at once and asks you to press FORGE SEED again. The saved file also always records the rolls that made the words. Separately, the GUIDE ME card now has an <b>EXIT GUIDE</b> button on every step. For the same inputs, words, fingerprints, addresses, keys and descriptors are identical to v1.26.0.</li>
         <li><b>1.26.0</b> &mdash; <b>Five addresses.</b> The Watch-only box now shows the first five receiving addresses for the address type, account and network you pick (native SegWit, Taproot, nested SegWit or legacy), with a COPY ALL button, so you can compare them in your wallet app. A short note explains that your words do not depend on the address type, so write the type down with your backup. Words, fingerprints, keys and descriptors are unchanged.</li>
@@ -1269,7 +1270,7 @@
   <footer>
     SHA256(rolls or flips) → BIP39 • Same method as SeedSigner and Coldcard dice modes<br>
     Enter your rolls or flips, generate the seed, then compare it and the fingerprint with a second tool on an offline device<br>
-    <span style="font-size:13.5px; margin-top:6px; display:inline-block;">VOIDFORGE v1.26.2 &bull; source: github.com/Random21m/VOIDFORGE (no links on this page by design)</span>
+    <span style="font-size:13.5px; margin-top:6px; display:inline-block;">VOIDFORGE v1.27.0 &bull; source: github.com/Random21m/VOIDFORGE (no links on this page by design)</span>
   </footer>
 </div>
 
@@ -3093,7 +3094,7 @@ function setResult(text, words){
     grid.classList.remove("slots"); grid.style.display = "grid"; updateAbbrNote();
     document.getElementById("passNote").textContent = text.split("\n").slice(-1)[0];
     if(guideOn) guideRender();
-    document.getElementById("nextStep").textContent = "Write these " + words.length + " words down in order, then check your backup below. PRINT SEED prints them.";
+    document.getElementById("nextStep").textContent = "Write these " + words.length + " words down in order, then try the Restore drill below to test your paper. PRINT SEED prints them.";
   } else {
     delete g.dataset.seed; g.classList.remove("sr"); grid.style.display = ""; grid.classList.remove("slots"); renderSlots(); updateAbbrNote();
     document.getElementById("passNote").textContent = ""; document.getElementById("nextStep").textContent = "";

@@ -1,6 +1,6 @@
 # Review guide
 
-VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines in `voidforge.html`. Line numbers are approximate (v1.26.2).
+VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines in `voidforge.html`. Line numbers are approximate (v1.27.0).
 
 | What | Where | Look for |
 |---|---|---|
@@ -35,6 +35,8 @@ VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines
 | Self-test and gate | `runSelfTests` ~597, `gateOk` ~814 | Known-answer vectors are real; failure disables the tool. |
 | Outputs | `generate` ~658, `downloadTool` ~788, print/download | Seed or passphrase leaving the page unexpectedly. |
 | Network | whole file | `fetch`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, external `src`/`href`, CSP meta (line 5). |
+
+**Restore drill (v1.27.0):** `drillStart`, `drillCheck` and `drillEnd` compare what you type with the words and passphrase held for the current seed (`watchCtx`, the same copy the watch-only box uses). The words are hidden by CSS only (`body.drill-on`): they stay in the page, so it protects against looking, not against anyone who can read the page. The page reports positions, never the right words, and compares the passphrase after Unicode normalization (NFKD), like the seed derivation. The drill ends whenever the result changes (`setResult` calls `drillEnd`), which also wipes what you typed. It uses no storage and no network.
 
 **Stale-result guard (v1.26.1):** `inputSig`, `staleCheck` and `seedSig` record the inputs (rolls, word count, mode, both passphrases) at the moment of FORGE. If any of them changes afterwards, the words, fingerprint, address and watch-only data are cleared, so what is on screen (and what DOWNLOAD saves) always belongs to the inputs that made it. A Word draw seed depends on the passphrase only. The saved file uses the rolls remembered from FORGE, not whatever is in the box now.
 

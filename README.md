@@ -63,6 +63,7 @@ VOIDFORGE is free software provided **"as is", without warranty of any kind** (s
 
 **Coin flips:** decide which side is 1 and which is 0 (the usual choice is heads = 1, tails = 0), use it for every flip, and keep the exact 1/0 string with your backup. Only the string is hashed, so any consistent choice works, but the mapping cannot be recovered from the words.
 
+- **Restore drill:** after FORGE, a card in the Check step hides the words on screen and has you type them back from your paper. It reports which word positions are wrong (never what the right word is), checks the passphrase if there is one, and shows the master fingerprint your paper rebuilds. Changing or clearing the seed ends the drill, and nothing is stored.
 - **First 5 addresses and a check guide:** after FORGE the first five receiving addresses are listed (with COPY ALL) and a short guide explains how to compare them in a second wallet app. Comparing five addresses is much stronger than comparing one.
 - **First 4 letters view:** a button on the word grid shows only the first four letters of each word (every BIP39 word is unique by them), for stamping metal backups. Display only; it does not change the stored words.
 - **Roll chart:** a small bar chart under the roll box shows how many times each face (or coin side) has come up. It is for your eyes only and does not change the seed or the randomness check, which still cannot prove your dice or coin are fair.
