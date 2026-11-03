@@ -26,6 +26,9 @@ The attestation proves the file came from this repository's release workflow at 
 ## README refresh (every release)
 Before the final candidate commit, regenerate the README screenshots from the new build (a practice seed only) and re-read the README text so it describes what the page does now: new or changed screens get a picture, retired wording is removed, and nothing in the pictures is older than the release.
 
+## Clean-up (after every release)
+Delete red and cancelled workflow runs (`gh api -X DELETE repos/Random21m/VOIDFORGE/actions/runs/<id>`), mark the previous release "Superseded by vX", check that the README, REVIEW.md, RELEASING.md and the in-page changelog all name the new version, and leave no stray files in the repo (`git ls-files`). A run that failed only because of a flaky test is re-run after the test is fixed, and the fix is recorded in the notes.
+
 ## Current build
 `voidforge.html` v1.27.2, SHA256: `10858a46e813f7369a42497942ac084fd3ffcd72d92b25b6ce0a73193f2f19a5`
 Content ID (CIDv1): `bafkreiaqqwfen2at643juqsjpfbkyccp2p7424wzfms3ntqkommt6lyzuu`
