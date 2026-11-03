@@ -677,6 +677,20 @@ async function probe(w, mutated) {
       if (!/preserve-3d/.test(rule('cube')) || !/preserve-3d/.test(rule('fl')) || /opacity|filter/.test(rule('cube') + rule('fl') + roll) || roll.length < 200) fails.push('logo: the cube keeps its 3D (opacity or filter on the cube flattens it)'); }
     if (!/\.logo \{[^}]*position: relative; z-index: 0;/.test(mutated) || !/#statusLine \{ position: relative; z-index: 1;/.test(mutated)) fails.push('logo: the falling dice pass behind the status line text, not over it');
     if (!/\n  h1 \{[^}]*font-size: 37px;[^}]*filter: drop-shadow\([^}]*\}/.test(mutated) || !/\.logo \{ --S: 40px;/.test(mutated)) fails.push('header: VOIDFORGE is 37px with a soft neon glow, and the dice are 40px so the name leads');
+    { // RECOMMENDED is an amber badge, and DEMO ONLY / ADVANCED / NEW are grey badges (v1.27.2)
+      const doc = w.document, hexc = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+      const lumc = (c) => { const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); };
+      const crc = (a, b) => { const x = lumc(a), y = lumc(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+      const labels = [...doc.querySelectorAll('summary, option')].filter((e) => /recommended/i.test(e.textContent));
+      if (doc.querySelectorAll('.tag-rec').length !== 2 || doc.querySelectorAll('option.opt-rec').length !== 1 || labels.length !== 3 || !labels.every((e) => e.querySelector('.tag-rec') || e.classList.contains('opt-rec'))) fails.push('recommended: every label is an amber badge or an amber option');
+      if (doc.querySelectorAll('.tag-note').length !== 4 || [...doc.querySelectorAll('summary')].some((e) => /\((demo only|advanced)/i.test(e.textContent))) fails.push('tags: DEMO ONLY, ADVANCED and NEW are grey badges');
+      const sheet = mutated.match(/<style>[\s\S]*?<\/style>/)[0];
+      if (!/\.strip b \{ color: var\(--warn-text\); \}/.test(sheet) || !/\.tag-rec \{[^}]*color: var\(--warn-text\)[^}]*border-color: var\(--warn-text\)/.test(sheet) || !/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(sheet)) fails.push('recommended: uses the banner amber');
+      if (!/\.tag-note \{ color: var\(--muted\); border-color: var\(--muted\); \}/.test(sheet)) fails.push('tags: grey badge colour');
+      const lt = /body\.light \.tag-rec \{ color: (#[0-9a-f]{6});/.exec(sheet), surfL = /body\.light \{[^}]*--surface2: (#[0-9a-f]{6})/.exec(sheet);
+      const mixc = (fg, al, bg) => fg.map((v, k) => v * al + bg[k] * (1 - al));
+      if (!lt || !surfL || crc(hexc(lt[1]), mixc(hexc(lt[1]), .08, hexc(surfL[1]))) < 4.5) fails.push('recommended: light badge contrast');
+    }
     if (lg.classList.contains('again')) fails.push('logo: starts on the first roll'); w.rollLogo(); if (!lg.classList.contains('again')) fails.push('logo: tapping rolls again'); w.rollLogo(); if (lg.classList.contains('again')) fails.push('logo: second tap rolls again');
     lg.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); if (!lg.classList.contains('again')) fails.push('logo: Enter key rolls');
     lg.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true })); if (!lg.classList.contains('again')) fails.push('logo: other keys do not roll');
