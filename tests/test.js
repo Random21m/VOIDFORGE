@@ -63,6 +63,25 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   ok(/^ALL \d+ TESTS PASSED/.test(t.$('testResults').textContent),'SELF-TEST button: press again shows them');
   t.w.toggleSelfTests();
   ok(t.$('testResults').textContent==='','SELF-TEST button: second press hides the results');
+  // CLEAR is red, SELF-TEST is green, and both stay readable in dark and light themes (v1.26.2)
+  { const css=html.match(/<style>[\s\S]*?<\/style>/)[0], hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+    const lum=c=>{const f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);};return .2126*f(c[0])+.7152*f(c[1])+.0722*f(c[2]);};
+    const cr=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+    const mix=(fg,a,bg)=>fg.map((v,i)=>v*a+bg[i]*(1-a));
+    const btn=(fn)=>[...t.w.document.querySelectorAll('button')].find(b=>b.getAttribute('onclick')===fn);
+    const clr=btn('clearAll()'), st=btn('toggleSelfTests()');
+    ok(clr&&clr.textContent.trim()==='CLEAR'&&clr.classList.contains('btn-clear')&&!clr.classList.contains('secondary'),'CLEAR button uses the red style');
+    ok(st&&st.textContent.trim()==='SELF-TEST'&&st.classList.contains('btn-test')&&st.classList.contains('small')&&!st.classList.contains('secondary'),'SELF-TEST button uses the green style');
+    ok(/\n  button\.btn-clear \{[^}]*color: var\(--bad-text\)[^}]*border: 1px solid var\(--bad-text\)/.test(css),'red style: red text and red border');
+    ok(/\n  button\.btn-test \{[^}]*color: var\(--ok-text\)[^}]*border: 1px solid var\(--ok-text\)/.test(css),'green style: green text and green border');
+    ok(/body\.light button\.btn-clear \{[^}]*color: var\(--bad-text\)/.test(css)&&/body\.light button\.btn-test \{[^}]*color: var\(--ok-text\)/.test(css),'light theme keeps the red and green text (not overridden to white)');
+    const tok=(re)=>re.exec(css)[1];
+    const dark={bad:tok(/:root \{[^}]*--bad-text: (#[0-9a-f]{6})/),ok:tok(/:root \{ --ok-text: (#[0-9a-f]{6})/),surf:tok(/--surface2: (#[0-9a-f]{6})/)};
+    const light={bad:tok(/body\.light \{[^}]*--bad-text: (#[0-9a-f]{6})/),ok:tok(/body\.light \{ --ok-text: (#[0-9a-f]{6})/),surf:tok(/body\.light \{[^}]*--surface2: (#[0-9a-f]{6})/)};
+    const worst=Math.min(
+      cr(hex(dark.bad),mix(hex(dark.bad),.08,hex(dark.surf))), cr(hex(dark.ok),mix(hex(dark.ok),.12,hex(dark.surf))),
+      cr(hex(light.bad),mix(hex(light.bad),.04,hex(light.surf))), cr(hex(light.ok),mix(hex(light.ok),.08,hex(light.surf))));
+    ok(worst>=4.5,'red and green button text keeps contrast >= 4.5:1 in both themes (worst '+worst.toFixed(2)+')'); }
   // --- RIPEMD-160 fuzz vs Node ---
   let bad=0; for(let n=0;n<300;n++){ const b=nc.randomBytes(n<130?n:nc.randomInt(0,2000));
     if(Buffer.from(t.w.ripemd160(new t.w.Uint8Array(b))).toString('hex')!==nc.createHash('ripemd160').update(b).digest('hex')) bad++; }

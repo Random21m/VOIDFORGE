@@ -150,6 +150,31 @@ async function probe(w, mutated) {
     if ($('wFirst').style.whiteSpace !== 'pre-line') fails.push('five addresses keep their line breaks'); if (!w.document.querySelector("button[onclick=\"copyWatch(this,'wFirst')\"]") || !/COPY ALL/.test(w.document.querySelector("button[onclick=\"copyWatch(this,'wFirst')\"]").textContent)) fails.push('COPY ALL copies the five addresses');
     $('wType').value = 'ms-wsh'; await w.refreshWatch(); if ($('wFirstGroup').style.display !== 'none') fails.push('multisig shows no addresses');
     $('wType').value = 'wpkh'; await w.refreshWatch(); w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('wFirst').textContent !== '') fails.push('five addresses cleared with the seed'); }
+  { // v1.26.2 CLEAR is red, SELF-TEST is green, readable in both themes
+    const css = mutated.match(/<style>[\s\S]*?<\/style>/)[0], hexc = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const lum = (c) => { const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); };
+    const cr = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+    const tok = (re) => (re.exec(css) || [])[1];
+    const bt = (id) => [...w.document.querySelectorAll('button')].find((b) => b.getAttribute('onclick') === id);
+    const a = bt('clearAll()'), b = bt('toggleSelfTests()');
+    if (!a || !a.classList.contains('btn-clear') || a.classList.contains('secondary')) fails.push('buttons: CLEAR is red');
+    if (!b || !b.classList.contains('btn-test') || b.classList.contains('secondary')) fails.push('buttons: SELF-TEST is green');
+    if (!/\n  button\.btn-clear \{[^}]*color: var\(--bad-text\)/.test(css)) fails.push('buttons: red text');
+    if (!/\n  button\.btn-clear \{[^}]*border: 1px solid var\(--bad-text\)/.test(css)) fails.push('buttons: red border');
+    if (!/\n  button\.btn-test \{[^}]*color: var\(--ok-text\)/.test(css)) fails.push('buttons: green text');
+    if (!/\n  button\.btn-test \{[^}]*border: 1px solid var\(--ok-text\)/.test(css)) fails.push('buttons: green border');
+    if (!/body\.light button\.btn-clear \{[^}]*color: var\(--bad-text\)/.test(css)) fails.push('buttons: light red text');
+    if (!/body\.light button\.btn-test \{[^}]*color: var\(--ok-text\)/.test(css)) fails.push('buttons: light green text');
+    const al = (re) => parseFloat((re.exec(css) || [0, 1])[1]);
+    const mixc = (fg, k, bg) => fg.map((v, i) => v * k + bg[i] * (1 - k));
+    const dk = { bad: tok(/:root \{[^}]*--bad-text: (#[0-9a-f]{6})/), ok: tok(/:root \{ --ok-text: (#[0-9a-f]{6})/), sf: tok(/--surface2: (#[0-9a-f]{6})/) };
+    const lt = { bad: tok(/body\.light \{[^}]*--bad-text: (#[0-9a-f]{6})/), ok: tok(/body\.light \{ --ok-text: (#[0-9a-f]{6})/), sf: tok(/body\.light \{[^}]*--surface2: (#[0-9a-f]{6})/) };
+    const worst = Math.min(
+      cr(hexc(dk.bad), mixc(hexc(dk.bad), al(/button\.btn-clear \{ background: rgba\(255,68,102,([.0-9]+)\)/), hexc(dk.sf))),
+      cr(hexc(dk.ok), mixc(hexc(dk.ok), al(/button\.btn-test \{ background: rgba\(0,255,157,([.0-9]+)\)/), hexc(dk.sf))),
+      cr(hexc(lt.bad), mixc(hexc(lt.bad), al(/body\.light button\.btn-clear \{ background: rgba\(192,20,60,([.0-9]+)\)/), hexc(lt.sf))),
+      cr(hexc(lt.ok), mixc(hexc(lt.ok), al(/body\.light button\.btn-test \{ background: rgba\(6,104,58,([.0-9]+)\)/), hexc(lt.sf))));
+    if (!(worst >= 4.5)) fails.push('buttons: red and green text stay readable in both themes'); }
   { // v1.26.1 stale-result guard: the result on screen always belongs to the inputs that made it
     const on = () => $('genResult').dataset.seed === '1', gone = () => !on() && !/[0-9a-f]{8}/.test($('fingerprint').textContent) && $('address').textContent === '' && !$('wZpub').textContent && $('wordGrid').querySelectorAll('.wcell:not(.empty)').length === 0;
     const ev = (id) => $(id).dispatchEvent(new w.Event('input', { bubbles: true }));
@@ -1868,6 +1893,17 @@ const M = [
   ["stale: fingerprint and address left", "  document.getElementById(\"fingerprint\").textContent = \"\"; document.getElementById(\"address\").textContent = \"\";\n}\nfunction updateCount", "\n}\nfunction updateCount"],
   ["stale: no message", "setResult(\"You changed the rolls, the word count or the passphrase after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.\");", "setResult(\"\\u2014\");"],
   ["stale: download uses typed rolls", "const rolls = (exCtx && exCtx.rolls) || document.getElementById(\"rolls\").value;", "const rolls = document.getElementById(\"rolls\").value;"],
+  // v1.26.2 red CLEAR and green SELF-TEST
+  ["buttons: CLEAR not red", "<button class=\"btn-clear\" onclick=\"clearAll()\">", "<button class=\"secondary\" onclick=\"clearAll()\">"],
+  ["buttons: SELF-TEST not green", "<button class=\"btn-test small\" onclick=\"toggleSelfTests()\">", "<button class=\"secondary small\" onclick=\"toggleSelfTests()\">"],
+  ["buttons: red style loses its text colour", "button.btn-clear { background: rgba(255,68,102,.08); color: var(--bad-text);", "button.btn-clear { background: rgba(255,68,102,.08); color: var(--text);"],
+  ["buttons: red style loses its border", "border: 1px solid var(--bad-text); }\n  button.btn-test", "border: 1px solid var(--border); }\n  button.btn-test"],
+  ["buttons: green style loses its text colour", "button.btn-test { background: rgba(0,255,157,.12); color: var(--ok-text);", "button.btn-test { background: rgba(0,255,157,.12); color: var(--text);"],
+  ["buttons: green style loses its border", "border: 1px solid var(--ok-text); }\n  body.light button.btn-clear", "border: 1px solid var(--border); }\n  body.light button.btn-clear"],
+  ["buttons: light theme red text overridden", "body.light button.btn-clear { background: rgba(192,20,60,.04); color: var(--bad-text); }", "body.light button.btn-clear { background: rgba(192,20,60,.04); color: #fff; }"],
+  ["buttons: light theme green text overridden", "body.light button.btn-test { background: rgba(6,104,58,.08); color: var(--ok-text); }", "body.light button.btn-test { background: rgba(6,104,58,.08); color: #fff; }"],
+  ["buttons: red tint too strong for contrast", "rgba(255,68,102,.08)", "rgba(255,68,102,.30)"],
+  ["buttons: light red tint too strong for contrast", "rgba(192,20,60,.04)", "rgba(192,20,60,.30)"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

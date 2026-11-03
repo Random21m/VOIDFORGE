@@ -157,6 +157,11 @@
     font-size: 14px;
   }
   button.secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  /* CLEAR is red (it wipes the page), SELF-TEST is green (it proves the page works) */
+  button.btn-clear { background: rgba(255,68,102,.08); color: var(--bad-text); border: 1px solid var(--bad-text); }
+  button.btn-test { background: rgba(0,255,157,.12); color: var(--ok-text); border: 1px solid var(--ok-text); }
+  body.light button.btn-clear { background: rgba(192,20,60,.04); color: var(--bad-text); }
+  body.light button.btn-test { background: rgba(6,104,58,.08); color: var(--ok-text); }
   button.small { padding: 6px 10px; font-size: 13px; }
   button.tap { flex: 1; min-width: 48px; min-height: 76px; padding: 6px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
   button.tap:active { transform: scale(.94); border-color: var(--accent); }
@@ -756,8 +761,8 @@
     <div class="btn-row" data-g="4">
       <button id="forgeBtn" onclick="generate()" disabled>FORGE SEED</button>
       <p class="forge-note">Making real keys? Use an offline computer, keep clipboard history off, and restart when you are done.</p>
-      <button class="secondary" onclick="clearAll()">CLEAR</button>
-      <button class="secondary small" onclick="toggleSelfTests()">SELF-TEST</button>
+      <button class="btn-clear" onclick="clearAll()">CLEAR</button>
+      <button class="btn-test small" onclick="toggleSelfTests()">SELF-TEST</button>
     </div>
     <div id="wordGrid" data-g="4" aria-hidden="true"></div>
     <div id="secretNote" data-g="4" class="hint" style="margin:8px 0 0;"><span class="tag tag-secret" style="margin-left:0;">SECRET</span> These words are your money. Write them on paper and never share them.</div>
@@ -1189,6 +1194,7 @@
     <details>
       <summary>Changelog</summary>
       <ul>
+        <li><b>1.26.2</b> &mdash; <b>Clearer buttons.</b> CLEAR is now red, because it wipes the page, and SELF-TEST is now green, because it shows the page is working. The footer spells the project name the way GitHub now does. Nothing else changed: for the same inputs, words, fingerprints, addresses, keys and descriptors are identical to v1.26.1.</li>
         <li><b>1.26.1</b> &mdash; <b>Stale results fixed, and a way out of GUIDE ME.</b> Reported privately by a user: after FORGE, editing the rolls, the word count or the passphrase left the old words, fingerprint and address on screen, so they could be saved or copied as if they belonged to the new entries. Now any such edit clears the old result at once and asks you to press FORGE SEED again. The saved file also always records the rolls that made the words. Separately, the GUIDE ME card now has an <b>EXIT GUIDE</b> button on every step. For the same inputs, words, fingerprints, addresses, keys and descriptors are identical to v1.26.0.</li>
         <li><b>1.26.0</b> &mdash; <b>Five addresses.</b> The Watch-only box now shows the first five receiving addresses for the address type, account and network you pick (native SegWit, Taproot, nested SegWit or legacy), with a COPY ALL button, so you can compare them in your wallet app. A short note explains that your words do not depend on the address type, so write the type down with your backup. Words, fingerprints, keys and descriptors are unchanged.</li>
         <li><b>1.25.1</b> &mdash; <b>Polish and fixes.</b> (1) QR codes were sometimes partly hidden behind the &ldquo;Your seed&rdquo; panel; the panel now sits beside the content, every QR scrolls fully into view, and a tall panel scrolls inside itself so COPY and DOWNLOAD stay reachable. (2) The master fingerprint picture no longer disappears after VERIFY or SEND TO CHECK. (3) Solid, readable tabs in both light and dark mode, with short tab names on phones so all four fit. (4) New <b>fairness test</b> under the roll chart: a Pearson chi-square number and p-value, explained in plain words (it cannot prove fairness). (5) New <b>Word finder</b> in the Word draw box: type a word number, or a D8 roll and two hex dice, to look up the BIP39 word. (6) Sections no longer hide under the sticky tab bar when the page jumps to them, a few green texts in light mode are darker for contrast, and an automated accessibility scan is clean on every tab. (7) <b>Phones:</b> the start notice&rsquo;s button is now always on screen (it could sit below the visible area), and the notice only appears once the page&rsquo;s script is running, so a phone that blocks scripts (a file preview, say) shows the red warning instead of a button that does nothing. Words, fingerprints, addresses, keys and descriptors are identical to v1.25.0.</li>
@@ -1245,7 +1251,7 @@
   <footer>
     SHA256(rolls or flips) → BIP39 • Same method as SeedSigner and Coldcard dice modes<br>
     Enter your rolls or flips, generate the seed, then compare it and the fingerprint with a second tool on an offline device<br>
-    <span style="font-size:13.5px; margin-top:6px; display:inline-block;">VOIDFORGE v1.26.1 &bull; source: github.com/Random21m/voidforge (no links on this page by design)</span>
+    <span style="font-size:13.5px; margin-top:6px; display:inline-block;">VOIDFORGE v1.26.2 &bull; source: github.com/Random21m/VOIDFORGE (no links on this page by design)</span>
   </footer>
 </div>
 
