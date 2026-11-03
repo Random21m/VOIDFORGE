@@ -456,6 +456,14 @@ async function probe(w, mutated) {
     if (bs.length !== 6 || !bs.every((b, i) => b.querySelectorAll('svg circle').length === i + 1)) fails.push('dice faces have the right pips'); }
   r = await run('dice', 24, D99);     if (r !== expect.d99) fails.push('dice 24 words');
   r = await run('coin', 12, C128);    if (r !== expect.c128) fails.push('coin 12 words');
+  { const bs = [...w.document.querySelectorAll('#tapRow button')];
+    if (bs.length !== 2 || bs[0].dataset.v !== '1' || bs[1].dataset.v !== '0') fails.push('coin buttons: heads is 1 and tails is 0');
+    else {
+      if (!/HEADS/.test(bs[0].textContent) || !/TAILS/.test(bs[1].textContent) || /TAILS/.test(bs[0].textContent) || /HEADS/.test(bs[1].textContent)) fails.push('coin buttons: HEADS label on 1 and TAILS label on 0');
+      if (!/heads/.test(bs[0].getAttribute('aria-label')) || !/tails/.test(bs[1].getAttribute('aria-label'))) fails.push('coin buttons: screen-reader labels say heads for 1 and tails for 0');
+      if (!bs.every(b => b.querySelector('svg circle'))) fails.push('coin buttons: each button draws a coin');
+      else if (bs[0].querySelectorAll('path').length !== 2 || bs[1].querySelectorAll('path').length !== 1) fails.push('coin buttons: heads and tails faces are different drawings');
+      $('rolls').value = ''; bs[0].onclick(); bs[1].onclick(); bs[0].onclick(); if ($('rolls').value !== '101') fails.push('coin buttons: tap adds 1 for heads and 0 for tails'); } }
   r = await run('dice', 12, D50.replace(/(.{5})/g, '$1 ') + ' x,y;z'); if (r !== expect.d50) fails.push('input cleaning (spaces/junk)');
   r = await run('dice', 12, D50 + '1');   if (!/^Remove 1 roll \(51 of 50\)\./.test(r)) fails.push('rejects wrong length');
   r = await run('dice', 12, D50, UNI);    if (fpOf() !== fp(expect.d50, UNI)) fails.push('unicode passphrase fingerprint');
@@ -1972,6 +1980,12 @@ const M = [
   ["drill: abbreviation button not marked", "<button class=\"secondary small needs-words\" id=\"abbrBtn\"", "<button class=\"secondary small\" id=\"abbrBtn\""],
   ["drill: send-to-check button not marked", "<button class=\"secondary small needs-words\" onclick=\"sendToVerify()\">", "<button class=\"secondary small\" onclick=\"sendToVerify()\">"],
   ["drill: download button not marked", "<button class=\"secondary small needs-words\" onclick=\"downloadSeed()\">", "<button class=\"secondary small\" onclick=\"downloadSeed()\">"],
+  ["coin faces: heads and tails drawings swapped", "coinFace(v === \"1\", v)", "coinFace(v !== \"1\", v)"],
+  ["coin faces: label swapped", "(v === \"1\" ? \"HEADS\" : \"TAILS\")", "(v === \"1\" ? \"TAILS\" : \"HEADS\")"],
+  ["coin faces: screen-reader label swapped", "v === \"1\" ? \"Add flip 1 (heads)\" : \"Add flip 0 (tails)\"", "v === \"1\" ? \"Add flip 1 (tails)\" : \"Add flip 0 (heads)\""],
+  ["coin faces: value not recorded on the button", "b.dataset.v = v;", ""],
+  ["coin faces: coin not drawn", "b.appendChild(coinFace(v === \"1\", v));", ""],
+  ["coin faces: no label text", "b.appendChild(t);\n    }\n    else", "}\n    else"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
