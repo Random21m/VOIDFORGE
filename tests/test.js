@@ -444,7 +444,13 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t.w.toggleGuide(); ok(!t.d.querySelector('.gh')&&!B.classList.contains('guided'),'turning the guide off shows everything again');
     const terms=[...t.d.querySelectorAll('.term')]; ok(terms.length>=6&&terms.every(e=>e.tabIndex===0&&e.dataset.tip.length>40),'explained words are focusable and have a plain explanation');
     t.w.toggleSize(); ok(B.classList.contains('big'),'TEXT A+ enlarges the page'); t.w.toggleSize(); ok(!B.classList.contains('big'),'TEXT A- restores it'); }
-  { ok(t.$('logo').querySelectorAll('svg').length===3&&t.$('logo').tabIndex===0,'logo is three dice and can be reached by keyboard'); t.w.rollLogo(); ok(t.$('logo').classList.contains('again'),'tapping the logo rolls the dice again'); t.w.rollLogo();
+  { const cubes=[...t.$('logo').querySelectorAll('.cube')], num=(c,k)=>+c.querySelector('.f.'+k).dataset.n, grid={1:'000010000',2:'100000001',3:'100010001',4:'101000101',5:'101010101',6:'101101101'};
+    ok(cubes.length===3&&t.$('logo').tabIndex===0&&cubes.map(c=>num(c,'fr')).join()==='3,5,6','logo is three dice (3, 5, 6) and can be reached by keyboard');
+    ok(cubes.every(c=>c.querySelectorAll('.f').length===6&&['fr:bk','rt:lf','tp:bt'].every(q=>num(c,q.split(':')[0])+num(c,q.split(':')[1])===7)&&[...c.querySelectorAll('.f')].every(f=>[...f.children].map(x=>x.tagName==='I'?'1':'0').join('')===grid[f.dataset.n])&&c.querySelectorAll('i.m').length===5),'logo: each die is a real cube, six faces, opposite faces add to 7, pips laid out like a real die');
+    ok(cubes.map(c=>c.parentNode.parentNode.getAttribute('style')).join('|')==='--dl:0.14s; --fx:-46px; --ry:-34deg|--dl:0s; --fx:0px; --ry:-30deg|--dl:0.28s; --fx:46px; --ry:-26deg','logo: the dice fall from spread-out spots and land at slightly different angles');
+    { const rule=n=>(html.match(new RegExp('\\.logo \\.'+n+' \\{[^}]*\\}'))||[''])[0], roll=(html.match(/@keyframes dieRoll \{[\s\S]*?\n  \}/)||[''])[0];
+      ok(/preserve-3d/.test(rule('cube'))&&/preserve-3d/.test(rule('fl'))&&!/opacity|filter/.test(rule('cube')+rule('fl')+roll)&&roll.length>200,'logo: the cube keeps its 3D (no opacity or filter on the cube itself, they flatten it)'); }
+ t.w.rollLogo(); ok(t.$('logo').classList.contains('again'),'tapping the logo rolls the dice again'); t.w.rollLogo();
     t.$('demoOn').checked=true; t.$('rolls').value='3141'; await t.w.demoRefresh(); ok(t.d.querySelectorAll('#demoGrid .dm-w').length===12&&/NOT your seed/.test(t.$('demoOut').textContent),'demo shows 12 labelled demo words');
     t.w.demoOff(); ok(!t.d.querySelector('#demoGrid .dm-w')&&t.$('demoOut').style.display==='none','demo wipes when switched off'); t.$('rolls').value=''; }
   { // Word draw: words drawn from physical tiles + coin flips -> standard BIP39, known answers
@@ -660,7 +666,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     tq.set(rnd(50)); await tq.w.generate(); tq.w.showSeedQr('seedqr'); ok(seen.length===2&&seen[1][0]==='sqBox'&&seen[1][1]==='nearest','QR: showing the SeedQR scrolls it fully into view'); }
   ok(/body\.light \.tabs button \{ color: #fff; background: #0066cc/.test(html),'tabs: light mode shows white tab names on blue');
   { const td=load(); await td.ready(); ok(td.d.body.classList.contains('dice-wait')&&!!td.$('startGate'),'dice: held back while the notice is open');
-    ok(/body\.dice-wait \.logo \.die, body\.dice-wait \.logo svg[^{]*\{\s*animation:\s*none !important/.test(html),'dice: the stylesheet pauses the falling dice while waiting');
+    ok(/body\.dice-wait \.logo \.die, body\.dice-wait \.logo \.cube[^{]*\{\s*animation:\s*none !important/.test(html),'dice: the stylesheet pauses the falling dice while waiting');
     td.w.startGateClose(); ok(!td.d.body.classList.contains('dice-wait'),'dice: released when the notice is closed with the button');
     const te=load(); await te.ready(); te.d.dispatchEvent(new te.w.KeyboardEvent('keydown',{key:'Escape'})); ok(!te.d.body.classList.contains('dice-wait'),'dice: released when the notice is closed with Escape');
     const tn=load(); await tn.ready(); tn.$('startGate').remove(); tn.d.dispatchEvent(new tn.w.Event('DOMContentLoaded')); ok(!tn.d.body.classList.contains('dice-wait'),'dice: not held back if there is no notice'); }

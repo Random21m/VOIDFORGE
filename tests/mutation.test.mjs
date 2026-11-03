@@ -668,7 +668,12 @@ async function probe(w, mutated) {
     $('demoOn').checked = true; await w.demoToggle(); w.clearAll(); await new Promise(r => setTimeout(r, 20)); if ($('demoOn').checked || cells().length || $('demoOut').style.display !== 'none') fails.push('demo: CLEAR wipes the demo words');
     $('demoOn').checked = true; setRolls(D50.slice(0, 3)); await w.demoRefresh(); const mid = cells().join('|'); $('demoOn').checked = false; await w.demoToggle(); setRolls(D50.slice(0, 4)); await w.demoRefresh(); if (cells().length) fails.push('demo: stays empty while off');
     if (w.document.querySelectorAll('#demoBox input').length !== 1 || w.document.querySelector('#demoBox a, #demoBox script, #demoBox img')) fails.push('demo: only the one switch, no links or images');
-    const lg = $('logo'), svgs = lg.querySelectorAll('svg'); if (svgs.length !== 3 || lg.getAttribute('role') !== 'button' || lg.tabIndex !== 0 || [...svgs].some(x => x.querySelectorAll('rect').length !== 3) || [...svgs].map(x => x.querySelectorAll('circle').length).join() !== '3,5,6') fails.push('logo: three dice showing 3, 5 and 6');
+    const lg = $('logo'), cubes = [...lg.querySelectorAll('.cube')], faces = c => [...c.querySelectorAll('.f')], num = (c, k) => +c.querySelector('.f.' + k).dataset.n, grid = { 1: '000010000', 2: '100000001', 3: '100010001', 4: '101000101', 5: '101010101', 6: '101101101' };
+    if (cubes.length !== 3 || lg.getAttribute('role') !== 'button' || lg.tabIndex !== 0 || cubes.map(c => num(c, 'fr')).join() !== '3,5,6') fails.push('logo: three dice showing 3, 5 and 6');
+    if (cubes.some(c => faces(c).length !== 6 || ['fr:bk', 'rt:lf', 'tp:bt'].some(q => num(c, q.split(':')[0]) + num(c, q.split(':')[1]) !== 7) || faces(c).some(f => [...f.children].map(x => x.tagName === 'I' ? '1' : '0').join('') !== grid[f.dataset.n]) || c.querySelectorAll('i.m').length !== 5)) fails.push('logo: every die is a cube with six faces, opposite faces add to 7, pips laid out like a real die');
+    if (cubes.map(c => c.parentNode.parentNode.getAttribute('style')).join('|') !== '--dl:0.14s; --fx:-46px; --ry:-34deg|--dl:0s; --fx:0px; --ry:-30deg|--dl:0.28s; --fx:46px; --ry:-26deg') fails.push('logo: dice fall from spread-out spots and land at slightly different angles');
+    { const rule = n => (mutated.match(new RegExp('\\.logo \\.' + n + ' \\{[^}]*\\}')) || [''])[0], roll = (mutated.match(/@keyframes dieRoll \{[\s\S]*?\n  \}/) || [''])[0];
+      if (!/preserve-3d/.test(rule('cube')) || !/preserve-3d/.test(rule('fl')) || /opacity|filter/.test(rule('cube') + rule('fl') + roll) || roll.length < 200) fails.push('logo: the cube keeps its 3D (opacity or filter on the cube flattens it)'); }
     if (lg.classList.contains('again')) fails.push('logo: starts on the first roll'); w.rollLogo(); if (!lg.classList.contains('again')) fails.push('logo: tapping rolls again'); w.rollLogo(); if (lg.classList.contains('again')) fails.push('logo: second tap rolls again');
     lg.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); if (!lg.classList.contains('again')) fails.push('logo: Enter key rolls');
     lg.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true })); if (!lg.classList.contains('again')) fails.push('logo: other keys do not roll');
@@ -1033,7 +1038,7 @@ async function probe(w, mutated) {
     w.wipeSeed();
     if (cells().length !== 12 || !cells().every((c) => c.classList.contains('empty') && c.lastChild.textContent === '—') || cells().map((c) => c.firstChild.textContent).join(' ') !== Array.from({ length: 12 }, (_, i) => (i + 1) + '.').join(' ') || !$('wordGrid').classList.contains('slots') || $('wordGrid').style.display === 'grid' || $('wordGrid').textContent.includes(real[0]) || !$('genResult').classList.contains('nores') || cur() !== 'done,cur,-,-,-' || big().textContent !== '0 / 50') fails.push('layout: wiping restores twelve numbered empty slots, hides the result box, resets counter and steps');
     { const rb = $('genResult'); w.setResult('abandon '.repeat(11) + 'about'); w.setResult('\u2014'); if (cells().length !== 12 || !cells().every((c) => c.classList.contains('empty')) || !$('wordGrid').classList.contains('slots')) fails.push('layout: clearing the result itself brings the empty slots back'); }
-    if (!/body\.dice-wait \.logo \.die, body\.dice-wait \.logo svg[^{]*\{\s*animation:\s*none !important/.test(mutated)) fails.push('layout: stylesheet pauses the dice while the notice is open');
+    if (!/body\.dice-wait \.logo \.die, body\.dice-wait \.logo \.cube[^{]*\{\s*animation:\s*none !important/.test(mutated)) fails.push('layout: stylesheet pauses the dice while the notice is open');
     words(24); if (cells().length !== 24 || cells()[23].firstChild.textContent !== '24.' || cells().some((c) => !c.classList.contains('empty'))) fails.push('layout: 24 empty slots for 24 words'); words(12); if (cells().length !== 12) fails.push('layout: back to 12 slots');
     setR('555'); await w.generate(); if (cells().some((c) => !c.classList.contains('empty')) || $('genResult').classList.contains('nores') || !/more rolls/.test($('genResult').textContent) || $('genResult').dataset.seed) fails.push('layout: a "more rolls" message appears in the result box and no seed is made'); setR('');
     { const t1 = loadPage(mutated, (win) => { win.__f = []; }); await ready(t1); const b1 = t1.document.body; if (!b1.classList.contains('dice-wait') || !t1.document.getElementById('startGate')) fails.push('layout: dice held back while the notice is open');
@@ -1407,7 +1412,20 @@ const M = [
   ['logo: every key rolls', "if(event.key==='Enter'||event.key===' '){event.preventDefault();rollLogo();}", "{event.preventDefault();rollLogo();}"],
   ['logo: not keyboard reachable', 'role="button" tabindex="0" aria-label="Three dice.', 'role="button" aria-label="Three dice.'],
   ['logo: print styles hide demo (print only)', '  @media print { #demoBox, #wdBox { display: none !important; } }\n', '', true],
-  ['logo: second roll uses the restart animation (CSS only)', '.logo.again svg { animation-name: dieRoll2, dieGlow2; }', '.logo.again svg { animation-name: dieRoll, dieGlow; }', true],
+  ['logo: second roll uses the restart animation (CSS only)', '.logo.again .cube { animation-name: dieRoll2; }', '.logo.again .cube { animation-name: dieRoll; }', true],
+  ['logo: second roll restarts the glow and fade (CSS only)', '.logo.again .die { animation-name: dieGlow2, dieFade2; }', '.logo.again .die { animation-name: dieGlow, dieFade; }', true],
+  ['logo: front faces wrong', '{fr:3, bk:4,', '{fr:4, bk:3,'],
+  ['logo: opposite faces do not add to 7', '{fr:5, bk:2,', '{fr:5, bk:3,'],
+  ['logo: four pips laid out wrong', '4:[0,2,6,8]', '4:[0,2,6,7]'],
+  ['logo: odd faces lose the pink centre pip', '(n % 2 && i === 4)', '(n % 2 && i === 3)'],
+  ['logo: six loses a pink pip', '(n === 6 && (i === 3 || i === 5))', '(n === 6 && i === 3)'],
+  ['logo: face grid short a cell', 'for(let i = 0; i < 9; i++){\n    if(LOGO_PIPS', 'for(let i = 0; i < 8; i++){\n    if(LOGO_PIPS'],
+  ['logo: a cube without its bottom face', '["fr","rt","tp","bk","lf","bt"].map', '["fr","rt","tp","bk","lf"].map'],
+  ['logo: dice never built', 'buildLogoDice();\nfunction rollLogo', 'function rollLogo'],
+  ['logo: dice start in the same spot', 'fx:"-46px"', 'fx:"-10px"'],
+  ['logo: dice land at the same angle', 'ry:"-34deg"', 'ry:"-30deg"'],
+  ['logo: dice fall at the same moment', 'dl:"0.14s"', 'dl:"0s"'],
+  ['logo: cube flattened by opacity', '.logo .cube { position: absolute;', '.logo .cube { opacity: .99; position: absolute;'],
   ['logo: shadow restart (CSS only)', '.logo.again .die::after { animation-name: dieShadow2; }', '.logo.again .die::after { animation-name: dieShadow; }', true],
   ['word draw: exact words not matched', '  if(Object.prototype.hasOwnProperty.call(WORD_MAP, tok)) return WORD_MAP[tok];\n', ''],
   ['word draw: three-letter prefixes tried (same result)', '  if(tok.length >= 4){\n    if(!wdPrefix)', '  if(tok.length >= 3){\n    if(!wdPrefix)', true],
@@ -1853,7 +1871,7 @@ const M = [
   ['notice: dice released too early / never', 'document.body.classList.remove("dice-wait");\n  document.getElementById("rolls").focus({preventScroll: true});\n}', 'document.getElementById("rolls").focus({preventScroll: true});\n}'],
   ['notice: dice held with no notice', 'else { document.body.classList.remove("dice-wait"); document.getElementById("rolls").focus({preventScroll: true}); }', 'else { document.getElementById("rolls").focus({preventScroll: true}); }'],
   ['notice: dice never held', '<body class="dice-wait">', '<body>'],
-  ['dice-wait css: dice still move', 'body.dice-wait .logo .die, body.dice-wait .logo svg, body.dice-wait .logo .die::after { animation: none !important; opacity: 0; }', 'body.dice-wait .logo .die { opacity: 1; }'],
+  ['dice-wait css: dice still move', 'body.dice-wait .logo .die, body.dice-wait .logo .cube, body.dice-wait .logo .die::after { animation: none !important; opacity: 0; }', 'body.dice-wait .logo .die { opacity: 1; }'],
   ['strip: link goes nowhere', 'onclick="showTab(\'about\',\'beforeCard\')"', 'onclick="showTab(\'make\')"'],
   ['css: closed tab still shown', '.tab-off { display: none !important; }', '.tab-off { display: block; }'],
   ['fairness: chi not squared', 'chi += (c - exp) * (c - exp) / exp; }\n  const erfc', 'chi += Math.abs(c - exp) / exp; }\n  const erfc'],

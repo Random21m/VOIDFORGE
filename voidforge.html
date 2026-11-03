@@ -365,27 +365,38 @@
   body.guided .gh { display: none !important; }
   @media print { body, body.big { zoom: 1 !important; } .guide-btn, .size-btn, #guidePanel, #guideNew, #tipBox { display: none !important; } }
 
-  .logo { display: inline-flex; align-items: flex-end; justify-content: center; gap: 6px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; padding: 8px 10px 14px; perspective: 560px; }
-  .logo .die { position: relative; display: block; width: 58px; height: 58px; animation: dieFloat 6s ease-in-out calc(var(--dl, 0s) + 2.6s) infinite; }
-  .logo .die::after { content: ""; position: absolute; left: 8%; right: 8%; bottom: -10px; height: 9px; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(0,240,255,.5), rgba(255,0,170,.2) 62%, transparent 74%); opacity: 0; animation: dieShadow 2s linear both; animation-delay: var(--dl, 0s); }
-  .logo svg { width: 58px; height: 58px; display: block; overflow: visible; transform: rotate(var(--tilt, 0deg)); animation: dieRoll 2s linear both, dieGlow 2s linear both; animation-delay: var(--dl, 0s); }
-  .logo.again svg { animation-name: dieRoll2, dieGlow2; }
+  .logo { --S: 46px; display: inline-flex; align-items: flex-end; justify-content: center; gap: 26px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; padding: 14px 14px 18px; }
+  .logo .die { position: relative; display: block; width: var(--S); height: var(--S); perspective: 520px; perspective-origin: 50% 20%; animation: dieGlow 2s linear both, dieFade 2s linear both; animation-delay: var(--dl, 0s); }
+  .logo .die::after { content: ""; position: absolute; left: 4%; right: 4%; bottom: -13px; height: 11px; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(0,240,255,.55), rgba(255,0,170,.22) 62%, transparent 74%); opacity: 0; animation: dieShadow 2s linear both; animation-delay: var(--dl, 0s); }
+  .logo .fl { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: block; transform-style: preserve-3d; animation: dieFloat 6s ease-in-out calc(var(--dl, 0s) + 2.6s) infinite; }
+  .logo .cube { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: block; transform-style: preserve-3d; transform: rotateX(-26deg) rotateY(var(--ry, -30deg)); animation: dieRoll 2s linear both; animation-delay: var(--dl, 0s); }
+  .logo .f { position: absolute; top: 0; right: 0; bottom: 0; left: 0; box-sizing: border-box; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 7px; border: 2px solid var(--accent); border-radius: 9px; backface-visibility: hidden; background: #0b0b1c; }
+  .logo .f i { display: block; width: 7px; height: 7px; border-radius: 50%; place-self: center; background: #00f0ff; box-shadow: 0 0 6px #00f0ff; }
+  .logo .f i.m { width: 8px; height: 8px; background: #ff00aa; box-shadow: 0 0 7px #ff00aa; }
+  .logo .f.fr { transform: translateZ(calc(var(--S) / 2)); background: linear-gradient(145deg, #1b1b3a, #0b0b1c); box-shadow: inset 0 0 12px rgba(0,240,255,.28); }
+  .logo .f.rt { transform: rotateY(90deg) translateZ(calc(var(--S) / 2)); background: linear-gradient(145deg, #12122a, #07071a); border-color: #00b8c8; box-shadow: inset 0 0 14px rgba(255,0,170,.2); }
+  .logo .f.tp { transform: rotateX(90deg) translateZ(calc(var(--S) / 2)); background: linear-gradient(145deg, #2a2a58, #14143a); border-color: #7df6ff; box-shadow: inset 0 0 12px rgba(0,240,255,.4); }
+  .logo .f.bk { transform: rotateY(180deg) translateZ(calc(var(--S) / 2)); }
+  .logo .f.lf { transform: rotateY(-90deg) translateZ(calc(var(--S) / 2)); }
+  .logo .f.bt { transform: rotateX(-90deg) translateZ(calc(var(--S) / 2)); }
+  .logo.again .cube { animation-name: dieRoll2; }
+  .logo.again .die { animation-name: dieGlow2, dieFade2; }
   .logo.again .die::after { animation-name: dieShadow2; }
   .logo:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 12px; }
   @keyframes dieFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  @keyframes dieFade { 0% { opacity: 0; } 10%, 100% { opacity: 1; } }
+  @keyframes dieFade2 { 0% { opacity: 0; } 10%, 100% { opacity: 1; } }
   @keyframes dieRoll {
-    0% { transform: translate(var(--fx, 0px), -96px) rotateZ(calc(var(--tilt, 0deg) - 720deg)) rotateX(260deg) rotateY(-200deg) scale(.55, .55); opacity: 0; animation-timing-function: cubic-bezier(.5, 0, .9, .6); }
-    10% { opacity: 1; }
-    42% { transform: translate(0px, 0px) rotateZ(calc(var(--tilt, 0deg) + 28deg)) rotateX(0deg) rotateY(0deg) scale(1.1, .84); animation-timing-function: ease-out; }
-    56% { transform: translate(0px, -26px) rotateZ(calc(var(--tilt, 0deg) - 12deg)) rotateX(0deg) rotateY(0deg) scale(.98, 1.05); animation-timing-function: ease-in; }
-    70% { transform: translate(0px, 0px) rotateZ(calc(var(--tilt, 0deg) + 6deg)) rotateX(0deg) rotateY(0deg) scale(1.05, .92); animation-timing-function: ease-out; }
-    80% { transform: translate(0px, -8px) rotateZ(calc(var(--tilt, 0deg) - 3deg)) rotateX(0deg) rotateY(0deg) scale(1, 1); animation-timing-function: ease-in; }
-    90% { transform: translate(0px, 0px) rotateZ(var(--tilt, 0deg)) rotateX(0deg) rotateY(0deg) scale(1.02, .97); animation-timing-function: ease-out; }
-    100% { transform: translate(0px, 0px) rotateZ(var(--tilt, 0deg)) rotateX(0deg) rotateY(0deg) scale(1, 1); opacity: 1; }
+    0% { transform: translate3d(var(--fx, 0px), -120px, 0) rotateX(614deg) rotateY(calc(var(--ry, -30deg) - 500deg)) rotateZ(160deg); animation-timing-function: cubic-bezier(.5, 0, .9, .6); }
+    42% { transform: translate3d(0, 0, 0) rotateX(-26deg) rotateY(var(--ry, -30deg)) rotateZ(0deg); animation-timing-function: ease-out; }
+    56% { transform: translate3d(0, -22px, 0) rotateX(-4deg) rotateY(calc(var(--ry, -30deg) + 24deg)) rotateZ(0deg); animation-timing-function: ease-in; }
+    70% { transform: translate3d(0, 0, 0) rotateX(-26deg) rotateY(var(--ry, -30deg)) rotateZ(0deg); animation-timing-function: ease-out; }
+    80% { transform: translate3d(0, -7px, 0) rotateX(-20deg) rotateY(calc(var(--ry, -30deg) - 6deg)) rotateZ(0deg); animation-timing-function: ease-in; }
+    100% { transform: translate3d(0, 0, 0) rotateX(-26deg) rotateY(var(--ry, -30deg)) rotateZ(0deg); }
   }
   @keyframes dieGlow {
     0% { filter: drop-shadow(0 0 0 rgba(0,240,255,0)) drop-shadow(0 0 0 rgba(255,0,170,0)); }
-    42%, 70% { filter: drop-shadow(0 0 10px rgba(0,240,255,.95)) drop-shadow(0 0 22px rgba(255,0,170,.5)); }
+    42%, 70% { filter: drop-shadow(0 0 10px rgba(0,240,255,.9)) drop-shadow(0 0 20px rgba(255,0,170,.45)); }
     56%, 80% { filter: drop-shadow(0 0 4px rgba(0,240,255,.4)) drop-shadow(0 0 8px rgba(255,0,170,.2)); }
     100% { filter: drop-shadow(0 0 6px rgba(0,240,255,.35)) drop-shadow(0 0 12px rgba(255,0,170,.15)); }
   }
@@ -395,22 +406,19 @@
     56% { opacity: .3; transform: scale(.6); }
     70% { opacity: .8; transform: scale(.95); }
     80% { opacity: .4; transform: scale(.75); }
-    90% { opacity: .7; transform: scale(.95); }
     100% { opacity: .6; transform: scale(1); }
   }
   @keyframes dieRoll2 {
-    0% { transform: translate(var(--fx, 0px), -96px) rotateZ(calc(var(--tilt, 0deg) - 720deg)) rotateX(260deg) rotateY(-200deg) scale(.55, .55); opacity: 0; animation-timing-function: cubic-bezier(.5, 0, .9, .6); }
-    10% { opacity: 1; }
-    42% { transform: translate(0px, 0px) rotateZ(calc(var(--tilt, 0deg) + 28deg)) rotateX(0deg) rotateY(0deg) scale(1.1, .84); animation-timing-function: ease-out; }
-    56% { transform: translate(0px, -26px) rotateZ(calc(var(--tilt, 0deg) - 12deg)) rotateX(0deg) rotateY(0deg) scale(.98, 1.05); animation-timing-function: ease-in; }
-    70% { transform: translate(0px, 0px) rotateZ(calc(var(--tilt, 0deg) + 6deg)) rotateX(0deg) rotateY(0deg) scale(1.05, .92); animation-timing-function: ease-out; }
-    80% { transform: translate(0px, -8px) rotateZ(calc(var(--tilt, 0deg) - 3deg)) rotateX(0deg) rotateY(0deg) scale(1, 1); animation-timing-function: ease-in; }
-    90% { transform: translate(0px, 0px) rotateZ(var(--tilt, 0deg)) rotateX(0deg) rotateY(0deg) scale(1.02, .97); animation-timing-function: ease-out; }
-    100% { transform: translate(0px, 0px) rotateZ(var(--tilt, 0deg)) rotateX(0deg) rotateY(0deg) scale(1, 1); opacity: 1; }
+    0% { transform: translate3d(var(--fx, 0px), -120px, 0) rotateX(614deg) rotateY(calc(var(--ry, -30deg) - 500deg)) rotateZ(160deg); animation-timing-function: cubic-bezier(.5, 0, .9, .6); }
+    42% { transform: translate3d(0, 0, 0) rotateX(-26deg) rotateY(var(--ry, -30deg)) rotateZ(0deg); animation-timing-function: ease-out; }
+    56% { transform: translate3d(0, -22px, 0) rotateX(-4deg) rotateY(calc(var(--ry, -30deg) + 24deg)) rotateZ(0deg); animation-timing-function: ease-in; }
+    70% { transform: translate3d(0, 0, 0) rotateX(-26deg) rotateY(var(--ry, -30deg)) rotateZ(0deg); animation-timing-function: ease-out; }
+    80% { transform: translate3d(0, -7px, 0) rotateX(-20deg) rotateY(calc(var(--ry, -30deg) - 6deg)) rotateZ(0deg); animation-timing-function: ease-in; }
+    100% { transform: translate3d(0, 0, 0) rotateX(-26deg) rotateY(var(--ry, -30deg)) rotateZ(0deg); }
   }
   @keyframes dieGlow2 {
     0% { filter: drop-shadow(0 0 0 rgba(0,240,255,0)) drop-shadow(0 0 0 rgba(255,0,170,0)); }
-    42%, 70% { filter: drop-shadow(0 0 10px rgba(0,240,255,.95)) drop-shadow(0 0 22px rgba(255,0,170,.5)); }
+    42%, 70% { filter: drop-shadow(0 0 10px rgba(0,240,255,.9)) drop-shadow(0 0 20px rgba(255,0,170,.45)); }
     56%, 80% { filter: drop-shadow(0 0 4px rgba(0,240,255,.4)) drop-shadow(0 0 8px rgba(255,0,170,.2)); }
     100% { filter: drop-shadow(0 0 6px rgba(0,240,255,.35)) drop-shadow(0 0 12px rgba(255,0,170,.15)); }
   }
@@ -420,7 +428,6 @@
     56% { opacity: .3; transform: scale(.6); }
     70% { opacity: .8; transform: scale(.95); }
     80% { opacity: .4; transform: scale(.75); }
-    90% { opacity: .7; transform: scale(.95); }
     100% { opacity: .6; transform: scale(1); }
   }
   .ms-ban { background: var(--surface2); border: 2px solid var(--accent); border-radius: 10px; padding: 10px 12px; margin: 8px 0 12px; }
@@ -575,7 +582,7 @@
   .wcell.empty { opacity: .55; animation: none; }
   #genResult.nores { display: none; }
   #tp-about { max-width: 860px; margin-left: auto; margin-right: auto; }
-  body.dice-wait .logo .die, body.dice-wait .logo svg, body.dice-wait .logo .die::after { animation: none !important; opacity: 0; }
+  body.dice-wait .logo .die, body.dice-wait .logo .cube, body.dice-wait .logo .die::after { animation: none !important; opacity: 0; }
   @media (max-width: 860px) {
     #cardGen { display: block; }
     #cardGen .gen-right { position: static; margin-top: 14px; }
@@ -612,48 +619,7 @@
   </div>
   <header>
     <div class="logo" id="logo" role="button" tabindex="0" aria-label="Three dice. Press to roll them again." title="Roll the dice" onclick="rollLogo()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();rollLogo();}">
-      <span class="die" style="--dl:0.14s; --fx:-46px">
-      <svg width="72" height="72" viewBox="0 0 72 72" fill="none" aria-hidden="true" style="--tilt:-12deg">
-        <rect x="8" y="8" width="56" height="56" rx="10" fill="url(#face)" stroke="url(#grad)" stroke-width="2.5"/>
-        <rect x="8" y="8" width="56" height="8" rx="10" fill="#00f0ff" opacity="0.15"/>
-        <circle cx="22" cy="22" r="4.5" fill="#00f0ff"/>
-        <circle cx="36" cy="36" r="5" fill="#ff00aa"/>
-        <circle cx="50" cy="50" r="4.5" fill="#00f0ff"/>
-        <rect x="12" y="12" width="48" height="48" rx="6" stroke="url(#grad)" stroke-width="0.5" opacity="0.3" fill="none"/>
-      </svg></span>
-      <span class="die" style="--dl:0s; --fx:0px">
-      <svg width="72" height="72" viewBox="0 0 72 72" fill="none" aria-hidden="true" style="--tilt:3deg">
-        <defs>
-          <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#00f0ff"/>
-            <stop offset="100%" stop-color="#ff00aa"/>
-          </linearGradient>
-          <linearGradient id="face" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#1a1a2e"/>
-            <stop offset="100%" stop-color="#0a0a14"/>
-          </linearGradient>
-        </defs>
-        <rect x="8" y="8" width="56" height="56" rx="10" fill="url(#face)" stroke="url(#grad)" stroke-width="2.5"/>
-        <rect x="8" y="8" width="56" height="8" rx="10" fill="#00f0ff" opacity="0.15"/>
-        <circle cx="22" cy="22" r="4.5" fill="#00f0ff"/>
-        <circle cx="50" cy="22" r="4.5" fill="#00f0ff"/>
-        <circle cx="36" cy="36" r="5" fill="#ff00aa"/>
-        <circle cx="22" cy="50" r="4.5" fill="#00f0ff"/>
-        <circle cx="50" cy="50" r="4.5" fill="#00f0ff"/>
-        <rect x="12" y="12" width="48" height="48" rx="6" stroke="url(#grad)" stroke-width="0.5" opacity="0.3" fill="none"/>
-      </svg></span>
-      <span class="die" style="--dl:0.28s; --fx:46px">
-      <svg width="72" height="72" viewBox="0 0 72 72" fill="none" aria-hidden="true" style="--tilt:11deg">
-        <rect x="8" y="8" width="56" height="56" rx="10" fill="url(#face)" stroke="url(#grad)" stroke-width="2.5"/>
-        <rect x="8" y="8" width="56" height="8" rx="10" fill="#00f0ff" opacity="0.15"/>
-        <circle cx="24" cy="22" r="4.5" fill="#00f0ff"/>
-        <circle cx="48" cy="22" r="4.5" fill="#00f0ff"/>
-        <circle cx="24" cy="36" r="4.5" fill="#ff00aa"/>
-        <circle cx="48" cy="36" r="4.5" fill="#ff00aa"/>
-        <circle cx="24" cy="50" r="4.5" fill="#00f0ff"/>
-        <circle cx="48" cy="50" r="4.5" fill="#00f0ff"/>
-        <rect x="12" y="12" width="48" height="48" rx="6" stroke="url(#grad)" stroke-width="0.5" opacity="0.3" fill="none"/>
-      </svg></span>
+      <!-- the three dice are built by buildLogoDice() in the script: each is a real 3D cube with six pipped faces -->
     </div>
     <h1>VOIDFORGE</h1>
     <div class="subtitle">DICE / COIN ENTROPY → SEED, BACKUP &amp; WALLET SETUP</div>
@@ -3743,6 +3709,26 @@ try { if(localStorage.getItem("voidforge-big") === "1") toggleSize(); } catch(e)
 })();
 // ---- Rolling-dice logo and the "watch the words change" demo (v1.19.4). Display only: the demo words use a demo tag, so they are never the real seed. ----
 let demoSeq = 0, demoPrev = null;
+// The header dice: three real 3D cubes (six pipped faces each, opposite faces add to 7). Built from constants only.
+const LOGO_DICE = [
+  {fr:3, bk:4, rt:2, lf:5, tp:1, bt:6, dl:"0.14s", fx:"-46px", ry:"-34deg"},
+  {fr:5, bk:2, rt:3, lf:4, tp:6, bt:1, dl:"0s",    fx:"0px",   ry:"-30deg"},
+  {fr:6, bk:1, rt:4, lf:3, tp:5, bt:2, dl:"0.28s", fx:"46px",  ry:"-26deg"}];
+const LOGO_PIPS = {1:[4], 2:[0,8], 3:[0,4,8], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8]};
+function logoFace(cls, n){
+  let h = '<span class="f ' + cls + '" data-n="' + n + '">';
+  for(let i = 0; i < 9; i++){
+    if(LOGO_PIPS[n].indexOf(i) < 0) h += "<span></span>";
+    else h += "<i" + (((n % 2 && i === 4) || (n === 6 && (i === 3 || i === 5))) ? ' class="m"' : "") + "></i>";
+  }
+  return h + "</span>";
+}
+function buildLogoDice(){
+  const box = document.getElementById("logo"); if(!box) return;
+  box.innerHTML = LOGO_DICE.map(d => '<span class="die" style="--dl:' + d.dl + '; --fx:' + d.fx + '; --ry:' + d.ry + '"><span class="fl"><span class="cube">' +
+    ["fr","rt","tp","bk","lf","bt"].map(k => logoFace(k, d[k])).join("") + "</span></span></span>").join("");
+}
+buildLogoDice();
 function rollLogo(){ document.getElementById("logo").classList.toggle("again"); }
 async function demoWordsFor(rolls, wc){
   const entLen = {12:16,24:32}[wc];
