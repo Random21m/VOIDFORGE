@@ -1429,7 +1429,7 @@ const M = [
   ['logo: dice fall at the same moment', 'dl:"0.14s"', 'dl:"0s"'],
   ['logo: dice fall over the status text', '#statusLine { position: relative; z-index: 1;', '#statusLine { position: relative;'],
   ['logo: dice not their own layer', '.logo { --S: 40px; position: relative; z-index: 0;', '.logo { --S: 40px; position: relative;'],
-  ['header: title lost its glow', '    filter: drop-shadow(0 0 7px rgba(0,240,255,.4)) drop-shadow(0 0 18px rgba(255,0,170,.25));\n', ''],
+  ['header: title lost its glow', '    filter: drop-shadow(0 0 2px rgba(0,240,255,.6)) drop-shadow(0 0 8px rgba(255,0,170,.3));\n', ''],
   ['header: title back to the small size', '  h1 {\n    font-size: 37px;', '  h1 {\n    font-size: 32px;'],
   ['header: dice back to the large size', '.logo { --S: 40px; position: relative;', '.logo { --S: 46px; position: relative;'],
   ['logo: cube flattened by opacity', '.logo .cube { position: absolute;', '.logo .cube { opacity: .99; position: absolute;'],
