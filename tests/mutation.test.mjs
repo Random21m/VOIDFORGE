@@ -168,8 +168,9 @@ async function probe(w, mutated) {
     typed(W.slice(0, 11).join(' ')); await w.drillCheck(); if (!/typed 11 words, but this seed has 12/.test(dst())) fails.push('drill: wrong count reported');
     typed(W.slice(0, 3).concat(['zzzzz'], W.slice(4)).join(' ')); await w.drillCheck(); if (!/Word 4 is not in the BIP39 list/.test(dst())) fails.push('drill: unknown word reported by position');
     { const bad = W.slice(); bad[2] = W[2] === 'abandon' ? 'ability' : 'abandon'; bad[6] = W[6] === 'zoo' ? 'zone' : 'zoo'; typed(bad.join(' ')); await w.drillCheck();
-      if (!/Word 3 and 7 do not match/.test(dst())) fails.push('drill: wrong words reported by position');
-      if (new RegExp('\\b(' + W[2] + '|' + W[6] + ')\\b').test(dst())) fails.push('drill: the right words are never shown'); }
+      const MSG = 'Word 3 and 7 do not match your seed. Look at those words on your paper. (The page will not show you the right word: the point is to test the paper.)', rest = dst().replace(MSG, ''); // the fixed message holds ordinary words that can also be seed words, so only what is left after it is checked
+      if (!dst().includes(MSG)) fails.push('drill: wrong words reported by position');
+      if (new RegExp('\\b(' + W[2] + '|' + W[6] + ')\\b').test(rest)) fails.push('drill: the right words are never shown'); }
     { const bad = W.slice(); bad[11] = W[11] === 'abandon' ? 'ability' : 'abandon'; typed(bad.join(' ')); await w.drillCheck(); if (!/Word 12 does not match/.test(dst())) fails.push('drill: single wrong word'); }
     typed('  ' + W.join('\n').toUpperCase() + '  '); await w.drillCheck();
     if (!/Drill passed/.test(dst()) || !dst().includes('master fingerprint ' + fp(expect.d50, '')) || !$('drillStatus').classList.contains('ok')) fails.push('drill: right words pass (spacing, capitals) with the true fingerprint');

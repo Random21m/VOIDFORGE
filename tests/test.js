@@ -216,7 +216,8 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       typed(W.slice(0,11).join(' ')); await g.w.drillCheck(); ok(/typed 11 words, but this seed has 12/.test(st())&&dr('drillStatus').classList.contains('bad'),'drill: wrong word count is reported');
       typed(W.slice(0,3).concat(['zzzzz'],W.slice(4)).join(' ')); await g.w.drillCheck(); ok(/Word 4 is not in the BIP39 list/.test(st()),'drill: a word that is not in the list is reported by position');
       { const bad=W.slice(); bad[2]=W[2]==='abandon'?'ability':'abandon'; bad[6]=W[6]==='zoo'?'zone':'zoo'; typed(bad.join(' ')); await g.w.drillCheck();
-        ok(/Word 3 and 7 do not match/.test(st())&&!st().includes(W[2]+' ')&&!new RegExp('\\b'+W[2]+'\\b').test(st())&&!new RegExp('\\b'+W[6]+'\\b').test(st()),'drill: wrong words are reported by position and the right words are never shown'); }
+        const MSG='Word 3 and 7 do not match your seed. Look at those words on your paper. (The page will not show you the right word: the point is to test the paper.)', rest=st().replace(MSG,''); /* the fixed message has ordinary words in it (and, not, match, look, ...) that can also be seed words, so only what is left after it is checked */
+        ok(st().includes(MSG)&&!new RegExp('\\b'+W[2]+'\\b').test(rest)&&!new RegExp('\\b'+W[6]+'\\b').test(rest),'drill: wrong words are reported by position and the right words are never shown'); }
       { const bad=W.slice(); bad[11]=W[11]==='abandon'?'ability':'abandon'; typed(bad.join(' ')); await g.w.drillCheck(); ok(/Word 12 does not match/.test(st()),'drill: a single wrong word uses the singular'); }
       typed(W.join(' ')+' '); dr('drillWords').value='  '+W.join('\n').toUpperCase()+'  '; await g.w.drillCheck();
       ok(/Drill passed/.test(st())&&/master fingerprint [0-9a-f]{8}/.test(st())&&dr('drillStatus').classList.contains('ok'),'drill: the right words pass (any spacing and capitals) and show the fingerprint');
