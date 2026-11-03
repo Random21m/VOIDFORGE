@@ -451,6 +451,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     { const rule=n=>(html.match(new RegExp('\\.logo \\.'+n+' \\{[^}]*\\}'))||[''])[0], roll=(html.match(/@keyframes dieRoll \{[\s\S]*?\n  \}/)||[''])[0];
       ok(/preserve-3d/.test(rule('cube'))&&/preserve-3d/.test(rule('fl'))&&!/opacity|filter/.test(rule('cube')+rule('fl')+roll)&&roll.length>200,'logo: the cube keeps its 3D (no opacity or filter on the cube itself, they flatten it)'); }
     ok(/\.logo \{[^}]*position: relative; z-index: 0;/.test(html)&&/#statusLine \{ position: relative; z-index: 1;/.test(html),'logo: the falling dice pass behind the status line text, not over it');
+    ok(/\n  h1 \{[^}]*font-size: 37px;[^}]*filter: drop-shadow\([^}]*\}/.test(html)&&/\.logo \{ --S: 40px;/.test(html),'header: VOIDFORGE is 37px with a soft neon glow, and the dice are 40px so the name leads');
  t.w.rollLogo(); ok(t.$('logo').classList.contains('again'),'tapping the logo rolls the dice again'); t.w.rollLogo();
     t.$('demoOn').checked=true; t.$('rolls').value='3141'; await t.w.demoRefresh(); ok(t.d.querySelectorAll('#demoGrid .dm-w').length===12&&/NOT your seed/.test(t.$('demoOut').textContent),'demo shows 12 labelled demo words');
     t.w.demoOff(); ok(!t.d.querySelector('#demoGrid .dm-w')&&t.$('demoOut').style.display==='none','demo wipes when switched off'); t.$('rolls').value=''; }
