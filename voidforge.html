@@ -158,6 +158,12 @@
   }
   button.secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
   /* CLEAR is red (it wipes the page), SELF-TEST is green (it proves the page works) */
+  /* Restore drill (v1.27.0): while it runs, the words are hidden from the screen so the paper is what gets tested */
+  body.drill-on #wordGrid, body.drill-on #genResult, body.drill-on #abbrNote, body.drill-on #passNote, body.drill-on #nextStep { visibility: hidden; }
+  body.drill-on .needs-words, body.drill-on .print-btn, body.drill-on #seedQrBox, body.drill-on #explainBox { display: none !important; }
+  #drillBox textarea { min-height: 70px; }
+  #drillBox label { display: block; margin: 8px 0 4px; font-size: 13.5px; color: var(--muted); }
+  #drillStatus { white-space: pre-wrap; margin-top: 8px; }
   button.btn-clear { background: rgba(255,68,102,.08); color: var(--bad-text); border: 1px solid var(--bad-text); }
   button.btn-test { background: rgba(0,255,157,.12); color: var(--ok-text); border: 1px solid var(--ok-text); }
   body.light button.btn-clear { background: rgba(192,20,60,.04); color: var(--bad-text); }
@@ -771,16 +777,28 @@
     <div id="nextStep" data-g="4" aria-live="polite"></div>
     <div class="result nores" id="genResult" data-g="4" role="status">—</div>
     <div class="btn-row" style="margin-top:6px;" data-g="4">
-      <button class="secondary small" id="abbrBtn" onclick="toggleAbbr()">SHOW FIRST 4 LETTERS</button>
-      <button class="secondary small" onclick="sendToVerify()">SEND TO CHECK</button>
+      <button class="secondary small needs-words" id="abbrBtn" onclick="toggleAbbr()">SHOW FIRST 4 LETTERS</button>
+      <button class="secondary small needs-words" onclick="sendToVerify()">SEND TO CHECK</button>
       <button class="secondary small" onclick="copyFingerprint(this)">COPY FINGERPRINT</button>
       <button class="secondary small" onclick="copyAddress(this)">COPY ADDRESS</button>
-      <button class="secondary small" onclick="downloadSeed()">DOWNLOAD</button>
+      <button class="secondary small needs-words" onclick="downloadSeed()">DOWNLOAD</button>
     </div>
     <div data-g="4 5" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;"><div class="fp" id="fingerprint"></div><div id="fpIcon" class="lh" title="Fingerprint picture (LifeHash): the same picture Sparrow Wallet shows for this fingerprint"></div></div>
     <div id="address" data-g="4 5" style="margin-top:6px; font-size:13.5px; word-break:break-all; color:var(--muted);"></div>
    </div>
    <div class="gen-bottom">
+    <details id="drillBox" data-g="5" style="display:none; margin-top:8px;">
+      <summary>Restore drill: prove your paper backup works (recommended)</summary>
+      <p class="hint" style="margin:8px 0 0;">Write the words on paper first. Then press START DRILL: the words are hidden from this screen, and you type them back <b>from your paper</b>. That tests the paper, not your memory of the screen. Nothing is stored anywhere.</p>
+      <div id="drillStart" style="margin-top:8px;"><button class="secondary small" onclick="drillStart()">START DRILL</button></div>
+      <div id="drillRun" style="display:none;">
+        <label for="drillWords" id="drillLabel">Type your words from paper, in order</label>
+        <textarea id="drillWords" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="word1 word2 word3 ..."></textarea>
+        <div id="drillPassRow" style="display:none;"><label for="drillPass">Passphrase (from your separate note)</label><input type="password" id="drillPass" autocomplete="off" spellcheck="false"></div>
+        <div class="btn-row" style="margin-top:8px;"><button onclick="drillCheck()">CHECK MY PAPER</button><button class="secondary small" onclick="drillEnd()">END DRILL, SHOW WORDS</button></div>
+        <div class="status" id="drillStatus" aria-live="polite"></div>
+      </div>
+    </details>
     <details id="addrBox" data-g="5" style="display:none; margin-top:8px;">
       <summary>First 5 receiving addresses, SegWit and Taproot (to compare in another wallet)</summary>
       <ol id="addrList" class="addr-list"></ol>
@@ -2788,7 +2806,7 @@ function clearFpIcons(){
 }
 function clearAddrs(){
   document.getElementById("addrList").textContent = ""; document.getElementById("trList").textContent = "";
-  for(const id of ["addrBox","checkGuide"]){ const d = document.getElementById(id); d.style.display = "none"; d.open = false; }
+  for(const id of ["addrBox","checkGuide","drillBox"]){ const d = document.getElementById(id); d.style.display = "none"; d.open = false; }
 }
 function showAddrs(list, trList){
   const ol = document.getElementById("addrList"); ol.textContent = "";
@@ -2796,7 +2814,7 @@ function showAddrs(list, trList){
   const tl = document.getElementById("trList"); tl.textContent = "";
   (trList || []).forEach(a => { const li = document.createElement("li"); li.textContent = a; tl.appendChild(li); });
   document.getElementById("trBox").style.display = (trList && trList.length) ? "" : "none";
-  document.getElementById("addrBox").style.display = ""; document.getElementById("checkGuide").style.display = "";
+  document.getElementById("addrBox").style.display = ""; document.getElementById("checkGuide").style.display = ""; document.getElementById("drillBox").style.display = "";
 }
 function copyAddrList(btn, listId){
   const t = Array.from(document.querySelectorAll("#" + listId + " li")).map(li => li.textContent).join("\n");
@@ -3064,7 +3082,7 @@ function updateAbbrNote(){
   document.getElementById("abbrNote").textContent = (abbrOn && hasSeed()) ? "Showing only the first 4 letters of each word. The full words are still your backup; write down full words unless your backup method uses 4-letter abbreviations." : "";
 }
 function setResult(text, words){
-  demoOff(); wdWipe();
+  demoOff(); wdWipe(); drillEnd();
   const g = document.getElementById("genResult"), grid = document.getElementById("wordGrid");
   g.textContent = text; g.classList.toggle("nores", text === "\u2014"); grid.textContent = "";
   hideExplain(); { const eb = document.getElementById("explainBox"); eb.style.display = (words && [12,24].includes(words.length)) ? "" : "none"; eb.open = false; }
@@ -3601,6 +3619,45 @@ function updateLabels(){
   updateCount();
 }
 updateLabels(); msInitSlider();
+
+// ---- Restore drill (v1.27.0): type the words back from paper; the page says which positions are wrong, never what the right words are ----
+let drillCtx = null;
+function drillEnd(){
+  drillCtx = null; document.body.classList.remove("drill-on");
+  const w = document.getElementById("drillWords"); if(!w) return;
+  w.value = ""; document.getElementById("drillPass").value = ""; document.getElementById("drillStatus").textContent = "";
+  document.getElementById("drillRun").style.display = "none"; document.getElementById("drillStart").style.display = "";
+  document.getElementById("drillPassRow").style.display = "none";
+}
+function drillStart(){
+  const st = document.getElementById("drillStatus");
+  if(!hasSeed() || !watchCtx){ alert("Make the seed first (enter your rolls and press FORGE SEED)."); return; }
+  drillCtx = {words: watchCtx.mnemonic.split(" "), pass: watchCtx.pass};
+  document.body.classList.add("drill-on");
+  st.textContent = ""; st.className = "status";
+  document.getElementById("drillLabel").textContent = "Type your " + drillCtx.words.length + " words from paper, in order";
+  document.getElementById("drillPassRow").style.display = drillCtx.pass ? "" : "none";
+  document.getElementById("drillStart").style.display = "none"; document.getElementById("drillRun").style.display = "";
+  document.getElementById("drillWords").focus();
+}
+function drillList(a){ return a.length === 1 ? String(a[0]) : a.slice(0, -1).join(", ") + " and " + a[a.length - 1]; }
+async function drillCheck(){
+  const st = document.getElementById("drillStatus"); st.className = "status";
+  if(!drillCtx){ st.textContent = "Press START DRILL first."; return; }
+  const typed = document.getElementById("drillWords").value.trim().toLowerCase().split(/\s+/).filter(Boolean), want = drillCtx.words;
+  const bad = (m) => { st.textContent = m; st.classList.add("bad"); };
+  if(typed.length !== want.length){ bad("You typed " + typed.length + " words, but this seed has " + want.length + ". Check your paper and try again."); return; }
+  const unknown = []; typed.forEach((w, i) => { if(!(w in WORD_MAP)) unknown.push(i + 1); });
+  if(unknown.length){ bad("Word " + drillList(unknown) + (unknown.length === 1 ? " is" : " are") + " not in the BIP39 list. Check the spelling on your paper."); return; }
+  const wrong = []; typed.forEach((w, i) => { if(w !== want[i]) wrong.push(i + 1); });
+  if(wrong.length){ bad("Word " + drillList(wrong) + (wrong.length === 1 ? " does" : " do") + " not match your seed. Look at " + (wrong.length === 1 ? "that word" : "those words") + " on your paper. (The page will not show you the right word: the point is to test the paper.)"); return; }
+  const pw = document.getElementById("drillPass").value;
+  if(drillCtx.pass && pw.normalize("NFKD") !== drillCtx.pass.normalize("NFKD")){ bad("The words match, but the passphrase does not. The passphrase is part of the wallet: a wrong one opens a different, empty wallet. Check your separate note."); return; }
+  if(!drillCtx.pass && pw){ bad("The words match, but this seed was made without a passphrase. Clear the passphrase box and check again."); return; }
+  let fp = ""; try { fp = await mnemonicFingerprint(typed.join(" "), drillCtx.pass || ""); } catch(e) { fp = ""; }
+  st.classList.add("ok");
+  st.textContent = "Drill passed. Every word" + (drillCtx.pass ? " and the passphrase" : "") + " matches" + (fp ? ", and your paper rebuilds master fingerprint " + fp + "." : ".") + " This paper backup can restore the wallet. Keep it safe, and press END DRILL to show the words again.";
+}
 
 // ---- Guide me, plain-word term tips, larger text (v1.19.3) ----
 const GUIDE_STEPS = 5;

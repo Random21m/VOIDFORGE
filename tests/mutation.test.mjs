@@ -150,6 +150,40 @@ async function probe(w, mutated) {
     if ($('wFirst').style.whiteSpace !== 'pre-line') fails.push('five addresses keep their line breaks'); if (!w.document.querySelector("button[onclick=\"copyWatch(this,'wFirst')\"]") || !/COPY ALL/.test(w.document.querySelector("button[onclick=\"copyWatch(this,'wFirst')\"]").textContent)) fails.push('COPY ALL copies the five addresses');
     $('wType').value = 'ms-wsh'; await w.refreshWatch(); if ($('wFirstGroup').style.display !== 'none') fails.push('multisig shows no addresses');
     $('wType').value = 'wpkh'; await w.refreshWatch(); w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('wFirst').textContent !== '') fails.push('five addresses cleared with the seed'); }
+  { // v1.27.0 restore drill: type the words back from paper; positions only, never the right words
+    const body = w.document.body, dst = () => $('drillStatus').textContent, typed = (t, pw = '') => { $('drillWords').value = t; $('drillPass').value = pw; };
+    const alerts2 = []; const oldAlert = w.alert; w.alert = (m) => alerts2.push(m);
+    const css = mutated.match(/<style>[\s\S]*?<\/style>/)[0];
+    const hideSel = ['#wordGrid', '#genResult', '#abbrNote', '#passNote', '#nextStep'], noneSel = ['.needs-words', '.print-btn', '#seedQrBox', '#explainBox'];
+    const hr = new RegExp('body\\.drill-on #wordGrid[^{]*\\{ visibility: hidden; \\}').exec(css), nr = /body\.drill-on \.needs-words[^{]*\{ display: none !important; \}/.exec(css);
+    if (!hr || !hideSel.every((x) => hr[0].includes('body.drill-on ' + x))) fails.push('drill: CSS hides the word grid, result text and notes');
+    if (!nr || !noneSel.every((x) => nr[0].includes('body.drill-on ' + x))) fails.push('drill: CSS removes the buttons and boxes that show words');
+    if (![...w.document.querySelectorAll('button')].filter((b) => /^(SHOW FIRST 4 LETTERS|SEND TO CHECK|DOWNLOAD)$/.test(b.textContent)).every((b) => b.classList.contains('needs-words'))) fails.push('drill: word-showing buttons are marked');
+    w.clearAll(); await new Promise((r2) => setTimeout(r2, 20));
+    w.drillStart(); if (body.classList.contains('drill-on') || alerts2.length !== 1) fails.push('drill: START refuses with no seed');
+    await run('dice', 12, D50); const W = expect.d50.split(' ');
+    if ($('drillBox').style.display !== '') fails.push('drill: card appears with a seed');
+    w.drillStart(); if (!body.classList.contains('drill-on') || $('drillRun').style.display !== '' || $('drillStart').style.display !== 'none') fails.push('drill: START hides the words and opens the typing box');
+    if ($('drillPassRow').style.display !== 'none') fails.push('drill: no passphrase box without a passphrase');
+    typed(W.slice(0, 11).join(' ')); await w.drillCheck(); if (!/typed 11 words, but this seed has 12/.test(dst())) fails.push('drill: wrong count reported');
+    typed(W.slice(0, 3).concat(['zzzzz'], W.slice(4)).join(' ')); await w.drillCheck(); if (!/Word 4 is not in the BIP39 list/.test(dst())) fails.push('drill: unknown word reported by position');
+    { const bad = W.slice(); bad[2] = W[2] === 'abandon' ? 'ability' : 'abandon'; bad[6] = W[6] === 'zoo' ? 'zone' : 'zoo'; typed(bad.join(' ')); await w.drillCheck();
+      if (!/Word 3 and 7 do not match/.test(dst())) fails.push('drill: wrong words reported by position');
+      if (new RegExp('\\b(' + W[2] + '|' + W[6] + ')\\b').test(dst())) fails.push('drill: the right words are never shown'); }
+    { const bad = W.slice(); bad[11] = W[11] === 'abandon' ? 'ability' : 'abandon'; typed(bad.join(' ')); await w.drillCheck(); if (!/Word 12 does not match/.test(dst())) fails.push('drill: single wrong word'); }
+    typed('  ' + W.join('\n').toUpperCase() + '  '); await w.drillCheck();
+    if (!/Drill passed/.test(dst()) || !dst().includes('master fingerprint ' + fp(expect.d50, '')) || !$('drillStatus').classList.contains('ok')) fails.push('drill: right words pass (spacing, capitals) with the true fingerprint');
+    typed(W.join(' '), 'oops'); await w.drillCheck(); if (!/made without a passphrase/.test(dst())) fails.push('drill: stray passphrase flagged');
+    w.drillEnd(); if (body.classList.contains('drill-on') || $('drillWords').value !== '' || $('drillPass').value !== '' || dst() !== '' || $('drillRun').style.display !== 'none' || $('drillStart').style.display !== '') fails.push('drill: END DRILL restores the page and wipes what was typed');
+    await run('dice', 12, D50, 'my pass'); w.drillStart(); if ($('drillPassRow').style.display !== '') fails.push('drill: passphrase box appears with a passphrase');
+    typed(W.join(' '), ''); await w.drillCheck(); if (!/The words match, but the passphrase does not\./.test(dst())) fails.push('drill: missing passphrase is not enough');
+    typed(W.join(' '), 'My pass'); await w.drillCheck(); if (!/The words match, but the passphrase does not\./.test(dst())) fails.push('drill: passphrase is case sensitive');
+    typed(W.join(' '), 'my pass'); await w.drillCheck(); if (!/Drill passed\. Every word and the passphrase matches/.test(dst()) || !dst().includes('master fingerprint ' + fp(expect.d50, 'my pass'))) fails.push('drill: words and passphrase pass with the passphrase fingerprint');
+    await run('dice', 12, D50, UNI); w.drillStart(); typed(W.join(' '), UNI.normalize('NFD')); await w.drillCheck(); if (!/Drill passed/.test(dst())) fails.push('drill: passphrase compared after Unicode normalization');
+    $('rolls').value = D50.slice(0, 49) + (D50[49] === '1' ? '2' : '1'); $('rolls').oninput(); if (body.classList.contains('drill-on') || $('drillWords').value !== '') fails.push('drill: changing the rolls ends the drill');
+    await run('dice', 12, D50); w.drillStart(); typed(W.join(' ')); $('passphrase').value = 'q'; $('passphrase').dispatchEvent(new w.Event('input', { bubbles: true })); if (body.classList.contains('drill-on') || $('drillWords').value !== '') fails.push('drill: changing the passphrase ends the drill');
+    await run('dice', 12, D50); w.drillStart(); typed(W.join(' ')); w.wipeSeed(); if (body.classList.contains('drill-on') || $('drillWords').value !== '' || $('drillBox').style.display !== 'none') fails.push('drill: CLEAR ends the drill and hides the card');
+    w.alert = oldAlert; w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); }
   { // v1.26.2 CLEAR is red, SELF-TEST is green, readable in both themes
     const css = mutated.match(/<style>[\s\S]*?<\/style>/)[0], hexc = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
     const lum = (c) => { const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); };
@@ -1348,7 +1382,7 @@ const M = [
   ['demo: not wiped on switch off', 'function demoToggle(){ if(!document.getElementById("demoOn").checked) demoWipe(); return demoRefresh(); }', 'function demoToggle(){ return demoRefresh(); }', true],
   ['demo: wipe leaves words', 'document.getElementById("demoGrid").textContent = ""; document.getElementById("demoInfo").textContent = "";\n  document.getElementById("demoOut").style.display = "none";\n}', 'document.getElementById("demoOut").style.display = "none";\n}'],
   ['demo: wipe leaves panel visible', '  document.getElementById("demoOut").style.display = "none";\n}\nfunction demoOff()', '}\nfunction demoOff()'],
-  ['demo: FORGE does not wipe', 'function setResult(text, words){\n  demoOff(); wdWipe();\n', 'function setResult(text, words){\n  wdWipe();\n'],
+  ['demo: FORGE does not wipe', 'function setResult(text, words){\n  demoOff(); wdWipe(); drillEnd();\n', 'function setResult(text, words){\n  wdWipe(); drillEnd();\n'],
   ['demo: switch stays on after wipe', 'function demoOff(){ document.getElementById("demoOn").checked = false; demoWipe(); }', 'function demoOff(){ demoWipe(); }'],
   ['demo: not refreshed after each roll', '  if(document.getElementById("demoOn").checked) demoRefresh();\n', ''],
   ['demo: shows when switched off', '  if(!document.getElementById("demoOn").checked){ demoWipe(); return; }\n  const my', '  const my'],
@@ -1401,7 +1435,7 @@ const M = [
   ['word draw: dice explainer left showing', '  document.getElementById("explainBox").style.display = "none";\n  wdShow(st, wc);', '  wdShow(st, wc);'],
   ['word draw: steps not shown', '  wdShow(st, wc);\n  if(guideOn)', '  if(guideOn)'],
   ['word draw: guide stays on step 1', '  wdShow(st, wc);\n  if(guideOn){ guideN = 4; guideRender(); }', '  wdShow(st, wc);\n  if(guideOn){ guideRender(); }'],
-  ['word draw: dice FORGE leaves old steps', 'function setResult(text, words){\n  demoOff(); wdWipe();\n', 'function setResult(text, words){\n  demoOff();\n'],
+  ['word draw: dice FORGE leaves old steps', 'function setResult(text, words){\n  demoOff(); wdWipe(); drillEnd();\n', 'function setResult(text, words){\n  demoOff(); drillEnd();\n'],
   ['word draw: CLEAR leaves the boxes', '  wdClear();\n', ''],
   ['word draw: CLEAR button leaves the words', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();'],
   ['word draw: CLEAR button leaves the flips', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdWords").value = "";\n  wdWipe(); wdUpdate();'],
@@ -1414,7 +1448,7 @@ const M = [
   ['word draw: no-hashing note missing', '  const n = document.createElement("div"); n.className = "hint"; n.style.margin = "6px 0 0"; n.textContent = "No hashing is applied to your words: they are the seed. Only the checksum is calculated."; o.appendChild(n);\n', ''],
   ['word draw: no scroll to the result (display only)', '  if(guideOn){ guideN = 4; guideRender(); }\n  jumpTo("genResult");', '  if(guideOn){ guideN = 4; guideRender(); }', true],
   ['address list not cleared after an error', 'function clearAddrs(){\n  document.getElementById("addrList").textContent = "";', 'function clearAddrs(){\n  '],
-  ['address guide hidden after FORGE', 'document.getElementById("checkGuide").style.display = "";\n}', 'document.getElementById("checkGuide").style.display = "none";\n}'],
+  ['address guide hidden after FORGE', 'document.getElementById("checkGuide").style.display = ""; document.getElementById("drillBox").style.display = "";\n}', 'document.getElementById("checkGuide").style.display = "none"; document.getElementById("drillBox").style.display = "";\n}'],
   ['4-letter view: three letters', 'e.textContent = abbrOn ? e.dataset.w.slice(0, 4) : e.dataset.w;', 'e.textContent = abbrOn ? e.dataset.w.slice(0, 3) : e.dataset.w;'],
   ['mnemonic NFKD removed (English ASCII words)', 'enc.encode(mnemonic.normalize("NFKD"))', 'enc.encode(mnemonic)', true],
   ['master key range check removed (unreachable in practice)', 'if(k===0n || k>=SN) throw new Error("Invalid master key");', '', true],
@@ -1904,6 +1938,40 @@ const M = [
   ["buttons: light theme green text overridden", "body.light button.btn-test { background: rgba(6,104,58,.08); color: var(--ok-text); }", "body.light button.btn-test { background: rgba(6,104,58,.08); color: #fff; }"],
   ["buttons: red tint too strong for contrast", "rgba(255,68,102,.08)", "rgba(255,68,102,.30)"],
   ["buttons: light red tint too strong for contrast", "rgba(192,20,60,.04)", "rgba(192,20,60,.30)"],
+  // v1.27.0 restore drill
+  ["drill: start does not hide the words", "  document.body.classList.add(\"drill-on\");\n", ""],
+  ["drill: end keeps the words hidden", "drillCtx = null; document.body.classList.remove(\"drill-on\");", "drillCtx = null;"],
+  ["drill: a new result does not end the drill", "demoOff(); wdWipe(); drillEnd();", "demoOff(); wdWipe();"],
+  ["drill: word count not checked", "if(typed.length !== want.length){", "if(false){"],
+  ["drill: unknown words not flagged", "if(unknown.length){", "if(false){"],
+  ["drill: wrong words ignored", "if(wrong.length){ bad(", "if(false){ bad("],
+  ["drill: position off by one", "if(w !== want[i]) wrong.push(i + 1);", "if(w !== want[i]) wrong.push(i);"],
+  ["drill: reveals the right word", "if(w !== want[i]) wrong.push(i + 1);", "if(w !== want[i]) wrong.push((i + 1) + \" (\" + want[i] + \")\");"],
+  ["drill: capitals not accepted", "document.getElementById(\"drillWords\").value.trim().toLowerCase().split", "document.getElementById(\"drillWords\").value.trim().split"],
+  ["drill: passphrase not checked", "if(drillCtx.pass && pw.normalize(\"NFKD\") !== drillCtx.pass.normalize(\"NFKD\")){", "if(false){"],
+  ["drill: passphrase compared without normalization", "pw.normalize(\"NFKD\") !== drillCtx.pass.normalize(\"NFKD\")", "pw !== drillCtx.pass"],
+  ["drill: stray passphrase accepted", "if(!drillCtx.pass && pw){", "if(false){"],
+  ["drill: fingerprint not shown", "fp = await mnemonicFingerprint(typed.join(\" \"), drillCtx.pass || \"\");", "fp = \"\";"],
+  ["drill: fingerprint ignores the passphrase", "mnemonicFingerprint(typed.join(\" \"), drillCtx.pass || \"\")", "mnemonicFingerprint(typed.join(\" \"), \"\")"],
+  ["drill: passphrase box never shown", "document.getElementById(\"drillPassRow\").style.display = drillCtx.pass ? \"\" : \"none\";", "document.getElementById(\"drillPassRow\").style.display = \"none\";"],
+  ["drill: start allowed with no seed", "if(!hasSeed() || !watchCtx){ alert(", "if(false){ alert("],
+  ["drill: end leaves the typed words", "  w.value = \"\"; document.getElementById(\"drillPass\").value = \"\";", "  document.getElementById(\"drillPass\").value = \"\";"],
+  ["drill: end leaves the typed passphrase", "document.getElementById(\"drillPass\").value = \"\"; document.getElementById(\"drillStatus\").textContent = \"\";", "document.getElementById(\"drillStatus\").textContent = \"\";"],
+  ["drill: end leaves the result message", "document.getElementById(\"drillStatus\").textContent = \"\";\n  document.getElementById(\"drillRun\").style.display = \"none\";", "\n  document.getElementById(\"drillRun\").style.display = \"none\";"],
+  ["drill: card not hidden when the seed is cleared", "for(const id of [\"addrBox\",\"checkGuide\",\"drillBox\"])", "for(const id of [\"addrBox\",\"checkGuide\"])"],
+  ["drill: card not shown with a seed", "document.getElementById(\"checkGuide\").style.display = \"\"; document.getElementById(\"drillBox\").style.display = \"\";", "document.getElementById(\"checkGuide\").style.display = \"\";"],
+  ["drill: word grid not hidden", "body.drill-on #wordGrid, body.drill-on #genResult", "body.drill-on #genResult"],
+  ["drill: result text not hidden", "body.drill-on #genResult, body.drill-on #abbrNote", "body.drill-on #abbrNote"],
+  ["drill: abbreviation note not hidden", "body.drill-on #abbrNote, ", ""],
+  ["drill: passphrase note not hidden", "body.drill-on #passNote, ", ""],
+  ["drill: next-step text not hidden", "body.drill-on #nextStep { visibility: hidden; }", "body.drill-on #nextStep { visibility: visible; }"],
+  ["drill: word buttons not removed", "body.drill-on .needs-words, ", ""],
+  ["drill: print button not removed", "body.drill-on .print-btn, ", ""],
+  ["drill: seed QR not removed", "body.drill-on #seedQrBox, ", ""],
+  ["drill: explainer not removed", "body.drill-on #explainBox { display: none !important; }", "body.drill-on #explainBox { display: block; }"],
+  ["drill: abbreviation button not marked", "<button class=\"secondary small needs-words\" id=\"abbrBtn\"", "<button class=\"secondary small\" id=\"abbrBtn\""],
+  ["drill: send-to-check button not marked", "<button class=\"secondary small needs-words\" onclick=\"sendToVerify()\">", "<button class=\"secondary small\" onclick=\"sendToVerify()\">"],
+  ["drill: download button not marked", "<button class=\"secondary small needs-words\" onclick=\"downloadSeed()\">", "<button class=\"secondary small\" onclick=\"downloadSeed()\">"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

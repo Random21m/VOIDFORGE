@@ -205,6 +205,39 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(seedOn()&&/abandon/.test(first()),'stale guard: a seed from the Word draw box exists');
       g.set(rnd(10,6)); g.words(24); g.words(12); g.mode('coin'); g.mode('dice'); ok(seedOn(),'stale guard: rolls, word count and mode do not matter to a Word draw seed');
       typePass('zzz'); ok(!seedOn()&&!fpOn(),'stale guard: a passphrase edit does clear a Word draw seed'); }
+    // --- restore drill (v1.27.0) ---
+    { const body=g.d.body, dr=(id)=>g.$(id), st=()=>dr('drillStatus').textContent, typed=(w,pw)=>{ dr('drillWords').value=w; dr('drillPass').value=pw||''; };
+      const vis=(id)=>g.w.getComputedStyle(g.$(id)).display;
+      await forge(R1); const W=W1.split(' ');
+      ok(dr('drillBox').style.display==='','drill: the card appears once a seed exists');
+      g.w.drillEnd(); await g.w.drillCheck(); ok(/Press START DRILL/.test(st()),'drill: CHECK before START asks you to start');
+      g.w.drillStart(); ok(body.classList.contains('drill-on')&&dr('drillRun').style.display===''&&dr('drillStart').style.display==='none'&&/Type your 12 words/.test(dr('drillLabel').textContent),'drill: START hides the words on screen and opens the typing box');
+      ok(dr('drillPassRow').style.display==='none','drill: no passphrase box when the seed has no passphrase');
+      typed(W.slice(0,11).join(' ')); await g.w.drillCheck(); ok(/typed 11 words, but this seed has 12/.test(st())&&dr('drillStatus').classList.contains('bad'),'drill: wrong word count is reported');
+      typed(W.slice(0,3).concat(['zzzzz'],W.slice(4)).join(' ')); await g.w.drillCheck(); ok(/Word 4 is not in the BIP39 list/.test(st()),'drill: a word that is not in the list is reported by position');
+      { const bad=W.slice(); bad[2]=W[2]==='abandon'?'ability':'abandon'; bad[6]=W[6]==='zoo'?'zone':'zoo'; typed(bad.join(' ')); await g.w.drillCheck();
+        ok(/Word 3 and 7 do not match/.test(st())&&!st().includes(W[2]+' ')&&!new RegExp('\\b'+W[2]+'\\b').test(st())&&!new RegExp('\\b'+W[6]+'\\b').test(st()),'drill: wrong words are reported by position and the right words are never shown'); }
+      { const bad=W.slice(); bad[11]=W[11]==='abandon'?'ability':'abandon'; typed(bad.join(' ')); await g.w.drillCheck(); ok(/Word 12 does not match/.test(st()),'drill: a single wrong word uses the singular'); }
+      typed(W.join(' ')+' '); dr('drillWords').value='  '+W.join('\n').toUpperCase()+'  '; await g.w.drillCheck();
+      ok(/Drill passed/.test(st())&&/master fingerprint [0-9a-f]{8}/.test(st())&&dr('drillStatus').classList.contains('ok'),'drill: the right words pass (any spacing and capitals) and show the fingerprint');
+      typed(W.join(' '),'oops'); await g.w.drillCheck(); ok(/this seed was made without a passphrase/.test(st()),'drill: a passphrase typed for a seed without one is flagged');
+      g.w.drillEnd(); ok(!body.classList.contains('drill-on')&&dr('drillWords').value===''&&dr('drillStatus').textContent===''&&dr('drillRun').style.display==='none'&&dr('drillStart').style.display==='','drill: END DRILL shows the words again and wipes what you typed');
+      // with a passphrase
+      await forge(R1,'my pass'); const WP=first().split(' ');
+      g.w.drillStart(); ok(dr('drillPassRow').style.display==='','drill: a passphrase box appears when the seed has a passphrase');
+      typed(WP.join(' '),''); await g.w.drillCheck(); ok(/The words match, but the passphrase does not\./.test(st()),'drill: right words with no passphrase typed is not enough');
+      typed(WP.join(' '),'My pass'); await g.w.drillCheck(); ok(/The words match, but the passphrase does not\./.test(st()),'drill: the passphrase is case sensitive');
+      typed(WP.join(' '),'my pass'); await g.w.drillCheck(); ok(/Drill passed\. Every word and the passphrase matches/.test(st()),'drill: words and passphrase together pass');
+      // anything that changes or clears the seed ends the drill
+      g.set(R1.slice(0,49)+(R1[49]==='1'?'2':'1')); ok(!body.classList.contains('drill-on')&&dr('drillWords').value==='','drill: changing the rolls ends the drill and wipes the typed words');
+      await forge(R1); g.w.drillStart(); typed(W.join(' ')); typePass('q'); ok(!body.classList.contains('drill-on')&&dr('drillWords').value==='','drill: changing the passphrase ends the drill');
+      await forge(R1); g.w.drillStart(); typed(W.join(' ')); g.w.wipeSeed(); ok(!body.classList.contains('drill-on')&&dr('drillWords').value===''&&dr('drillBox').style.display==='none','drill: CLEAR ends the drill and hides the card');
+      g.st.alerts.length=0; g.w.drillStart(); ok(g.st.alerts.some(m=>/Make the seed first/.test(m))&&!body.classList.contains('drill-on'),'drill: START refuses when there is no seed');
+      // while the drill runs, nothing on screen shows the words
+      await forge(R1); g.w.drillStart(); const css=html.match(/<style>[\s\S]*?<\/style>/)[0];
+      ok(/body\.drill-on #wordGrid, body\.drill-on #genResult[^{]*\{ visibility: hidden; \}/.test(css)&&/body\.drill-on \.needs-words[^{]*\.print-btn[^{]*#seedQrBox[^{]*#explainBox \{ display: none !important; \}/.test(css),'drill: the CSS hides the word grid, the result text, the buttons that show words, the print button, the Seed QR and the explainer');
+      ok(['abbrBtn'].every(id=>g.$(id).classList.contains('needs-words'))&&[...g.d.querySelectorAll('button')].filter(b=>/^(SEND TO CHECK|DOWNLOAD)$/.test(b.textContent)).every(b=>b.classList.contains('needs-words')),'drill: SHOW FIRST 4 LETTERS, SEND TO CHECK and DOWNLOAD are marked as word-showing buttons');
+      g.w.drillEnd(); }
     ok(g.errors.length===0,'stale guard: no page errors'); }
   // --- download tool: clean copy, no seed ---
   t.w.downloadTool(); const page=await blobText(t.w,t.st.blob);
