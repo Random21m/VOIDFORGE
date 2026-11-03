@@ -19,16 +19,47 @@ permissions: {}
 env:
   TAG: ${{ github.event.release.tag_name || inputs.tag }}
 jobs:
+  check:
+    # Looks for a finished, green `test` workflow run on the exact commit this tag points to. If there is one, the
+    # full test run is not repeated (same commit, same tests). If there is not, the test job below runs everything.
+    # Read-only. It runs no project code and installs nothing.
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      green: ${{ steps.find.outputs.green }}
+    steps:
+      - name: Check the tag name
+        run: |
+          case "$TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "Unexpected tag name: $TAG" >&2; exit 1 ;;
+          esac
+      - name: Find a green test run for the tagged commit
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/refs/tags/$TAG" --jq .sha)
+          echo "tag $TAG is commit $sha"
+          n=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/test.yml/runs?head_sha=$sha&status=completed&per_page=50" \
+                --jq '[.workflow_runs[] | select(.conclusion=="success" and .head_sha=="'"$sha"'")] | length')
+          echo "green test runs on that commit: $n"
+          if [ "$n" -ge 1 ]; then echo "green=true" >> "$GITHUB_OUTPUT"; else echo "green=false" >> "$GITHUB_OUTPUT"; fi
   test:
     # Runs dependency code (npm), so it gets read-only access and never sees a signing or upload token.
-    # The mutation suite is split into 8 shards that run side by side (GitHub stops any single job after 6 hours).
+    # Skipped when `check` found a green test run on this exact commit.
+    # The mutation suite is split into 16 shards that run side by side (GitHub stops any single job after 6 hours).
     # Every shard must pass before anything is attested. Shard 0 also runs the unit and oracle tests.
+    needs: check
+    if: needs.check.outputs.green != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     permissions:
       contents: read
     steps:
@@ -48,11 +79,12 @@ jobs:
       - name: Unit and oracle tests (shard 0 only)
         if: matrix.shard == 0
         run: node tests/test.js && node tests/oracle.test.mjs
-      - name: Mutation tests (shard ${{ matrix.shard }} of 8)
-        run: MUT_SHARD=${{ matrix.shard }}/8 node tests/mutation.test.mjs
+      - name: Mutation tests (shard ${{ matrix.shard }} of 16)
+        run: MUT_SHARD=${{ matrix.shard }}/16 node tests/mutation.test.mjs
   attest:
     # Installs no packages and runs no project code. Signs and uploads only bytes taken from the git tag.
-    needs: test
+    needs: [check, test]
+    if: ${{ !cancelled() && needs.check.result == 'success' && (needs.test.result == 'success' || (needs.test.result == 'skipped' && needs.check.outputs.green == 'true')) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write       # attach files to the release
