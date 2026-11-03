@@ -23,6 +23,9 @@ gh attestation verify voidforge.html --repo Random21m/voidforge     # needs the 
 `CID.txt` holds the same check as a content ID (CIDv1, raw, sha2-256), the format IPFS-style tools use. It is a second, independent way to confirm the file: compute it yourself with the one-line command in step 3 above and compare it with `CID.txt`.
 The attestation proves the file came from this repository's release workflow at a specific commit. It does not prove the code is safe; that depends on review. Verify the file you downloaded, not the copy saved by the in-page "DOWNLOAD FOR USB" button (the browser re-serializes the page, so its hash differs).
 
+## README refresh (every release)
+Before the final candidate commit, regenerate the README screenshots from the new build (a practice seed only) and re-read the README text so it describes what the page does now: new or changed screens get a picture, retired wording is removed, and nothing in the pictures is older than the release.
+
 ## Current build
 `voidforge.html` v1.27.2, SHA256: `10858a46e813f7369a42497942ac084fd3ffcd72d92b25b6ce0a73193f2f19a5`
 Content ID (CIDv1): `bafkreiaqqwfen2at643juqsjpfbkyccp2p7424wzfms3ntqkommt6lyzuu`

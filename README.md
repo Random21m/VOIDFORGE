@@ -14,13 +14,15 @@ Get <code>voidforge.html</code> and <code>SHA256SUMS</code> from the release pag
 
 ## What it looks like
 
-<p align="center"><img src="docs/screenshots/1-start.png" alt="The VOIDFORGE start screen: neon dice, the Make a seed tab, and the offline status check" width="760"></p>
+<p align="center"><img src="docs/screenshots/1-start.png" alt="The VOIDFORGE start screen: three neon 3D dice above the VOIDFORGE title, the Make a seed tab, and the offline status check" width="760"></p>
 
 <p align="center"><img src="docs/screenshots/3-seed.png" alt="A practice seed after FORGE SEED: 50 dice rolls entered, the entropy check, and the 12 words" width="760"></p>
 
 <table align="center"><tr>
 <td align="center"><img src="docs/screenshots/2-guide.png" alt="GUIDE ME walks through the steps one at a time, with an EXIT GUIDE button" width="370"><br><sub>GUIDE ME, one step at a time</sub></td>
 <td align="center"><img src="docs/screenshots/4-watch-only.png" alt="The watch-only box with the public key, first five addresses and descriptors" width="370"><br><sub>Watch-only keys and first five addresses</sub></td>
+</tr><tr>
+<td align="center" colspan="2"><img src="docs/screenshots/6-restore-drill.png" alt="The Restore drill: the words are hidden and you type them back from your paper; a short answer is reported as wrong" width="560"><br><sub>Restore drill: type the words back from your paper (it never shows you the right word)</sub></td>
 </tr></table>
 
 <p align="center"><img src="docs/screenshots/5-phone.png" alt="VOIDFORGE on a phone screen" width="260"><br><sub>On a phone: good for learning and practice, not for real funds.</sub></p>
@@ -61,7 +63,7 @@ VOIDFORGE is free software provided **"as is", without warranty of any kind** (s
 
 **Browser testing:** automated tests run in Chromium. v1.7.0, v1.8.0, v1.8.1, v1.9.0, v1.10.0, v1.10.1 and v1.11.0 were checked by hand in Firefox and Safari on a desktop computer (self-test badge, dice buttons, watch-only box, QR codes and, in v1.8.0, the fingerprint picture all worked; v1.5.0 also matched the published dice example). v1.7.1 only added disclaimer text, and v1.8.1 only changed one message and the release process. v1.9.0 added the roll chart. v1.10.0 added the five-address list, the 4-letter view and the check guide. The watch-only QR was scanned into Blue Wallet on a phone and worked (same first receiving address as VOIDFORGE; a zpub import shows no master fingerprint by design, while the descriptor does). The descriptors were imported into Sparrow Wallet, and the fingerprint picture matched what Sparrow shows for four wallets. The maintainer reports that later releases, up to v1.18.0, also work in Firefox and Safari on a desktop computer (reported by hand, without a per-version checklist). Electrum and Nunchuk have not been tested. Please report anything odd in other browsers. The page needs Safari 14 or newer. Phones are not supported.
 
-**Coin flips:** decide which side is 1 and which is 0 (the usual choice is heads = 1, tails = 0), use it for every flip, and keep the exact 1/0 string with your backup. Only the string is hashed, so any consistent choice works, but the mapping cannot be recovered from the words.
+**Coin flips:** decide which side is 1 and which is 0 (the usual choice is heads = 1, tails = 0, and the two tap buttons are drawn as gold coins that way), use it for every flip, and keep the exact 1/0 string with your backup. Only the string is hashed, so any consistent choice works, but the mapping cannot be recovered from the words.
 
 - **Restore drill:** after FORGE, a card in the Check step hides the words on screen and has you type them back from your paper. It reports which word positions are wrong (never what the right word is), checks the passphrase if there is one, and shows the master fingerprint your paper rebuilds. Changing or clearing the seed ends the drill, and nothing is stored.
 - **First 5 addresses and a check guide:** after FORGE the first five receiving addresses are listed (with COPY ALL) and a short guide explains how to compare them in a second wallet app. Comparing five addresses is much stronger than comparing one.
