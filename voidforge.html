@@ -3592,14 +3592,30 @@ function dieFace(n){
   holder.innerHTML = '<svg viewBox="0 0 100 100" width="46" height="46" aria-hidden="true"><rect x="6" y="6" width="88" height="88" rx="18" style="fill:var(--surface); stroke:var(--accent); stroke-width:6"/>' + pips + '</svg>';
   return holder.firstChild;
 }
+// Coin faces for the tap buttons (v1.27.1). Constants only, no user data. Heads = 1, tails = 0.
+function coinFace(heads, id){
+  const g = "cf" + id;
+  const art = heads
+    ? '<path d="M41 74 L41 66 C34 62 32 55 33 49 C34 42 33 35 38 30 C43 25 52 24 58 28 C64 32 66 38 65 43 L69 50 L65 52 L66 57 L63 59 C63 63 61 66 57 68 L57 74 Z" fill="#7a5a10"/><path d="M36 78 C42 73 56 73 66 78" stroke="#7a5a10" stroke-width="4" fill="none" stroke-linecap="round"/>'
+    : '<path d="M50 24 L55 41 L73 41 L59 52 L64 69 L50 59 L36 69 L41 52 L27 41 L45 41 Z" fill="#7a5a10"/>';
+  const dots = [0,1,2,3,4,5,6,7,8,9,10,11].map(i => { const a = i * Math.PI / 6; return '<circle cx="' + (50 + 39 * Math.cos(a)).toFixed(1) + '" cy="' + (50 + 39 * Math.sin(a)).toFixed(1) + '" r="1.8" fill="#7a5a10"/>'; }).join("");
+  const holder = document.createElement("span");
+  holder.innerHTML = '<svg viewBox="0 0 100 100" width="54" height="54" aria-hidden="true"><defs><radialGradient id="' + g + '" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#ffe9a3"/><stop offset=".55" stop-color="#e9b73a"/><stop offset="1" stop-color="#a87a14"/></radialGradient></defs><circle cx="50" cy="50" r="46" fill="url(#' + g + ')" stroke="#6b4c0c" stroke-width="3"/><circle cx="50" cy="50" r="42" fill="none" stroke="#7a5a10" stroke-width="1.5"/>' + dots + art + '</svg>';
+  return holder.firstChild;
+}
 function buildTapRow(){
   const row = document.getElementById("tapRow"), coin = getMode() === "coin";
   row.textContent = "";
   (coin ? ["1","0"] : ["1","2","3","4","5","6"]).forEach(v => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "secondary tap";
-    b.setAttribute("aria-label", (coin ? "Add flip " : "Add roll ") + v);
-    if(coin){ b.textContent = v; b.style.fontSize = "30px"; b.style.minHeight = "64px"; }
+    b.dataset.v = v;
+    b.setAttribute("aria-label", coin ? (v === "1" ? "Add flip 1 (heads)" : "Add flip 0 (tails)") : "Add roll " + v);
+    if(coin){
+      b.classList.add("coin-tap");
+      b.appendChild(coinFace(v === "1", v));
+      const t = document.createElement("span"); t.textContent = (v === "1" ? "HEADS" : "TAILS") + " = " + v; t.style.cssText = "font-size:13px; font-weight:700; letter-spacing:.5px;"; b.appendChild(t);
+    }
     else { b.appendChild(dieFace(parseInt(v))); const t = document.createElement("span"); t.textContent = v; t.style.cssText = "font-size:15px; font-weight:700;"; b.appendChild(t); }
     b.onclick = () => { const el = document.getElementById("rolls"); el.value += v; updateCount(); };
     row.appendChild(b);

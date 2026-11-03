@@ -334,7 +334,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(taps.every((b,i)=>b.querySelectorAll('svg circle').length===i+1&&b.textContent.trim()===String(i+1)),'each dice button draws a face with the right number of pips and shows its number');
     taps[0].onclick(); taps[5].onclick(); taps[2].onclick(); eq(t.$('rolls').value,'163','tap buttons append rolls and update the counter'); ok(/3 \/ 50/.test(t.$('rollCount').textContent),'counter updates after taps');
     const coin=t.d.querySelector('input[name="mode"][value="coin"]'); t.$('rolls').value=''; coin.checked=true; t.w.onModeChange();
-    const ct=[...t.d.querySelectorAll('#tapRow button')]; ok(ct.length===2&&ct[0].textContent==='1'&&ct[1].textContent==='0','coin mode shows 1 and 0 tap buttons');
+    const ct=[...t.d.querySelectorAll('#tapRow button')]; ok(ct.length===2&&ct[0].dataset.v==='1'&&ct[1].dataset.v==='0'&&/HEADS/.test(ct[0].textContent)&&/TAILS/.test(ct[1].textContent),'coin mode shows 1 and 0 tap buttons');
     ct[1].onclick(); ct[0].onclick(); eq(t.$('rolls').value,'01','coin taps append flips');
     const dice=t.d.querySelector('input[name="mode"][value="dice"]'); t.$('rolls').value=''; dice.checked=true; t.w.onModeChange();
     t.$('passphrase').value='a'; t.$('passphrase2').value='a'; t.w.togglePassphrase(t.d.querySelector('button[onclick^="togglePassphrase"]')); ok(t.$('passphrase').type==='text'&&t.$('passphrase2').type==='text','SHOW reveals both passphrase boxes');
