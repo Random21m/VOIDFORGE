@@ -451,6 +451,19 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(cubes.map(c=>c.parentNode.parentNode.getAttribute('style')).join('|')==='--dl:0.14s; --fx:-46px; --ry:-34deg|--dl:0s; --fx:0px; --ry:-30deg|--dl:0.28s; --fx:46px; --ry:-26deg','logo: the dice fall from spread-out spots and land at slightly different angles');
     { const rule=n=>(html.match(new RegExp('\\.logo \\.'+n+' \\{[^}]*\\}'))||[''])[0], roll=(html.match(/@keyframes dieRoll \{[\s\S]*?\n  \}/)||[''])[0];
       ok(/preserve-3d/.test(rule('cube'))&&/preserve-3d/.test(rule('fl'))&&!/opacity|filter/.test(rule('cube')+rule('fl')+roll)&&roll.length>200,'logo: the cube keeps its 3D (no opacity or filter on the cube itself, they flatten it)'); }
+    { const css=html.match(/<style>[\s\S]*?<\/style>/)[0], hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+      const lum=c=>{const f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);};return .2126*f(c[0])+.7152*f(c[1])+.0722*f(c[2]);};
+      const cr=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+      const tags=[...t.w.document.querySelectorAll('.tag-rec')], opts=[...t.w.document.querySelectorAll('option.opt-rec')];
+      // every "recommended" label on a screen (not the changelog or help text) is a badge or a coloured option
+      const labels=[...t.w.document.querySelectorAll('summary, option')].filter(e=>/recommended/i.test(e.textContent));
+      ok(tags.length===2&&opts.length===1&&labels.length===3&&labels.every(e=>e.querySelector('.tag-rec')||e.classList.contains('opt-rec')),'recommended: every RECOMMENDED label is an amber badge (or an amber option in the menu)');
+      ok(t.w.document.querySelectorAll('.tag-note').length===4&&![...t.w.document.querySelectorAll('summary')].some(e=>/\((demo only|advanced)/i.test(e.textContent)),'tags: DEMO ONLY, ADVANCED and NEW are grey badges, no longer plain (brackets) in the headings');
+      const warn={d:/:root \{[^}]*--warn-text: (#[0-9a-f]{6})/.exec(css)[1],l:/body\.light \{[^}]*--warn-text: (#[0-9a-f]{6})/.exec(css)[1]};
+      const surf={d:/--surface2: (#[0-9a-f]{6})/.exec(css)[1],l:/body\.light \{[^}]*--surface2: (#[0-9a-f]{6})/.exec(css)[1]};
+      ok(/\.strip b \{ color: var\(--warn-text\); \}/.test(css)&&/\.tag-rec \{[^}]*color: var\(--warn-text\)[^}]*border-color: var\(--warn-text\)/.test(css)&&/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(css),'recommended: uses the same amber as the "not independently audited" banner');
+      const mixc=(fg,al,bg)=>fg.map((v,i)=>v*al+bg[i]*(1-al)), lt=/body\.light \.tag-rec \{ color: (#[0-9a-f]{6});/.exec(css)[1];
+      ok(cr(hex(warn.d),mixc(hex(warn.d),.12,hex(surf.d)))>=4.5&&cr(hex(lt),mixc(hex(lt),.08,hex(surf.l)))>=4.5&&cr(hex(warn.l),hex(lt))<1.6,'recommended: the amber badge text keeps contrast >= 4.5:1 in both themes (light theme uses a slightly deeper shade of the same amber)'); }
     ok(/\.logo \{[^}]*position: relative; z-index: 0;/.test(html)&&/#statusLine \{ position: relative; z-index: 1;/.test(html),'logo: the falling dice pass behind the status line text, not over it');
     ok(/\n  h1 \{[^}]*font-size: 37px;[^}]*filter: drop-shadow\([^}]*\}/.test(html)&&/\.logo \{ --S: 40px;/.test(html),'header: VOIDFORGE is 37px with a soft neon glow, and the dice are 40px so the name leads');
  t.w.rollLogo(); ok(t.$('logo').classList.contains('again'),'tapping the logo rolls the dice again'); t.w.rollLogo();

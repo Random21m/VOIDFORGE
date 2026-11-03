@@ -319,6 +319,12 @@
   .ex-ok { color: var(--success); font-weight: 600; font-size: 13px; margin-top: 12px; }
   .ex-bad { color: var(--bad-text); font-weight: 600; font-size: 13px; margin-top: 12px; }
   .tag-public { color: var(--ok-text); border-color: var(--ok-text); }
+  /* RECOMMENDED uses the same amber as the 'not independently audited' banner (--warn-text), so it stands out from the cyan, green and red tags */
+  .tag-rec { color: var(--warn-text); border-color: var(--warn-text); background: rgba(255,170,0,.12); }
+  body.light .tag-rec { color: #8a5000; border-color: #8a5000; background: rgba(138,80,0,.08); } /* same amber, a shade deeper so the small badge text stays readable on the light cards */
+  /* quiet grey badge for DEMO ONLY / ADVANCED / NEW so RECOMMENDED (amber) stays the one that stands out */
+  .tag-note { color: var(--muted); border-color: var(--muted); }
+  .opt-rec { color: var(--warn-text); font-weight: 700; }
   .tag-ro { color: var(--accent); border-color: var(--accent); }
   .tools details { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-top: 10px !important; }
   .tools summary { cursor: pointer; font-weight: 600; font-size: 14px; }
@@ -708,7 +714,7 @@
     <div id="bitsNote" data-g="2" style="font-size:13.5px; margin-top:4px; color:var(--muted);"></div>
     <div id="ignoredNote" data-g="2" style="font-size:13.5px; margin-top:4px; font-weight:600; color:var(--danger);"></div>
     <details id="demoBox" data-g="2">
-      <summary>Watch the words change (demo only)<small>See why one different roll changes every word.</small></summary>
+      <summary>Watch the words change<span class="tag tag-note">DEMO ONLY</span><small>See why one different roll changes every word.</small></summary>
       <p class="hint" style="margin:8px 0 0;">Curious how rolls turn into words? Switch this on and add rolls: the demo words below are re-made after every roll, and you will see that <b>one new roll changes every word</b>. That scrambling is why nobody can work backwards from the words to your rolls. These words are made from your rolls plus a demo tag, so they are <b>never your real seed</b>. They are not saved, printed or carried into FORGE.</p>
       <label style="display:flex; gap:8px; align-items:center; margin-top:8px; font-weight:600;"><input type="checkbox" id="demoOn" onchange="demoToggle()"> Show the demo</label>
       <div id="demoOut" style="display:none;">
@@ -757,7 +763,7 @@
    </div>
    <div class="gen-bottom">
     <details id="drillBox" data-g="5" style="display:none; margin-top:8px;">
-      <summary>Restore drill: prove your paper backup works (recommended)</summary>
+      <summary>Restore drill: prove your paper backup works<span class="tag tag-rec">RECOMMENDED</span></summary>
       <p class="hint" style="margin:8px 0 0;">Write the words on paper first. Then press START DRILL: the words are hidden from this screen, and you type them back <b>from your paper</b>. That tests the paper, not your memory of the screen. Nothing is stored anywhere.</p>
       <div id="drillStart" style="margin-top:8px;"><button class="secondary small" onclick="drillStart()">START DRILL</button></div>
       <div id="drillRun" style="display:none;">
@@ -780,7 +786,7 @@
       </div>
     </details>
     <details id="checkGuide" data-g="5" style="display:none; margin-top:8px;">
-      <summary>How to check this wallet in a second tool (recommended)</summary>
+      <summary>How to check this wallet in a second tool<span class="tag tag-rec">RECOMMENDED</span></summary>
       <ol>
         <li>On a <b>different</b> device or app, open a watch-only wallet (Sparrow, Electrum, Blue Wallet or Nunchuk).</li>
         <li>Import the <b><span class="term" tabindex="0" data-tip="An extended public key. It lets a wallet app work out all your receiving addresses without any ability to spend.">zpub</span></b> or the <b>receiving <span class="term" tabindex="0" data-tip="A one-line recipe that tells a wallet app exactly how your addresses are built from your keys. Public, no spending power.">descriptor</span></b> from the Watch-only box above (copy it, or show the QR and scan it). <b>Never type your seed words into a connected device.</b></li>
@@ -868,7 +874,7 @@
         <button class="secondary small" onclick="hideQr()">HIDE QR</button>
       </div>
       <details id="spBox" class="ms-sub" style="margin-top:12px;">
-        <summary style="cursor:pointer; font-weight:600;">Silent Payment address (advanced, new)</summary>
+        <summary style="cursor:pointer; font-weight:600;">Silent Payment address<span class="tag tag-note">ADVANCED</span><span class="tag tag-note">NEW</span></summary>
         <p class="hint" style="margin:8px 0;">A <span class="term" tabindex="0" data-tip="A newer kind of Bitcoin address (BIP-352). You publish one address and reuse it; each sender secretly derives a fresh, different address from it, so people cannot link your payments by looking at the blockchain.">Silent Payment</span> address is one address you can give out again and again. Each sender makes a fresh hidden address from it, so nobody can link your payments together by address reuse.</p>
         <div class="ms-test" style="background:#ffb020;">LIMITED WALLET SUPPORT. Few wallets can send to or receive at these addresses yet. Test with a small amount first.</div>
         <div class="wlabel" id="spLabel">Silent Payment address</div>
@@ -878,7 +884,7 @@
         <div class="hint" style="margin:8px 0 0;">Made from your seed at <code>m/352&rsquo;/coin&rsquo;/account&rsquo;</code> (BIP-352), so it follows the Network and Account choices above. It contains only public keys. To receive you need a wallet that supports Silent Payments and scans the blockchain for you, together with this same seed, so keep your seed backup safe. Your normal addresses and descriptors are not affected.</div>
       </details>
       <details id="coreBox" class="ms-sub" style="margin-top:12px;">
-        <summary style="cursor:pointer; font-weight:600;">Import into Bitcoin Core (advanced)</summary>
+        <summary style="cursor:pointer; font-weight:600;">Import into Bitcoin Core<span class="tag tag-note">ADVANCED</span></summary>
         <p class="hint" style="margin:8px 0;">Bitcoin Core can watch this wallet without holding any private key. These two commands first make an empty watch-only wallet, then load the descriptors into it. Core then shows the balance and addresses but can never spend. Run them in Core&rsquo;s console or with <code>bitcoin-cli</code>.</p>
         <label for="coreWhen" style="font-weight:600; font-size:13.5px;">Has this wallet been used before?</label>
         <select id="coreWhen" aria-label="Has this wallet been used before" style="width:100%; margin:4px 0 6px;"><option value="now">No, it is brand new (no scan needed)</option><option value="0">Yes, it already has history (scan the whole chain, slow)</option></select>
@@ -1025,7 +1031,7 @@
         <div class="ms-pop">Popular: <button type="button" class="ms-preset" data-m="2" data-n="3">2-of-3 (most common)</button><button type="button" class="ms-preset" data-m="3" data-n="5">3-of-5 (more safety)</button><button type="button" class="ms-preset" data-m="2" data-n="2">2-of-2</button></div>
         <div class="hint" id="msMNote" style="margin:8px 0 6px;"></div>
         <div class="ms-row">
-          <label>Address type<select id="msType" aria-label="Multisig address type"><option value="ms-wsh">Native SegWit (bc1q...), recommended</option><option value="ms-sh-wsh">Nested SegWit (3...), older wallets</option></select></label>
+          <label>Address type<select id="msType" aria-label="Multisig address type"><option value="ms-wsh" class="opt-rec">Native SegWit (bc1q...), recommended</option><option value="ms-sh-wsh">Nested SegWit (3...), older wallets</option></select></label>
           <label>Network<select id="msNet" aria-label="Network"><option value="main">Mainnet</option><option value="test">Testnet (practice)</option></select></label>
           <label>Account<input type="text" id="msAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" style="width:64px;"></label>
         </div>
