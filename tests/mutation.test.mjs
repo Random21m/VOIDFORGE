@@ -1104,6 +1104,7 @@ async function probe(w, mutated) {
         const A = (app, n, r) => w.mnemonicBip85App(ABOUT, '', app, 0, n, r);
         if ((await A('hex', 17)) !== Buffer.from(ent("m/83696968'/128169'/17'/0'").subarray(0, 17)).toString('hex')) fails.push('bip85 apps: hex uses the length in its path');
         if ((await A('pwd64', 86)) !== Buffer.from(ent("m/83696968'/707764'/86'/0'")).toString('base64').slice(0, 86)) fails.push('bip85 apps: Base64 password');
+        { let got = ''; try { got = await w.mnemonicBip85App(ABOUT, '', 'hex', 2147483647, 16); } catch (e) { got = 'ERR'; } if (got !== Buffer.from(ent("m/83696968'/128169'/16'/2147483647'").subarray(0, 16)).toString('hex')) fails.push('bip85 apps: the top index 2147483647 works'); }
         for (const [sides, rolls] of [[8, 20], [6, 40], [256, 5], [257, 5]]) if ((await A('dice', sides, rolls)) !== dice(ent(`m/83696968'/89101'/${sides}'/${rolls}'/0'`), sides, rolls)) fails.push('bip85 apps: dice with ' + sides + ' sides');
         { const m = new Uint8Array(200).map((_, i) => i * 7), rd = w.shake256Reader(m); if (Buffer.from([...rd.read(100), ...rd.read(250)]).toString('hex') !== Buffer.from(shk(m, 350)).toString('hex')) fails.push('bip85 apps: SHAKE256 over several blocks'); }
         const CA = async (app, set) => { $('phrase').value = ABOUT; $('childApp').value = app; w.childAppChange(); if (set) set(); await w.deriveChild(); return [$('childStatus').textContent, $('childOut').textContent]; };
