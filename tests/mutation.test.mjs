@@ -235,6 +235,14 @@ async function probe(w, mutated) {
       $('rolls').value = '1234'; w.updateCount(); words(24); words(12); mode('coin'); mode('dice'); if (!on()) fails.push('stale: rolls, length and mode do not matter to a Word draw seed');
       $('passphrase').value = 'z'; ev('passphrase'); if (on()) fails.push('stale: a passphrase edit clears a Word draw seed'); }
     w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); }
+  { // Owner logo (v1.29.0)
+    const lg = w.document.getElementById('ownerLogo'), src = lg ? lg.getAttribute('src') : '', css = [...w.document.querySelectorAll('style')].map((s) => s.textContent).join('\n');
+    const bytes = /^data:image\/jpeg;base64,/.test(src) ? Buffer.from(src.slice(src.indexOf(',') + 1), 'base64') : Buffer.alloc(0);
+    if (!lg || lg.tagName !== 'IMG' || bytes.length < 2000 || bytes.length > 20000 || bytes[0] !== 0xFF || bytes[1] !== 0xD8) fails.push('owner logo: a small JPEG is built in as a data: picture');
+    if (!lg || (lg.getAttribute('alt') || '').length < 10 || lg.getAttribute('width') !== '44' || lg.getAttribute('height') !== '44' || lg.closest('a')) fails.push('owner logo: alt text, size, and not a link');
+    if (!/#ownerLogo \{ position: absolute; top: 10px; right: 12px;/.test(css)) fails.push('owner logo: placed in the top-right corner');
+    if (!/#topbar \{ flex-wrap: wrap; right: 64px; \}/.test(css)) fails.push('owner logo: the buttons make room for it on a phone');
+    if (!/#tipBox, #ownerLogo \{ display: none !important; \}/.test(css)) fails.push('owner logo: left off printouts'); }
   { // Page icon (v1.28.0)
     const ic = [...w.document.querySelectorAll('link[rel~="icon"]')], hs = ic.map((l) => l.getAttribute('href') || '');
     const svg = hs.find((h) => /^data:image\/svg\+xml,/.test(h)), png = hs.find((h) => /^data:image\/png;base64,/.test(h));
@@ -1363,6 +1371,11 @@ const M = [
   ['reforge passphrase: an edit keeps the result', '"reforgePassWords", "reforgePassInput", "reforgePassCheck", "reforgePassTypos"].forEach(id => document.getElementById(id).addEventListener', '"reforgePassWords", "reforgePassCheck", "reforgePassTypos"].forEach(id => document.getElementById(id).addEventListener'],
   ['reforge passphrase: an invalid phrase accepted', '|| !(await reforgeChecksumOk(Uint16Array.from(parsed.idx))))', ')'],
   ['reforge: fingerprint odds wrong', 'Math.round(2 ** 32 / Math.max(1, n))', 'Math.round(2 ** 31 / Math.max(1, n))'],
+  ['owner logo: moved to the left corner', '#ownerLogo { position: absolute; top: 10px; right: 12px;', '#ownerLogo { position: absolute; top: 10px; left: 12px;'],
+  ['owner logo: overlaps the buttons on a phone', '#topbar { flex-wrap: wrap; right: 64px; }', '#topbar { flex-wrap: wrap; }'],
+  ['owner logo: printed on the page', '#guideNew, #tipBox, #ownerLogo { display: none !important; }', '#guideNew, #tipBox { display: none !important; }'],
+  ['owner logo: no description for screen readers', 'alt="The project owner\'s logo: a bloodhound in a worn cap with a Bitcoin mark"', 'alt=""'],
+  ['owner logo: size attributes dropped', 'width="44" height="44" alt="The project owner', 'alt="The project owner'],
   ['page icon: SVG link removed', '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,', '<link rel="x" type="image/svg+xml" href="data:image/svg+xml,'],
   ['page icon: PNG link removed', '<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,', '<link rel="x" type="image/png" sizes="32x32" href="data:image/png;base64,'],
   ['page icon: About page loses the online address', 'Its address is <a href="https://random21m.github.io/VOIDFORGE/" target="_blank" rel="noopener noreferrer">random21m.github.io/VOIDFORGE</a>, the only link', 'Its address is on the project page, the only link'],

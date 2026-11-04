@@ -107,6 +107,12 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(box.querySelectorAll('a, [href], img, iframe, script').length===0&&/never goes online/.test(box.textContent)&&/never send seed words/i.test(box.textContent),'support: no link, image or script in the box, and it says nothing is sent and never to send seed words');
       t.st.clip.length=0; const b=box.querySelectorAll('button'); b[0].click(); await new Promise(r=>setTimeout(r,20)); b[1].click(); await new Promise(r=>setTimeout(r,20)); const c1=t.st.clip[0], copied=t.st.clip[1];
       ok(b.length===2&&c1==='dev@breez.tips'&&copied===code,'support: COPY copies the address and the payment code exactly'); }
+    { // Owner logo (v1.29.0): a small picture built into the file, top-right, not a link, left off printouts
+      const lg=t.$('ownerLogo'), src=lg?lg.getAttribute('src'):'', css=[...t.w.document.querySelectorAll('style')].map(s=>s.textContent).join('\n');
+      const bytes=/^data:image\/jpeg;base64,/.test(src)?Buffer.from(src.slice(src.indexOf(',')+1),'base64'):Buffer.alloc(0);
+      ok(!!lg&&lg.tagName==='IMG'&&bytes.length>2000&&bytes.length<20000&&bytes[0]===0xFF&&bytes[1]===0xD8&&bytes[bytes.length-2]===0xFF&&bytes[bytes.length-1]===0xD9,'owner logo: a small JPEG is built into the file as a data: picture');
+      ok(lg&&lg.getAttribute('alt').length>10&&lg.getAttribute('width')==='44'&&lg.getAttribute('height')==='44'&&!lg.closest('a')&&!t.w.document.querySelector('a[href] #ownerLogo'),'owner logo: described for screen readers, sized, and not a link');
+      ok(/#ownerLogo \{ position: absolute; top: 10px; right: 12px;/.test(css)&&/#topbar \{ flex-wrap: wrap; right: 64px; \}/.test(css)&&/#tipBox, #ownerLogo \{ display: none !important; \}/.test(css),'owner logo: top-right corner, the buttons make room on a phone, and it is left off printouts'); }
     { // Page icon (v1.28.0): the dice logo is built into the file as data: links (no network), an SVG and a 32px PNG, and the About page calls the online copy practice-only
       const ic=[...t.w.document.querySelectorAll('link[rel~="icon"]')], hs=ic.map(l=>l.getAttribute('href')||'');
       const svg=hs.find(h=>/^data:image\/svg\+xml,/.test(h)), png=hs.find(h=>/^data:image\/png;base64,/.test(h));
