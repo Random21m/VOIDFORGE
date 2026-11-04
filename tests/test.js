@@ -88,7 +88,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const svg=hs.find(h=>/^data:image\/svg\+xml,/.test(h)), png=hs.find(h=>/^data:image\/png;base64,/.test(h));
       const svgText=svg?decodeURIComponent(svg.slice(svg.indexOf(',')+1)):'', pb=png?Buffer.from(png.slice(png.indexOf(',')+1),'base64'):Buffer.alloc(0);
       ok(ic.length===2&&hs.every(h=>h.startsWith('data:'))&&(svgText.match(/<circle/g)||[]).length===5&&/^<svg[^>]*viewBox="0 0 72 72"/.test(svgText)&&pb.subarray(1,4).toString()==='PNG'&&pb.readUInt32BE(16)===32&&pb.readUInt32BE(20)===32,'page icon: a data: SVG with the five-pip die and a 32x32 PNG are built in, and no icon link points to the network');
-      ok(!t.w.document.querySelector('link[rel~="apple-touch-icon"], link[rel="manifest"]')&&/online copy on the project page is for practice only/.test(t.$('about').textContent||t.w.document.body.textContent),'page icon: nothing else is linked, and the About page says the online copy is for practice only'); }
+      ok(!t.w.document.querySelector('link[rel~="apple-touch-icon"], link[rel="manifest"]')&&/never from a website\. Check the file.s SHA256 first \(see the README\)\. The online copy on the project page is for practice only\./.test(t.w.document.body.textContent),'page icon: nothing else is linked, and the About page says the online copy is for practice only'); }
     { // Every main "go" action across the page is a primary (cyan) button, not grey "secondary" -- a uniform rule, not just START DRILL (v1.27.3)
       const primaryIds=['forgeBtn','prStart','prCheckBtn','checkAddrBtn','reforgeWordsBtn','psbtBtn','cmpBtn','childBtn'];
       const missing=primaryIds.filter(id=>{ const b=t.$(id); return !b || b.classList.contains('secondary'); });

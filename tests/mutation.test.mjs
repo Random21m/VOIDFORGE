@@ -241,7 +241,7 @@ async function probe(w, mutated) {
     if ((svgText.match(/<circle/g) || []).length !== 5 || !/^<svg[^>]*viewBox="0 0 72 72"/.test(svgText)) fails.push('page icon: the SVG is the five-pip die');
     if (pb.subarray(1, 4).toString() !== 'PNG' || pb.readUInt32BE(16) !== 32 || pb.readUInt32BE(20) !== 32) fails.push('page icon: the PNG is 32 by 32');
     if (w.document.querySelector('link[rel~="apple-touch-icon"], link[rel="manifest"]')) fails.push('page icon: no other linked files');
-    if (!/online copy on the project page is for practice only/.test(w.document.body.textContent)) fails.push('page icon: About page says the online copy is practice-only'); }
+    if (!/never from a website\. Check the file.s SHA256 first \(see the README\)\. The online copy on the project page is for practice only\./.test(w.document.body.textContent)) fails.push('page icon: About page says the online copy is practice-only'); }
   { // Reforge (v1.28.0): kept to a few seconds, because it runs for every mutation
     const RF = async (x, chk, pw) => { $('reforgeWordsInput').value = x; $('reforgeWordsCheck').value = chk || ''; $('reforgeWordsPass').value = pw || ''; await w.reforgeWords(); return [$('reforgeStatus').textContent, $('reforgeOut').textContent]; };
     const ZP = 'zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs', A11 = 'abandon '.repeat(11), A0 = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu';
