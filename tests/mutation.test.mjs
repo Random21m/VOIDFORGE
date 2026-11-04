@@ -698,9 +698,16 @@ async function probe(w, mutated) {
       cnf = true; w.printSeed();
       if (pc.n !== 1 || pc.cells.length !== n || pc.cells.some((c, i) => c !== String(i + 1).padStart(2, '0') + wd[i]) || pc.grid !== 'ps-grid ps-' + n || !/print-seed/.test(pc.cls) || pc.txt.includes('SECRETPASS') || !/Passphrase used: YES/.test(pc.txt) || !pc.txt.includes($('fingerprint').textContent)) fails.push('print sheet: numbered boxes, fingerprint, passphrase line only (' + n + ')');
       w.dispatchEvent(new w.Event('afterprint')); if ($('printOnly').textContent !== '' || w.document.body.classList.contains('print-seed')) fails.push('print sheet: cleaned up after printing (' + n + ')');
+      // stamp sheet (v1.34.0)
+      pc.n = 0; cnf = false; $('stampBtn').click(); if (pc.n !== 0) fails.push('stamp sheet: declining the question prints nothing (' + n + ')');
+      cnf = true; $('stampBtn').click();
+      if (pc.n !== 1 || pc.cells.length !== n || pc.cells.some((c, i) => c !== String(i + 1).padStart(2, '0') + wd[i].slice(0, 4).toUpperCase()) || pc.grid !== 'ps-grid ps-stamp ps-' + n || !/print-seed/.test(pc.cls) || !/^VOIDFORGE STAMP SHEET/.test(pc.txt)) fails.push('stamp sheet: numbered 4-letter capitals in a stamp grid (' + n + ')');
+      if (pc.txt.includes('SECRETPASS') || !/Passphrase used: YES/.test(pc.txt) || !pc.txt.includes($('fingerprint').textContent) || !/Reforge/.test(pc.txt)) fails.push('stamp sheet: fingerprint, passphrase yes/no without the passphrase, and how to get the words back (' + n + ')');
+      w.dispatchEvent(new w.Event('afterprint')); if ($('printOnly').textContent !== '' || w.document.body.classList.contains('print-seed')) fails.push('stamp sheet: cleaned up after printing (' + n + ')');
     }
     w.setResult('x', Array(15).fill('abandon')); if ($('explainBox').style.display !== 'none') fails.push('explain: no box for a 15-word phrase');
     w.setResult('x', null); if ($('explainBox').style.display !== 'none') fails.push('explain: no box without words');
+    pc.n = 0; cnf = true; w.printStamp(); if (pc.n !== 0) fails.push('stamp sheet: nothing is printed without a seed');
     await run('dice', 12, D50, ''); await w.showExplain(); w.clearAll(); if ($('exOut').textContent !== '' || $('explainBox').style.display !== 'none') fails.push('explain: CLEAR removes the steps and hides the box');
     { await run('coin', 12, C128, ''); await w.showExplain(); const eo = $('exOut'), t0 = eo.querySelector('.ex-body .ex-text').textContent;
       if (!t0.includes('128 coin flips') || !t0.includes('exactly 1 bit') || !t0.includes('roughly 128 bits') || !/^[01]( [01])*$/.test(eo.querySelector('.ex-mono').textContent)) fails.push('explain: coin flips are counted as 1 bit each'); }
@@ -1430,6 +1437,17 @@ const M = [
   ['reforge passphrase: an edit keeps the result', '"reforgePassWords", "reforgePassInput", "reforgePassCheck", "reforgePassTypos"].forEach(id => document.getElementById(id).addEventListener', '"reforgePassWords", "reforgePassCheck", "reforgePassTypos"].forEach(id => document.getElementById(id).addEventListener'],
   ['reforge passphrase: an invalid phrase accepted', '|| !(await reforgeChecksumOk(Uint16Array.from(parsed.idx))))', ')'],
   ['reforge: fingerprint odds wrong', 'Math.round(2 ** 32 / Math.max(1, n))', 'Math.round(2 ** 31 / Math.max(1, n))'],
+  ['stamp sheet: box numbers not padded', 'add("ps-n", ("0" + (i + 1)).slice(-2), c)', 'add("ps-n", String(i + 1), c)'],
+  ['stamp sheet: area not cleaned', 'done = true; po.textContent = ""; document.body.classList.remove("print-seed"); };', 'done = true; document.body.classList.remove("print-seed"); };'],
+  ['stamp sheet: print class not removed', 'done = true; po.textContent = ""; document.body.classList.remove("print-seed"); };', 'done = true; po.textContent = ""; };'],
+  ['stamp sheet: shows the whole word', 'add("ps-w", w.slice(0, 4).toUpperCase(), c);', 'add("ps-w", w.toUpperCase(), c);'],
+  ['stamp sheet: not capitals', 'add("ps-w", w.slice(0, 4).toUpperCase(), c);', 'add("ps-w", w.slice(0, 4), c);'],
+  ['stamp sheet: no question before printing', 'if(!confirm("Printing sends your seed (shortened to 4 letters a word)', 'if(false && !confirm("Printing sends your seed (shortened to 4 letters a word)'],
+  ['stamp sheet: wrong grid class', '"ps-grid ps-stamp ps-" + ws.length', '"ps-grid ps-" + ws.length'],
+  ['stamp sheet: passphrase line dropped', '"\\n" + passLine("printed"));\n  add("ps-fields", "To get the words back', '"\\n");\n  add("ps-fields", "To get the words back'],
+  ['stamp sheet: no way back to the words', 'type the 4-letter forms into Reforge in VOIDFORGE', 'type the 4-letter forms into the word list'],
+  ['stamp sheet: button not wired', 'id="stampBtn" onclick="printStamp()"', 'id="stampBtn" onclick=""'],
+  ['stamp sheet: printed without a seed', 'if(!hasSeed()) return alert("Generate a seed first");\n  const phrase = document.getElementById("genResult").textContent.split("\\n")[0];\n  if(!confirm("Printing sends your seed (shortened', 'const phrase = document.getElementById("genResult").textContent.split("\\n")[0];\n  if(!confirm("Printing sends your seed (shortened'],
   ['try accounts: range stops one account short', 'for(let acct = 0; acct <= MAXA; acct++){', 'for(let acct = 0; acct < MAXA; acct++){'],
   ['try accounts: passphrase variant dropped', 'const variants = vp ? [["without passphrase", ""], ["with passphrase", vp]] : [["without passphrase", ""]];', 'const variants = [["without passphrase", ""]];'],
   ['try accounts: depth ignored', 'DEPTH = depth || ACCT_SCAN_DEPTH', 'DEPTH = ACCT_SCAN_DEPTH'],

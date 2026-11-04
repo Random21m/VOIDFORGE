@@ -272,6 +272,12 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   t.w.printSeed();
   ok(t.st.printed===1&&t.st.printCells.length===12&&words.split(' ').every((w,i)=>t.st.printCells[i]===String(i+1).padStart(2,'0')+w)&&!t.st.printHTML.includes('SECRETPASS')&&/print-seed/.test(t.st.printClass),'PRINT SEED prints numbered words + fingerprint only, no passphrase');
   t.w.dispatchEvent(new t.w.Event('afterprint')); ok(t.$('printOnly').textContent===''&&!t.d.body.classList.contains('print-seed'),'print area cleaned up after printing');
+  { // Stamp sheet (v1.34.0): the first 4 letters of each word in capitals, for metal plates
+    const p0=t.st.printed; t.st.alerts.length=0; t.w.printStamp(); const cells=t.st.printCells.slice(), txt=t.st.printHTML;
+    ok(t.st.printed===p0+1&&cells.length===12&&words.split(' ').every((w,i)=>cells[i]===String(i+1).padStart(2,'0')+w.slice(0,4).toUpperCase())&&/print-seed/.test(t.st.printClass)&&/^VOIDFORGE STAMP SHEET/.test(txt),'PRINT STAMP SHEET prints each word as its first 4 letters in capitals');
+    ok(!txt.includes('SECRETPASS')&&/Passphrase used: YES/.test(txt)&&txt.includes(t.$('fingerprint').textContent)&&/Reforge/.test(txt)&&/No two BIP39 words start with the same 4 letters/.test(txt),'stamp sheet: fingerprint, passphrase yes/no without the passphrase, and how to get the words back');
+    t.w.dispatchEvent(new t.w.Event('afterprint')); ok(t.$('printOnly').textContent==='','stamp sheet is cleaned up after printing');
+    ok(!!t.$('stampBtn')&&/printStamp/.test(t.$('stampBtn').getAttribute('onclick')),'PRINT STAMP SHEET button is on the page'); }
   // --- SeedQR / CompactSeedQR on screen, by hand and on paper ---
   { const keepT=t; t=load(); await t.ready(); t.set(rnd(50)); t.$('passphrase').value='SECRETPASS'; t.$('passphrase2').value='SECRETPASS'; await t.w.generate(); const sw=t.$('genResult').textContent.split('\n')[0];
     const sz=()=>{ const v=t.$('sqImg').querySelector('svg'); return v?Math.round(v.viewBox.baseVal.width)-8:0; }, gc=()=>t.$('sqGuideCaption').textContent;

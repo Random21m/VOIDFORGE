@@ -257,6 +257,10 @@
     body.print-seed #printOnly .ps-cell { border: 1.5px solid #000; border-radius: 6px; padding: 6px 8px; min-height: 52px; }
     body.print-seed #printOnly .ps-n { font-size: 11px; color: #444; }
     body.print-seed #printOnly .ps-w { font-size: 20px; font-weight: 700; letter-spacing: .5px; }
+    body.print-seed #printOnly .ps-grid.ps-stamp { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    body.print-seed #printOnly .ps-grid.ps-stamp.ps-24 { grid-template-columns: repeat(4, 1fr); }
+    body.print-seed #printOnly .ps-stamp .ps-cell { min-height: 78px; text-align: center; }
+    body.print-seed #printOnly .ps-stamp .ps-w { font-size: 30px; letter-spacing: 4px; }
     body.print-seed #printOnly .ps-rule { border-top: 1px solid #000; margin: 14px 0; }
     body.print-seed #printOnly .ps-info, body.print-seed #printOnly .ps-fields, body.print-seed #printOnly .ps-warn { white-space: pre-wrap; font-size: 13px; }
     body.print-seed #printOnly .ps-warn { font-weight: 700; }
@@ -867,6 +871,7 @@
     <div class="result nores" id="genResult" data-g="3 4" role="status">—</div>
     <div class="btn-row seed-actions" style="margin-top:6px;" data-g="3 4">
       <button class="secondary small needs-words" id="abbrBtn" onclick="toggleAbbr()">SHOW FIRST 4 LETTERS</button>
+      <button class="secondary small needs-words" id="stampBtn" onclick="printStamp()">PRINT STAMP SHEET</button>
       <button class="secondary small needs-words" onclick="sendToVerify()">SEND TO CHECK</button>
       <button class="secondary small" onclick="copyFingerprint(this)">COPY FINGERPRINT</button>
       <button class="secondary small" onclick="copyAddress(this)">COPY ADDRESS</button>
@@ -4354,6 +4359,30 @@ function printSeed(){
   document.body.classList.add("print-seed");
   let done = false;
   const cleanup = () => { if(done) return; done = true; document.body.classList.remove("print-seed"); po.textContent = ""; };
+  window.addEventListener("afterprint", cleanup, {once:true});
+  setTimeout(cleanup, 120000);
+  window.print();
+}
+// Stamp sheet (v1.34.0): the first 4 letters of each word in large capitals, for stamping or engraving on a metal plate. Every BIP39 word is unique by its first 4 letters; shorter words are shown in full.
+function printStamp(){
+  if(!hasSeed()) return alert("Generate a seed first");
+  const phrase = document.getElementById("genResult").textContent.split("\n")[0];
+  if(!confirm("Printing sends your seed (shortened to 4 letters a word) to a printer and its spooler. Only print on a trusted offline computer with a directly connected printer. The passphrase is never printed. Continue?")) return;
+  const po = document.getElementById("printOnly"); po.textContent = "";
+  const add = (cls, text, parent) => { const d = document.createElement("div"); if(cls) d.className = cls; d.textContent = text; (parent || po).appendChild(d); return d; };
+  const ws = phrase.split(" ");
+  add("ps-title", "VOIDFORGE STAMP SHEET");
+  add("ps-sub", ws.length + " words, in order, cut to their first 4 letters (shorter words in full). No two BIP39 words start with the same 4 letters, so nothing is ambiguous. Stamp or engrave one box per slot, then read each plate back against this sheet.");
+  const g = add("ps-grid ps-stamp ps-" + ws.length, "");
+  ws.forEach((w, i) => { const c = add("ps-cell", "", g); add("ps-n", ("0" + (i + 1)).slice(-2), c); add("ps-w", w.slice(0, 4).toUpperCase(), c); });
+  add("ps-rule", "");
+  add("ps-info", document.getElementById("fingerprint").textContent + "\n" + passLine("printed"));
+  add("ps-fields", "To get the words back: type the 4-letter forms into Reforge in VOIDFORGE (it reads them as the full words), or find each one in the BIP39 word list.\nPassphrase stored separately:      ____________");
+  add("ps-rule", "");
+  add("ps-warn", "Anyone who has these letters controls the funds.\nNever photograph the plate or type it on a connected device.\nShred this sheet when the plate is done and checked.\nWhen you are done, close the browser and restart the computer.");
+  document.body.classList.add("print-seed");
+  let done = false;
+  const cleanup = () => { if(done) return; done = true; po.textContent = ""; document.body.classList.remove("print-seed"); };
   window.addEventListener("afterprint", cleanup, {once:true});
   setTimeout(cleanup, 120000);
   window.print();
