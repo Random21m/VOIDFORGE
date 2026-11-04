@@ -26,6 +26,9 @@ The attestation proves the file came from this repository's release workflow at 
 ## README refresh (every release)
 Before the final candidate commit, regenerate the README screenshots from the new build (a practice seed only) and re-read the README text so it describes what the page does now: new or changed screens get a picture, retired wording is removed, and nothing in the pictures is older than the release.
 
+## Bitcoin dictionary (every release)
+The in-page Bitcoin dictionary (ABOUT & HELP) is general, not only about VOIDFORGE. With every release add entries for any new feature, standard or term (a new BIP or SLIP must have an entry: the tests fail if the page names one that the dictionary lacks), check new definitions against a trustworthy source, add a fact check for any number or prefix in a new entry, and add mutation targets that change those facts. Also use the release to add a few missing general terms.
+
 ## Clean-up (after every release)
 Delete red and cancelled workflow runs (`gh api -X DELETE repos/Random21m/VOIDFORGE/actions/runs/<id>`), mark the previous release "Superseded by vX", check that the README, REVIEW.md, RELEASING.md and the in-page changelog all name the new version, and leave no stray files in the repo (`git ls-files`). A run that failed only because of a flaky test is re-run after the test is fixed, and the fix is recorded in the notes.
 

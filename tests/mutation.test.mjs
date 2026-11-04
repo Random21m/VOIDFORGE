@@ -680,19 +680,31 @@ async function probe(w, mutated) {
     { // Bitcoin dictionary (v1.27.3)
       const box = $('dictBox'), items = [...$('dictList').querySelectorAll('.dict-item')], names = items.map((e) => e.querySelector('dt').textContent), def = (e) => e.querySelector('dd').firstChild.textContent;
       const q = (v) => { $('dictSearch').value = v; w.dictFilter(); return items.filter((e) => e.style.display !== 'none').map((e) => e.querySelector('dt').textContent); };
-      const dictFacts=[['Wordlist',/2048/],['Wordlist',/first four letters/],['Fingerprint (master fingerprint)',/Eight characters/],['Satoshi (sat)',/hundred-millionth/],['Gap limit',/usually 20/],['Passphrase (the 25th word)',/completely different wallet/],['Testnet',/tb1/],['Taproot',/bc1p/],['Native SegWit',/bc1q/],['Legacy address',/starting with 1\./],['Nested SegWit',/starting with 3\./],['BIP39',/12 or 24 words/],['BIP85',/child seed/],['BIP84',/m\/84'\/0'\/0'/],['BIP86',/m\/86'\/0'\/0'/],['PBKDF2',/2048 rounds/],['Dice entropy',/2\.58 bits/],['Coin flip entropy',/128 flips.*256/],['OP_RETURN',/never be spent/],['Bit',/128 bits.*256/],['Block',/ten minutes/],['Fee (miner fee)',/inputs minus the outputs/]];
-      if (!box || box.open || !/Bitcoin dictionary/.test(box.querySelector('summary').textContent) || items.length < 80) fails.push('dictionary: closed box with 80+ entries');
+      const dictFacts=[['Wordlist',/2048/],['Wordlist',/first four letters/],['Fingerprint (master fingerprint)',/Eight characters/],['Satoshi (sat)',/hundred-millionth/],['Gap limit',/usually 20/],['Passphrase (the 25th word)',/completely different wallet/],['Testnet',/tb1/],['Taproot',/bc1p/],['Native SegWit',/bc1q/],['Legacy address',/starting with 1\./],['Nested SegWit',/starting with 3\./],['BIP39',/12 or 24 words/],['BIP85',/child seed/],['BIP84',/m\/84'\/0'\/0'/],['BIP86',/m\/86'\/0'\/0'/],['PBKDF2',/2048 rounds/],['Dice entropy',/2\.58 bits/],['Coin flip entropy',/128 flips.*256/],['OP_RETURN',/never be spent/],['Bit',/128 bits.*256/],['Block',/ten minutes/],['Fee (miner fee)',/inputs minus the outputs/],['Bitcoin',/21 million/],['Halving',/210,000/],['Difficulty',/2016 blocks/],['Virtual byte (vByte) and weight',/4,000,000/],['Genesis block',/3 January 2009/],['Whitepaper',/31 October 2008/],['Block header',/80-byte/],['WIF (Wallet Import Format)',/5, K or L/],['P2WPKH',/bc1q/],['P2TR',/bc1p/],['BIP44',/m\/44'\/0'\/0'/],['BIP49',/m\/49'\/0'\/0'/],['Bitcoin Pizza Day',/10,000 bitcoin/],['Byte',/32 bytes.*16 bytes/],['P2PKH',/starting with 1/],['P2SH',/starting with 3/],['BIP125',/replace-by-fee/],['BIP350',/bech32m/],['Block reward',/50 bitcoin/]];
+      if (!box || box.open || !/Bitcoin dictionary/.test(box.querySelector('summary').textContent) || items.length < 250) fails.push('dictionary: closed box with 250+ entries');
       const col = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
       if (!names.every((n, k) => k === 0 || col.compare(names[k - 1], n) <= 0) || new Set(names.map((n) => n.toLowerCase())).size !== names.length) fails.push('dictionary: A to Z and no duplicates');
       if (!items.every((e) => def(e).length >= 25 && def(e).length <= 330 && e.querySelector('dt').textContent.length <= 45) || items.some((e) => /[<>]|http|www\./i.test(e.textContent))) fails.push('dictionary: short plain entries, no links');
       if ($('dictCount').textContent !== items.length + ' entries, A to Z') fails.push('dictionary: count line at the start');
-      const xp = q('xpub'); if (xp.length !== 1 || !/Extended public key/.test(xp[0])) fails.push('dictionary: search finds xpub');
+      const xp = q('xpub'); if (xp.length < 1 || xp.length > 5 || !xp.includes('Extended public key (xpub, ypub, zpub)')) fails.push('dictionary: search finds xpub');
       if (q('GAP  LIMIT').join('|') !== 'Gap limit') fails.push('dictionary: search ignores capitals and extra spaces');
       if (!q('second tool').includes('Second tool') || !q('restore drill').includes('Restore drill')) fails.push('dictionary: search finds terms');
       if (q('safety wall').join() !== "Hardened path (the ' mark)" || !q('green self-test passed').includes('Self-test') || !q('sha256sums').includes('SHA256SUMS')) fails.push('dictionary: search covers the definition and the In VOIDFORGE note');
       if (q('zzzzqq').length !== 0 || !/No entry matches/.test($('dictCount').textContent)) fails.push('dictionary: no-match message');
       if (q('bip').length < 7 || !/ of \d+ entries/.test($('dictCount').textContent)) fails.push('dictionary: matched count line');
       if (q('').length !== items.length) fails.push('dictionary: clearing the search shows everything');
+      { const chips = [...$('dictCats').querySelectorAll('button')], cats = ['All', 'Basics', 'Keys & seeds', 'Wallets & backups', 'Addresses & scripts', 'Transactions', 'Network & mining', 'Standards (BIPs)', 'Lightning & layers', 'Privacy & security', 'Units & math', 'Culture & markets', 'VOIDFORGE'];
+        if (chips.map((b) => b.textContent).join('|') !== cats.join('|')) fails.push('dictionary: a topic button for every category');
+        if (!items.every((e) => cats.slice(1).includes(e.dataset.c)) || !cats.slice(1).every((c) => items.filter((e) => e.dataset.c === c).length >= 3)) fails.push('dictionary: every entry in a known topic, every topic has entries');
+        $('dictSearch').value = ''; chips.find((b) => b.textContent === 'Lightning & layers').click(); const li = items.filter((e) => e.style.display !== 'none');
+        if (li.length < 8 || !li.every((e) => e.dataset.c === 'Lightning & layers') || chips.filter((b) => b.getAttribute('aria-pressed') === 'true').length !== 1 || !/ of \d+ entries/.test($('dictCount').textContent)) fails.push('dictionary: a topic button shows only that topic and shows pressed');
+        $('dictSearch').value = 'channel'; w.dictFilter(); const lc = items.filter((e) => e.style.display !== 'none').map((e) => e.querySelector('dt').textContent);
+        if (!lc.includes('Lightning channel') || lc.includes('Wallet file')) fails.push('dictionary: topic and search work together');
+        $('dictSearch').value = 'zzzzqq'; w.dictFilter(); if (!/No entry matches .zzzzqq. in Lightning & layers\./.test($('dictCount').textContent)) fails.push('dictionary: no-match line names the topic');
+        chips[0].click(); $('dictSearch').value = ''; w.dictFilter(); if (items.filter((e) => e.style.display !== 'none').length !== items.length) fails.push('dictionary: All shows everything again');
+        const body = mutated.replace(/<script[\s\S]*?<\/script>/g, '').split('\n').filter((l) => !/<li><b>\d+\.\d+\.\d+<\/b>/.test(l)).join('\n'), nums = new Set(), re = /\b(BIP|SLIP)[- ]?0*(\d+)\b/g; let mm; while ((mm = re.exec(body))) nums.add(mm[1] + mm[2]);
+        const missing = [...nums].filter((k) => !names.some((n) => { const m = /^(BIP|SLIP)/.exec(k)[1], d = k.slice(m.length); return new RegExp('\\b' + m + '[- ]?0*' + d + '\\b', 'i').test(n) || (m === 'BIP' && new RegExp('\\b' + d + '\\b').test(n) && /BIP/.test(n)); }));
+        if (nums.size < 8 || missing.length) fails.push('dictionary: every BIP or SLIP named in the page has an entry'); }
       if (!dictFacts.every(([n, re]) => { const e = items.find((x) => x.querySelector('dt').textContent === n); return e && re.test(e.textContent); })) fails.push('dictionary: key facts in the entries');
       if (!/id="dictSearch"[^>]*oninput="dictFilter\(\)"/.test(mutated)) fails.push('dictionary: search wired');
     }
@@ -1550,7 +1562,32 @@ const M = [
   ['dictionary: satoshi size wrong', 'one hundred-millionth of a bitcoin', 'one millionth of a bitcoin'],
   ['dictionary: fingerprint length wrong', 'Eight characters taken from your master key.', 'Four characters taken from your master key.'],
   ['dictionary: legacy prefix wrong', 'starting with 1. It works everywhere', 'starting with 3. It works everywhere'],
-  ['dictionary: block time wrong', 'roughly every ten minutes', 'roughly every hour'],
+  ['dictionary: block time wrong', 'A batch of transactions added to the blockchain roughly every ten minutes.', 'A batch of transactions added to the blockchain roughly every hour.'],
+  ['dictionary: topic filter ignored', '(dictCat === "All" || e.dataset.c === dictCat)', 'true'],
+  ['dictionary: topic filter never resets', 'b.onclick = () => { dictCat = c;', 'b.onclick = () => { dictCat = dictCat;'],
+  ['dictionary: pressed state not shown', 'x.setAttribute("aria-pressed", x === b ? "true" : "false"));', 'x.setAttribute("aria-pressed", "false"));'],
+  ['dictionary: no-match line loses the topic', '(dictCat === "All" ? "" : " in " + dictCat)', '""'],
+  ['dictionary: entry topic dropped', 'item.dataset.c = e[3];', 'item.dataset.c = "Basics";'],
+  ['dictionary: topic buttons never built', '["All"].concat(DICT_CATS).forEach(c => {', '[].concat(DICT_CATS).slice(0, 0).forEach(c => {'],
+  ['dictionary: supply 21 million wrong', 'No more than 21 million coins will ever exist.', 'No more than 2.1 million coins will ever exist.'],
+  ['dictionary: halving interval wrong', 'every 210,000 blocks), when the block reward', 'every 100,000 blocks), when the block reward'],
+  ['dictionary: difficulty interval wrong', 'It adjusts every 2016 blocks', 'It adjusts every 1016 blocks'],
+  ['dictionary: block weight wrong', 'a block can hold 4,000,000 weight units', 'a block can hold 400,000 weight units'],
+  ['dictionary: genesis date wrong', 'mined on 3 January 2009', 'mined on 3 January 2010'],
+  ['dictionary: block header size wrong', 'The 80-byte summary', 'The 40-byte summary'],
+  ['dictionary: WIF letters wrong', 'starting with 5, K or L', 'starting with 1, 3 or L'],
+  ['dictionary: P2WPKH prefix wrong', 'the single-key Native SegWit address, starting with bc1q.', 'the single-key Native SegWit address, starting with bc1p.'],
+  ['dictionary: P2TR prefix wrong', 'the address type starting with bc1p.', 'the address type starting with bc1q.'],
+  ['dictionary: BIP44 path wrong', "m/44'/0'/0'.", "m/49'/0'/0'."],
+  ['dictionary: BIP49 path wrong', "m/49'/0'/0'.", "m/44'/0'/0'."],
+  ['dictionary: pizza amount wrong', '10,000 bitcoin were used to buy two pizzas', '1,000 bitcoin were used to buy two pizzas'],
+  ['dictionary: byte sizes wrong', 'A SHA-256 hash is 32 bytes; a 12-word seed holds 16 bytes of entropy.', 'A SHA-256 hash is 64 bytes; a 12-word seed holds 32 bytes of entropy.'],
+  ['dictionary: P2PKH prefix wrong', 'the original address type, starting with 1.', 'the original address type, starting with 3.'],
+  ['dictionary: P2SH prefix wrong', 'an address that stands for a script, starting with 3.', 'an address that stands for a script, starting with 1.'],
+  ['dictionary: BIP350 wrong', 'The standard that defines bech32m, used by Taproot', 'The standard that defines bech32, used by SegWit v0'],
+  ['dictionary: block reward start wrong', 'It started at 50 bitcoin and is cut in half', 'It started at 25 bitcoin and is cut in half'],
+  ['dictionary: BIP125 wrong', 'The standard for replace-by-fee:', 'The standard for child-pays-for-parent:'],
+  ['dictionary: whitepaper date wrong', 'published on 31 October 2008', 'published on 31 October 2009'],
   ['recommended: drill badge lost', 'prove your paper backup works<span class="tag tag-rec">RECOMMENDED</span>', 'prove your paper backup works (recommended)'],
   ['recommended: second-tool badge lost', 'in a second tool<span class="tag tag-rec">RECOMMENDED</span>', 'in a second tool (recommended)'],
   ['recommended: menu option not coloured', '<option value="ms-wsh" class="opt-rec">', '<option value="ms-wsh">'],
