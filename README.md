@@ -5,7 +5,9 @@
 An offline, educational tool that turns dice rolls or coin flips into a BIP39 seed phrase (12 or 24 words), then helps you back it up and set up a wallet, including multisig (a simple slider picks 2 to 15 keys). One HTML file, no dependencies, no network.
 
 <p align="center"><a href="https://github.com/Random21m/voidforge/releases/latest"><b>&#11015; Download the latest release</b></a><br>
-Get <code>voidforge.html</code> and <code>SHA256SUMS</code> from the release page, check the hash, then copy the file to a USB stick for your offline computer. This is the only place to download it; there is no hosted web version, by design.</p>
+Get <code>voidforge.html</code> and <code>SHA256SUMS</code> from the release page, check the hash, then copy the file to a USB stick for your offline computer. This is the only place to download it. For real funds, use that downloaded file on an offline computer.</p>
+
+<p align="center"><a href="https://random21m.github.io/VOIDFORGE/"><b>&#9654; Try it in your browser</b></a> (an online copy for learning and practice, works on a phone; <a href="#try-it-online-practice-only">read this first</a>)</p>
 
 <p align="center"><a href="https://youtu.be/1K9MT0ki3Ds"><b>&#9654; Watch the video tutorial</b></a> (about 7 minutes, with a practice seed)</p>
 
@@ -34,6 +36,18 @@ Get <code>voidforge.html</code> and <code>SHA256SUMS</code> from the release pag
 
 The seed in these pictures is a practice seed made for the screenshots. Never use it, and never use any seed you have seen published.
 
+## Try it online (practice only)
+
+You can try VOIDFORGE without downloading anything, on a computer or a phone: **<https://random21m.github.io/VOIDFORGE/>**. It is meant for seeing whether you like it, learning how dice become words, and practising with a seed you will never use.
+
+<p align="center"><img src="docs/screenshots/11-online-demo.png" alt="The online copy on a phone: an amber banner saying it is best for trying out, and the VOIDFORGE page below with its own red NETWORK: ONLINE warning" width="260"><br><sub>The online copy on a phone: the amber banner on top, and the app's own red warning that the device is online.</sub></p>
+
+- **It is the same file as the release.** The online copy serves the latest released `voidforge.html` byte for byte, inside a thin page that adds the amber banner. No server code, no account, no analytics and nothing stored. The file's own rule (a Content-Security-Policy) still blocks all network access, so the page cannot send what you type anywhere.
+- **It still warns you.** Besides the banner, the app shows its red *NETWORK: ONLINE* warning, because a connected device is the wrong place for real keys. The banner has an *Online or downloaded?* note that sets out the difference.
+- **Never for real money.** A connected phone or computer runs other apps, browser extensions and sync services that can see or keep what you type. For real funds download the file from the [latest release](../../releases/latest), check its SHA-256 (the *Check your download* tool in the app does this) and open it on an offline computer.
+- **Only trust this address.** A copy of the page on any other site could be altered. GitHub can see that you loaded the page, though the page itself sends nothing.
+- **Add it to your Home Screen** from your browser's share or menu button, if you want a shortcut to the practice copy.
+
 ## Disclaimer: please read
 
 VOIDFORGE is free software provided **"as is", without warranty of any kind** (see [LICENSE](LICENSE)). You are solely responsible for your own funds, your backups and how you use it. The author is not liable for any loss.
@@ -51,7 +65,7 @@ VOIDFORGE is free software provided **"as is", without warranty of any kind** (s
 ## Quick start
 
 1. Download `voidforge.html` from the [latest release](../../releases/latest) and check it: `sha256sum -c SHA256SUMS`.
-2. Copy it to a USB stick and open it in a desktop browser (Safari 14+, Chrome or Firefox) on an **offline computer**. A phone is fine for learning and practice (the page works in a phone browser once you open it from a real file, not a preview), but never for real funds: use an offline computer for those.
+2. Copy it to a USB stick and open it in a desktop browser (Safari 14+, Chrome or Firefox) on an **offline computer**. A phone is fine for learning and practice (the page works in a phone browser once you open it from a real file, not a preview, or from the [online practice copy](#try-it-online-practice-only)), but never for real funds: use an offline computer for those.
 3. Confirm the green **SELF-TEST PASSED (66/66)** badge and the **NETWORK: OFFLINE** tag. A red notice saying the script is not running means the page did not start; do not use it.
 4. Choose 12 or 24 words and Dice or Coin, enter your physical rolls or flips (type, paste, or tap the buttons), and press FORGE SEED. The words appear as a numbered grid. A passphrase, if you want one, goes in "Advanced options".
 5. Write the words down, then compare the words and the master fingerprint with a second independent offline tool before trusting real funds.
