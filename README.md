@@ -23,6 +23,8 @@ Get <code>voidforge.html</code> and <code>SHA256SUMS</code> from the release pag
 <td align="center"><img src="docs/screenshots/4-watch-only.png" alt="The watch-only box with the public key, first five addresses and descriptors" width="370"><br><sub>Watch-only keys and first five addresses</sub></td>
 </tr><tr>
 <td align="center" colspan="2"><img src="docs/screenshots/6-restore-drill.png" alt="The Restore drill: the words are hidden and you type them back from your paper; a short answer is reported as wrong" width="560"><br><sub>Restore drill: type the words back from your paper (it never shows you the right word)</sub></td>
+</tr><tr>
+<td align="center" colspan="2"><img src="docs/screenshots/7-check-download.png" alt="The Check your download tool: a file picker and a pasted SHA-256 hash, compared entirely offline" width="560"><br><sub>Check your download: compare the file you got against the published hash, offline</sub></td>
 </tr></table>
 
 <p align="center"><img src="docs/screenshots/5-phone.png" alt="VOIDFORGE on a phone screen" width="260"><br><sub>On a phone: good for learning and practice, not for real funds.</sub></p>
