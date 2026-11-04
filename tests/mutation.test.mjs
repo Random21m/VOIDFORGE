@@ -723,6 +723,8 @@ async function probe(w, mutated) {
       if (!names.every((n, k) => k === 0 || col.compare(names[k - 1], n) <= 0) || new Set(names.map((n) => n.toLowerCase())).size !== names.length) fails.push('dictionary: A to Z and no duplicates');
       if (!items.every((e) => def(e).length >= 25 && def(e).length <= 330 && e.querySelector('dt').textContent.length <= 45) || items.some((e) => /[<>]|http|www\./i.test(e.textContent))) fails.push('dictionary: short plain entries, no links');
       if ($('dictCount').textContent !== items.length + ' entries, A to Z') fails.push('dictionary: count line at the start');
+      { const wl = items.find((e) => e.querySelector('dt').textContent === 'Wordlist'), notes = items.filter((e) => /^In VOIDFORGE: ./.test((e.querySelector('dd small') || {}).textContent || ''));
+        if (!wl || !/^In VOIDFORGE: SHOW FIRST 4 LETTERS/.test((wl.querySelector('dd small') || {}).textContent || '') || notes.length < 20) fails.push('dictionary: where a term appears in VOIDFORGE is shown'); }
       const xp = q('xpub'); if (xp.length < 1 || xp.length > 5 || !xp.includes('Extended public key (xpub, ypub, zpub)')) fails.push('dictionary: search finds xpub');
       if (q('GAP  LIMIT').join('|') !== 'Gap limit') fails.push('dictionary: search ignores capitals and extra spaces');
       if (!q('second tool').includes('Second tool') || !q('restore drill').includes('Restore drill')) fails.push('dictionary: search finds terms');
