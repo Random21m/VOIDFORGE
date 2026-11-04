@@ -1,6 +1,6 @@
 # Review guide
 
-VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines in `voidforge.html`. Line numbers are approximate (v1.27.2).
+VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines in `voidforge.html`. Line numbers are approximate (v1.27.3).
 
 | What | Where | Look for |
 |---|---|---|
@@ -37,6 +37,10 @@ VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines
 | Network | whole file | `fetch`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, external `src`/`href`, CSP meta (line 5). |
 
 **Restore drill (v1.27.0):** `drillStart`, `drillCheck` and `drillEnd` compare what you type with the words and passphrase held for the current seed (`watchCtx`, the same copy the watch-only box uses). The words are hidden by CSS only (`body.drill-on`): they stay in the page, so it protects against looking, not against anyone who can read the page. The page reports positions, never the right words, and compares the passphrase after Unicode normalization (NFKD), like the seed derivation. The drill ends whenever the result changes (`setResult` calls `drillEnd`), which also wipes what you typed. It uses no storage and no network.
+
+**Check your download (v1.27.3):** `dlCheck`, `dlCid`, `dlParse`, `dlPick`, `dlClear` hash the chosen file with the browser's own SHA-256 and compute a CIDv1 (raw, sha2-256, multibase prefix bytes `[1,0x55,0x12,0x20]`), then compare both against whatever the user pastes (a bare hash, upper case, a full `SHA256SUMS` line, a CID, or several values together; every value present must match for a MATCH verdict). The chosen file is read with `FileReader` only, never uploaded, stored or sent. `dlCid`'s length check (`w.length === 59`) matters: a loosened check would accept a truncated CID as real, so there is a dedicated regression test pasting a truncated CID and asserting it reports `none`, not a false match. Know the limit: a tampered copy of the page could lie about its own hash, which is why the page itself says to also check with `sha256sum` or the build attestation.
+
+**Support this project / Bitcoin dictionary (v1.27.3):** `drawSupportQr`, `copySupport`, `buildDict`, `dictFilter` are both display-only with no secret-adjacent data; nothing here reads the seed or sends anything over the network (the Lightning QR is drawn from a fixed, published text value; the dictionary is a static array filtered client-side). Worth checking only for the honesty of the claims made in the UI text, and that the BIP/SLIP-coverage test (`tests/test.js`) still fails if the page names a standard the dictionary lacks an entry for.
 
 **Stale-result guard (v1.26.1):** `inputSig`, `staleCheck` and `seedSig` record the inputs (rolls, word count, mode, both passphrases) at the moment of FORGE. If any of them changes afterwards, the words, fingerprint, address and watch-only data are cleared, so what is on screen (and what DOWNLOAD saves) always belongs to the inputs that made it. A Word draw seed depends on the passphrase only. The saved file uses the rolls remembered from FORGE, not whatever is in the box now.
 
