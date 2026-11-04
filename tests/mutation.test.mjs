@@ -711,6 +711,7 @@ async function probe(w, mutated) {
     { // roll sheet (v1.34.0)
       const setMode = (m) => { w.document.querySelector('input[name="mode"][value="' + m + '"]').checked = true; }, setWords = (n) => { w.document.querySelector('input[name="words"][value="' + n + '"]').checked = true; };
       const sheet = () => { pc.n = 0; $('rollSheetBtn').click(); const r = { n: pc.n, cells: pc.cells.slice(), txt: pc.txt, cls: pc.cls }; w.dispatchEvent(new w.Event('afterprint')); return r; };
+      setWords(12); setMode('dice');
       let r = sheet(); if (r.n !== 1 || r.cells.length !== 50 || r.cells.some((c, i) => c !== String(i + 1)) || !/^VOIDFORGE DICE ROLL SHEET/.test(r.txt) || !/50 rolls for a 12-word seed/.test(r.txt) || !/Roll one die and write its number \(1 to 6\)/.test(r.txt) || !/print-seed/.test(r.cls) || /1 means/.test(r.txt)) fails.push('roll sheet: 50 numbered boxes for 12 words of dice');
       setWords(24); r = sheet(); if (r.cells.length !== 99 || !/99 rolls for a 24-word seed/.test(r.txt)) fails.push('roll sheet: 99 boxes for 24 words of dice');
       setMode('coin'); r = sheet(); if (r.cells.length !== 256 || !/^VOIDFORGE COIN FLIP SHEET/.test(r.txt) || !/256 flips for a 24-word seed/.test(r.txt) || !/1 means: ______   0 means: ______/.test(r.txt) || !/write 1 or 0/.test(r.txt)) fails.push('roll sheet: 256 boxes for 24 words of coin flips with the sides to fill in');
