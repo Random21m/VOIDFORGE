@@ -99,3 +99,11 @@ VOIDFORGE is free software provided **"as is", without warranty of any kind** (s
 - Want to review it? See [REVIEW.md](REVIEW.md).
 - Do not host this as a web page (no GitHub Pages). Download-only.
 - License: MIT
+
+## Support the project
+
+VOIDFORGE is free and open source, and it stays that way. Supporting it is optional and changes nothing about how the tool works. If it helped you, you can send a few sats over Lightning:
+
+<p align="center"><img src="docs/support-qr.png" alt="QR code for the Lightning address dev@breez.tips" width="200"><br><b>dev@breez.tips</b></p>
+
+The page itself never goes online, so scan the code (or type the address) in a Lightning wallet on your phone. The same address and code are in the page's ABOUT & HELP tab. Be wary of any other "VOIDFORGE donation" address, and never send seed words or a passphrase to anyone, for any reason.

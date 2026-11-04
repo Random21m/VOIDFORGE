@@ -73,6 +73,14 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       Object.defineProperty(t.$('dlFile'),'files',{value:[{name:'big.bin',size:64*1024*1024+1}],configurable:true}); await t.w.dlPick(); ok(/larger than 64 MB/.test(t.$('dlStatus').textContent)&&t.$('dlOut').style.display==='none','download check: a file over 64 MB is refused');
       t.w.dlClear(); ok(t.$('dlPaste').value===''&&t.$('dlStatus').textContent===''&&t.$('dlOut').textContent==='','download check: CLEAR empties the box, status and output');
       ok(/id="dlBox"/.test(html)&&!/localStorage|sessionStorage|indexedDB|XMLHttpRequest|fetch\(/.test((html.match(/function dlCheck[\s\S]*?function clearChild/)||[''])[0]),'download check: the tool stores nothing and uses no network'); }
+    { // Support this project (v1.27.3): optional, text plus a QR drawn by the page, no links, nothing sent
+      const box=t.$('supportBox'), addr=t.$('supportAddr').textContent, code=t.$('supportLnurl').textContent.trim();
+      ok(box&&!box.open&&/Support this project/.test(box.querySelector('summary').textContent)&&/Optional/.test(box.querySelector('summary').textContent),'support: a closed, optional "Support this project" box in ABOUT & HELP');
+      ok(addr==='dev@breez.tips'&&code==='LNURL1DP68GURN8GHJ7CNJV4JH5TN5D9C8XTMVDE6HYMRS9AJX2ASZ5RD0C','support: the Lightning address and payment code are exactly the maintainer\'s');
+      const svg=t.$('supportQr').querySelector('svg'); ok(svg&&svg.querySelector('path')&&t.w.qrMatrix(code).rows.length>=21,'support: the QR is drawn by the page from the payment code');
+      ok(box.querySelectorAll('a, [href], img, iframe, script').length===0&&/never goes online/.test(box.textContent)&&/never send seed words/i.test(box.textContent),'support: no link, image or script in the box, and it says nothing is sent and never to send seed words');
+      t.st.clip.length=0; const b=box.querySelectorAll('button'); b[0].click(); await new Promise(r=>setTimeout(r,20)); b[1].click(); await new Promise(r=>setTimeout(r,20)); const c1=t.st.clip[0], copied=t.st.clip[1];
+      ok(b.length===2&&c1==='dev@breez.tips'&&copied===code,'support: COPY copies the address and the payment code exactly'); }
   // SELF-TEST button toggles: press again hides the results without CLEAR
   t.w.toggleSelfTests();
   ok(t.$('testResults').textContent==='','SELF-TEST button: press while results are shown hides them');

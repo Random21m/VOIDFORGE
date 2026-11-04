@@ -677,6 +677,15 @@ async function probe(w, mutated) {
       if (!/preserve-3d/.test(rule('cube')) || !/preserve-3d/.test(rule('fl')) || /opacity|filter/.test(rule('cube') + rule('fl') + roll) || roll.length < 200) fails.push('logo: the cube keeps its 3D (opacity or filter on the cube flattens it)'); }
     if (!/\.logo \{[^}]*position: relative; z-index: 0;/.test(mutated) || !/#statusLine \{ position: relative; z-index: 1;/.test(mutated)) fails.push('logo: the falling dice pass behind the status line text, not over it');
     if (!/\n  h1 \{[^}]*font-size: 37px;[^}]*filter: drop-shadow\([^}]*\}/.test(mutated) || !/\.logo \{ --S: 40px;/.test(mutated)) fails.push('header: VOIDFORGE is 37px with a soft neon glow, and the dice are 40px so the name leads');
+    { // Support this project (v1.27.3)
+      const box = $('supportBox'), code = $('supportLnurl').textContent.trim();
+      if (!box || box.open || !/Optional/.test(box.querySelector('summary').textContent)) fails.push('support: closed optional box');
+      if ($('supportAddr').textContent !== 'dev@breez.tips' || code !== 'LNURL1DP68GURN8GHJ7CNJV4JH5TN5D9C8XTMVDE6HYMRS9AJX2ASZ5RD0C') fails.push('support: exact address and payment code');
+      if (!$('supportQr').querySelector('svg path') || $('supportQr').innerHTML !== w.qrSvg(w.qrMatrix(code).rows)) fails.push('support: QR drawn from the payment code');
+      if (box.querySelectorAll('a, [href], img, iframe, script').length || !/never goes online/.test(box.textContent) || !/never send seed words/i.test(box.textContent)) fails.push('support: no link, and the honest notes');
+      const clip = []; Object.defineProperty(w.navigator, 'clipboard', { value: { writeText: async (x) => { clip.push(x); } }, configurable: true }); const bs = box.querySelectorAll('button'); bs[0].click(); await new Promise((r) => setTimeout(r, 20)); bs[1].click(); await new Promise((r) => setTimeout(r, 20));
+      if (bs.length !== 2 || clip[0] !== 'dev@breez.tips' || clip[1] !== code) fails.push('support: COPY copies the address and the code');
+    }
     { // Check your download (v1.27.3)
       const bytes = Buffer.from('VOIDFORGE test file é\n' + 'x'.repeat(5000)), U = new Uint8Array(bytes), sha = nc.createHash('sha256').update(bytes).digest('hex');
       const r0 = await w.dlCheck(U, '');
@@ -1478,13 +1487,23 @@ const M = [
   ['download: mismatch shown as ok', 'else if(r.verdict === "mismatch") say("bad",', 'else if(r.verdict === "mismatch") say("ok",'],
   ['download: match shown as bad', 'if(r.verdict === "match") say("ok",', 'if(r.verdict === "match") say("bad",'],
   ['download: output hides the CID', '\\nCID:    " + r.cid;', '";'],
-  ['download: output hides the hash', '"\\nSHA-256: " + r.hash +', '"" +'],
+  ['download: output hides the hash', '" bytes)\\nSHA-256: " + r.hash + "', '" bytes)" + "'],
   ['download: CLEAR leaves the pasted hash', 'document.getElementById("dlFile").value = ""; document.getElementById("dlPaste").value = "";', 'document.getElementById("dlFile").value = "";'],
   ['download: CLEAR leaves the output', 'const o = document.getElementById("dlOut"); o.textContent = ""; o.style.display = "none";\n  const t = document.getElementById("dlStatus"); t.textContent = ""; t.className = "status";\n}', 'const t = document.getElementById("dlStatus"); t.textContent = ""; t.className = "status";\n}'],
   ['download: no prompt without a file', 'say("", "Choose the voidforge.html file you downloaded."); return; }', 'return; }'],
   ['download: file box not wired', 'aria-label="Choose the VOIDFORGE file you downloaded" onchange="dlPick()"', 'aria-label="Choose the VOIDFORGE file you downloaded"'],
   ['download: paste box not wired', 'oninput="dlPick()" style="margin-top:6px;"', 'style="margin-top:6px;"'],
   ['download: honest limit note removed', '<b>Know the limit:</b> a page cannot vouch for itself.', '<b>Note:</b> this page is trustworthy.'],
+  ['support: address changed', '<code id="supportAddr" style="user-select:all;">dev@breez.tips</code>', '<code id="supportAddr" style="user-select:all;">dev@breez.tip</code>'],
+  ['support: payment code changed', 'LNURL1DP68GURN8GHJ7CNJV4JH5TN5D9C8XTMVDE6HYMRS9AJX2ASZ5RD0C</code>', 'LNURL1DP68GURN8GHJ7CNJV4JH5TN5D9C8XTMVDE6HYMRS9AJX2ASZ5RD0D</code>'],
+  ['support: QR never drawn', 'buildLogoDice();\ndrawSupportQr();', 'buildLogoDice();'],
+  ['support: QR drawn from the address not the code', 'const code = document.getElementById("supportLnurl").textContent.trim();', 'const code = document.getElementById("supportAddr").textContent.trim();'],
+  ['support: address COPY copies the wrong text', "onclick=\"copySupport(this, 'supportAddr')\"", "onclick=\"copySupport(this, 'supportLnurl')\""],
+  ['support: code COPY copies the wrong text', "onclick=\"copySupport(this, 'supportLnurl')\"", "onclick=\"copySupport(this, 'supportAddr')\""],
+  ['support: box open by default', '<details id="supportBox">', '<details id="supportBox" open>'],
+  ['support: not marked optional', '<small>Optional. VOIDFORGE is free and stays free.</small>', '<small>VOIDFORGE is free and stays free.</small>'],
+  ['support: offline note removed', 'This page never goes online, so nothing is sent from here:', 'Send from here:'],
+  ['support: seed warning removed', 'and never send seed words or a passphrase to anyone, for any reason.', 'and have fun.'],
   ['recommended: drill badge lost', 'prove your paper backup works<span class="tag tag-rec">RECOMMENDED</span>', 'prove your paper backup works (recommended)'],
   ['recommended: second-tool badge lost', 'in a second tool<span class="tag tag-rec">RECOMMENDED</span>', 'in a second tool (recommended)'],
   ['recommended: menu option not coloured', '<option value="ms-wsh" class="opt-rec">', '<option value="ms-wsh">'],
@@ -1501,7 +1520,7 @@ const M = [
   ['logo: six loses a pink pip', '(n === 6 && (i === 3 || i === 5))', '(n === 6 && i === 3)'],
   ['logo: face grid short a cell', 'for(let i = 0; i < 9; i++){\n    if(LOGO_PIPS', 'for(let i = 0; i < 8; i++){\n    if(LOGO_PIPS'],
   ['logo: a cube without its bottom face', '["fr","rt","tp","bk","lf","bt"].map', '["fr","rt","tp","bk","lf"].map'],
-  ['logo: dice never built', 'buildLogoDice();\nfunction rollLogo', 'function rollLogo'],
+  ['logo: dice never built', 'buildLogoDice();\ndrawSupportQr();\nfunction rollLogo', 'drawSupportQr();\nfunction rollLogo'],
   ['logo: dice start in the same spot', 'fx:"-46px"', 'fx:"-10px"'],
   ['logo: dice land at the same angle', 'ry:"-34deg"', 'ry:"-30deg"'],
   ['logo: dice fall at the same moment', 'dl:"0.14s"', 'dl:"0s"'],

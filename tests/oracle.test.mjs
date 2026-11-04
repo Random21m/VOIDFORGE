@@ -574,4 +574,16 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   R.ok(dbad === 0, `download check: ${dn} random files give the same SHA-256 and CID as @noble/hashes + @scure/base, a wrong hash is never a match (${dbad} mismatches)`);
 }
 
+// Support this project (v1.27.3): the payment code is a real LNURL for dev@breez.tips (decoded with @scure/base), and the
+// QR the page draws from it scans back (jsQR) to exactly that code.
+{
+  const code = w.document.getElementById('supportLnurl').textContent.trim(), addr = w.document.getElementById('supportAddr').textContent.trim();
+  const d = bech32.decode(code.toLowerCase(), 2000), url = new TextDecoder().decode(bech32.fromWords(d.words)), [user, host] = addr.split('@');
+  R.ok(d.prefix === 'lnurl' && url === `https://${host}/lnurlp/${user}` && addr === 'dev@breez.tips', `support: the LNURL decodes (bech32) to ${url}, which matches the Lightning address ${addr}`);
+  const rows = w.qrMatrix(code).rows, n = rows.length, S = 6, Q = 4, W = (n + 2 * Q) * S, img = new Uint8ClampedArray(W * W * 4).fill(255);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (rows[y][x]) for (let dy = 0; dy < S; dy++) for (let dx = 0; dx < S; dx++) { const i = ((((y + Q) * S + dy) * W) + ((x + Q) * S + dx)) * 4; img[i] = img[i + 1] = img[i + 2] = 0; }
+  const dec = jsQR(img, W, W), svg = w.document.getElementById('supportQr').innerHTML;
+  R.ok(dec && dec.data === code && svg.includes('<svg') && svg === w.qrSvg(rows), 'support: the QR on the page scans back to exactly the payment code');
+}
+
 R.done('oracle');
