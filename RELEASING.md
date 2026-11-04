@@ -24,7 +24,7 @@ gh attestation verify voidforge.html --repo Random21m/voidforge     # needs the 
 The attestation proves the file came from this repository's release workflow at a specific commit. It does not prove the code is safe; that depends on review. Verify the file you downloaded, not the copy saved by the in-page "DOWNLOAD FOR USB" button (the browser re-serializes the page, so its hash differs).
 
 ## README refresh (every release)
-Before the final candidate commit, regenerate the README screenshots from the new build (a practice seed only) and re-read the README text so it describes what the page does now: new or changed screens get a picture, retired wording is removed, and nothing in the pictures is older than the release.
+The README has no screenshots or video for now; they will be redone once the project is feature-complete. Before the final candidate commit, re-read the README text so it describes what the page does now: new or changed features are described, retired wording is removed, and the online practice copy (https://random21m.github.io/VOIDFORGE/) is still the right link and still serves the latest release.
 
 ## Bitcoin dictionary (every release)
 The in-page Bitcoin dictionary (ABOUT & HELP) is general, not only about VOIDFORGE. With every release add entries for any new feature, standard or term (a new BIP or SLIP must have an entry: the tests fail if the page names one that the dictionary lacks), check new definitions against a trustworthy source, add a fact check for any number or prefix in a new entry, and add mutation targets that change those facts. Also use the release to add a few missing general terms.

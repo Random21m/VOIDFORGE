@@ -9,38 +9,11 @@ Get <code>voidforge.html</code> and <code>SHA256SUMS</code> from the release pag
 
 <p align="center"><a href="https://random21m.github.io/VOIDFORGE/"><b>&#9654; Try it in your browser</b></a> (an online copy for learning and practice, works on a phone; <a href="#try-it-online-practice-only">read this first</a>)</p>
 
-<p align="center"><a href="https://youtu.be/1K9MT0ki3Ds"><b>&#9654; Watch the video tutorial</b></a> (about 7 minutes, with a practice seed)</p>
-
-
 > **Not independently audited.** For serious amounts, generate on dedicated hardware (SeedSigner, Coldcard) and use VOIDFORGE to cross-check the words and fingerprint.
-
-## What it looks like
-
-<p align="center"><img src="docs/screenshots/1-start.png" alt="The VOIDFORGE start screen: three neon 3D dice above the VOIDFORGE title, the Make a seed tab, and the offline status check" width="760"></p>
-
-<p align="center"><img src="docs/screenshots/3-seed.png" alt="A practice seed after FORGE SEED: 50 dice rolls entered, the entropy check, and the 12 words" width="760"></p>
-
-<table align="center"><tr>
-<td align="center"><img src="docs/screenshots/2-guide.png" alt="GUIDE ME walks through the steps one at a time, with an EXIT GUIDE button" width="370"><br><sub>GUIDE ME, one step at a time</sub></td>
-<td align="center"><img src="docs/screenshots/4-watch-only.png" alt="The watch-only box with the public key, first five addresses and descriptors" width="370"><br><sub>Watch-only keys and first five addresses</sub></td>
-</tr><tr>
-<td align="center" colspan="2"><img src="docs/screenshots/6-restore-drill.png" alt="The Restore drill: the words are hidden and you type them back from your paper; a short answer is reported as wrong" width="560"><br><sub>Restore drill: type the words back from your paper (it never shows you the right word)</sub></td>
-</tr><tr>
-<td align="center" colspan="2"><img src="docs/screenshots/7-check-download.png" alt="The Check your download tool: a file picker and a pasted SHA-256 hash, compared entirely offline" width="560"><br><sub>Check your download: compare the file you got against the published hash, offline</sub></td>
-</tr>
-<tr>
-<td align="center" colspan="2"><img src="docs/screenshots/8-reforge.png" alt="Reforge: a 12-word phrase with one wrong word is found and confirmed against the wallet's zpub, and the changed word is shown (a published test phrase)" width="560"><br><sub>Reforge: a wrong word found and confirmed against the zpub (a published test phrase, never a real seed)</sub></td>
-</tr></table>
-
-<p align="center"><img src="docs/screenshots/5-phone.png" alt="VOIDFORGE on a phone screen" width="260"><br><sub>On a phone: good for learning and practice, not for real funds.</sub></p>
-
-The seed in these pictures is a practice seed made for the screenshots. Never use it, and never use any seed you have seen published.
 
 ## Try it online (practice only)
 
 You can try VOIDFORGE without downloading anything, on a computer or a phone: **<https://random21m.github.io/VOIDFORGE/>**. It is meant for seeing whether you like it, learning how dice become words, and practising with a seed you will never use.
-
-<p align="center"><img src="docs/screenshots/11-online-demo.png" alt="The online copy on a phone: an amber banner saying it is best for trying out, and the VOIDFORGE page below with its own red NETWORK: ONLINE warning" width="260"><br><sub>The online copy on a phone: the amber banner on top, and the app's own red warning that the device is online.</sub></p>
 
 - **It is the same file as the release.** The online copy serves the latest released `voidforge.html` byte for byte, inside a thin page that adds the amber banner. No server code, no account, no analytics and nothing stored. The file's own rule (a Content-Security-Policy) still blocks all network access, so the page cannot send what you type anywhere.
 - **It still warns you.** Besides the banner, the app shows its red *NETWORK: ONLINE* warning, because a connected device is the wrong place for real keys. The banner has an *Online or downloaded?* note that sets out the difference.
