@@ -240,7 +240,7 @@ async function probe(w, mutated) {
     const bytes = /^data:image\/jpeg;base64,/.test(src) ? Buffer.from(src.slice(src.indexOf(',') + 1), 'base64') : Buffer.alloc(0);
     if (!lg || lg.tagName !== 'IMG' || bytes.length < 2000 || bytes.length > 20000 || bytes[0] !== 0xFF || bytes[1] !== 0xD8) fails.push('owner logo: a small JPEG is built in as a data: picture');
     if (!lg || (lg.getAttribute('alt') || '').length < 10 || lg.getAttribute('width') !== '44' || lg.getAttribute('height') !== '44' || lg.closest('a')) fails.push('owner logo: alt text, size, and not a link');
-    if (!/#ownerLogo \{ position: absolute; top: 10px; right: 12px;/.test(css)) fails.push('owner logo: placed in the top-right corner');
+    if (!/#ownerLogo \{ position: absolute; top: -7px; right: 0;/.test(css)) fails.push('owner logo: placed in the top-right corner');
     if (!/#topbar \{ flex-wrap: wrap; right: 64px; \}/.test(css)) fails.push('owner logo: the buttons make room for it on a phone');
     if (!/#tipBox, #ownerLogo \{ display: none !important; \}/.test(css)) fails.push('owner logo: left off printouts'); }
   { // Page icon (v1.28.0)
@@ -1371,7 +1371,7 @@ const M = [
   ['reforge passphrase: an edit keeps the result', '"reforgePassWords", "reforgePassInput", "reforgePassCheck", "reforgePassTypos"].forEach(id => document.getElementById(id).addEventListener', '"reforgePassWords", "reforgePassCheck", "reforgePassTypos"].forEach(id => document.getElementById(id).addEventListener'],
   ['reforge passphrase: an invalid phrase accepted', '|| !(await reforgeChecksumOk(Uint16Array.from(parsed.idx))))', ')'],
   ['reforge: fingerprint odds wrong', 'Math.round(2 ** 32 / Math.max(1, n))', 'Math.round(2 ** 31 / Math.max(1, n))'],
-  ['owner logo: moved to the left corner', '#ownerLogo { position: absolute; top: 10px; right: 12px;', '#ownerLogo { position: absolute; top: 10px; left: 12px;'],
+  ['owner logo: moved to the left corner', '#ownerLogo { position: absolute; top: -7px; right: 0;', '#ownerLogo { position: absolute; top: -7px; left: 0;'],
   ['owner logo: overlaps the buttons on a phone', '#topbar { flex-wrap: wrap; right: 64px; }', '#topbar { flex-wrap: wrap; }'],
   ['owner logo: printed on the page', '#guideNew, #tipBox, #ownerLogo { display: none !important; }', '#guideNew, #tipBox { display: none !important; }'],
   ['owner logo: no description for screen readers', 'alt="The project owner\'s logo: a bloodhound in a worn cap with a Bitcoin mark"', 'alt=""'],
