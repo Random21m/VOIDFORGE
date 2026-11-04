@@ -107,19 +107,15 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(box.querySelectorAll('a, [href], img, iframe, script').length===0&&/never goes online/.test(box.textContent)&&/never send seed words/i.test(box.textContent),'support: no link, image or script in the box, and it says nothing is sent and never to send seed words');
       t.st.clip.length=0; const b=box.querySelectorAll('button'); b[0].click(); await new Promise(r=>setTimeout(r,20)); b[1].click(); await new Promise(r=>setTimeout(r,20)); const c1=t.st.clip[0], copied=t.st.clip[1];
       ok(b.length===2&&c1==='dev@breez.tips'&&copied===code,'support: COPY copies the address and the payment code exactly'); }
-    { // Owner logo (v1.29.0): a small picture built into the file, top-right, not a link, left off printouts
-      const lg=t.$('ownerLogo'), src=lg?lg.getAttribute('src'):'', css=[...t.w.document.querySelectorAll('style')].map(s=>s.textContent).join('\n');
-      const bytes=/^data:image\/jpeg;base64,/.test(src)?Buffer.from(src.slice(src.indexOf(',')+1),'base64'):Buffer.alloc(0);
-      ok(!!lg&&lg.tagName==='IMG'&&bytes.length>2000&&bytes.length<20000&&bytes[0]===0xFF&&bytes[1]===0xD8&&bytes[bytes.length-2]===0xFF&&bytes[bytes.length-1]===0xD9,'owner logo: a small JPEG is built into the file as a data: picture');
-      ok(lg&&lg.getAttribute('alt').length>10&&lg.getAttribute('width')==='44'&&lg.getAttribute('height')==='44'&&!lg.closest('a')&&!t.w.document.querySelector('a[href] #ownerLogo'),'owner logo: described for screen readers, sized, and not a link');
-      ok(/#ownerLogo \{ position: absolute; top: 0; right: -12px;/.test(css)&&/#topbar \{ flex-wrap: wrap; right: 64px; \}/.test(css)&&/#tipBox, #ownerLogo \{ display: none !important; \}/.test(css),'owner logo: top-right corner, the buttons make room on a phone, and it is left off printouts'); }
+    { // The dog logo is gone in the redesign: no picture is built into the file any more
+      ok(!t.$('ownerLogo')&&t.w.document.querySelectorAll('img').length===0&&!/ownerLogo|data:image\/jpeg/.test(html),'owner logo: removed in the redesign, the file holds no picture'); }
     { // Translation and passphrase notes (v1.29.0): browsers are asked not to translate (a translated seed word is a wrong seed word), and the passphrase help warns about hardware wallet limits
       const d=t.w.document, m=d.querySelector('meta[name="google"]'), adv=t.$('passphrase').closest('details');
       ok(d.documentElement.getAttribute('translate')==='no'&&d.documentElement.getAttribute('lang')==='en'&&!!m&&m.getAttribute('content')==='notranslate','translation: the page asks browsers not to translate it');
       ok(!!adv&&/Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it\./.test(adv.textContent)&&!/\b(Trezor|Ledger|Coldcard|Jade)\b/.test(adv.textContent),'passphrase: help warns that some hardware wallets limit length or characters (no vendor claims)'); }
     { // Calmer first screen (v1.33.0): one GUIDE ME button, seed buttons only once there is a seed, one "More options" box, no second warning note
       const d=t.w.document, gb=[...d.querySelectorAll('button')].filter(b=>b.textContent.trim()==='GUIDE ME'), gn=t.$('guideNew'), css=[...d.querySelectorAll('style')].map(x=>x.textContent).join('\n');
-      ok(gb.length===1&&gb[0].id==='guideBtn'&&!!gn&&!gn.querySelector('button')&&/^New here\? Press GUIDE ME at the top to be walked through making a seed one screen at a time\.$/.test(gn.textContent.trim()),'calmer page: one GUIDE ME button; the "New here?" line points to it as plain text');
+      ok(gb.length===1&&gb[0].id==='guideBtn'&&!!gn&&!gn.querySelector('button')&&/^New here\? Open MENU at the top and press GUIDE ME to be walked through making a seed one screen at a time\.$/.test(gn.textContent.trim()),'calmer page: one GUIDE ME button; the "New here?" line points to it as plain text');
       ok(!d.querySelector('.forge-note')&&!/keep clipboard history off, and restart when you are done/.test(d.body.textContent.split('<script')[0]),'calmer page: no second "Making real keys?" note next to FORGE SEED (the amber banner says it)');
       ok(/body:not\(\.has-seed\) \.seed-actions, body:not\(\.has-seed\) \.print-btn \{ display: none; \}/.test(css)&&!!d.querySelector('.btn-row.seed-actions #abbrBtn')&&d.querySelectorAll('.seed-actions button').length===5,'calmer page: the five seed buttons and PRINT SEED are hidden until there is a seed');
       ok(/@media \(min-width: 900px\) \{ #rollCount \{ display: none; \} \}/.test(css)&&!!t.$('rollCount'),'calmer page: the roll count is shown once on wide screens (the seed panel), and stays beside the box on phones');
@@ -568,7 +564,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t.$('passphrase').value=''; t.$('passphrase2').value=''; }
   // item 1: patterns
   ok(t.$('noJs').style.display==='none','script-not-running notice is hidden once the script has run');
-  ok(/DICE \/ COIN ENTROPY/.test(t.d.querySelector('.subtitle').textContent),'header says dice / coin');
+  ok(t.d.querySelector('#topbar h1').textContent==='VOIDFORGE'&&!t.d.querySelector('.subtitle'),'header: the name VOIDFORGE, no second subtitle line');
   ok(t.$('coinHint').style.display==='none','coin hint hidden in dice mode');
   { const coin=t.d.querySelector('input[name="mode"][value="coin"]'); coin.checked=true; t.w.onModeChange(); ok(t.$('coinHint').style.display==='block'&&/heads = 1/.test(t.$('coinHint').textContent),'coin mode shows which side is 1 and to record the string'); const dice=t.d.querySelector('input[name="mode"][value="dice"]'); dice.checked=true; t.w.onModeChange(); ok(t.$('coinHint').style.display==='none','coin hint hides again in dice mode'); }
   ok(/^NETWORK: (ONLINE|OFFLINE)/.test(t.$('netTag').textContent),'network tag is always visible');
@@ -619,12 +615,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t.w.toggleGuide(); ok(!t.d.querySelector('.gh')&&!B.classList.contains('guided'),'turning the guide off shows everything again');
     const terms=[...t.d.querySelectorAll('.term')]; ok(terms.length>=6&&terms.every(e=>e.tabIndex===0&&e.dataset.tip.length>40),'explained words are focusable and have a plain explanation');
     t.w.toggleSize(); ok(B.classList.contains('big'),'TEXT A+ enlarges the page'); t.w.toggleSize(); ok(!B.classList.contains('big'),'TEXT A- restores it'); }
-  { const cubes=[...t.$('logo').querySelectorAll('.cube')], num=(c,k)=>+c.querySelector('.f.'+k).dataset.n, grid={1:'000010000',2:'100000001',3:'100010001',4:'101000101',5:'101010101',6:'101101101'};
-    ok(cubes.length===3&&t.$('logo').tabIndex===0&&cubes.map(c=>num(c,'fr')).join()==='3,5,6','logo is three dice (3, 5, 6) and can be reached by keyboard');
-    ok(cubes.every(c=>c.querySelectorAll('.f').length===6&&['fr:bk','rt:lf','tp:bt'].every(q=>num(c,q.split(':')[0])+num(c,q.split(':')[1])===7)&&[...c.querySelectorAll('.f')].every(f=>[...f.children].map(x=>x.tagName==='I'?'1':'0').join('')===grid[f.dataset.n])&&c.querySelectorAll('i.m').length===5),'logo: each die is a real cube, six faces, opposite faces add to 7, pips laid out like a real die');
-    ok(cubes.map(c=>c.parentNode.parentNode.getAttribute('style')).join('|')==='--dl:0.14s; --fx:-46px; --ry:-34deg|--dl:0s; --fx:0px; --ry:-30deg|--dl:0.28s; --fx:46px; --ry:-26deg','logo: the dice fall from spread-out spots and land at slightly different angles');
-    { const rule=n=>(html.match(new RegExp('\\.logo \\.'+n+' \\{[^}]*\\}'))||[''])[0], roll=(html.match(/@keyframes dieRoll \{[\s\S]*?\n  \}/)||[''])[0];
-      ok(/preserve-3d/.test(rule('cube'))&&/preserve-3d/.test(rule('fl'))&&!/opacity|filter/.test(rule('cube')+rule('fl')+roll)&&roll.length>200,'logo: the cube keeps its 3D (no opacity or filter on the cube itself, they flatten it)'); }
+  {
     { const css=html.match(/<style>[\s\S]*?<\/style>/)[0], hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
       const lum=c=>{const f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);};return .2126*f(c[0])+.7152*f(c[1])+.0722*f(c[2]);};
       const cr=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
@@ -632,20 +623,20 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       // every "recommended" label on a screen (not the changelog or help text) is a badge or a coloured option
       const labels=[...t.w.document.querySelectorAll('summary, option')].filter(e=>/recommended/i.test(e.textContent));
       ok(tags.length===2&&opts.length===1&&labels.length===3&&labels.every(e=>e.querySelector('.tag-rec')||e.classList.contains('opt-rec')),'recommended: every RECOMMENDED label is an amber badge (or an amber option in the menu)');
-      const warn={d:/:root \{[^}]*--warn-text: (#[0-9a-f]{6})/.exec(css)[1],l:/body\.light \{[^}]*--warn-text: (#[0-9a-f]{6})/.exec(css)[1]};
-      const surf={d:/--surface2: (#[0-9a-f]{6})/.exec(css)[1],l:/body\.light \{[^}]*--surface2: (#[0-9a-f]{6})/.exec(css)[1]};
-      ok(/\.strip b \{ color: var\(--warn-text\); \}/.test(css)&&/\.tag-rec \{[^}]*color: var\(--warn-text\)[^}]*border-color: var\(--warn-text\)/.test(css)&&/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(css),'recommended: uses the same amber as the "not independently audited" banner');
-      const mixc=(fg,al,bg)=>fg.map((v,i)=>v*al+bg[i]*(1-al)), lt=/body\.light \.tag-rec \{ color: (#[0-9a-f]{6});/.exec(css)[1];
-      ok(cr(hex(warn.d),mixc(hex(warn.d),.12,hex(surf.d)))>=4.5&&cr(hex(lt),mixc(hex(lt),.08,hex(surf.l)))>=4.5&&cr(hex(warn.l),hex(lt))<1.6,'recommended: the amber badge text keeps contrast >= 4.5:1 in both themes (light theme uses a slightly deeper shade of the same amber)');
+      const tok=(blk,n)=>{ const m=new RegExp(n+': (#[0-9a-fA-F]{6})').exec(blk); return m?m[1]:'#000000'; };
+      const rootBlk=[...css.matchAll(/\n  :root \{[^}]*\}/g)].pop()[0], lightBlk=[...css.matchAll(/\n  body\.light \{[^}]*\}/g)].pop()[0];
+      for(const [nm,blk] of [['dark',rootBlk],['light',lightBlk]]){
+        const bg=hex(tok(blk,'--bg')), sf=hex(tok(blk,'--surface'));
+        const pairs=[['--text',bg],['--muted',bg],['--muted',sf],['--goldtx',bg],['--warn-text',sf],['--bad-text',sf],['--ok-text',sf]];
+        ok(pairs.every(([k,b2])=>cr(hex(tok(blk,k)),b2)>=4.5)&&cr(hex(tok(blk,'--btntx')),hex(tok(blk,'--btn')))>=4.5,'colours ('+nm+'): text, grey text, gold, red and green words and the gold button label all keep contrast >= 4.5:1'); }
+      ok(/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(css)&&/\.tag-rec, body\.light \.tag-rec \{ color: var\(--warn-text\); background: none; \}/.test(css)&&/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(css),'labels: RECOMMENDED, SECRET, PUBLIC and the grey ones are plain coloured words (no pill, border or fill)');
       { const notes=[...t.w.document.querySelectorAll('.tag-note')], ros=[...t.w.document.querySelectorAll('.tag-ro')];
-        ok(notes.length===3&&notes.every(e=>/^(DEMO ONLY|ADVANCED)$/.test(e.textContent))&&![...t.w.document.querySelectorAll('summary')].some(e=>/\((demo only|advanced)/i.test(e.textContent)),'tags: DEMO ONLY and ADVANCED are pink badges, no longer plain (brackets) in the headings');
-        ok(ros.filter(e=>e.textContent==='NEW').length===2,'tags: every "NEW" badge (Multisig header and Silent Payment address) looks the same -- the cyan tag-ro style, not two different colours for the same word');
-        const note={d:'#ff4dc4',l:'#b8005c'};
-        ok(cr(hex(note.d),mixc(hex(note.d),.12,hex(surf.d)))>=4.5&&cr(hex(note.l),mixc(hex(note.l),.08,hex(surf.l)))>=4.5&&/\.tag-note \{ color: #ff4dc4; border-color: #ff4dc4;/.test(css)&&/body\.light \.tag-note \{ color: #b8005c; border-color: #b8005c;/.test(css),'tags: the pink DEMO ONLY / ADVANCED badge text keeps contrast >= 4.5:1 in both themes, distinct from amber/red/green/cyan'); }
+        ok(notes.length===3&&notes.every(e=>/^(DEMO ONLY|ADVANCED)$/.test(e.textContent))&&![...t.w.document.querySelectorAll('summary')].some(e=>/\((demo only|advanced)/i.test(e.textContent)),'tags: DEMO ONLY and ADVANCED are grey labels, not plain (brackets) in the headings');
+        ok(ros.filter(e=>e.textContent==='NEW').length===2,'tags: every "NEW" badge (Multisig header and Silent Payment address) looks the same -- the same grey tag-ro style, not two different colours for the same word');
+ }
     }
-    ok(/\.logo \{[^}]*position: relative; z-index: 0;/.test(html)&&/#statusLine \{ position: relative; z-index: 1;/.test(html),'logo: the falling dice pass behind the status line text, not over it');
-    ok(/\n  h1 \{[^}]*font-size: 37px;[^}]*filter: drop-shadow\([^}]*\}/.test(html)&&/\.logo \{ --S: 40px;/.test(html),'header: VOIDFORGE is 37px with a soft neon glow, and the dice are 40px so the name leads');
- t.w.rollLogo(); ok(t.$('logo').classList.contains('again'),'tapping the logo rolls the dice again'); t.w.rollLogo();
+    ok(/#statusLine \{ position: relative; z-index: 1;/.test(html),'status line sits above the page background');
+    { const die=t.$('brandDie'), h=t.d.querySelector('#topbar h1'); ok(!!die&&die.querySelectorAll('.dp').length===5&&die.querySelectorAll('.db').length===1&&!!h&&h.textContent==='VOIDFORGE'&&/#topbar h1[^{]*\{[^}]*color: var\(--goldtx\)[^}]*filter: none/.test(html)&&!t.$('logo')&&!/\n  \.logo \{/.test(html)&&typeof t.w.rollLogo==='undefined','header: one flat golden die and the gold name VOIDFORGE (the rolling 3D dice are gone)'); }
     t.$('demoOn').checked=true; t.$('rolls').value='3141'; await t.w.demoRefresh(); ok(t.d.querySelectorAll('#demoGrid .dm-w').length===12&&/NOT your seed/.test(t.$('demoOut').textContent),'demo shows 12 labelled demo words');
     t.w.demoOff(); ok(!t.d.querySelector('#demoGrid .dm-w')&&t.$('demoOut').style.display==='none','demo wipes when switched off'); t.$('rolls').value=''; }
   { // Word draw: words drawn from physical tiles + coin flips -> standard BIP39, known answers
@@ -778,7 +769,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     // SEND TO CHECK moves you to the Check tab
     { const AB='abandon '.repeat(11)+'about'; tl.$('phrase').value=''; const tf2=tl; tf2.set(rnd(50,6)); tf2.$('forgeBtn').disabled=false; await tf2.w.generate(); ok(on('make')&&tf2.w.hasSeed(),'forge keeps you on Make a seed'); await tf2.w.sendToVerify(); ok(on('check')&&tf2.$('phrase').value.split(' ').length===12,'SEND TO CHECK opens the Check tab with the words in the box'); }
     // every control from earlier versions is still in exactly one tab or in the page frame
-    { const ids=['rolls','forgeBtn','genResult','wordGrid','fingerprint','address','passphrase','passphrase2','note','phrase','verifyPass','verifyRecorded','checkAddr','psbtInput','cmpA','cmpB','msN','msM','msBox','wdBox','demoBox','advanced','addrBox','explainBox','seedQrBox','watchBox','about','beforeCard','disclaimer','safetyBox','privacyBox','multiHelp','practiceBox','psbtBox','fpIcon','guidePanel','tapRow','testResults','printOnly','printQr','netTag','selfTestBadge','logo'];
+    { const ids=['brandDie','menuBox','rolls','forgeBtn','genResult','wordGrid','fingerprint','address','passphrase','passphrase2','note','phrase','verifyPass','verifyRecorded','checkAddr','psbtInput','cmpA','cmpB','msN','msM','msBox','wdBox','demoBox','advanced','addrBox','explainBox','seedQrBox','watchBox','about','beforeCard','disclaimer','safetyBox','privacyBox','multiHelp','practiceBox','psbtBox','fpIcon','guidePanel','tapRow','testResults','printOnly','printQr','netTag','selfTestBadge'];
       const missing=ids.filter(id=>!tl.$(id)); ok(missing.length===0,'feature inventory: every earlier control and section is still on the page'+(missing.length?' (missing '+missing.join(', ')+')':''));
       const homeless=['rolls','forgeBtn','phrase','psbtInput','cmpA','msN','about','beforeCard','disclaimer'].filter(id=>!tl.$(id).closest('.tabpanel')); ok(homeless.length===0,'feature inventory: every tool lives inside a tab'+(homeless.length?' ('+homeless.join(', ')+')':''));
       ok(['printOnly','printQr'].every(id=>!tl.$(id).closest('.tabpanel')),'printing works from any tab: the print sheets sit outside the tabs');
@@ -860,9 +851,8 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ['qrBox','sqBox'].forEach(spy); tq.w.document.getElementById('wDescR').textContent='wpkh(x)'; tq.w.showQr('wDescR','receive descriptor');
     ok(seen.length===1&&seen[0][0]==='qrBox'&&seen[0][1]==='nearest','QR: showing the watch-only QR scrolls it fully into view');
     tq.set(rnd(50)); await tq.w.generate(); tq.w.showSeedQr('seedqr'); ok(seen.length===2&&seen[1][0]==='sqBox'&&seen[1][1]==='nearest','QR: showing the SeedQR scrolls it fully into view'); }
-  ok(/body\.light \.tabs button \{ color: #fff; background: #0066cc/.test(html),'tabs: light mode shows white tab names on blue');
+  ok(/\.tabs button\[aria-selected="true"\], body\.light \.tabs button\[aria-selected="true"\][^{]*\{[^}]*border-bottom-color: var\(--gold\)/.test(html),'tabs: the selected tab is marked with a gold underline in both themes');
   { const td=load(); await td.ready(); ok(td.d.body.classList.contains('dice-wait')&&!!td.$('startGate'),'dice: held back while the notice is open');
-    ok(/body\.dice-wait \.logo \.die, body\.dice-wait \.logo \.cube[^{]*\{\s*animation:\s*none !important/.test(html),'dice: the stylesheet pauses the falling dice while waiting');
     td.w.startGateClose(); ok(!td.d.body.classList.contains('dice-wait'),'dice: released when the notice is closed with the button');
     const te=load(); await te.ready(); te.d.dispatchEvent(new te.w.KeyboardEvent('keydown',{key:'Escape'})); ok(!te.d.body.classList.contains('dice-wait'),'dice: released when the notice is closed with Escape');
     const tn=load(); await tn.ready(); tn.$('startGate').remove(); tn.d.dispatchEvent(new tn.w.Event('DOMContentLoaded')); ok(!tn.d.body.classList.contains('dice-wait'),'dice: not held back if there is no notice'); }

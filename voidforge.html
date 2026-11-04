@@ -35,7 +35,6 @@
     position: relative;
   }
   #topbar { position: absolute; top: 14px; left: 12px; right: 12px; max-width: 736px; margin: 0 auto; display: flex; flex-wrap: nowrap; gap: 8px; justify-content: center; z-index: 5; }
-  #ownerLogo { position: absolute; top: 0; right: -12px; width: 28px; height: 28px; border-radius: 8px; z-index: 6; box-shadow: 0 0 0 1px var(--border, rgba(255,255,255,.18)); user-select: none; -webkit-user-select: none; pointer-events: none; }
   #topbar button { margin: 0; flex: 0 1 auto; min-width: 0; padding: 6px 9px; font-size: 12.5px; letter-spacing: .3px; }
   .theme-toggle, .print-btn {
     position: static;
@@ -388,73 +387,8 @@
   #guidePanel .gnav { display: flex; gap: 8px; justify-content: space-between; align-items: center; margin-top: 8px; }
   #guideWhy { font-size: 13px; color: var(--muted); min-height: 16px; }
   body.guided .gh { display: none !important; }
-  @media print { body, body.big { zoom: 1 !important; } .guide-btn, .size-btn, #guidePanel, #guideNew, #tipBox, #ownerLogo { display: none !important; } }
+  @media print { body, body.big { zoom: 1 !important; } .guide-btn, .size-btn, #guidePanel, #guideNew, #tipBox { display: none !important; } }
 
-  .logo { --S: 40px; position: relative; z-index: 0; display: inline-flex; align-items: flex-end; justify-content: center; gap: 22px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; padding: 14px 14px 18px; }
-  .logo .die { position: relative; display: block; width: var(--S); height: var(--S); perspective: 520px; perspective-origin: 50% 20%; animation: dieGlow 2s linear both, dieFade 2s linear both; animation-delay: var(--dl, 0s); }
-  .logo .die::after { content: ""; position: absolute; left: 4%; right: 4%; bottom: -13px; height: 11px; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(0,240,255,.55), rgba(255,0,170,.22) 62%, transparent 74%); opacity: 0; animation: dieShadow 2s linear both; animation-delay: var(--dl, 0s); }
-  .logo .fl { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: block; transform-style: preserve-3d; animation: dieFloat 6s ease-in-out calc(var(--dl, 0s) + 2.6s) infinite; }
-  .logo .cube { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: block; transform-style: preserve-3d; transform: rotateX(-26deg) rotateY(var(--ry, -30deg)); animation: dieRoll 2s linear both; animation-delay: var(--dl, 0s); }
-  .logo .f { position: absolute; top: 0; right: 0; bottom: 0; left: 0; box-sizing: border-box; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 7px; border: 2px solid var(--accent); border-radius: 9px; backface-visibility: hidden; background: #0b0b1c; }
-  .logo .f i { display: block; width: 7px; height: 7px; border-radius: 50%; place-self: center; background: #00f0ff; box-shadow: 0 0 6px #00f0ff; }
-  .logo .f i.m { width: 8px; height: 8px; background: #ff00aa; box-shadow: 0 0 7px #ff00aa; }
-  .logo .f.fr { transform: translateZ(calc(var(--S) / 2)); background: linear-gradient(145deg, #1b1b3a, #0b0b1c); box-shadow: inset 0 0 12px rgba(0,240,255,.28); }
-  .logo .f.rt { transform: rotateY(90deg) translateZ(calc(var(--S) / 2)); background: linear-gradient(145deg, #12122a, #07071a); border-color: #00b8c8; box-shadow: inset 0 0 14px rgba(255,0,170,.2); }
-  .logo .f.tp { transform: rotateX(90deg) translateZ(calc(var(--S) / 2)); background: linear-gradient(145deg, #2a2a58, #14143a); border-color: #7df6ff; box-shadow: inset 0 0 12px rgba(0,240,255,.4); }
-  .logo .f.bk { transform: rotateY(180deg) translateZ(calc(var(--S) / 2)); }
-  .logo .f.lf { transform: rotateY(-90deg) translateZ(calc(var(--S) / 2)); }
-  .logo .f.bt { transform: rotateX(-90deg) translateZ(calc(var(--S) / 2)); }
-  .logo.again .cube { animation-name: dieRoll2; }
-  .logo.again .die { animation-name: dieGlow2, dieFade2; }
-  .logo.again .die::after { animation-name: dieShadow2; }
-  .logo:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 12px; }
-  @keyframes dieFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-  @keyframes dieFade { 0% { opacity: 0; } 10%, 100% { opacity: 1; } }
-  @keyframes dieFade2 { 0% { opacity: 0; } 10%, 100% { opacity: 1; } }
-  @keyframes dieRoll {
-    0% { transform: translate3d(var(--fx, 0px), -120px, 0) rotateX(614deg) rotateY(calc(var(--ry, -30deg) - 500deg)) rotateZ(160deg); animation-timing-function: cubic-bezier(.5, 0, .9, .6); }
-    42% { transform: translate3d(0, 0, 0) rotateX(-26deg) rotateY(var(--ry, -30deg)) rotateZ(0deg); animation-timing-function: ease-out; }
-    56% { transform: translate3d(0, -22px, 0) rotateX(-4deg) rotateY(calc(var(--ry, -30deg) + 24deg)) rotateZ(0deg); animation-timing-function: ease-in; }
-    70% { transform: translate3d(0, 0, 0) rotateX(-26deg) rotateY(var(--ry, -30deg)) rotateZ(0deg); animation-timing-function: ease-out; }
-    80% { transform: translate3d(0, -7px, 0) rotateX(-20deg) rotateY(calc(var(--ry, -30deg) - 6deg)) rotateZ(0deg); animation-timing-function: ease-in; }
-    100% { transform: translate3d(0, 0, 0) rotateX(-26deg) rotateY(var(--ry, -30deg)) rotateZ(0deg); }
-  }
-  @keyframes dieGlow {
-    0% { filter: drop-shadow(0 0 0 rgba(0,240,255,0)) drop-shadow(0 0 0 rgba(255,0,170,0)); }
-    42%, 70% { filter: drop-shadow(0 0 10px rgba(0,240,255,.9)) drop-shadow(0 0 20px rgba(255,0,170,.45)); }
-    56%, 80% { filter: drop-shadow(0 0 4px rgba(0,240,255,.4)) drop-shadow(0 0 8px rgba(255,0,170,.2)); }
-    100% { filter: drop-shadow(0 0 6px rgba(0,240,255,.35)) drop-shadow(0 0 12px rgba(255,0,170,.15)); }
-  }
-  @keyframes dieShadow {
-    0% { opacity: 0; transform: scale(.3); }
-    42% { opacity: .9; transform: scale(1); }
-    56% { opacity: .3; transform: scale(.6); }
-    70% { opacity: .8; transform: scale(.95); }
-    80% { opacity: .4; transform: scale(.75); }
-    100% { opacity: .6; transform: scale(1); }
-  }
-  @keyframes dieRoll2 {
-    0% { transform: translate3d(var(--fx, 0px), -120px, 0) rotateX(614deg) rotateY(calc(var(--ry, -30deg) - 500deg)) rotateZ(160deg); animation-timing-function: cubic-bezier(.5, 0, .9, .6); }
-    42% { transform: translate3d(0, 0, 0) rotateX(-26deg) rotateY(var(--ry, -30deg)) rotateZ(0deg); animation-timing-function: ease-out; }
-    56% { transform: translate3d(0, -22px, 0) rotateX(-4deg) rotateY(calc(var(--ry, -30deg) + 24deg)) rotateZ(0deg); animation-timing-function: ease-in; }
-    70% { transform: translate3d(0, 0, 0) rotateX(-26deg) rotateY(var(--ry, -30deg)) rotateZ(0deg); animation-timing-function: ease-out; }
-    80% { transform: translate3d(0, -7px, 0) rotateX(-20deg) rotateY(calc(var(--ry, -30deg) - 6deg)) rotateZ(0deg); animation-timing-function: ease-in; }
-    100% { transform: translate3d(0, 0, 0) rotateX(-26deg) rotateY(var(--ry, -30deg)) rotateZ(0deg); }
-  }
-  @keyframes dieGlow2 {
-    0% { filter: drop-shadow(0 0 0 rgba(0,240,255,0)) drop-shadow(0 0 0 rgba(255,0,170,0)); }
-    42%, 70% { filter: drop-shadow(0 0 10px rgba(0,240,255,.9)) drop-shadow(0 0 20px rgba(255,0,170,.45)); }
-    56%, 80% { filter: drop-shadow(0 0 4px rgba(0,240,255,.4)) drop-shadow(0 0 8px rgba(255,0,170,.2)); }
-    100% { filter: drop-shadow(0 0 6px rgba(0,240,255,.35)) drop-shadow(0 0 12px rgba(255,0,170,.15)); }
-  }
-  @keyframes dieShadow2 {
-    0% { opacity: 0; transform: scale(.3); }
-    42% { opacity: .9; transform: scale(1); }
-    56% { opacity: .3; transform: scale(.6); }
-    70% { opacity: .8; transform: scale(.95); }
-    80% { opacity: .4; transform: scale(.75); }
-    100% { opacity: .6; transform: scale(1); }
-  }
   .ms-ban { background: var(--surface2); border: 2px solid var(--accent); border-radius: 10px; padding: 10px 12px; margin: 8px 0 12px; }
   .ms-t { font-weight: 800; letter-spacing: .6px; color: var(--accent); font-size: 14px; }
   .ms-dots { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
@@ -613,7 +547,6 @@
   .wcell.empty { opacity: .55; animation: none; }
   #genResult.nores { display: none; }
   #tp-about { max-width: 860px; margin-left: auto; margin-right: auto; }
-  body.dice-wait .logo .die, body.dice-wait .logo .cube, body.dice-wait .logo .die::after { animation: none !important; opacity: 0; }
   @media (max-width: 860px) {
     #cardGen { display: block; }
     #cardGen .gen-right { position: static; margin-top: 14px; }
@@ -623,21 +556,114 @@
   }
   @media (max-width: 560px) {
     #topbar { flex-wrap: wrap; right: 64px; }
-    #ownerLogo { right: -52px; }
     body { padding-top: 96px; }
     #topbar .dl-btn .dl-long { display: none; }
     .stepbar li { font-size: 11px; padding: 6px 2px; }
+  }
+  /* ---- v2 design: charcoal and gold, one column, flat. Everything below overrides the older rules above on purpose. ---- */
+  :root { --bg: #1E2124; --surface: #262A2E; --surface2: #2C3136; --border: #3A3F45; --bd2: #5B6168; --text: #ECE9E1; --muted: #A3A8AF; --accent: #E3B83F; --accent2: #8E959E; --success: #78C698; --ok-text: #78C698; --warn-text: #E3B83F; --bad-text: #EE8A8F; --danger: #EE8A8F; --gold: #E3B83F; --goldtx: #E3B83F; --btn: #E3B83F; --btntx: #1E2124; --pip: #1E2124; --field: #1A1D20; }
+  body.light { --bg: #FFFFFF; --surface: #F7F6F3; --surface2: #F1EFEA; --border: #DEDAD1; --bd2: #B3AEA2; --text: #1F2328; --muted: #5A6068; --accent: #8A6200; --accent2: #6B7078; --success: #2A6E45; --ok-text: #2A6E45; --warn-text: #8A6200; --bad-text: #A12A33; --danger: #A12A33; --gold: #C9971C; --goldtx: #8A6200; --btn: #D6A21E; --btntx: #1F2328; --pip: #FFFFFF; --field: #FFFFFF; }
+  body, body.light { background: var(--bg); padding: 0 0 28px; }
+  .container { max-width: 780px; padding: 0 16px; }
+  #topbar { position: static; max-width: none; margin: 0 0 14px; display: block; border-bottom: 1px solid var(--border); }
+  #topbar .tb-in { max-width: 780px; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
+  #brandDie { width: 34px; height: 34px; flex: none; display: block; }
+  #brandDie .db { fill: var(--gold); }
+  #brandDie .dp { fill: var(--pip); }
+  #topbar h1, body.light #topbar h1 { font-size: 21px; font-weight: 700; letter-spacing: .16em; color: var(--goldtx); background: none; -webkit-text-fill-color: currentColor; filter: none; margin: 0; line-height: 1.2; }
+  #topbar .tb-sp { flex: 1; }
+  #topbar .dl-btn { background: transparent; color: var(--text); border: 1.5px solid var(--bd2); }
+  #menuBox { position: relative; }
+  #menuBox > summary { list-style: none; cursor: pointer; border: 1.5px solid var(--bd2); border-radius: 6px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; letter-spacing: .05em; color: var(--text); white-space: nowrap; }
+  #menuBox > summary::-webkit-details-marker { display: none; }
+  #menuBox > summary::marker { content: ""; }
+  #menuBox .menu-list { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 190px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+  #topbar .menu-list button { width: 100%; text-align: left; padding: 9px 12px; font-size: 13px; border-radius: 6px; }
+  header, body.light header { text-align: left; margin: 0 0 6px; }
+  #statusLine { justify-content: flex-start; }
+  #statusLine #netTag, #statusLine #selfTestBadge { text-align: left; }
+  #guideNew { text-align: left; }
+  button { background: var(--btn); color: var(--btntx); border: 1.5px solid transparent; border-radius: 6px; padding: 10px 16px; font-weight: 700; letter-spacing: .04em; box-shadow: none; transition: none; }
+  body.light button { color: var(--btntx); }
+  button.secondary, .theme-toggle, .print-btn, .guide-btn, .size-btn, body.light button.secondary, body.light .theme-toggle, body.light .print-btn, body.light .guide-btn, body.light .size-btn { background: transparent; color: var(--text); border: 1.5px solid var(--bd2); border-radius: 6px; padding: 8px 14px; font-size: 13px; }
+  button.small, button.secondary.small { padding: 6px 12px; font-size: 12.5px; }
+  button.btn-clear, body.light button.btn-clear { background: transparent; color: var(--bad-text); border: 1.5px solid var(--bad-text); }
+  button.btn-test, body.light button.btn-test { background: transparent; color: var(--text); border: 1.5px solid var(--bd2); }
+  .guide-btn.on, body.light .guide-btn.on { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  button.copied { box-shadow: none; }
+  button.tap:active, button.tap.pop { box-shadow: none; animation: none; }
+  #forgeBtn:not(:disabled) { animation: none; }
+  .tag, body.light .tag { border: 0; background: none; padding: 0; border-radius: 0; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; margin-left: 8px; }
+  .tag-secret, body.light .tag-secret { color: var(--bad-text); font-weight: 800; }
+  .tag-public { color: var(--ok-text); }
+  .tag-rec, body.light .tag-rec { color: var(--warn-text); background: none; }
+  .tag-note, body.light .tag-note, .tag-ro { color: var(--muted); background: none; }
+  .card, body.light .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 18px; box-shadow: none; }
+  .card h2 { font-size: 18px; letter-spacing: 0; color: var(--text); margin-bottom: 8px; }
+  .card h2::before { display: none; }
+  .sub { font-size: 15px; margin: 0 0 16px; }
+  textarea, input[type="text"], input[type="password"], input[type="number"], select, .result, .wcell, body.light textarea, body.light select, body.light input[type="text"], body.light input[type="number"], body.light input[type="password"], body.light .result, body.light .wcell { background: var(--field); color: var(--text); border: 1.5px solid var(--border); border-radius: 6px; }
+  .radio-group label { background: transparent; border: 1.5px solid var(--bd2); border-radius: 6px; }
+  .radio-group input:checked + span { color: var(--text); }
+  .radio-group label:has(input:checked) { background: var(--text); }
+  .radio-group label:has(input:checked) span { color: var(--bg); }
+  .strip, body.light .strip { background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+  .strip b { color: var(--text); }
+  .strip .linklike { color: var(--goldtx); }
+  .tabs, body.light .tabs { background: var(--bg); border-bottom: 1px solid var(--border); gap: 2px; margin: 0 0 20px; padding-top: 0; }
+  .tabs button, body.light .tabs button { flex: 0 0 auto; background: transparent; color: var(--muted); border: 0; border-bottom: 3px solid transparent; border-radius: 0; margin: 0 0 -1px; padding: 12px 16px; font-size: 14.5px; letter-spacing: .01em; box-shadow: none; opacity: 1; }
+  .tabs button small, body.light .tabs button small { display: none; }
+  .tabs button:hover, body.light .tabs button:hover { background: transparent; color: var(--text); }
+  .tabs button[aria-selected="true"], body.light .tabs button[aria-selected="true"], .tabs button[aria-selected="true"] small { background: transparent; color: var(--text); border-bottom-color: var(--gold); }
+  .tabs .lg, .tabs .sh { text-transform: lowercase; display: inline-block; }
+  .tabs .lg::first-letter, .tabs .sh::first-letter { text-transform: uppercase; }
+  .stepbar { gap: 6px; margin: 0 0 20px; }
+  .stepbar li, body.light .stepbar li { background: none; border-radius: 0; border-top: 3px solid var(--border); padding: 6px 0 0; text-align: left; font-weight: 500; color: var(--muted); font-size: 13px; }
+  .stepbar li.done, body.light .stepbar li.done { color: var(--text); border-top-color: var(--gold); }
+  .stepbar li.cur, body.light .stepbar li.cur { background: none; color: var(--text); font-weight: 700; border-top-color: var(--gold); }
+  #cardGen { display: block; }
+  #cardGen .gen-right { position: static; max-height: none; overflow: visible; background: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; padding: 18px 0 0; margin-top: 18px; }
+  @media (min-width: 861px) { #cardGen .gen-right { max-height: none; overflow: visible; } }
+  .seed-title { color: var(--muted); letter-spacing: .12em; }
+  #wordGrid, #cardGen .gen-right #wordGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  @media (max-width: 420px) { #wordGrid, #cardGen .gen-right #wordGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .wcell { animation: none; box-shadow: none; font-size: 18px; font-weight: 700; padding: 10px 12px; }
+  .entropy-bar, body.light .entropy-bar { background: var(--border); }
+  .entropy-fill { background: var(--gold); background-image: none; }
+  .fp { color: var(--text); }
+  #fpIcon { box-shadow: 0 0 0 1px var(--border); }
+  .term { border-bottom-color: var(--muted); }
+  .dict-item dt, #about code, .wd-key { color: var(--text); }
+  #about details, .tools details, #advanced, #moreBox, #wdBox, #demoBox, #msBox { background: transparent; border: 1px solid var(--border); border-radius: 8px; }
+  #moreBox #wdBox, #moreBox #demoBox { background: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
+  #onlineWarn, #fatalWarn, .ms-test, .demo-ban { background: #FF8A90; color: #1a0000; }
+  .ms-fill { background: var(--gold); }
+  .rc-bar { background: var(--gold); }
+  .forge-note { border-left-color: var(--border); }
+  #topbar .dl-btn, #menuBox > summary { flex: none; white-space: nowrap; }
+  @media (max-width: 560px) {
+    #topbar .tb-in { padding: 10px 12px; gap: 8px; }
+    #brandDie { width: 28px; height: 28px; }
+    #topbar h1, body.light #topbar h1 { font-size: 16px; letter-spacing: .1em; }
+    #topbar .dl-btn, #menuBox > summary { padding: 6px 9px; font-size: 12px; }
   }
 </style>
 </head>
 <body class="dice-wait">
 <div id="topbar">
+<div class="tb-in">
+<svg id="brandDie" viewBox="0 0 64 64" aria-hidden="true"><rect class="db" x="2" y="2" width="60" height="60" rx="14"/><circle class="dp" cx="18" cy="18" r="5.6"/><circle class="dp" cx="46" cy="18" r="5.6"/><circle class="dp" cx="32" cy="32" r="5.6"/><circle class="dp" cx="18" cy="46" r="5.6"/><circle class="dp" cx="46" cy="46" r="5.6"/></svg>
+<h1>VOIDFORGE</h1>
+<span class="tb-sp"></span>
+<button class="dl-btn small" onclick="downloadTool()">DOWNLOAD<span class="dl-long"> FOR USB</span></button>
+<details id="menuBox"><summary>MENU &#9776;</summary>
+<div class="menu-list">
 <button class="guide-btn" id="guideBtn" onclick="toggleGuide()" aria-pressed="false">GUIDE ME</button>
 <button class="size-btn" id="sizeBtn" onclick="toggleSize()" aria-pressed="false">TEXT A+</button>
 <button class="print-btn" onclick="printSeed()">PRINT SEED</button>
 <button class="theme-toggle" onclick="toggleTheme()">DARK</button>
-<button class="dl-btn" onclick="downloadTool()">DOWNLOAD<span class="dl-long"> FOR USB</span></button>
-<img id="ownerLogo" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUEBAQEAwUEBAQGBQUGCA0ICAcHCBALDAkNExAUExIQEhIUFx0ZFBYcFhISGiMaHB4fISEhFBkkJyQgJh0gISD/2wBDAQUGBggHCA8ICA8gFRIVICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICD/wAARCAB4AHgDASIAAhEBAxEB/8QAHAAAAgMBAQEBAAAAAAAAAAAAAAYEBQcBAwII/8QAPxAAAgEDAgQDBQUGAwkBAAAAAQIDAAQRBSEGEjFBE1FhFCIycYEHQpGhsRUjUoLB0RZiciQzQ1SSssLw8eH/xAAcAQACAwEBAQEAAAAAAAAAAAAFBgMEBwIAAQj/xAA0EQABAwIEAggFBAMBAAAAAAABAAIDBBEFITFBEhNRYXGRocHR8CIygbHhBhRC8SMzUmL/2gAMAwEAAhEDEQA/AGeijFdr87LdFyijvUW/v7XTLJ728k5IlIXYZJYnCgDzJNdMY57g1ouSuHODAXONgFKqr1HW7TTxNGg9quokMjwRuoKDzdieVAeg5iMk4ANK2ta3ctqkEc13LBaGMtJZw7BvJXlHvEnOSEIA2GWycV+mRT6veR2k6ww2KP4vs8KiNW9CB1Pr3z1psp8AETOfWHIC9h6+nelubGuY8Q0ouSbXPp77Ew2nEGu6hE1xZ6H7roohjZwVL53DODkYHcLjI75qY+s61ajxLzQFMQzzG2uw5X5hlX9aeuDfYHuXsDanx5YSIyXwnu4ZV5R0wRnOe1StT02HVtFmuYItPOq2ztJdLaPty75yD1Of61xyoJo+ayJts8ruvlte+u+ik50sUvKkkN8s/htnva2m2qRLTiLTLtoU55rd5zyxi4iZA7fwh/hY+gJz2q2zWX8S6LFaXftVvbkwTDEsKn3X79Ox6HPY4Ipn4M4ij1KSDS9SufGuCrLHN8LyFRnkkXs/LvkZDYY7HaoavCWftxV0ly3cHUf0pIMULJ3U1VYOGhGhTTmgmrtIIUHuRqPpXklxayzGFSOfJGCvWlni6Ai3PvoFU5zXatXtbeUHAAPmtQJ7V4N/iTzr1wVI2Vrsl40VzNFdKVdozRQK+Ly4SFUszBVUZJbYAeZrN9S4iW9mRYhHJqsjB7WJ8kwW7sVjYJ05nG5J3wQNhnLTxHcI7waZIT7NKjz3SqcF4kwBHnsHdlB/yhh3rNNf1jRbHV70pOTxRqjKFRYucLkAKXJ2RQBso36bYp9/TdAA39y8XJ06hv79Ul49XHi/bsNgNffvwRqt5Jca1NLOzl3IwCc8oO+Og7k9qt9Gke1uoru45VRf4tsD+9Vmo3NtbSC00mEyRxW6lbqYgLCh3VmJHkeg6kV5IqFw128t3cEZEC4VvQkdI1+eWPl3pvljbJGWEZHJKsUjo5A9pzC1zh7ijS4tWS7tpUungJKR+IYyWx18yN/rVtq/H2jOJ7HRpFjluZD4wtYedpQVBKkjJzzFvIEGsjiS29je81q7ttO0mI5kZiVhB8sfFK3oc58qUtW+0XX0WGPhKybRbEOV8aaJJJLgdFOGXlRcb4UdT12oDFgzWNMbXkNPZfv/AAmB2KumcJDHdw7bdyc+L5tQinW51S8t+HbMKfDN7cgSSjPxiJOZsdsgdqW4+J+FYFuYP8azXE68skEw09lVHB9wiQEHmU+8RjGARnc4o4+HF4vvrvXuJNWZZcAPIq9MAAIi9lAx6Cqi94HlltWu+GL32zwSRNbTMOcY7g9D8tqK0z6OJgpwbAZaZd5VOpo62RxqXC5Oeuf0C33SvtW0K/Cxpqdncy8uWWIsr9CSRGygnp0Xm+tMelX1s6repJ4kUiEowHXP6V+LUmJkwyGOWNtwRgqQf1zWzfZlxrqN9q9pot+XaKNEjDxhmeUZ5P3mSQTllIYY2Ug52oFin6ZhZE6Wlytnbq6lfw7HnF/KqRkcrjIrd9LAa7Z2O+PPqTVyQGBBGQetUN1aNalWD8yk7HoRU/Tbp50aOQ5ZNwfMVnLxf4gnGZnEOY05KNdQeBNgfCdxRU++j57Ut3TeivNNwpYnFzVWAVw13oK5XlIkzX5X/wAWNaIBI0unxvyZwQElckk9lxv8wKzqLRdLXiqW5W3judSvvHu53SVlitOeNv3cYbHMU3POxxuNhT1xrqdvpd9etdXAtBcaciRzEjDBZWLLge8zcxjwo67+VZBew3+q3C2qq+nWE0LSPGd7iWMLnMh7cx+6PPfNazgzg2hjLjYWWcYlDJLWvaxt80/DStV1qzsLW2s5dM0q1zIbiQ8gf3mIZObG3vgeI2CSNhuDUiQ8PaFNFpc92kd1O6xpbRjxZIyx/wB5MOYFVwckk7+tYhY3mo2s1/psd/Kba5ja0aJ3LLhsZIGcZGBv6Vfw8OQXBVLGKX2OJV8YIctM43OdjhfodxuKMSBrSA52RQ6GF0gcQ3RWWpcRJrHF8NvOLa5tNNZktrdJVkRmzytITgZJABx0Hanays/2/b32myRR26RxKVGPdQnOPluM0h3ehNNp/h22hukqSCY38uPECjn9wBQqgEvk4zgIvrTbwIt3Dpt/cSnnkklSKNHPxFQd/kOag+JtaWiVrsx6plwd7heEtyO/TkrGbSbWDh5bhFPPFGEvLdN+YqMFh6j8xWZWb31xJfJbavLp6FmMYjuFQduQFOUlwfezvgbeW+72kVqGaa5uZBcHaRIBhW2/Wq644O0+3me+tLBL6CVGY2jJhw3mo7+o/wDlDaLEGROcJBe/vf7oliFE+dreWbW7fJYbbaL+3uLfDv7v2GSeONmnWPnUuwADMux5W6kjpnNbJwl9kz6Fex6nqF57S8ZOI7dWVO3VsgncDIxisp1q4e043t9TK8kd1EQ0YGByqxQjHyxX6Y4I1aC54Qso5bgme1BtpTI5YllOxyeuVKn611j1dVwUzHQGzXCxA9deruQvD6OnMzhIzicDrn26dalT3M1y4MrDbsBgVaabAsURlDhy/l0AqBfyQSXAMODt7xHc1K0nm5Zc/DkfjWbv+TLJOMv+rLJWM+DbyAj7poryu3C2j56t7ooqOPRRQNNiquivmo1/fQaZp1xf3PMYoE5iFGWbyUDuScAepFSsaXuDWjMqw5waCTss44yuluNcvp7iCKUafy2sHNlhGSokkbcYDHKDbsOvWlvU15eJtVkxzhbViD6ZUV66/cTmGRLp1N1NI8k4Q5VZGOWAPcKOVM/5agyzCa4tJzkm8hktiR/EVOPzWtGp4uWxrRoBbuHnYoA53TqTfvPlcLL7Rc8R4boJkZj8yM/qK16OxdNPil06TwLy12BH3h61nkNlFHxNPFKcGaNGX0OP7in/AErUfFaOYbFyVZT23xRPE3lwaWbD35odhEIj5gduT9/6TJwxqWoa5dTWWrKMquG2ByPP8Kl2VmtzxJG1vEsdqkzEBegUdT9T3rsEKaPoV3dKV9sutlKndEH/ANqFpmpyW00UcOQPZuTbsSOtLLncfE6PIe7pjDeEAO1UnUFOnaMk97P7JHlnm7vhieUAdSTS7Z391qdvjTbSYeC/PDI0jM8fnkjb6Zr6+0yW5trqzZ5WktvYyBsd3DYZvnymsz/xXxDdaj7NZzsmlQKMxW4KxouMAsR1PqetM+FUMcsAmkzJ7gk/F8SmjnMMeQHeU+8a8PrrFl+01j8PW7dTI0C5j9pTq7KpJBbA5sAgnB2NNf2Vzm8Mtlz7TWsFyCPMc0bH12VKxGNNa1LULW8tnY2sXKCxnCYbIAzk53JGMde1a39mdw+l8S6fa3ICTLLcaXKOgG5ZR/1x4/mrjHKdoonMZsDb6Z+SjwiqkM7nu16fDzWzrpOG3m29FqwhiSGMJGMD9a60kaLzO4X5moFxemQFIsqp6nuayK7n6p2vJLkV83s/iyhF3Re/maKi4oqQC2SuNaGiwXaUeM7zlk0+xXcI5v5RnqIyBGPrIyn5Iab6y3ibUluNf1bwzzLHJFZq3b92pdwP55MH1WjGERcc/F/yL+Xnf6KlWOHAG9J/P4STr1wVKKTk4Z2Y+eagWMz3XC0ksLETW87SRN5EMGFeXEzl42VW3KquPmalcPRLFoM6HtIwP4CtDa0MgDt7hLbnl9SWbWKreJlBtLPiS1TKDaVV7Kx3HzV8j614WupusYlt3yfiHzqRBL4NzNpk6eLp92GEq948j41+nUd8DyqggtWtp5bG4OJIHMZZT3HQ/UYNXGRgs4Hbadn4VJ8rhLxt317R6jzWw2V+97bQzrmSC4iWRVP3c9R9DkVY8NwyJd3B5T4qssYAG43yevTtSx9nd+t1dRaHPtLAjlG/jTOfyNOaRSWOpliiMkx5sscZbHY9u35+VKdSzlSOhtbo7E2QSc2Jsg+vavXjC0jv9NZJ4GQrlxv8DDqcjoem/rWFahNfyt7Ab6S4SNiVikYkr9ehHlmtu191bSpXNs8aEYUyvzb4wceWwWsU1Bn8S4t9P8N7lvdllLDlhB2wPNiPw+dHMDLmsOeXglrHWtc5uWfipvBdoq8Uae84JeJ1kRSBy5HQ57kUz6leSafx7rawjlliv2uYgDvzgrKB9SMfzUr8O6kbbXYLPUeUXUWGWVBtIPIjz/WrzWCJeNtcdGTmF54iFBgDCr/ardS3inLnacPmq1FZsIYNbn7L9BW9xFeWsV3A/PDOgkRvNWGR+Rr1ApJ+z3Vkn0uXRXb97Y4eIHvA5JXH+luZfkF86dqymrpzTzOiO2nZt4J7gl5sYcu96KKKqKdfFzOtraTXTjKwRtKf5QT/AErC72Uww263DHLQhpGPd2AZj8yzNW6TQx3FvLbTLzRSo0br5qRgj8DWGcT6beaSW07Ug/NH7sF0y4S5VR7rA9OblwGXrkEjamnACwlzNzbuz+yD4gS0h21vfeljUQ0tyGZdmwwB/KrbTF8PQnZ9g7sw/Sot6mb0DGSuF5e5OOn/AL51PumFppkNt98pgjyPenB7rtaxBo28L3PKqIIDNqauu3hpzZ8iDtVTrsTR8ZERBUSaGJxznAJxy/8AjimGxHIl1L/lCiqTX3Q69p7S/C9mA2fR2qzE48wjqt5qpOwcoH/0D5Jg09jo+rWuqbRFSYiCdhzqV3Plkj8KYtL494eutOWx1uYW1wq8sscmxVx5fXO9LOppC2nQx26GQSABADnNV2vaVcaHYRs8kUsyxjmeSFWZTjOzEZ26b5qhyIamwl+Y6bHLv6URfLNT3dF8ozO+vcp/F/GtrLAunaJ+8CgKuBkD5/jn1pGOtahpsUUEJhiOcyskeWY9clj1NSbSBk0+e6my9wzZy3UkgVD1mxaC1hTOZQpkYf8Av1o1TxQxgQgXHXul2qknfeovY222CkRRGW4/ar6n7Re8wMYRchRnqx2A27DfNMVpO66j4sjl2kbmZm6tnqapYVCWkD/ckXIPzFWCTIFjc9VOD8vOvTDiFl1T/CeLfVaDoN9+z+JdNu0IVRMsEh845CEIPoGMbfy1tWPxr86WcrzvEqZLK8SAeZ8VMf0r9Gndm+ZrOv1BGGujdvmO63qnPDn8XEBpkffcud6KB13opWRZFU3FWmjVeEtTsvAE8jQM8SY6yL7yY9cgYq5o3xUkMhikbI3UG64kYJGFh3X520xRe313qp96IScsX+pt8/ML+Z9K8dRnEt2wyOVNhimrXk8DiPWbdIVhZLt7hkVce66JyyY8jg7+YPekaVSkh5tvOtThcJSJB0C31CU33Yzh6zdTIJP9mdB95gap9VPi8UCPYi1t44u3xHLH/uq2tmhhhlvbslLWBeZz5+Sj1PQCluya4vb65vpk/e3LlyO2Sen02H0q5G2xc73c/hVJXX4Gdd/oPytJsLRLu8s2PKVTDjJJBx6d6p+LQdV1aLTYhnnfMh8gCM/0/GmPSrmG006a4k950TlGOuw/vVdwvp82q6tPqMy4MjBR5Im5/Ogcbyx7pj/HTtKPysD2iIfy17Al+60V49YezjTKZDgeXl/SqziCxWO9hVwS5HvZ8ulaDO8U3E92qAFsnkPnj/8AP0pW4jtJf2xy8hcmNem+Cc7Vdp6lzpAHdCp1VK0RHhGpVBptkZ9DNg28sEjCF8bNtzBfnjcDuM46GokUc8kvs/IxkB2AFO2jQx6LrMNrqMcc2kXypFfRzZ5VH3ZARurIxyG7AmtPj+zLhoXQmme/uU7wzXOUYeTYAZh6E19qcXhpTeS9nZi3j78dkPjw2SX4W6tyPZt/aWPs74We9ng167GLO3bmtl/5iQbeJ/oXfHm2/QDOuDavlI0ijWOJFREAVVUYCgdAB2FfVZ1X1z6yUyOyGw6Am2lp207OEa7ozvRRRQ9W0CuM6xxtJIwRFBZmY4AA6k0UV0wXcAuXmwJWO6pHb8Q311q7+JFLdSlrSdHKukKryx4PYMAWK9Pe3pUvodRssie2t73l/wCIWaJz8wAQfmMUUVpETzHJyh8oyH0yQB0DXQ8zQ69t881SzWl9q7qbh8RxEmO3gX3I/XfqfU/lVjaW76fHn2XmSPDMSN9jRRV+SVxPBsqcUDWgyDVM6+Bc6L4tsSUkyD6edMHC8DwWMxAA58YoooFUkta5o0ujcPxcLjrZKt1cGy4slj5slAS2PMnIpiNjDKou7iP94BzH8O9FFSVPwtjI3AXFOeIvB2KqoUF/qMrMgaERsGUHYqRgj65rReA9Qa/4Qt4pZnluLFmtJWf4iU+En5oVNFFUcUaDSuv/ABIsvkR/zNPTf34JpoOe1FFJiKrmDmiiivq8v//Z" width="44" height="44" alt="The project owner's logo: a bloodhound in a worn cap with a Bitcoin mark" decoding="async" draggable="false">
+</div></details>
+</div>
 </div>
 <div id="tipBox" role="tooltip"></div>
 <div class="container">
@@ -651,12 +677,7 @@
     <div id="selfTestBadge" role="status"></div>
   </div>
   <header>
-    <div class="logo" id="logo" role="button" tabindex="0" aria-label="Three dice. Press to roll them again." title="Roll the dice" onclick="rollLogo()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();rollLogo();}">
-      <!-- the three dice are built by buildLogoDice() in the script: each is a real 3D cube with six pipped faces -->
-    </div>
-    <h1>VOIDFORGE</h1>
-    <div class="subtitle">DICE / COIN ENTROPY → SEED, BACKUP &amp; WALLET SETUP</div>
-    <div id="guideNew">New here? Press GUIDE ME at the top to be walked through making a seed one screen at a time.</div>
+    <div id="guideNew">New here? Open MENU at the top and press GUIDE ME to be walked through making a seed one screen at a time.</div>
   </header>
 
   
@@ -1488,13 +1509,13 @@ function updateCount(){
   if (an.level === "wait") {
     statusEl.textContent = an.msg; statusEl.style.color = "var(--muted)"; fillEl.style.width = "0%";
   } else if (an.level === "ok") {
-    fillEl.style.width = "100%"; fillEl.style.background = "#00ff9d";
+    fillEl.style.width = "100%"; fillEl.style.background = "var(--ok-text)";
     statusEl.textContent = "No obvious problems (this check cannot prove your dice or coin are random)"; statusEl.style.color = "var(--ok-text)";
   } else if (an.level === "warn") {
-    fillEl.style.width = "60%"; fillEl.style.background = "#ffaa00";
+    fillEl.style.width = "60%"; fillEl.style.background = "var(--warn-text)";
     statusEl.textContent = "Slightly unusual counts (can happen by chance)"; statusEl.style.color = "var(--warn-text)";
   } else {
-    fillEl.style.width = "30%"; fillEl.style.background = "#ff4466";
+    fillEl.style.width = "30%"; fillEl.style.background = "var(--bad-text)";
     statusEl.textContent = "Looks non-random: " + an.problems.join("; "); statusEl.style.color = "var(--bad-text)";
   }
   const bits = isCoin ? rolls.length : rolls.length * Math.log2(6);
@@ -4634,29 +4655,15 @@ try { if(localStorage.getItem("voidforge-big") === "1") toggleSize(); } catch(e)
 })();
 // ---- Rolling-dice logo and the "watch the words change" demo (v1.19.4). Display only: the demo words use a demo tag, so they are never the real seed. ----
 let demoSeq = 0, demoPrev = null;
-// The header dice: three real 3D cubes (six pipped faces each, opposite faces add to 7). Built from constants only.
-const LOGO_DICE = [
-  {fr:3, bk:4, rt:2, lf:5, tp:1, bt:6, dl:"0.14s", fx:"-46px", ry:"-34deg"},
-  {fr:5, bk:2, rt:3, lf:4, tp:6, bt:1, dl:"0s",    fx:"0px",   ry:"-30deg"},
-  {fr:6, bk:1, rt:4, lf:3, tp:5, bt:2, dl:"0.28s", fx:"46px",  ry:"-26deg"}];
-const LOGO_PIPS = {1:[4], 2:[0,8], 3:[0,4,8], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8]};
-function logoFace(cls, n){
-  let h = '<span class="f ' + cls + '" data-n="' + n + '">';
-  for(let i = 0; i < 9; i++){
-    if(LOGO_PIPS[n].indexOf(i) < 0) h += "<span></span>";
-    else h += "<i" + (((n % 2 && i === 4) || (n === 6 && (i === 3 || i === 5))) ? ' class="m"' : "") + "></i>";
-  }
-  return h + "</span>";
-}
-function buildLogoDice(){
-  const box = document.getElementById("logo"); if(!box) return;
-  box.innerHTML = LOGO_DICE.map(d => '<span class="die" style="--dl:' + d.dl + '; --fx:' + d.fx + '; --ry:' + d.ry + '"><span class="fl"><span class="cube">' +
-    ["fr","rt","tp","bk","lf","bt"].map(k => logoFace(k, d[k])).join("") + "</span></span></span>").join("");
-}
-buildLogoDice();
+// The top-right MENU holds GUIDE ME, TEXT A+, PRINT SEED and the theme switch: it closes after a choice, a click elsewhere, or Escape.
+(function(){
+  const mb = document.getElementById("menuBox");
+  mb.addEventListener("click", e => { if(e.target.closest && e.target.closest("button")) mb.open = false; });
+  document.addEventListener("click", e => { if(mb.open && !mb.contains(e.target)) mb.open = false; });
+  document.addEventListener("keydown", e => { if(e.key === "Escape" && mb.open){ mb.open = false; mb.querySelector("summary").focus(); } });
+})();
 drawSupportQr();
 buildDict();
-function rollLogo(){ document.getElementById("logo").classList.toggle("again"); }
 async function demoWordsFor(rolls, wc){
   const entLen = {12:16,24:32}[wc];
   const d = await sha256("VOIDFORGE DEMO, NOT A SEED|" + rolls);
