@@ -718,6 +718,30 @@ async function probe(w, mutated) {
       setMode('dice'); r = sheet(); if (!/as secret as your seed/.test(r.txt) || !/shred/.test(r.txt) || $('printOnly').textContent !== '' || w.document.body.classList.contains('print-seed')) fails.push('roll sheet: secret warning and cleanup');
       w.print = () => { pc.n++; pc.cells = [...w.document.querySelectorAll('#printOnly .ps-cell')].map(c => c.textContent); pc.cls = w.document.body.className; pc.txt = $('printOnly').textContent; pc.grid = (w.document.querySelector('#printOnly .ps-grid') || {}).className; };
       pc.n = 0; $('rollSheetBtn').click(); if (!/print-seed/.test(w.document.body.className)) fails.push('roll sheet: print class set while printing'); w.dispatchEvent(new w.Event('afterprint')); }
+    { // auto-clear (v1.34.0)
+      const sel = $('autoIdle'), chk = $('autoHide'), note = () => $('autoNote').textContent, now = () => Date.now(), MIN = 60000, fire = (e) => e.dispatchEvent(new w.Event('change'));
+      const arm = async () => { await run('dice', 12, D50, 'SECRETPASS'); $('verifyPass').value = 'VP'; $('reforgeWordsInput').value = 'abandon ?'; $('drillWords').value = 'abandon'; $('prInput').value = 'abandon'; $('checkAddr').value = 'bc1qx'; const ro = $('reforgeOut'); ro.textContent = 'found'; ro.style.display = ''; const co = $('childOut'); co.textContent = 'child words'; co.style.display = ''; };
+      const left = () => ['rolls', 'passphrase', 'passphrase2', 'verifyPass', 'reforgeWordsInput', 'drillWords', 'prInput', 'checkAddr'].filter((id) => $(id).value);
+      if (sel.value !== '0' || chk.checked || [...sel.options].map((o) => o.value).join() !== '0,2,5,10,30') fails.push('auto-clear: off by default with the five choices');
+      w.autoWipe('setup'); $('autoNote').textContent = '';
+      if (w.autoWipe('x') !== false || note() !== '') fails.push('auto-clear: with nothing on the page a wipe does nothing');
+      await arm(); if (w.autoWipe('because of a test') !== true) fails.push('auto-clear: a wipe with secrets reports it');
+      if (left().length || w.hasSeed() || $('childOut').textContent !== '' || $('reforgeOut').textContent !== '' || $('reforgeOut').style.display !== 'none' || !/^Wiped automatically because of a test at /.test(note())) fails.push('auto-clear: seed, rolls, passphrases, typed words, Reforge and child outputs wiped (left: ' + left().join(',') + ')');
+      if (w.autoWipe('x') !== false || !/because of a test/.test(note())) fails.push('auto-clear: a second wipe with nothing left changes nothing');
+      let cleared = 0; const ci = w.clearInterval; w.clearInterval = (x) => { cleared++; return ci.call(w, x); };
+      sel.value = '5'; fire(sel); if (!/^Auto-clear is ON: after 5 minutes with no activity\.$/.test(note()) || w.eval('autoTimer') === null) fails.push('auto-clear: choosing 5 minutes turns it on and starts the timer');
+      await arm(); w.autoCheck(now() + 4 * MIN); if (!w.hasSeed() || !left().length) fails.push('auto-clear: nothing wiped before the idle time is up');
+      w.autoCheck(now() + 6 * MIN); if (w.hasSeed() || left().length || !/^Wiped automatically after 5 minutes with no activity at /.test(note())) fails.push('auto-clear: everything wiped once the idle time is up');
+      for (const ev of ['keydown', 'pointerdown', 'input', 'touchstart', 'wheel']) { await arm(); w.eval('autoLast = 0'); w.document.dispatchEvent(new w.Event(ev, { bubbles: true })); w.autoCheck(now() + 4 * MIN); if (!w.hasSeed()) fails.push('auto-clear: a ' + ev + ' counts as activity'); }
+      sel.value = '0'; fire(sel); if (note() !== 'Auto-clear is off.' || w.eval('autoTimer') !== null || cleared !== 1) fails.push('auto-clear: choosing never turns it off and stops the timer');
+      await arm(); w.eval('autoLast = 0'); w.autoCheck(now() + 999 * MIN); if (!w.hasSeed()) fails.push('auto-clear: never means never');
+      const hide = (v) => { Object.defineProperty(w.document, 'hidden', { value: v, configurable: true }); w.document.dispatchEvent(new w.Event('visibilitychange')); };
+      hide(true); if (!w.hasSeed()) fails.push('auto-clear: leaving the tab wipes nothing while that option is off'); hide(false);
+      chk.checked = true; fire(chk); if (!/^Auto-clear is ON: when you leave this tab\.$/.test(note())) fails.push('auto-clear: the tab option turns it on');
+      hide(false); if (!w.hasSeed()) fails.push('auto-clear: coming back to the tab wipes nothing');
+      hide(true); if (w.hasSeed() || left().length || !/^Wiped automatically because you left this tab at /.test(note())) fails.push('auto-clear: leaving the tab wipes everything when that option is on'); hide(false);
+      sel.value = '10'; fire(sel); if (!/^Auto-clear is ON: after 10 minutes with no activity and when you leave this tab\.$/.test(note())) fails.push('auto-clear: the note lists both settings');
+      sel.value = '0'; fire(sel); chk.checked = false; fire(chk); w.clearInterval = ci; $('autoNote').textContent = ''; w.autoWipe('cleanup'); }
     await run('dice', 12, D50, ''); await w.showExplain(); w.clearAll(); if ($('exOut').textContent !== '' || $('explainBox').style.display !== 'none') fails.push('explain: CLEAR removes the steps and hides the box');
     { await run('coin', 12, C128, ''); await w.showExplain(); const eo = $('exOut'), t0 = eo.querySelector('.ex-body .ex-text').textContent;
       if (!t0.includes('128 coin flips') || !t0.includes('exactly 1 bit') || !t0.includes('roughly 128 bits') || !/^[01]( [01])*$/.test(eo.querySelector('.ex-mono').textContent)) fails.push('explain: coin flips are counted as 1 bit each'); }
@@ -1450,6 +1474,31 @@ const M = [
   ['stamp sheet: box numbers not padded', 'add("ps-n", ("0" + (i + 1)).slice(-2), c)', 'add("ps-n", String(i + 1), c)'],
   ['stamp sheet: area not cleaned', 'done = true; po.textContent = ""; document.body.classList.remove("print-seed"); };', 'done = true; document.body.classList.remove("print-seed"); };'],
   ['stamp sheet: print class not removed', 'done = true; po.textContent = ""; document.body.classList.remove("print-seed"); };', 'done = true; po.textContent = ""; };'],
+  ['auto-clear: idle time shortened', 'm * 60000) autoWipe(', 'm * 6000) autoWipe('],
+  ['auto-clear: wipes at once', 'if(m && (now || Date.now()) - autoLast >= m * 60000)', 'if(m)'],
+  ['auto-clear: never means wipe', 'if(m && (now || Date.now())', 'if((now || Date.now())'],
+  ['auto-clear: a key press is not activity', '["keydown", "pointerdown", "input", "touchstart", "wheel"]', '["pointerdown", "input", "touchstart", "wheel"]'],
+  ['auto-clear: a pointer press is not activity', '["keydown", "pointerdown", "input", "touchstart", "wheel"]', '["keydown", "input", "touchstart", "wheel"]'],
+  ['auto-clear: typing is not activity', '["keydown", "pointerdown", "input", "touchstart", "wheel"]', '["keydown", "pointerdown", "touchstart", "wheel"]'],
+  ['auto-clear: a touch is not activity', '["keydown", "pointerdown", "input", "touchstart", "wheel"]', '["keydown", "pointerdown", "input", "wheel"]'],
+  ['auto-clear: scrolling is not activity', '["keydown", "pointerdown", "input", "touchstart", "wheel"]', '["keydown", "pointerdown", "input", "touchstart"]'],
+  ['auto-clear: tab hidden ignored', 'if(document.hidden && document.getElementById("autoHide").checked)', 'if(false)'],
+  ['auto-clear: tab option ignored', 'if(document.hidden && document.getElementById("autoHide").checked)', 'if(document.hidden)'],
+  ['auto-clear: wipes when the tab is shown', 'if(document.hidden && document.getElementById("autoHide").checked)', 'if(!document.hidden && document.getElementById("autoHide").checked)'],
+  ['auto-clear: child seed left on screen', 'clearChild(); hideExplain();', 'hideExplain();'],
+  ['auto-clear: typed fields left', 'for(const id of AUTO_FIELDS){ const e = document.getElementById(id); if(e) e.value = ""; }', ''],
+  ['auto-clear: Reforge result left', 'ro.textContent = ""; ro.style.display = "none";', ''],
+  ['auto-clear: seed not wiped', 'msReset(); wipeSeed(); clearChild();', 'msReset(); clearChild();'],
+  ['auto-clear: reason not shown', '"Wiped automatically " + why', '"" + why'],
+  ['auto-clear: wipes when there is nothing', 'if(!autoHasSecrets()) return false;', ''],
+  ['auto-clear: timer never starts', 'if(m && !autoTimer) autoTimer = setInterval(() => autoCheck(), 5000);', 'if(m && !autoTimer) autoTimer = null;'],
+  ['auto-clear: timer never stops', 'if(!m && autoTimer){ clearInterval(autoTimer); autoTimer = null; }', 'if(!m && autoTimer){ autoTimer = null; }'],
+  ['auto-clear: note leaves out the tab option', '(h ? (m ? " and" : ":") + " when you leave this tab" : "")', '""'],
+  ['auto-clear: note joins badly', '(h ? (m ? " and" : ":") + " when you leave this tab" : "")', '(h ? ":" + " when you leave this tab" : "")'],
+  ['auto-clear: off note dropped', ': "Auto-clear is off.";', ': "";'],
+  ['auto-clear: 30 minutes missing', '<option value="30">30 minutes</option>', ''],
+  ['auto-clear: choice not wired', 'aria-label="Wipe after no activity for" onchange="autoClearSet()"', 'aria-label="Wipe after no activity for" onchange=""'],
+  ['auto-clear: tab option not wired', 'id="autoHide" onchange="autoClearSet()"', 'id="autoHide" onchange=""'],
   ['roll sheet: one box short', 'for(let i = 1; i <= need; i++)', 'for(let i = 1; i < need; i++)'],
   ['roll sheet: boxes not numbered', 'add("ps-n", String(i), c);', 'add("ps-n", "", c);'],
   ['roll sheet: ignores coin mode', 'const coin = getMode() === "coin", wc', 'const coin = false, wc'],

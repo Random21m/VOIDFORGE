@@ -894,6 +894,13 @@
     <div id="address" data-g="3 4 5" style="margin-top:6px; font-size: 13px; word-break:break-all; color:var(--muted);"></div>
    </div>
    <div class="gen-bottom">
+    <details id="autoClearBox" style="margin-top:8px;">
+      <summary>Auto-clear: let the page wipe itself<small>Optional. Off unless you turn it on.</small></summary>
+      <p class="hint" style="margin:8px 0 0;">Off by default. When on, VOIDFORGE wipes the seed, rolls, passphrase and results without asking, so words are not left on the screen if you walk away. <b>Write your words down first:</b> a wipe cannot be undone. Nothing about this setting is saved; it is off again when the page reloads.</p>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;"><label for="autoIdle" style="font-weight:600;">Wipe after no activity for</label><select id="autoIdle" aria-label="Wipe after no activity for" onchange="autoClearSet()"><option value="0">never</option><option value="2">2 minutes</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="30">30 minutes</option></select></div>
+      <label style="display:flex; gap:8px; align-items:center; margin-top:8px;"><input type="checkbox" id="autoHide" onchange="autoClearSet()"> Also wipe when I switch to another tab or window, or the screen locks</label>
+      <div id="autoNote" class="hint" aria-live="polite" style="margin:8px 0 0;"></div>
+    </details>
     <details id="drillBox" data-g="5" style="display:none; margin-top:8px;">
       <summary>Restore drill: prove your paper backup works<span class="tag tag-rec">RECOMMENDED</span></summary>
       <p class="hint" style="margin:8px 0 0;">Write the words on paper first. Then press START DRILL: the words are hidden from this screen, and you type them back <b>from your paper</b>. That tests the paper, not your memory of the screen. Nothing is stored anywhere.</p>
@@ -4464,6 +4471,36 @@ function wipeSeed(){
   safeCopy("").catch(()=>{});
   updateCount();
 }
+
+// Auto-clear (v1.34.0): optional, off at every page load, nothing stored. Wipes the secrets without asking after idle time or when the tab is hidden.
+const AUTO_FIELDS = ["rolls", "passphrase", "passphrase2", "note", "phrase", "verifyPass", "verifyRecorded", "checkAddr", "drillWords", "drillPass", "prInput", "reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "wdWords", "wdFlips", "wdFind"];
+let autoLast = Date.now(), autoTimer = null;
+function autoTouch(){ autoLast = Date.now(); }
+["keydown", "pointerdown", "input", "touchstart", "wheel"].forEach(e => document.addEventListener(e, autoTouch, {capture: true, passive: true}));
+function autoMinutes(){ return parseInt(document.getElementById("autoIdle").value, 10) || 0; }
+function autoHasSecrets(){ return hasSeed() || AUTO_FIELDS.some(id => { const e = document.getElementById(id); return !!(e && e.value); }); }
+function autoWipe(why){
+  if(!autoHasSecrets()) return false;
+  reforgeStop(); msReset(); wipeSeed(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
+  for(const id of AUTO_FIELDS){ const e = document.getElementById(id); if(e) e.value = ""; }
+  const ro = document.getElementById("reforgeOut"); ro.textContent = ""; ro.style.display = "none";
+  updateCount(); autoTouch();
+  document.getElementById("autoNote").textContent = "Wiped automatically " + why + " at " + new Date().toLocaleTimeString() + ".";
+  return true;
+}
+function autoCheck(now){
+  const m = autoMinutes();
+  if(m && (now || Date.now()) - autoLast >= m * 60000) autoWipe("after " + m + " minutes with no activity");
+}
+function autoClearSet(){
+  autoTouch();
+  const m = autoMinutes();
+  if(m && !autoTimer) autoTimer = setInterval(() => autoCheck(), 5000);
+  if(!m && autoTimer){ clearInterval(autoTimer); autoTimer = null; }
+  const h = document.getElementById("autoHide").checked;
+  document.getElementById("autoNote").textContent = (m || h) ? "Auto-clear is ON" + (m ? ": after " + m + " minutes with no activity" : "") + (h ? (m ? " and" : ":") + " when you leave this tab" : "") + "." : "Auto-clear is off.";
+}
+document.addEventListener("visibilitychange", () => { if(document.hidden && document.getElementById("autoHide").checked) autoWipe("because you left this tab"); });
 
 // ---- Multisig wizard: collect M-of-N public keys one at a time, wiping each seed after its key is saved ----
 const msEl = (id) => document.getElementById(id);

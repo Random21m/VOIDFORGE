@@ -287,6 +287,32 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     setWords(12); r=sheet(); ok(r.cells.length===128,'roll sheet: 128 boxes for 12 words of coin flips');
     setMode('dice'); r=sheet(); ok(/as secret as your seed/.test(r.txt)&&/shred/.test(r.txt)&&t.$('printOnly').textContent===''&&!t.d.body.classList.contains('print-seed'),'roll sheet: warns that a filled sheet is secret, and is cleaned up after printing');
     ok(!!t.$('rollSheetBtn')&&/printRollSheet/.test(t.$('rollSheetBtn').getAttribute('onclick')),'PRINT ROLL SHEET button is on the page'); }
+  { // Auto-clear (v1.34.0): optional wipe after idle time or when the tab is hidden (on a fresh page, so the wipe does not disturb the tests that follow)
+    const keepT=t; t=load(); await t.ready();
+    const sel=t.$('autoIdle'), chk=t.$('autoHide'), note=()=>t.$('autoNote').textContent, now=()=>Date.now(), MIN=60000;
+    const arm=async()=>{ t.set(rnd(50)); t.$('passphrase').value='SECRETPASS'; t.$('passphrase2').value='SECRETPASS'; await t.w.generate(); t.$('verifyPass').value='VP'; t.$('reforgeWordsInput').value='abandon ?'; t.$('drillWords').value='abandon'; t.$('prInput').value='abandon'; t.$('checkAddr').value='bc1qx'; const ro=t.$('reforgeOut'); ro.textContent='found'; ro.style.display=''; const co=t.$('childOut'); co.textContent='child words'; co.style.display=''; };
+    const left=()=>['rolls','passphrase','passphrase2','verifyPass','reforgeWordsInput','drillWords','prInput','checkAddr'].filter(id=>t.$(id).value);
+    ok(sel.value==='0'&&!chk.checked&&[...sel.options].map(o=>o.value).join()==='0,2,5,10,30'&&t.$('autoClearBox').tagName==='DETAILS'&&!t.$('autoClearBox').open,'auto-clear: off by default, with never / 2 / 5 / 10 / 30 minutes to pick');
+    ok(t.w.autoWipe('test')===false&&note()==='','auto-clear: with nothing on the page, a wipe does nothing and says nothing');
+    await arm(); ok(t.w.autoWipe('because of a test')===true,'auto-clear: a wipe with secrets on the page reports it');
+    ok(left().length===0&&!t.w.hasSeed()&&t.$('childOut').textContent===''&&t.$('reforgeOut').textContent===''&&t.$('reforgeOut').style.display==='none'&&/^Wiped automatically because of a test at /.test(note()),'auto-clear: seed, rolls, passphrases, typed words, Reforge and child outputs are all wiped and the note says why (left: '+left().join(',')+')');
+    ok(t.w.autoWipe('x')===false&&/because of a test/.test(note()),'auto-clear: a second wipe with nothing left changes nothing');
+    // idle timer
+    let cleared=0; const ci=t.w.clearInterval; t.w.clearInterval=x=>{ cleared++; return ci.call(t.w,x); };
+    sel.value='5'; sel.dispatchEvent(new t.w.Event('change')); ok(/^Auto-clear is ON: after 5 minutes with no activity\.$/.test(note())&&t.w.eval('autoTimer')!==null,'auto-clear: choosing 5 minutes turns it on and starts the timer');
+    await arm(); t.w.autoCheck(now()+4*MIN); ok(t.w.hasSeed()&&left().length>0,'auto-clear: nothing is wiped before the idle time is up');
+    t.w.autoCheck(now()+6*MIN); ok(!t.w.hasSeed()&&left().length===0&&/^Wiped automatically after 5 minutes with no activity at /.test(note()),'auto-clear: everything is wiped once the idle time is up');
+    for(const ev of ['keydown','pointerdown','input','touchstart','wheel']){ await arm(); t.w.eval('autoLast = 0'); t.d.dispatchEvent(new t.w.Event(ev,{bubbles:true})); t.w.autoCheck(now()+4*MIN); ok(t.w.hasSeed(),'auto-clear: a '+ev+' counts as activity and restarts the idle time'); }
+    sel.value='0'; sel.dispatchEvent(new t.w.Event('change')); ok(note()==='Auto-clear is off.'&&t.w.eval('autoTimer')===null&&cleared===1,'auto-clear: choosing never turns it off and stops the timer');
+    await arm(); t.w.eval('autoLast = 0'); t.w.autoCheck(now()+999*MIN); ok(t.w.hasSeed(),'auto-clear: "never" never wipes');
+    // tab hidden
+    const hide=v=>{ Object.defineProperty(t.d,'hidden',{value:v,configurable:true}); t.d.dispatchEvent(new t.w.Event('visibilitychange')); };
+    hide(true); ok(t.w.hasSeed(),'auto-clear: leaving the tab wipes nothing while that option is off'); hide(false);
+    chk.checked=true; chk.dispatchEvent(new t.w.Event('change')); ok(/^Auto-clear is ON: when you leave this tab\.$/.test(note()),'auto-clear: ticking the tab option turns it on');
+    hide(false); ok(t.w.hasSeed(),'auto-clear: coming back to the tab wipes nothing');
+    hide(true); ok(!t.w.hasSeed()&&left().length===0&&/^Wiped automatically because you left this tab at /.test(note()),'auto-clear: leaving the tab wipes everything when that option is on'); hide(false);
+    sel.value='10'; sel.dispatchEvent(new t.w.Event('change')); ok(/^Auto-clear is ON: after 10 minutes with no activity and when you leave this tab\.$/.test(note()),'auto-clear: the note lists both settings');
+    sel.value='0'; sel.dispatchEvent(new t.w.Event('change')); chk.checked=false; chk.dispatchEvent(new t.w.Event('change')); t.w.clearInterval=ci; t=keepT; }
   // --- SeedQR / CompactSeedQR on screen, by hand and on paper ---
   { const keepT=t; t=load(); await t.ready(); t.set(rnd(50)); t.$('passphrase').value='SECRETPASS'; t.$('passphrase2').value='SECRETPASS'; await t.w.generate(); const sw=t.$('genResult').textContent.split('\n')[0];
     const sz=()=>{ const v=t.$('sqImg').querySelector('svg'); return v?Math.round(v.viewBox.baseVal.width)-8:0; }, gc=()=>t.$('sqGuideCaption').textContent;
