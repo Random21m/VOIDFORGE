@@ -243,6 +243,11 @@ async function probe(w, mutated) {
     if (!/#ownerLogo \{ position: absolute; top: 0; right: -12px;/.test(css)) fails.push('owner logo: placed in the top-right corner');
     if (!/#topbar \{ flex-wrap: wrap; right: 64px; \}/.test(css)) fails.push('owner logo: the buttons make room for it on a phone');
     if (!/#tipBox, #ownerLogo \{ display: none !important; \}/.test(css)) fails.push('owner logo: left off printouts'); }
+  { // Translation and passphrase notes (v1.29.0)
+    const d = w.document, m = d.querySelector('meta[name="google"]'), adv = w.document.getElementById('passphrase').closest('details');
+    if (d.documentElement.getAttribute('translate') !== 'no') fails.push('translation: html translate=no');
+    if (!m || m.getAttribute('content') !== 'notranslate') fails.push('translation: notranslate meta');
+    if (!adv || !/Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it\./.test(adv.textContent)) fails.push('passphrase: hardware wallet limit note'); }
   { // Page icon (v1.28.0)
     const ic = [...w.document.querySelectorAll('link[rel~="icon"]')], hs = ic.map((l) => l.getAttribute('href') || '');
     const svg = hs.find((h) => /^data:image\/svg\+xml,/.test(h)), png = hs.find((h) => /^data:image\/png;base64,/.test(h));
@@ -1375,6 +1380,9 @@ const M = [
   ['owner logo: overlaps the buttons on a phone', '#topbar { flex-wrap: wrap; right: 64px; }', '#topbar { flex-wrap: wrap; }'],
   ['owner logo: printed on the page', '#guideNew, #tipBox, #ownerLogo { display: none !important; }', '#guideNew, #tipBox { display: none !important; }'],
   ['owner logo: no description for screen readers', 'alt="The project owner\'s logo: a bloodhound in a worn cap with a Bitcoin mark"', 'alt=""'],
+  ['translation: html opt-out dropped', '<html lang="en" translate="no">', '<html lang="en">'],
+  ['translation: notranslate meta dropped', '<meta name="google" content="notranslate">', '<meta name="x" content="notranslate">'],
+  ['passphrase: hardware wallet limit note dropped', ' Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div>', '</div>'],
   ['owner logo: size attributes dropped', 'width="44" height="44" alt="The project owner', 'alt="The project owner'],
   ['page icon: SVG link removed', '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,', '<link rel="x" type="image/svg+xml" href="data:image/svg+xml,'],
   ['page icon: PNG link removed', '<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,', '<link rel="x" type="image/png" sizes="32x32" href="data:image/png;base64,'],

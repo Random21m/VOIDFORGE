@@ -113,6 +113,10 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(!!lg&&lg.tagName==='IMG'&&bytes.length>2000&&bytes.length<20000&&bytes[0]===0xFF&&bytes[1]===0xD8&&bytes[bytes.length-2]===0xFF&&bytes[bytes.length-1]===0xD9,'owner logo: a small JPEG is built into the file as a data: picture');
       ok(lg&&lg.getAttribute('alt').length>10&&lg.getAttribute('width')==='44'&&lg.getAttribute('height')==='44'&&!lg.closest('a')&&!t.w.document.querySelector('a[href] #ownerLogo'),'owner logo: described for screen readers, sized, and not a link');
       ok(/#ownerLogo \{ position: absolute; top: 0; right: -12px;/.test(css)&&/#topbar \{ flex-wrap: wrap; right: 64px; \}/.test(css)&&/#tipBox, #ownerLogo \{ display: none !important; \}/.test(css),'owner logo: top-right corner, the buttons make room on a phone, and it is left off printouts'); }
+    { // Translation and passphrase notes (v1.29.0): browsers are asked not to translate (a translated seed word is a wrong seed word), and the passphrase help warns about hardware wallet limits
+      const d=t.w.document, m=d.querySelector('meta[name="google"]'), adv=t.$('passphrase').closest('details');
+      ok(d.documentElement.getAttribute('translate')==='no'&&d.documentElement.getAttribute('lang')==='en'&&!!m&&m.getAttribute('content')==='notranslate','translation: the page asks browsers not to translate it');
+      ok(!!adv&&/Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it\./.test(adv.textContent)&&!/\b(Trezor|Ledger|Coldcard|Jade)\b/.test(adv.textContent),'passphrase: help warns that some hardware wallets limit length or characters (no vendor claims)'); }
     { // Page icon (v1.28.0): the dice logo is built into the file as data: links (no network), an SVG and a 32px PNG, and the About page calls the online copy practice-only
       const ic=[...t.w.document.querySelectorAll('link[rel~="icon"]')], hs=ic.map(l=>l.getAttribute('href')||'');
       const svg=hs.find(h=>/^data:image\/svg\+xml,/.test(h)), png=hs.find(h=>/^data:image\/png;base64,/.test(h));
