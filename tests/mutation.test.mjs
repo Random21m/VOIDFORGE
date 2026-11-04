@@ -233,6 +233,15 @@ async function probe(w, mutated) {
       $('rolls').value = '1234'; w.updateCount(); words(24); words(12); mode('coin'); mode('dice'); if (!on()) fails.push('stale: rolls, length and mode do not matter to a Word draw seed');
       $('passphrase').value = 'z'; ev('passphrase'); if (on()) fails.push('stale: a passphrase edit clears a Word draw seed'); }
     w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); }
+  { // Page icon (v1.28.0)
+    const ic = [...w.document.querySelectorAll('link[rel~="icon"]')], hs = ic.map((l) => l.getAttribute('href') || '');
+    const svg = hs.find((h) => /^data:image\/svg\+xml,/.test(h)), png = hs.find((h) => /^data:image\/png;base64,/.test(h));
+    const svgText = svg ? decodeURIComponent(svg.slice(svg.indexOf(',') + 1)) : '', pb = png ? Buffer.from(png.slice(png.indexOf(',') + 1), 'base64') : Buffer.alloc(0);
+    if (ic.length !== 2 || !hs.every((h) => h.startsWith('data:'))) fails.push('page icon: two data: icon links and nothing on the network');
+    if ((svgText.match(/<circle/g) || []).length !== 5 || !/^<svg[^>]*viewBox="0 0 72 72"/.test(svgText)) fails.push('page icon: the SVG is the five-pip die');
+    if (pb.subarray(1, 4).toString() !== 'PNG' || pb.readUInt32BE(16) !== 32 || pb.readUInt32BE(20) !== 32) fails.push('page icon: the PNG is 32 by 32');
+    if (w.document.querySelector('link[rel~="apple-touch-icon"], link[rel="manifest"]')) fails.push('page icon: no other linked files');
+    if (!/online copy on the project page is for practice only/.test(w.document.body.textContent)) fails.push('page icon: About page says the online copy is practice-only'); }
   { // Reforge (v1.28.0): kept to a few seconds, because it runs for every mutation
     const RF = async (x, chk, pw) => { $('reforgeWordsInput').value = x; $('reforgeWordsCheck').value = chk || ''; $('reforgeWordsPass').value = pw || ''; await w.reforgeWords(); return [$('reforgeStatus').textContent, $('reforgeOut').textContent]; };
     const ZP = 'zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs', A11 = 'abandon '.repeat(11), A0 = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu';
@@ -1327,6 +1336,9 @@ const M = [
   ['reforge passphrase: an edit keeps the result', '"reforgePassWords", "reforgePassInput", "reforgePassCheck", "reforgePassTypos"].forEach(id => document.getElementById(id).addEventListener', '"reforgePassWords", "reforgePassCheck", "reforgePassTypos"].forEach(id => document.getElementById(id).addEventListener'],
   ['reforge passphrase: an invalid phrase accepted', '|| !(await reforgeChecksumOk(Uint16Array.from(parsed.idx))))', ')'],
   ['reforge: fingerprint odds wrong', 'Math.round(2 ** 32 / Math.max(1, n))', 'Math.round(2 ** 31 / Math.max(1, n))'],
+  ['page icon: SVG link removed', '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,', '<link rel="x" type="image/svg+xml" href="data:image/svg+xml,'],
+  ['page icon: PNG link removed', '<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,', '<link rel="x" type="image/png" sizes="32x32" href="data:image/png;base64,'],
+  ['page icon: About page no longer says practice-only', 'The online copy on the project page is for practice only.', 'The online copy on the project page is fine for real keys.'],
   ['reforge: object property names read as words', 'if(reforgeHas(t)){ idx.push(WORD_MAP[t]); return; }', 'if(t in WORD_MAP){ idx.push(WORD_MAP[t]); return; }'],
   ['reforge: 4-letter words not read', 'if(m.length === 1){ idx.push(WORD_MAP[m[0]]);', 'if(m.length === 0){ idx.push(WORD_MAP[m[0]]);'],
   ['reforge: CLEAR keeps the passphrase', '["reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck"].forEach(id => { document', '["reforgeWordsInput", "reforgeWordsCheck", "reforgePassWords", "reforgePassInput", "reforgePassCheck"].forEach(id => { document'],
