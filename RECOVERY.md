@@ -48,7 +48,7 @@ Afterwards check that the app's first receiving address equals the **First recei
 
 ## Child seeds (BIP85)
 
-A child seed made with the Child seed (BIP85) tool is not stored anywhere. To get it back you need the parent words, the parent passphrase if one was used, the word count and the index. Write the word count and index down with the parent backup. Anyone who has the parent can recreate every child, and losing the parent loses every child.
+A child made with the Child seed (BIP85) tool is not stored anywhere. To get it back you need the parent words, the parent passphrase if one was used, the type (seed words, WIF, xprv, hex, Base64 or Base85 password, or dice), its settings (word count, byte or character length, or dice sides and number of rolls) and the index. Write the type, settings and index down with the parent backup. Anyone who has the parent can recreate every child, and losing the parent loses every child.
 
 ## Multisig wallets (v1.20.0)
 

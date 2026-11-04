@@ -49,7 +49,7 @@ VOIDFORGE is free software provided **"as is", without warranty of any kind** (s
 
 **Fairness test and Word finder (v1.25.1):** under the roll chart, once you have 30 rolls (20 flips) the page shows a Pearson chi-square number and p-value for the face counts, with a plain-language reading. It can show that counts look uneven; it can never prove your dice or coin are fair. In the Word draw box, a Word finder turns a word number (1 to 2048), or a D8 roll plus two hex dice, into the BIP39 word, so dice-to-word methods can be followed by hand.
 
-**Left out on purpose: other BIP85 applications.** VOIDFORGE makes BIP85 child *seeds* (12, 18 or 24 words), which fit its job of making and backing up wallets. The BIP's other outputs (WIF keys, XPRV, raw HEX, passwords) would print different kinds of live secrets and are not offered, so there is less for a reviewer to trust.
+**BIP85 outputs other than seed words are advanced and secret.** The Child seed tool also makes a Bitcoin Core HD seed (WIF), a master xprv, raw hex, Base64 and Base85 passwords and dice rolls, from the same 64 bytes of BIP85 entropy. They are live secrets: each one is shown on screen only, with no copy, save or print, and is matched against the published BIP85 test vectors and independent code.
 
 **Not checkable here: signer anti-exfil (sign-to-contract).** Hardware wallets such as Jade can prove their signing nonce was not chosen to leak your key, but the proof needs the random data the computer sent and the signer's first nonce commitment. Those exist only during the live exchange and are not stored in a PSBT or transaction, so VOIDFORGE cannot check them afterwards. The signature checks it does perform (nonce reuse, sighash types) work on the finished transaction only.
 
