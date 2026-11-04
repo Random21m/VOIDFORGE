@@ -56,6 +56,23 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t.$('childIndex').value='0'; await t.w.deriveChild(); t.$('childIndex').dispatchEvent(new t.w.Event('input')); ok(t.$('childOut').textContent==='','BIP85 output is cleared when the index is edited');
     t.$('phrase').value='abandon abandon'; await t.w.deriveChild(); ok(/valid parent seed phrase/.test(t.$('childStatus').textContent),'BIP85 needs a valid parent phrase');
     t.$('phrase').value=''; t.$('childOut').textContent=''; t.$('childStatus').textContent=''; t.$('verifyStatus').textContent=''; }
+    { // Check your download (v1.27.3): hash and CID computed in the page, compared with what is pasted
+      const bytes=Buffer.from('VOIDFORGE test file é\n'+'x'.repeat(5000)), U=new Uint8Array(bytes), sha=nc.createHash('sha256').update(bytes).digest('hex');
+      const r0=await t.w.dlCheck(U,''); ok(r0.hash===sha&&r0.verdict==='none','download check: SHA-256 equals Node\'s own for the same bytes, and with nothing pasted it only reports');
+      eq(t.w.dlCid(new Uint8Array(Buffer.from('2e5ae17a178fafdbde51c3958c6c6d579579622b27a9feeabe5e91cbce579fde','hex'))),'bafkreibollqxuf4pv7n54uodswggy3kxsv4wekzhvh7ovps6shf44v473y','download check: CID of the published v1.27.0 hash is the published v1.27.0 CID');
+      ok((await t.w.dlCheck(U,sha)).verdict==='match'&&(await t.w.dlCheck(U,sha.toUpperCase()+'  voidforge.html\n')).verdict==='match'&&(await t.w.dlCheck(U,'sha256 '+sha+' and '+r0.cid)).verdict==='match','download check: bare hash, upper case, a SHA256SUMS line, or hash plus CID all match');
+      ok((await t.w.dlCheck(U,r0.cid)).verdict==='match','download check: a CID alone matches');
+      const bad=sha.slice(0,63)+(sha[63]==='0'?'1':'0');
+      ok((await t.w.dlCheck(U,bad)).verdict==='mismatch'&&(await t.w.dlCheck(U,sha+' '+bad)).verdict==='mismatch'&&(await t.w.dlCheck(U,r0.cid.slice(0,-1)+(r0.cid.endsWith('a')?'b':'a'))).verdict==='mismatch','download check: one wrong character, or one wrong value among right ones, is NO MATCH');
+      const flipped=new Uint8Array(U); flipped[100]^=1; ok((await t.w.dlCheck(flipped,sha)).verdict==='mismatch','download check: a file changed by one bit is NO MATCH');
+      ok((await t.w.dlCheck(U,'not a hash at all 1234')).verdict==='none'&&(await t.w.dlCheck(U,sha.slice(0,40))).verdict==='none','download check: text that is not a full hash is ignored (it reports, and never says MATCH)');
+      // through the real file box
+      const F=new t.w.File([bytes],'voidforge.html'); Object.defineProperty(t.$('dlFile'),'files',{value:[F],configurable:true}); t.$('dlPaste').value=sha; await t.w.dlPick();
+      ok(/^MATCH/.test(t.$('dlStatus').textContent)&&t.$('dlStatus').classList.contains('ok')&&t.$('dlOut').textContent.includes(sha)&&t.$('dlOut').textContent.includes(r0.cid),'download check: choosing a file shows MATCH, the hash and the CID');
+      t.$('dlPaste').value=bad; await t.w.dlPick(); ok(/^NO MATCH/.test(t.$('dlStatus').textContent)&&t.$('dlStatus').classList.contains('bad'),'download check: a wrong published hash shows NO MATCH in red');
+      Object.defineProperty(t.$('dlFile'),'files',{value:[{name:'big.bin',size:64*1024*1024+1}],configurable:true}); await t.w.dlPick(); ok(/larger than 64 MB/.test(t.$('dlStatus').textContent)&&t.$('dlOut').style.display==='none','download check: a file over 64 MB is refused');
+      t.w.dlClear(); ok(t.$('dlPaste').value===''&&t.$('dlStatus').textContent===''&&t.$('dlOut').textContent==='','download check: CLEAR empties the box, status and output');
+      ok(/id="dlBox"/.test(html)&&!/localStorage|sessionStorage|indexedDB|XMLHttpRequest|fetch\(/.test((html.match(/function dlCheck[\s\S]*?function clearChild/)||[''])[0]),'download check: the tool stores nothing and uses no network'); }
   // SELF-TEST button toggles: press again hides the results without CLEAR
   t.w.toggleSelfTests();
   ok(t.$('testResults').textContent==='','SELF-TEST button: press while results are shown hides them');

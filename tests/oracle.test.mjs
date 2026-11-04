@@ -559,4 +559,19 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   R.ok(sbad === 0, `silent payments: ${sn} random seeds, both networks and accounts match @scure/bip32 + bech32m (${sbad} mismatches)`);
 }
 
+// Check your download (v1.27.3): hash and CID of random files against @noble/hashes and @scure/base (base32 is the independent encoder)
+{
+  const { base32 } = await import('@scure/base');
+  let dn = 0, dbad = 0;
+  for (let i = 0; i < 40; i++) {
+    const len = i < 5 ? i : nc.randomInt(1, 20000), bytes = new Uint8Array(nc.randomBytes(len));
+    const h = sha256(bytes), expHex = bhex.encode(h);
+    const expCid = 'b' + base32.encode(new Uint8Array([1, 0x55, 0x12, 0x20, ...h])).toLowerCase().replace(/=+$/, '');
+    const r = await w.dlCheck(bytes, expHex + '  voidforge.html ' + expCid); dn++;
+    const wrong = await w.dlCheck(bytes, expHex.replace(/.$/, (c) => (c === '0' ? '1' : '0')));
+    if (r.hash !== expHex || r.cid !== expCid || r.verdict !== 'match' || wrong.verdict !== 'mismatch') dbad++;
+  }
+  R.ok(dbad === 0, `download check: ${dn} random files give the same SHA-256 and CID as @noble/hashes + @scure/base, a wrong hash is never a match (${dbad} mismatches)`);
+}
+
 R.done('oracle');

@@ -677,6 +677,34 @@ async function probe(w, mutated) {
       if (!/preserve-3d/.test(rule('cube')) || !/preserve-3d/.test(rule('fl')) || /opacity|filter/.test(rule('cube') + rule('fl') + roll) || roll.length < 200) fails.push('logo: the cube keeps its 3D (opacity or filter on the cube flattens it)'); }
     if (!/\.logo \{[^}]*position: relative; z-index: 0;/.test(mutated) || !/#statusLine \{ position: relative; z-index: 1;/.test(mutated)) fails.push('logo: the falling dice pass behind the status line text, not over it');
     if (!/\n  h1 \{[^}]*font-size: 37px;[^}]*filter: drop-shadow\([^}]*\}/.test(mutated) || !/\.logo \{ --S: 40px;/.test(mutated)) fails.push('header: VOIDFORGE is 37px with a soft neon glow, and the dice are 40px so the name leads');
+    { // Check your download (v1.27.3)
+      const bytes = Buffer.from('VOIDFORGE test file é\n' + 'x'.repeat(5000)), U = new Uint8Array(bytes), sha = nc.createHash('sha256').update(bytes).digest('hex');
+      const r0 = await w.dlCheck(U, '');
+      if (r0.hash !== sha || r0.verdict !== 'none') fails.push('download: hash or no-input verdict wrong');
+      if (w.dlCid(new Uint8Array(Buffer.from('2e5ae17a178fafdbde51c3958c6c6d579579622b27a9feeabe5e91cbce579fde', 'hex'))) !== 'bafkreibollqxuf4pv7n54uodswggy3kxsv4wekzhvh7ovps6shf44v473y') fails.push('download: CID of a known hash wrong');
+      const h1 = new Uint8Array(32).fill(255), h2 = new Uint8Array(32);
+      if (w.dlCid(h1) !== 'bafkreih77777777777777777777777777777777777777777777777777777' && w.dlCid(h1).length !== 59) fails.push('download: CID length');
+      if (w.dlCid(h2).length !== 59 || !w.dlCid(h2).startsWith('bafkrei')) fails.push('download: CID prefix');
+      if ((await w.dlCheck(U, sha)).verdict !== 'match' || (await w.dlCheck(U, sha.toUpperCase() + '  voidforge.html\n')).verdict !== 'match' || (await w.dlCheck(U, 'sha256 ' + sha + ' and ' + r0.cid)).verdict !== 'match') fails.push('download: matching forms');
+      if ((await w.dlCheck(U, r0.cid)).verdict !== 'match') fails.push('download: CID alone');
+      const bad = sha.slice(0, 63) + (sha[63] === '0' ? '1' : '0');
+      if ((await w.dlCheck(U, bad)).verdict !== 'mismatch') fails.push('download: wrong hash must not match');
+      if ((await w.dlCheck(U, sha + ' ' + bad)).verdict !== 'mismatch') fails.push('download: one wrong value among right ones must not match');
+      if ((await w.dlCheck(U, r0.cid + ' ' + sha.replace(/.$/, (c) => (c === '0' ? '1' : '0')))).verdict !== 'mismatch') fails.push('download: right CID with wrong hash must not match');
+      if ((await w.dlCheck(U, r0.cid.slice(0, -1) + (r0.cid.endsWith('a') ? 'b' : 'a'))).verdict !== 'mismatch') fails.push('download: wrong CID must not match');
+      const fl = new Uint8Array(U); fl[100] ^= 1; if ((await w.dlCheck(fl, sha)).verdict !== 'mismatch') fails.push('download: changed file must not match');
+      if ((await w.dlCheck(U, sha.slice(0, 40))).verdict !== 'none' || (await w.dlCheck(U, sha + '0')).verdict !== 'none') fails.push('download: partial or over-long hash is ignored');
+      const F = new w.File([bytes], 'voidforge.html'); Object.defineProperty($('dlFile'), 'files', { value: [F], configurable: true }); $('dlPaste').value = sha; await w.dlPick();
+      if (!/^MATCH/.test($('dlStatus').textContent) || !$('dlStatus').classList.contains('ok') || !$('dlOut').textContent.includes(sha) || !$('dlOut').textContent.includes(r0.cid)) fails.push('download: file box shows MATCH with hash and CID');
+      $('dlPaste').value = bad; await w.dlPick();
+      if (!/^NO MATCH/.test($('dlStatus').textContent) || !$('dlStatus').classList.contains('bad')) fails.push('download: file box shows NO MATCH in red');
+      Object.defineProperty($('dlFile'), 'files', { value: [{ name: 'big.bin', size: 64 * 1024 * 1024 + 1 }], configurable: true }); await w.dlPick();
+      if (!/larger than 64 MB/.test($('dlStatus').textContent) || $('dlOut').style.display !== 'none') fails.push('download: over 64 MB refused');
+      Object.defineProperty($('dlFile'), 'files', { value: [], configurable: true }); await w.dlPick();
+      if (!/Choose the voidforge\.html/.test($('dlStatus').textContent)) fails.push('download: no file chosen prompt');
+      w.dlClear(); if ($('dlPaste').value !== '' || $('dlStatus').textContent !== '' || $('dlOut').textContent !== '' || $('dlOut').style.display !== 'none') fails.push('download: CLEAR empties everything');
+      if (!/id="dlFile"[^>]*onchange="dlPick\(\)"/.test(mutated) || !/id="dlPaste"[^>]*oninput="dlPick\(\)"/.test(mutated) || !/a page cannot vouch for itself/.test(mutated)) fails.push('download: file box wiring and the honest limit note');
+    }
     { // RECOMMENDED is an amber badge, and DEMO ONLY / ADVANCED / NEW are grey badges (v1.27.2)
       const doc = w.document, hexc = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
       const lumc = (c) => { const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); };
@@ -1432,6 +1460,31 @@ const M = [
   ['logo: second roll uses the restart animation (CSS only)', '.logo.again .cube { animation-name: dieRoll2; }', '.logo.again .cube { animation-name: dieRoll; }', true],
   ['logo: second roll restarts the glow and fade (CSS only)', '.logo.again .die { animation-name: dieGlow2, dieFade2; }', '.logo.again .die { animation-name: dieGlow, dieFade; }', true],
   ['logo: front faces wrong', '{fr:3, bk:4,', '{fr:4, bk:3,'],
+  ['download: CID uses wrong codec', 'all.set([1, 0x55, 0x12, 0x20]);', 'all.set([1, 0x70, 0x12, 0x20]);'],
+  ['download: CID hash prefix wrong', '0x12, 0x20]); all.set(hash, 4);', '0x12, 0x21]); all.set(hash, 4);'],
+  ['download: CID alphabet wrong', 'const A = "abcdefghijklmnopqrstuvwxyz234567"; let bits', 'const A = "abcdefghijklmnopqrstuvwxyz234568"; let bits'],
+  ['download: CID last partial group dropped', 'if(bits > 0) out += A[(val << (5 - bits)) & 31];', 'if(false) out += A[(val << (5 - bits)) & 31];'],
+  ['download: CID multibase prefix lost', 'return "b" + out;\n}\nfunction dlParse', 'return out;\n}\nfunction dlParse'],
+  ['download: hash accepted at wrong length', 'if(w.length === 64 && /^[0-9a-fA-F]+$/.test(w)) hex.push', 'if(w.length >= 40 && /^[0-9a-fA-F]+$/.test(w)) hex.push'],
+  ['download: upper case hash rejected', 'hex.push(w.toLowerCase());', 'hex.push(w);'],
+  ['download: CID accepted at wrong length', 'else if(w.length === 59 && /^bafk[a-z2-7]+$/.test(w)) cid.push(w);', 'else if(w.length >= 10 && /^bafk[a-z2-7]+$/.test(w)) cid.push(w);'],
+  ['download: hash algorithm is not SHA-256', 'crypto.subtle.digest("SHA-256", bytes));\n  const h = dlHex(hash)', 'crypto.subtle.digest("SHA-1", bytes));\n  const h = dlHex(hash)'],
+  ['download: any one right hash is enough', 'want.hex.every(x => x === h) && want.cid.every(x => x === c) ? "match"', 'want.hex.some(x => x === h) || want.cid.some(x => x === c) ? "match"'],
+  ['download: wrong CID ignored', 'want.hex.every(x => x === h) && want.cid.every(x => x === c) ? "match"', 'want.hex.every(x => x === h) ? "match"'],
+  ['download: wrong hash ignored when a CID is right', 'want.hex.every(x => x === h) && want.cid.every(x => x === c) ? "match"', '(want.cid.length ? want.cid.every(x => x === c) : want.hex.every(x => x === h)) ? "match"'],
+  ['download: nothing pasted counts as match', 'let verdict = "none";\n  if(want.hex.length || want.cid.length)', 'let verdict = "match";\n  if(want.hex.length || want.cid.length)'],
+  ['download: size limit gone', 'if(f.size > DL_MAX){', 'if(false){'],
+  ['download: size limit too high', 'const DL_MAX = 64 * 1024 * 1024;', 'const DL_MAX = 640 * 1024 * 1024;'],
+  ['download: mismatch shown as ok', 'else if(r.verdict === "mismatch") say("bad",', 'else if(r.verdict === "mismatch") say("ok",'],
+  ['download: match shown as bad', 'if(r.verdict === "match") say("ok",', 'if(r.verdict === "match") say("bad",'],
+  ['download: output hides the CID', '\\nCID:    " + r.cid;', '";'],
+  ['download: output hides the hash', '"\\nSHA-256: " + r.hash +', '"" +'],
+  ['download: CLEAR leaves the pasted hash', 'document.getElementById("dlFile").value = ""; document.getElementById("dlPaste").value = "";', 'document.getElementById("dlFile").value = "";'],
+  ['download: CLEAR leaves the output', 'const o = document.getElementById("dlOut"); o.textContent = ""; o.style.display = "none";\n  const t = document.getElementById("dlStatus"); t.textContent = ""; t.className = "status";\n}', 'const t = document.getElementById("dlStatus"); t.textContent = ""; t.className = "status";\n}'],
+  ['download: no prompt without a file', 'say("", "Choose the voidforge.html file you downloaded."); return; }', 'return; }'],
+  ['download: file box not wired', 'aria-label="Choose the VOIDFORGE file you downloaded" onchange="dlPick()"', 'aria-label="Choose the VOIDFORGE file you downloaded"'],
+  ['download: paste box not wired', 'oninput="dlPick()" style="margin-top:6px;"', 'style="margin-top:6px;"'],
+  ['download: honest limit note removed', '<b>Know the limit:</b> a page cannot vouch for itself.', '<b>Note:</b> this page is trustworthy.'],
   ['recommended: drill badge lost', 'prove your paper backup works<span class="tag tag-rec">RECOMMENDED</span>', 'prove your paper backup works (recommended)'],
   ['recommended: second-tool badge lost', 'in a second tool<span class="tag tag-rec">RECOMMENDED</span>', 'in a second tool (recommended)'],
   ['recommended: menu option not coloured', '<option value="ms-wsh" class="opt-rec">', '<option value="ms-wsh">'],

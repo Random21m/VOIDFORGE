@@ -1003,6 +1003,18 @@
       <div class="status" id="childStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <pre id="childOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
     </details>
+    <details id="dlBox">
+      <summary>Check your download<small>Pick the VOIDFORGE file you downloaded and compare its fingerprint with the published one.</small></summary>
+      <p class="hint" style="margin:8px 0;">Choose the <b>voidforge.html</b> file you downloaded. The page works out its SHA-256 hash and its content ID (CID) here on your computer, then compares them with the values from the release page (paste the hash, the CID, or a whole line of SHA256SUMS). The file is only read: it is not stored, changed or sent anywhere.</p>
+      <p class="hint" style="margin:8px 0;"><b>Know the limit:</b> a page cannot vouch for itself. A tampered copy could lie to you here, so for real money also run <code>sha256sum -c SHA256SUMS</code> (or the build attestation check in RELEASING.md) with a tool that is not this page. A copy saved with DOWNLOAD FOR USB is a re-saved page and will not match the release file.</p>
+      <input type="file" id="dlFile" accept=".html,text/html" aria-label="Choose the VOIDFORGE file you downloaded" onchange="dlPick()" style="width:100%;">
+      <textarea id="dlPaste" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Published SHA-256 or CID to compare with" placeholder="Paste the published SHA-256, the CID, or a SHA256SUMS line" oninput="dlPick()" style="margin-top:6px;"></textarea>
+      <div style="display:flex; gap:6px; margin-top:6px;">
+        <button type="button" class="secondary small" onclick="dlClear()">CLEAR</button>
+      </div>
+      <div class="status" id="dlStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+      <pre id="dlOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
+    </details>
   </div>
 
   <div class="card" id="cardMulti">
@@ -3014,6 +3026,52 @@ async function checkAddress(range){
   finally { btn.disabled = false; }
 }
 // "Child seed (BIP85)": derives a new seed phrase from the typed parent words (and passphrase). Shown on screen only; nothing is copied or saved.
+// Check your download (v1.27.3). Reads the chosen file, hashes it with the browser's SHA-256 and compares with what you paste. Nothing is stored or sent.
+const DL_MAX = 64 * 1024 * 1024;
+function dlHex(b){ return Array.from(b).map(x => x.toString(16).padStart(2, "0")).join(""); }
+function dlCid(hash){
+  const all = new Uint8Array(36); all.set([1, 0x55, 0x12, 0x20]); all.set(hash, 4);
+  const A = "abcdefghijklmnopqrstuvwxyz234567"; let bits = 0, val = 0, out = "";
+  for(const x of all){ val = (val << 8) | x; bits += 8; while(bits >= 5){ out += A[(val >>> (bits - 5)) & 31]; bits -= 5; } val &= (1 << bits) - 1; }
+  if(bits > 0) out += A[(val << (5 - bits)) & 31];
+  return "b" + out;
+}
+function dlParse(text){
+  const hex = [], cid = [];
+  for(const w of String(text || "").split(/[^0-9a-zA-Z]+/)){
+    if(w.length === 64 && /^[0-9a-fA-F]+$/.test(w)) hex.push(w.toLowerCase());
+    else if(w.length === 59 && /^bafk[a-z2-7]+$/.test(w)) cid.push(w);
+  }
+  return {hex, cid};
+}
+async function dlCheck(bytes, text){
+  const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  const h = dlHex(hash), c = dlCid(hash), want = dlParse(text);
+  let verdict = "none";
+  if(want.hex.length || want.cid.length) verdict = want.hex.every(x => x === h) && want.cid.every(x => x === c) ? "match" : "mismatch";
+  return {hash: h, cid: c, verdict, given: want.hex.length + want.cid.length};
+}
+function dlClear(){
+  document.getElementById("dlFile").value = ""; document.getElementById("dlPaste").value = "";
+  const o = document.getElementById("dlOut"); o.textContent = ""; o.style.display = "none";
+  const t = document.getElementById("dlStatus"); t.textContent = ""; t.className = "status";
+}
+async function dlPick(){
+  const say = (cls, m) => { const t = document.getElementById("dlStatus"); t.className = "status " + cls; t.textContent = m; };
+  const out = document.getElementById("dlOut"); out.textContent = ""; out.style.display = "none";
+  const f = document.getElementById("dlFile").files && document.getElementById("dlFile").files[0];
+  if(!f){ say("", "Choose the voidforge.html file you downloaded."); return; }
+  if(f.size > DL_MAX){ say("bad", "That file is larger than 64 MB, so it is not VOIDFORGE. Do not use it."); return; }
+  say("", "Reading the file...");
+  try{
+    const bytes = new Uint8Array(await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(r.error); r.readAsArrayBuffer(f); }));
+    const r = await dlCheck(bytes, document.getElementById("dlPaste").value);
+    out.textContent = "File: " + f.name + " (" + bytes.length + " bytes)\nSHA-256: " + r.hash + "\nCID:    " + r.cid; out.style.display = "";
+    if(r.verdict === "match") say("ok", "MATCH: this file is exactly the one that was published.");
+    else if(r.verdict === "mismatch") say("bad", "NO MATCH: this is not the published file. Do not use it. Download it again from the release page.");
+    else say("", "Computed. Paste the published SHA-256 or CID above to compare.");
+  } catch(e){ say("bad", "Could not read that file: " + e.message); }
+}
 function clearChild(){
   const o = document.getElementById("childOut"); o.textContent = ""; o.style.display = "none";
   const t = document.getElementById("childStatus"); t.textContent = ""; t.className = "status";
