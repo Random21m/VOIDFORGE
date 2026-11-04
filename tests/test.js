@@ -45,6 +45,33 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     [tx,cl]=await C('hello',4); ok(/Enter a bc1q/.test(tx),'address finder: rejects text that is not an address');
     t.$('phrase').value='abandon abandon'; [tx,cl]=await C('bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu',4); ok(/valid seed phrase/.test(tx),'address finder: needs a valid phrase');
     t.$('phrase').value=''; t.$('checkAddr').value=''; t.$('addrCheckStatus').textContent=''; }
+  // Try accounts 0 to 20 (v1.33.0): finds which account an address belongs to, with and without the passphrase
+  { const AB='abandon '.repeat(11)+'about'; const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+    const addrAt=async(pw,purpose,type,coin,acct,chain,i)=>{ const seed=await t.w.mnemonicToSeed(AB,pw); let [k,c]=await t.w.masterFromSeed(seed); for(const [n,h] of [[purpose,true],[coin,true],[acct,true],[chain,false],[i,false]]) [k,c]=await t.w.ckdPriv(k,c,n,h); return t.w.addressFromKey(type,k,coin===1?'test':'main'); };
+    const st=()=>[t.$('addrCheckStatus').textContent,t.$('addrCheckStatus').className];
+    const run=async(pw,x,mx,dp)=>{ t.$('phrase').value=AB; t.$('verifyPass').value=pw; t.$('checkAddr').value=x; await t.w.checkAllAccounts(mx,dp); return st(); };
+    let [tx,cl]=await run('',await addrAt('',84,'wpkh',0,2,0,1),3,2);
+    ok(/^FOUND: this SegWit address is receive address #1 \(m\/84'\/0'\/2'\/0\/1\) of account 2 of these words, without passphrase\. Put 2 in the account box/.test(tx)&&/ok/.test(cl),'try accounts: SegWit account 2 found');
+    [tx,cl]=await run('',await addrAt('',86,'tr',0,3,1,0),3,2); ok(/^FOUND: this Taproot address is change address #0 \(m\/86'\/0'\/3'\/1\/0\) of account 3 /.test(tx),'try accounts: the last account in the range (Taproot change) is searched');
+    [tx,cl]=await run('TREZOR',await addrAt('TREZOR',49,'sh-wpkh',0,1,0,0),3,2); ok(/^FOUND: this Nested SegWit address is receive address #0 \(m\/49'\/0'\/1'\/0\/0\) of account 1 of these words, with passphrase\./.test(tx),'try accounts: the passphrase variant is searched');
+    [tx,cl]=await run('',await addrAt('',44,'pkh',1,0,0,0),3,2); ok(/^FOUND: this Testnet Legacy address is receive address #0 \(m\/44'\/1'\/0'\/0\/0\) of account 0 /.test(tx),'try accounts: testnet addresses say Testnet');
+    [tx,cl]=await run('',await addrAt('',84,'wpkh',0,5,0,0),2,2); ok(/^NOT FOUND in accounts 0 to 2 \(first 2 receive and change addresses of each, without passphrase\)\. Things to check: .*type it in the box above/.test(tx)&&/bad/.test(cl),'try accounts: an account beyond the range is NOT FOUND, with what to check');
+    [tx,cl]=await run('',await addrAt('',84,'wpkh',0,0,0,3),2,2); ok(/^NOT FOUND in accounts 0 to 2 \(first 2 /.test(tx),'try accounts: an address beyond the depth is NOT FOUND');
+    [tx,cl]=await run('TREZOR',await addrAt('',84,'wpkh',0,5,0,0),1,1); ok(/without passphrase and with passphrase\)\. Things to check: .*\(you typed one; try another spelling\)/.test(tx),'try accounts: NOT FOUND names both variants when a passphrase was typed');
+    [tx,cl]=await run('','hello',2,2); ok(/^Enter a bc1q/.test(tx),'try accounts: rejects text that is not an address');
+    t.$('phrase').value='abandon abandon'; t.$('checkAddr').value='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'; await t.w.checkAllAccounts(2,2); ok(/valid seed phrase/.test(t.$('addrCheckStatus').textContent),'try accounts: needs a valid phrase');
+    { t.$('phrase').value=AB; t.$('verifyPass').value=''; t.$('checkAddr').value=await addrAt('',84,'wpkh',0,15,0,0);
+      const p1=t.w.checkAllAccounts(20,5); for(let n=0;n<500&&t.$('checkAcctsStop').disabled;n++) await sleep(10);
+      ok(!t.$('checkAcctsStop').disabled&&t.$('checkAddrBtn').disabled&&t.$('checkAcctsBtn').disabled,'try accounts: while searching, STOP is on and the search buttons are off');
+      const before=t.$('addrCheckStatus').textContent; await t.w.checkAllAccounts(0,1); ok(t.$('addrCheckStatus').textContent===before||/^Searching /.test(t.$('addrCheckStatus').textContent),'try accounts: a second press while searching does nothing');
+      ok(!t.$('checkAcctsStop').disabled,'try accounts: the busy search is not disturbed by a second press');
+      t.$('checkAcctsStop').click(); await p1; [tx,cl]=st();
+      ok(/^Stopped\./.test(tx)&&t.$('checkAcctsStop').disabled&&!t.$('checkAddrBtn').disabled&&!t.$('checkAcctsBtn').disabled,'try accounts: STOP ends the search and turns the buttons back on'); }
+    { t.$('phrase').value=AB; t.$('verifyPass').value=''; t.$('checkAddr').value=await addrAt('',84,'wpkh',0,0,0,0); t.$('addrCheckStatus').textContent='';
+      t.$('checkAcctsBtn').click(); for(let n=0;n<500&&!/FOUND/.test(t.$('addrCheckStatus').textContent);n++) await sleep(20);
+      ok(/^FOUND: this SegWit address is receive address #0 /.test(t.$('addrCheckStatus').textContent),'try accounts: the TRY ACCOUNTS 0 TO 20 button starts the search'); }
+    t.w.setGate('fail','SELF-TEST FAILED','bad'); ok(t.$('checkAcctsBtn').disabled&&t.$('checkAddrBtn').disabled,'try accounts: a failed self-test disables the button'); t.w.setGate('pass','SELF-TEST PASSED','good'); ok(!t.$('checkAcctsBtn').disabled,'try accounts: a passed self-test enables the button');
+    t.$('phrase').value=''; t.$('checkAddr').value=''; t.$('verifyPass').value=''; t.$('addrCheckStatus').textContent=''; }
   // SeedQR / CompactSeedQR input and BIP85 child seeds
   { const AB='abandon '.repeat(11)+'about'; const V=async x=>{ t.$('phrase').value=x; await t.w.verify(); return [t.$('verifyStatus').textContent.split('\n')[0], t.$('phrase').value]; };
     let [m,box]=await V('0000'.repeat(11)+'0003'); ok(/^Valid 12-word BIP39 phrase \(read from a SeedQR digit string\)/.test(m)&&box===AB,'VERIFY reads a SeedQR digit string and shows the words');
@@ -136,7 +163,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(ic.length===2&&hs.every(h=>h.startsWith('data:'))&&(svgText.match(/<circle/g)||[]).length===5&&/^<svg[^>]*viewBox="0 0 64 64"/.test(svgText)&&/fill="#E3B83F"/.test(svgText)&&pb.subarray(1,4).toString()==='PNG'&&pb.readUInt32BE(16)===32&&pb.readUInt32BE(20)===32,'page icon: a data: SVG with the five-pip die and a 32x32 PNG are built in, and no icon link points to the network');
       ok(!t.w.document.querySelector('link[rel~="apple-touch-icon"], link[rel="manifest"]')&&/never from a website\. Check the file.s SHA256 first \(see the README\)\. The online copy on the project page is for practice only\. Its address is random21m\.github\.io\/VOIDFORGE, the only link on this page/.test(t.w.document.body.textContent),'page icon: nothing else is linked, and the About page says the online copy is for practice only'); }
     { // Every main "go" action across the page is a primary (cyan) button, not grey "secondary" -- a uniform rule, not just START DRILL (v1.27.3)
-      const primaryIds=['forgeBtn','prStart','prCheckBtn','checkAddrBtn','reforgeWordsBtn','psbtBtn','cmpBtn','childBtn'];
+      const primaryIds=['forgeBtn','prStart','prCheckBtn','checkAddrBtn','checkAcctsBtn','reforgeWordsBtn','psbtBtn','cmpBtn','childBtn'];
       const missing=primaryIds.filter(id=>{ const b=t.$(id); return !b || b.classList.contains('secondary'); });
       ok(missing.length===0,'every main action button (FORGE SEED, START PRACTICE, CHECK MY PAPER, CHECK ADDRESS, Reforge SEARCH, INSPECT, COMPARE, DERIVE CHILD SEED) is the cyan primary style, none grey (missing: '+missing.join(', ')+')');
       const drillBtn=[...t.$('drillStart').querySelectorAll('button')][0];

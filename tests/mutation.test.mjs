@@ -251,6 +251,32 @@ async function probe(w, mutated) {
       $('rolls').value = '1234'; w.updateCount(); words(24); words(12); mode('coin'); mode('dice'); if (!on()) fails.push('stale: rolls, length and mode do not matter to a Word draw seed');
       $('passphrase').value = 'z'; ev('passphrase'); await w.eval('passWork'); if (!on()) fails.push('stale: a passphrase edit keeps a Word draw seed'); }
     w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); }
+  { // Try accounts 0 to 20 (v1.33.0)
+    const AB = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
+    const addrAt = async (pw, purpose, type, coin, acct, chain, i) => { const seed = await w.mnemonicToSeed(AB, pw); let [k, c] = await w.masterFromSeed(seed); for (const [n, h] of [[purpose, true], [coin, true], [acct, true], [chain, false], [i, false]]) [k, c] = await w.ckdPriv(k, c, n, h); return w.addressFromKey(type, k, coin === 1 ? 'test' : 'main'); };
+    const st = () => $('addrCheckStatus').textContent;
+    const run = async (pw, x, mx, dp) => { $('phrase').value = AB; $('verifyPass').value = pw; $('checkAddr').value = x; await w.checkAllAccounts(mx, dp); return st(); };
+    let tx = await run('', await addrAt('', 84, 'wpkh', 0, 2, 0, 1), 3, 2);
+    if (!/^FOUND: this SegWit address is receive address #1 \(m\/84'\/0'\/2'\/0\/1\) of account 2 of these words, without passphrase\. Put 2 in the account box/.test(tx)) fails.push('try accounts: account 2 found');
+    tx = await run('', await addrAt('', 86, 'tr', 0, 3, 1, 0), 3, 2); if (!/^FOUND: this Taproot address is change address #0 \(m\/86'\/0'\/3'\/1\/0\) of account 3 /.test(tx)) fails.push('try accounts: the last account in the range is searched');
+    tx = await run('TREZOR', await addrAt('TREZOR', 49, 'sh-wpkh', 0, 1, 0, 0), 3, 2); if (!/^FOUND: this Nested SegWit address is receive address #0 \(m\/49'\/0'\/1'\/0\/0\) of account 1 of these words, with passphrase\./.test(tx)) fails.push('try accounts: the passphrase variant is searched and named');
+    tx = await run('', await addrAt('', 44, 'pkh', 1, 0, 0, 0), 3, 2); if (!/^FOUND: this Testnet Legacy address is receive address #0 /.test(tx)) fails.push('try accounts: testnet addresses are named Testnet');
+    tx = await run('', await addrAt('', 84, 'wpkh', 0, 5, 0, 0), 2, 2); if (!/^NOT FOUND in accounts 0 to 2 \(first 2 receive and change addresses of each, without passphrase\)\. Things to check: .*type it in the box above/.test(tx) || !/bad/.test($('addrCheckStatus').className)) fails.push('try accounts: an account beyond the range is NOT FOUND with advice');
+    tx = await run('', await addrAt('', 84, 'wpkh', 0, 0, 0, 3), 2, 2); if (!/^NOT FOUND in accounts 0 to 2 \(first 2 /.test(tx)) fails.push('try accounts: an address beyond the depth is NOT FOUND');
+    tx = await run('TREZOR', await addrAt('', 84, 'wpkh', 0, 5, 0, 0), 1, 1); if (!/without passphrase and with passphrase\)\. Things to check: .*\(you typed one; try another spelling\)/.test(tx)) fails.push('try accounts: NOT FOUND names both variants and the typed passphrase');
+    tx = await run('', 'hello', 2, 2); if (!/^Enter a bc1q/.test(tx)) fails.push('try accounts: not an address');
+    $('phrase').value = 'abandon abandon'; $('checkAddr').value = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'; await w.checkAllAccounts(2, 2); if (!/valid seed phrase/.test(st())) fails.push('try accounts: needs a valid phrase');
+    { $('phrase').value = AB; $('verifyPass').value = ''; $('checkAddr').value = await addrAt('', 84, 'wpkh', 0, 15, 0, 0);
+      const p1 = w.checkAllAccounts(20, 5); for (let n = 0; n < 500 && $('checkAcctsStop').disabled; n++) await sleep(10);
+      if ($('checkAcctsStop').disabled || !$('checkAddrBtn').disabled || !$('checkAcctsBtn').disabled) fails.push('try accounts: while searching STOP is on and the search buttons are off');
+      await w.checkAllAccounts(0, 1); if ($('checkAcctsStop').disabled) fails.push('try accounts: a second press while searching must do nothing');
+      $('checkAcctsStop').click(); await p1;
+      if (!/^Stopped\./.test(st()) || !$('checkAcctsStop').disabled || $('checkAddrBtn').disabled || $('checkAcctsBtn').disabled) fails.push('try accounts: STOP ends the search and the buttons come back'); }
+    { $('phrase').value = AB; $('verifyPass').value = ''; $('checkAddr').value = await addrAt('', 84, 'wpkh', 0, 0, 0, 0); $('addrCheckStatus').textContent = '';
+      $('checkAcctsBtn').click(); for (let n = 0; n < 500 && !/FOUND/.test(st()); n++) await sleep(20);
+      if (!/^FOUND: this SegWit address is receive address #0 /.test(st())) fails.push('try accounts: the button starts the search'); }
+    w.setGate('fail', 'SELF-TEST FAILED', 'bad'); if (!$('checkAcctsBtn').disabled) fails.push('try accounts: a failed self-test disables the button'); w.setGate('pass', 'SELF-TEST PASSED', 'good');
+    $('phrase').value = ''; $('checkAddr').value = ''; $('verifyPass').value = ''; $('addrCheckStatus').textContent = ''; }
   { // Translation and passphrase notes (v1.29.0)
     const d = w.document, m = d.querySelector('meta[name="google"]'), adv = w.document.getElementById('passphrase').closest('details');
     if (d.documentElement.getAttribute('translate') !== 'no') fails.push('translation: html translate=no');
@@ -829,7 +855,7 @@ async function probe(w, mutated) {
     }
     { // main-action buttons are the primary cyan style, helper buttons stay grey secondary (v1.27.3)
       const doc = w.document;
-      const mains = ['drillStart', 'prStart', 'prCheckBtn', 'checkAddrBtn', 'reforgeWordsBtn', 'psbtBtn', 'cmpBtn', 'childBtn', 'forgeBtn'];
+      const mains = ['drillStart', 'prStart', 'prCheckBtn', 'checkAddrBtn', 'checkAcctsBtn', 'reforgeWordsBtn', 'psbtBtn', 'cmpBtn', 'childBtn', 'forgeBtn'];
       if (mains.some((id) => { const b = doc.getElementById(id); return !b || b.classList.contains('secondary'); })) fails.push('buttons: every main action button is primary cyan, not secondary');
       const helpers = [...doc.querySelectorAll('button')].filter((b) => /^(COPY|SHOW QR|HIDE|PRINT|UNDO)/i.test(b.textContent.trim()));
       if (helpers.length < 10 || !helpers.every((b) => b.classList.contains('secondary') || b.classList.contains('btn-clear') || b.classList.contains('print-btn'))) fails.push('buttons: small helper buttons stay grey secondary (or the same-grey print-btn/theme-toggle style)');
@@ -1404,6 +1430,22 @@ const M = [
   ['reforge passphrase: an edit keeps the result', '"reforgePassWords", "reforgePassInput", "reforgePassCheck", "reforgePassTypos"].forEach(id => document.getElementById(id).addEventListener', '"reforgePassWords", "reforgePassCheck", "reforgePassTypos"].forEach(id => document.getElementById(id).addEventListener'],
   ['reforge passphrase: an invalid phrase accepted', '|| !(await reforgeChecksumOk(Uint16Array.from(parsed.idx))))', ')'],
   ['reforge: fingerprint odds wrong', 'Math.round(2 ** 32 / Math.max(1, n))', 'Math.round(2 ** 31 / Math.max(1, n))'],
+  ['try accounts: range stops one account short', 'for(let acct = 0; acct <= MAXA; acct++){', 'for(let acct = 0; acct < MAXA; acct++){'],
+  ['try accounts: passphrase variant dropped', 'const variants = vp ? [["without passphrase", ""], ["with passphrase", vp]] : [["without passphrase", ""]];', 'const variants = [["without passphrase", ""]];'],
+  ['try accounts: depth ignored', 'DEPTH = depth || ACCT_SCAN_DEPTH', 'DEPTH = ACCT_SCAN_DEPTH'],
+  ['try accounts: STOP ignored', 'if(acctScanStop) return say("", "Stopped.', 'if(false) return say("", "Stopped.'],
+  ['try accounts: buttons stay off after a run', 'btns.forEach(b => b.disabled = !on);', 'btns.forEach(b => b.disabled = true);'],
+  ['try accounts: second press while busy runs', 'if(!gateOk() || acctScanBusy) return;', 'if(!gateOk()) return;'],
+  ['try accounts: testnet not named', '(addressNetOf(addr) === "test" ? "Testnet " : "")', '""'],
+  ['try accounts: button not wired', 'onclick="checkAllAccounts()"', 'onclick=""'],
+  ['try accounts: always searches account 0', 'findAddress(seed, addr, 0, DEPTH, acct)', 'findAddress(seed, addr, 0, DEPTH, 0)'],
+  ['try accounts: STOP never turned on', 'btns.forEach(b => b.disabled = true); stop.disabled = false;', 'btns.forEach(b => b.disabled = true);'],
+  ['try accounts: gate does not disable the button', '  document.getElementById("checkAcctsBtn").disabled = !on;\n', ''],
+  ['try accounts: no advice about the passphrase', '" (type it in the box above and search again)"', '""'],
+  ['try accounts: typed-passphrase advice dropped', '" (you typed one; try another spelling)"', '""'],
+  ['try accounts: found message hides the variant', '" of these words, " + label + ". Put "', '" of these words. Put "'],
+  ['try accounts: not an address accepted', 'if(!type) return say("bad", "Enter a bc1q', 'if(false) return say("bad", "Enter a bc1q'],
+  ['try accounts: invalid phrase accepted', 'if(!r.ok) return say("bad", "First type a valid seed phrase in the box above. " + r.msg);', ''],
   ['translation: html opt-out dropped', '<html lang="en" translate="no">', '<html lang="en">'],
   ['translation: notranslate meta dropped', '<meta name="google" content="notranslate">', '<meta name="x" content="notranslate">'],
   ['passphrase: hardware wallet limit note dropped', ' Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div>', '</div>'],
@@ -1558,7 +1600,7 @@ const M = [
   ['find: passphrase wallet never searched', 'if(vp) variants.push(["with passphrase", vp]);', ''],
   ['find: no-passphrase wallet not searched', 'const variants = [["without passphrase", ""]]; if(vp) variants.push(["with passphrase", vp]);', 'const variants = []; if(vp) variants.push(["with passphrase", vp]); else variants.push(["without passphrase", ""]);'],
   ['find: NOT FOUND shown as success', 'say("bad", "NOT FOUND in indices', 'say("ok", "NOT FOUND in indices'],
-  ['find: FOUND shown as failure', 'return say("ok", "FOUND: this "', 'return say("bad", "FOUND: this "'],
+  ['find: FOUND shown as failure', 'addrScanFrom = 0; return say("ok", "FOUND: this "', 'addrScanFrom = 0; return say("bad", "FOUND: this "'],
   ['find: invalid phrase not rejected', 'if(!r.ok) return say("bad", "Type a valid seed phrase in the box above first. " + r.msg);', ''],
   ['find: address format not validated', '  if(!kind) return say("bad", "Enter a bc1q', '  if(false) return say("bad", "Enter a bc1q'],
   ['find: scan position not reset when the address changes', 'for(const id of ["checkAddr","checkAcct","phrase","verifyPass"]) document.getElementById(id).addEventListener("input", resetAddrScan);', ''],

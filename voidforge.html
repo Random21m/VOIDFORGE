@@ -1091,7 +1091,8 @@
       <h3 class="sec">Is this address yours?</h3>
       <div class="hint" style="margin:0 0 6px;">Paste a receive or change address from a wallet app (bc1q SegWit, bc1p Taproot, 3 nested SegWit or 1 legacy; the box on the right is the account, almost always 0). It is searched in the wallet made by the words and passphrase above.</div>
       <div style="display:flex; gap:6px;"><input type="text" id="checkAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Address (bc1q, bc1p, 3 or 1)" style="flex:1; min-width:0;"><input type="text" id="checkAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number (almost always 0)" style="width:56px; flex:none;"></div>
-      <div class="btn-row" style="margin-top:8px;"><button type="button" id="checkAddrBtn" onclick="checkAddress()">CHECK ADDRESS</button></div>
+      <div class="btn-row" style="margin-top:8px;"><button type="button" id="checkAddrBtn" onclick="checkAddress()">CHECK ADDRESS</button><button type="button" id="checkAcctsBtn" onclick="checkAllAccounts()">TRY ACCOUNTS 0 TO 20</button><button type="button" id="checkAcctsStop" class="secondary small" onclick="acctScanStop = true" disabled>STOP</button></div>
+      <div class="hint" style="margin:6px 0 0;">Not sure of the account? TRY ACCOUNTS 0 TO 20 looks at the first 20 receive and change addresses of each account (the account box is ignored), with and without the passphrase above. It takes a while; STOP ends it.</div>
       <div class="status" id="addrCheckStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
     </div>
   </div>
@@ -4064,6 +4065,40 @@ async function checkAddress(range){
   } catch(e) { say("bad", "Could not check: " + e.message); }
   finally { btn.disabled = false; }
 }
+// Try accounts 0 to 20 (v1.33.0): for people who do not know which account their wallet used. Same search as CHECK ADDRESS, repeated per account.
+const ACCT_SCAN_MAX = 20, ACCT_SCAN_DEPTH = 20;
+let acctScanStop = false, acctScanBusy = false;
+async function checkAllAccounts(maxAcct, depth){
+  if(!gateOk() || acctScanBusy) return;
+  const MAXA = maxAcct === undefined ? ACCT_SCAN_MAX : maxAcct, DEPTH = depth || ACCT_SCAN_DEPTH;
+  const st = document.getElementById("addrCheckStatus");
+  const say = (cls, t) => { st.className = "status " + cls; st.textContent = t; };
+  const r = await checkPhrase(document.getElementById("phrase").value);
+  if(!r.ok) return say("bad", "First type a valid seed phrase in the box above. " + r.msg);
+  let addr = document.getElementById("checkAddr").value.replace(/\s+/g, "");
+  if(/^(bc1|tb1)/i.test(addr)) addr = addr.toLowerCase();
+  const type = addressTypeOf(addr);
+  if(!type) return say("bad", "Enter a bc1q... (SegWit), bc1p... (Taproot), 3... (nested SegWit) or 1... (legacy) address, or a testnet address (tb1q..., tb1p..., 2..., m... or n...).");
+  const kind = (addressNetOf(addr) === "test" ? "Testnet " : "") + {wpkh: "SegWit", tr: "Taproot", "sh-wpkh": "Nested SegWit", pkh: "Legacy"}[type];
+  const vp = document.getElementById("verifyPass").value;
+  const variants = vp ? [["without passphrase", ""], ["with passphrase", vp]] : [["without passphrase", ""]];
+  const btns = ["checkAddrBtn", "checkAcctsBtn"].map(id => document.getElementById(id)), stop = document.getElementById("checkAcctsStop");
+  acctScanBusy = true; acctScanStop = false; btns.forEach(b => b.disabled = true); stop.disabled = false;
+  try {
+    for(const [label, pw] of variants){
+      const seed = await mnemonicToSeed(r.mnemonic, pw);
+      for(let acct = 0; acct <= MAXA; acct++){
+        if(acctScanStop) return say("", "Stopped. Nothing was found before you stopped it.");
+        say("", "Searching " + label + ": account " + acct + " of 0 to " + MAXA + "...");
+        await new Promise(res => setTimeout(res, 0));
+        const f = await findAddress(seed, addr, 0, DEPTH, acct);
+        if(f) return say("ok", "FOUND: this " + kind + " address is " + (f.chain ? "change" : "receive") + " address #" + f.index + " (" + f.path + ") of account " + acct + " of these words, " + label + ". Put " + acct + " in the account box and use CHECK ADDRESS to search deeper.");
+      }
+    }
+    say("bad", "NOT FOUND in accounts 0 to " + MAXA + " (first " + DEPTH + " receive and change addresses of each, " + variants.map(v => v[0]).join(" and ") + "). Things to check: the address itself (one wrong character gives a different result), the words and their order, a passphrase" + (vp ? " (you typed one; try another spelling)" : " (type it in the box above and search again)") + ", an account above " + MAXA + ", or an address further along than #" + (DEPTH - 1) + " (use CHECK ADDRESS, which goes 50 at a time).");
+  } catch(e) { say("bad", "Could not check: " + e.message); }
+  finally { acctScanBusy = false; acctScanStop = false; stop.disabled = true; const on = selfTestState === "pass"; btns.forEach(b => b.disabled = !on); }
+}
 // "Child seed (BIP85)": derives a new seed phrase from the typed parent words (and passphrase). Shown on screen only; nothing is copied or saved.
 // Check your download (v1.27.3). Reads the chosen file, hashes it with the browser's SHA-256 and compares with what you paste. Nothing is stored or sent.
 const DL_MAX = 64 * 1024 * 1024;
@@ -4756,6 +4791,7 @@ function setGate(state, text, cls){
   document.getElementById("forgeBtn").disabled = !on;
   document.getElementById("verifyBtn").disabled = !on;
   document.getElementById("checkAddrBtn").disabled = !on;
+  document.getElementById("checkAcctsBtn").disabled = !on;
   document.getElementById("childBtn").disabled = !on;
   wdUpdate();
 }
