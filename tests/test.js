@@ -2,6 +2,8 @@
 const {JSDOM}=require('jsdom'); const fs=require('fs'); const path=require('path'); const nc=require('crypto');
 const file=process.argv[2]||path.join(__dirname,'..','voidforge.html');
 const html=fs.readFileSync(file,'utf8');
+// Removes every <script ...>...</script> block by position (no regular expression), for tests that scan the page text.
+function stripScripts(h){ let out='', i=0; for(;;){ const a=h.toLowerCase().indexOf('<script', i); if(a<0){ out+=h.slice(i); break; } out+=h.slice(i,a); const b=h.toLowerCase().indexOf('</script', a); if(b<0) break; const c=h.indexOf('>', b); if(c<0) break; i=c+1; } return out; }
 let failed=0; const ok=(c,m)=>{ console.log((c?'PASS ':'FAIL ')+m); if(!c) failed++; };
 const eq=(a,b,m)=>ok(a===b, m+(a===b?'':` (got ${JSON.stringify(a)}, want ${JSON.stringify(b)})`));
 
@@ -149,7 +151,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
         t.$('dictSearch').value='zzzzqq'; t.w.dictFilter(); ok(/No entry matches .zzzzqq. in Lightning & layers\./.test(t.$('dictCount').textContent),'dictionary: the no-match line names the topic');
         chips[0].click(); t.$('dictSearch').value=''; t.w.dictFilter(); eq(items.filter(e=>e.style.display!=='none').length,items.length,'dictionary: All shows everything again');
         // keeping it up to date: every BIP or SLIP the page text mentions has an entry
-        const body=html.replace(/<script[\s\S]*?<\/script>/g,'').split('\n').filter(l=>!/<li><b>\d+\.\d+\.\d+<\/b>/.test(l)).join('\n'), nums=new Set(), re=/\b(BIP|SLIP)[- ]?0*(\d+)\b/g; let mm; while((mm=re.exec(body))) nums.add(mm[1]+mm[2]);
+        const body=stripScripts(html).split('\n').filter(l=>!/<li><b>\d+\.\d+\.\d+<\/b>/.test(l)).join('\n'), nums=new Set(), re=/\b(BIP|SLIP)[- ]?0*(\d+)\b/g; let mm; while((mm=re.exec(body))) nums.add(mm[1]+mm[2]);
         const missing=[...nums].filter(k=>!names.some(n=>{ const m=/^(BIP|SLIP)/.exec(k)[1], d=k.slice(m.length); return new RegExp('\\b'+m+'[- ]?0*'+d+'\\b','i').test(n)||(m==='BIP'&&new RegExp('\\b'+d+'\\b').test(n)&&/BIP/.test(n)); }));
         ok(nums.size>=8&&missing.length===0,'dictionary: every BIP or SLIP named in the page has an entry (missing: '+(missing.join(', ')||'none')+')'); }
       ok(box.querySelectorAll('a, [href], img, iframe, script').length===0&&!/localStorage|sessionStorage|indexedDB|XMLHttpRequest|fetch\(/.test((html.match(/function buildDict[\s\S]*?\n\/\/ Support this project/)||[''])[0]),'dictionary: no link, image or script, and nothing stored or fetched'); }

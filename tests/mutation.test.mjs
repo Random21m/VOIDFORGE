@@ -3,6 +3,8 @@
 // or an end-to-end probe whose expected values come from @scure (independent code).
 // A mutation that survives both means the safety net has a hole.
 // Run: npm ci && node tests/mutation.test.mjs
+// Removes every <script ...>...</script> block by position (no regular expression), for tests that scan the page text.
+function stripScripts(h) { let out='', i=0; for(;;){ const a=h.toLowerCase().indexOf('<script', i); if(a<0){ out+=h.slice(i); break; } out+=h.slice(i,a); const b=h.toLowerCase().indexOf('</script', a); if(b<0) break; const c=h.indexOf('>', b); if(c<0) break; i=c+1; } return out; }
 import nc from 'node:crypto';
 import fs from 'node:fs';
 import { entropyToMnemonic, validateMnemonic, mnemonicToEntropy } from '@scure/bip39';
@@ -751,7 +753,7 @@ async function probe(w, mutated) {
         if (!lc.includes('Lightning channel') || lc.includes('Wallet file')) fails.push('dictionary: topic and search work together');
         $('dictSearch').value = 'zzzzqq'; w.dictFilter(); if (!/No entry matches .zzzzqq. in Lightning & layers\./.test($('dictCount').textContent)) fails.push('dictionary: no-match line names the topic');
         chips[0].click(); $('dictSearch').value = ''; w.dictFilter(); if (items.filter((e) => e.style.display !== 'none').length !== items.length) fails.push('dictionary: All shows everything again');
-        const body = mutated.replace(/<script[\s\S]*?<\/script>/g, '').split('\n').filter((l) => !/<li><b>\d+\.\d+\.\d+<\/b>/.test(l)).join('\n'), nums = new Set(), re = /\b(BIP|SLIP)[- ]?0*(\d+)\b/g; let mm; while ((mm = re.exec(body))) nums.add(mm[1] + mm[2]);
+        const body = stripScripts(mutated).split('\n').filter((l) => !/<li><b>\d+\.\d+\.\d+<\/b>/.test(l)).join('\n'), nums = new Set(), re = /\b(BIP|SLIP)[- ]?0*(\d+)\b/g; let mm; while ((mm = re.exec(body))) nums.add(mm[1] + mm[2]);
         const missing = [...nums].filter((k) => !names.some((n) => { const m = /^(BIP|SLIP)/.exec(k)[1], d = k.slice(m.length); return new RegExp('\\b' + m + '[- ]?0*' + d + '\\b', 'i').test(n) || (m === 'BIP' && new RegExp('\\b' + d + '\\b').test(n) && /BIP/.test(n)); }));
         if (nums.size < 8 || missing.length) fails.push('dictionary: every BIP or SLIP named in the page has an entry'); }
       if (!dictFacts.every(([n, re]) => { const e = items.find((x) => x.querySelector('dt').textContent === n); return e && re.test(e.textContent); })) fails.push('dictionary: key facts in the entries');
