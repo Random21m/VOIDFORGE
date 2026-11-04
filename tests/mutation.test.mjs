@@ -1217,6 +1217,8 @@ async function probe(w, mutated) {
     const w3 = loadPage(mutated, () => {}); await ready(w3); w3.document.dispatchEvent(new w3.KeyboardEvent('keydown', { key: 'Escape' })); if (w3.document.getElementById('startGate')) fails.push('notice: Escape closes it');
     w2.__focus.length = 0; w2.startGateClose();
     const fc = w2.__focus.find((x) => x[0] === 'rolls'); if (w2.document.getElementById('startGate') || !fc || !fc[1] || fc[1].preventScroll !== true) fails.push('notice: closing removes it and focuses the rolls box without scrolling');
+    w2.__focus.length = 0; w2.matchMedia = (q) => ({ matches: /pointer:\s*coarse/.test(q) }); w2.startGateClose(); if (w2.__focus.some((x) => x[0] === 'rolls')) fails.push('notice: a touch device does not get the rolls box focused (no keyboard pop-up)');
+    w2.__focus.length = 0; w2.matchMedia = () => ({ matches: false }); w2.startGateClose(); if (!w2.__focus.some((x) => x[0] === 'rolls')) fails.push('notice: a mouse device still gets the rolls box focused'); delete w2.matchMedia;
     if (!/educational tool/.test(w2.document.getElementById('disclaimer').textContent)) fails.push('notice: disclaimer calls it an educational tool'); }
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
@@ -2109,9 +2111,12 @@ const M = [
   ['practice: typing keeps the result', 'document.getElementById("prInput").addEventListener("input", () => practiceStatus("",""));', ''],
   ['practice: start shows no words', 'document.getElementById("prShow").style.display="block"; document.getElementById("prCheck").style.display="none";', 'document.getElementById("prShow").style.display="none"; document.getElementById("prCheck").style.display="none";'],
   ['practice: order ignored', 'if(got[i] !== w) bad.push(i+1);', 'if(!got.includes(w)) bad.push(i+1);'],
-  ['page close: scrolls down to the rolls box', 'if(g) g.remove();\n  document.body.classList.remove("dice-wait");\n  document.getElementById("rolls").focus({preventScroll: true});', 'if(g) g.remove();\n  document.body.classList.remove("dice-wait");\n  document.getElementById("rolls").focus();'],
+  ['page close: scrolls down to the rolls box', 'if(!touch) document.getElementById("rolls").focus({preventScroll: true});', 'if(!touch) document.getElementById("rolls").focus();'],
   ['page open: notice button scrolls the page', 'if(go) go.focus({preventScroll: true});', 'if(go) go.focus();'],
   ['notice: closing does not remove it', 'if(g) g.remove();', 'if(g) g.id = "startGate";'],
+  ['notice: touch devices still get the keyboard', 'if(!touch) document.getElementById("rolls").focus({preventScroll: true});', 'document.getElementById("rolls").focus({preventScroll: true});'],
+  ['notice: touch is detected wrongly', 'window.matchMedia("(pointer: coarse)").matches', 'window.matchMedia("(pointer: fine)").matches'],
+  ['notice: mouse devices lose the focus', 'if(!touch) document.getElementById("rolls").focus({preventScroll: true});', 'if(touch) document.getElementById("rolls").focus({preventScroll: true});'],
   ['notice: Escape does nothing', 'if(e.key === "Escape" && document.getElementById("startGate")) startGateClose();', ''],
   ['notice: never focuses the button', 'if(go) go.focus({preventScroll: true}); else', 'if(false) go.focus({preventScroll: true}); else'],
   ['multisig: reset leaves the QR on screen', 'ms = null; msHideQr();', 'ms = null;'],
@@ -2162,8 +2167,8 @@ const M = [
   ['result: empty state does not refill slots', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote();', 'grid.classList.remove("slots"); updateAbbrNote();'],
   ['result: panel not refreshed', '  updateSeedPanel();\n  if(ms) msBanner();', '  if(ms) msBanner();'],
   ['result: empty box shown', 'g.classList.toggle("nores", text === "\\u2014")', 'g.classList.toggle("nores", false)'],
-  ['notice: dice released too early / never', 'document.body.classList.remove("dice-wait");\n  document.getElementById("rolls").focus({preventScroll: true});\n}', 'document.getElementById("rolls").focus({preventScroll: true});\n}'],
-  ['notice: dice held with no notice', 'else { document.body.classList.remove("dice-wait"); document.getElementById("rolls").focus({preventScroll: true}); }', 'else { document.getElementById("rolls").focus({preventScroll: true}); }'],
+  ['notice: dice released too early / never', 'document.body.classList.remove("dice-wait");\n  focusRollsUnlessTouch();\n}', 'focusRollsUnlessTouch();\n}'],
+  ['notice: dice held with no notice', 'else { document.body.classList.remove("dice-wait"); focusRollsUnlessTouch(); }', 'else { focusRollsUnlessTouch(); }'],
   ['notice: dice never held', '<body class="dice-wait">', '<body>'],
   ['dice-wait css: dice still move', 'body.dice-wait .logo .die, body.dice-wait .logo .cube, body.dice-wait .logo .die::after { animation: none !important; opacity: 0; }', 'body.dice-wait .logo .die { opacity: 1; }'],
   ['strip: link goes nowhere', 'onclick="showTab(\'about\',\'beforeCard\')"', 'onclick="showTab(\'make\')"'],
