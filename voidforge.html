@@ -973,6 +973,37 @@
       <div class="status" id="lwStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <pre id="lwOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
     </details>
+    <!-- Reforge (v1.28.0, in progress): will replace "Find the last word" above in the same release once Mode 1 fully
+         covers its case. UI shell only -- the recovery search itself (reforgeWords, reforgePassphrase and friends) is
+         not implemented yet and the buttons below are intentionally disabled so this card does nothing if ever
+         shipped by accident. Do not wire this up without full oracle + mutation test coverage first. -->
+    <details id="reforgeBox">
+      <summary>Reforge: recover a seed or find a passphrase<span class="tag tag-ro">NEW</span><small>Missing or wrong words, or a forgotten passphrase &mdash; search against what you already know.</small></summary>
+      <p class="hint" style="margin:8px 0;">Reforge searches for the words or passphrase you lost, checked against something you already know is right (a master fingerprint, a receive address, or an xpub/zpub). It never guesses silently: every match it reports is verified, and it tells you when it found nothing. Typed words and passphrase pieces are secret and are never saved or sent.</p>
+      <div class="radio-group" id="reforgeModeRadios">
+        <label><input type="radio" name="reforgeMode" value="words" checked onchange="reforgeModeChange()"><span>Missing or wrong words</span></label>
+        <label><input type="radio" name="reforgeMode" value="pass" onchange="reforgeModeChange()"><span>Passphrase</span></label>
+      </div>
+      <div id="reforgeWordsPanel">
+        <p class="hint" style="margin:0 0 8px;">Type your words in order. Use <code>?</code> for a word you are missing entirely, and underline or mark the ones you are unsure of by typing your best guess &mdash; Reforge also tries nearby words and swapped neighbours. Works best with 1-2 uncertain words.</p>
+        <textarea id="reforgeWordsInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Your words, with ? for any missing word" placeholder="word1 word2 ? word4 ... (use ? for a missing word)"></textarea>
+        <input type="text" id="reforgeWordsCheck" spellcheck="false" autocomplete="off" autocapitalize="off" style="margin-top:6px;" aria-label="Master fingerprint, receive address, or xpub/zpub to check against" placeholder="Check against: master fingerprint, a receive address, or xpub/zpub">
+        <div class="btn-row" style="margin-top:8px;">
+          <button type="button" id="reforgeWordsBtn" disabled title="Not built yet">SEARCH (coming soon)</button>
+          <button type="button" class="secondary small" onclick="reforgeClear()">CLEAR</button>
+        </div>
+      </div>
+      <div id="reforgePassPanel" style="display:none;">
+        <p class="hint" style="margin:0 0 8px;">Type the pieces of the passphrase you remember, one per line (Reforge also tries case, common typos and digit variants of each). This is checked against a PBKDF2-derived wallet, which is slow in the browser (roughly hundreds of tries per second), so the total search is capped and the page says so before it runs.</p>
+        <textarea id="reforgePassInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Passphrase pieces, one per line" placeholder="Passphrase pieces you remember, one per line"></textarea>
+        <input type="text" id="reforgePassCheck" spellcheck="false" autocomplete="off" autocapitalize="off" style="margin-top:6px;" aria-label="Master fingerprint or receive address to check against" placeholder="Check against: master fingerprint or a receive address">
+        <div class="btn-row" style="margin-top:8px;">
+          <button type="button" id="reforgePassBtn" disabled title="Not built yet">SEARCH (coming soon)</button>
+          <button type="button" class="secondary small" onclick="reforgeClear()">CLEAR</button>
+        </div>
+      </div>
+      <div class="status" id="reforgeStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;">Not built yet &mdash; this card is a layout preview only.</div>
+    </details>
     <details id="psbtBox">
       <summary>Inspect a transaction (PSBT)<span class="tag tag-ro">READ ONLY</span><small>See where the money goes and the fee before signing.</small></summary>
       <p class="hint" style="margin:8px 0;">Shows what a partly signed Bitcoin transaction (PSBT) from a wallet app would do: where the money comes from, where it goes, and the fee, so you can check it before signing on your hardware wallet. <b>This only reads and displays. It cannot sign, never uses your seed words, and sends nothing.</b> Paste the PSBT (base64 or hex) or choose the .psbt file. If you typed your words in the CHECK A BACKUP tab, outputs that carry this wallet&rsquo;s key information are marked. It also checks any signatures it finds: whether two of them share a <b>nonce</b> (a repeated secret number that lets anyone work out the private key) and whether a signature covers the whole transaction.</p>
@@ -2484,6 +2515,23 @@ async function findLastWords(){
     say("ok", c.length + " words complete this " + (words.length + 1) + "-word phrase. Any one of them gives a valid checksum, but only your own backup tells you which is the real last word.");
     o.textContent = c.join("  "); o.style.display = "block";
   } catch(e) { say("bad", e.message); }
+}
+// ================= Reforge (v1.28.0, UI shell only -- see the HTML comment above reforgeBox) =================
+// Layout and mode-toggle only. The actual recovery search (checksum-filtered word candidates verified against a
+// known fingerprint/address/xpub, and the passphrase-variant search) is designed and built separately, with full
+// oracle tests against @scure/bip39 and mutation coverage, before either SEARCH button is ever enabled.
+function reforgeModeChange(){
+  const words = document.querySelector('input[name="reforgeMode"][value="words"]').checked;
+  document.getElementById("reforgeWordsPanel").style.display = words ? "" : "none";
+  document.getElementById("reforgePassPanel").style.display = words ? "none" : "";
+}
+function reforgeClear(){
+  document.getElementById("reforgeWordsInput").value = "";
+  document.getElementById("reforgeWordsCheck").value = "";
+  document.getElementById("reforgePassInput").value = "";
+  document.getElementById("reforgePassCheck").value = "";
+  const st = document.getElementById("reforgeStatus");
+  st.className = "status"; st.textContent = "Not built yet — this card is a layout preview only.";
 }
 // ================= Read-only PSBT inspector (BIP174 version 0). Only parses and displays: never signs, never uses a key. =================
 function psbtReader(b){
