@@ -199,6 +199,11 @@
   .rc-label { flex:1; text-align:center; font-size:15px; color:var(--muted); line-height:1.1; }
   .rc-note { font-size:12.5px; color:var(--muted); margin-top:4px; }
   .hint { font-size: 13.5px; color: var(--muted); }
+  .dict-list { margin: 0; max-height: 60vh; overflow-y: auto; padding-right: 6px; }
+  .dict-item { padding: 8px 0; border-top: 1px solid var(--border); }
+  .dict-item dt { font-weight: 700; color: var(--accent); }
+  .dict-item dd { margin: 3px 0 0; line-height: 1.5; }
+  .dict-item small { display: block; margin-top: 3px; color: var(--muted); font-size: 12.5px; }
   .support-qr { width: 100%; max-width: 230px; margin: 10px auto 4px; border-radius: 10px; overflow: hidden; }
   .support-qr svg { display: block; width: 100%; height: auto; }
   .wlabel { margin-top: 10px; font-size: 13.5px; color: var(--muted); }
@@ -1122,6 +1127,13 @@
         <li>To check a backup later, type the words into VERIFY, add the passphrase if you used one, and paste the fingerprint or first address you wrote down into the last box. VERIFY tells you whether it matches without a passphrase, with it, or neither.</li>
       </ol>
     </details>
+    <details id="dictBox">
+      <summary>Bitcoin dictionary<small>Plain-word meanings of the terms used on this page. Search it.</small></summary>
+      <p class="hint" style="margin:8px 0;">Short, plain explanations of the Bitcoin words you will meet while making and checking a seed. It is built into the page, works offline and stores nothing. Where a word appears in VOIDFORGE, the entry says where.</p>
+      <input type="search" id="dictSearch" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Search the Bitcoin dictionary" placeholder="Search a word, such as xpub or gap limit" oninput="dictFilter()">
+      <div class="hint" id="dictCount" aria-live="polite" style="margin:6px 0;"></div>
+      <dl id="dictList" class="dict-list"></dl>
+    </details>
     <details id="supportBox">
       <summary>Support this project<small>Optional. VOIDFORGE is free and stays free.</small></summary>
       <p class="hint" style="margin:8px 0;">VOIDFORGE is free and open source, and it works without any account. If it helped you and you would like to support its development, you can send a few sats over Lightning. It is entirely optional and changes nothing about how the tool works.</p>
@@ -1942,6 +1954,112 @@ function qrSvg(rows){
   const n=rows.length, q=4; let d="";
   for(let y=0;y<n;y++) for(let x=0;x<n;x++) if(rows[y][x]) d+="M"+(x+q)+" "+(y+q)+"h1v1h-1z";
   return '<svg viewBox="0 0 '+(n+2*q)+' '+(n+2*q)+'" shape-rendering="crispEdges" role="img" aria-label="QR code"><rect width="'+(n+2*q)+'" height="'+(n+2*q)+'" fill="#fff"/><path d="'+d+'" fill="#000"/></svg>';
+}
+// Bitcoin dictionary (v1.27.3). Plain-word meanings kept in the page; search only hides and shows entries. Nothing is stored or sent.
+const DICT = [
+  ["Account", "A numbered branch of one seed. Account 0 is the usual first one; other accounts make separate wallets from the same seed.", "Watch-only export: the account number box."],
+  ["Address", "A short text a person gives you so they can send you bitcoin. It is made from a public key (or script), so sharing it does not reveal your seed.", "First 5 receiving addresses, Is this address yours?"],
+  ["Address reuse", "Using the same address again and again. It works, but it lets anyone who looks at the blockchain link your payments together, so wallets give you a fresh address each time.", ""],
+  ["Air gap (offline computer)", "A computer that is not connected to any network. Making a seed on one means nothing can leak the words over the internet.", "The NETWORK: OFFLINE tag, the safety checklist."],
+  ["Bech32 and bech32m", "The address spelling used for bc1q (bech32) and bc1p (bech32m) addresses. It has a built-in checksum so a typo is caught instead of sending coins to the wrong place.", ""],
+  ["BIP", "Bitcoin Improvement Proposal: a numbered public design document for a Bitcoin standard, such as BIP39 for seed words.", ""],
+  ["BIP32", "The standard that lets one seed make a whole tree of keys (an HD wallet). Every key has a path such as m/84'/0'/0'/0/0.", "How your seed was made, watch-only export."],
+  ["BIP39", "The standard that turns random bytes into 12 or 24 words from a list of 2048, with a checksum. Any wallet that follows it can restore your seed from the words.", "The whole Make a seed tab."],
+  ["BIP48", "The standard for the key path of a multisig wallet (so different wallet apps agree on where each cosigner key lives).", "Multisig cosigner keys."],
+  ["BIP84", "The standard path for single-key Native SegWit wallets (bc1q addresses): m/84'/0'/0'.", "Default watch-only export and first addresses."],
+  ["BIP85", "A standard that makes a brand-new child seed from a parent seed, so one backup can recreate several wallets.", "Extra tools: Child seed (BIP85)."],
+  ["BIP86", "The standard path for single-key Taproot wallets (bc1p addresses): m/86'/0'/0'.", "Taproot addresses."],
+  ["BIP352 (Silent Payments)", "A way to receive payments to one reusable code while each payment still lands on a fresh address on the blockchain. Your wallet has to scan for them.", "Silent Payment address in the watch-only box."],
+  ["Bit", "One binary digit, 0 or 1. Randomness is counted in bits: a 12-word seed holds 128 bits and a 24-word seed 256.", ""],
+  ["Block", "A batch of transactions added to the blockchain roughly every ten minutes.", ""],
+  ["Block explorer", "A website that lets you look up addresses and transactions. Be careful: the site learns which addresses you are interested in.", ""],
+  ["Blockchain", "Bitcoin's shared public record of every transaction, kept by thousands of computers.", ""],
+  ["Brain wallet", "A seed made from a phrase you choose yourself. Never do this: human-chosen phrases are guessable and have been emptied by thieves. VOIDFORGE uses physical dice and coins instead.", ""],
+  ["Change", "The part of a payment that goes back to you. Spending part of a coin sends the rest to a change address of your own.", "Transaction inspector."],
+  ["Checksum", "Extra data that lets software notice a typo. In a BIP39 seed the last word partly acts as the checksum.", "Find the last word, wrong-word reports."],
+  ["Child seed", "A new seed derived from a parent seed (BIP85). The same parent, word count and index always give the same child.", "Extra tools."],
+  ["Clipboard", "Your computer's short-term copy memory. Some systems keep a history of it or sync it to other devices, so copying a secret can leak it.", "Browser safety checklist."],
+  ["Coin flip entropy", "Randomness taken from real coin tosses, written as 1 and 0. 128 flips give a 12-word seed and 256 give 24 words.", "Coin mode."],
+  ["Cold storage", "Keeping keys on something that is never online, such as a seed on paper or a hardware wallet used offline.", ""],
+  ["CompactSeedQR", "SeedSigner's smaller QR code for a seed: the raw entropy bytes, without the checksum.", "Paper backup as a SeedQR."],
+  ["Confirmation", "A block that includes your transaction. Each later block adds one more confirmation and makes the payment harder to undo.", ""],
+  ["Custody", "Who holds the keys. Self-custody means you do; with a bank or exchange they do.", ""],
+  ["Derivation path", "The route from the master key to one key, written like m/84'/0'/0'/0/0. Each number is a step down the tree.", "Watch-only export, Is this address yours?"],
+  ["Descriptor", "A line of text that says exactly which keys and script type make a wallet's addresses. Wallet apps use it to rebuild the same addresses.", "Watch-only export, Compare a key or descriptor."],
+  ["Dice entropy", "Randomness taken from real dice rolls. Each roll adds about 2.58 bits, so 50 rolls give about 129 bits (12 words) and 99 rolls about 256 bits (24 words).", "Dice mode and the roll counter."],
+  ["Dust", "A coin so small that the fee to spend it would cost more than it is worth.", ""],
+  ["Entropy", "Unpredictability, counted in bits. A seed is only as safe as the randomness it was made from.", "Entropy check, Roll chart."],
+  ["Extended public key (xpub, ypub, zpub)", "A public key that can work out all the addresses of one account. It cannot spend, but anyone who has it can see all your addresses and balance, so share it carefully.", "Watch-only export."],
+  ["Fairness test", "A statistic (Pearson chi-square) that shows whether the face counts of your dice look uneven. It can raise a concern but can never prove dice are fair.", "Under the roll chart."],
+  ["Fee (miner fee)", "What you pay to have a transaction included in a block: the inputs minus the outputs.", "Transaction inspector."],
+  ["Fingerprint (master fingerprint)", "Eight characters taken from your master key. It identifies a seed without revealing it, so you can check two tools made the same wallet.", "Wallet identity, Compare a key."],
+  ["Gap limit", "How many unused addresses in a row a wallet checks before it stops looking (usually 20). Funds on addresses beyond the gap can look missing after a restore.", ""],
+  ["Hardened path (the ' mark)", "A step in a derivation path written with an apostrophe, such as 84'. Hardened steps add a safety wall, so leaking one key lower in the tree cannot expose the keys above it.", ""],
+  ["Hardware wallet", "A small dedicated device that keeps your keys inside and signs transactions, so the keys never touch your computer.", ""],
+  ["Hash (SHA-256)", "A one-way fingerprint of data. Change one bit of the input and the whole output changes. VOIDFORGE hashes your rolls with SHA-256 to make the seed.", "How your seed was made."],
+  ["HD wallet", "Hierarchical deterministic wallet: one seed makes a whole tree of keys (BIP32), so one backup covers every address.", ""],
+  ["Hex", "Base 16: numbers written with 0 to 9 and a to f. Hashes and keys are usually shown in hex.", ""],
+  ["Hot wallet", "A wallet on a device that is online, such as a phone app. Handy for small amounts, riskier for large ones.", ""],
+  ["Index", "The number of one address or child inside a path or a BIP85 child seed.", "BIP85 index, address numbers."],
+  ["Input and output", "The two sides of a transaction: inputs are the coins being spent, outputs are the new coins being made (the payment and the change).", "Transaction inspector."],
+  ["Legacy address", "The oldest address type, starting with 1. It works everywhere but costs more in fees than SegWit.", "Address types."],
+  ["LifeHash", "A small picture made from your fingerprint, so you can compare two wallets by eye. It matches what Sparrow Wallet shows.", "Fingerprint picture."],
+  ["Lightning address", "A name that looks like an email, such as dev@breez.tips, which Lightning wallets can pay.", "Support this project."],
+  ["Lightning Network", "A second layer on top of Bitcoin for fast, cheap payments. VOIDFORGE does not make Lightning wallets.", "Support this project."],
+  ["LNURL", "A bech32-written web address that Lightning wallets read to find out how to pay someone.", "Support this project."],
+  ["Locktime", "A transaction field that stops it being mined before a chosen time or block.", "Transaction inspector."],
+  ["Mainnet", "The real Bitcoin network, where coins have value. Compare testnet.", ""],
+  ["Master key", "The root key of the tree, made from the seed. Every other key comes from it.", ""],
+  ["Mempool", "The waiting room where transactions sit until a miner puts them in a block.", ""],
+  ["Multisig", "A wallet that needs several keys to spend, such as 2 of 3, so one lost or stolen key is not enough to lose or steal the coins.", "Multisig wallet card."],
+  ["Native SegWit", "The modern address type, starting with bc1q. Lower fees than legacy and nested types.", "Default address type."],
+  ["Nested SegWit", "SegWit wrapped to look like an older address, starting with 3. Made for wallets that could not yet pay to bc1 addresses.", "Address types."],
+  ["Node", "A computer running Bitcoin software that checks every transaction and block itself.", ""],
+  ["OP_RETURN", "A way to attach a small data note to a transaction. The output carrying it can never be spent.", "Transaction inspector shows these notes."],
+  ["Open source", "Software whose code anyone can read, test and copy. That is what lets others check it.", ""],
+  ["Passphrase (the 25th word)", "An extra secret added to your seed words. A different passphrase makes a completely different wallet, and any passphrase opens some wallet, so a typo does not warn you. If you lose it, nothing can recover it.", "Advanced options."],
+  ["PBKDF2", "A deliberately slow calculation that turns your words and passphrase into the final seed (2048 rounds). It is why a seed cannot be guessed quickly.", ""],
+  ["Private key", "The secret number that lets you spend coins. Anyone who has it controls the coins.", ""],
+  ["PSBT (partly signed Bitcoin transaction)", "A standard file for passing a transaction between a wallet, which builds it, and a signer, which signs it. VOIDFORGE only reads these, it never signs.", "Transaction inspector, Compare two transactions."],
+  ["Public key", "The number worked out from a private key. It can be shared and cannot be used to spend.", ""],
+  ["QR code", "A square picture that holds text. VOIDFORGE draws QR codes on screen and never uses a camera.", "Watch-only QR, SeedQR, Support this project."],
+  ["RBF (replace-by-fee)", "A transaction can be marked so it may be replaced by a version that pays a higher fee while it waits to be mined.", "Transaction inspector."],
+  ["Receiving address", "One of the addresses made to be given out to be paid. Change addresses are a separate chain of your own addresses.", "First 5 receiving addresses."],
+  ["Restore drill", "VOIDFORGE's test that hides the words on screen and has you type them back from your paper, to prove the paper backup is correct.", "Restore drill card."],
+  ["Satoshi (sat)", "The smallest bitcoin unit: one hundred-millionth of a bitcoin.", ""],
+  ["Script", "The small program that locks a coin. Spending it means providing what the script asks for, such as a signature.", ""],
+  ["Second tool", "A different, independent wallet or device used to check your words give the same fingerprint and addresses.", "How to check this wallet in a second tool."],
+  ["Seed (seed phrase, recovery phrase, mnemonic)", "The 12 or 24 words that make every key in your wallet. Anyone who has them controls the coins, and with them you can restore the wallet anywhere.", "Your seed panel."],
+  ["SeedQR", "SeedSigner's QR code for a seed: each word's number (0000 to 2047) written as four digits.", "Paper backup as a SeedQR."],
+  ["SeedSigner", "An open-source do-it-yourself hardware signer. VOIDFORGE uses the same dice method and can read and make its SeedQR codes.", ""],
+  ["SegWit", "A 2017 Bitcoin upgrade that made transactions smaller and cheaper. Native SegWit addresses start with bc1q.", ""],
+  ["Self-custody", "Holding your own keys instead of trusting a company to hold your coins.", ""],
+  ["Self-test", "The checks the page runs on itself every time it loads, to make sure its math still gives the known right answers.", "The green SELF-TEST PASSED badge."],
+  ["SHA256SUMS", "A text file listing the fingerprint of the published VOIDFORGE file, so you can check your download is unchanged.", "Check your download."],
+  ["Signing", "Using a private key to prove a transaction is authorised. VOIDFORGE never signs anything.", ""],
+  ["Taproot", "The 2021 Bitcoin upgrade behind bc1p addresses. It gives more privacy and flexibility.", "Taproot addresses."],
+  ["Testnet", "A practice copy of Bitcoin whose coins are worthless, for learning without risk. Its SegWit addresses start with tb1.", "Network menu."],
+  ["Transaction (tx)", "A message that moves coins: it spends some outputs and makes new ones.", ""],
+  ["UTXO", "Unspent transaction output: a coin that has not been spent yet. Your balance is the sum of your UTXOs.", ""],
+  ["Wallet", "Software or a device that manages your keys and builds transactions. Your coins live on the blockchain; the wallet holds the keys to them.", ""],
+  ["Watch-only wallet", "A wallet that has only public keys. It shows addresses and balances but cannot spend, so it is safe on a phone.", "Watch-only box."],
+  ["Wordlist", "The fixed list of 2048 words BIP39 uses. Every word is unique by its first four letters.", "SHOW FIRST 4 LETTERS."]
+];
+function buildDict(){
+  const list = document.getElementById("dictList"), col = new Intl.Collator("en", {numeric: true, sensitivity: "base"});
+  DICT.slice().sort((a, b) => col.compare(a[0], b[0])).forEach(e => {
+    const item = document.createElement("div"), dt = document.createElement("dt"), dd = document.createElement("dd");
+    item.className = "dict-item"; dt.textContent = e[0]; dd.textContent = e[1];
+    if(e[2]){ const sm = document.createElement("small"); sm.textContent = "In VOIDFORGE: " + e[2]; dd.appendChild(sm); }
+    item.dataset.s = (e[0] + " " + e[1] + " " + e[2]).toLowerCase(); item.appendChild(dt); item.appendChild(dd); list.appendChild(item);
+  });
+  dictFilter();
+}
+function dictFilter(){
+  const q = document.getElementById("dictSearch").value.toLowerCase().trim().replace(/\s+/g, " "), items = document.querySelectorAll("#dictList .dict-item");
+  let n = 0;
+  items.forEach(e => { const show = !q || e.dataset.s.includes(q); e.style.display = show ? "" : "none"; if(show) n++; });
+  document.getElementById("dictCount").textContent = n === 0 ? "No entry matches \u201c" + document.getElementById("dictSearch").value.trim() + "\u201d." : (q ? n + " of " + items.length + " entries" : items.length + " entries, A to Z");
 }
 // Support this project (v1.27.3). The Lightning payment code is text kept in the page; the QR is drawn here from it. Nothing is sent anywhere.
 function drawSupportQr(){
@@ -3817,6 +3935,7 @@ function buildLogoDice(){
 }
 buildLogoDice();
 drawSupportQr();
+buildDict();
 function rollLogo(){ document.getElementById("logo").classList.toggle("again"); }
 async function demoWordsFor(rolls, wc){
   const entLen = {12:16,24:32}[wc];

@@ -81,6 +81,24 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(box.querySelectorAll('a, [href], img, iframe, script').length===0&&/never goes online/.test(box.textContent)&&/never send seed words/i.test(box.textContent),'support: no link, image or script in the box, and it says nothing is sent and never to send seed words');
       t.st.clip.length=0; const b=box.querySelectorAll('button'); b[0].click(); await new Promise(r=>setTimeout(r,20)); b[1].click(); await new Promise(r=>setTimeout(r,20)); const c1=t.st.clip[0], copied=t.st.clip[1];
       ok(b.length===2&&c1==='dev@breez.tips'&&copied===code,'support: COPY copies the address and the payment code exactly'); }
+    { // Bitcoin dictionary (v1.27.3): offline glossary with search
+      const box=t.$('dictBox'), items=[...t.$('dictList').querySelectorAll('.dict-item')], names=items.map(e=>e.querySelector('dt').textContent), def=e=>e.querySelector('dd').firstChild.textContent;
+      const q=async v=>{ t.$('dictSearch').value=v; t.w.dictFilter(); return items.filter(e=>e.style.display!=='none').map(e=>e.querySelector('dt').textContent); };
+      ok(box&&!box.open&&/Bitcoin dictionary/.test(box.querySelector('summary').textContent)&&items.length>=80,'dictionary: a closed "Bitcoin dictionary" box with 80+ entries');
+      const col=new Intl.Collator('en',{numeric:true,sensitivity:'base'}); ok(names.every((n,k)=>k===0||col.compare(names[k-1],n)<=0)&&new Set(names.map(n=>n.toLowerCase())).size===names.length,'dictionary: entries run A to Z (numbers in order) and no term is listed twice');
+      ok(items.every(e=>def(e).length>=25&&def(e).length<=330&&e.querySelector('dt').textContent.length<=45)&&!items.some(e=>/[<>]|http|www\./i.test(e.textContent)),'dictionary: every entry has a short plain definition, and none holds a link or markup');
+      ok(t.$('dictCount').textContent===items.length+' entries, A to Z','dictionary: the count line starts with all entries');
+      const x=await q('xpub'); ok(x.length===1&&/Extended public key/.test(x[0]),'dictionary: searching xpub finds the extended public key entry');
+      eq((await q('GAP  LIMIT')).join('|'),'Gap limit','dictionary: search ignores capitals and extra spaces');
+      ok((await q('second tool')).includes('Second tool')&&(await q('restore drill')).includes('Restore drill'),'dictionary: search also finds words inside the text');
+      ok((await q('zzzzqq')).length===0&&/No entry matches/.test(t.$('dictCount').textContent),'dictionary: a search with no match says so');
+      ok((await q('bip')).length>=7&&/ of \d+ entries/.test(t.$('dictCount').textContent),'dictionary: the count line shows how many matched'); 
+      eq((await q('')).length,items.length,'dictionary: clearing the search shows everything again');
+      const dice=items.find(e=>e.querySelector('dt').textContent==='Dice entropy').textContent; ok(dice.includes(String(Math.round(50*Math.log2(6))))&&dice.includes(String(Math.round(99*Math.log2(6)/8)*8)),'dictionary: the dice figures (about 129 and 256 bits) match the arithmetic');
+      const dictFacts=[['Wordlist',/2048/],['Wordlist',/first four letters/],['Fingerprint (master fingerprint)',/Eight characters/],['Satoshi (sat)',/hundred-millionth/],['Gap limit',/usually 20/],['Passphrase (the 25th word)',/completely different wallet/],['Testnet',/tb1/],['Taproot',/bc1p/],['Native SegWit',/bc1q/],['Legacy address',/starting with 1\./],['Nested SegWit',/starting with 3\./],['BIP39',/12 or 24 words/],['BIP85',/child seed/],['BIP84',/m\/84'\/0'\/0'/],['BIP86',/m\/86'\/0'\/0'/],['PBKDF2',/2048 rounds/],['Dice entropy',/2\.58 bits/],['Coin flip entropy',/128 flips.*256/],['OP_RETURN',/never be spent/],['Bit',/128 bits.*256/],['Block',/ten minutes/],['Fee (miner fee)',/inputs minus the outputs/]];
+      ok(dictFacts.every(([n,re])=>{ const e=items.find(x=>x.querySelector('dt').textContent===n); return e&&re.test(e.textContent); }),'dictionary: key facts in the entries are right (2048 words, 20-address gap limit, tb1/bc1p/bc1q, 2.58 bits per roll, ...)');
+      ok((await q('safety wall')).join()==='Hardened path (the \' mark)'&&(await q('green self-test passed')).includes('Self-test')&&(await q('sha256sums')).includes('SHA256SUMS'),'dictionary: search finds words in the definition and in the "In VOIDFORGE" note');
+      ok(box.querySelectorAll('a, [href], img, iframe, script').length===0&&!/localStorage|sessionStorage|indexedDB|XMLHttpRequest|fetch\(/.test((html.match(/function buildDict[\s\S]*?\n\/\/ Support this project/)||[''])[0]),'dictionary: no link, image or script, and nothing stored or fetched'); }
   // SELF-TEST button toggles: press again hides the results without CLEAR
   t.w.toggleSelfTests();
   ok(t.$('testResults').textContent==='','SELF-TEST button: press while results are shown hides them');

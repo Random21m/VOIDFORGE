@@ -677,11 +677,30 @@ async function probe(w, mutated) {
       if (!/preserve-3d/.test(rule('cube')) || !/preserve-3d/.test(rule('fl')) || /opacity|filter/.test(rule('cube') + rule('fl') + roll) || roll.length < 200) fails.push('logo: the cube keeps its 3D (opacity or filter on the cube flattens it)'); }
     if (!/\.logo \{[^}]*position: relative; z-index: 0;/.test(mutated) || !/#statusLine \{ position: relative; z-index: 1;/.test(mutated)) fails.push('logo: the falling dice pass behind the status line text, not over it');
     if (!/\n  h1 \{[^}]*font-size: 37px;[^}]*filter: drop-shadow\([^}]*\}/.test(mutated) || !/\.logo \{ --S: 40px;/.test(mutated)) fails.push('header: VOIDFORGE is 37px with a soft neon glow, and the dice are 40px so the name leads');
+    { // Bitcoin dictionary (v1.27.3)
+      const box = $('dictBox'), items = [...$('dictList').querySelectorAll('.dict-item')], names = items.map((e) => e.querySelector('dt').textContent), def = (e) => e.querySelector('dd').firstChild.textContent;
+      const q = (v) => { $('dictSearch').value = v; w.dictFilter(); return items.filter((e) => e.style.display !== 'none').map((e) => e.querySelector('dt').textContent); };
+      const dictFacts=[['Wordlist',/2048/],['Wordlist',/first four letters/],['Fingerprint (master fingerprint)',/Eight characters/],['Satoshi (sat)',/hundred-millionth/],['Gap limit',/usually 20/],['Passphrase (the 25th word)',/completely different wallet/],['Testnet',/tb1/],['Taproot',/bc1p/],['Native SegWit',/bc1q/],['Legacy address',/starting with 1\./],['Nested SegWit',/starting with 3\./],['BIP39',/12 or 24 words/],['BIP85',/child seed/],['BIP84',/m\/84'\/0'\/0'/],['BIP86',/m\/86'\/0'\/0'/],['PBKDF2',/2048 rounds/],['Dice entropy',/2\.58 bits/],['Coin flip entropy',/128 flips.*256/],['OP_RETURN',/never be spent/],['Bit',/128 bits.*256/],['Block',/ten minutes/],['Fee (miner fee)',/inputs minus the outputs/]];
+      if (!box || box.open || !/Bitcoin dictionary/.test(box.querySelector('summary').textContent) || items.length < 80) fails.push('dictionary: closed box with 80+ entries');
+      const col = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+      if (!names.every((n, k) => k === 0 || col.compare(names[k - 1], n) <= 0) || new Set(names.map((n) => n.toLowerCase())).size !== names.length) fails.push('dictionary: A to Z and no duplicates');
+      if (!items.every((e) => def(e).length >= 25 && def(e).length <= 330 && e.querySelector('dt').textContent.length <= 45) || items.some((e) => /[<>]|http|www\./i.test(e.textContent))) fails.push('dictionary: short plain entries, no links');
+      if ($('dictCount').textContent !== items.length + ' entries, A to Z') fails.push('dictionary: count line at the start');
+      const xp = q('xpub'); if (xp.length !== 1 || !/Extended public key/.test(xp[0])) fails.push('dictionary: search finds xpub');
+      if (q('GAP  LIMIT').join('|') !== 'Gap limit') fails.push('dictionary: search ignores capitals and extra spaces');
+      if (!q('second tool').includes('Second tool') || !q('restore drill').includes('Restore drill')) fails.push('dictionary: search finds terms');
+      if (q('safety wall').join() !== "Hardened path (the ' mark)" || !q('green self-test passed').includes('Self-test') || !q('sha256sums').includes('SHA256SUMS')) fails.push('dictionary: search covers the definition and the In VOIDFORGE note');
+      if (q('zzzzqq').length !== 0 || !/No entry matches/.test($('dictCount').textContent)) fails.push('dictionary: no-match message');
+      if (q('bip').length < 7 || !/ of \d+ entries/.test($('dictCount').textContent)) fails.push('dictionary: matched count line');
+      if (q('').length !== items.length) fails.push('dictionary: clearing the search shows everything');
+      if (!dictFacts.every(([n, re]) => { const e = items.find((x) => x.querySelector('dt').textContent === n); return e && re.test(e.textContent); })) fails.push('dictionary: key facts in the entries');
+      if (!/id="dictSearch"[^>]*oninput="dictFilter\(\)"/.test(mutated)) fails.push('dictionary: search wired');
+    }
     { // Support this project (v1.27.3)
       const box = $('supportBox'), code = $('supportLnurl').textContent.trim();
       if (!box || box.open || !/Optional/.test(box.querySelector('summary').textContent)) fails.push('support: closed optional box');
       if ($('supportAddr').textContent !== 'dev@breez.tips' || code !== 'LNURL1DP68GURN8GHJ7CNJV4JH5TN5D9C8XTMVDE6HYMRS9AJX2ASZ5RD0C') fails.push('support: exact address and payment code');
-      if (!$('supportQr').querySelector('svg path') || $('supportQr').innerHTML !== w.qrSvg(w.qrMatrix(code).rows)) fails.push('support: QR drawn from the payment code');
+      if (!$('supportQr').querySelector('svg path') || $('supportQr').innerHTML !== (() => { const d = w.document.createElement('div'); d.innerHTML = w.qrSvg(w.qrMatrix(code).rows); return d.innerHTML; })()) fails.push('support: QR drawn from the payment code');
       if (box.querySelectorAll('a, [href], img, iframe, script').length || !/never goes online/.test(box.textContent) || !/never send seed words/i.test(box.textContent)) fails.push('support: no link, and the honest notes');
       const clip = []; Object.defineProperty(w.navigator, 'clipboard', { value: { writeText: async (x) => { clip.push(x); } }, configurable: true }); const bs = box.querySelectorAll('button'); bs[0].click(); await new Promise((r) => setTimeout(r, 20)); bs[1].click(); await new Promise((r) => setTimeout(r, 20));
       if (bs.length !== 2 || clip[0] !== 'dev@breez.tips' || clip[1] !== code) fails.push('support: COPY copies the address and the code');
@@ -1504,6 +1523,34 @@ const M = [
   ['support: not marked optional', '<small>Optional. VOIDFORGE is free and stays free.</small>', '<small>VOIDFORGE is free and stays free.</small>'],
   ['support: offline note removed', 'This page never goes online, so nothing is sent from here:', 'Send from here:'],
   ['support: seed warning removed', 'and never send seed words or a passphrase to anyone, for any reason.', 'and have fun.'],
+  ['dictionary: numbers sorted as text', '{numeric: true, sensitivity: "base"}', '{numeric: false, sensitivity: "base"}'],
+  ['dictionary: search ignores nothing (case kept)', 'document.getElementById("dictSearch").value.toLowerCase().trim()', 'document.getElementById("dictSearch").value.trim()'],
+  ['dictionary: extra spaces not collapsed', '.trim().replace(/\\s+/g, " "), items = document.querySelectorAll("#dictList .dict-item");', '.trim(), items = document.querySelectorAll("#dictList .dict-item");'],
+  ['dictionary: search only matches the start', '!q || e.dataset.s.includes(q)', '!q || e.dataset.s.startsWith(q)'],
+  ['dictionary: empty search hides all', '!q || e.dataset.s.includes(q)', 'q && e.dataset.s.includes(q)'],
+  ['dictionary: search ignores the definition', 'item.dataset.s = (e[0] + " " + e[1] + " " + e[2]).toLowerCase();', 'item.dataset.s = (e[0] + " " + e[2]).toLowerCase();'],
+  ['dictionary: search ignores the In VOIDFORGE note', 'item.dataset.s = (e[0] + " " + e[1] + " " + e[2]).toLowerCase();', 'item.dataset.s = (e[0] + " " + e[1]).toLowerCase();'],
+  ['dictionary: hidden entries stay visible', 'e.style.display = show ? "" : "none";', 'e.style.display = "";'],
+  ['dictionary: count wrong', 'if(show) n++; });', 'n++; });'],
+  ['dictionary: no-match message lost', 'document.getElementById("dictCount").textContent = n === 0 ? "No entry matches', 'document.getElementById("dictCount").textContent = n === 0 ? "Nothing'],
+  ['dictionary: start count line changed', 'items.length + " entries, A to Z"', 'items.length + " entries"'],
+  ['dictionary: where-note dropped', 'if(e[2]){ const sm', 'if(false){ const sm'],
+  ['dictionary: never built', 'drawSupportQr();\nbuildDict();', 'drawSupportQr();'],
+  ['dictionary: box open by default', '<details id="dictBox">', '<details id="dictBox" open>'],
+  ['dictionary: search not wired', 'placeholder="Search a word, such as xpub or gap limit" oninput="dictFilter()"', 'placeholder="Search a word, such as xpub or gap limit"'],
+  ['dictionary: wordlist size wrong', 'The fixed list of 2048 words BIP39 uses.', 'The fixed list of 2047 words BIP39 uses.'],
+  ['dictionary: gap limit wrong', 'before it stops looking (usually 20)', 'before it stops looking (usually 10)'],
+  ['dictionary: testnet prefix wrong', 'Its SegWit addresses start with tb1.', 'Its SegWit addresses start with bc1.'],
+  ['dictionary: taproot prefix wrong', 'The 2021 Bitcoin upgrade behind bc1p addresses.', 'The 2021 Bitcoin upgrade behind bc1q addresses.'],
+  ['dictionary: dice bits per roll wrong', 'Each roll adds about 2.58 bits', 'Each roll adds about 3.58 bits'],
+  ['dictionary: pbkdf2 rounds wrong', '(2048 rounds)', '(1024 rounds)'],
+  ['dictionary: passphrase warning softened', 'A different passphrase makes a completely different wallet', 'A different passphrase makes a similar wallet'],
+  ['dictionary: OP_RETURN spendable', 'The output carrying it can never be spent.', 'The output carrying it can be spent.'],
+  ['dictionary: fee definition wrong', 'the inputs minus the outputs.', 'the outputs minus the inputs.'],
+  ['dictionary: satoshi size wrong', 'one hundred-millionth of a bitcoin', 'one millionth of a bitcoin'],
+  ['dictionary: fingerprint length wrong', 'Eight characters taken from your master key.', 'Four characters taken from your master key.'],
+  ['dictionary: legacy prefix wrong', 'starting with 1. It works everywhere', 'starting with 3. It works everywhere'],
+  ['dictionary: block time wrong', 'roughly every ten minutes', 'roughly every hour'],
   ['recommended: drill badge lost', 'prove your paper backup works<span class="tag tag-rec">RECOMMENDED</span>', 'prove your paper backup works (recommended)'],
   ['recommended: second-tool badge lost', 'in a second tool<span class="tag tag-rec">RECOMMENDED</span>', 'in a second tool (recommended)'],
   ['recommended: menu option not coloured', '<option value="ms-wsh" class="opt-rec">', '<option value="ms-wsh">'],
@@ -1520,7 +1567,7 @@ const M = [
   ['logo: six loses a pink pip', '(n === 6 && (i === 3 || i === 5))', '(n === 6 && i === 3)'],
   ['logo: face grid short a cell', 'for(let i = 0; i < 9; i++){\n    if(LOGO_PIPS', 'for(let i = 0; i < 8; i++){\n    if(LOGO_PIPS'],
   ['logo: a cube without its bottom face', '["fr","rt","tp","bk","lf","bt"].map', '["fr","rt","tp","bk","lf"].map'],
-  ['logo: dice never built', 'buildLogoDice();\ndrawSupportQr();\nfunction rollLogo', 'drawSupportQr();\nfunction rollLogo'],
+  ['logo: dice never built', 'buildLogoDice();\ndrawSupportQr();\nbuildDict();\nfunction rollLogo', 'drawSupportQr();\nbuildDict();\nfunction rollLogo'],
   ['logo: dice start in the same spot', 'fx:"-46px"', 'fx:"-10px"'],
   ['logo: dice land at the same angle', 'ry:"-34deg"', 'ry:"-30deg"'],
   ['logo: dice fall at the same moment', 'dl:"0.14s"', 'dl:"0s"'],

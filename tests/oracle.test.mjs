@@ -583,7 +583,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   const rows = w.qrMatrix(code).rows, n = rows.length, S = 6, Q = 4, W = (n + 2 * Q) * S, img = new Uint8ClampedArray(W * W * 4).fill(255);
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (rows[y][x]) for (let dy = 0; dy < S; dy++) for (let dx = 0; dx < S; dx++) { const i = ((((y + Q) * S + dy) * W) + ((x + Q) * S + dx)) * 4; img[i] = img[i + 1] = img[i + 2] = 0; }
   const dec = jsQR(img, W, W), svg = w.document.getElementById('supportQr').innerHTML;
-  R.ok(dec && dec.data === code && svg.includes('<svg') && svg === w.qrSvg(rows), 'support: the QR on the page scans back to exactly the payment code');
+  R.ok(dec && dec.data === code && svg.includes('<svg') && svg === (() => { const d = w.document.createElement('div'); d.innerHTML = w.qrSvg(rows); return d.innerHTML; })(), 'support: the QR on the page scans back to exactly the payment code');
 }
 
 R.done('oracle');
