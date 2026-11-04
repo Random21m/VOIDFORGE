@@ -1250,6 +1250,7 @@ async function probe(w, mutated) {
     if (!/\.tabs button\[aria-selected="true"\][^{]*\{[^}]*border-bottom-color: var\(--gold\)/.test(css)) fails.push('redesign: the selected tab has a gold underline');
     if (!/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(css)) fails.push('redesign: labels are plain coloured words');
     if (!/#cardGen \{ display: block; \}/.test(css)) fails.push('redesign: Make a seed is one column');
+    { const rs = $('rollStats'); if (!rs || rs.tagName !== 'DETAILS' || rs.open || !rs.contains($('rollChart')) || !rs.contains($('rollHistory')) || !rs.contains($('diceVisual'))) fails.push('tucked away: roll history and the fairness chart live in one closed box'); }
     if ($('ownerLogo') || w.document.querySelector('img')) fails.push('redesign: no picture is built into the page'); }
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
@@ -2336,6 +2337,7 @@ const M = [
   ["coin faces: value not recorded on the button", "b.dataset.v = v;", ""],
   ["coin faces: coin not drawn", "b.appendChild(coinFace(v === \"1\", v));", ""],
   ["coin faces: no label text", "b.appendChild(t);\n    }\n    else", "}\n    else"],
+  ["tucked away: roll history box starts open", "<details id=\"rollStats\" data-g=\"2\">", "<details id=\"rollStats\" data-g=\"2\" open>"],
   ["redesign: centre pip missing from the header die", "<circle class=\"dp\" cx=\"32\" cy=\"32\" r=\"5.6\"/>", ""],
   ["redesign: the name is not gold", "letter-spacing: .16em; color: var(--goldtx); background: none;", "letter-spacing: .16em; color: var(--text); background: none;"],
   ["redesign: the die is not gold", "#brandDie .db { fill: var(--gold); }", "#brandDie .db { fill: var(--text); }"],

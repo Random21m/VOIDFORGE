@@ -634,7 +634,7 @@
   #fpIcon { box-shadow: 0 0 0 1px var(--border); }
   .term { border-bottom-color: var(--muted); }
   .dict-item dt, #about code, .wd-key { color: var(--text); }
-  #about details, .tools details, #advanced, #moreBox, #wdBox, #demoBox, #msBox { background: transparent; border: 1px solid var(--border); border-radius: 8px; }
+  #about details, .tools details, #advanced, #moreBox, #rollStats, #wdBox, #demoBox, #msBox { background: transparent; border: 1px solid var(--border); border-radius: 8px; }
   #moreBox #wdBox, #moreBox #demoBox { background: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
   #onlineWarn, #fatalWarn, .ms-test, .demo-ban { background: #FF8A90; color: #1a0000; }
   .ms-fill { background: var(--gold); }
@@ -782,9 +782,12 @@
       <div style="font-size:13.5px; color:var(--muted); margin-top:6px;">A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> makes a different wallet from the same words. Write it down separately: without it the funds cannot be recovered. Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div>
       <input type="text" id="note" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Optional note (not used in the seed)" style="margin-top:6px;">
     </details>
+    <details id="rollStats" data-g="2">
+      <summary>Your rolls: history and fairness chart<small>See what you rolled and whether the faces came up evenly.</small></summary>
     <div id="rollHistory" data-g="2" style="font-size:12.5px;color:var(--muted);margin-top:6px;min-height:16px;"></div>
     <div id="diceVisual" data-g="2" style="font-size:30px; letter-spacing:4px; margin-top:4px; min-height:28px;"></div>
     <div id="rollChart" data-g="2" class="rc" role="img" aria-label="Chart of how many times each face came up" style="display:none;"></div>
+    </details>
    </div>
    <div class="gen-right" id="genRight">
     <div class="seed-head"><div class="seed-title">YOUR SEED</div><div id="bigCount" class="big-count short" aria-live="polite"></div><div id="bigSub" class="big-sub short"></div></div>
