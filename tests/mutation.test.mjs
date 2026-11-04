@@ -708,6 +708,16 @@ async function probe(w, mutated) {
     w.setResult('x', Array(15).fill('abandon')); if ($('explainBox').style.display !== 'none') fails.push('explain: no box for a 15-word phrase');
     w.setResult('x', null); if ($('explainBox').style.display !== 'none') fails.push('explain: no box without words');
     pc.n = 0; cnf = true; w.printStamp(); if (pc.n !== 0) fails.push('stamp sheet: nothing is printed without a seed');
+    { // roll sheet (v1.34.0)
+      const setMode = (m) => { w.document.querySelector('input[name="mode"][value="' + m + '"]').checked = true; }, setWords = (n) => { w.document.querySelector('input[name="words"][value="' + n + '"]').checked = true; };
+      const sheet = () => { pc.n = 0; $('rollSheetBtn').click(); const r = { n: pc.n, cells: pc.cells.slice(), txt: pc.txt, cls: pc.cls }; w.dispatchEvent(new w.Event('afterprint')); return r; };
+      let r = sheet(); if (r.n !== 1 || r.cells.length !== 50 || r.cells.some((c, i) => c !== String(i + 1)) || !/^VOIDFORGE DICE ROLL SHEET/.test(r.txt) || !/50 rolls for a 12-word seed/.test(r.txt) || !/Roll one die and write its number \(1 to 6\)/.test(r.txt) || !/print-seed/.test(r.cls) || /1 means/.test(r.txt)) fails.push('roll sheet: 50 numbered boxes for 12 words of dice');
+      setWords(24); r = sheet(); if (r.cells.length !== 99 || !/99 rolls for a 24-word seed/.test(r.txt)) fails.push('roll sheet: 99 boxes for 24 words of dice');
+      setMode('coin'); r = sheet(); if (r.cells.length !== 256 || !/^VOIDFORGE COIN FLIP SHEET/.test(r.txt) || !/256 flips for a 24-word seed/.test(r.txt) || !/1 means: ______   0 means: ______/.test(r.txt) || !/write 1 or 0/.test(r.txt)) fails.push('roll sheet: 256 boxes for 24 words of coin flips with the sides to fill in');
+      setWords(12); r = sheet(); if (r.cells.length !== 128) fails.push('roll sheet: 128 boxes for 12 words of coin flips');
+      setMode('dice'); r = sheet(); if (!/as secret as your seed/.test(r.txt) || !/shred/.test(r.txt) || $('printOnly').textContent !== '' || w.document.body.classList.contains('print-seed')) fails.push('roll sheet: secret warning and cleanup');
+      w.print = () => { pc.n++; pc.cells = [...w.document.querySelectorAll('#printOnly .ps-cell')].map(c => c.textContent); pc.cls = w.document.body.className; pc.txt = $('printOnly').textContent; pc.grid = (w.document.querySelector('#printOnly .ps-grid') || {}).className; };
+      pc.n = 0; $('rollSheetBtn').click(); if (!/print-seed/.test(w.document.body.className)) fails.push('roll sheet: print class set while printing'); w.dispatchEvent(new w.Event('afterprint')); }
     await run('dice', 12, D50, ''); await w.showExplain(); w.clearAll(); if ($('exOut').textContent !== '' || $('explainBox').style.display !== 'none') fails.push('explain: CLEAR removes the steps and hides the box');
     { await run('coin', 12, C128, ''); await w.showExplain(); const eo = $('exOut'), t0 = eo.querySelector('.ex-body .ex-text').textContent;
       if (!t0.includes('128 coin flips') || !t0.includes('exactly 1 bit') || !t0.includes('roughly 128 bits') || !/^[01]( [01])*$/.test(eo.querySelector('.ex-mono').textContent)) fails.push('explain: coin flips are counted as 1 bit each'); }
@@ -1440,6 +1450,16 @@ const M = [
   ['stamp sheet: box numbers not padded', 'add("ps-n", ("0" + (i + 1)).slice(-2), c)', 'add("ps-n", String(i + 1), c)'],
   ['stamp sheet: area not cleaned', 'done = true; po.textContent = ""; document.body.classList.remove("print-seed"); };', 'done = true; document.body.classList.remove("print-seed"); };'],
   ['stamp sheet: print class not removed', 'done = true; po.textContent = ""; document.body.classList.remove("print-seed"); };', 'done = true; po.textContent = ""; };'],
+  ['roll sheet: one box short', 'for(let i = 1; i <= need; i++)', 'for(let i = 1; i < need; i++)'],
+  ['roll sheet: boxes not numbered', 'add("ps-n", String(i), c);', 'add("ps-n", "", c);'],
+  ['roll sheet: ignores coin mode', 'const coin = getMode() === "coin", wc', 'const coin = false, wc'],
+  ['roll sheet: ignores the word count', 'need = getNeeded(wc), unit', 'need = getNeeded("12"), unit'],
+  ['roll sheet: no secret warning', 'Once filled in, this sheet is as secret as your seed', 'This sheet is harmless'],
+  ['roll sheet: coin sides not asked for', '(coin ? "1 means: ______   0 means: ______\\n" : "")', '""'],
+  ['roll sheet: area not cleaned', 'done = true; po.replaceChildren(); document.body.classList.remove("print-seed"); };', 'done = true; document.body.classList.remove("print-seed"); };'],
+  ['roll sheet: print class not removed', 'done = true; po.replaceChildren(); document.body.classList.remove("print-seed"); };', 'done = true; po.replaceChildren(); };'],
+  ['roll sheet: button not wired', 'id="rollSheetBtn" onclick="printRollSheet()"', 'id="rollSheetBtn" onclick=""'],
+  ['roll sheet: dice instruction dropped', 'Roll one die and write its number (1 to 6) in the next box', 'Write the number in the next box'],
   ['stamp sheet: shows the whole word', 'add("ps-w", w.slice(0, 4).toUpperCase(), c);', 'add("ps-w", w.toUpperCase(), c);'],
   ['stamp sheet: not capitals', 'add("ps-w", w.slice(0, 4).toUpperCase(), c);', 'add("ps-w", w.slice(0, 4), c);'],
   ['stamp sheet: no question before printing', 'if(!confirm("Printing sends your seed (shortened to 4 letters a word)', 'if(false && !confirm("Printing sends your seed (shortened to 4 letters a word)'],

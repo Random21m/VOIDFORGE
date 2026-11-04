@@ -278,6 +278,15 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(!txt.includes('SECRETPASS')&&/Passphrase used: YES/.test(txt)&&txt.includes(t.$('fingerprint').textContent)&&/Reforge/.test(txt)&&/No two BIP39 words start with the same 4 letters/.test(txt),'stamp sheet: fingerprint, passphrase yes/no without the passphrase, and how to get the words back');
     t.w.dispatchEvent(new t.w.Event('afterprint')); ok(t.$('printOnly').textContent==='','stamp sheet is cleaned up after printing');
     ok(!!t.$('stampBtn')&&/printStamp/.test(t.$('stampBtn').getAttribute('onclick')),'PRINT STAMP SHEET button is on the page'); }
+  { // Roll sheet (v1.34.0): a blank numbered sheet for dice or coin, sized to the chosen mode and word count
+    const setMode=m=>{ t.d.querySelector('input[name="mode"][value="'+m+'"]').checked=true; }, setWords=n=>{ t.d.querySelector('input[name="words"][value="'+n+'"]').checked=true; };
+    const sheet=()=>{ const p0=t.st.printed; t.w.printRollSheet(); const r={n:t.st.printed-p0,cells:t.st.printCells.slice(),txt:t.st.printHTML,cls:t.st.printClass}; t.w.dispatchEvent(new t.w.Event('afterprint')); return r; };
+    let r=sheet(); ok(r.n===1&&r.cells.length===50&&r.cells.every((c,i)=>c===String(i+1))&&/^VOIDFORGE DICE ROLL SHEET/.test(r.txt)&&/50 rolls for a 12-word seed/.test(r.txt)&&/Roll one die and write its number \(1 to 6\)/.test(r.txt)&&/print-seed/.test(r.cls)&&!/1 means/.test(r.txt),'PRINT ROLL SHEET: 50 numbered boxes for 12 words of dice');
+    setWords(24); r=sheet(); ok(r.cells.length===99&&/99 rolls for a 24-word seed/.test(r.txt),'roll sheet: 99 boxes for 24 words of dice');
+    setMode('coin'); r=sheet(); ok(r.cells.length===256&&/^VOIDFORGE COIN FLIP SHEET/.test(r.txt)&&/256 flips for a 24-word seed/.test(r.txt)&&/1 means: ______   0 means: ______/.test(r.txt)&&/write 1 or 0/.test(r.txt),'roll sheet: 256 boxes for 24 words of coin flips, with the sides to fill in');
+    setWords(12); r=sheet(); ok(r.cells.length===128,'roll sheet: 128 boxes for 12 words of coin flips');
+    setMode('dice'); r=sheet(); ok(/as secret as your seed/.test(r.txt)&&/shred/.test(r.txt)&&t.$('printOnly').textContent===''&&!t.d.body.classList.contains('print-seed'),'roll sheet: warns that a filled sheet is secret, and is cleaned up after printing');
+    ok(!!t.$('rollSheetBtn')&&/printRollSheet/.test(t.$('rollSheetBtn').getAttribute('onclick')),'PRINT ROLL SHEET button is on the page'); }
   // --- SeedQR / CompactSeedQR on screen, by hand and on paper ---
   { const keepT=t; t=load(); await t.ready(); t.set(rnd(50)); t.$('passphrase').value='SECRETPASS'; t.$('passphrase2').value='SECRETPASS'; await t.w.generate(); const sw=t.$('genResult').textContent.split('\n')[0];
     const sz=()=>{ const v=t.$('sqImg').querySelector('svg'); return v?Math.round(v.viewBox.baseVal.width)-8:0; }, gc=()=>t.$('sqGuideCaption').textContent;

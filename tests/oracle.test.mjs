@@ -754,6 +754,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   const jsqrDecode = (rows) => { const n = rows.length, S = 6, Q = 4, W = (n + 2 * Q) * S, img = new Uint8ClampedArray(W * W * 4).fill(255);
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (rows[y][x]) for (let dy = 0; dy < S; dy++) for (let dx = 0; dx < S; dx++) { const i = ((((y + Q) * S + dy) * W) + ((x + Q) * S + dx)) * 4; img[i] = img[i + 1] = img[i + 2] = 0; }
     return jsQR(img, W, W); };
+  const norm = (svg) => { const d = w.document.createElement('div'); d.innerHTML = svg; return d.innerHTML; };
   const viewOf = (id) => w.document.getElementById(id), qrRowsOf = (btn) => { btn.click(); return viewOf(btn.closest('ol').id === 'wvList' ? 'wvqImg' : 'aqImg'); };
   const oracleAddr = (mn, pw, type, net, acct, chain, i) => {
     const N = net === 'main' ? btc.NETWORK : btc.TEST_NETWORK, purpose = { pkh: 44, 'sh-wpkh': 49, wpkh: 84, tr: 86 }[type];
@@ -784,7 +785,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
         if (!btn) { bad++; console.log('WALLET VIEW ROW HAS NO QR BUTTON'); continue; }
         btn.click(); qrs++;
         const box = viewOf('wvqBox'), svgRows = w.qrMatrix(li.textContent).rows, dec = jsqrDecode(svgRows);
-        if (box.style.display === 'none' || !viewOf('wvqImg').innerHTML.includes('<svg') || !dec || dec.data !== li.textContent || viewOf('wvqImg').innerHTML !== w.qrSvg(svgRows)) { bad++; console.log('WALLET VIEW QR MISMATCH', wc, type); }
+        if (box.style.display === 'none' || !viewOf('wvqImg').innerHTML.includes('<svg') || !dec || dec.data !== li.textContent || viewOf('wvqImg').innerHTML !== norm(w.qrSvg(svgRows))) { bad++; console.log('WALLET VIEW QR MISMATCH', wc, type); }
       }
       set('wvType', 'wpkh'); set('wvNet', 'main'); set('wvChain', '0'); set('wvAcct', '0'); await until(() => viewOf('wvList').querySelector('li') && viewOf('wvList').querySelector('li').textContent === oracleAddr(mn, pw, 'wpkh', 'main', 0, 0, 0));
     }

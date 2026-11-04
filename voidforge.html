@@ -261,6 +261,8 @@
     body.print-seed #printOnly .ps-grid.ps-stamp.ps-24 { grid-template-columns: repeat(4, 1fr); }
     body.print-seed #printOnly .ps-stamp .ps-cell { min-height: 78px; text-align: center; }
     body.print-seed #printOnly .ps-stamp .ps-w { font-size: 30px; letter-spacing: 4px; }
+    body.print-seed #printOnly .ps-grid.ps-roll { grid-template-columns: repeat(10, 1fr); gap: 4px; }
+    body.print-seed #printOnly .ps-roll .ps-cell { min-height: 30px; padding: 2px 4px; border-radius: 3px; }
     body.print-seed #printOnly .ps-rule { border-top: 1px solid #000; margin: 14px 0; }
     body.print-seed #printOnly .ps-info, body.print-seed #printOnly .ps-fields, body.print-seed #printOnly .ps-warn { white-space: pre-wrap; font-size: 13px; }
     body.print-seed #printOnly .ps-warn { font-weight: 700; }
@@ -842,7 +844,7 @@
     <div id="coinHint" data-g="2" style="display:none; font-size: 13px; margin-top:6px; color:var(--muted);">Pick which side is 1 and which is 0 (the usual choice: heads = 1, tails = 0) and keep it the same for every flip. Only the 1/0 string is used, so any consistent choice is fine, but you cannot get the mapping back from the words. Write down the exact string or your mapping with your backup.</div>
     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;" data-g="2">
       <div id="rollCount" aria-live="polite" style="font-size: 13px;color:var(--muted);font-weight:600;">0 / 50 rolls</div>
-      <button class="secondary small" onclick="undoRoll()">UNDO</button>
+      <span style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;"><button class="secondary small" id="rollSheetBtn" onclick="printRollSheet()">PRINT ROLL SHEET</button><button class="secondary small" onclick="undoRoll()">UNDO</button></span>
     </div>
     <div class="entropy-bar" data-g="2"><div class="entropy-fill" id="entropyFill"></div></div>
     <div id="entropyStatus" data-g="2" style="font-size: 13px; margin-top:4px; font-weight:600;"></div>
@@ -4383,6 +4385,26 @@ function printStamp(){
   document.body.classList.add("print-seed");
   let done = false;
   const cleanup = () => { if(done) return; done = true; po.textContent = ""; document.body.classList.remove("print-seed"); };
+  window.addEventListener("afterprint", cleanup, {once:true});
+  setTimeout(cleanup, 120000);
+  window.print();
+}
+// Roll sheet (v1.34.0): a blank, numbered sheet for writing down dice rolls or coin flips away from the screen. It holds no secret until you fill it in.
+function printRollSheet(){
+  const coin = getMode() === "coin", wc = document.querySelector('input[name="words"]:checked').value, need = getNeeded(wc), unit = coin ? "flips" : "rolls";
+  const po = document.getElementById("printOnly"); po.textContent = "";
+  const add = (cls, text, parent) => { const d = document.createElement("div"); if(cls) d.className = cls; d.textContent = text; (parent || po).appendChild(d); return d; };
+  add("ps-title", "VOIDFORGE " + (coin ? "COIN FLIP" : "DICE ROLL") + " SHEET");
+  add("ps-sub", need + " " + unit + " for a " + wc + "-word seed. " + (coin ? "Flip one coin and write 1 or 0 in the next box, in order. Decide which side is 1 and keep it the same for every flip." : "Roll one die and write its number (1 to 6) in the next box, in order. Do not re-roll, skip or reorder."));
+  const g = add("ps-grid ps-roll", "");
+  for(let i = 1; i <= need; i++){ const c = add("ps-cell", "", g); add("ps-n", String(i), c); }
+  add("ps-rule", "");
+  add("ps-fields", (coin ? "1 means: ______   0 means: ______\n" : "") + "Date:       ____________\nTyped into VOIDFORGE and checked:  ____");
+  add("ps-rule", "");
+  add("ps-warn", "Once filled in, this sheet is as secret as your seed: anyone who sees it can make your wallet.\nType it in on an offline computer, then shred it (or keep it only as a locked-away backup of the rolls).\nNever photograph it.");
+  document.body.classList.add("print-seed");
+  let done = false;
+  const cleanup = () => { if(done) return; done = true; po.replaceChildren(); document.body.classList.remove("print-seed"); };
   window.addEventListener("afterprint", cleanup, {once:true});
   setTimeout(cleanup, 120000);
   window.print();
