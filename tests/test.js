@@ -836,7 +836,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
 
   // --- no network / external references ---
   const src=html.replace(/const WORDLIST = \[.*?\];/s,'');
-  ok(!/fetch\(|XMLHttpRequest|WebSocket|sendBeacon|<script[^>]+src=|<link|@import/.test(src),'no network APIs or external resources');
+  ok(!/fetch\(|XMLHttpRequest|WebSocket|sendBeacon|<script[^>]+src=|<link(?! rel="icon" type="image\/[a-z+]+"(?: sizes="\d+x\d+")? href="data:)|@import/.test(src),'no network APIs or external resources');
   const urls=[...src.matchAll(/https?:\/\/[^\s"'<>)]+/g)].map(m=>m[0]); ok(urls.every(u=>u.startsWith('https://github.com/Random21m/voidforge')),'only URL is the GitHub link: '+urls.join(', '));
   ok(t.errors.length===0,'no uncaught page errors '+JSON.stringify(t.errors));
   console.log(failed?`\n${failed} CHECK(S) FAILED`:'\nALL CHECKS PASSED'); process.exit(failed?1:0);
