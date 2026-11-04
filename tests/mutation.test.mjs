@@ -1251,6 +1251,16 @@ async function probe(w, mutated) {
     if (!/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(css)) fails.push('redesign: labels are plain coloured words');
     if (!/#cardGen \{ display: block; \}/.test(css)) fails.push('redesign: Make a seed is one column');
     { const rs = $('rollStats'); if (!rs || rs.tagName !== 'DETAILS' || rs.open || !rs.contains($('rollChart')) || !rs.contains($('rollHistory')) || !rs.contains($('diceVisual'))) fails.push('tucked away: roll history and the fairness chart live in one closed box'); }
+    { // Calmer first screen: one GUIDE ME, seed buttons only after a seed, one closed More options box, no second warning note
+      const d = w.document, gb = [...d.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'GUIDE ME'), gn = $('guideNew');
+      if (gb.length !== 1 || !gn || gn.querySelector('button')) fails.push('calmer page: one GUIDE ME button');
+      if (d.querySelector('.forge-note')) fails.push('calmer page: no second warning note by FORGE SEED');
+      if (!d.querySelector('.btn-row.seed-actions #abbrBtn') || d.querySelectorAll('.seed-actions button').length !== 5) fails.push('calmer page: the five seed buttons are grouped');
+      if (!/body:not\(\.has-seed\) \.seed-actions, body:not\(\.has-seed\) \.print-btn \{ display: none; \}/.test(css)) fails.push('calmer page: seed buttons are hidden until there is a seed');
+      const mbx = $('moreBox'); if (!mbx || mbx.tagName !== 'DETAILS' || mbx.open || !mbx.contains($('wdBox')) || !mbx.contains($('demoBox')) || mbx.contains($('advanced'))) fails.push('calmer page: one closed More options box');
+      if (/#rollCount \{ display: none; \}/.test(css)) fails.push('calmer page: the roll count stays on every screen size');
+      w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if (d.body.classList.contains('has-seed')) fails.push('calmer page: no seed, so seed buttons stay hidden');
+      await run('dice', 12, D50); if (!d.body.classList.contains('has-seed')) fails.push('calmer page: a seed shows the seed buttons'); }
     if ($('ownerLogo') || w.document.querySelector('img')) fails.push('redesign: no picture is built into the page'); }
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
@@ -2337,6 +2347,13 @@ const M = [
   ["coin faces: value not recorded on the button", "b.dataset.v = v;", ""],
   ["coin faces: coin not drawn", "b.appendChild(coinFace(v === \"1\", v));", ""],
   ["coin faces: no label text", "b.appendChild(t);\n    }\n    else", "}\n    else"],
+  ["calmer page: a second GUIDE ME button is back", "<div id=\"guideNew\">New here?", "<div id=\"guideNew\"><button type=\"button\">GUIDE ME</button> New here?"],
+  ["calmer page: seed buttons not grouped", "<div class=\"btn-row seed-actions\" style=\"margin-top:6px;\" data-g=\"4\">", "<div class=\"btn-row\" style=\"margin-top:6px;\" data-g=\"4\">"],
+  ["calmer page: has-seed never set", "drillEnd(); document.body.classList.toggle(\"has-seed\", !!words);", "drillEnd();"],
+  ["calmer page: seed buttons always shown", "body:not(.has-seed) .seed-actions, body:not(.has-seed) .print-btn { display: none; }", "body:not(.has-seed) .seed-actions, body:not(.has-seed) .print-btn { }"],
+  ["calmer page: roll count hidden on wide screens", "  #cardGen .gen-right { position: static; max-height: none;", "  #rollCount { display: none; }\n  #cardGen .gen-right { position: static; max-height: none;"],
+  ["calmer page: More options starts open", "<details id=\"moreBox\">", "<details id=\"moreBox\" open>"],
+  ["calmer page: second warning note back", "<div id=\"wordGrid\" data-g=\"4\" aria-hidden=\"true\"></div>", "<p class=\"forge-note\">Making real keys? Keep clipboard history off.</p><div id=\"wordGrid\" data-g=\"4\" aria-hidden=\"true\"></div>"],
   ["tucked away: roll history box starts open", "<details id=\"rollStats\" data-g=\"2\">", "<details id=\"rollStats\" data-g=\"2\" open>"],
   ["redesign: centre pip missing from the header die", "<circle class=\"dp\" cx=\"32\" cy=\"32\" r=\"5.6\"/>", ""],
   ["redesign: the name is not gold", "letter-spacing: .16em; color: var(--goldtx); background: none;", "letter-spacing: .16em; color: var(--text); background: none;"],
