@@ -66,6 +66,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok((await t.w.dlCheck(U,bad)).verdict==='mismatch'&&(await t.w.dlCheck(U,sha+' '+bad)).verdict==='mismatch'&&(await t.w.dlCheck(U,r0.cid.slice(0,-1)+(r0.cid.endsWith('a')?'b':'a'))).verdict==='mismatch','download check: one wrong character, or one wrong value among right ones, is NO MATCH');
       const flipped=new Uint8Array(U); flipped[100]^=1; ok((await t.w.dlCheck(flipped,sha)).verdict==='mismatch','download check: a file changed by one bit is NO MATCH');
       ok((await t.w.dlCheck(U,'not a hash at all 1234')).verdict==='none'&&(await t.w.dlCheck(U,sha.slice(0,40))).verdict==='none','download check: text that is not a full hash is ignored (it reports, and never says MATCH)');
+      ok((await t.w.dlCheck(U,r0.cid.slice(0,20))).verdict==='none','download check: a truncated bafk... string is ignored, not treated as a real CID');
       // through the real file box
       const F=new t.w.File([bytes],'voidforge.html'); Object.defineProperty(t.$('dlFile'),'files',{value:[F],configurable:true}); t.$('dlPaste').value=sha; await t.w.dlPick();
       ok(/^MATCH/.test(t.$('dlStatus').textContent)&&t.$('dlStatus').classList.contains('ok')&&t.$('dlOut').textContent.includes(sha)&&t.$('dlOut').textContent.includes(r0.cid),'download check: choosing a file shows MATCH, the hash and the CID');

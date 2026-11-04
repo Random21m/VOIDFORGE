@@ -734,6 +734,7 @@ async function probe(w, mutated) {
       if ((await w.dlCheck(U, r0.cid.slice(0, -1) + (r0.cid.endsWith('a') ? 'b' : 'a'))).verdict !== 'mismatch') fails.push('download: wrong CID must not match');
       const fl = new Uint8Array(U); fl[100] ^= 1; if ((await w.dlCheck(fl, sha)).verdict !== 'mismatch') fails.push('download: changed file must not match');
       if ((await w.dlCheck(U, sha.slice(0, 40))).verdict !== 'none' || (await w.dlCheck(U, sha + '0')).verdict !== 'none') fails.push('download: partial or over-long hash is ignored');
+      if ((await w.dlCheck(U, r0.cid.slice(0, 20))).verdict !== 'none') fails.push('download: truncated CID-looking text is ignored');
       const F = new w.File([bytes], 'voidforge.html'); Object.defineProperty($('dlFile'), 'files', { value: [F], configurable: true }); $('dlPaste').value = sha; await w.dlPick();
       if (!/^MATCH/.test($('dlStatus').textContent) || !$('dlStatus').classList.contains('ok') || !$('dlOut').textContent.includes(sha) || !$('dlOut').textContent.includes(r0.cid)) fails.push('download: file box shows MATCH with hash and CID');
       $('dlPaste').value = bad; await w.dlPick();
