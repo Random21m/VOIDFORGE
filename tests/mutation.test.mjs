@@ -251,7 +251,7 @@ async function probe(w, mutated) {
     [a] = await RF(A11 + 'about', A0.slice(0, -1) + 'v'); if (!/^That address has a typo/.test(a)) fails.push('reforge: an address typo is refused');
     [a] = await RF(A11 + 'about', 'xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8'); if (!/is not an account key \(it is 0 levels deep/.test(a)) fails.push('reforge: a master xpub is refused');
     [a] = await RF('? ? ? ' + 'abandon '.repeat(9)); if (!/at most 2 unknown words, and 3 are unknown/.test(a)) fails.push('reforge: 3 unknown words are refused');
-    [a] = await RF('abandon abandon toString ' + 'abandon '.repeat(8) + 'about'); if (!/'tostring' is not a BIP39 word/.test(a)) fails.push('reforge: a non-word is unknown even if it is an object property name');
+    [a] = await RF('abandon abandon constructor ' + 'abandon '.repeat(8) + 'about'); if (!/'constructor' is not a BIP39 word/.test(a)) fails.push('reforge: a non-word is unknown even if it is an object property name');
     [a] = await RF('aban '.repeat(11) + 'abou'); if (!/12 words were read from their first letters/.test(a)) fails.push('reforge: 4-letter words are read');
     { const r = await w.checkPhrase('constructor ' + 'abandon '.repeat(10) + 'about'); if (r.ok || r.msg !== 'Unknown word: constructor') fails.push('verify: a property name typed as a word is unknown'); }
     { let e = ''; try { await w.lastWordCandidates('abandon '.repeat(10).trim().split(' ').concat(['xyzzy'])); } catch (err) { e = err.message; } if (!/^Unknown word: xyzzy/.test(e)) fails.push('last word helper: an unknown word is rejected'); }
