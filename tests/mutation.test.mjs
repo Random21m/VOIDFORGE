@@ -770,7 +770,7 @@ async function probe(w, mutated) {
       const mains = ['drillStart', 'prStart', 'prCheckBtn', 'checkAddrBtn', 'lwBtn', 'psbtBtn', 'cmpBtn', 'childBtn', 'forgeBtn'];
       if (mains.some((id) => { const b = doc.getElementById(id); return !b || b.classList.contains('secondary'); })) fails.push('buttons: every main action button is primary cyan, not secondary');
       const helpers = [...doc.querySelectorAll('button')].filter((b) => /^(COPY|SHOW QR|HIDE|PRINT|UNDO)/i.test(b.textContent.trim()));
-      if (helpers.length < 10 || !helpers.every((b) => b.classList.contains('secondary') || b.classList.contains('btn-clear'))) fails.push('buttons: small helper buttons stay grey secondary');
+      if (helpers.length < 10 || !helpers.every((b) => b.classList.contains('secondary') || b.classList.contains('btn-clear') || b.classList.contains('print-btn'))) fails.push('buttons: small helper buttons stay grey secondary (or the same-grey print-btn/theme-toggle style)');
     }
     if (lg.classList.contains('again')) fails.push('logo: starts on the first roll'); w.rollLogo(); if (!lg.classList.contains('again')) fails.push('logo: tapping rolls again'); w.rollLogo(); if (lg.classList.contains('again')) fails.push('logo: second tap rolls again');
     lg.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); if (!lg.classList.contains('again')) fails.push('logo: Enter key rolls');
