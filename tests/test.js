@@ -72,7 +72,8 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(/^MATCH/.test(t.$('dlStatus').textContent)&&t.$('dlStatus').classList.contains('ok')&&t.$('dlOut').textContent.includes(sha)&&t.$('dlOut').textContent.includes(r0.cid),'download check: choosing a file shows MATCH, the hash and the CID');
       t.$('dlPaste').value=bad; await t.w.dlPick(); ok(/^NO MATCH/.test(t.$('dlStatus').textContent)&&t.$('dlStatus').classList.contains('bad'),'download check: a wrong published hash shows NO MATCH in red');
       Object.defineProperty(t.$('dlFile'),'files',{value:[{name:'big.bin',size:64*1024*1024+1}],configurable:true}); await t.w.dlPick(); ok(/larger than 64 MB/.test(t.$('dlStatus').textContent)&&t.$('dlOut').style.display==='none','download check: a file over 64 MB is refused');
-      t.w.dlClear(); ok(t.$('dlPaste').value===''&&t.$('dlStatus').textContent===''&&t.$('dlOut').textContent==='','download check: CLEAR empties the box, status and output');
+      Object.defineProperty(t.$('dlFile'),'files',{value:[F],configurable:true}); t.$('dlPaste').value=sha; await t.w.dlPick(); // repopulate dlOut/dlStatus with real content so CLEAR is actually exercised, not just finding them already empty
+      t.w.dlClear(); ok(t.$('dlPaste').value===''&&t.$('dlStatus').textContent===''&&t.$('dlOut').textContent===''&&t.$('dlOut').style.display==='none','download check: CLEAR empties the box, status and output');
       ok(/id="dlBox"/.test(html)&&!/localStorage|sessionStorage|indexedDB|XMLHttpRequest|fetch\(/.test((html.match(/function dlCheck[\s\S]*?function clearChild/)||[''])[0]),'download check: the tool stores nothing and uses no network'); }
     { // Support this project (v1.27.3): optional, text plus a QR drawn by the page, no links, nothing sent
       const box=t.$('supportBox'), addr=t.$('supportAddr').textContent, code=t.$('supportLnurl').textContent.trim();
@@ -82,6 +83,17 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(box.querySelectorAll('a, [href], img, iframe, script').length===0&&/never goes online/.test(box.textContent)&&/never send seed words/i.test(box.textContent),'support: no link, image or script in the box, and it says nothing is sent and never to send seed words');
       t.st.clip.length=0; const b=box.querySelectorAll('button'); b[0].click(); await new Promise(r=>setTimeout(r,20)); b[1].click(); await new Promise(r=>setTimeout(r,20)); const c1=t.st.clip[0], copied=t.st.clip[1];
       ok(b.length===2&&c1==='dev@breez.tips'&&copied===code,'support: COPY copies the address and the payment code exactly'); }
+    { // Every main "go" action across the page is a primary (cyan) button, not grey "secondary" -- a uniform rule, not just START DRILL (v1.27.3)
+      const primaryIds=['forgeBtn','prStart','prCheckBtn','checkAddrBtn','lwBtn','psbtBtn','cmpBtn','childBtn'];
+      const missing=primaryIds.filter(id=>{ const b=t.$(id); return !b || b.classList.contains('secondary'); });
+      ok(missing.length===0,'every main action button (FORGE SEED, START PRACTICE, CHECK MY PAPER, CHECK ADDRESS, FIND LAST WORD, INSPECT, COMPARE, DERIVE CHILD SEED) is the cyan primary style, none grey (missing: '+missing.join(', ')+')');
+      const drillBtn=[...t.$('drillStart').querySelectorAll('button')][0];
+      ok(drillBtn&&drillBtn.textContent.trim()==='START DRILL'&&!drillBtn.classList.contains('secondary'),'START DRILL is also the cyan primary style');
+      const css=html.match(/<style>[\s\S]*?<\/style>/)[0];
+      ok(/button \{[^}]*background: linear-gradient\(90deg, var\(--accent\)/.test(css),'the primary button style is still the cyan gradient that every unclassed button inherits');
+      // and the small helper actions (COPY, SHOW QR, HIDE, PRINT, UNDO) stay the quieter grey secondary style, so the primary ones still stand out
+      const helperBtns=[...t.w.document.querySelectorAll('button.secondary.small')];
+      ok(helperBtns.length>=20&&helperBtns.every(b=>b.classList.contains('secondary')),'helper buttons like COPY, SHOW QR and HIDE stay the quieter grey secondary style, so the primary actions still stand out'); }
     { // Bitcoin dictionary (v1.27.3): offline glossary with search
       const box=t.$('dictBox'), items=[...t.$('dictList').querySelectorAll('.dict-item')], names=items.map(e=>e.querySelector('dt').textContent), def=e=>e.querySelector('dd').firstChild.textContent;
       const q=async v=>{ t.$('dictSearch').value=v; t.w.dictFilter(); return items.filter(e=>e.style.display!=='none').map(e=>e.querySelector('dt').textContent); };
@@ -514,12 +526,17 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       // every "recommended" label on a screen (not the changelog or help text) is a badge or a coloured option
       const labels=[...t.w.document.querySelectorAll('summary, option')].filter(e=>/recommended/i.test(e.textContent));
       ok(tags.length===2&&opts.length===1&&labels.length===3&&labels.every(e=>e.querySelector('.tag-rec')||e.classList.contains('opt-rec')),'recommended: every RECOMMENDED label is an amber badge (or an amber option in the menu)');
-      ok(t.w.document.querySelectorAll('.tag-note').length===4&&![...t.w.document.querySelectorAll('summary')].some(e=>/\((demo only|advanced)/i.test(e.textContent)),'tags: DEMO ONLY, ADVANCED and NEW are grey badges, no longer plain (brackets) in the headings');
       const warn={d:/:root \{[^}]*--warn-text: (#[0-9a-f]{6})/.exec(css)[1],l:/body\.light \{[^}]*--warn-text: (#[0-9a-f]{6})/.exec(css)[1]};
       const surf={d:/--surface2: (#[0-9a-f]{6})/.exec(css)[1],l:/body\.light \{[^}]*--surface2: (#[0-9a-f]{6})/.exec(css)[1]};
       ok(/\.strip b \{ color: var\(--warn-text\); \}/.test(css)&&/\.tag-rec \{[^}]*color: var\(--warn-text\)[^}]*border-color: var\(--warn-text\)/.test(css)&&/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(css),'recommended: uses the same amber as the "not independently audited" banner');
       const mixc=(fg,al,bg)=>fg.map((v,i)=>v*al+bg[i]*(1-al)), lt=/body\.light \.tag-rec \{ color: (#[0-9a-f]{6});/.exec(css)[1];
-      ok(cr(hex(warn.d),mixc(hex(warn.d),.12,hex(surf.d)))>=4.5&&cr(hex(lt),mixc(hex(lt),.08,hex(surf.l)))>=4.5&&cr(hex(warn.l),hex(lt))<1.6,'recommended: the amber badge text keeps contrast >= 4.5:1 in both themes (light theme uses a slightly deeper shade of the same amber)'); }
+      ok(cr(hex(warn.d),mixc(hex(warn.d),.12,hex(surf.d)))>=4.5&&cr(hex(lt),mixc(hex(lt),.08,hex(surf.l)))>=4.5&&cr(hex(warn.l),hex(lt))<1.6,'recommended: the amber badge text keeps contrast >= 4.5:1 in both themes (light theme uses a slightly deeper shade of the same amber)');
+      { const notes=[...t.w.document.querySelectorAll('.tag-note')], ros=[...t.w.document.querySelectorAll('.tag-ro')];
+        ok(notes.length===3&&notes.every(e=>/^(DEMO ONLY|ADVANCED)$/.test(e.textContent))&&![...t.w.document.querySelectorAll('summary')].some(e=>/\((demo only|advanced)/i.test(e.textContent)),'tags: DEMO ONLY and ADVANCED are pink badges, no longer plain (brackets) in the headings');
+        ok(ros.filter(e=>e.textContent==='NEW').length===2,'tags: every "NEW" badge (Multisig header and Silent Payment address) looks the same -- the cyan tag-ro style, not two different colours for the same word');
+        const note={d:'#ff4dc4',l:'#b8005c'};
+        ok(cr(hex(note.d),mixc(hex(note.d),.12,hex(surf.d)))>=4.5&&cr(hex(note.l),mixc(hex(note.l),.08,hex(surf.l)))>=4.5&&/\.tag-note \{ color: #ff4dc4; border-color: #ff4dc4;/.test(css)&&/body\.light \.tag-note \{ color: #b8005c; border-color: #b8005c;/.test(css),'tags: the pink DEMO ONLY / ADVANCED badge text keeps contrast >= 4.5:1 in both themes, distinct from amber/red/green/cyan'); }
+    }
     ok(/\.logo \{[^}]*position: relative; z-index: 0;/.test(html)&&/#statusLine \{ position: relative; z-index: 1;/.test(html),'logo: the falling dice pass behind the status line text, not over it');
     ok(/\n  h1 \{[^}]*font-size: 37px;[^}]*filter: drop-shadow\([^}]*\}/.test(html)&&/\.logo \{ --S: 40px;/.test(html),'header: VOIDFORGE is 37px with a soft neon glow, and the dice are 40px so the name leads');
  t.w.rollLogo(); ok(t.$('logo').classList.contains('again'),'tapping the logo rolls the dice again'); t.w.rollLogo();

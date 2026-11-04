@@ -743,22 +743,34 @@ async function probe(w, mutated) {
       if (!/larger than 64 MB/.test($('dlStatus').textContent) || $('dlOut').style.display !== 'none') fails.push('download: over 64 MB refused');
       Object.defineProperty($('dlFile'), 'files', { value: [], configurable: true }); await w.dlPick();
       if (!/Choose the voidforge\.html/.test($('dlStatus').textContent)) fails.push('download: no file chosen prompt');
+      Object.defineProperty($('dlFile'), 'files', { value: [F], configurable: true }); $('dlPaste').value = sha; await w.dlPick(); // repopulate dlOut/dlStatus with real content so CLEAR is actually exercised, not just finding them already empty
       w.dlClear(); if ($('dlPaste').value !== '' || $('dlStatus').textContent !== '' || $('dlOut').textContent !== '' || $('dlOut').style.display !== 'none') fails.push('download: CLEAR empties everything');
       if (!/id="dlFile"[^>]*onchange="dlPick\(\)"/.test(mutated) || !/id="dlPaste"[^>]*oninput="dlPick\(\)"/.test(mutated) || !/a page cannot vouch for itself/.test(mutated)) fails.push('download: file box wiring and the honest limit note');
     }
-    { // RECOMMENDED is an amber badge, and DEMO ONLY / ADVANCED / NEW are grey badges (v1.27.2)
+    { // RECOMMENDED is amber, DEMO ONLY/ADVANCED are pink, every "NEW" badge is the same cyan tag-ro (v1.27.3)
       const doc = w.document, hexc = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
       const lumc = (c) => { const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); };
       const crc = (a, b) => { const x = lumc(a), y = lumc(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
       const labels = [...doc.querySelectorAll('summary, option')].filter((e) => /recommended/i.test(e.textContent));
       if (doc.querySelectorAll('.tag-rec').length !== 2 || doc.querySelectorAll('option.opt-rec').length !== 1 || labels.length !== 3 || !labels.every((e) => e.querySelector('.tag-rec') || e.classList.contains('opt-rec'))) fails.push('recommended: every label is an amber badge or an amber option');
-      if (doc.querySelectorAll('.tag-note').length !== 4 || [...doc.querySelectorAll('summary')].some((e) => /\((demo only|advanced)/i.test(e.textContent))) fails.push('tags: DEMO ONLY, ADVANCED and NEW are grey badges');
+      const notes = [...doc.querySelectorAll('.tag-note')], ros = [...doc.querySelectorAll('.tag-ro')];
+      if (notes.length !== 3 || !notes.every((e) => /^(DEMO ONLY|ADVANCED)$/.test(e.textContent)) || [...doc.querySelectorAll('summary')].some((e) => /\((demo only|advanced)/i.test(e.textContent))) fails.push('tags: DEMO ONLY and ADVANCED are pink badges, not plain (brackets)');
+      if (ros.filter((e) => e.textContent === 'NEW').length !== 2) fails.push('tags: every "NEW" badge is the same cyan tag-ro style');
       const sheet = mutated.match(/<style>[\s\S]*?<\/style>/)[0];
       if (!/\.strip b \{ color: var\(--warn-text\); \}/.test(sheet) || !/\.tag-rec \{[^}]*color: var\(--warn-text\)[^}]*border-color: var\(--warn-text\)/.test(sheet) || !/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(sheet)) fails.push('recommended: uses the banner amber');
-      if (!/\.tag-note \{ color: var\(--muted\); border-color: var\(--muted\); \}/.test(sheet)) fails.push('tags: grey badge colour');
+      if (!/\.tag-note \{ color: #ff4dc4; border-color: #ff4dc4;/.test(sheet) || !/body\.light \.tag-note \{ color: #b8005c; border-color: #b8005c;/.test(sheet)) fails.push('tags: pink DEMO ONLY / ADVANCED badge colour');
       const lt = /body\.light \.tag-rec \{ color: (#[0-9a-f]{6});/.exec(sheet), surfL = /body\.light \{[^}]*--surface2: (#[0-9a-f]{6})/.exec(sheet);
       const mixc = (fg, al, bg) => fg.map((v, k) => v * al + bg[k] * (1 - al));
       if (!lt || !surfL || crc(hexc(lt[1]), mixc(hexc(lt[1]), .08, hexc(surfL[1]))) < 4.5) fails.push('recommended: light badge contrast');
+      const noteL = '#b8005c', surfL2 = surfL[1];
+      if (crc(hexc(noteL), mixc(hexc(noteL), .08, hexc(surfL2))) < 4.5) fails.push('tags: pink badge light-theme contrast');
+    }
+    { // main-action buttons are the primary cyan style, helper buttons stay grey secondary (v1.27.3)
+      const doc = w.document;
+      const mains = ['drillStart', 'prStart', 'prCheckBtn', 'checkAddrBtn', 'lwBtn', 'psbtBtn', 'cmpBtn', 'childBtn', 'forgeBtn'];
+      if (mains.some((id) => { const b = doc.getElementById(id); return !b || b.classList.contains('secondary'); })) fails.push('buttons: every main action button is primary cyan, not secondary');
+      const helpers = [...doc.querySelectorAll('button')].filter((b) => /^(COPY|SHOW QR|HIDE|PRINT|UNDO)/i.test(b.textContent.trim()));
+      if (helpers.length < 10 || !helpers.every((b) => b.classList.contains('secondary') || b.classList.contains('btn-clear'))) fails.push('buttons: small helper buttons stay grey secondary');
     }
     if (lg.classList.contains('again')) fails.push('logo: starts on the first roll'); w.rollLogo(); if (!lg.classList.contains('again')) fails.push('logo: tapping rolls again'); w.rollLogo(); if (lg.classList.contains('again')) fails.push('logo: second tap rolls again');
     lg.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); if (!lg.classList.contains('again')) fails.push('logo: Enter key rolls');
@@ -1594,8 +1606,9 @@ const M = [
   ['recommended: menu option not coloured', '<option value="ms-wsh" class="opt-rec">', '<option value="ms-wsh">'],
   ['tags: demo badge lost', 'Watch the words change<span class="tag tag-note">DEMO ONLY</span>', 'Watch the words change (demo only)'],
   ['tags: core badge lost', 'Import into Bitcoin Core<span class="tag tag-note">ADVANCED</span>', 'Import into Bitcoin Core (advanced)'],
-  ['tags: silent payment badges lost', 'Silent Payment address<span class="tag tag-note">ADVANCED</span><span class="tag tag-note">NEW</span>', 'Silent Payment address (advanced, new)'],
-  ['tags: grey badge loses its colour', '.tag-note { color: var(--muted);', '.tag-note { color: inherit;'],
+  ['tags: silent payment badges lost', 'Silent Payment address<span class="tag tag-note">ADVANCED</span><span class="tag tag-ro">NEW</span>', 'Silent Payment address (advanced, new)'],
+  ['tags: pink badge loses its colour', '.tag-note { color: #ff4dc4;', '.tag-note { color: inherit;'],
+  ['tags: NEW badge not unified to cyan', '<span class="tag tag-ro">NEW</span></summary>', '<span class="tag tag-note">NEW</span></summary>'],
   ['recommended: light badge too pale', 'body.light .tag-rec { color: #8a5000;', 'body.light .tag-rec { color: #c88a2a;'],
   ['recommended: badge loses its amber', '.tag-rec { color: var(--warn-text);', '.tag-rec { color: var(--accent);'],
   ['recommended: menu option loses its amber', '.opt-rec { color: var(--warn-text);', '.opt-rec { color: var(--accent);'],
