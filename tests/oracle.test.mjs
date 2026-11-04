@@ -244,6 +244,127 @@ for (const len of [11, 14, 17, 20, 23, 11, 23, 14]) {
 }
 R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the independent brute-force validation (${bad} mismatches)`);
 
+// 2f-R. Reforge (seed recovery) against independent code: @scure/bip39 checksum validation, @scure/bip32 keys,
+// @scure/btc-signer / @scure/base addresses. The search must keep exactly the phrases the independent library accepts,
+// try exactly the candidates its plan describes, and match targets that the independent libraries computed.
+{
+  const rmn = (bytes) => entropyToMnemonic(new Uint8Array(nc.randomBytes(bytes)), wordlist);
+  const idxOf = (mn) => mn.split(' ').map((x) => wordlist.indexOf(x));
+  const words = (c) => Array.from(c, (v) => wordlist[v]).join(' ');
+  const V = { xpub: [0x0488ade4, 0x0488b21e], ypub: [0x049d7878, 0x049d7cb2], zpub: [0x04b2430c, 0x04b24746], tpub: [0x04358394, 0x043587cf], upub: [0x044a4e28, 0x044a5262], vpub: [0x045f18bc, 0x045f1cf6] };
+  const acctKey = (mn, pw, kind, path) => HDKey.fromMasterSeed(mnemonicToSeedSync(mn, pw), { private: V[kind][0], public: V[kind][1] }).derive(path).publicExtendedKey;
+  const addrAt = (mn, pw, type, i, net = 'main') => {
+    if (type === 'tr') return trOracle(mn, pw, i);
+    const N = net === 'main' ? btc.NETWORK : btc.TEST_NETWORK, purpose = { pkh: 44, 'sh-wpkh': 49, wpkh: 84 }[type];
+    const k = HDKey.fromMasterSeed(mnemonicToSeedSync(mn, pw)).derive(`m/${purpose}'/${net === 'main' ? 0 : 1}'/0'/0/${i}`);
+    if (type === 'pkh') return btc.p2pkh(k.publicKey, N).address;
+    if (type === 'sh-wpkh') return btc.p2sh(btc.p2wpkh(k.publicKey, N), N).address;
+    return btc.p2wpkh(k.publicKey, N).address;
+  };
+  const LENB = { 12: 16, 15: 20, 18: 24, 21: 28, 24: 32 };
+
+  // (a) one unknown word anywhere: the listed words equal a brute force with @scure's validateMnemonic
+  let bad = 0, n = 0;
+  for (const len of [12, 15, 18, 21, 24, 12, 24, 12]) {
+    const mn = rmn(LENB[len]), idx = idxOf(mn), pos = nc.randomInt(len); idx[pos] = -1;
+    const want = wordlist.filter((x) => { const t = mn.split(' '); t[pos] = x; return validateMnemonic(t.join(' '), wordlist); });
+    const res = await w.reforgeSearch(idx, null, ''); n++;
+    if (res.list.join(' ') !== want.join(' ') || !res.list.includes(mn.split(' ')[pos])) { bad++; console.log('REFORGE FILL MISMATCH', len, pos, res.list.length, want.length); }
+  }
+  R.ok(bad === 0, `${n} Reforge one-unknown-word lists (any position, 12 to 24 words) equal the independent brute-force validation (${bad} mismatches)`);
+
+  // (b) the "all words typed" and "one word missing" plans try exactly the described candidates (independent
+  // enumeration), and the checksum filter agrees with @scure on every one of them
+  bad = 0; n = 0;
+  for (const [len, kind] of [[12, 'complete'], [24, 'complete'], [12, 'insert'], [24, 'insert']]) {
+    const t = rmn(LENB[len]).split(' '); if (kind === 'insert') t.splice(nc.randomInt(len), 1);
+    if (kind === 'complete') t[3] = t[2]; // a repeated word: swapping equal words must not be counted twice
+    const want = new Set();
+    if (kind === 'complete') {
+      want.add(t.join(' '));
+      for (let i = 0; i < len; i++) for (let j = i + 1; j < len; j++) { const c = t.slice(); [c[i], c[j]] = [c[j], c[i]]; want.add(c.join(' ')); }
+      for (let i = 0; i < len; i++) for (const x of wordlist) { const c = t.slice(); c[i] = x; want.add(c.join(' ')); }
+    } else for (let i = 0; i <= t.length; i++) for (const x of wordlist) { const c = t.slice(); c.splice(i, 0, x); want.add(c.join(' ')); }
+    const plan = w.reforgePlan(idxOf(t.join(' '))), got = []; for (const c of plan.gen()) got.push(words(c));
+    const gotSet = new Set(got); n++;
+    if (plan.kind !== kind || got.length !== gotSet.size || gotSet.size !== want.size || [...want].some((x) => !gotSet.has(x)) || plan.total !== got.length) { bad++; console.log('REFORGE PLAN MISMATCH', kind, len, got.length, gotSet.size, want.size, plan.total); continue; }
+    let fbad = 0; for (const c of plan.gen()) { const v = validateMnemonic(words(c), wordlist); if (v !== await w.reforgeChecksumOk(c)) fbad++; }
+    if (fbad) { bad++; console.log('REFORGE CHECKSUM FILTER MISMATCH', kind, len, fbad); }
+  }
+  R.ok(bad === 0, `${n} Reforge plans (wrong or swapped words, missing word; 12 and 24 words) try exactly the independently enumerated candidates, and the checksum filter equals @scure's validateMnemonic on every one (${bad} errors)`);
+
+  // (c) every supported key and address type, made by the independent libraries, is matched for the right wallet
+  // (and only at receive indices 0 to 9 for addresses), and not for another wallet
+  bad = 0; n = 0;
+  for (let r = 0; r < 4; r++) {
+    const mn = rmn([16, 32][r % 2]), pw = PASS[nc.randomInt(PASS.length)], other = rmn(16), a = nc.randomInt(3);
+    const seed = await w.mnemonicToSeed(mn, pw), seedO = await w.mnemonicToSeed(other, pw);
+    const keys = [['xpub', `m/44'/0'/${a}'`, 44, 0], ['xpub', `m/49'/0'/${a}'`, 49, 0], ['xpub', `m/84'/0'/${a}'`, 84, 0], ['xpub', `m/86'/0'/${a}'`, 86, 0],
+      ['ypub', `m/49'/0'/${a}'`, 49, 0], ['zpub', `m/84'/0'/${a}'`, 84, 0], ['tpub', `m/84'/1'/${a}'`, 84, 1], ['upub', `m/49'/1'/${a}'`, 49, 1], ['vpub', `m/84'/1'/${a}'`, 84, 1]];
+    for (const [kind, path, p, coin] of keys) {
+      const T = await w.reforgeTarget(acctKey(mn, pw, kind, path)); n++;
+      const m1 = await w.reforgeMatch(seed, T), m0 = await w.reforgeMatch(seedO, T);
+      if (m1 !== `account key m/${p}'/${coin}'/${a}'` || m0 !== null) { bad++; console.log('REFORGE KEY MISMATCH', kind, path, m1, m0); }
+    }
+    for (const [type, net] of [['wpkh', 'main'], ['pkh', 'main'], ['sh-wpkh', 'main'], ['tr', 'main'], ['wpkh', 'test'], ['pkh', 'test'], ['sh-wpkh', 'test']]) {
+      const i = nc.randomInt(10), T = await w.reforgeTarget(addrAt(mn, pw, type, i, net)), T10 = await w.reforgeTarget(addrAt(mn, pw, type, 10, net)); n++;
+      const m1 = await w.reforgeMatch(seed, T);
+      if (!m1 || !m1.startsWith(`receive address #${i} (`) || await w.reforgeMatch(seed, T10) !== null || await w.reforgeMatch(seedO, T) !== null) { bad++; console.log('REFORGE ADDR MISMATCH', type, net, i, m1); }
+    }
+    const T = await w.reforgeTarget(fpOracle(mn, pw)); n++;
+    if (await w.reforgeMatch(seed, T) !== 'master fingerprint ' + fpOracle(mn, pw) || await w.reforgeMatch(seedO, T) !== null) { bad++; console.log('REFORGE FP MISMATCH'); }
+  }
+  R.ok(bad === 0, `${n} Reforge targets (xpub for BIP44/49/84/86, ypub, zpub, tpub, upub, vpub, four address types on main and test net, fingerprints; odd passphrases) match the independent libraries' wallet only, and addresses only at indices 0 to 9 (${bad} errors)`);
+
+  // (d) the address typo check agrees with @scure/base: real addresses pass, any single changed character fails
+  bad = 0; n = 0;
+  const dec = (s) => { try { const d = (s.includes('1p') ? bech32m : bech32).decode(s); return d.prefix === s.slice(0, 2) || true; } catch (e) { return false; } };
+  for (let r = 0; r < 30; r++) {
+    const mn = rmn(16), s = r % 2 ? trOracle(mn, '', r) : addrAt(mn, '', 'wpkh', r % 10, r % 4 ? 'main' : 'test');
+    const pos = 4 + nc.randomInt(s.length - 4), ch = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'.replace(s[pos], '')[nc.randomInt(31)], s2 = s.slice(0, pos) + ch + s.slice(pos + 1);
+    n++; if (w.reforgeBech32Ok(s) !== true || w.reforgeBech32Ok(s2) !== dec(s2) || dec(s2)) { bad++; console.log('REFORGE BECH32 MISMATCH', s, s2); }
+    let threw = false; try { await w.reforgeTarget(s2); } catch (e) { threw = /typo/.test(e.message); } if (!threw) { bad++; console.log('REFORGE TYPO NOT REFUSED', s2); }
+  }
+  R.ok(bad === 0, `${n} Reforge address typo checks agree with @scure/base (real addresses pass, a changed character is refused) (${bad} errors)`);
+
+  // (e) end to end: random phrases with a wrong word, two swapped words, a missing word, or two unknown words
+  // are recovered against targets the independent libraries computed
+  bad = 0; n = 0;
+  const cases = [];
+  for (const len of [12, 24]) {
+    const mn = rmn(LENB[len]), t = mn.split(' '), pw = PASS[nc.randomInt(PASS.length)];
+    const wrong = t.slice(); const wp = nc.randomInt(len); wrong[wp] = wordlist[(wordlist.indexOf(t[wp]) + 1 + nc.randomInt(2047)) % 2048];
+    cases.push([mn, pw, wrong.join(' '), acctKey(mn, pw, 'zpub', "m/84'/0'/0'"), 'complete']);
+    let i = 0, j = 0; while (t[i] === t[j]) { i = nc.randomInt(len); j = nc.randomInt(len); }
+    const sw = t.slice(); [sw[i], sw[j]] = [sw[j], sw[i]];
+    cases.push([mn, pw, sw.join(' '), addrAt(mn, pw, 'sh-wpkh', nc.randomInt(10)), 'complete']);
+    const miss = t.slice(); miss.splice(nc.randomInt(len), 1);
+    cases.push([mn, pw, miss.join(' '), len === 24 ? fpOracle(mn, pw) : acctKey(mn, pw, 'xpub', "m/44'/0'/0'"), 'insert']);
+  }
+  { const mn = rmn(32), t = mn.split(' '), pw = PASS[nc.randomInt(PASS.length)], k = nc.randomInt(23); t[k] = '?'; t[23] = '?';
+    cases.push([mn, pw, t.join(' '), acctKey(mn, pw, 'zpub', "m/84'/0'/0'"), 'fill']); }
+  for (const [mn, pw, typed, target, kind] of cases) {
+    const res = await w.reforgeSearch(w.reforgeParseWords(typed).idx, await w.reforgeTarget(target), pw); n++;
+    const found = res.matches.map((m) => m.words.join(' '));
+    if (res.plan.kind !== kind || !found.includes(mn) || found.some((x) => x !== mn) || res.stopped) { bad++; console.log('REFORGE RECOVERY FAILED', kind, typed.split(' ').length, found.length); }
+    if (kind === 'fill' && res.valid.length !== 16384) { bad++; console.log('REFORGE TWO-UNKNOWN COUNT', res.valid.length); }
+  }
+  R.ok(bad === 0, `${n} random phrases recovered end to end (wrong word by zpub, swapped words by a nested SegWit address, missing word by fingerprint or xpub, two unknown words in 24 by zpub with exactly 16,384 valid candidates; odd passphrases) (${bad} failures)`);
+
+  // (f) passphrase mode: passphrases built from typed pieces are recovered against targets the independent libraries computed
+  bad = 0; n = 0;
+  for (const [pw, pieces, typos, kind] of [['CorrectHorse', 'Correct\nHorse\nbattery', false, 'zpub'], ['pässwörd', 'PÄSS\nwörd', false, 'fp'],
+      ['battery staple', 'battery stalpe\nhorse', true, 'addr'], ['日本語パスワード', '日本語\nパスワード', false, 'zpub'], ['Satoshi 2009', 'satoshi\n2009', false, 'addr'], ['', 'anything', false, 'fp']]) {
+    const mn = rmn([16, 32][n % 2]), other = rmn(16);
+    const tgt = kind === 'fp' ? fpOracle(mn, pw) : kind === 'zpub' ? acctKey(mn, pw, 'zpub', "m/84'/0'/0'") : addrOracleN(mn, pw, nc.randomInt(10));
+    const cands = w.reforgePassCandidates(pieces, typos), T = await w.reforgeTarget(tgt);
+    const res = await w.reforgePassSearch(mn, cands, T), resO = await w.reforgePassSearch(other, cands.slice(0, 40), T); n++;
+    const got = res.matches.map((m) => m.pass.normalize('NFKD'));
+    if (!got.length || got.some((x) => x !== pw.normalize('NFKD')) || resO.matches.length || res.stopped) { bad++; console.log('REFORGE PASSPHRASE FAILED', JSON.stringify(pw), kind, got); }
+  }
+  R.ok(bad === 0, `${n} passphrases (plain, joined pieces, accented, Japanese, with a typo, and none) recovered against fingerprints, zpubs and addresses from the independent libraries, and never for another wallet (${bad} failures)`);
+}
+
 // 2f2. Backup practice phrases equal @scure's mnemonic for the same entropy, and validate
 {
   let bad = 0, n = 0;

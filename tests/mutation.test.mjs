@@ -233,12 +233,49 @@ async function probe(w, mutated) {
       $('rolls').value = '1234'; w.updateCount(); words(24); words(12); mode('coin'); mode('dice'); if (!on()) fails.push('stale: rolls, length and mode do not matter to a Word draw seed');
       $('passphrase').value = 'z'; ev('passphrase'); if (on()) fails.push('stale: a passphrase edit clears a Word draw seed'); }
     w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); }
-  { const LW = async (x) => { $('lwInput').value = x; await w.findLastWords(); return [$('lwStatus').textContent, $('lwOut').textContent]; };
-    let [a, o] = await LW('abandon '.repeat(10) + 'xyzzy'); if (!/^Unknown word: xyzzy/.test(a) || o !== '') fails.push('last word: unknown word is rejected');
-    [a, o] = await LW('abandon '.repeat(11)); if (!/^128 words complete this 12-word phrase/.test(a) || o.split(/\s+/).length !== 128) fails.push('last word: 12-word list');
-    [a, o] = await LW('abandon '.repeat(10)); if (!/^Type 11, 14, 17, 20 or 23/.test(a)) fails.push('last word: wrong word count rejected');
-    await LW('abandon '.repeat(11)); $('lwInput').dispatchEvent(new w.Event('input')); if ($('lwOut').textContent !== '') fails.push('last word: list cleared when the words change');
-    await LW('abandon '.repeat(11)); w.clearLastWords(true); if ($('lwInput').value !== '' || $('lwOut').textContent !== '') fails.push('last word: CLEAR empties the box'); }
+  { // Reforge (v1.28.0): kept to a few seconds, because it runs for every mutation
+    const RF = async (x, chk, pw) => { $('reforgeWordsInput').value = x; $('reforgeWordsCheck').value = chk || ''; $('reforgeWordsPass').value = pw || ''; await w.reforgeWords(); return [$('reforgeStatus').textContent, $('reforgeOut').textContent]; };
+    const ZP = 'zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs', A11 = 'abandon '.repeat(11), A0 = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu';
+    const W4 = 'abandon abandon abandon zoo ' + 'abandon '.repeat(7) + 'about';
+    let [a, o] = await RF(A11 + '?'); if (!/^128 words fit at position 12 of this 12-word phrase/.test(a) || o.split(/\s+/).length !== 128 || !/(^|\s)about(\s|$)/.test(o)) fails.push('reforge: 12-word last-word list');
+    [a, o] = await RF('? ' + 'zoo '.repeat(10) + 'wrong'); if (!/ fit at position 1 of this 12-word phrase/.test(a) || !/(^|\s)zoo(\s|$)/.test(o)) fails.push('reforge: the last word on the list (zoo) is tried');
+    [a, o] = await RF(W4, ZP); if (!/^FOUND and confirmed: this phrase gives the zpub/.test(a) || !/word 4 \(zoo\) is abandon\./.test(o)) fails.push('reforge: a wrong word is found by the zpub');
+    [a, o] = await RF('abandon '.repeat(10) + 'about abandon', A0); if (!/^FOUND and confirmed/.test(a) || !/word 11 \(about\) is abandon; word 12 \(abandon\) is about/.test(o)) fails.push('reforge: neighbouring swapped words are found');
+    { const r = await w.reforgeSearch(w.reforgeParseWords('abandon '.repeat(10) + 'about abandon').idx, await w.reforgeTarget(A0), ''); if (r.matches.length !== 1 || r.checked >= r.valid.length) fails.push('reforge: an address match ends the search'); }
+    { const a9 = (await w.mnemonicAddresses(A11 + 'about', '', 10))[9]; [a, o] = await RF(A11 + '?', a9); if (!/receive address #9 \(m\/84'\/0'\/0'\/0\/9\)/.test(o)) fails.push('reforge: receive address 9 is compared'); }
+    [a, o] = await RF(A11 + '?', 'bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr'); if (!/receive address #0 \(m\/86'\/0'\/0'\/0\/0\)/.test(o)) fails.push('reforge: a Taproot address is accepted and matched');
+    [a, o] = await RF(A11 + '?', 'bc1qv5rmq0kt9yz3pm36wvzct7p3x6mtgehjul0feu', 'TREZOR'); if (!/^FOUND and confirmed.*with the passphrase you typed/.test(a)) fails.push('reforge: the passphrase is used');
+    [a, o] = await RF(A11 + '?', ZP, 'x'); if (!/^NOT FOUND\. None of the 128 valid phrases \(every word at position 12\)/.test(a) || o !== '') fails.push('reforge: NOT FOUND when nothing matches');
+    [a, o] = await RF(A11 + '?', '73c5da0a'); if (!/^FOUND one phrase with the master fingerprint 73c5da0a, without a passphrase, after comparing all 128 valid phrases/.test(a) || !/about 1 in 33,554,432\)/.test(a)) fails.push('reforge: a fingerprint search compares every phrase and gives the odds');
+    { const fp = await w.mnemonicFingerprint('abandon '.repeat(23) + 'art', ''); [a, o] = await RF('abandon '.repeat(22) + 'art', fp); if (!/^FOUND one phrase/.test(a) || (o.match(/the missing word is/g) || []).length !== 1) fails.push('reforge: a missing word is found once (no duplicate phrases)'); }
+    [a] = await RF(A11 + 'about', A0.slice(0, -1) + 'v'); if (!/^That address has a typo/.test(a)) fails.push('reforge: an address typo is refused');
+    [a] = await RF(A11 + 'about', 'xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8'); if (!/is not an account key \(it is 0 levels deep/.test(a)) fails.push('reforge: a master xpub is refused');
+    [a] = await RF('? ? ? ' + 'abandon '.repeat(9)); if (!/at most 2 unknown words, and 3 are unknown/.test(a)) fails.push('reforge: 3 unknown words are refused');
+    [a] = await RF('abandon abandon toString ' + 'abandon '.repeat(8) + 'about'); if (!/'tostring' is not a BIP39 word/.test(a)) fails.push('reforge: a non-word is unknown even if it is an object property name');
+    [a] = await RF('aban '.repeat(11) + 'abou'); if (!/12 words were read from their first letters/.test(a)) fails.push('reforge: 4-letter words are read');
+    { const r = await w.checkPhrase('constructor ' + 'abandon '.repeat(10) + 'about'); if (r.ok || r.msg !== 'Unknown word: constructor') fails.push('verify: a property name typed as a word is unknown'); }
+    { let e = ''; try { await w.lastWordCandidates('abandon '.repeat(10).trim().split(' ').concat(['xyzzy'])); } catch (err) { e = err.message; } if (!/^Unknown word: xyzzy/.test(e)) fails.push('last word helper: an unknown word is rejected'); }
+    { const t = W4.split(' '); let pairs = 0; for (let i = 0; i < 12; i++) for (let j = i + 1; j < 12; j++) if (t[i] !== t[j]) pairs++;
+      const plan = w.reforgePlan(w.reforgeParseWords(W4).idx); let n = 0; for (const c of plan.gen()) n++; if (n !== 1 + pairs + 12 * 2047 || plan.total !== n) fails.push('reforge: the wrong-or-swapped plan tries each candidate once'); }
+    await RF(A11 + '?'); $('reforgeWordsPass').dispatchEvent(new w.Event('input')); if ($('reforgeOut').textContent !== '') fails.push('reforge: a passphrase edit clears the result');
+    { const RP = async (x, pieces, chk, typo) => { $('reforgePassWords').value = x; $('reforgePassInput').value = pieces; $('reforgePassCheck').value = chk || ''; $('reforgePassTypos').checked = !!typo; await w.reforgePassphrase(); return [$('reforgeStatus').textContent, $('reforgeOut').textContent]; };
+      const TZ = 'bc1qv5rmq0kt9yz3pm36wvzct7p3x6mtgehjul0feu', AB = A11 + 'about';
+      let [b, q] = await RP(AB, 'trezor', TZ); if (!/^FOUND and confirmed: the passphrase below/.test(b) || !/^“TREZOR”  matches the receive address #0/.test(q)) fails.push('reforge passphrase: a guess is found in UPPERCASE');
+      [b, q] = await RP(AB, 'TREZRO', TZ, true); if (!/^“TREZOR”/.test(q)) fails.push('reforge passphrase: one typo is found when ticked');
+      [b, q] = await RP(AB, 'TREZRO', TZ); if (!/^NOT FOUND\. None of the 4 passphrases tried/.test(b) || q !== '') fails.push('reforge passphrase: NOT FOUND without the typo box');
+      [b, q] = await RP(AB, 'x', A0); if (!/^FOUND and confirmed: these words with NO passphrase/.test(b)) fails.push('reforge passphrase: no passphrase is tried first');
+      [b] = await RP(AB, 'trezor', '73c5da0a'); if (!/after trying all 4\./.test(b) || !/about 1 in 1,073,741,824\)/.test(b)) fails.push('reforge passphrase: a fingerprint search tries everything and gives the odds');
+      [b] = await RP(AB.replace('about', 'zoo'), 'trezor', TZ); if (!/^Type all 12, 15, 18, 21 or 24 of your seed words first/.test(b)) fails.push('reforge passphrase: an invalid phrase is refused');
+      [b] = await RP(AB, Array.from({ length: 21 }, (_, i) => 'p' + i).join('\n'), TZ); if (!/^Type at most 20 lines/.test(b)) fails.push('reforge passphrase: more than 20 lines refused');
+      const C = (x, t) => w.reforgePassCandidates(x, t), has = (list, ...xs) => xs.every((x) => list.includes(x));
+      const c2 = C('a\nb', false), c3 = C('a\nb\nc', false), ct = C('ab', true);
+      if (c2[0] !== '' || !has(c2, 'ab', 'ba', 'a b', 'b a', 'AB', 'Ab', 'A b', 'A B') || has(c2, 'aab')) fails.push('reforge passphrase: pairs, spaces and letter cases are tried (and no typos unless ticked)');
+      if (!has(c3, 'abc', 'c b a', 'Bca')) fails.push('reforge passphrase: triples are tried');
+      if (!has(C('A', false), 'a') || !has(C(' a ', false), 'a', ' a ')) fails.push('reforge passphrase: lowercase and trimmed forms are tried');
+      if (!has(ct, 'a', 'b', 'aab', 'abb', 'ba', 'aB')) fails.push('reforge passphrase: each kind of typo is tried');
+      await RP(AB, 'trezor', TZ); $('reforgePassInput').dispatchEvent(new w.Event('input')); if ($('reforgeOut').textContent !== '') fails.push('reforge passphrase: editing the guesses clears the result');
+      $('reforgePassTypos').checked = true; $('reforgePassWords').value = 'w'; w.reforgeClear(); if ($('reforgePassTypos').checked || $('reforgePassWords').value !== '') fails.push('reforge passphrase: CLEAR empties the passphrase fields'); }
+    $('reforgeWordsInput').value = 'a'; $('reforgeWordsCheck').value = 'b'; $('reforgeWordsPass').value = 'c'; w.reforgeClear(); if (['reforgeWordsInput', 'reforgeWordsCheck', 'reforgeWordsPass'].some((id) => $(id).value !== '')) fails.push('reforge: CLEAR empties every field'); }
   try { const K = (n) => new Uint8Array(32).fill(n), pubE = (n) => secp256k1.getPublicKey(K(n), true), pubS = (n) => schnorr.getPublicKey(K(n));
     const kinds = { p2wpkh: (n) => btc.p2wpkh(pubE(n)), p2pkh: (n) => btc.p2pkh(pubE(n)), p2tr: (n) => btc.p2tr(pubS(n)), p2sh: (n) => btc.p2sh(btc.p2wpkh(pubE(n))), p2wsh: (n) => btc.p2wsh(btc.p2ms(1, [pubE(n), pubE(n + 1)])) };
     const insp = async (bytes, net = 'main') => w.inspectPsbt(new Uint8Array(bytes), net);
@@ -767,7 +804,7 @@ async function probe(w, mutated) {
     }
     { // main-action buttons are the primary cyan style, helper buttons stay grey secondary (v1.27.3)
       const doc = w.document;
-      const mains = ['drillStart', 'prStart', 'prCheckBtn', 'checkAddrBtn', 'lwBtn', 'psbtBtn', 'cmpBtn', 'childBtn', 'forgeBtn'];
+      const mains = ['drillStart', 'prStart', 'prCheckBtn', 'checkAddrBtn', 'reforgeWordsBtn', 'psbtBtn', 'cmpBtn', 'childBtn', 'forgeBtn'];
       if (mains.some((id) => { const b = doc.getElementById(id); return !b || b.classList.contains('secondary'); })) fails.push('buttons: every main action button is primary cyan, not secondary');
       const helpers = [...doc.querySelectorAll('button')].filter((b) => /^(COPY|SHOW QR|HIDE|PRINT|UNDO)/i.test(b.textContent.trim()));
       if (helpers.length < 10 || !helpers.every((b) => b.classList.contains('secondary') || b.classList.contains('btn-clear') || b.classList.contains('print-btn'))) fails.push('buttons: small helper buttons stay grey secondary (or the same-grey print-btn/theme-toggle style)');
@@ -1209,7 +1246,7 @@ const M = [
   ['address: purpose 84 -> 44',             'of [[84,true],[0,true],[0,true],[0,false],[0,false]]', 'of [[44,true],[0,true],[0,true],[0,false],[0,false]]'],
   ['five addresses: purpose 84 -> 44',       'of [[84,true],[0,true],[0,true],[0,false]])', 'of [[44,true],[0,true],[0,true],[0,false]])'],
   ['address: hardened offset off by one',   '(index+0x80000000)>>>0', '(index+0x80000001)>>>0'],
-  ['address: non-hardened parent pubkey misplaced', 'data.set(pubkeyBytes(k),0);', 'data.set(pubkeyBytes(k),1);'],
+  ['address: non-hardened parent pubkey misplaced', 'data.set(pub || pubkeyBytes(k),0);', 'data.set(pub || pubkeyBytes(k),1);'],
   ['address: bech32 checksum constant',     'const mod=poly(values)^(version===0?1:0x2bc830a3);', 'const mod=poly(values)^(version===0?0:0x2bc830a3);'],
   ['taproot: bech32m constant used for v0 too', 'const mod=poly(values)^(version===0?1:0x2bc830a3);', 'const mod=poly(values)^0x2bc830a3;'],
   ['taproot: bech32 constant used for v1', 'const mod=poly(values)^(version===0?1:0x2bc830a3);', 'const mod=poly(values)^1;'],
@@ -1249,14 +1286,50 @@ const M = [
   ['multisig: depth byte wrong', 'ser(N.ver[type],4)', 'ser(N.ver[type],3)'],
   ['multisig: origin path missing the script', '"h/" + account + "h/" + M.script + "h";', '"h/" + account + "h";'],
   ['multisig: child number is the account not the script', '((M ? M.script : account)+0x80000000)', '(account+0x80000000)'],
-  ['lastword: checksum length wrong', 'cLen = Math.floor((total*11)/32), eBits = total*11 - cLen;', 'cLen = Math.floor((total*11)/32) - 1, eBits = total*11 - cLen;'],
-  ['lastword: checksum not compared', 'if(bits.slice(eBits) === bytesToBits(h).slice(0, cLen)) out.push(WORDLIST[i]);', 'out.push(WORDLIST[i]);'],
-  ['lastword: only the first 1024 words tried', 'for(let i = 0; i < 2048; i++){\n    const bits = head', 'for(let i = 0; i < 1024; i++){\n    const bits = head'],
-  ['lastword: word number off by one', 'out.push(WORDLIST[i]);', 'out.push(WORDLIST[i+1] || WORDLIST[0]);'],
-  ['lastword: 23 words not accepted', '[11,14,17,20,23].includes(words.length)', '[11,14,17,20].includes(words.length)'],
-  ['lastword: unknown word not rejected', 'for(const w of words){ if(!(w in WORD_MAP)) throw new Error("Unknown word: " + w); }\n  const total', 'const total'],
-  ['lastword: list not cleared when the words change', 'document.getElementById("lwInput").addEventListener("input", () => clearLastWords(false));', ''],
-  ['lastword: CLEAR keeps the typed words', 'if(all) document.getElementById("lwInput").value = "";', ''],
+  ['lastword: unknown word not rejected', 'for(const w of words){ if(!reforgeHas(w)) throw new Error("Unknown word: " + w); }', ''],
+  ['verify: property names accepted as words', 'for(const w of words){ if(!Object.prototype.hasOwnProperty.call(WORD_MAP, w)) return {ok:false, msg:"Unknown word: "+w}; }', 'for(const w of words){ if(!(w in WORD_MAP)) return {ok:false, msg:"Unknown word: "+w}; }'],
+  ['reforge: checksum bits misaligned', 'acc = (acc << 11) | idx[i]; bits += 11;', 'acc = (acc << 10) | idx[i]; bits += 11;'],
+  ['reforge: checksum compared with the wrong bits', 'return acc === (h[0] >>> (8 - cLen));', 'return acc === (h[0] >>> (7 - cLen));'],
+  ['reforge: checksum not compared', 'return acc === (h[0] >>> (8 - cLen));', 'return true;'],
+  ['reforge: last word on the list never tried', 'if(one){ for(let a = 0; a < 2048; a++)', 'if(one){ for(let a = 0; a < 2047; a++)'],
+  ['reforge: neighbours never swapped', 'for(let j = i + 1; j < n; j++) if(idx[i] !== idx[j]) swaps.push([i, j]);', 'for(let j = i + 2; j < n; j++) if(idx[i] !== idx[j]) swaps.push([i, j]);'],
+  ['reforge: swaps not tried', 'for(const [i, j] of swaps){ const c = base.slice(); c[i] = base[j]; c[j] = base[i]; yield c; }', ''],
+  ['reforge: typed word tried again as its own replacement', 'if(w === base[p]) continue; const c = base.slice();', 'const c = base.slice();'],
+  ['reforge: duplicate phrases when a word is missing', 'if(p > 0 && idx[p - 1] === w) continue;', ''],
+  ['reforge: more than 2 unknown words accepted', 'if(unk.length > 2) throw', 'if(unk.length > 3) throw'],
+  ['reforge: address typo not refused', 'if(!reforgeBech32Ok(a)) throw new Error(typo);', ''],
+  ['reforge: bech32m constant wrong', 'return (c >>> 0) === (data[0] === 0 ? 1 : 0x2bc830a3);', 'return (c >>> 0) === (data[0] === 0 ? 1 : 0x2bc830a2);'],
+  ['reforge: keys at any depth accepted', 'if(p[4] !== 3) throw', 'if(p[4] > 3) throw'],
+  ['reforge: passphrase ignored', 'mnemonicToSeed(Array.from(c, v => WORDLIST[v]).join(" "), pw)', 'mnemonicToSeed(Array.from(c, v => WORDLIST[v]).join(" "), "")'],
+  ['reforge: receive address 9 not compared', 'const REFORGE_ADDR_N = 10;', 'const REFORGE_ADDR_N = 9;'],
+  ['reforge: wrong account searched', 'for(const i of [purpose, coin, 0]) [k, c] = await ckdPriv(k, c, i, true);', 'for(const i of [purpose, coin, 1]) [k, c] = await ckdPriv(k, c, i, true);'],
+  ['reforge: wrong parent key used for addresses', 'const [kk] = await ckdPriv(rk, rc, i, false, rpub);', 'const [kk] = await ckdPriv(rk, rc, i, false, pubkeyBytes(k));'],
+  ['reforge: fingerprint search stops at the first match', 'if(target.kind !== "fp") return res; // an address or key match cannot be a coincidence: stop here', 'return res;'],
+  ['reforge: address search does not stop at a match', 'if(target.kind !== "fp") return res; // an address or key match cannot be a coincidence: stop here', 'if(false) return res;'],
+  ['reforge passphrase: fingerprint search stops at the first match', 'if(target.kind !== "fp") return res; // as in the word search', 'return res; //'],
+  ['reforge passphrase: passphrase not used', 'const seeds = await Promise.all(group.map(p => mnemonicToSeed(mnemonic, p)));', 'const seeds = await Promise.all(group.map(p => mnemonicToSeed(mnemonic, "")));'],
+  ['reforge passphrase: no passphrase not tried first', 'const out = new Set([""]);', 'const out = new Set();'],
+  ['reforge passphrase: pairs not joined with a space', 'if(a !== b) for(const sep of ["", " "]) bases.push(a + sep + b);', 'if(a !== b) for(const sep of [""]) bases.push(a + sep + b);'],
+  ['reforge passphrase: triples not tried', 'if(a !== b && a !== c && b !== c) for(const sep of ["", " "]) bases.push(a + sep + b + sep + c);', 'if(false) bases.push(a + b + c);'],
+  ['reforge passphrase: UPPERCASE not tried', 'r.push(y, y.toLowerCase(), y.toUpperCase(), c.join(""));', 'r.push(y, y.toLowerCase(), c.join(""));'],
+  ['reforge passphrase: lowercase not tried', 'r.push(y, y.toLowerCase(), y.toUpperCase(), c.join(""));', 'r.push(y, y.toUpperCase(), c.join(""));'],
+  ['reforge passphrase: Capitalised not tried', 'r.push(y, y.toLowerCase(), y.toUpperCase(), c.join(""));', 'r.push(y, y.toLowerCase(), y.toUpperCase());'],
+  ['reforge passphrase: trimmed form not tried', 'for(const y of t !== x ? [x, t] : [x])', 'for(const y of [x])'],
+  ['reforge passphrase: typo box ignored', 'if(typos){\n    for(const x of [...out]){', 'if(false){\n    for(const x of [...out]){'],
+  ['reforge passphrase: left-out character not tried', 'add(c.slice(0, i).concat(c.slice(i + 1)).join(""));', ''],
+  ['reforge passphrase: doubled character not tried', 'add(c.slice(0, i + 1).concat(c.slice(i)).join(""));', ''],
+  ['reforge passphrase: swapped neighbours not tried', 'if(i + 1 < c.length) add(c.slice(0, i).concat([c[i + 1], c[i]], c.slice(i + 2)).join(""));', ''],
+  ['reforge passphrase: other letter case not tried', 'if(f !== c[i]) add(c.slice(0, i).concat([f], c.slice(i + 1)).join(""));', ''],
+  ['reforge passphrase: no line limit', 'if(pieces.length > REFORGE_PASS_PIECES) throw', 'if(false) throw'],
+  ['reforge passphrase: CLEAR keeps the typo box', 'document.getElementById("reforgePassTypos").checked = false; }', '}'],
+  ['reforge passphrase: an edit keeps the result', '"reforgePassWords", "reforgePassInput", "reforgePassCheck", "reforgePassTypos"].forEach(id => document.getElementById(id).addEventListener', '"reforgePassWords", "reforgePassCheck", "reforgePassTypos"].forEach(id => document.getElementById(id).addEventListener'],
+  ['reforge passphrase: an invalid phrase accepted', '|| !(await reforgeChecksumOk(Uint16Array.from(parsed.idx))))', ')'],
+  ['reforge: fingerprint odds wrong', 'Math.round(2 ** 32 / Math.max(1, n))', 'Math.round(2 ** 31 / Math.max(1, n))'],
+  ['reforge: object property names read as words', 'if(reforgeHas(t)){ idx.push(WORD_MAP[t]); return; }', 'if(t in WORD_MAP){ idx.push(WORD_MAP[t]); return; }'],
+  ['reforge: 4-letter words not read', 'if(m.length === 1){ idx.push(WORD_MAP[m[0]]);', 'if(m.length === 0){ idx.push(WORD_MAP[m[0]]);'],
+  ['reforge: CLEAR keeps the passphrase', '["reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck"].forEach(id => { document', '["reforgeWordsInput", "reforgeWordsCheck", "reforgePassWords", "reforgePassInput", "reforgePassCheck"].forEach(id => { document'],
+  ['reforge: a passphrase edit keeps the result', '["reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "reforgePassTypos"]', '["reforgeWordsInput", "reforgeWordsCheck", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "reforgePassTypos"]'],
+  ['reforge: SEARCH is not the primary style', '<button type="button" id="reforgeWordsBtn" onclick="reforgeWords()">', '<button type="button" id="reforgeWordsBtn" class="secondary" onclick="reforgeWords()">'],
   ['psbt: 2-byte length prefix wrong', 'const v=b[o]|(b[o+1]<<8); o+=2; return v; }', 'const v=b[o]|(b[o+1]<<7); o+=2; return v; }'],
   ['psbt: 4-byte length prefix not read', 'if(f===0xfe) return r.u32();', 'if(f===0xfe) return r.byte();'],
   ['psbt: 64-bit amount byte order', 'for(let i=7;i>=0;i--) v=(v<<8n)|BigInt(b[o+i]);', 'for(let i=0;i<8;i++) v=(v<<8n)|BigInt(b[o+i]);'],

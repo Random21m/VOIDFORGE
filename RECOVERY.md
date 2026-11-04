@@ -44,6 +44,7 @@ Afterwards check that the app's first receiving address equals the **First recei
 - **Different addresses after restore:** wrong address type, wrong passphrase, or one wrong word that still passes the checksum. Recheck each word, then the passphrase.
 - **Passphrase typed with different characters:** capital letters, spaces and accents all matter. VOIDFORGE's two passphrase boxes must match exactly before it will forge.
 - **Words in the wrong order:** the order is part of the seed.
+- **A word missing, unreadable or wrong, two words swapped, or a passphrase you half remember:** use **Reforge** in EXTRA TOOLS on the offline computer. Type the words with `?` for any you lack (or your passphrase guesses, one per line) and something public you still have from the wallet: its master fingerprint, an address, or its account xpub/zpub (a watch-only wallet app shows these). Reforge tries the possibilities and reports only one it has confirmed. An address or xpub is a stronger check than a fingerprint; if it finds a phrase by the fingerprint only, confirm it with an address before moving any funds. It can search one or two lost words or a few hundred thousand passphrase guesses; for bigger searches use an open-source tool such as BTCRecover on a computer you trust, never a website.
 
 ## Child seeds (BIP85)
 

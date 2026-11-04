@@ -652,7 +652,7 @@
   <div class="tabs" id="tabs" role="tablist" aria-label="Sections">
     <button type="button" role="tab" id="tab-make" aria-controls="tp-make" aria-selected="true" data-tab="make" aria-label="MAKE A SEED"><span class="lg">MAKE A SEED</span><span class="sh">MAKE</span><small>new wallet words from dice or coins</small></button>
     <button type="button" role="tab" id="tab-check" aria-controls="tp-check" aria-selected="false" tabindex="-1" data-tab="check" aria-label="CHECK A BACKUP"><span class="lg">CHECK A BACKUP</span><span class="sh">CHECK</span><small>words, address or key you already have</small></button>
-    <button type="button" role="tab" id="tab-tools" aria-controls="tp-tools" aria-selected="false" tabindex="-1" data-tab="tools" aria-label="EXTRA TOOLS"><span class="lg">EXTRA TOOLS</span><span class="sh">TOOLS</span><small>transactions, multisig, last word</small></button>
+    <button type="button" role="tab" id="tab-tools" aria-controls="tp-tools" aria-selected="false" tabindex="-1" data-tab="tools" aria-label="EXTRA TOOLS"><span class="lg">EXTRA TOOLS</span><span class="sh">TOOLS</span><small>recovery, transactions, multisig</small></button>
     <button type="button" role="tab" id="tab-about" aria-controls="tp-about" aria-selected="false" tabindex="-1" data-tab="about" aria-label="ABOUT & HELP"><span class="lg">ABOUT &amp; HELP</span><span class="sh">ABOUT</span><small>how it works, privacy, changelog</small></button>
   </div>
   <div id="tp-make" class="tabpanel" role="tabpanel" aria-labelledby="tab-make">
@@ -962,47 +962,38 @@
   <div class="card tools" id="cardTools">
     <h2>EXTRA TOOLS</h2>
     <p class="sub">Optional helpers. They only display; none of them can spend or sign.</p>
-    <details id="lwBox">
-      <summary>Find the last word<small>You have all but the last word of a seed: list the words that fit.</small></summary>
-      <p class="hint" style="margin:8px 0;">If you have all but the last word of a seed phrase (11, 14, 17, 20 or 23 words), this lists every word that makes the checksum valid. The last word is partly a checksum, so only about 1 in 16 of the 2048 words fits (128 for 12 words). It does not tell you which one you had: a valid last word is not necessarily yours. Type the words from your own backup; they are not saved or sent.</p>
-      <textarea id="lwInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="All words except the last" placeholder="Type the first 11 (or 14, 17, 20, 23) words"></textarea>
-      <div style="display:flex; gap:6px; margin-top:6px;">
-        <button type="button" id="lwBtn" onclick="findLastWords()">FIND LAST WORD</button>
-        <button type="button" class="secondary small" onclick="clearLastWords(true)">CLEAR</button>
-      </div>
-      <div class="status" id="lwStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-      <pre id="lwOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
-    </details>
-    <!-- Reforge (v1.28.0, in progress): will replace "Find the last word" above in the same release once Mode 1 fully
-         covers its case. UI shell only -- the recovery search itself (reforgeWords, reforgePassphrase and friends) is
-         not implemented yet and the buttons below are intentionally disabled so this card does nothing if ever
-         shipped by accident. Do not wire this up without full oracle + mutation test coverage first. -->
     <details id="reforgeBox">
-      <summary>Reforge: recover a seed or find a passphrase<span class="tag tag-ro">NEW</span><small>Missing or wrong words, or a forgotten passphrase &mdash; search against what you already know.</small></summary>
-      <p class="hint" style="margin:8px 0;">Reforge searches for the words or passphrase you lost, checked against something you already know is right (a master fingerprint, a receive address, or an xpub/zpub). It never guesses silently: every match it reports is verified, and it tells you when it found nothing. Typed words and passphrase pieces are secret and are never saved or sent.</p>
+      <summary>Reforge: recover a seed or find a passphrase<span class="tag tag-secret">SECRET</span><small>Missing or wrong words, or a forgotten passphrase &mdash; search against what you already know.</small></summary>
+      <p class="hint" style="margin:8px 0;">Reforge searches for the words or passphrase you lost, checked against something you know is right: your wallet&rsquo;s master fingerprint, one of its addresses, or its account xpub/zpub (all three are public, and a watch-only wallet shows them). It never guesses: it reports only what matched, and tells you plainly when nothing did. What you type here is secret; it is never saved or sent, and CLEAR wipes it.</p>
       <div class="radio-group" id="reforgeModeRadios">
         <label><input type="radio" name="reforgeMode" value="words" checked onchange="reforgeModeChange()"><span>Missing or wrong words</span></label>
         <label><input type="radio" name="reforgeMode" value="pass" onchange="reforgeModeChange()"><span>Passphrase</span></label>
       </div>
       <div id="reforgeWordsPanel">
-        <p class="hint" style="margin:0 0 8px;">Type your words in order. Use <code>?</code> for a word you are missing entirely, and underline or mark the ones you are unsure of by typing your best guess &mdash; Reforge also tries nearby words and swapped neighbours. Works best with 1-2 uncertain words.</p>
-        <textarea id="reforgeWordsInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Your words, with ? for any missing word" placeholder="word1 word2 ? word4 ... (use ? for a missing word)"></textarea>
-        <input type="text" id="reforgeWordsCheck" spellcheck="false" autocomplete="off" autocapitalize="off" style="margin-top:6px;" aria-label="Master fingerprint, receive address, or xpub/zpub to check against" placeholder="Check against: master fingerprint, a receive address, or xpub/zpub">
-        <div class="btn-row" style="margin-top:8px;">
-          <button type="button" id="reforgeWordsBtn" disabled title="Not built yet">SEARCH (coming soon)</button>
+        <p class="hint" style="margin:0 0 8px;">Type your words in order, with <code>?</code> for each word you do not have. Reforge picks the search from what you type: with one or two <code>?</code> it tries every word in those places; with all the words it tries every swap of two words and every single word replaced; with one word fewer (11, 14, 17, 20 or 23) it tries the missing word at every place. A word that is not on the BIP39 list counts as <code>?</code>, and the first 4 letters of a word are enough. To list the words that could be last, type all but the last word, then <code>?</code>. Two <code>?</code> on a 12-word phrase can take a long time; an account xpub/zpub is by far the fastest thing to check against (a fingerprint or an address is several times slower), the page shows progress, and STOP ends the search.</p>
+        <textarea id="reforgeWordsInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Your words in order, with ? for each unknown word" placeholder="word1 word2 ? word4 ... (? for each word you do not have)"></textarea>
+        <input type="text" id="reforgeWordsCheck" spellcheck="false" autocomplete="off" autocapitalize="off" style="margin-top:6px;" aria-label="Master fingerprint, address or account xpub to check against" placeholder="Check against: master fingerprint (like 73c5da0a), an address, or an account xpub/zpub">
+        <input type="password" id="reforgeWordsPass" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" style="margin-top:6px;" aria-label="Passphrase, only if your wallet uses one" placeholder="Passphrase (only if your wallet uses one)">
+        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+          <button type="button" id="reforgeWordsBtn" onclick="reforgeWords()">SEARCH</button>
+          <button type="button" id="reforgeStopBtn" class="secondary small" onclick="reforgeStop()" disabled>STOP</button>
           <button type="button" class="secondary small" onclick="reforgeClear()">CLEAR</button>
         </div>
       </div>
       <div id="reforgePassPanel" style="display:none;">
-        <p class="hint" style="margin:0 0 8px;">Type the pieces of the passphrase you remember, one per line (Reforge also tries case, common typos and digit variants of each). This is checked against a PBKDF2-derived wallet, which is slow in the browser (roughly hundreds of tries per second), so the total search is capped and the page says so before it runs.</p>
-        <textarea id="reforgePassInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Passphrase pieces, one per line" placeholder="Passphrase pieces you remember, one per line"></textarea>
-        <input type="text" id="reforgePassCheck" spellcheck="false" autocomplete="off" autocapitalize="off" style="margin-top:6px;" aria-label="Master fingerprint or receive address to check against" placeholder="Check against: master fingerprint or a receive address">
-        <div class="btn-row" style="margin-top:8px;">
-          <button type="button" id="reforgePassBtn" disabled title="Not built yet">SEARCH (coming soon)</button>
+        <p class="hint" style="margin:0 0 8px;">For a wallet whose words you have but whose passphrase you do not remember exactly. Type your seed words, then your guesses or the pieces you remember, one per line, exactly as you might have typed them (spaces count). Reforge tries no passphrase, each line, and every two or three lines joined (with or without a space, in any order), each as typed, in lowercase, in UPPERCASE and Capitalised; tick one typo to also try each with a character missing, doubled, swapped with the next one, or in the other case. Each try takes the browser about a millisecond against an xpub/zpub and several times longer against a fingerprint or address, so the page counts the tries first and refuses more than 1,000,000.</p>
+        <textarea id="reforgePassWords" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Your seed words" placeholder="Your 12 or 24 seed words"></textarea>
+        <textarea id="reforgePassInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" style="margin-top:6px;" aria-label="Passphrase guesses or pieces, one per line" placeholder="Passphrase guesses or pieces you remember, one per line"></textarea>
+        <input type="text" id="reforgePassCheck" spellcheck="false" autocomplete="off" autocapitalize="off" style="margin-top:6px;" aria-label="Master fingerprint, address or account xpub to check against" placeholder="Check against: master fingerprint (like 73c5da0a), an address, or an account xpub/zpub">
+        <label style="display:flex; gap:8px; align-items:center; margin-top:6px; font-size:14px;"><input type="checkbox" id="reforgePassTypos"> Also try each with one typo</label>
+        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+          <button type="button" id="reforgePassBtn" onclick="reforgePassphrase()">SEARCH</button>
+          <button type="button" id="reforgePassStopBtn" class="secondary small" onclick="reforgeStop()" disabled>STOP</button>
           <button type="button" class="secondary small" onclick="reforgeClear()">CLEAR</button>
         </div>
       </div>
-      <div class="status" id="reforgeStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;">Not built yet &mdash; this card is a layout preview only.</div>
+      <div class="status" id="reforgeStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+      <pre id="reforgeOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
     </details>
     <details id="psbtBox">
       <summary>Inspect a transaction (PSBT)<span class="tag tag-ro">READ ONLY</span><small>See where the money goes and the fee before signing.</small></summary>
@@ -1258,6 +1249,7 @@
     <details>
       <summary>Changelog</summary>
       <ul>
+        <li><b>1.28.0</b> &mdash; <b>Reforge: recover a seed or find a passphrase.</b> A new <b>Reforge</b> tool in EXTRA TOOLS replaces Find the last word. In <b>Missing or wrong words</b> you type your words with <code>?</code> for any you lack; it fills in one or two unknown words, finds one wrong word or two swapped words, or puts back a word missing from an unknown place, and checks every candidate against your wallet&rsquo;s master fingerprint, an address (receive addresses 0 to 9 of account 0) or its account xpub/ypub/zpub, with your passphrase if you use one. In <b>Passphrase</b> it tries your guesses alone and joined in twos and threes, in four letter cases, and optionally with one typo. It reports only what matched, says how likely a fingerprint match is to be a coincidence, says plainly when nothing matched and what it searched, refuses an address with a typo before starting, and STOP ends a long search. Typing 11 words and <code>?</code> lists the possible last words, as Find the last word did, and 4-letter word forms are read. Every search plan is checked in the test suite against independent libraries (@scure/bip39, @scure/bip32, @scure/btc-signer). Also: a typed word that happens to be a JavaScript property name (such as &ldquo;constructor&rdquo;) is now reported as an unknown word in CHECK A BACKUP instead of as a failed checksum. Words, fingerprints, addresses, keys and descriptors are unchanged from v1.27.3.</li>
         <li><b>1.27.3</b> &mdash; <b>Check your download, Support this project, Bitcoin dictionary, and uniform colors.</b> A new <b>Check your download</b> tool in EXTRA TOOLS lets you pick the voidforge.html file you downloaded and compares its SHA-256 and CID against what you paste from the release page, entirely offline. A new, optional <b>Support this project</b> box in ABOUT &amp; HELP has a Lightning address and QR code; nothing is sent and the box is closed by default. The <b>Bitcoin dictionary</b> in ABOUT &amp; HELP grew from VOIDFORGE-specific terms to 259 general Bitcoin terms across 12 topics, searchable and offline. Every main action button (FORGE SEED, START DRILL, START PRACTICE, CHECK MY PAPER, CHECK ADDRESS, FIND LAST WORD, INSPECT, COMPARE, DERIVE CHILD SEED) is now the same cyan primary color, so the important action on each card stands out; small helper buttons (COPY, SHOW QR, HIDE, PRINT, UNDO) stay grey. DEMO ONLY and ADVANCED badges are now a pink accent instead of grey, and both &ldquo;NEW&rdquo; badges on the page use the same cyan style. Nothing that touches your seed changed, so words, fingerprints, addresses, keys and descriptors are identical to v1.27.2.</li>
         <li><b>1.27.2</b> &mdash; <b>3D dice header and clearer labels.</b> <b>RECOMMENDED</b> is now an amber badge (the same amber as the audit notice), and DEMO ONLY, ADVANCED and NEW are small grey badges instead of words in brackets. The three dice that fall onto the title are now small 3D cubes with six pipped faces, they land behind the status line instead of over it, and VOIDFORGE has a crisp neon glow. Nothing that touches your seed changed, so words, fingerprints, addresses, keys and descriptors are identical to v1.27.1. Pure CSS, no images, no network.</li>
         <li><b>1.27.1</b> &mdash; <b>Gold coin buttons.</b> In coin mode the two tap buttons are now drawn as gold coins: a head for <b>HEADS = 1</b> and a star for <b>TAILS = 0</b>. They add exactly the same 1 and 0 as before, so seeds, fingerprints, addresses, keys and descriptors are identical to v1.27.0. The picture is drawn by the page itself (no image files, no network).</li>
@@ -1319,7 +1311,7 @@
   <footer>
     SHA256(rolls or flips) → BIP39 • Same method as SeedSigner and Coldcard dice modes<br>
     Enter your rolls or flips, generate the seed, then compare it and the fingerprint with a second tool on an offline device<br>
-    <span style="font-size:13.5px; margin-top:6px; display:inline-block;">VOIDFORGE v1.27.3 &bull; source: github.com/Random21m/VOIDFORGE (no links on this page by design)</span>
+    <span style="font-size:13.5px; margin-top:6px; display:inline-block;">VOIDFORGE v1.28.0 &bull; source: github.com/Random21m/VOIDFORGE (no links on this page by design)</span>
   </footer>
 </div>
 
@@ -1607,10 +1599,10 @@ async function hmac512(keyBytes, data){
   const key=await crypto.subtle.importKey("raw",keyBytes,{name:"HMAC",hash:"SHA-512"},false,["sign"]);
   return new Uint8Array(await crypto.subtle.sign("HMAC",key,data));
 }
-async function ckdPriv(k, chain, index, hardened){
+async function ckdPriv(k, chain, index, hardened, pub){ // pub: the parent's public key, if already known (saves one multiplication)
   const idx=hardened ? (index+0x80000000)>>>0 : index;
   const data=new Uint8Array(37);
-  if(hardened){ data.set(fromHex(k.toString(16).padStart(64,"0")),1); } else { data.set(pubkeyBytes(k),0); }
+  if(hardened){ data.set(fromHex(k.toString(16).padStart(64,"0")),1); } else { data.set(pub || pubkeyBytes(k),0); }
   data.set([(idx>>>24)&255,(idx>>>16)&255,(idx>>>8)&255,idx&255],33);
   const I=await hmac512(chain,data);
   const il=BigInt("0x"+hex(I.slice(0,32))), child=(il+k)%SN;
@@ -2043,6 +2035,7 @@ const DICT = [
   ["Blockchain", "Bitcoin's shared public record of every transaction, kept by thousands of computers.", "", "Basics"],
   ["BOLT", "Basis of Lightning Technology: the written specifications that Lightning software follows.", "", "Lightning & layers"],
   ["Brain wallet", "A seed made from a phrase you choose yourself. Never do this: human-chosen phrases are guessable and have been emptied by thieves. VOIDFORGE uses physical dice and coins instead.", "", "Keys & seeds"],
+  ["Brute force", "Trying every possibility until one works. A whole seed has far too many combinations for this to ever succeed, but it is practical for a small gap, such as one or two lost words or a passphrase you half remember.", "Reforge.", "Privacy & security"],
   ["BTC", "The usual ticker symbol for one bitcoin. Some places use XBT.", "", "Basics"],
   ["Build attestation", "A signed statement by the build system saying which source code and process produced a file.", "RELEASING.md and the release page.", "Privacy & security"],
   ["Bull and bear market", "A bull market is a long rise in prices and a bear market is a long fall.", "", "Culture & markets"],
@@ -2050,7 +2043,7 @@ const DICT = [
   ["Chain analysis", "Companies and researchers following the blockchain to link addresses and payments to real people.", "", "Privacy & security"],
   ["Chain code", "An extra 32 bytes that travel with a key in BIP32, so child keys can be worked out safely.", "", "Keys & seeds"],
   ["Change", "The part of a payment that goes back to you. Spending part of a coin sends the rest to a change address of your own.", "Transaction inspector.", "Transactions"],
-  ["Checksum", "Extra data that lets software notice a typo. In a BIP39 seed the last word partly acts as the checksum.", "Find the last word, wrong-word reports.", "Units & math"],
+  ["Checksum", "Extra data that lets software notice a typo. In a BIP39 seed the last word partly acts as the checksum.", "Reforge, wrong-word reports.", "Units & math"],
   ["Child key and parent key", "In a key tree, a child key is worked out from its parent. Knowing a hardened child never reveals its parent.", "", "Keys & seeds"],
   ["Child seed", "A new seed derived from a parent seed (BIP85). The same parent, word count and index always give the same child.", "Extra tools.", "Keys & seeds"],
   ["Clipboard", "Your computer's short-term copy memory. Some systems keep a history of it or sync it to other devices, so copying a secret can leak it.", "Browser safety checklist.", "Privacy & security"],
@@ -2188,6 +2181,7 @@ const DICT = [
   ["RBF (replace-by-fee)", "A transaction can be marked so it may be replaced by a version that pays a higher fee while it waits to be mined.", "Transaction inspector.", "Transactions"],
   ["Receiving address", "One of the addresses made to be given out to be paid. Change addresses are a separate chain of your own addresses.", "First 5 receiving addresses.", "Addresses & scripts"],
   ["Redeem script and witness script", "The hidden script behind a P2SH or P2WSH address, revealed only when the coin is spent.", "", "Addresses & scripts"],
+  ["Reforge", "The recovery tool in this page: it fills in missing seed words, finds a wrong or swapped word, or tries passphrase guesses, and reports only results it has checked against your wallet's fingerprint, an address or its xpub.", "EXTRA TOOLS.", "VOIDFORGE"],
   ["Regtest", "A private test network that you run on your own computer, where blocks are made on demand. It is only for developers.", "", "Network & mining"],
   ["Relay policy", "A node's own rules for which unconfirmed transactions it passes on (for example a minimum fee). They are not consensus rules.", "", "Network & mining"],
   ["Reorg (chain reorganisation)", "When the network switches to a longer competing chain, so the last few blocks are replaced. This is why more confirmations mean more safety.", "", "Network & mining"],
@@ -2205,6 +2199,7 @@ const DICT = [
   ["scriptSig (unlocking script)", "The data supplied by the spender to satisfy a coin's locking script. In SegWit this moves into the witness.", "", "Addresses & scripts"],
   ["Second tool", "A different, independent wallet or device used to check your words give the same fingerprint and addresses.", "How to check this wallet in a second tool.", "VOIDFORGE"],
   ["Seed (seed phrase, recovery phrase, mnemonic)", "The 12 or 24 words that make every key in your wallet. Anyone who has them controls the coins, and with them you can restore the wallet anywhere.", "Your seed panel.", "Keys & seeds"],
+  ["Seed recovery", "Finding lost or mistyped seed words, or a forgotten passphrase, by trying the possibilities and checking each against something public you still have from the wallet: its master fingerprint, an address or its xpub. Every try needs the slow PBKDF2 step, so a browser can only do small searches; open-source tools such as BTCRecover do larger ones, on a computer you trust.", "Reforge in EXTRA TOOLS.", "Wallets & backups"],
   ["SeedQR", "SeedSigner's QR code for a seed: each word's number (0000 to 2047) written as four digits.", "Paper backup as a SeedQR.", "VOIDFORGE"],
   ["SeedSigner", "An open-source do-it-yourself hardware signer. VOIDFORGE uses the same dice method and can read and make its SeedQR codes.", "", "Wallets & backups"],
   ["SegWit", "A 2017 Bitcoin upgrade that made transactions smaller and cheaper. Native SegWit addresses start with bc1q.", "", "Addresses & scripts"],
@@ -2253,7 +2248,7 @@ const DICT = [
   ["Whitepaper", "The nine-page paper \"Bitcoin: A Peer-to-Peer Electronic Cash System\", published on 31 October 2008, which described Bitcoin.", "", "Basics"],
   ["WIF (Wallet Import Format)", "A text way to write one private key (starting with 5, K or L) so it can be imported into a wallet. One key, not a whole wallet.", "", "Keys & seeds"],
   ["Witness", "The part of a SegWit transaction that holds the signatures and unlocking data, kept apart from the rest.", "", "Transactions"],
-  ["Wordlist", "The fixed list of 2048 words BIP39 uses. Every word is unique by its first four letters.", "SHOW FIRST 4 LETTERS.", "Keys & seeds"],
+  ["Wordlist", "The fixed list of 2048 words BIP39 uses. Every word is unique by its first four letters.", "SHOW FIRST 4 LETTERS, Reforge.", "Keys & seeds"],
   ["Wrench attack", "Physical force used to make someone hand over their keys. It is one reason to think about decoy wallets and multisig.", "", "Privacy & security"]
 ];
 let dictCat = "All";
@@ -2472,7 +2467,7 @@ async function checkPhrase(phrase){
   if(pc) phrase = pc.words;
   const words = phrase.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if(![12,15,18,21,24].includes(words.length)) return {ok:false, msg:"Invalid length"};
-  for(const w of words){ if(!(w in WORD_MAP)) return {ok:false, msg:"Unknown word: "+w}; }
+  for(const w of words){ if(!Object.prototype.hasOwnProperty.call(WORD_MAP, w)) return {ok:false, msg:"Unknown word: "+w}; }
   const bits = words.map(w=>WORD_MAP[w].toString(2).padStart(11,"0")).join("");
   const cLen = Math.floor((words.length*11)/32);
   const eBits = bits.length - cLen;
@@ -2483,55 +2478,389 @@ async function checkPhrase(phrase){
   return {ok:true, msg:"Valid "+words.length+"-word BIP39 phrase"+(pc ? " (read from "+pc.kind+")" : ""), mnemonic:words.join(" "), fromCode:!!pc};
 }
 
-// "Find the last word": every word that completes the given words into a valid BIP39 phrase. Input is 11, 14, 17, 20 or 23 words.
+// ================= Reforge (v1.28.0): recover missing or wrong seed words =================
+// The search has two steps. (1) Every phrase the chosen plan allows is checked against the BIP39 checksum; this keeps
+// exactly the phrases a wallet would accept and drops nothing else. (2) Each of those is turned into a wallet (with the
+// typed passphrase, if any) and compared with something the user knows is right: a master fingerprint, an address or an
+// account xpub. Nothing is guessed: a phrase is reported only if it matched, and the user is told when nothing did.
+const REFORGE_LENS = [12, 15, 18, 21, 24];
+const REFORGE_ADDR_N = 10;   // a typed address is compared with receive addresses 0 to 9 of account 0
+const REFORGE_XPUB = {       // account-level keys (depth 3) by version bytes: network and the BIP purposes to try
+  "0488b21e":{net:"main", purposes:[44,49,84,86], name:"xpub"}, "049d7cb2":{net:"main", purposes:[49], name:"ypub"}, "04b24746":{net:"main", purposes:[84], name:"zpub"},
+  "043587cf":{net:"test", purposes:[44,49,84,86], name:"tpub"}, "044a5262":{net:"test", purposes:[49], name:"upub"}, "045f1cf6":{net:"test", purposes:[84], name:"vpub"}
+};
+const reforgeHas = (w) => Object.prototype.hasOwnProperty.call(WORD_MAP, w);
+// Read the typed words. "?" is an unknown word. A BIP39 word is used as is. 4 or more letters that start exactly one BIP39
+// word (backups on steel often keep only the first 4 letters) are read as that word. Anything else becomes an unknown word.
+function reforgeParseWords(text){
+  const toks = String(text || "").trim().toLowerCase().split(/\s+/).filter(Boolean), idx = [], notes = [], read = [];
+  toks.forEach((t, i) => {
+    if(t === "?"){ idx.push(-1); return; }
+    if(reforgeHas(t)){ idx.push(WORD_MAP[t]); return; }
+    if(/^[a-z]{4,8}$/.test(t)){
+      const m = WORDLIST.filter(w => w.startsWith(t));
+      if(m.length === 1){ idx.push(WORD_MAP[m[0]]); read.push("word " + (i + 1) + " '" + t + "' as '" + m[0] + "'"); return; }
+    }
+    idx.push(-1); notes.push("word " + (i + 1) + " '" + t + "' is not a BIP39 word, so it is treated as unknown");
+  });
+  if(read.length) notes.unshift(read.length > 3 ? read.length + " words were read from their first letters (for example " + read[0] + ")" : "read " + read.join(", "));
+  return {idx, notes};
+}
+// True if these word numbers (0 to 2047; 12, 15, 18, 21 or 24 of them) have a valid BIP39 checksum.
+async function reforgeChecksumOk(idx){
+  const cLen = idx.length / 3, eBytes = new Uint8Array(cLen * 4);
+  let acc = 0, bits = 0, o = 0;
+  for(let i = 0; i < idx.length; i++){
+    acc = (acc << 11) | idx[i]; bits += 11;
+    while(bits >= 8 && o < eBytes.length){ bits -= 8; eBytes[o++] = (acc >>> bits) & 255; }
+    acc &= (1 << bits) - 1;
+  }
+  if(bits !== cLen) throw new Error("checksum length");
+  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", eBytes));
+  return acc === (h[0] >>> (8 - cLen));
+}
+// Choose what to search from the typed words. Throws (with the reason) when Reforge cannot search it.
+function reforgePlan(idx){
+  const n = idx.length, unk = [];
+  idx.forEach((v, i) => { if(v < 0) unk.push(i); });
+  if(REFORGE_LENS.includes(n)){
+    if(unk.length > 2) throw new Error("Reforge can fill at most 2 unknown words, and " + unk.length + " are unknown (" + unk.map(i => i + 1).join(", ") + "). A search for 3 is too large to run in a browser.");
+    if(unk.length){
+      const one = unk.length === 1;
+      return {kind:"fill", n, unk, total: one ? 2048 : 2048 * 2048, listable: one,
+        desc: one ? "every word at position " + (unk[0] + 1) : "every pair of words at positions " + (unk[0] + 1) + " and " + (unk[1] + 1),
+        *gen(){ const c = Uint16Array.from(idx, v => v < 0 ? 0 : v);
+          if(one){ for(let a = 0; a < 2048; a++){ c[unk[0]] = a; yield c.slice(); } }
+          else for(let a = 0; a < 2048; a++){ c[unk[0]] = a; for(let b = 0; b < 2048; b++){ c[unk[1]] = b; yield c.slice(); } } }};
+    }
+    const swaps = [];
+    for(let i = 0; i < n; i++) for(let j = i + 1; j < n; j++) if(idx[i] !== idx[j]) swaps.push([i, j]);
+    return {kind:"complete", n, unk, total: 1 + swaps.length + n * 2047, listable:false,
+      desc:"your " + n + " words as typed, every swap of two of them, and every phrase with one word replaced by another",
+      *gen(){ const base = Uint16Array.from(idx);
+        yield base.slice();
+        for(const [i, j] of swaps){ const c = base.slice(); c[i] = base[j]; c[j] = base[i]; yield c; }
+        for(let p = 0; p < n; p++) for(let w = 0; w < 2048; w++){ if(w === base[p]) continue; const c = base.slice(); c[p] = w; yield c; } }};
+  }
+  if(REFORGE_LENS.includes(n + 1)){
+    if(unk.length) throw new Error("With " + n + " words Reforge looks for one missing word at an unknown place, so it cannot also fill unknown words. Put a ? where the missing word belongs instead, or fix word " + (unk[0] + 1) + ".");
+    return {kind:"insert", n: n + 1, unk, total: (n + 1) * 2048 - n, listable:false, // n duplicates skipped (see below)
+      desc:"one missing word added at every position (1 to " + (n + 1) + ")",
+      *gen(){ for(let p = 0; p <= n; p++) for(let w = 0; w < 2048; w++){
+          if(p > 0 && idx[p - 1] === w) continue; // the same phrase as adding this word one place earlier
+          const c = new Uint16Array(n + 1); c.set(idx.slice(0, p), 0); c[p] = w; c.set(idx.slice(p), p + 1); yield c; } }};
+  }
+  throw new Error("Type 12, 15, 18, 21 or 24 words (with ? for each unknown word), or 11, 14, 17, 20 or 23 words if one word is missing and you do not know where. You typed " + n + ".");
+}
+// Full bech32 / bech32m checksum check (BIP173, BIP350) of a lowercase SegWit address.
+function reforgeBech32Ok(a){
+  const p = a.lastIndexOf("1"), hrp = a.slice(0, p), data = Array.from(a.slice(p + 1), ch => B32.indexOf(ch));
+  if(p < 1 || data.length < 7 || data.some(v => v < 0)) return false;
+  const G = [0x3b6a57b2,0x26508e6d,0x1ea119fa,0x3d4233dd,0x2a1462b3]; let c = 1;
+  const hb = Array.from(hrp, ch => ch.charCodeAt(0));
+  for(const x of hb.map(v => v >> 5).concat([0], hb.map(v => v & 31), data)){ const b = c >>> 25; c = ((c & 0x1ffffff) << 5) ^ x; for(let i = 0; i < 5; i++) if((b >> i) & 1) c ^= G[i]; }
+  return (c >>> 0) === (data[0] === 0 ? 1 : 0x2bc830a3);
+}
+// Read the "check against" value. Returns null when empty; throws with a reason when it cannot be used.
+async function reforgeTarget(raw){
+  const s = String(raw || "").replace(/\s+/g, "");
+  if(!s) return null;
+  if(/^[0-9a-fA-F]{8}$/.test(s)) return {kind:"fp", fp:s.toLowerCase(), label:"master fingerprint " + s.toLowerCase()};
+  const typo = "That address has a typo: its built-in checksum does not match. Check it character by character; a search against it could never succeed.";
+  const a = /^(bc1|tb1)/i.test(s) ? s.toLowerCase() : s;
+  if(/^(bc1|tb1)q[0-9a-z]{38}$/.test(a) || /^(bc1|tb1)p[0-9a-z]{58}$/.test(a)){
+    if(!reforgeBech32Ok(a)) throw new Error(typo);
+    return {kind:"addr", addr:a, type:addressTypeOf(a), net:addressNetOf(a), label:"address " + a};
+  }
+  if(/^[13mn2][1-9A-HJ-NP-Za-km-z]{25,34}$/.test(a)){
+    let p; try { p = await base58decode(a); } catch(e) { throw new Error(typo); }
+    const type = addressTypeOf(a), net = addressNetOf(a), N = NETS[net];
+    if(p.length !== 21 || p[0] !== (type === "pkh" ? N.pkh : N.sh)) throw new Error("That is not a valid Bitcoin address.");
+    return {kind:"addr", addr:a, type, net, label:"address " + a};
+  }
+  if(/^[xyztuv]pub/.test(s)){
+    let p; try { p = await base58decode(s); } catch(e) { throw new Error("That key has a typo: its built-in checksum does not match. Check it character by character."); }
+    const K = p.length === 78 ? REFORGE_XPUB[hex(p.slice(0, 4))] : null;
+    if(!K) throw new Error("That is not a supported key. Use an account xpub, ypub or zpub (or tpub, upub, vpub on testnet).");
+    if(p[4] !== 3) throw new Error("That " + K.name + " is not an account key (it is " + p[4] + " levels deep, not 3). Use the account xpub your wallet exports, like the one for m/84'/0'/0'.");
+    const cn = ((p[9] << 24) | (p[10] << 16) | (p[11] << 8) | p[12]) >>> 0;
+    if(cn < 0x80000000) throw new Error("That " + K.name + " is not an account key (its last step is not hardened).");
+    return {kind:"xpub", net:K.net, coin:NETS[K.net].coin, purposes:K.purposes, account:cn - 0x80000000, chain:p.slice(13, 45), pub:p.slice(45, 78), label:K.name + " " + s.slice(0, 12) + "..."};
+  }
+  throw new Error("Check against: type a master fingerprint (8 characters, like 73c5da0a), an address, or an account xpub, ypub or zpub.");
+}
+// Does this seed belong to the target? Returns where it matched (text), or null.
+async function reforgeMatch(seed, T){
+  let m;
+  try { m = await masterFromSeed(seed); } catch(e) { return null; } // invalid master key (odds about 1 in 2^127): not a match
+  if(T.kind === "fp") return (await fingerprintFromSeed(seed)) === T.fp ? "master fingerprint " + T.fp : null;
+  if(T.kind === "xpub"){
+    for(const p of T.purposes){
+      let [k, c] = m;
+      for(const i of [p, T.coin, T.account]) [k, c] = await ckdPriv(k, c, i, true);
+      if(eqBytes(c, T.chain) && eqBytes(pubkeyBytes(k), T.pub)) return "account key m/" + p + "'/" + T.coin + "'/" + T.account + "'";
+    }
+    return null;
+  }
+  const purpose = SCRIPT_TYPES[T.type].purpose, coin = NETS[T.net].coin;
+  let [k, c] = m;
+  for(const i of [purpose, coin, 0]) [k, c] = await ckdPriv(k, c, i, true);
+  const [rk, rc] = await ckdPriv(k, c, 0, false), rpub = pubkeyBytes(rk);
+  for(let i = 0; i < REFORGE_ADDR_N; i++){
+    const [kk] = await ckdPriv(rk, rc, i, false, rpub);
+    if((await addressFromKey(T.type, kk, T.net)) === T.addr) return "receive address #" + i + " (m/" + purpose + "'/" + coin + "'/0'/0/" + i + ")";
+  }
+  return null;
+}
+// Hand control back to the page now and then, so it stays responsive and STOP works. MessageChannel is not slowed down
+// in a background tab the way timers are.
+let reforgeLastYield = 0;
+function reforgeYield(force){
+  const now = (typeof performance !== "undefined" ? performance : Date).now();
+  if(!force && now - reforgeLastYield < 40) return null;
+  reforgeLastYield = now;
+  return new Promise(r => { if(typeof MessageChannel === "function"){ const ch = new MessageChannel(); ch.port1.onmessage = () => { ch.port1.close(); r(); }; ch.port2.postMessage(0); } else setTimeout(r, 0); });
+}
+// Why this plan cannot run without something to check against.
+function reforgeNeedTarget(plan){
+  const what = " Add a master fingerprint, an address or an account xpub.";
+  if(plan.kind === "fill") return "Two unknown words give about " + Math.round(2048 * 2048 / 2 ** (plan.n / 3)).toLocaleString("en-US") + " valid phrases, too many to list." + what;
+  if(plan.kind === "insert") return "To find a missing word at an unknown place, Reforge needs something to check against." + what + " If the missing word is the last one, type ? at the end instead to list the words that fit.";
+  return "To search for a wrong word or swapped words, Reforge needs something to check against." + what;
+}
+// The search itself. hooks: {progress(step, done, total, found), stop()}. Returns
+// {plan, tried, valid (phrases passing the checksum), list (no target: words that fit), matches, checked, stopped}.
+async function reforgeSearch(idx, target, passphrase, hooks){
+  hooks = hooks || {};
+  const plan = reforgePlan(idx), stop = () => !!(hooks.stop && hooks.stop()), progress = hooks.progress || (() => {});
+  if(!target && !plan.listable) throw new Error(reforgeNeedTarget(plan));
+  const res = {plan, step:"checksum", tried:0, valid:[], list:null, matches:[], checked:0, stopped:false};
+  let batch = [];
+  const flush = async () => {
+    const ok = await Promise.all(batch.map(reforgeChecksumOk));
+    batch.forEach((c, i) => { if(ok[i]) res.valid.push(c); });
+    res.tried += batch.length; batch = [];
+  };
+  for(const c of plan.gen()){
+    batch.push(c);
+    if(batch.length === 512){
+      await flush();
+      const y = reforgeYield(); if(y){ progress("checksum", res.tried, plan.total, 0); await y; }
+      if(stop()){ res.stopped = true; return res; }
+    }
+  }
+  if(batch.length) await flush();
+  progress("checksum", res.tried, plan.total, 0);
+  res.step = "verify";
+  if(!target){ res.list = res.valid.map(c => WORDLIST[c[plan.unk[0]]]); return res; }
+  const pw = passphrase || "";
+  for(let i = 0; i < res.valid.length; i += 8){
+    const group = res.valid.slice(i, i + 8);
+    const seeds = await Promise.all(group.map(c => mnemonicToSeed(Array.from(c, v => WORDLIST[v]).join(" "), pw)));
+    for(let j = 0; j < group.length; j++){
+      const how = await reforgeMatch(seeds[j], target);
+      res.checked++;
+      if(how){
+        res.matches.push({words:Array.from(group[j], v => WORDLIST[v]), how});
+        if(target.kind !== "fp") return res; // an address or key match cannot be a coincidence: stop here
+      }
+    }
+    const y = reforgeYield(); if(y){ progress("verify", res.checked, res.valid.length, res.matches.length); await y; }
+    if(stop()){ res.stopped = true; return res; }
+  }
+  return res;
+}
+// "Find the last word" (kept as a helper; Reforge's ? at the end does the same): every last word that gives a valid checksum.
 async function lastWordCandidates(words){
   if(![11,14,17,20,23].includes(words.length)) throw new Error("Type 11, 14, 17, 20 or 23 words (all but the last).");
-  for(const w of words){ if(!(w in WORD_MAP)) throw new Error("Unknown word: " + w); }
-  const total = words.length + 1, cLen = Math.floor((total*11)/32), eBits = total*11 - cLen;
-  const head = words.map(w => WORD_MAP[w].toString(2).padStart(11,"0")).join("");
-  const free = 11 - cLen, out = [];
-  for(let i = 0; i < 2048; i++){
-    const bits = head + i.toString(2).padStart(11,"0");
-    const eBytes = new Uint8Array(eBits/8);
-    for(let b = 0; b < eBytes.length; b++) eBytes[b] = parseInt(bits.slice(b*8, (b+1)*8), 2);
-    const h = new Uint8Array(await crypto.subtle.digest("SHA-256", eBytes));
-    if(bits.slice(eBits) === bytesToBits(h).slice(0, cLen)) out.push(WORDLIST[i]);
+  for(const w of words){ if(!reforgeHas(w)) throw new Error("Unknown word: " + w); }
+  return (await reforgeSearch(words.map(w => WORD_MAP[w]).concat([-1]), null, "")).list;
+}
+// ---- Reforge passphrase search ----
+const REFORGE_PASS_MAX = 1000000, REFORGE_PASS_PIECES = 20;
+// Every passphrase to try, likeliest first, without repeats: no passphrase; each line; every ordered pair and triple of
+// different lines joined with nothing or one space; each as typed, lowercase, UPPERCASE and Capitalised (and trimmed, if
+// the line has spaces at its ends). With `typos`, also each of those with one character deleted, doubled, swapped with
+// the next one, or in the other case. Lines are kept exactly as typed: spaces can be part of a passphrase.
+function reforgePassCandidates(text, typos){
+  const pieces = [...new Set(String(text || "").split(/\r?\n/).filter(l => l.length))];
+  if(!pieces.length) throw new Error("Type at least one passphrase guess or piece, one per line.");
+  if(pieces.length > REFORGE_PASS_PIECES) throw new Error("Type at most " + REFORGE_PASS_PIECES + " lines; you typed " + pieces.length + ".");
+  const out = new Set([""]);
+  const add = (x) => { if(!out.has(x)){ if(out.size >= REFORGE_PASS_MAX) throw new Error("That gives more than " + REFORGE_PASS_MAX.toLocaleString("en-US") + " passphrases to try, too many for a browser. Use fewer lines" + (typos ? " or untick one typo" : "") + "."); out.add(x); } };
+  const forms = (x) => { const t = x.trim(), r = [];
+    for(const y of t !== x ? [x, t] : [x]){ const c = Array.from(y.toLowerCase()); if(c.length) c[0] = c[0].toUpperCase(); r.push(y, y.toLowerCase(), y.toUpperCase(), c.join("")); }
+    return r; };
+  const bases = [];
+  for(const a of pieces) bases.push(a);
+  for(const a of pieces) for(const b of pieces) if(a !== b) for(const sep of ["", " "]) bases.push(a + sep + b);
+  for(const a of pieces) for(const b of pieces) for(const c of pieces) if(a !== b && a !== c && b !== c) for(const sep of ["", " "]) bases.push(a + sep + b + sep + c);
+  for(const b of bases) for(const f of forms(b)) add(f);
+  if(typos){
+    for(const x of [...out]){
+      const c = Array.from(x);
+      for(let i = 0; i < c.length; i++){
+        add(c.slice(0, i).concat(c.slice(i + 1)).join(""));                              // a character left out
+        add(c.slice(0, i + 1).concat(c.slice(i)).join(""));                              // a character typed twice
+        if(i + 1 < c.length) add(c.slice(0, i).concat([c[i + 1], c[i]], c.slice(i + 2)).join("")); // two neighbours swapped
+        const f = c[i] === c[i].toLowerCase() ? c[i].toUpperCase() : c[i].toLowerCase();
+        if(f !== c[i]) add(c.slice(0, i).concat([f], c.slice(i + 1)).join(""));         // one letter in the other case
+      }
+    }
   }
-  return out;
+  return [...out];
 }
-function clearLastWords(all){
-  const o = document.getElementById("lwOut"); o.textContent = ""; o.style.display = "none";
-  const t = document.getElementById("lwStatus"); t.textContent = ""; t.className = "status";
-  if(all) document.getElementById("lwInput").value = "";
+// Try each passphrase with these words against the target. Returns {checked, matches:[{pass, how}], stopped}.
+async function reforgePassSearch(mnemonic, cands, target, hooks){
+  hooks = hooks || {};
+  const stop = () => !!(hooks.stop && hooks.stop()), progress = hooks.progress || (() => {});
+  const res = {checked:0, matches:[], stopped:false};
+  for(let i = 0; i < cands.length; i += 8){
+    const group = cands.slice(i, i + 8);
+    const seeds = await Promise.all(group.map(p => mnemonicToSeed(mnemonic, p)));
+    for(let j = 0; j < group.length; j++){
+      const how = await reforgeMatch(seeds[j], target);
+      res.checked++;
+      if(how){
+        res.matches.push({pass:group[j], how});
+        if(target.kind !== "fp") return res; // as in the word search: an address or key match ends it
+      }
+    }
+    const y = reforgeYield(); if(y){ progress(res.checked, cands.length, res.matches.length); await y; }
+    if(stop()){ res.stopped = true; return res; }
+  }
+  return res;
 }
-async function findLastWords(){
-  if(!gateOk()) return;
-  const st = document.getElementById("lwStatus"), o = document.getElementById("lwOut");
-  const say = (cls, t) => { st.className = "status " + cls; st.textContent = t; };
-  clearLastWords(false);
-  const words = document.getElementById("lwInput").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  try {
-    const c = await lastWordCandidates(words);
-    say("ok", c.length + " words complete this " + (words.length + 1) + "-word phrase. Any one of them gives a valid checksum, but only your own backup tells you which is the real last word.");
-    o.textContent = c.join("  "); o.style.display = "block";
-  } catch(e) { say("bad", e.message); }
-}
-// ================= Reforge (v1.28.0, UI shell only -- see the HTML comment above reforgeBox) =================
-// Layout and mode-toggle only. The actual recovery search (checksum-filtered word candidates verified against a
-// known fingerprint/address/xpub, and the passphrase-variant search) is designed and built separately, with full
-// oracle tests against @scure/bip39 and mutation coverage, before either SEARCH button is ever enabled.
+// ---- Reforge card ----
+let reforgeRun = {id:0, stop:false, busy:false};
 function reforgeModeChange(){
   const words = document.querySelector('input[name="reforgeMode"][value="words"]').checked;
   document.getElementById("reforgeWordsPanel").style.display = words ? "" : "none";
   document.getElementById("reforgePassPanel").style.display = words ? "none" : "";
+  reforgeReset();
 }
-function reforgeClear(){
-  document.getElementById("reforgeWordsInput").value = "";
-  document.getElementById("reforgeWordsCheck").value = "";
-  document.getElementById("reforgePassInput").value = "";
-  document.getElementById("reforgePassCheck").value = "";
-  const st = document.getElementById("reforgeStatus");
-  st.className = "status"; st.textContent = "Not built yet — this card is a layout preview only.";
+function reforgeStop(){ if(reforgeRun.busy) reforgeRun.stop = true; }
+// Clears the result and stops a running search. The typed words and passphrase are cleared too when `all` is set.
+function reforgeReset(all){
+  reforgeRun.id++; reforgeRun.stop = true;
+  const o = document.getElementById("reforgeOut"); o.textContent = ""; o.style.display = "none";
+  const st = document.getElementById("reforgeStatus"); st.className = "status"; st.textContent = "";
+  if(all){ ["reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck"].forEach(id => { document.getElementById(id).value = ""; }); document.getElementById("reforgePassTypos").checked = false; }
+}
+function reforgeClear(){ reforgeReset(true); }
+function reforgeBusy(on){
+  reforgeRun.busy = on;
+  for(const id of ["reforgeWordsBtn", "reforgePassBtn"]) document.getElementById(id).disabled = on;
+  for(const id of ["reforgeStopBtn", "reforgePassStopBtn"]) document.getElementById(id).disabled = !on;
+}
+// A fingerprint is 32 bits: after comparing n wallets, a chance match has odds of about 1 in 2^32 / n.
+function reforgeOdds(n){ return Math.max(1, Math.round(2 ** 32 / Math.max(1, n))).toLocaleString("en-US"); }
+function reforgeTime(sec){ return sec < 90 ? Math.max(1, Math.round(sec)) + " s" : Math.round(sec / 60) + " min"; }
+async function reforgeWords(){
+  if(!gateOk() || reforgeRun.busy) return;
+  reforgeReset(false);
+  const run = reforgeRun.id; reforgeRun.stop = false;
+  const st = document.getElementById("reforgeStatus"), o = document.getElementById("reforgeOut");
+  const live = () => run === reforgeRun.id;
+  const say = (cls, t) => { if(live()){ st.className = "status " + cls; st.textContent = t; } };
+  const parsed = reforgeParseWords(document.getElementById("reforgeWordsInput").value);
+  const pw = document.getElementById("reforgeWordsPass").value;
+  const notes = parsed.notes.length ? " Note: " + parsed.notes.join("; ") + "." : "";
+  let target, plan;
+  try {
+    plan = reforgePlan(parsed.idx);
+    target = await reforgeTarget(document.getElementById("reforgeWordsCheck").value);
+    if(!target && plan.kind === "complete"){
+      const valid = await reforgeChecksumOk(Uint16Array.from(parsed.idx));
+      return say("bad", "Your " + plan.n + " words as typed " + (valid ? "have a valid checksum (that alone does not prove they are your words)" : "do NOT have a valid checksum, so at least one word is wrong or out of place") + ". " + reforgeNeedTarget(plan) + notes);
+    }
+    if(!target && !plan.listable) return say("bad", reforgeNeedTarget(plan) + notes);
+  } catch(e) { return say("bad", e.message + notes); }
+  reforgeBusy(true);
+  const t0 = Date.now();
+  try {
+    say("", "Searching " + plan.desc + "..." + notes);
+    const res = await reforgeSearch(parsed.idx, target, pw, {
+      stop: () => reforgeRun.stop || !live(),
+      progress: (step, done, total, found) => {
+        const pct = Math.floor(100 * done / Math.max(1, total)), sec = (Date.now() - t0) / 1000, left = done ? sec * (total - done) / done : 0;
+        say("", (step === "checksum" ? "Step 1 of 2: checking " : "Step 2 of 2: comparing with the " + target.label + ": ") + done.toLocaleString("en-US") + " of " + total.toLocaleString("en-US") + " (" + pct + "%)" + (done && pct < 100 ? ", about " + reforgeTime(left) + " left" : "") + (found ? ". " + found + " match so far" : "") + ". STOP ends the search.");
+      }});
+    if(!live()) return;
+    const pwText = pw ? "with the passphrase you typed" : "without a passphrase";
+    if(!target){
+      say("ok", res.list.length + " words fit at position " + (plan.unk[0] + 1) + " of this " + plan.n + "-word phrase. Each gives a valid checksum, but only your own backup (or something to check against) tells you which one is yours." + notes);
+      o.textContent = res.list.join("  "); o.style.display = "block"; return;
+    }
+    const lines = res.matches.map((m, k) => {
+      const ch = [];
+      m.words.forEach((w, i) => { if(plan.kind !== "insert" && parsed.idx[i] !== WORD_MAP[w]) ch.push("word " + (i + 1) + (parsed.idx[i] < 0 ? " (unknown)" : " (" + WORDLIST[parsed.idx[i]] + ")") + " is " + w); });
+      if(plan.kind === "insert") for(let i = 0; i < m.words.length; i++){ const rest = m.words.slice(0, i).concat(m.words.slice(i + 1)); if(rest.every((w, j) => WORD_MAP[w] === parsed.idx[j])){ ch.push("the missing word is word " + (i + 1) + ", " + m.words[i]); break; } }
+      return (res.matches.length > 1 ? "Match " + (k + 1) + ": " : "") + "matches the " + m.how + ". " + (ch.length ? "Changed: " + ch.join("; ") + "." : "Your words were right as typed.") + "\n" + m.words.map((w, i) => (i + 1) + ".\u00a0" + w).join("   ");
+    });
+    if(lines.length){ o.textContent = lines.join("\n\n"); o.style.display = "block"; }
+    const searched = res.checked.toLocaleString("en-US") + " valid phrases (" + plan.desc + ")";
+    if(res.stopped){
+      return say("bad", (res.step === "checksum"
+        ? "STOPPED in step 1 after checking " + res.tried.toLocaleString("en-US") + " of " + plan.total.toLocaleString("en-US") + " phrases; nothing was compared yet."
+        : "STOPPED after comparing " + res.checked.toLocaleString("en-US") + " of " + res.valid.length.toLocaleString("en-US") + " valid phrases.") + " The search is NOT complete" + (res.matches.length ? "; the match below was found before it stopped" : " and found nothing so far") + "." + notes);
+    }
+    if(!res.matches.length){
+      return say("bad", "NOT FOUND. None of the " + searched + " gives the " + target.label + ", " + pwText + "." + (target.kind === "addr" ? " Reforge compares receive addresses 0 to " + (REFORGE_ADDR_N - 1) + " of account 0." : "") + " Recheck what you are checking against and the passphrase. If this plan does not fit what happened to your backup, change the words (for example mark a word you are unsure of with ?)." + notes);
+    }
+    if(target.kind === "fp"){
+      return say("ok", (res.matches.length === 1 ? "FOUND one phrase" : "FOUND " + res.matches.length + " phrases") + " with the " + target.label + ", " + pwText + ", after comparing all " + searched + ". A fingerprint is only 8 characters, so with this many phrases a match can be a coincidence (about 1 in " + reforgeOdds(res.checked) + "). Before you trust it, check an address with it in CHECK A BACKUP." + notes);
+    }
+    say("ok", "FOUND and confirmed: this phrase gives the " + target.label + ", " + pwText + ". Write it down, check it in CHECK A BACKUP, then press CLEAR." + notes);
+  } catch(e) { say("bad", "Could not search: " + e.message); }
+  finally { reforgeBusy(false); }
+}
+async function reforgePassphrase(){
+  if(!gateOk() || reforgeRun.busy) return;
+  reforgeReset(false);
+  const run = reforgeRun.id; reforgeRun.stop = false;
+  const st = document.getElementById("reforgeStatus"), o = document.getElementById("reforgeOut");
+  const live = () => run === reforgeRun.id;
+  const say = (cls, t) => { if(live()){ st.className = "status " + cls; st.textContent = t; } };
+  const parsed = reforgeParseWords(document.getElementById("reforgePassWords").value);
+  const notes = parsed.notes.length ? " Note: " + parsed.notes.join("; ") + "." : "";
+  let target, cands, mnemonic;
+  try {
+    if(!REFORGE_LENS.includes(parsed.idx.length) || parsed.idx.some(v => v < 0) || !(await reforgeChecksumOk(Uint16Array.from(parsed.idx))))
+      return say("bad", "Type all 12, 15, 18, 21 or 24 of your seed words first, as a valid phrase. Reforge cannot search for wrong words and an unknown passphrase at the same time. Fix the words first with \u201cMissing or wrong words\u201d: it needs the right passphrase too, so try it with your best guesses one at a time." + notes);
+    mnemonic = parsed.idx.map(v => WORDLIST[v]).join(" ");
+    target = await reforgeTarget(document.getElementById("reforgePassCheck").value);
+    if(!target) return say("bad", "Reforge needs something to check each passphrase against: your wallet's master fingerprint, one of its addresses, or its account xpub/zpub." + notes);
+    cands = reforgePassCandidates(document.getElementById("reforgePassInput").value, document.getElementById("reforgePassTypos").checked);
+  } catch(e) { return say("bad", e.message + notes); }
+  reforgeBusy(true);
+  const t0 = Date.now(), total = cands.length.toLocaleString("en-US");
+  try {
+    say("", "Trying " + total + " passphrases against the " + target.label + "..." + notes);
+    const res = await reforgePassSearch(mnemonic, cands, target, {
+      stop: () => reforgeRun.stop || !live(),
+      progress: (done, all, found) => {
+        const pct = Math.floor(100 * done / Math.max(1, all)), sec = (Date.now() - t0) / 1000, left = done ? sec * (all - done) / done : 0;
+        say("", "Tried " + done.toLocaleString("en-US") + " of " + total + " passphrases (" + pct + "%)" + (pct < 100 ? ", about " + reforgeTime(left) + " left" : "") + (found ? ". " + found + " match so far" : "") + ". STOP ends the search.");
+      }});
+    if(!live()) return;
+    const shown = (p) => p === "" ? "(no passphrase)" : "\u201c" + p + "\u201d";
+    if(res.matches.length){
+      o.textContent = res.matches.map((m, k) => (res.matches.length > 1 ? "Match " + (k + 1) + ": " : "") + shown(m.pass) + "  matches the " + m.how + "." + (m.pass !== "" ? "\nThe passphrase is between the quotes, exactly as shown: capitals and any spaces count." : "")).join("\n\n");
+      o.style.display = "block";
+    }
+    if(res.stopped)
+      return say("bad", "STOPPED after trying " + res.checked.toLocaleString("en-US") + " of " + total + " passphrases. The search is NOT complete" + (res.matches.length ? "; the match below was found before it stopped" : " and found nothing so far") + "." + notes);
+    if(!res.matches.length)
+      return say("bad", "NOT FOUND. None of the " + total + " passphrases tried (no passphrase, your lines alone and joined in twos and threes, in four letter cases" + (document.getElementById("reforgePassTypos").checked ? ", and each with one typo" : "") + ") gives the " + target.label + " with these words." + (target.kind === "addr" ? " Reforge compares receive addresses 0 to " + (REFORGE_ADDR_N - 1) + " of account 0." : "") + " Recheck the words and what you are checking against, add more guesses" + (document.getElementById("reforgePassTypos").checked ? "" : ", or tick one typo") + "." + notes);
+    const none = res.matches.length === 1 && res.matches[0].pass === "";
+    if(target.kind === "fp"){
+      return say("ok", (none ? "FOUND: these words with NO passphrase give" : res.matches.length === 1 ? "FOUND one passphrase that gives" : "FOUND " + res.matches.length + " passphrases that give") + " the " + target.label + ", after trying all " + total + ". A fingerprint is only 8 characters, so with this many tries a match can be a coincidence (about 1 in " + reforgeOdds(res.checked) + "). Before you trust it, check an address with it in CHECK A BACKUP." + notes);
+    }
+    say("ok", none ? "FOUND and confirmed: these words with NO passphrase give the " + target.label + ". Your wallet does not use a passphrase." + notes
+                   : "FOUND and confirmed: the passphrase below, with these words, gives the " + target.label + ". Write it down exactly, then press CLEAR." + notes);
+  } catch(e) { say("bad", "Could not search: " + e.message); }
+  finally { reforgeBusy(false); }
 }
 // ================= Read-only PSBT inspector (BIP174 version 0). Only parses and displays: never signs, never uses a key. =================
 function psbtReader(b){
@@ -2947,6 +3276,7 @@ async function runSelfTests(auto){
     eq("Testnet multisig cosigner Vpub 'abandon..about' (BIP48, m/48'/1'/0'/2')", async()=>(await WN("ms-wsh",0,"test")).key, "Vpub5n95dMZrDHj6SeBgJ1oz4Fae2N2eJNuWK3VTKDb2dzGpMFLUHLmtyDfen7AaQxwQ5mZnMyXdVrkEaoMLVTH8FmVBRVWPGFYWhmtDUGehGmq"); }
   eq("last-word helper: 11 x abandon gives 128 words, and 'about' is one (published test vector)", async()=>{ const c=await lastWordCandidates(Array(11).fill("abandon")); return c.length+" "+c.includes("about"); }, "128 true");
   eq("last-word helper: 23 x abandon gives 8 words, and 'art' is one (published test vector)", async()=>{ const c=await lastWordCandidates(Array(23).fill("abandon")); return c.length+" "+c.includes("art"); }, "8 true");
+  eq("Reforge: an unknown word is found and confirmed by the first address (published vector)", async()=>{ const r=await reforgeSearch(reforgeParseWords("abandon ".repeat(10)+"? about").idx, await reforgeTarget("bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu"), ""); return r.matches.length+" "+r.matches[0].words.join(" ")+" | "+r.matches[0].how; }, "1 "+"abandon ".repeat(11)+"about | receive address #0 (m/84'/0'/0'/0/0)");
   eq("last-word helper: 11 x zoo gives 'wrong' among 128 (published test vector)", async()=>{ const c=await lastWordCandidates(Array(11).fill("zoo")); return c.length+" "+c.includes("wrong"); }, "128 true");
   eq("PSBT inspector: fee, amounts and output address of a known PSBT (built by an independent library)", async()=>{ const r=await inspectPsbt(psbtFromText("cHNidP8BAHECAAAAAaurq6urq6urq6urq6urq6urq6urq6urq6urq6urq6urAgAAAAD/////AqCGAQAAAAAAFgAU1L4sXWjQfnhBc67qrnReNudrsjoIRgIAAAAAABYAFKPGse5KSdnyrzs4ApdHRPupJBZKAAAAAAABAR+Q0AMAAAAAABYAFJ1pVHSjA6xtdNF5bTdS8HiVkYvSAAAiAgKYnAt2y1Y5cf3JvvMewGw1YPMknW7p5dg8V2JVluBfbxhPv3VmVAAAgAAAAIAAAACAAQAAAAMAAAAA")); return r.fee+" "+r.ins[0].amount+" "+r.outs[0].amount+" "+r.outs[0].address+" "+r.outs[1].fps.join(); }, "1000 250000 100000 bc1q6jlzchtg6pl8sstn4m42uaz7xmnkhv369ud973 4fbf7566");
   eq("Taproot BIP86 first two receive addresses 'abandon..about' (published BIP86 vectors)", async()=>(await mnemonicTaproot("abandon ".repeat(11)+"about","",2)).join(" "),"bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr bc1p4qhjn9zdvkux4e44uhx8tc55attvtyu358kutcqkudyccelu0was9fqzwh");
@@ -3898,7 +4228,7 @@ document.getElementById("wType").addEventListener("change", refreshWatch);
 document.getElementById("wNet").addEventListener("change", refreshWatch);
 document.getElementById("wAcct").addEventListener("input", refreshWatch);
 document.getElementById("childWords").addEventListener("change", clearChild);
-document.getElementById("lwInput").addEventListener("input", () => clearLastWords(false));
+["reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "reforgePassTypos"].forEach(id => document.getElementById(id).addEventListener("input", () => reforgeReset(false)));
 document.getElementById("psbtInput").addEventListener("input", () => clearPsbt(false));
 document.getElementById("prInput").addEventListener("input", () => practiceStatus("",""));
 document.getElementById("cmpA").addEventListener("input", () => clearCompare(false));
