@@ -537,6 +537,10 @@
   .ms-sub { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
   .ms-sub .wlabel:first-child { margin-top: 0; }
   @media print { #msBanner { display: none !important; } }
+  #moreBox { margin-top: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+  #moreBox > summary { cursor: pointer; font-weight: 600; }
+  #moreBox > summary small { display: block; font-weight: 400; font-size: 13.5px; color: var(--muted); }
+  #moreBox #wdBox, #moreBox #demoBox { background: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; padding: 8px 0 0; margin-top: 10px; }
   #demoBox { margin-top: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
   #demoBox summary { cursor: pointer; font-weight: 600; }
   #demoBox summary small { display: block; font-weight: 400; font-size: 13.5px; color: var(--muted); }
@@ -586,6 +590,8 @@
   .stepbar li.cur { background: var(--accent); color: #001018; }
   body.light .stepbar li.cur { color: #fff; }
   body.guided .stepbar { display: none; }
+  body:not(.has-seed) .seed-actions, body:not(.has-seed) .print-btn { display: none; }
+  @media (min-width: 900px) { #rollCount { display: none; } }
   #cardGen { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); column-gap: 22px; }
   #cardGen .gen-left { grid-column: 1; grid-row: 1; min-width: 0; }
   #cardGen .gen-right { grid-column: 2; grid-row: 1 / span 2; min-width: 0; position: sticky; top: 76px; align-self: start; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
@@ -650,7 +656,7 @@
     </div>
     <h1>VOIDFORGE</h1>
     <div class="subtitle">DICE / COIN ENTROPY → SEED, BACKUP &amp; WALLET SETUP</div>
-    <div id="guideNew">New here? <button type="button" class="secondary small" onclick="toggleGuide()">GUIDE ME</button> walks you through making a seed one screen at a time.</div>
+    <div id="guideNew">New here? Press GUIDE ME at the top to be walked through making a seed one screen at a time.</div>
   </header>
 
   
@@ -699,6 +705,19 @@
       <label><input type="radio" name="mode" value="dice" checked onchange="onModeChange()"><span>Dice (1-6)</span></label>
       <label><input type="radio" name="mode" value="coin" onchange="onModeChange()"><span>Coin (1/0)</span></label>
     </div>
+    <div id="tapRow" data-g="2" class="radio-group" style="margin-top:8px; margin-bottom:6px;" aria-label="Tap to add a roll or flip"></div>
+    <textarea id="rolls" data-g="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Dice: rolls 1-6. Coin: flips as 1 and 0."></textarea>
+    <div id="coinHint" data-g="2" style="display:none; font-size:13.5px; margin-top:6px; color:var(--muted);">Pick which side is 1 and which is 0 (the usual choice: heads = 1, tails = 0) and keep it the same for every flip. Only the 1/0 string is used, so any consistent choice is fine, but you cannot get the mapping back from the words. Write down the exact string or your mapping with your backup.</div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;" data-g="2">
+      <div id="rollCount" aria-live="polite" style="font-size:13.5px;color:var(--muted);font-weight:600;">0 / 50 rolls</div>
+      <button class="secondary small" onclick="undoRoll()">UNDO</button>
+    </div>
+    <div class="entropy-bar" data-g="2"><div class="entropy-fill" id="entropyFill"></div></div>
+    <div id="entropyStatus" data-g="2" style="font-size:13.5px; margin-top:4px; font-weight:600;"></div>
+    <div id="bitsNote" data-g="2" style="font-size:13.5px; margin-top:4px; color:var(--muted);"></div>
+    <div id="ignoredNote" data-g="2" style="font-size:13.5px; margin-top:4px; font-weight:600; color:var(--danger);"></div>
+    <details id="moreBox">
+      <summary>More options<small>Word tiles, and a demo of how rolls scramble the words.</small></summary>
     <details id="wdBox" data-g="1">
       <summary>Word draw: made your words with physical tiles?<span class="tag tag-secret">SECRET</span><small>Type words drawn from word tiles (such as SeedSigner&rsquo;s SeedPills) plus a few coin flips.</small></summary>
       <p class="hint" style="margin:8px 0 0;">Word tiles let you pick the words by hand: mix them in a bag, draw one without looking, flip it to choose a face, write the word down and <b>put the tile back</b> before the next draw. Each word is 11 random bits. A 12-word seed needs 11 drawn words and 7 coin flips; a 24-word seed needs 23 words and 3 flips. The flips are needed because part of the last word is a <span class="term" tabindex="0" data-tip="A few extra bits, calculated from all the others, that let wallets catch typing mistakes. The last word of a seed is partly made of them.">checksum</span>. Type your words (the first four letters of each are enough) and your flips; VOIDFORGE finishes the last word the standard BIP39 way, with no hashing, so any BIP39 wallet reads the result. Repeated words are fine, because every draw goes back in the bag. It never fills in the flips for you. Typed words are secret: use it only where nobody can see your screen.</p>
@@ -720,17 +739,6 @@
       </div>
       <div id="wdOut" style="display:none;"></div>
     </details>
-    <div id="tapRow" data-g="2" class="radio-group" style="margin-top:8px; margin-bottom:6px;" aria-label="Tap to add a roll or flip"></div>
-    <textarea id="rolls" data-g="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Dice: rolls 1-6. Coin: flips as 1 and 0."></textarea>
-    <div id="coinHint" data-g="2" style="display:none; font-size:13.5px; margin-top:6px; color:var(--muted);">Pick which side is 1 and which is 0 (the usual choice: heads = 1, tails = 0) and keep it the same for every flip. Only the 1/0 string is used, so any consistent choice is fine, but you cannot get the mapping back from the words. Write down the exact string or your mapping with your backup.</div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;" data-g="2">
-      <div id="rollCount" aria-live="polite" style="font-size:13.5px;color:var(--muted);font-weight:600;">0 / 50 rolls</div>
-      <button class="secondary small" onclick="undoRoll()">UNDO</button>
-    </div>
-    <div class="entropy-bar" data-g="2"><div class="entropy-fill" id="entropyFill"></div></div>
-    <div id="entropyStatus" data-g="2" style="font-size:13.5px; margin-top:4px; font-weight:600;"></div>
-    <div id="bitsNote" data-g="2" style="font-size:13.5px; margin-top:4px; color:var(--muted);"></div>
-    <div id="ignoredNote" data-g="2" style="font-size:13.5px; margin-top:4px; font-weight:600; color:var(--danger);"></div>
     <details id="demoBox" data-g="2">
       <summary>Watch the words change<span class="tag tag-note">DEMO ONLY</span><small>See why one different roll changes every word.</small></summary>
       <p class="hint" style="margin:8px 0 0;">Curious how rolls turn into words? Switch this on and add rolls: the demo words below are re-made after every roll, and you will see that <b>one new roll changes every word</b>. That scrambling is why nobody can work backwards from the words to your rolls. These words are made from your rolls plus a demo tag, so they are <b>never your real seed</b>. They are not saved, printed or carried into FORGE.</p>
@@ -740,6 +748,7 @@
         <div id="demoInfo" class="hint" aria-live="polite" style="margin:0;"></div>
         <div id="demoGrid" aria-label="Demo words, not your seed"></div>
       </div>
+    </details>
     </details>
     <details id="advanced" data-g="3">
       <summary id="advSummary">Advanced options (passphrase, note)</summary>
@@ -759,7 +768,6 @@
     <div class="seed-head"><div class="seed-title">YOUR SEED</div><div id="bigCount" class="big-count short" aria-live="polite"></div><div id="bigSub" class="big-sub short"></div></div>
     <div class="btn-row" data-g="4">
       <button id="forgeBtn" onclick="generate()" disabled>FORGE SEED</button>
-      <p class="forge-note">Making real keys? Use an offline computer, keep clipboard history off, and restart when you are done.</p>
       <button class="btn-clear" onclick="clearAll()">CLEAR</button>
       <button class="btn-test small" onclick="toggleSelfTests()">SELF-TEST</button>
     </div>
@@ -769,7 +777,7 @@
     <div id="passNote" data-g="4"></div>
     <div id="nextStep" data-g="4" aria-live="polite"></div>
     <div class="result nores" id="genResult" data-g="4" role="status">—</div>
-    <div class="btn-row" style="margin-top:6px;" data-g="4">
+    <div class="btn-row seed-actions" style="margin-top:6px;" data-g="4">
       <button class="secondary small needs-words" id="abbrBtn" onclick="toggleAbbr()">SHOW FIRST 4 LETTERS</button>
       <button class="secondary small needs-words" onclick="sendToVerify()">SEND TO CHECK</button>
       <button class="secondary small" onclick="copyFingerprint(this)">COPY FINGERPRINT</button>
@@ -1321,7 +1329,6 @@
 
   <footer>
     SHA256(rolls or flips) → BIP39 • Same method as SeedSigner and Coldcard dice modes<br>
-    Enter your rolls or flips, generate the seed, then compare it and the fingerprint with a second tool on an offline device<br>
     <span style="font-size:13.5px; margin-top:6px; display:inline-block;">VOIDFORGE v1.29.0 &bull; source: github.com/Random21m/VOIDFORGE (one link on this page, in About, to the online practice copy)</span>
   </footer>
 </div>
@@ -3963,7 +3970,7 @@ function updateAbbrNote(){
   document.getElementById("abbrNote").textContent = (abbrOn && hasSeed()) ? "Showing only the first 4 letters of each word. The full words are still your backup; write down full words unless your backup method uses 4-letter abbreviations." : "";
 }
 function setResult(text, words){
-  demoOff(); wdWipe(); drillEnd();
+  demoOff(); wdWipe(); drillEnd(); document.body.classList.toggle("has-seed", !!words);
   const g = document.getElementById("genResult"), grid = document.getElementById("wordGrid");
   g.textContent = text; g.classList.toggle("nores", text === "\u2014"); grid.textContent = "";
   hideExplain(); { const eb = document.getElementById("explainBox"); eb.style.display = (words && [12,24].includes(words.length)) ? "" : "none"; eb.open = false; }

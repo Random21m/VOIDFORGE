@@ -117,6 +117,19 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const d=t.w.document, m=d.querySelector('meta[name="google"]'), adv=t.$('passphrase').closest('details');
       ok(d.documentElement.getAttribute('translate')==='no'&&d.documentElement.getAttribute('lang')==='en'&&!!m&&m.getAttribute('content')==='notranslate','translation: the page asks browsers not to translate it');
       ok(!!adv&&/Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it\./.test(adv.textContent)&&!/\b(Trezor|Ledger|Coldcard|Jade)\b/.test(adv.textContent),'passphrase: help warns that some hardware wallets limit length or characters (no vendor claims)'); }
+    { // Calmer first screen (v1.33.0): one GUIDE ME button, seed buttons only once there is a seed, one "More options" box, no second warning note
+      const d=t.w.document, gb=[...d.querySelectorAll('button')].filter(b=>b.textContent.trim()==='GUIDE ME'), gn=t.$('guideNew'), css=[...d.querySelectorAll('style')].map(x=>x.textContent).join('\n');
+      ok(gb.length===1&&gb[0].id==='guideBtn'&&!!gn&&!gn.querySelector('button')&&/^New here\? Press GUIDE ME at the top to be walked through making a seed one screen at a time\.$/.test(gn.textContent.trim()),'calmer page: one GUIDE ME button; the "New here?" line points to it as plain text');
+      ok(!d.querySelector('.forge-note')&&!/keep clipboard history off, and restart when you are done/.test(d.body.textContent.split('<script')[0]),'calmer page: no second "Making real keys?" note next to FORGE SEED (the amber banner says it)');
+      ok(/body:not\(\.has-seed\) \.seed-actions, body:not\(\.has-seed\) \.print-btn \{ display: none; \}/.test(css)&&!!d.querySelector('.btn-row.seed-actions #abbrBtn')&&d.querySelectorAll('.seed-actions button').length===5,'calmer page: the five seed buttons and PRINT SEED are hidden until there is a seed');
+      ok(/@media \(min-width: 900px\) \{ #rollCount \{ display: none; \} \}/.test(css)&&!!t.$('rollCount'),'calmer page: the roll count is shown once on wide screens (the seed panel), and stays beside the box on phones');
+      const mb=t.$('moreBox'); ok(!!mb&&mb.tagName==='DETAILS'&&!mb.open&&mb.contains(t.$('wdBox'))&&mb.contains(t.$('demoBox'))&&t.$('advanced')&&!mb.contains(t.$('advanced')),'calmer page: Word draw and the demo live in one closed "More options" box; Advanced options (passphrase) stays on its own');
+      ok(!/Enter your rolls or flips, generate the seed, then compare/.test(d.querySelector('footer').textContent)&&/VOIDFORGE v\d+\.\d+\.\d+/.test(d.querySelector('footer').textContent),'calmer page: the footer is two lines'); }
+    { // The seed buttons follow the seed (v1.33.0)
+      const keepT=t; t=load(); await t.ready(); const b=()=>t.d.body.classList.contains('has-seed');
+      ok(!b(),'has-seed: not set on a fresh page'); t.set(rnd(50)); await t.w.generate(); ok(b(),'has-seed: set after FORGE');
+      t.set(rnd(10)); ok(!b(),'has-seed: cleared when the rolls change and the old seed is dropped');
+      t.set(rnd(50)); await t.w.generate(); ok(b(),'has-seed: set again after a new FORGE'); t.w.wipeSeed(); ok(!b(),'has-seed: cleared by CLEAR ALL'); t=keepT; }
     { // Page icon (v1.28.0): the dice logo is built into the file as data: links (no network), an SVG and a 32px PNG, and the About page calls the online copy practice-only
       const ic=[...t.w.document.querySelectorAll('link[rel~="icon"]')], hs=ic.map(l=>l.getAttribute('href')||'');
       const svg=hs.find(h=>/^data:image\/svg\+xml,/.test(h)), png=hs.find(h=>/^data:image\/png;base64,/.test(h));
@@ -770,7 +783,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const homeless=['rolls','forgeBtn','phrase','psbtInput','cmpA','msN','about','beforeCard','disclaimer'].filter(id=>!tl.$(id).closest('.tabpanel')); ok(homeless.length===0,'feature inventory: every tool lives inside a tab'+(homeless.length?' ('+homeless.join(', ')+')':''));
       ok(['printOnly','printQr'].every(id=>!tl.$(id).closest('.tabpanel')),'printing works from any tab: the print sheets sit outside the tabs');
       const btns=[...tl.d.querySelectorAll('button')].filter(b=>!b.closest('.tabpanel')&&!b.closest('#startGate')&&!b.closest('#tabs')).map(b=>b.textContent.trim().replace(/\s+/g,' ')).sort().join('|');
-      eq(btns,['DARK','DOWNLOAD FOR USB','GUIDE ME','GUIDE ME','PRINT SEED','TEXT A+','Read before real keys \u2192'].sort().join('|'),'page frame holds exactly the top buttons and the notice link'); }
+      eq(btns,['DARK','DOWNLOAD FOR USB','GUIDE ME','PRINT SEED','TEXT A+','Read before real keys \u2192'].sort().join('|'),'page frame holds exactly the top buttons and the notice link'); }
     // the three warnings and the disclaimer moved to About, with their text intact
     ok(/AIR-GAPPED USE ONLY/.test(tl.$('tp-about').textContent)&&/not been independently audited/.test(tl.$('disclaimer').textContent)&&tl.$('beforeCard').querySelectorAll('.sg-item').length===3,'About & help holds the air-gap warning, the disclaimer and the three computer-memory warnings');
     ok(!tl.$('tp-make').contains(tl.$('about'))&&tl.$('tp-tools').contains(tl.$('cardMulti'))&&tl.$('tp-tools').contains(tl.$('cardTools'))&&tl.$('tp-check').contains(tl.$('cardCheck')),'each card sits in the right tab');
@@ -862,8 +875,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(g.querySelectorAll('.sg-fix').length===3&&/I understand, let's go/.test(tg.$('sgGo').textContent),'notice: each warning has a fix and one button closes it');
       tg.d.dispatchEvent(new tg.w.KeyboardEvent('keydown',{key:'Escape'})); ok(!tg.$('startGate'),'notice: Escape closes it');
       const t5=load(); await t5.ready(); ok(!!t5.$('startGate'),'notice: shows again each time the file is opened');
-      ok(/BEFORE YOU MAKE REAL KEYS/.test(tg.$('beforeCard').textContent)&&tg.$('beforeCard').querySelectorAll('.sg-item').length===3&&tg.$('beforeCard').closest('#tp-about')!==null&&/Read before real keys/.test(tg.$('strip').textContent),'the three warnings live in the About tab, reached from the one-line notice');
-      ok(/offline computer, keep clipboard history off, and restart/.test(tg.d.querySelector('.forge-note').textContent),'one-line note next to FORGE SEED'); } }
+      ok(/BEFORE YOU MAKE REAL KEYS/.test(tg.$('beforeCard').textContent)&&tg.$('beforeCard').querySelectorAll('.sg-item').length===3&&tg.$('beforeCard').closest('#tp-about')!==null&&/Read before real keys/.test(tg.$('strip').textContent),'the three warnings live in the About tab, reached from the one-line notice'); } }
   { const tc=load(); await tc.ready(); const h=await tc.w.sha256bytes(new TextEncoder().encode('123456'));
     const m24=await tc.w.entropyToMnemonic(h), m12=await tc.w.entropyToMnemonic(h.slice(0,16));
     ok(m24==='mirror reject rookie talk pudding throw happy era myth already payment own sentence push head sting video explain letter bomb casual hotel rather garment'&&m12==='mirror reject rookie talk pudding throw happy era myth already payment owner','Coldcard compatibility: its documented example (rolls 123456) gives the same 24 and 12 words'); }
