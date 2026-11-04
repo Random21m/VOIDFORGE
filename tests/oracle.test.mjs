@@ -172,6 +172,46 @@ for (const bytes of [16, 24, 32]) for (let i = 0; i < 5; i++) {
 }
 R.ok(bad === 0, `${n} BIP85 child seeds (all lengths, odd passphrases, edge indexes) match the independent libraries (${bad} mismatches)`);
 
+// 2e2. The other BIP85 applications (v1.29.0) against independent code: @scure/bip32 for the path and the XPRV,
+// Node's HMAC-SHA512, Base64 and SHAKE256, and a WIF and Base85 written here (BigInt, not the page's code).
+{
+  const ent = (mn, pw, path) => new Uint8Array(nc.createHmac('sha512', 'bip-entropy-from-k').update(HDKey.fromMasterSeed(mnemonicToSeedSync(mn, pw)).derive(path).privateKey).digest());
+  const A58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  const b58c = (p) => { const d = Buffer.concat([Buffer.from(p), nc.createHash('sha256').update(nc.createHash('sha256').update(p).digest()).digest().subarray(0, 4)]); let n = BigInt('0x' + d.toString('hex')), s = ''; while (n > 0n) { s = A58[Number(n % 58n)] + s; n /= 58n; } for (const x of d) { if (x) break; s = '1' + s; } return s; };
+  const A85 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+-;<=>?@^_`{|}~';
+  const b85 = (b) => { let s = ''; for (let i = 0; i < b.length; i += 4) { let v = BigInt('0x' + Buffer.from(b.subarray(i, i + 4)).toString('hex')), t = ''; for (let j = 0; j < 5; j++) { t = A85[Number(v % 85n)] + t; v /= 85n; } s += t; } return s; };
+  const shake = (msg, n) => new Uint8Array(nc.createHash('shake256', { outputLength: n }).update(msg).digest());
+  const dice = (e, sides, rolls) => { const bits = Math.ceil(Math.log2(sides) - 1e-12), by = Math.ceil(bits / 8), st = shake(e, 64 * rolls * by + 64), out = []; let o = 0;
+    while (out.length < rolls) { const v = BigInt('0x' + Buffer.from(st.subarray(o, o + by)).toString('hex')) >> BigInt(by * 8 - bits); o += by; if (v < BigInt(sides)) out.push(Number(v)); } return out.join(','); };
+  const want = (mn, pw, app, i, n, r) => {
+    if (app === 'wif') return b58c(Uint8Array.from([0x80, ...ent(mn, pw, `m/83696968'/2'/${i}'`).subarray(0, 32), 0x01]));
+    if (app === 'xprv') { const e = ent(mn, pw, `m/83696968'/32'/${i}'`); return new HDKey({ chainCode: e.slice(0, 32), privateKey: e.slice(32, 64) }).privateExtendedKey; }
+    if (app === 'hex') return Buffer.from(ent(mn, pw, `m/83696968'/128169'/${n}'/${i}'`).subarray(0, n)).toString('hex');
+    if (app === 'pwd64') return Buffer.from(ent(mn, pw, `m/83696968'/707764'/${n}'/${i}'`)).toString('base64').slice(0, n);
+    if (app === 'pwd85') return b85(ent(mn, pw, `m/83696968'/707785'/${n}'/${i}'`)).slice(0, n);
+    return dice(ent(mn, pw, `m/83696968'/89101'/${n}'/${r}'/${i}'`), n, r);
+  };
+  let bad = 0, n = 0;
+  const SIDES = [2, 3, 6, 8, 10, 20, 62, 100, 255, 256, 257, 1000, 65536, 65537, 2147483647];
+  for (let r = 0; r < 12; r++) {
+    const mn = entropyToMnemonic(new Uint8Array(nc.randomBytes([16, 32][r % 2])), wordlist), pw = PASS[nc.randomInt(PASS.length)], i = [0, 1, 7, 2147483647][r % 4];
+    const cases = [['wif'], ['xprv'], ['hex', 16 + nc.randomInt(49)], ['hex', 64], ['pwd64', 20 + nc.randomInt(67)], ['pwd64', 86], ['pwd85', 10 + nc.randomInt(71)], ['pwd85', 80],
+      ['dice', SIDES[nc.randomInt(SIDES.length)], 1 + nc.randomInt(40)], ['dice', 6, 10]];
+    for (const [app, len, rolls] of cases) {
+      n++; const got = await w.mnemonicBip85App(mn, pw, app, i, len, rolls), exp = want(mn, pw, app, i, len, rolls);
+      if (got !== exp) { bad++; console.log('BIP85 APP MISMATCH', app, len, rolls, i, got, exp); }
+    }
+  }
+  R.ok(bad === 0, `${n} BIP85 application outputs (WIF, XPRV, HEX, Base64 and Base85 passwords at every edge length, dice from 2 to 2147483647 sides; odd passphrases, edge indexes) match independent code (${bad} mismatches)`);
+  bad = 0; n = 0;
+  for (const len of [0, 1, 64, 135, 136, 137, 271, 272, 273, 500]) for (const outLen of [1, 80, 136, 137, 300, 1000]) {
+    const msg = new Uint8Array(nc.randomBytes(len)), rd = w.shake256Reader(msg), parts = [];
+    let left = outLen; while (left > 0) { const k = Math.min(left, 1 + nc.randomInt(150)); parts.push(...rd.read(k)); left -= k; }
+    n++; if (Buffer.from(parts).toString('hex') !== Buffer.from(shake(msg, outLen)).toString('hex')) { bad++; console.log('SHAKE256 MISMATCH', len, outLen); }
+  }
+  R.ok(bad === 0, `${n} SHAKE256 outputs (messages 0 to 500 bytes across block edges, outputs read in random pieces up to 1000 bytes) equal Node's SHAKE256 (${bad} mismatches)`);
+}
+
 // 3. phrase checker agrees with @scure on valid, corrupted, and random phrases
 bad = 0; n = 0;
 for (let i = 0; i < 300; i++) {

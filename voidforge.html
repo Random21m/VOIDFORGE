@@ -1028,12 +1028,16 @@
       <pre id="cmpOut" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13.5px; margin:8px 0 0;"></pre>
     </details>
     <details id="childBox">
-      <summary>Child seed (BIP85)<span class="tag tag-secret">SECRET</span><small>Make a separate new seed from this one, for another wallet.</small></summary>
-      <p class="hint" style="margin:8px 0;">Makes a brand new seed phrase from the parent words (and passphrase) typed in the CHECK A BACKUP tab, for a separate wallet, using the BIP85 standard. The same parent, word count and index always give the same child. <b>The child is as secret as the parent.</b> It is only shown here: there is no copy, save or print for it. Use the same safety steps as for a new seed, and keep the parent safe: if you lose the parent you lose every child.</p>
+      <summary>Child seed (BIP85)<span class="tag tag-secret">SECRET</span><small>Make a separate new seed, key or password from this one.</small></summary>
+      <p class="hint" style="margin:8px 0;">Makes a brand new seed phrase from the parent words (and passphrase) typed in the CHECK A BACKUP tab, for a separate wallet, using the BIP85 standard. BIP85 can also make a Bitcoin Core HD seed (WIF), a master xprv, hex bytes, a password (Base64 or Base85) or dice rolls: choose one under &ldquo;What to make&rdquo;. The same parent, type, settings and index always give the same result. <b>The child is as secret as the parent.</b> It is only shown here: there is no copy, save or print for it. Use the same safety steps as for a new seed, and keep the parent safe: if you lose the parent you lose every child.</p>
       <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+        <select id="childApp" aria-label="What to make" style="width:auto; flex:none;" onchange="childAppChange()"><option value="words">Seed words</option><option value="wif">Bitcoin Core HD seed (WIF)</option><option value="xprv">Master xprv</option><option value="hex">Hex bytes</option><option value="pwd64">Password (Base64)</option><option value="pwd85">Password (Base85)</option><option value="dice">Dice rolls</option></select>
         <select id="childWords" aria-label="Child seed length" style="width:auto; flex:none;"><option value="12">12 words</option><option value="18">18 words</option><option value="24">24 words</option></select>
+        <input type="text" id="childLen" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Length" placeholder="Length" style="width:90px; flex:none; display:none;">
+        <input type="text" id="childSides" value="6" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Sides of the die (2 to 2147483647)" placeholder="Sides" style="width:90px; flex:none; display:none;">
+        <input type="text" id="childRolls" value="10" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Number of rolls (1 to 1000)" placeholder="Rolls" style="width:90px; flex:none; display:none;">
         <input type="text" id="childIndex" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Child index" placeholder="Index" style="width:90px; flex:none;">
-        <button type="button" id="childBtn" onclick="deriveChild()">DERIVE CHILD SEED</button>
+        <button type="button" id="childBtn" onclick="deriveChild()">DERIVE</button>
         <button type="button" class="secondary small" onclick="clearChild()">HIDE</button>
       </div>
       <div class="status" id="childStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
@@ -1251,6 +1255,7 @@
     <details>
       <summary>Changelog</summary>
       <ul>
+        <li><b>1.29.0</b> &mdash; <b>More from BIP85: keys, passwords and dice.</b> The Child seed (BIP85) card in EXTRA TOOLS has a new &ldquo;What to make&rdquo; choice. Besides seed words it now makes every other BIP85 output a wallet or password manager can use: a Bitcoin Core HD seed (WIF), a master xprv (shown with its master fingerprint), hex bytes (16 to 64), a password in Base64 (20 to 86 characters) or Base85 (10 to 80), and dice rolls for any die from 2 to 2,147,483,647 sides (up to 1,000 rolls, numbered from 0 as BIP85 says). All are recreated from the parent words, passphrase, type, settings and index, and all are secret like the parent. Dice need SHAKE256, which the page now has; it is checked in the self-test against the published BIP85 vector and in the tests against Node&rsquo;s own SHAKE256. Every new output matches the published BIP85 test vectors and an independent implementation. Seed words, fingerprints, addresses, keys and descriptors are unchanged from v1.28.0.</li>
         <li><b>1.28.0</b> &mdash; <b>Reforge: recover a seed or find a passphrase.</b> A new <b>Reforge</b> tool in EXTRA TOOLS replaces Find the last word. In <b>Missing or wrong words</b> you type your words with <code>?</code> for any you lack; it fills in one or two unknown words, finds one wrong word or two swapped words, or puts back a word missing from an unknown place, and checks every candidate against your wallet&rsquo;s master fingerprint, an address (receive addresses 0 to 9 of account 0) or its account xpub/ypub/zpub, with your passphrase if you use one. In <b>Passphrase</b> it tries your guesses alone and joined in twos and threes, in four letter cases, and optionally with one typo. It reports only what matched, says how likely a fingerprint match is to be a coincidence, says plainly when nothing matched and what it searched, refuses an address with a typo before starting, and STOP ends a long search. Typing 11 words and <code>?</code> lists the possible last words, as Find the last word did, and 4-letter word forms are read. Every search plan is checked in the test suite against independent libraries (@scure/bip39, @scure/bip32, @scure/btc-signer). Also: a typed word that happens to be a JavaScript property name (such as &ldquo;constructor&rdquo;) is now reported as an unknown word in CHECK A BACKUP instead of as a failed checksum. The dice logo now shows as the page icon in a tab or bookmark (built into the file, no network), and the About page now says the online copy on the project page is for practice only and links to it. Closing the opening notice no longer pops up the on-screen keyboard on a phone or tablet. This is the only link on the page; it opens in a new tab and does nothing unless you click it. Words, fingerprints, addresses, keys and descriptors are unchanged from v1.27.3.</li>
         <li><b>1.27.3</b> &mdash; <b>Check your download, Support this project, Bitcoin dictionary, and uniform colors.</b> A new <b>Check your download</b> tool in EXTRA TOOLS lets you pick the voidforge.html file you downloaded and compares its SHA-256 and CID against what you paste from the release page, entirely offline. A new, optional <b>Support this project</b> box in ABOUT &amp; HELP has a Lightning address and QR code; nothing is sent and the box is closed by default. The <b>Bitcoin dictionary</b> in ABOUT &amp; HELP grew from VOIDFORGE-specific terms to 259 general Bitcoin terms across 12 topics, searchable and offline. Every main action button (FORGE SEED, START DRILL, START PRACTICE, CHECK MY PAPER, CHECK ADDRESS, FIND LAST WORD, INSPECT, COMPARE, DERIVE CHILD SEED) is now the same cyan primary color, so the important action on each card stands out; small helper buttons (COPY, SHOW QR, HIDE, PRINT, UNDO) stay grey. DEMO ONLY and ADVANCED badges are now a pink accent instead of grey, and both &ldquo;NEW&rdquo; badges on the page use the same cyan style. Nothing that touches your seed changed, so words, fingerprints, addresses, keys and descriptors are identical to v1.27.2.</li>
         <li><b>1.27.2</b> &mdash; <b>3D dice header and clearer labels.</b> <b>RECOMMENDED</b> is now an amber badge (the same amber as the audit notice), and DEMO ONLY, ADVANCED and NEW are small grey badges instead of words in brackets. The three dice that fall onto the title are now small 3D cubes with six pipped faces, they land behind the status line instead of over it, and VOIDFORGE has a crisp neon glow. Nothing that touches your seed changed, so words, fingerprints, addresses, keys and descriptors are identical to v1.27.1. Pure CSS, no images, no network.</li>
@@ -1313,7 +1318,7 @@
   <footer>
     SHA256(rolls or flips) → BIP39 • Same method as SeedSigner and Coldcard dice modes<br>
     Enter your rolls or flips, generate the seed, then compare it and the fingerprint with a second tool on an offline device<br>
-    <span style="font-size:13.5px; margin-top:6px; display:inline-block;">VOIDFORGE v1.28.0 &bull; source: github.com/Random21m/VOIDFORGE (one link on this page, in About, to the online practice copy)</span>
+    <span style="font-size:13.5px; margin-top:6px; display:inline-block;">VOIDFORGE v1.29.0 &bull; source: github.com/Random21m/VOIDFORGE (one link on this page, in About, to the online practice copy)</span>
   </footer>
 </div>
 
@@ -1670,12 +1675,102 @@ async function taprootChangeFirstFromSeed(seed){
 }
 // BIP85 child seed (English BIP39 application): entropy = HMAC-SHA512("bip-entropy-from-k", private key at m/83696968'/39'/0'/{words}'/{index}'),
 // cut to 16/20/24/28/32 bytes. The child is a normal seed phrase; the parent (words + passphrase) plus words count and index recreates it.
+// BIP85: the 64 bytes of entropy for one application path (m/83696968'/path..., every step hardened).
+async function bip85Entropy(k, c, path){
+  for(const i of [83696968].concat(path)){
+    if(!Number.isInteger(i) || i < 0 || i > 2147483647) throw new Error("every path number must be 0 to 2147483647");
+    [k,c]=await ckdPriv(k,c,i,true);
+  }
+  return hmac512(new TextEncoder().encode("bip-entropy-from-k"), fromHex(k.toString(16).padStart(64,"0")));
+}
 async function bip85Mnemonic(k, c, words, index){
   if(![12,15,18,21,24].includes(words)) throw new Error("words must be 12, 15, 18, 21 or 24");
   if(!Number.isInteger(index) || index < 0 || index > 2147483647) throw new Error("index must be 0 to 2147483647");
-  for(const i of [83696968, 39, 0, words, index]) [k,c]=await ckdPriv(k,c,i,true);
-  const e = await hmac512(new TextEncoder().encode("bip-entropy-from-k"), fromHex(k.toString(16).padStart(64,"0")));
+  const e = await bip85Entropy(k, c, [39, 0, words, index]);
   return entropyToMnemonic(e.slice(0, words * 4 / 3));
+}
+// SHAKE256 (FIPS 202), used only by the BIP85 dice application (its "BIP85-DRNG"). Keccak-f[1600] on 25 lanes of
+// 64 bits, kept as BigInt for readability (slow, but dice need only a few hundred bytes). Checked by the self-test
+// against the BIP85 DRNG vector and by the tests against Node's own SHAKE256.
+const KECCAK_RC = [0x0000000000000001n,0x0000000000008082n,0x800000000000808An,0x8000000080008000n,0x000000000000808Bn,0x0000000080000001n,
+  0x8000000080008081n,0x8000000000008009n,0x000000000000008An,0x0000000000000088n,0x0000000080008009n,0x000000008000000An,
+  0x000000008000808Bn,0x800000000000008Bn,0x8000000000008089n,0x8000000000008003n,0x8000000000008002n,0x8000000000000080n,
+  0x000000000000800An,0x800000008000000An,0x8000000080008081n,0x8000000000008080n,0x0000000080000001n,0x8000000080008008n];
+const KECCAK_ROT = [[0,36,3,41,18],[1,44,10,45,2],[62,6,43,15,61],[28,55,25,21,56],[27,20,39,8,14]]; // [x][y]
+function keccakF(A){
+  const M = 0xFFFFFFFFFFFFFFFFn, rot = (v, n) => n ? ((v << BigInt(n)) | (v >> BigInt(64 - n))) & M : v;
+  for(let r = 0; r < 24; r++){
+    const C = [0,1,2,3,4].map(x => A[x] ^ A[x+5] ^ A[x+10] ^ A[x+15] ^ A[x+20]);
+    for(let x = 0; x < 5; x++){ const D = C[(x + 4) % 5] ^ rot(C[(x + 1) % 5], 1); for(let y = 0; y < 5; y++) A[x + 5*y] ^= D; }
+    const B = new Array(25);
+    for(let x = 0; x < 5; x++) for(let y = 0; y < 5; y++) B[y + 5*((2*x + 3*y) % 5)] = rot(A[x + 5*y], KECCAK_ROT[x][y]);
+    for(let x = 0; x < 5; x++) for(let y = 0; y < 5; y++) A[x + 5*y] = B[x + 5*y] ^ ((~B[(x + 1) % 5 + 5*y] & M) & B[(x + 2) % 5 + 5*y]);
+    A[0] ^= KECCAK_RC[r];
+  }
+}
+// A SHAKE256 reader: read(n) returns the next n output bytes for this message.
+function shake256Reader(msg){
+  const rate = 136, A = new Array(25).fill(0n);
+  const padded = new Uint8Array((Math.floor(msg.length / rate) + 1) * rate); padded.set(msg); padded[msg.length] ^= 0x1f; padded[padded.length - 1] ^= 0x80;
+  for(let o = 0; o < padded.length; o += rate){
+    for(let i = 0; i < rate / 8; i++){ let v = 0n; for(let j = 7; j >= 0; j--) v = (v << 8n) | BigInt(padded[o + 8*i + j]); A[i] ^= v; }
+    keccakF(A);
+  }
+  let buf = [], pos = 0;
+  const block = () => { const out = []; for(let i = 0; i < rate / 8; i++){ let v = A[i]; for(let j = 0; j < 8; j++){ out.push(Number(v & 0xFFn)); v >>= 8n; } } return out; };
+  buf = block();
+  return { read(n){ const out = new Uint8Array(n); for(let i = 0; i < n; i++){ if(pos === rate){ keccakF(A); buf = block(); pos = 0; } out[i] = buf[pos++]; } return out; } };
+}
+// Base85 with the RFC 1924 alphabet (what Python's base64.b85encode and the BIP85 vectors use); length must be a multiple of 4.
+const B85_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+-;<=>?@^_`{|}~";
+function base85Encode(b){
+  if(b.length % 4) throw new Error("base85: length must be a multiple of 4");
+  let s = "";
+  for(let i = 0; i < b.length; i += 4){ let v = ((b[i] << 24) | (b[i+1] << 16) | (b[i+2] << 8) | b[i+3]) >>> 0, t = ""; for(let j = 0; j < 5; j++){ t = B85_CHARS[v % 85] + t; v = Math.floor(v / 85); } s += t; }
+  return s;
+}
+function base64Encode(b){ let s = ""; for(const x of b) s += String.fromCharCode(x); return btoa(s); }
+// The other BIP85 applications. Each returns the text to show; ranges are the ones BIP85 sets.
+const BIP85_APPS = {
+  wif:   {name:"Bitcoin Core HD seed (WIF)"},
+  xprv:  {name:"Master extended private key (XPRV)"},
+  hex:   {name:"Hex", min:16, max:64, unit:"bytes"},
+  pwd64: {name:"Password (Base64)", min:20, max:86, unit:"characters"},
+  pwd85: {name:"Password (Base85)", min:10, max:80, unit:"characters"},
+  dice:  {name:"Dice rolls"}
+};
+const BIP85_DICE_MAX_ROLLS = 1000;
+function bip85KeyOk(b){ const k = BigInt("0x" + hex(b)); return k > 0n && k < SN; }
+async function bip85App(k, c, app, index, n, rolls){
+  const A = BIP85_APPS[app]; if(!A) throw new Error("unknown BIP85 application");
+  if(!Number.isInteger(index) || index < 0 || index > 2147483647) throw new Error("index must be 0 to 2147483647");
+  if(A.min && (!Number.isInteger(n) || n < A.min || n > A.max)) throw new Error("the length must be " + A.min + " to " + A.max + " " + A.unit);
+  if(app === "wif"){
+    const e = (await bip85Entropy(k, c, [2, index])).slice(0, 32);
+    if(!bip85KeyOk(e)) throw new Error("this index gives an invalid key (about 1 chance in 2^127); BIP85 says to use the next index");
+    return base58check(Uint8Array.from([0x80, ...e, 0x01]));
+  }
+  if(app === "xprv"){
+    const e = await bip85Entropy(k, c, [32, index]), chain = e.slice(0, 32), key = e.slice(32, 64); // BIP85: chain code first, then the key
+    if(!bip85KeyOk(key)) throw new Error("this index gives an invalid key (about 1 chance in 2^127); BIP85 says to use the next index");
+    const b = new Uint8Array(78); b.set(XPRV_VER, 0); b.set(chain, 13); b[45] = 0; b.set(key, 46); // depth, parent fingerprint and child number stay 0
+    return base58check(b);
+  }
+  if(app === "hex") return hex((await bip85Entropy(k, c, [128169, n, index])).slice(0, n));
+  if(app === "pwd64") return base64Encode(await bip85Entropy(k, c, [707764, n, index])).replace(/\s/g, "").slice(0, n);
+  if(app === "pwd85") return base85Encode(await bip85Entropy(k, c, [707785, n, index])).slice(0, n);
+  // dice: n = sides, rolls = how many; values are 0 to sides - 1. BIP85 allows up to 2^32 - 1 sides, but the sides are a
+  // hardened path number, which BIP32 limits to below 2^31.
+  if(!Number.isInteger(n) || n < 2 || n > 2147483647) throw new Error("the die must have 2 to 2147483647 sides");
+  if(!Number.isInteger(rolls) || rolls < 1 || rolls > BIP85_DICE_MAX_ROLLS) throw new Error("the number of rolls must be 1 to " + BIP85_DICE_MAX_ROLLS);
+  let bits = 0; while(2 ** bits < n) bits++;
+  const bytes = Math.ceil(bits / 8), drop = 2 ** (bytes * 8 - bits), rd = shake256Reader(await bip85Entropy(k, c, [89101, n, rolls, index])), out = [];
+  while(out.length < rolls){ let v = 0; for(const x of rd.read(bytes)) v = v * 256 + x; v = Math.floor(v / drop); if(v < n) out.push(v); }
+  return out.join(",");
+}
+async function mnemonicBip85App(mnemonic, passphrase, app, index, n, rolls){
+  const [k,c] = await masterFromSeed(await mnemonicToSeed(mnemonic, passphrase));
+  return bip85App(k, c, app, index, n, rolls);
 }
 async function mnemonicBip85(mnemonic, passphrase, words, index){
   const [k,c] = await masterFromSeed(await mnemonicToSeed(mnemonic, passphrase));
@@ -1684,6 +1779,7 @@ async function mnemonicBip85(mnemonic, passphrase, words, index){
 async function mnemonicTaproot(mnemonic, passphrase, n){ return taprootAddressesFromSeed(await mnemonicToSeed(mnemonic, passphrase), n); }
 // Address types a wallet can use. purpose = the BIP number in the derivation path m/purpose'/coin'/account' (extended key versions are in NETS below).
 const XPUB_VER=[0x04,0x88,0xb2,0x1e];
+const XPRV_VER=[0x04,0x88,0xad,0xe4]; // BIP32 mainnet private key version (only the BIP85 XPRV application makes one)
 const SCRIPT_TYPES={
   wpkh:{purpose:84, kname:"zpub", label:"Native SegWit (bc1q...)"},
   tr:{purpose:86, kname:"xpub", label:"Taproot (bc1p...)"},
@@ -1999,7 +2095,8 @@ const DICT = [
   ["Altcoin", "Any cryptocurrency other than bitcoin. VOIDFORGE makes seeds for Bitcoin only.", "", "Basics"],
   ["ASIC", "A chip built only for mining. Modern mining uses ASICs because they are far faster than ordinary computers.", "", "Network & mining"],
   ["Base58 and Base58Check", "The text spelling used for the oldest addresses (starting with 1 or 3) and for WIF keys. Base58Check adds a checksum.", "", "Addresses & scripts"],
-  ["Base64", "A way to write bytes as text using letters, digits, + and /. PSBTs are often shown in Base64.", "", "Units & math"],
+  ["Base85", "A way to write bytes as text with 85 different characters, so it is shorter than Base64. BIP85 uses the RFC 1924 set of characters for its passwords.", "BIP85 passwords.", "Units & math"],
+  ["Base64", "A way to write bytes as text using letters, digits, + and /. PSBTs are often shown in Base64.", "BIP85 passwords.", "Units & math"],
   ["Batching", "Paying several people in one transaction to save on fees.", "", "Transactions"],
   ["Bech32 and bech32m", "The address spelling used for bc1q (bech32) and bc1p (bech32m) addresses. It has a built-in checksum so a typo is caught instead of sending coins to the wrong place.", "", "Addresses & scripts"],
   ["Binary", "Counting with only 0 and 1. Coin flips are binary: heads 1, tails 0.", "", "Units & math"],
@@ -2012,7 +2109,7 @@ const DICT = [
   ["BIP48", "The standard for the key path of a multisig wallet (so different wallet apps agree on where each cosigner key lives).", "Multisig cosigner keys.", "Standards (BIPs)"],
   ["BIP49", "The standard path for single-key Nested SegWit wallets (addresses starting with 3): m/49'/0'/0'.", "", "Standards (BIPs)"],
   ["BIP84", "The standard path for single-key Native SegWit wallets (bc1q addresses): m/84'/0'/0'.", "Default watch-only export and first addresses.", "Standards (BIPs)"],
-  ["BIP85", "A standard that makes a brand-new child seed from a parent seed, so one backup can recreate several wallets.", "Extra tools: Child seed (BIP85).", "Standards (BIPs)"],
+  ["BIP85", "A standard that makes new secrets from a parent seed: child seeds, keys, passwords or dice rolls, so one backup can recreate them all.", "Extra tools: Child seed (BIP85).", "Standards (BIPs)"],
   ["BIP86", "The standard path for single-key Taproot wallets (bc1p addresses): m/86'/0'/0'.", "Taproot addresses.", "Standards (BIPs)"],
   ["BIP93 (Codex32)", "A way to write a seed, or shares of it, as text with a checksum you can work out by hand. Made for careful, offline backups.", "", "Standards (BIPs)"],
   ["BIP125", "The standard for replace-by-fee: how a transaction signals that it may be replaced by one with a higher fee.", "", "Standards (BIPs)"],
@@ -2084,7 +2181,7 @@ const DICT = [
   ["Entropy", "Unpredictability, counted in bits. A seed is only as safe as the randomness it was made from.", "Entropy check, Roll chart.", "Keys & seeds"],
   ["Evil maid attack", "Someone with short physical access to your device tampers with it while you are away.", "", "Privacy & security"],
   ["Exchange", "A company where you can buy, sell and hold bitcoin. If you leave coins there, the company holds the keys.", "", "Wallets & backups"],
-  ["Extended private key (xprv)", "A private key plus a chain code from which all the private keys of an account can be worked out. As secret as the seed.", "", "Keys & seeds"],
+  ["Extended private key (xprv)", "A private key plus a chain code from which all the private keys of an account can be worked out. As secret as the seed.", "BIP85 in Child seed.", "Keys & seeds"],
   ["Extended public key (xpub, ypub, zpub)", "A public key that can work out all the addresses of one account. It cannot spend, but anyone who has it can see all your addresses and balance, so share it carefully.", "Watch-only export.", "Keys & seeds"],
   ["Fairness test", "A statistic (Pearson chi-square) that shows whether the face counts of your dice look uneven. It can raise a concern but can never prove dice are fair.", "Under the roll chart.", "VOIDFORGE"],
   ["Fee (miner fee)", "What you pay to have a transaction included in a block: the inputs minus the outputs.", "Transaction inspector.", "Transactions"],
@@ -2209,6 +2306,7 @@ const DICT = [
   ["Self-test", "The checks the page runs on itself every time it loads, to make sure its math still gives the known right answers.", "The green SELF-TEST PASSED badge.", "VOIDFORGE"],
   ["Sequence number", "A field in each input. Among other things it signals that a transaction can be replaced (RBF) and can set a relative timelock.", "", "Transactions"],
   ["SHA256SUMS", "A text file listing the fingerprint of the published VOIDFORGE file, so you can check your download is unchanged.", "Check your download.", "VOIDFORGE"],
+  ["SHAKE256", "A hash function from the SHA-3 family that can give as many output bytes as you ask for. BIP85 uses it to turn a seed into any number of dice rolls.", "BIP85 dice rolls.", "Units & math"],
   ["Shamir's Secret Sharing", "Splitting a secret into shares so that a chosen number of them rebuild it and fewer reveal nothing. SLIP39 and Codex32 use it.", "", "Keys & seeds"],
   ["Side channel", "A leak of secrets through things like timing, power use, sound or light instead of through the data itself.", "", "Privacy & security"],
   ["Sidechain", "A separate blockchain linked to Bitcoin, with its own rules, where coins can be moved to and from.", "", "Lightning & layers"],
@@ -2248,7 +2346,7 @@ const DICT = [
   ["Watch-only wallet", "A wallet that has only public keys. It shows addresses and balances but cannot spend, so it is safe on a phone.", "Watch-only box.", "Wallets & backups"],
   ["Whale", "A person or company holding a very large amount of bitcoin.", "", "Culture & markets"],
   ["Whitepaper", "The nine-page paper \"Bitcoin: A Peer-to-Peer Electronic Cash System\", published on 31 October 2008, which described Bitcoin.", "", "Basics"],
-  ["WIF (Wallet Import Format)", "A text way to write one private key (starting with 5, K or L) so it can be imported into a wallet. One key, not a whole wallet.", "", "Keys & seeds"],
+  ["WIF (Wallet Import Format)", "A text way to write one private key (starting with 5, K or L) so it can be imported into a wallet. One key, not a whole wallet.", "BIP85 in Child seed.", "Keys & seeds"],
   ["Witness", "The part of a SegWit transaction that holds the signatures and unlocking data, kept apart from the rest.", "", "Transactions"],
   ["Wordlist", "The fixed list of 2048 words BIP39 uses. Every word is unique by its first four letters.", "SHOW FIRST 4 LETTERS, Reforge.", "Keys & seeds"],
   ["Wrench attack", "Physical force used to make someone hand over their keys. It is one reason to think about decoy wallets and multisig.", "", "Privacy & security"]
@@ -3302,7 +3400,14 @@ async function runSelfTests(auto){
   { const BK=BigInt("0x3f15e5d852dc2e9ba5e9fe189a8dd2e1547badef5b563bbe6579fc6807d80ed9"), BC=fromHex("1b67969d1ec69bdfeeae43213da8460ba34b92d0788c8f7bfcfa44906e8a589c");
     eq("BIP85 child seed, 12 words (published BIP85 vector)", ()=>bip85Mnemonic(BK,BC,12,0),"girl mad pet galaxy egg matter matrix prison refuse sense ordinary nose");
     eq("BIP85 child seed, 18 words (published BIP85 vector)", ()=>bip85Mnemonic(BK,BC,18,0),"near account window bike charge season chef number sketch tomorrow excuse sniff circle vital hockey outdoor supply token");
-    eq("BIP85 child seed, 24 words (published BIP85 vector)", ()=>bip85Mnemonic(BK,BC,24,0),"puppy ocean match cereal symbol another shed magic wrap hammer bulb intact gadget divorce twin tonight reason outdoor destroy simple truth cigar social volcano"); }
+    eq("BIP85 child seed, 24 words (published BIP85 vector)", ()=>bip85Mnemonic(BK,BC,24,0),"puppy ocean match cereal symbol another shed magic wrap hammer bulb intact gadget divorce twin tonight reason outdoor destroy simple truth cigar social volcano");
+    eq("BIP85 Bitcoin Core HD seed, WIF (published BIP85 vector)", ()=>bip85App(BK,BC,"wif",0),"Kzyv4uF39d4Jrw2W7UryTHwZr1zQVNk4dAFyqE6BuMrMh1Za7uhp");
+    eq("BIP85 XPRV, chain code first (published BIP85 vector)", ()=>bip85App(BK,BC,"xprv",0),"xprv9s21ZrQH143K2srSbCSg4m4kLvPMzcWydgmKEnMmoZUurYuBuYG46c6P71UGXMzmriLzCCBvKQWBUv3vPB3m1SATMhp3uEjXHJ42jFg7myX");
+    eq("BIP85 HEX, 64 bytes (published BIP85 vector)", ()=>bip85App(BK,BC,"hex",0,64),"492db4698cf3b73a5a24998aa3e9d7fa96275d85724a91e71aa2d645442f878555d078fd1f1f67e368976f04137b1f7a0d19232136ca50c44614af72b5582a5c");
+    eq("BIP85 password, Base64, 21 characters (published BIP85 vector)", ()=>bip85App(BK,BC,"pwd64",0,21),"dKLoepugzdVJvdL56ogNV");
+    eq("BIP85 password, Base85, 12 characters (published BIP85 vector)", ()=>bip85App(BK,BC,"pwd85",0,12),"_s`{TW89)i4`");
+    eq("BIP85 dice, 10 rolls of a 6-sided die (published BIP85 vector)", ()=>bip85App(BK,BC,"dice",0,6,10),"1,0,0,2,0,1,5,5,2,4");
+    eq("SHAKE256 BIP85-DRNG, 80 bytes (published BIP85 vector)", ()=>hex(shake256Reader(fromHex("efecfbccffea313214232d29e71563d941229afb4338c21f9517c41aaa0d16f00b83d2a09ef747e7a64e8e2bd5a14869e693da66ce94ac2da570ab7ee48618f7")).read(80)),"b78b1ee6b345eae6836c2d53d33c64cdaf9a696487be81b03e822dc84b3f1cd883d7559e53d175f243e4c349e822a957bbff9224bc5dde9492ef54e8a439f6bc8c7355b87a925a37ee405a7502991111"); }
   eq("SeedQR digit string -> words ('abandon..about' = 0000 x11 + 0003)", async()=>(await checkPhrase("0000".repeat(11)+"0003")).mnemonic, "abandon ".repeat(11)+"about");
   eq("CompactSeedQR hex -> words (BIP39 vector 7f x16)", async()=>(await checkPhrase("7f".repeat(16))).mnemonic, "legal winner thank year wave sausage worth useful legal winner thank yellow");
   eq("words -> SeedQR digits ('abandon..about' = 0000 x11 + 0003)", ()=>seedQrData(("abandon ".repeat(11)+"about").split(" ")).digits, "0000".repeat(11)+"0003");
@@ -3774,6 +3879,38 @@ async function dlPick(){
     else say("", "Computed. Paste the published SHA-256 or CID above to compare.");
   } catch(e){ say("bad", "Could not read that file: " + e.message); }
 }
+// "What to make": show the settings the chosen BIP85 application needs (lengths default to at least 128 bits).
+const CHILD_LEN_DEFAULT = {hex:32, pwd64:22, pwd85:20};
+function childAppChange(){
+  const app = document.getElementById("childApp").value, A = BIP85_APPS[app], len = document.getElementById("childLen");
+  document.getElementById("childWords").style.display = app === "words" ? "" : "none";
+  len.style.display = A && A.min ? "" : "none";
+  if(A && A.min){ len.value = String(CHILD_LEN_DEFAULT[app]); len.setAttribute("aria-label", "Length in " + A.unit + " (" + A.min + " to " + A.max + ")"); len.placeholder = A.unit; }
+  for(const id of ["childSides", "childRolls"]) document.getElementById(id).style.display = app === "dice" ? "" : "none";
+  clearChild();
+}
+async function deriveChildApp(mnemonic, vp, app, index, say){
+  const A = BIP85_APPS[app], num = (id, what) => { const v = document.getElementById(id).value.trim(); if(!/^[0-9]{1,10}$/.test(v)) throw new Error(what + " must be a whole number."); return parseInt(v, 10); };
+  let n, rolls;
+  try {
+    if(A.min) n = num("childLen", "The length");
+    if(app === "dice"){ n = num("childSides", "The number of sides"); rolls = num("childRolls", "The number of rolls"); }
+  } catch(e) { clearChild(); return say("bad", e.message); }
+  try {
+    const out = await mnemonicBip85App(mnemonic, vp, app, index, n, rolls), o = document.getElementById("childOut");
+    let head, extra = "";
+    if(app === "wif"){ head = "BITCOIN CORE HD SEED (BIP85 application 2, index " + index + ", WIF private key)"; extra = "\n\nA private key: anyone who sees it can spend from the wallet made with it."; }
+    else if(app === "xprv"){
+      const key = (await base58decode(out)).slice(46, 78), fp = hex(ripemd160(await sha256bytes(pubkeyBytes(BigInt("0x" + hex(key))))).slice(0, 4));
+      head = "MASTER XPRV (BIP85 application 32, index " + index + ")"; extra = "\n\nMaster fingerprint of this xprv: " + fp + "\nA private key: anyone who sees it can spend from the wallet made with it.";
+    }
+    else if(app === "hex") head = "HEX (BIP85, " + n + " bytes, index " + index + ")";
+    else if(app === "dice"){ head = "DICE ROLLS (BIP85, a " + n + "-sided die numbered 0 to " + (n - 1) + ", " + rolls + " rolls, index " + index + ")"; extra = "\n\nThe values start at 0, as BIP85 says (not 1)."; }
+    else head = "PASSWORD (BIP85 " + (app === "pwd64" ? "Base64" : "Base85") + ", " + n + " characters, index " + index + ")";
+    o.textContent = head + "\n\n" + out + extra; o.style.display = "";
+    say("ok", A.name + ", index " + index + ", derived from the parent words" + (vp ? " and passphrase" : "") + ". Write down the parent, the type, the settings shown and the index; that recreates it. Anyone who has the parent can recreate it.");
+  } catch(e) { clearChild(); say("bad", "Could not derive: " + e.message); }
+}
 function clearChild(){
   const o = document.getElementById("childOut"); o.textContent = ""; o.style.display = "none";
   const t = document.getElementById("childStatus"); t.textContent = ""; t.className = "status";
@@ -3786,6 +3923,8 @@ async function deriveChild(){
   const words = parseInt(document.getElementById("childWords").value, 10), raw = document.getElementById("childIndex").value.trim();
   if(!/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647){ clearChild(); return say("bad", "The index must be a whole number from 0 to 2147483647."); }
   const index = parseInt(raw, 10), vp = document.getElementById("verifyPass").value;
+  const app = document.getElementById("childApp").value;
+  if(app !== "words") return deriveChildApp(r.mnemonic, vp, app, index, say);
   try {
     const child = await mnemonicBip85(r.mnemonic, vp, words, index);
     const fp = await mnemonicFingerprint(child, ""), a0 = await mnemonicFirstAddress(child, "");
@@ -4225,7 +4364,7 @@ function toggleTheme() {
   try { localStorage.setItem("voidforge-theme", isLight ? "light" : "dark"); } catch(e) {}
 }
 for(const id of ["checkAddr","checkAcct","phrase","verifyPass"]) document.getElementById(id).addEventListener("input", resetAddrScan);
-for(const id of ["phrase","verifyPass","childWords","childIndex"]) document.getElementById(id).addEventListener("input", clearChild);
+for(const id of ["phrase","verifyPass","childWords","childIndex","childLen","childSides","childRolls"]) document.getElementById(id).addEventListener("input", clearChild);
 document.getElementById("wType").addEventListener("change", refreshWatch);
 document.getElementById("wNet").addEventListener("change", refreshWatch);
 document.getElementById("wAcct").addEventListener("input", refreshWatch);

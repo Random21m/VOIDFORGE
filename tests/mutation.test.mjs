@@ -727,7 +727,7 @@ async function probe(w, mutated) {
     { // Bitcoin dictionary (v1.27.3)
       const box = $('dictBox'), items = [...$('dictList').querySelectorAll('.dict-item')], names = items.map((e) => e.querySelector('dt').textContent), def = (e) => e.querySelector('dd').firstChild.textContent;
       const q = (v) => { $('dictSearch').value = v; w.dictFilter(); return items.filter((e) => e.style.display !== 'none').map((e) => e.querySelector('dt').textContent); };
-      const dictFacts=[['Wordlist',/2048/],['Wordlist',/first four letters/],['Fingerprint (master fingerprint)',/Eight characters/],['Satoshi (sat)',/hundred-millionth/],['Gap limit',/usually 20/],['Passphrase (the 25th word)',/completely different wallet/],['Testnet',/tb1/],['Taproot',/bc1p/],['Native SegWit',/bc1q/],['Legacy address',/starting with 1\./],['Nested SegWit',/starting with 3\./],['BIP39',/12 or 24 words/],['BIP85',/child seed/],['BIP84',/m\/84'\/0'\/0'/],['BIP86',/m\/86'\/0'\/0'/],['PBKDF2',/2048 rounds/],['Dice entropy',/2\.58 bits/],['Coin flip entropy',/128 flips.*256/],['OP_RETURN',/never be spent/],['Bit',/128 bits.*256/],['Block',/ten minutes/],['Fee (miner fee)',/inputs minus the outputs/],['Bitcoin',/21 million/],['Halving',/210,000/],['Difficulty',/2016 blocks/],['Virtual byte (vByte) and weight',/4,000,000/],['Genesis block',/3 January 2009/],['Whitepaper',/31 October 2008/],['Block header',/80-byte/],['WIF (Wallet Import Format)',/5, K or L/],['P2WPKH',/bc1q/],['P2TR',/bc1p/],['BIP44',/m\/44'\/0'\/0'/],['BIP49',/m\/49'\/0'\/0'/],['Bitcoin Pizza Day',/10,000 bitcoin/],['Byte',/32 bytes.*16 bytes/],['P2PKH',/starting with 1/],['P2SH',/starting with 3/],['BIP125',/replace-by-fee/],['BIP350',/bech32m/],['Block reward',/50 bitcoin/]];
+      const dictFacts=[['Base85',/85 different characters/],['Base85',/RFC 1924/],['SHAKE256',/SHA-3 family/],['BIP85',/passwords or dice rolls/],['Wordlist',/2048/],['Wordlist',/first four letters/],['Fingerprint (master fingerprint)',/Eight characters/],['Satoshi (sat)',/hundred-millionth/],['Gap limit',/usually 20/],['Passphrase (the 25th word)',/completely different wallet/],['Testnet',/tb1/],['Taproot',/bc1p/],['Native SegWit',/bc1q/],['Legacy address',/starting with 1\./],['Nested SegWit',/starting with 3\./],['BIP39',/12 or 24 words/],['BIP85',/child seed/],['BIP84',/m\/84'\/0'\/0'/],['BIP86',/m\/86'\/0'\/0'/],['PBKDF2',/2048 rounds/],['Dice entropy',/2\.58 bits/],['Coin flip entropy',/128 flips.*256/],['OP_RETURN',/never be spent/],['Bit',/128 bits.*256/],['Block',/ten minutes/],['Fee (miner fee)',/inputs minus the outputs/],['Bitcoin',/21 million/],['Halving',/210,000/],['Difficulty',/2016 blocks/],['Virtual byte (vByte) and weight',/4,000,000/],['Genesis block',/3 January 2009/],['Whitepaper',/31 October 2008/],['Block header',/80-byte/],['WIF (Wallet Import Format)',/5, K or L/],['P2WPKH',/bc1q/],['P2TR',/bc1p/],['BIP44',/m\/44'\/0'\/0'/],['BIP49',/m\/49'\/0'\/0'/],['Bitcoin Pizza Day',/10,000 bitcoin/],['Byte',/32 bytes.*16 bytes/],['P2PKH',/starting with 1/],['P2SH',/starting with 3/],['BIP125',/replace-by-fee/],['BIP350',/bech32m/],['Block reward',/50 bitcoin/]];
       if (!box || box.open || !/Bitcoin dictionary/.test(box.querySelector('summary').textContent) || items.length < 250) fails.push('dictionary: closed box with 250+ entries');
       const col = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
       if (!names.every((n, k) => k === 0 || col.compare(names[k - 1], n) <= 0) || new Set(names.map((n) => n.toLowerCase())).size !== names.length) fails.push('dictionary: A to Z and no duplicates');
@@ -1097,6 +1097,27 @@ async function probe(w, mutated) {
       await CH(ABOUT, '', 12, 0); $('phrase').dispatchEvent(new w.Event('input')); if ($('childOut').textContent !== '') fails.push('bip85: output cleared when the phrase is edited');
       await CH(ABOUT, '', 12, 0); $('childWords').dispatchEvent(new w.Event('change')); if ($('childOut').textContent !== '') fails.push('bip85: output cleared when the length is changed');
       [cw, cs, cc] = await CH('abandon abandon', '', 12, 0); if (!/valid parent seed phrase/.test(cs) || !/bad/.test(cc) || $('childOut').textContent !== '') fails.push('bip85: invalid parent rejected');
+      { // BIP85 applications (v1.29.0): engine values against independent code, and the card's settings
+        const ent = (path) => new Uint8Array(nc.createHmac('sha512', 'bip-entropy-from-k').update(HDKey.fromMasterSeed(mnemonicToSeedSync(ABOUT, '')).derive(path).privateKey).digest());
+        const shk = (m, n) => new Uint8Array(nc.createHash('shake256', { outputLength: n }).update(m).digest());
+        const dice = (e, sides, rolls) => { const bits = Math.ceil(Math.log2(sides) - 1e-12), by = Math.ceil(bits / 8), st = shk(e, 64 * rolls * by + 64), out = []; let o = 0; while (out.length < rolls) { let v = 0; for (let j = 0; j < by; j++) v = v * 256 + st[o + j]; o += by; v = Math.floor(v / 2 ** (by * 8 - bits)); if (v < sides) out.push(v); } return out.join(','); };
+        const A = (app, n, r) => w.mnemonicBip85App(ABOUT, '', app, 0, n, r);
+        if ((await A('hex', 17)) !== Buffer.from(ent("m/83696968'/128169'/17'/0'").subarray(0, 17)).toString('hex')) fails.push('bip85 apps: hex uses the length in its path');
+        if ((await A('pwd64', 86)) !== Buffer.from(ent("m/83696968'/707764'/86'/0'")).toString('base64').slice(0, 86)) fails.push('bip85 apps: Base64 password');
+        for (const [sides, rolls] of [[8, 20], [6, 40], [256, 5], [257, 5]]) if ((await A('dice', sides, rolls)) !== dice(ent(`m/83696968'/89101'/${sides}'/${rolls}'/0'`), sides, rolls)) fails.push('bip85 apps: dice with ' + sides + ' sides');
+        { const m = new Uint8Array(200).map((_, i) => i * 7), rd = w.shake256Reader(m); if (Buffer.from([...rd.read(100), ...rd.read(250)]).toString('hex') !== Buffer.from(shk(m, 350)).toString('hex')) fails.push('bip85 apps: SHAKE256 over several blocks'); }
+        const CA = async (app, set) => { $('phrase').value = ABOUT; $('childApp').value = app; w.childAppChange(); if (set) set(); await w.deriveChild(); return [$('childStatus').textContent, $('childOut').textContent]; };
+        let [st, out] = await CA('pwd85', () => { $('childLen').value = '81'; }); if (!/10 to 80 characters/.test(st) || out !== '') fails.push('bip85 card: Base85 password over 80 refused');
+        [st, out] = await CA('pwd64', () => { $('childLen').value = '19'; }); if (!/20 to 86 characters/.test(st)) fails.push('bip85 card: Base64 password under 20 refused');
+        [st, out] = await CA('hex', () => { $('childLen').value = '65'; }); if (!/16 to 64 bytes/.test(st)) fails.push('bip85 card: hex over 64 refused');
+        [st, out] = await CA('dice', () => { $('childSides').value = '2147483648'; }); if (!/2 to 2147483647 sides/.test(st)) fails.push('bip85 card: a die with 2^31 sides refused');
+        [st, out] = await CA('dice', () => { $('childSides').value = '6'; $('childRolls').value = '1001'; }); if (!/1 to 1000/.test(st)) fails.push('bip85 card: more than 1000 rolls refused');
+        [st, out] = await CA('xprv'); if (!/^MASTER XPRV/.test(out) || !/Master fingerprint of this xprv: [0-9a-f]{8}/.test(out)) fails.push('bip85 card: xprv shown with its fingerprint');
+        [st, out] = await CA('dice', () => { $('childRolls').value = '10'; }); $('childRolls').dispatchEvent(new w.Event('input')); if ($('childOut').textContent !== '') fails.push('bip85 card: editing the rolls clears the output');
+        await CA('hex'); $('childLen').dispatchEvent(new w.Event('input')); if ($('childOut').textContent !== '') fails.push('bip85 card: editing the length clears the output');
+        await CA('wif'); $('childApp').value = 'hex'; w.childAppChange(); if ($('childOut').textContent !== '') fails.push('bip85 card: choosing another type clears the output');
+        $('childApp').value = 'pwd85'; w.childAppChange(); if ($('childLen').style.display === 'none' || $('childWords').style.display !== 'none' || $('childLen').value !== '20') fails.push('bip85 card: a password shows its length');
+        $('childApp').value = 'words'; w.childAppChange(); if ($('childWords').style.display === 'none' || $('childLen').style.display !== 'none') fails.push('bip85 card: seed words show the word count'); }
       $('childOut').textContent = ''; $('childStatus').textContent = ''; $('verifyPass').value = ''; $('phrase').value = ABOUT; $('verifyStatus').textContent = ''; }
     $('verifyRecorded').value = ''; $('verifyPass').value = ''; }
   r = await run('dice', 12, D50, ''); if (!/Passphrase: none/.test($('genResult').textContent) || !/Passphrase used: NO/.test(w.passLine('printed'))) fails.push('passphrase none line');
@@ -1494,23 +1515,48 @@ const M = [
   ['find: invalid phrase not rejected', 'if(!r.ok) return say("bad", "Type a valid seed phrase in the box above first. " + r.msg);', ''],
   ['find: address format not validated', '  if(!kind) return say("bad", "Enter a bc1q', '  if(false) return say("bad", "Enter a bc1q'],
   ['find: scan position not reset when the address changes', 'for(const id of ["checkAddr","checkAcct","phrase","verifyPass"]) document.getElementById(id).addEventListener("input", resetAddrScan);', ''],
-  ['bip85: wrong application number', 'for(const i of [83696968, 39, 0, words, index])', 'for(const i of [83696968, 32, 0, words, index])'],
-  ['bip85: wrong language', 'for(const i of [83696968, 39, 0, words, index])', 'for(const i of [83696968, 39, 1, words, index])'],
-  ['bip85: wrong root', 'for(const i of [83696968, 39, 0, words, index])', 'for(const i of [83696967, 39, 0, words, index])'],
-  ['bip85: index ignored', 'for(const i of [83696968, 39, 0, words, index])', 'for(const i of [83696968, 39, 0, words, 0])'],
-  ['bip85: length ignored', 'for(const i of [83696968, 39, 0, words, index])', 'for(const i of [83696968, 39, 0, 12, index])'],
+  ['bip85: wrong application number', '[39, 0, words, index]', '[38, 0, words, index]'],
+  ['bip85: wrong language', '[39, 0, words, index]', '[39, 1, words, index]'],
+  ['bip85: wrong root', 'for(const i of [83696968].concat(path)){', 'for(const i of [83696969].concat(path)){'],
+  ['bip85: index ignored', '[39, 0, words, index]', '[39, 0, words, 0]'],
+  ['bip85: length ignored', '[39, 0, words, index]', '[39, 0, 12, index]'],
   ['bip85: wrong HMAC key', 'new TextEncoder().encode("bip-entropy-from-k")', 'new TextEncoder().encode("bip-entropy-from-K")'],
   ['bip85: entropy not truncated from the front', 'e.slice(0, words * 4 / 3)', 'e.slice(64 - words * 4 / 3)'],
   ['bip85: entropy one byte long', 'e.slice(0, words * 4 / 3)', 'e.slice(0, words * 4 / 3 + 1)'],
-  ['bip85: key bytes not padded', 'fromHex(k.toString(16).padStart(64,"0")));\n  return entropyToMnemonic', 'fromHex(k.toString(16).padStart(62,"0")));\n  return entropyToMnemonic'],
+  ['bip85: key bytes not padded', 'encode("bip-entropy-from-k"), fromHex(k.toString(16).padStart(64,"0"))', 'encode("bip-entropy-from-k"), fromHex(k.toString(16).padStart(62,"0"))'],
   ['bip85: 15 words accepted wrongly removed', 'if(![12,15,18,21,24].includes(words)) throw new Error("words must be 12, 15, 18, 21 or 24");', 'if(![12,18,24].includes(words)) throw new Error("words must be 12, 15, 18, 21 or 24");'],
-  ['bip85: index limit off by one', 'index > 2147483647) throw new Error("index must be 0 to 2147483647");', 'index > 2147483646) throw new Error("index must be 0 to 2147483647");'],
+  ['bip85: index limit off by one', 'index > 2147483647) throw new Error("index must be 0 to 2147483647");\n  const e = await bip85Entropy', 'index > 2147483646) throw new Error("index must be 0 to 2147483647");\n  const e = await bip85Entropy'],
+  ['bip85 apps: index limit off by one', 'index > 2147483647) throw new Error("index must be 0 to 2147483647");\n  if(A.min', 'index > 2147483646) throw new Error("index must be 0 to 2147483647");\n  if(A.min'],
   ['bip85: UI index limit raised', 'parseInt(raw, 10) > 2147483647){ clearChild();', 'parseInt(raw, 10) > 4294967295){ clearChild();'],
   ['bip85: UI index limit lowered', 'parseInt(raw, 10) > 2147483647){ clearChild();', 'parseInt(raw, 10) > 2147483646){ clearChild();'],
   ['bip85: UI index not validated', 'if(!/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647){ clearChild();', 'if(false){ clearChild();'],
   ['bip85: passphrase ignored', 'const child = await mnemonicBip85(r.mnemonic, vp, words, index);', 'const child = await mnemonicBip85(r.mnemonic, "", words, index);'],
   ['bip85: parent phrase not checked', 'if(!r.ok){ clearChild(); return say("bad", "Type your valid parent', 'if(false){ clearChild(); return say("bad", "Type your valid parent'],
-  ['bip85: output not cleared when phrase/passphrase/index edited', 'for(const id of ["phrase","verifyPass","childWords","childIndex"]) document.getElementById(id).addEventListener("input", clearChild);', ''],
+  ['bip85: output not cleared when phrase/passphrase/index edited', 'for(const id of ["phrase","verifyPass","childWords","childIndex","childLen","childSides","childRolls"]) document.getElementById(id).addEventListener("input", clearChild);', ''],
+  ['keccak: a round constant wrong', '0x8000000080008008n];', '0x8000000080008009n];'],
+  ['keccak: a rotation wrong', 'const KECCAK_ROT = [[0,36,3,41,18],[1,44,10,45,2]', 'const KECCAK_ROT = [[0,36,3,41,18],[1,44,10,45,3]'],
+  ['keccak: chi step wrong', '((~B[(x + 1) % 5 + 5*y] & M) & B[(x + 2) % 5 + 5*y])', '(B[(x + 1) % 5 + 5*y] & B[(x + 2) % 5 + 5*y])'],
+  ['keccak: one round short', 'for(let r = 0; r < 24; r++){\n    const C = [0,1,2,3,4]', 'for(let r = 0; r < 23; r++){\n    const C = [0,1,2,3,4]'],
+  ['shake: SHA3 padding instead of SHAKE', 'padded[msg.length] ^= 0x1f;', 'padded[msg.length] ^= 0x06;'],
+  ['shake: SHAKE128 rate', 'const rate = 136, A = new Array(25).fill(0n);', 'const rate = 168, A = new Array(25).fill(0n);'],
+  ['shake: no permutation between output blocks', 'if(pos === rate){ keccakF(A); buf = block(); pos = 0; }', 'if(pos === rate){ buf = block(); pos = 0; }'],
+  ['bip85 apps: XPRV halves swapped', 'chain = e.slice(0, 32), key = e.slice(32, 64);', 'chain = e.slice(32, 64), key = e.slice(0, 32);'],
+  ['bip85 apps: WIF not marked compressed', 'base58check(Uint8Array.from([0x80, ...e, 0x01]))', 'base58check(Uint8Array.from([0x80, ...e]))'],
+  ['bip85 apps: Base85 alphabet wrong', '!#$%&()*+-;<=>?@^_`{|}~";', '!#$%&()*+-;<=>?@_^`{|}~";'],
+  ['bip85 apps: hex path ignores the length', '[128169, n, index]', '[128169, 64, index]'],
+  ['bip85 apps: Base64 password path wrong', '[707764, n, index]', '[707785, n, index]'],
+  ['bip85 apps: dice use one bit too many', 'while(2 ** bits < n) bits++;', 'while(2 ** bits <= n) bits++;'],
+  ['bip85 apps: dice keep the low bits', 'v = Math.floor(v / drop);', 'v = v % (256 ** bytes / drop);'],
+  ['bip85 apps: a roll equal to the sides is kept', 'if(v < n) out.push(v);', 'if(v <= n) out.push(v);'],
+  ['bip85 apps: dice path order wrong', '[89101, n, rolls, index]', '[89101, rolls, n, index]'],
+  ['bip85 apps: Base85 password allows 81', 'pwd85: {name:"Password (Base85)", min:10, max:80,', 'pwd85: {name:"Password (Base85)", min:10, max:81,'],
+  ['bip85 apps: Base64 password allows 19', 'pwd64: {name:"Password (Base64)", min:20, max:86,', 'pwd64: {name:"Password (Base64)", min:19, max:86,'],
+  ['bip85 apps: a die with 2^31 sides allowed', 'if(!Number.isInteger(n) || n < 2 || n > 2147483647) throw', 'if(!Number.isInteger(n) || n < 2 || n > 4294967295) throw'],
+  ['bip85 apps: 1001 rolls allowed', 'const BIP85_DICE_MAX_ROLLS = 1000;', 'const BIP85_DICE_MAX_ROLLS = 1001;'],
+  ['bip85 card: length edits keep the output', '"childIndex","childLen","childSides","childRolls"]) document', '"childIndex","childSides"]) document'],
+  ['bip85 card: type change keeps the output', 'document.getElementById(id).style.display = app === "dice" ? "" : "none";\n  clearChild();', 'document.getElementById(id).style.display = app === "dice" ? "" : "none";'],
+  ['bip85 card: no xprv fingerprint', 'extra = "\\n\\nMaster fingerprint of this xprv: " + fp +', 'extra = "\\n\\n" +'],
+  ['bip85 card: password length default too short', 'const CHILD_LEN_DEFAULT = {hex:32, pwd64:22, pwd85:20};', 'const CHILD_LEN_DEFAULT = {hex:32, pwd64:22, pwd85:12};'],
   ['bip85: output not cleared when length changed', 'document.getElementById("childWords").addEventListener("change", clearChild);', ''],
   ['bip85: child fingerprint wrong passphrase', 'const fp = await mnemonicFingerprint(child, ""), a0', 'const fp = await mnemonicFingerprint(child, "x"), a0'],
   ['bip85: error shown as success', 'say("bad", "The index must be a whole number', 'say("ok", "The index must be a whole number'],
