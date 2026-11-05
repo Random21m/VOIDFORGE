@@ -845,7 +845,7 @@ async function probe(w, mutated) {
       words(24); setRolls(D50.slice(0, 9)); await w.previewRefresh(); if (pv().length !== 24) fails.push('preview: 24 slots in 24-word mode'); words(12);
       setRolls(''); await w.previewRefresh(); if (pv().length || $('pvNote').textContent) fails.push('preview: nothing with no rolls');
       setRolls(D50); await w.previewRefresh(); await w.generate(); if (w.document.querySelectorAll('#wordGrid .wcell.pv').length || $('pvNote').textContent) fails.push('preview: FORGE replaces the grey words with the real ones');
-      setRolls(D50.slice(0, 7)); await w.previewRefresh(); await w.generate(); await w.previewRefresh(); { const eX = (await w.rollsToMnemonic(D50.slice(0, 7), 12)).split(' '); if (pv().join('|') !== eX.join('|') || !/PREVIEW/.test($('pvNote').textContent)) fails.push('preview: FORGE with too few rolls keeps the grey words'); }
+      setRolls(D50.slice(0, 7)); await w.previewRefresh(); await w.generate(); for (let k = 0; k < 40 && !pv().length; k++) await new Promise(r => setTimeout(r, 25)); { const eX = (await w.rollsToMnemonic(D50.slice(0, 7), 12)).split(' '); if (pv().join('|') !== eX.join('|') || !/PREVIEW/.test($('pvNote').textContent)) fails.push('preview: FORGE with too few rolls keeps the grey words'); }
       setRolls(D50.slice(0, 5)); await w.previewRefresh(); w.clearAll(); await new Promise(r => setTimeout(r, 20)); if (pv().length || $('pvNote').textContent) fails.push('preview: CLEAR removes the grey words');
     }
     { // Bitcoin dictionary (v1.27.3)
