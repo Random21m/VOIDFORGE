@@ -1244,7 +1244,10 @@ async function probe(w, mutated) {
     w.practicePeek(); if ($p('prWords').children.length !== 12 || $p('prShow').style.display !== 'block') fails.push('practice: peek shows the words again');
     w.practiceHide(); w.practiceClear(); if (w.eval('practice') !== null || $p('prWords').textContent !== '' || $p('prInput').value !== '' || $p('prShow').style.display !== 'none' || $p('prCheck').style.display !== 'none') fails.push('practice: clear forgets the phrase');
     w.practiceCheck(); w.practiceHide(); w.practicePeek(); if ($p('prShow').style.display !== 'none' || $p('prCheck').style.display !== 'none') fails.push('practice: buttons do nothing before a practice starts');
-    const ph = new Set(); for (let i = 0; i < 4; i++) { await w.practiceStart(); ph.add(w.eval('practice.words.join(" ")')); } if (ph.size !== 4 || [...ph].some((x) => /^abandon abandon/.test(x))) fails.push('practice: phrases are random'); w.practiceClear(); }
+    const PH = ['legal winner thank year wave sausage worth useful legal winner thank yellow', 'letter advice cage absurd amount doctor acoustic avoid letter advice cage above', 'ozone drill grab fiber curtain grace pudding thank cruise elder eight picnic', 'gravity machine north sort system female filter attitude volume fold club still', 'hamster diagram private dutch cause delay private meat slide toddler razor blue', 'scheme spot photo card baby mountain device kick cradle pact join borrow'];
+    w.eval('practiceNext=0'); const ph = []; for (let i = 0; i < 8; i++) { await w.practiceStart(); ph.push(w.eval('practice.words.join(" ")')); } w.practiceClear();
+    if (ph.slice(0, 6).join('|') !== PH.join('|') || ph[6] !== PH[0] || ph[7] !== PH[1]) fails.push('practice: steps through the six published test phrases in order, then starts over');
+    if (/getRandomValues|Math\.random|\.randomUUID|msCrypto/.test(mutated.replace(/const WORDLIST = \[.*?\];/s, ''))) fails.push('no browser random-number call anywhere in the page');
   { const w2 = loadPage(mutated, (win) => { win.__focus = []; win.HTMLElement.prototype.focus = function (o) { win.__focus.push([this.id, o]); }; });
     await ready(w2); await new Promise((r) => setTimeout(r, 100));
     const fo = w2.__focus.find((x) => x[0] === 'sgGo'); if (!fo || !fo[1] || fo[1].preventScroll !== true || w2.__focus.some((x) => x[0] === 'rolls')) fails.push('page open: the notice button is focused without scrolling');
@@ -1267,7 +1270,7 @@ async function probe(w, mutated) {
     if (!/\.tabs button\[aria-selected="true"\][^{]*\{[^}]*border-bottom-color: var\(--gold\)/.test(css)) fails.push('redesign: the selected tab has a gold underline');
     if (!/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(css)) fails.push('redesign: labels are plain coloured words');
     if (!/#cardGen \{ display: block; \}\s*#cardGen \.gen-right \{ position: static; max-height: none;/.test(css)) fails.push('redesign: Make a seed is one column');
-    { const rs = $('rollStats'); if (!rs || rs.tagName !== 'DETAILS' || rs.open || !rs.contains($('rollChart')) || !rs.contains($('rollHistory')) || !rs.contains($('diceVisual'))) fails.push('tucked away: roll history and the fairness chart live in one closed box');
+    { const rs = $('rollStats'); if (!rs || rs.previousElementSibling.id !== 'ignoredNote' || rs.nextElementSibling.id !== 'advanced' || $('advanced').nextElementSibling.id !== 'moreBox') fails.push('order under the roll entry: fairness chart box, then passphrase, then More options'); if (!rs || rs.tagName !== 'DETAILS' || rs.open || !rs.contains($('rollChart')) || !rs.contains($('rollHistory')) || !rs.contains($('diceVisual'))) fails.push('tucked away: roll history and the fairness chart live in one closed box');
       { const css = mutated.match(/<style>[\s\S]*?<\/style>/)[0]; if (!/#rollStats \{ margin-top: 10px; padding: 8px 12px; font-size: 13px; \}/.test(css) || !/#rollStats > summary \{ cursor: pointer; font-weight: 600; \}/.test(css)) fails.push('tucked away: the roll history box is styled like the other option boxes'); } }
     { // Calmer first screen: one GUIDE ME, seed buttons only after a seed, one closed More options box, no second warning note
       const d = w.document, gb = [...d.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'GUIDE ME'), gn = $('guideNew');
@@ -2166,7 +2169,10 @@ const M = [
   ['practice: word count plural', '"You typed " + got.length + " word" + (got.length===1?"":"s")', '"You typed " + got.length + " words"'],
   ['practice: hide keeps the words', 'document.getElementById("prWords").textContent=""; document.getElementById("prShow").style.display="none";\n  document.getElementById("prCheck").style.display="block";', 'document.getElementById("prShow").style.display="none";\n  document.getElementById("prCheck").style.display="block";'],
   ['practice: clear keeps the phrase', 'practice=null;\n  document.getElementById("prWords")', '\n  document.getElementById("prWords")'],
-  ['practice: no randomness', 'const e=new Uint8Array(16); crypto.getRandomValues(e);', 'const e=new Uint8Array(16);'],
+  ['practice: random numbers used again', 'const hex=PRACTICE_ENTROPY[practiceNext % PRACTICE_ENTROPY.length]; practiceNext++;\n  const e=new Uint8Array(16); for(let i=0;i<16;i++) e[i]=parseInt(hex.substr(i*2,2),16);', 'const e=new Uint8Array(16); crypto.getRandomValues(e);'],
+  ['practice: always the same phrase', 'practiceNext++;', ''],
+  ['practice: list does not start over', 'PRACTICE_ENTROPY[practiceNext % PRACTICE_ENTROPY.length]', 'PRACTICE_ENTROPY[Math.min(practiceNext, PRACTICE_ENTROPY.length - 1)]'],
+  ['practice: first phrase changed', '"7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f","80808080', '"80808080808080808080808080808080","80808080'],
   ['practice: peek does nothing', 'function practicePeek(){ if(!practice) return; practiceRender();', 'function practicePeek(){ if(!practice) return;'],
   ['practice: result always ok', 'practiceStatus(r.ok?"ok":"bad", r.msg);', 'practiceStatus("ok", r.msg);'],
   ['practice: typing keeps the result', 'document.getElementById("prInput").addEventListener("input", () => practiceStatus("",""));', ''],
@@ -2385,6 +2391,8 @@ const M = [
   ["dice buttons: outline missing", "style=\"fill:var(--surface); stroke:var(--accent); stroke-width:6\"/>' + pips", "style=\"fill:var(--surface)\"/>' + pips"],
   ["dice buttons: pips not accent", "r=\"10\" style=\"fill:var(--accent)\"/>').join(\"\")", "r=\"10\" style=\"fill:var(--text)\"/>').join(\"\")"],
   ["tucked away: roll history box heading unstyled", "  #rollStats > summary { cursor: pointer; font-weight: 600; }\n", ""],
+  ["passphrase box pushed down below More options", "<details id=\"advanced\" data-g=\"3\">", "<p id=\"pushdown2\"></p><details id=\"advanced\" data-g=\"3\">"],
+  ["roll history box pushed down from under the roll entry", "<details id=\"rollStats\" data-g=\"2\">", "<p id=\"pushdown\"></p><details id=\"rollStats\" data-g=\"2\">"],
   ["tucked away: roll history box starts open", "<details id=\"rollStats\" data-g=\"2\">", "<details id=\"rollStats\" data-g=\"2\" open>"],
   ["redesign: centre pip missing from the header die", "<circle class=\"dp\" cx=\"32\" cy=\"32\" r=\"5.6\"/>", ""],
   ["redesign: the name is not gold", "letter-spacing: .16em; color: var(--goldtx); background: none;", "letter-spacing: .16em; color: var(--text); background: none;"],

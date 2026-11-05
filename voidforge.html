@@ -740,6 +740,22 @@
     <div id="entropyStatus" data-g="2" style="font-size:13.5px; margin-top:4px; font-weight:600;"></div>
     <div id="bitsNote" data-g="2" style="font-size:13.5px; margin-top:4px; color:var(--muted);"></div>
     <div id="ignoredNote" data-g="2" style="font-size:13.5px; margin-top:4px; font-weight:600; color:var(--danger);"></div>
+    <details id="rollStats" data-g="2">
+      <summary>Your rolls: history and fairness chart<small>See what you rolled and whether the faces came up evenly.</small></summary>
+    <div id="rollHistory" data-g="2" style="font-size:12.5px;color:var(--muted);margin-top:6px;min-height:16px;"></div>
+    <div id="diceVisual" data-g="2" style="font-size:30px; letter-spacing:4px; margin-top:4px; min-height:28px;"></div>
+    <div id="rollChart" data-g="2" class="rc" role="img" aria-label="Chart of how many times each face came up" style="display:none;"></div>
+    </details>
+    <details id="advanced" data-g="3">
+      <summary id="advSummary">Advanced options (passphrase, note)</summary>
+      <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
+        <input type="password" id="passphrase" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Optional passphrase" style="flex:1; min-width:0;" oninput="updateAdvSummary()">
+        <button type="button" class="secondary small" onclick="togglePassphrase(this)">SHOW</button>
+      </div>
+      <input type="password" id="passphrase2" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Confirm passphrase (must match)" style="margin-top:6px;" oninput="updateAdvSummary()">
+      <div style="font-size:13.5px; color:var(--muted); margin-top:6px;">A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> makes a different wallet from the same words. Write it down separately: without it the funds cannot be recovered. Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div>
+      <input type="text" id="note" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Optional note (not used in the seed)" style="margin-top:6px;">
+    </details>
     <details id="moreBox">
       <summary>More options<small>Word tiles, and a demo of how rolls scramble the words.</small></summary>
     <details id="wdBox" data-g="1">
@@ -773,22 +789,6 @@
         <div id="demoGrid" aria-label="Demo words, not your seed"></div>
       </div>
     </details>
-    </details>
-    <details id="advanced" data-g="3">
-      <summary id="advSummary">Advanced options (passphrase, note)</summary>
-      <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
-        <input type="password" id="passphrase" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Optional passphrase" style="flex:1; min-width:0;" oninput="updateAdvSummary()">
-        <button type="button" class="secondary small" onclick="togglePassphrase(this)">SHOW</button>
-      </div>
-      <input type="password" id="passphrase2" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Confirm passphrase (must match)" style="margin-top:6px;" oninput="updateAdvSummary()">
-      <div style="font-size:13.5px; color:var(--muted); margin-top:6px;">A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> makes a different wallet from the same words. Write it down separately: without it the funds cannot be recovered. Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div>
-      <input type="text" id="note" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Optional note (not used in the seed)" style="margin-top:6px;">
-    </details>
-    <details id="rollStats" data-g="2">
-      <summary>Your rolls: history and fairness chart<small>See what you rolled and whether the faces came up evenly.</small></summary>
-    <div id="rollHistory" data-g="2" style="font-size:12.5px;color:var(--muted);margin-top:6px;min-height:16px;"></div>
-    <div id="diceVisual" data-g="2" style="font-size:30px; letter-spacing:4px; margin-top:4px; min-height:28px;"></div>
-    <div id="rollChart" data-g="2" class="rc" role="img" aria-label="Chart of how many times each face came up" style="display:none;"></div>
     </details>
    </div>
    <div class="gen-right" id="genRight">
@@ -959,7 +959,7 @@
     <p class="sub">Type the words from your backup to see that they are valid and match your wallet. Nothing is saved or sent.</p>
     <details id="practiceBox">
       <summary>Practise making a backup<span class="tag tag-ro">NO REAL KEYS</span><small>Rehearse writing words on paper and checking them, with a throwaway phrase.</small></summary>
-      <p class="hint" style="margin:8px 0;">Copying words by hand is where real backups go wrong. This gives you a random <b>practice phrase</b> to write on paper, hides it, then checks the copy you type back in. Do it once before the real thing. <b>The practice phrase is made on the spot and is only for practice: never put money on it.</b></p>
+      <p class="hint" style="margin:8px 0;">Copying words by hand is where real backups go wrong. This gives you a <b>practice phrase</b> to write on paper, hides it, then checks the copy you type back in. Do it once before the real thing. <b>The practice phrases are public test phrases from the BIP39 standard, for practice only: never put money on them.</b></p>
       <div class="btn-row" style="margin-top:6px;"><button type="button" id="prStart" onclick="practiceStart()">START PRACTICE</button><button type="button" class="secondary small" onclick="practiceClear()">CLEAR</button></div>
       <div id="prShow" style="display:none; margin-top:10px;">
         <div class="ms-warn" style="margin:0 0 8px;"><b>PRACTICE ONLY. Never fund this phrase.</b> Write the 12 words on paper, in order, with a pen. Then press HIDE.</div>
@@ -1238,7 +1238,7 @@
         <li><b>Your secrets live only in the page&rsquo;s memory while it is open.</b> The WIPE button and closing the tab clear them from the page, but not from anything your computer copied in the meantime (see the safety checklist above).</li>
         <li><b>Things leave the page only when you press a button for them:</b> COPY (to your clipboard), PRINT, and DOWNLOAD. Each one makes a copy outside the page, so each is your call.</li>
         <li><b>Secret and public are labelled.</b> Words, the passphrase and SeedQR are secret. The fingerprint, addresses, watch-only export and multisig descriptor are public data, safe to show a second computer, though they let others see your balance.</li>
-        <li><b>The practice phrase is not a real seed.</b> It is made fresh each time just to practise writing words down and is forgotten as soon as you clear it.</li>
+        <li><b>The practice phrase is not a real seed.</b> It is one of the published BIP39 test phrases, used only to practise writing words down. The page makes no random numbers of its own.</li>
       </ul>
     </details>
     <details id="multiHelp">
@@ -3281,7 +3281,7 @@ async function runCompare(){
     st.className="status ok"; st.textContent="Compared. Read the result below."; o.textContent=compareTx(a,b); o.style.display="block"; }
   catch(e){ st.className="status bad"; st.textContent=e.message; }
 }
-// ================= Backup practice (no real keys): a random throwaway phrase to write down, hide, and check =================
+// ================= Backup practice (no real keys): a public test phrase to write down, hide, and check =================
 let practice = null;
 async function practiceMake(entropy){ return (await entropyToMnemonic(entropy)).split(" "); }
 function practiceCompare(expected, typed){ // positions (1-based) that differ, or a count problem
@@ -3297,9 +3297,14 @@ function practiceRender(){
   practice.words.forEach(w=>{ const li=document.createElement("li"); li.textContent=w; ol.appendChild(li); });
   document.getElementById("prShow").style.display="block"; document.getElementById("prCheck").style.display="none";
 }
+// The practice phrases are the published BIP39 test vectors (entropy in hex). They are public, so they can never hold real money,
+// and this page uses no browser randomness anywhere: each press of START PRACTICE just steps to the next one in the list.
+const PRACTICE_ENTROPY = ["7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f","80808080808080808080808080808080","9e885d952ad362caeb4efe34a8e91bd2","6610b25967cdcca9d59875f5cb50b0ea","68a79eaca2324873eacc50cb9c6eca8c","c0ba5a8e914111210f2bd131f3d5e08d"];
+let practiceNext = 0;
 async function practiceStart(){
   if(!gateOk()) return;
-  const e=new Uint8Array(16); crypto.getRandomValues(e);
+  const hex=PRACTICE_ENTROPY[practiceNext % PRACTICE_ENTROPY.length]; practiceNext++;
+  const e=new Uint8Array(16); for(let i=0;i<16;i++) e[i]=parseInt(hex.substr(i*2,2),16);
   practice={words:await practiceMake(e)};
   document.getElementById("prInput").value=""; practiceStatus("","");
   practiceRender();
