@@ -895,7 +895,7 @@ async function probe(w, mutated) {
       if (!/appears 2 times/.test(await run(a0.zpub + '\n' + a0.xpub))) fails.push('key reuse: zpub and xpub of one key count as one key');
       if (!/2 different keys come from the same master fingerprint/.test(await run('wsh(sortedmulti(2,' + a0.receive.replace(/\/0\/\*$/, '') + ',' + a1.receive.replace(/\/0\/\*$/, '') + '))'))) fails.push('key reuse: two multisig keys from one seed are found');
       if (!/is given with different keys/.test(await run('wpkh([73c5da0a/84h/0h/0h]' + a1.xpub + '/0/*)\nwpkh([73c5da0a/84h/0h/0h]' + a0.xpub + '/0/*)'))) fails.push('key reuse: one origin with two keys is found');
-      if (!/PRIVATE/.test(await run('wpkh(xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu/0/*)'))) fails.push('key reuse: private keys are refused');
+      if (!/^STOP: this contains a PRIVATE key.*treat that key as exposed/.test(await run('wpkh(xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu/0/*)'))) fails.push('key reuse: private keys are refused with the exposed-key warning');
       w.clearReuse(); }
     w.clearAll(); await sleep(20);
   } catch (e) { fails.push('v2.2.0 probe crashed: ' + e.message); }
