@@ -4123,7 +4123,7 @@ function updateAbbrNote(){
   document.getElementById("abbrNote").textContent = (abbrOn && hasSeed()) ? "Showing only the first 4 letters of each word. The full words are still your backup; write down full words unless your backup method uses 4-letter abbreviations." : "";
 }
 function setResult(text, words){
-  wdWipe(); drillEnd(); document.body.classList.toggle("has-seed", !!words);
+  wdWipe(); drillEnd(); if(words) previewClear(); document.body.classList.toggle("has-seed", !!words);
   const g = document.getElementById("genResult"), grid = document.getElementById("wordGrid");
   g.textContent = text; g.classList.toggle("nores", text === "\u2014"); grid.textContent = "";
   hideExplain(); { const eb = document.getElementById("explainBox"); eb.style.display = (words && [12,24].includes(words.length)) ? "" : "none"; eb.open = false; }
