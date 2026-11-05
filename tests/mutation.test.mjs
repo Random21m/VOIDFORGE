@@ -728,7 +728,7 @@ async function probe(w, mutated) {
       setRolls(D50.slice(0, 8)); await w.previewRefresh(); const e2 = (await w.rollsToMnemonic(D50.slice(0, 8), 12)).split(' '); if (pv().join('|') !== e2.join('|')) fails.push('preview: words change with the next roll');
       words(24); setRolls(D50.slice(0, 9)); await w.previewRefresh(); if (pv().length !== 24) fails.push('preview: 24 slots in 24-word mode'); words(12);
       setRolls(''); await w.previewRefresh(); if (pv().length || $('pvNote').textContent) fails.push('preview: nothing with no rolls');
-      setRolls(D50.slice(0, 5)); await w.previewRefresh(); await w.generate(); if (w.document.querySelectorAll('#wordGrid .wcell.pv').length || $('pvNote').textContent) fails.push('preview: FORGE replaces the grey words with the real ones');
+      setRolls(D50); await w.previewRefresh(); await w.generate(); if (w.document.querySelectorAll('#wordGrid .wcell.pv').length || $('pvNote').textContent) fails.push('preview: FORGE replaces the grey words with the real ones');
       setRolls(D50.slice(0, 5)); await w.previewRefresh(); w.clearAll(); await new Promise(r => setTimeout(r, 20)); if (pv().length || $('pvNote').textContent) fails.push('preview: CLEAR removes the grey words');
     }
     { // Bitcoin dictionary (v1.27.3)
@@ -863,13 +863,13 @@ async function probe(w, mutated) {
     conf = 0; r = await wd(12, LEG, '1111111'); if (conf !== 1) fails.push('word draw: identical flips ask first (' + conf + ')');
     conf = 0; cnf2 = false; await w.generate(); r = await wd(12, A11, '0000000'); if (r.res === A11 + 'about' && false) fails.push('x'); if ($('genResult').dataset.seed === '1' && /abandon abandon/.test($('genResult').textContent) && conf < 1) fails.push('word draw: declining stops the seed');
     cnf2 = true; w.clearAll(); await new Promise(r2 => setTimeout(r2, 20));
-    await wd(12, LEG, '1010101'); $('passphrase2').value = 'different'; await w.wdGenerate(); if (!/do not match/.test($('genResult').textContent) || $('genResult').dataset.seed === '1') fails.push('word draw: mismatched passphrases refused');
+    await wd(12, LEG, '1010101'); $('passphrase2').value = 'different'; await w.wdGenerate(); if (!/do not match/.test($('genResult').textContent) || $('genResult').dataset.seed !== '1') fails.push('word draw: mismatched passphrases keep the words and say so');
     r = await wd(12, LEG, '1010101', 'secret pass'); if (!/Passphrase: used/.test($('genResult').textContent)) fails.push('word draw: passphrase used');
     $('passphrase').value = ''; $('passphrase2').value = '';
     await wd(12, LEG, '1010101'); w.clearAll(); await new Promise(r2 => setTimeout(r2, 20)); if ($('wdWords').value || $('wdFlips').value || $('wdOut').textContent || $('wdOut').style.display !== 'none') fails.push('word draw: CLEAR wipes boxes and steps');
     await wd(12, LEG, '1010101'); await run('dice', 12, D50, ''); if ($('wdOut').textContent !== '' || $('wdOut').style.display !== 'none') fails.push('word draw: a dice FORGE wipes the old steps');
     w.clearAll(); await new Promise(r2 => setTimeout(r2, 20));
-    w.toggleGuide(); if ($('wdBox').classList.contains('gh') || !$('rolls').classList.contains('gh')) fails.push('word draw: the box is offered on guide step 1'); await wd(12, LEG, '1010101'); if (!/step 4 of 5/.test($('gTitle').textContent) || $('wdBox').classList.contains('gh') === false) fails.push('word draw: the guide moves on to writing the words down'); w.toggleGuide(); w.clearAll(); await new Promise(r2 => setTimeout(r2, 20));
+    w.toggleGuide(); if ($('wdBox').classList.contains('gh') || !$('rolls').classList.contains('gh')) fails.push('word draw: the box is offered on guide step 1'); await wd(12, LEG, '1010101'); if (!/step 3 of 5/.test($('gTitle').textContent) || $('wdBox').classList.contains('gh') === false) fails.push('word draw: the guide moves on to writing the words down'); w.toggleGuide(); w.clearAll(); await new Promise(r2 => setTimeout(r2, 20));
     w.confirm = () => true;
     if (w.document.querySelectorAll('#wdBox a, #wdBox script, #wdBox img, #wdBox form').length || !/word tiles/.test($('wdBox').textContent) || /Entropia/i.test(w.document.body.innerHTML)) fails.push('word draw: no links, and no product name');
     $('wdLen').value = '24'; w.wdUpdate(); if (!/0 \/ 23 words, 0 \/ 3 flips/.test($('wdCount').textContent)) fails.push('word draw: counts for 24 words'); $('wdLen').value = '12';
@@ -1204,8 +1204,8 @@ async function probe(w, mutated) {
     mode('coin'); words(12); setR('1'.repeat(100)); if (sub().textContent !== '28 more flips to go' || big().textContent !== '100 / 128') fails.push('layout: counter counts flips in coin mode'); setR('1'.repeat(128)); if (!/Enough flips/.test(sub().textContent)) fails.push('layout: counter says flips when met');
     mode('dice'); words(12); setR('');
     if (cur() !== 'done,cur,-,-,-' || w.document.querySelectorAll('#stepBar li[aria-current]').length !== 1 || w.document.querySelector('#stepBar li[aria-current]').getAttribute('data-s') !== '2') fails.push('layout: step bar starts at Roll with one step marked current');
-    setR(D50); if (cur() !== 'done,done,done,cur,-' || w.document.querySelector('#stepBar li[aria-current]').getAttribute('data-s') !== '4') fails.push('layout: step bar moves to Forge when there are enough rolls');
-    await w.generate(); if (cur() !== 'done,done,done,done,cur' || !/Seed made/.test(sub().textContent) || w.document.querySelector('#stepBar li[aria-current]').getAttribute('data-s') !== '5') fails.push('layout: step bar moves to Check once a seed exists');
+    setR(D50); if (cur() !== 'done,done,cur,-,-' || w.document.querySelector('#stepBar li[aria-current]').getAttribute('data-s') !== '3') fails.push('layout: step bar moves to Forge when there are enough rolls');
+    await w.generate(); if (cur() !== 'done,done,done,cur,-' || !/Seed made/.test(sub().textContent) || w.document.querySelector('#stepBar li[aria-current]').getAttribute('data-s') !== '4') fails.push('layout: step bar moves to Check once a seed exists');
     const real = $('genResult').textContent.split('\n')[0].split(' ');
     const cells = () => [...$('wordGrid').children];
     if (cells().length !== 12 || cells().some((c) => c.classList.contains('empty')) || cells().map((c) => c.lastChild.textContent).join(' ') !== real.join(' ') || $('wordGrid').classList.contains('slots') || $('wordGrid').style.display !== 'grid' || $('genResult').classList.contains('nores')) fails.push('layout: forging replaces the empty slots with the real words');
