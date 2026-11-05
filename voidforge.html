@@ -697,7 +697,7 @@
     <button type="button" role="tab" id="tab-about" aria-controls="tp-about" aria-selected="false" tabindex="-1" data-tab="about" aria-label="ABOUT & HELP"><span class="lg">ABOUT &amp; HELP</span><span class="sh">ABOUT</span><small>how it works, privacy, changelog</small></button>
   </div>
   <div id="tp-make" class="tabpanel" role="tabpanel" aria-labelledby="tab-make">
-  <ol class="stepbar" id="stepBar" aria-label="Where you are in making a seed"><li data-s="1">Choose</li><li data-s="2">Roll</li><li data-s="3">Passphrase</li><li data-s="4">Forge</li><li data-s="5">Check</li></ol>
+  <ol class="stepbar" id="stepBar" aria-label="Where you are in making a seed"><li data-s="1">Choose</li><li data-s="2">Roll</li><li data-s="3">Forge</li><li data-s="4">Passphrase</li><li data-s="5">Check</li></ol>
   <div class="card" id="cardGen">
    <div class="gen-left">
     <h2>MAKE A SEED</h2>
@@ -717,10 +717,10 @@
         <p>Your wallet starts as a very large random number. Real dice (or a coin) are how you create it yourself, instead of trusting a computer to pick it. First choose the length: <b>12 words</b> is strong enough for almost everyone and needs about 50 dice rolls. <b>24 words</b> is the longest option and needs about 99 rolls. Then choose <b>dice</b> (easier for most people) or <b>coin</b> (many more flips). If you have physical word tiles, use the <b>Word draw</b> box instead. <b>Making real keys?</b> Read BEFORE YOU MAKE REAL KEYS just above this card first.</p></div>
       <div class="gstep" data-gs="2"><h3>Roll your dice</h3>
         <p>Roll a real die, then tap the number it shows. Do not make numbers up: people are bad at being random, and the whole point is that nobody could guess your rolls. You need <b id="gNeed">50</b> <span id="gUnit">rolls</span>. The bar fills as you go, and NEXT unlocks when you have enough. Curious how rolls become words? Try the demo switch below the bar. Make sure nobody can see your screen.</p></div>
-      <div class="gstep" data-gs="3"><h3>Optional: add a passphrase</h3>
-        <p>A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> is an extra secret that makes a different wallet from the same words. It protects you if someone finds your paper, but if you lose it the funds are gone for good. <b>If you are not sure, skip this step.</b> You can always make another seed later.</p></div>
-      <div class="gstep" data-gs="4"><h3>Forge the seed and write it down</h3>
-        <p>Press <b>FORGE SEED</b>. Your rolls are scrambled together into your seed words. Write the words on paper, in order, with a pen. <b>Never</b> take a photo, type them into a connected device, or store them in a cloud. Anyone who has these words has your money. NEXT unlocks once the words are shown.</p></div>
+      <div class="gstep" data-gs="3"><h3>Forge the seed and write it down</h3>
+        <p>Press <b>FORGE SEED</b>. Your rolls are scrambled together into your seed words. (A passphrase, if you want one, comes next, after you can see the words.) Write the words on paper, in order, with a pen. <b>Never</b> take a photo, type them into a connected device, or store them in a cloud. Anyone who has these words has your money. NEXT unlocks once the words are shown.</p></div>
+      <div class="gstep" data-gs="4"><h3>Optional: add a passphrase</h3>
+        <p>A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> is an extra secret that makes a different wallet from the same words. It protects you if someone finds your paper, but if you lose it the funds are gone for good. <b>If you are not sure, skip this step.</b> If you want one, type it twice in the <b>Passphrase</b> box under your words. The page then shows the fingerprint without the passphrase and with it, so you can see they are different wallets. Write the passphrase down separately from the words.</p></div>
       <div class="gstep" data-gs="5"><h3>Check it and make a backup</h3>
         <p>Last step, and the most important. Compare the <span class="term" tabindex="0" data-tip="A short code (8 characters) that identifies your seed without revealing it. Wallet apps show it too, so you can see you have the same seed.">fingerprint</span> and first address in a second wallet app, make a paper backup if you like (SeedQR or the printed sheet), then press <b>START DRILL</b> in the Restore drill below: it hides the words on screen and has you type them back from your paper. (The <b>CHECK A BACKUP</b> tab can also check words you already have.) Start with a small amount first.</p></div>
       <div class="gnav"><button type="button" class="secondary small" id="gBack" onclick="guideStep(-1)">&larr; BACK</button><span id="guideWhy"></span><button type="button" class="small" id="gNext" onclick="guideStep(1)">NEXT &rarr;</button></div>
@@ -788,25 +788,25 @@
    </div>
    <div class="gen-right" id="genRight">
     <div class="seed-head"><div class="seed-title">YOUR SEED</div><div id="bigCount" class="big-count short" aria-live="polite"></div><div id="bigSub" class="big-sub short"></div></div>
-    <div class="btn-row" data-g="4">
+    <div class="btn-row" data-g="3 4">
       <button id="forgeBtn" onclick="generate()" disabled>FORGE SEED</button>
       <button class="btn-clear" onclick="clearAll()">CLEAR</button>
       <button class="btn-test small" onclick="toggleSelfTests()">SELF-TEST</button>
     </div>
-    <div id="wordGrid" data-g="4" aria-hidden="true"></div>
-    <div id="secretNote" data-g="4" class="hint" style="margin:8px 0 0;"><span class="tag tag-secret" style="margin-left:0;">SECRET</span> These words are your money. Write them on paper and never share them.</div>
-    <div id="abbrNote" data-g="4" class="hint" aria-live="polite"></div>
-    <div id="passNote" data-g="4"></div>
-    <div id="nextStep" data-g="4" aria-live="polite"></div>
-    <div class="result nores" id="genResult" data-g="4" role="status">—</div>
-    <div class="btn-row seed-actions" style="margin-top:6px;" data-g="4">
+    <div id="wordGrid" data-g="3 4" aria-hidden="true"></div>
+    <div id="secretNote" data-g="3 4" class="hint" style="margin:8px 0 0;"><span class="tag tag-secret" style="margin-left:0;">SECRET</span> These words are your money. Write them on paper and never share them.</div>
+    <div id="abbrNote" data-g="3 4" class="hint" aria-live="polite"></div>
+    <div id="passNote" data-g="3 4"></div>
+    <div id="nextStep" data-g="3 4" aria-live="polite"></div>
+    <div class="result nores" id="genResult" data-g="3 4" role="status">—</div>
+    <div class="btn-row seed-actions" style="margin-top:6px;" data-g="3 4">
       <button class="secondary small needs-words" id="abbrBtn" onclick="toggleAbbr()">SHOW FIRST 4 LETTERS</button>
       <button class="secondary small needs-words" onclick="sendToVerify()">SEND TO CHECK</button>
       <button class="secondary small" onclick="copyFingerprint(this)">COPY FINGERPRINT</button>
       <button class="secondary small" onclick="copyAddress(this)">COPY ADDRESS</button>
       <button class="secondary small needs-words" onclick="downloadSeed()">DOWNLOAD</button>
     </div>
-    <details id="advanced" data-g="3 4 5">
+    <details id="advanced" data-g="4">
       <summary id="advSummary">Passphrase and note (optional)</summary>
       <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
         <input type="password" id="passphrase" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Optional passphrase" style="flex:1; min-width:0;" oninput="updateAdvSummary()">
@@ -816,9 +816,9 @@
       <div style="font-size:13.5px; color:var(--muted); margin-top:6px;">A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> makes a different wallet from the same words. Write it down separately: without it the funds cannot be recovered. Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div>
       <input type="text" id="note" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Optional note (not used in the seed)" style="margin-top:6px;">
     </details>
-    <div data-g="4 5" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;"><div class="fp" id="fingerprint"></div><div id="fpIcon" class="lh" title="Fingerprint picture (LifeHash): the same picture Sparrow Wallet shows for this fingerprint"></div></div>
-    <div id="fpBaseRow" data-g="4 5" style="display:none; align-items:center; gap:14px; flex-wrap:wrap; margin-top:6px;"><div class="fp" id="fpBase"></div><div id="fpBaseIcon" class="lh" title="Fingerprint picture (LifeHash) of the wallet without the passphrase"></div></div>
-    <div id="address" data-g="4 5" style="margin-top:6px; font-size:13.5px; word-break:break-all; color:var(--muted);"></div>
+    <div data-g="3 4 5" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;"><div class="fp" id="fingerprint"></div><div id="fpIcon" class="lh" title="Fingerprint picture (LifeHash): the same picture Sparrow Wallet shows for this fingerprint"></div></div>
+    <div id="fpBaseRow" data-g="3 4 5" style="display:none; align-items:center; gap:14px; flex-wrap:wrap; margin-top:6px;"><div class="fp" id="fpBase"></div><div id="fpBaseIcon" class="lh" title="Fingerprint picture (LifeHash) of the wallet without the passphrase"></div></div>
+    <div id="address" data-g="3 4 5" style="margin-top:6px; font-size:13.5px; word-break:break-all; color:var(--muted);"></div>
    </div>
    <div class="gen-bottom">
     <details id="drillBox" data-g="5" style="display:none; margin-top:8px;">
@@ -3508,9 +3508,10 @@ function passPhraseLine(p1, p2){
   if(p1 !== p2) return "Passphrase: the two boxes do not match (fix them or clear both)";
   return "Passphrase: " + (p1 ? "used (" + Array.from(p1).length + " characters, not shown here)" : "none");
 }
+let passKey = null, passWork = Promise.resolve();
 async function finishSeed(mnemonic, ctx){
   const p1 = document.getElementById("passphrase").value, p2 = document.getElementById("passphrase2").value, run = ++forgeRun;
-  seedSig = null;
+  seedSig = null; passKey = JSON.stringify([p1, p2]);
   setResult(mnemonic + "\n\n" + passPhraseLine(p1, p2), mnemonic.split(" "));
   exCtx = ctx; seedKind = ctx ? "rolls" : "wd"; seedSig = inputSig(seedKind);
   await deriveShown(mnemonic, p1, p2, run);
@@ -3571,12 +3572,15 @@ async function deriveShown(mnemonic, p1, p2, run){
 // The passphrase boxes changed after a seed was made: the words stay, everything that depends on the passphrase is worked out again.
 async function rePass(){
   if(!hasSeed()) return;
-  const p1 = document.getElementById("passphrase").value, p2 = document.getElementById("passphrase2").value, run = ++forgeRun;
+  const p1 = document.getElementById("passphrase").value, p2 = document.getElementById("passphrase2").value, key = JSON.stringify([p1, p2]);
+  if(key === passKey) return passWork;  // the boxes still hold what the screen was worked out from
+  passKey = key; const run = ++forgeRun;
   const mnemonic = document.getElementById("genResult").textContent.split("\n")[0], line = passPhraseLine(p1, p2);
   drillEnd();
   document.getElementById("genResult").textContent = mnemonic + "\n\n" + line;
   document.getElementById("passNote").textContent = line;
-  await deriveShown(mnemonic, p1, p2, run);
+  passWork = deriveShown(mnemonic, p1, p2, run);
+  return passWork;
 }
 // DOWNLOAD and the print sheets say whether a passphrase was used, so they wait until the two boxes agree.
 function passMismatch(){
@@ -4126,7 +4130,7 @@ function updateSeedPanel(){
   bc.textContent = n + " / " + need; bc.className = "big-count " + (met ? "met" : "short");
   bs.textContent = seed ? "Seed made. Write the words down." : met ? "Enough " + unit + ". Press FORGE SEED." : (need - n) + " more " + unit + " to go";
   bs.className = "big-sub " + (met ? "met" : "short"); rc.className = met ? "met" : "short";
-  const cur = seed ? 5 : met ? 4 : 2;
+  const cur = seed ? 4 : met ? 3 : 2;
   document.querySelectorAll("#stepBar li").forEach(li => { const k = +li.getAttribute("data-s"); li.className = k < cur ? "done" : k === cur ? "cur" : ""; if(k === cur) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current"); });
 }
 
@@ -4658,7 +4662,7 @@ const GUIDE_STEPS = 5;
 function guideHidden(el, n){ const g = (el.getAttribute("data-g") || "").split(/\s+/); return g.indexOf(String(n)) < 0; }
 function guideCanNext(n){
   if(n === 2) return clean(document.getElementById("rolls").value).length >= getNeeded(document.querySelector('input[name="words"]:checked').value);
-  if(n === 4) return hasSeed();
+  if(n === 3) return hasSeed();
   return true;
 }
 function guideRender(){
@@ -4677,7 +4681,7 @@ function guideRender(){
   const ok = guideCanNext(guideN);
   next.disabled = !ok;
   why.textContent = ok ? "" : (guideN === 2 ? "Keep rolling to unlock NEXT" : "Press FORGE SEED to unlock NEXT");
-  if(guideN === 3) document.getElementById("advanced").open = true;
+  if(guideN === 4) document.getElementById("advanced").open = true;
 }
 function guideStep(d){
   if(d > 0 && !guideCanNext(guideN)) return;
@@ -4687,7 +4691,7 @@ function guideStep(d){
   jumpTo("cardGen");
 }
 function toggleGuide(){
-  guideOn = !guideOn; if(guideOn) guideN = hasSeed() ? 4 : 1;
+  guideOn = !guideOn; if(guideOn) guideN = hasSeed() ? 3 : 1;
   document.body.classList.toggle("guided", guideOn);
   const b = document.getElementById("guideBtn"); b.classList.toggle("on", guideOn); b.setAttribute("aria-pressed", guideOn ? "true" : "false"); b.textContent = guideOn ? "GUIDE: ON" : "GUIDE ME";
   guideRender();
@@ -4834,7 +4838,7 @@ async function wdGenerate(){
   await finishSeed(st.mnemonic, null);
   document.getElementById("explainBox").style.display = "none";
   wdShow(st, wc);
-  if(guideOn){ guideN = 4; guideRender(); }
+  if(guideOn){ guideN = 3; guideRender(); }
   jumpTo("genResult");
 }
 function wdShow(st, wc){
