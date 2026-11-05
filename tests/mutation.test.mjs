@@ -517,7 +517,7 @@ async function probe(w, mutated) {
       if (!/HEADS/.test(bs[0].textContent) || !/TAILS/.test(bs[1].textContent) || /TAILS/.test(bs[0].textContent) || /HEADS/.test(bs[1].textContent)) fails.push('coin buttons: HEADS label on 1 and TAILS label on 0');
       if (!/heads/.test(bs[0].getAttribute('aria-label')) || !/tails/.test(bs[1].getAttribute('aria-label'))) fails.push('coin buttons: screen-reader labels say heads for 1 and tails for 0');
       if (!bs.every(b => b.querySelector('svg circle'))) fails.push('coin buttons: each button draws a coin');
-      if (!bs[0].querySelector('svg g.btc') || bs[0].querySelectorAll('svg g.btc path').length !== 2 || bs[0].querySelector('svg g.sat') || !bs[1].querySelector('svg g.sat') || bs[1].querySelectorAll('svg g.sat path').length !== 2 || bs.some(b => b.querySelector('radialGradient, text'))) fails.push('coin buttons: heads shows the Bitcoin sign, tails shows the sat sign, both flat');
+      if (!bs[0].querySelector('svg g.btc') || bs[0].querySelectorAll('svg g.btc path').length !== 2 || bs[0].querySelector('svg g.sat') || !bs[1].querySelector('svg g.sat') || bs[1].querySelectorAll('svg g.sat rect').length !== 5 || !/rotate\(10 /.test(bs[0].querySelector('svg g.btc').getAttribute('transform') || '') || !/rotate\(10 /.test(bs[1].querySelector('svg g.sat').getAttribute('transform') || '') || bs.some(b => b.querySelector('radialGradient, text')) || bs[0].querySelector('svg g.btc').getAttribute('stroke-width') !== '7' || ![...bs[1].querySelectorAll('svg g.sat rect')].every((r) => Math.min(+r.getAttribute('width'), +r.getAttribute('height')) === 7)) fails.push('coin buttons: the lines are the same thickness on both coins; heads shows the Bitcoin sign, tails shows the sat sign, both tilted and flat');
       else if (bs[0].querySelectorAll('path').length !== 2 || bs[1].querySelectorAll('path').length !== 1) fails.push('coin buttons: heads and tails faces are different drawings');
       $('rolls').value = ''; bs[0].onclick(); bs[1].onclick(); bs[0].onclick(); if ($('rolls').value !== '101') fails.push('coin buttons: tap adds 1 for heads and 0 for tails'); } }
   r = await run('dice', 12, D50.replace(/(.{5})/g, '$1 ') + ' x,y;z'); if (r !== expect.d50) fails.push('input cleaning (spaces/junk)');
@@ -2356,10 +2356,13 @@ const M = [
   ["calmer page: roll count hidden on wide screens", "  #cardGen .gen-right { position: static; max-height: none;", "  #rollCount { display: none; }\n  #cardGen .gen-right { position: static; max-height: none;"],
   ["calmer page: More options starts open", "<details id=\"moreBox\">", "<details id=\"moreBox\" open>"],
   ["calmer page: second warning note back", "<div id=\"wordGrid\" data-g=\"4\" aria-hidden=\"true\"></div>", "<p class=\"forge-note\">Making real keys? Keep clipboard history off.</p><div id=\"wordGrid\" data-g=\"4\" aria-hidden=\"true\"></div>"],
-  ["coin faces: sat sign loses its bars", "<path d=\"M46 37 H71 M36 50 H64 M29 63 H54\"/>", ""],
+  ["coin faces: sat sign loses a bar", "<rect x=\"29.5\" y=\"46\" width=\"41\" height=\"7\"/>", ""],
+  ["coin faces: sat sign not tilted", "<g class=\"sat\" transform=\"rotate(10 50 50)\"", "<g class=\"sat\""],
+  ["coin faces: Bitcoin lines thicker than the sat sign", "stroke-width=\"7\" stroke-linejoin=\"round\"><path d=\"M39 30", "stroke-width=\"6\" stroke-linejoin=\"round\"><path d=\"M39 30"],
+  ["coin faces: Bitcoin sign not tilted", "<g class=\"btc\" transform=\"rotate(10 50 50)\"", "<g class=\"btc\""],
   ["coin faces: heads and tails use the same sign", "<g class=\"sat\"", "<g class=\"btc\""],
   ["coin faces: a gradient is back", "<circle cx=\"50\" cy=\"50\" r=\"46\" style=\"fill:var(--gold)\"/>", "<defs><radialGradient id=\"x\"><stop offset=\"0\" stop-color=\"#fff\"/></radialGradient></defs><circle cx=\"50\" cy=\"50\" r=\"46\" style=\"fill:var(--gold)\"/>"],
-  ["coin faces: Bitcoin sign loses its bars", "<path d=\"M46 22 V30 M54 22 V30 M46 71 V79 M54 71 V79\"/>", ""],
+  ["coin faces: Bitcoin sign loses its bars", "<path d=\"M45 22 V30 M55 22 V30 M45 71 V79 M55 71 V79\"/>", ""],
   ["dice buttons: back to a plain outline", "rx=\"22\" style=\"fill:var(--gold)\"/>' + pips", "rx=\"22\" style=\"fill:var(--surface)\"/>' + pips"],
   ["tucked away: roll history box starts open", "<details id=\"rollStats\" data-g=\"2\">", "<details id=\"rollStats\" data-g=\"2\" open>"],
   ["redesign: centre pip missing from the header die", "<circle class=\"dp\" cx=\"32\" cy=\"32\" r=\"5.6\"/>", ""],

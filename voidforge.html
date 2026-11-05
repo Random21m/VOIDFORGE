@@ -4509,12 +4509,12 @@ function dieFace(n){
   holder.innerHTML = '<svg viewBox="0 0 100 100" width="46" height="46" aria-hidden="true"><rect x="4" y="4" width="92" height="92" rx="22" style="fill:var(--gold)"/>' + pips + '</svg>';
   return holder.firstChild;
 }
-// Coin faces for the tap buttons (v1.27.1, redrawn flat in v2.0.0 to match the gold die). Constants only, no user data. Heads = 1 shows the Bitcoin sign, tails = 0 shows the sat sign (three stepped bars between two short vertical lines).
+// Coin faces for the tap buttons (v1.27.1, redrawn flat in v2.0.0 to match the gold die). Constants only, no user data. Heads = 1 shows the Bitcoin sign, tails = 0 shows the sat sign (a short tick, three bars, a short tick). Both are tilted the same way.
 function coinFace(heads, id){
   const ink = "#1E2124";
   const art = heads
-    ? '<g class="btc" fill="none" stroke="' + ink + '" stroke-width="6" stroke-linejoin="round"><path d="M39 30 H53 a10 10 0 0 1 0 20 H39 Z M39 50 H56 a10.5 10.5 0 0 1 0 21 H39 Z"/><path d="M46 22 V30 M54 22 V30 M46 71 V79 M54 71 V79"/></g>'
-    : '<g class="sat" fill="none" stroke="' + ink + '" stroke-width="6" stroke-linecap="round"><path d="M50 19 V29 M50 71 V81"/><path d="M46 37 H71 M36 50 H64 M29 63 H54"/></g>';
+    ? '<g class="btc" transform="rotate(10 50 50)" fill="none" stroke="' + ink + '" stroke-width="7" stroke-linejoin="round"><path d="M39 30 H53 a10 10 0 0 1 0 20 H39 Z M39 50 H56 a10.5 10.5 0 0 1 0 21 H39 Z"/><path d="M45 22 V30 M55 22 V30 M45 71 V79 M55 71 V79"/></g>'
+    : '<g class="sat" transform="rotate(10 50 50)" fill="' + ink + '"><rect x="46.5" y="19.5" width="7" height="8.5"/><rect x="29.5" y="34" width="41" height="7"/><rect x="29.5" y="46" width="41" height="7"/><rect x="29.5" y="58" width="41" height="7"/><rect x="46.5" y="71.5" width="7" height="8.5"/></g>';
   const holder = document.createElement("span");
   holder.innerHTML = '<svg viewBox="0 0 100 100" width="54" height="54" aria-hidden="true"><circle cx="50" cy="50" r="46" style="fill:var(--gold)"/>' + art + '</svg>';
   return holder.firstChild;
