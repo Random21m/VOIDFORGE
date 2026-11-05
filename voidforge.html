@@ -1295,6 +1295,7 @@
       <summary>Changelog</summary>
       <ul>
         <li><b>2.0.0</b> &mdash; <b>A calmer, cleaner look.</b> The page is now one narrow column in flat charcoal and gold. At the top left is a single golden die with the name VOIDFORGE in the same gold, a thin line across the page, and four file-style tabs below it. GUIDE ME, TEXT A+, PRINT SEED and the light/dark switch moved into a MENU at the top right; DOWNLOAD FOR USB stays in view. The page opens in charcoal, and the menu switches to white. The small labels (RECOMMENDED, SECRET, PUBLIC and the grey ones) are now plain coloured words that always keep their word, buttons come in three kinds (gold for the main action, outlined for helpers, red outline for clearing), and every text colour was checked for contrast in both themes. The first screen is quieter: one GUIDE ME, the seed buttons appear once there is a seed, and Word draw, the demo, and the roll history and fairness chart sit in closed boxes. The three rolling dice, the glow and the animations are gone, the owner&rsquo;s picture added in 1.29.0 is removed (the file no longer holds any picture), and the page icon in a tab is the gold die. Nothing about how seeds, words, fingerprints, addresses or keys are made or checked changed, and every earlier feature is still here.</li>
+        <li><b>1.29.1</b> &mdash; <b>Late results can no longer come back.</b> Reported privately: if you changed the rolls or the passphrase, or pressed CLEAR ALL, in the split second after pressing FORGE while the fingerprint and addresses were still being worked out, the page cleared everything as it should but the unfinished run then wrote its old fingerprint and addresses back, with the words gone. Now every FORGE carries a run number, and any change or CLEAR ALL ends the older run, so it writes nothing. For the same inputs, words, fingerprints, addresses, keys and descriptors are identical to v1.29.0.</li>
         <li><b>1.29.0</b> &mdash; <b>More from BIP85: keys, passwords and dice.</b> The Child seed (BIP85) card in EXTRA TOOLS has a new &ldquo;What to make&rdquo; choice. Besides seed words it now makes every other BIP85 output a wallet or password manager can use: a Bitcoin Core HD seed (WIF), a master xprv (shown with its master fingerprint), hex bytes (16 to 64), a password in Base64 (20 to 86 characters) or Base85 (10 to 80), and dice rolls for any die from 2 to 2,147,483,647 sides (up to 1,000 rolls, numbered from 0 as BIP85 says). All are recreated from the parent words, passphrase, type, settings and index, and all are secret like the parent. Dice need SHAKE256, which the page now has; it is checked in the self-test against the published BIP85 vector and in the tests against Node&rsquo;s own SHAKE256. Every new output matches the published BIP85 test vectors and an independent implementation. Seed words, fingerprints, addresses, keys and descriptors are unchanged from v1.28.0. The project owner&rsquo;s logo (a bloodhound in a worn cap) now shows in the top-right corner as a small picture built into the file (not a link, nothing loaded from the network); it is left off printouts. The page now tells browsers not to translate it, because a translated seed word is a wrong seed word; if your browser offers to translate anyway, say no. The passphrase help also notes that some hardware wallets limit passphrase length or characters, so test a small amount first.</li>
         <li><b>1.28.0</b> &mdash; <b>Reforge: recover a seed or find a passphrase.</b> A new <b>Reforge</b> tool in EXTRA TOOLS replaces Find the last word. In <b>Missing or wrong words</b> you type your words with <code>?</code> for any you lack; it fills in one or two unknown words, finds one wrong word or two swapped words, or puts back a word missing from an unknown place, and checks every candidate against your wallet&rsquo;s master fingerprint, an address (receive addresses 0 to 9 of account 0) or its account xpub/ypub/zpub, with your passphrase if you use one. In <b>Passphrase</b> it tries your guesses alone and joined in twos and threes, in four letter cases, and optionally with one typo. It reports only what matched, says how likely a fingerprint match is to be a coincidence, says plainly when nothing matched and what it searched, refuses an address with a typo before starting, and STOP ends a long search. Typing 11 words and <code>?</code> lists the possible last words, as Find the last word did, and 4-letter word forms are read. Every search plan is checked in the test suite against independent libraries (@scure/bip39, @scure/bip32, @scure/btc-signer). Also: a typed word that happens to be a JavaScript property name (such as &ldquo;constructor&rdquo;) is now reported as an unknown word in CHECK A BACKUP instead of as a failed checksum. The dice logo now shows as the page icon in a tab or bookmark (built into the file, no network), and the About page now says the online copy on the project page is for practice only and links to it. Closing the opening notice no longer pops up the on-screen keyboard on a phone or tablet. This is the only link on the page; it opens in a new tab and does nothing unless you click it. Words, fingerprints, addresses, keys and descriptors are unchanged from v1.27.3.</li>
         <li><b>1.27.3</b> &mdash; <b>Check your download, Support this project, Bitcoin dictionary, and uniform colors.</b> A new <b>Check your download</b> tool in EXTRA TOOLS lets you pick the voidforge.html file you downloaded and compares its SHA-256 and CID against what you paste from the release page, entirely offline. A new, optional <b>Support this project</b> box in ABOUT &amp; HELP has a Lightning address and QR code; nothing is sent and the box is closed by default. The <b>Bitcoin dictionary</b> in ABOUT &amp; HELP grew from VOIDFORGE-specific terms to 259 general Bitcoin terms across 12 topics, searchable and offline. Every main action button (FORGE SEED, START DRILL, START PRACTICE, CHECK MY PAPER, CHECK ADDRESS, FIND LAST WORD, INSPECT, COMPARE, DERIVE CHILD SEED) is now the same cyan primary color, so the important action on each card stands out; small helper buttons (COPY, SHOW QR, HIDE, PRINT, UNDO) stay grey. DEMO ONLY and ADVANCED badges are now a pink accent instead of grey, and both &ldquo;NEW&rdquo; badges on the page use the same cyan style. Nothing that touches your seed changed, so words, fingerprints, addresses, keys and descriptors are identical to v1.27.2.</li>
@@ -1480,6 +1481,8 @@ function renderRollChart(rolls, isCoin){
 // If the rolls, word count, dice/coin choice or passphrase change after FORGE, the old result is cleared so it can never be
 // mistaken for (or downloaded as) the result of the new inputs.
 let seedSig = null, seedKind = "";
+// Run counter (v1.29.1): every FORGE, every clearing of the result and every CLEAR ALL moves it on, so a FORGE that is still working out its fingerprint and addresses can never write them back after you have changed something.
+let forgeRun = 0;
 function inputSig(kind){
   const v = id => document.getElementById(id).value;
   const pass = JSON.stringify([v("passphrase"), v("passphrase2")]);
@@ -1488,7 +1491,7 @@ function inputSig(kind){
 }
 function staleCheck(){
   if(seedSig === null || !hasSeed() || inputSig(seedKind) === seedSig) return;
-  seedSig = null;
+  seedSig = null; forgeRun++;
   setResult("You changed the rolls, the word count or the passphrase after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.");
   document.getElementById("fingerprint").textContent = ""; document.getElementById("address").textContent = "";
 }
@@ -3498,7 +3501,7 @@ async function generate(){
 }
 // Everything that happens once the seed words exist (shared by dice/coin and Word draw): show them, fingerprint, addresses, watch-only.
 async function finishSeed(mnemonic, ctx){
-  const pass = document.getElementById("passphrase").value;
+  const pass = document.getElementById("passphrase").value, run = ++forgeRun;
   seedSig = null;
   setResult(mnemonic + "\n\nPassphrase: " + (pass ? "used (" + Array.from(pass).length + " characters, not shown here)" : "none"), mnemonic.split(" "));
   exCtx = ctx; seedKind = ctx ? "rolls" : "wd"; seedSig = inputSig(seedKind);
@@ -3507,28 +3510,36 @@ async function finishSeed(mnemonic, ctx){
   clearWatch(); clearFpIcons();
   try {
     const fp = await mnemonicFingerprint(mnemonic, pass);
+    if(run !== forgeRun) return;
     fpEl.textContent = "Master fingerprint: " + fp + (pass ? " (with passphrase)" : "");
     showFpIcon("fpIcon", fp);
   } catch(e) {
+    if(run !== forgeRun) return;
     fpEl.textContent = "Master fingerprint unavailable: " + e.message;
   }
   try {
-    adEl.textContent = "First receive address (BIP84, m/84'/0'/0'/0/0): " + await mnemonicFirstAddress(mnemonic, pass) + (pass ? " (with passphrase)" : "");
+    const first = await mnemonicFirstAddress(mnemonic, pass);
+    if(run !== forgeRun) return;
+    adEl.textContent = "First receive address (BIP84, m/84'/0'/0'/0/0): " + first + (pass ? " (with passphrase)" : "");
   } catch(e) {
+    if(run !== forgeRun) return;
     adEl.textContent = "First address unavailable: " + e.message;
   }
   try {
     const segwit = await mnemonicAddresses(mnemonic, pass, 5);
     let taproot = []; try { taproot = await mnemonicTaproot(mnemonic, pass, 5); } catch(e) { taproot = []; }
+    if(run !== forgeRun) return;
     showAddrs(segwit, taproot);
-  } catch(e) { clearAddrs(); }
+  } catch(e) { if(run !== forgeRun) return; clearAddrs(); }
+  if(run !== forgeRun) return;
   try {
     watchCtx = {mnemonic, pass};
     document.getElementById("wType").value = "wpkh"; document.getElementById("wAcct").value = "0"; document.getElementById("wNet").value = "main";
     await refreshWatch();
+    if(run !== forgeRun) return;
     document.getElementById("watchBox").style.display = "";
-  } catch(e) { clearWatch(); }
-  if(ms) msBanner();
+  } catch(e) { if(run === forgeRun) clearWatch(); }
+  if(run === forgeRun && ms) msBanner();
 }
 // After a QR code opens, make sure all of it is on screen (clear of the sticky tab bar), not cut off at the bottom.
 function scrollQrIntoView(id){ const el = document.getElementById(id); if(!el) return; try { el.scrollIntoView({behavior: "smooth", block: "nearest"}); } catch(e) {} }
@@ -4133,6 +4144,7 @@ function clearAll(){
 }
 // Wipes the seed, rolls, passphrase and everything derived from them from the page (no question asked). Used by CLEAR ALL and by the multisig flow.
 function wipeSeed(){
+  forgeRun++;
   document.getElementById("rolls").value="";
   document.getElementById("passphrase").value="";
   document.getElementById("passphrase2").value="";
