@@ -1247,7 +1247,7 @@ async function probe(w, mutated) {
     const PH = ['legal winner thank year wave sausage worth useful legal winner thank yellow', 'letter advice cage absurd amount doctor acoustic avoid letter advice cage above', 'ozone drill grab fiber curtain grace pudding thank cruise elder eight picnic', 'gravity machine north sort system female filter attitude volume fold club still', 'hamster diagram private dutch cause delay private meat slide toddler razor blue', 'scheme spot photo card baby mountain device kick cradle pact join borrow'];
     w.eval('practiceNext=0'); const ph = []; for (let i = 0; i < 8; i++) { await w.practiceStart(); ph.push(w.eval('practice.words.join(" ")')); } w.practiceClear();
     if (ph.slice(0, 6).join('|') !== PH.join('|') || ph[6] !== PH[0] || ph[7] !== PH[1]) fails.push('practice: steps through the six published test phrases in order, then starts over');
-    if (/getRandomValues|Math\.random|\.randomUUID|msCrypto/.test(mutated.replace(/const WORDLIST = \[.*?\];/s, ''))) fails.push('no browser random-number call anywhere in the page');
+    if (/getRandomValues|Math\.random|\.randomUUID|msCrypto/.test(mutated.replace(/const WORDLIST = \[.*?\];/s, ''))) fails.push('no browser random-number call anywhere in the page'); }
   { const w2 = loadPage(mutated, (win) => { win.__focus = []; win.HTMLElement.prototype.focus = function (o) { win.__focus.push([this.id, o]); }; });
     await ready(w2); await new Promise((r) => setTimeout(r, 100));
     const fo = w2.__focus.find((x) => x[0] === 'sgGo'); if (!fo || !fo[1] || fo[1].preventScroll !== true || w2.__focus.some((x) => x[0] === 'rolls')) fails.push('page open: the notice button is focused without scrolling');
