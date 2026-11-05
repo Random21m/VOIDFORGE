@@ -814,4 +814,52 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   R.ok(rows.length === 10 && bad === 0, `Make tab: all ${rows.length} address rows (5 SegWit, 5 Taproot) have a QR button and the QR reads back as that address (${bad} mismatches)`);
 }
 
+// 2j. v2.2.0: watch-only view from public keys and descriptors (every type, both networks, both chains) against the independent libraries;
+// payment-request QR read back by jsQR; Electrum seed detection against Node's own HMAC-SHA512.
+{
+  const jsqrDecode = (rows) => { const n = rows.length, S = 6, Q = 4, W = (n + 2 * Q) * S, img = new Uint8ClampedArray(W * W * 4).fill(255);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (rows[y][x]) for (let dy = 0; dy < S; dy++) for (let dx = 0; dx < S; dx++) { const i = ((((y + Q) * S + dy) * W) + ((x + Q) * S + dx)) * 4; img[i] = img[i + 1] = img[i + 2] = 0; }
+    return jsQR(img, W, W); };
+  const until = async (cond, ms = 60000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { try { if (cond()) return true; } catch (e) {} await new Promise((f) => setTimeout(f, 25)); } return false; };
+  const V = { main: { xpub: 0x0488b21e, ypub: 0x049d7cb2, zpub: 0x04b24746 }, test: { xpub: 0x043587cf, ypub: 0x044a5262, zpub: 0x045f1cf6 } };
+  const PUR = { pkh: 44, 'sh-wpkh': 49, wpkh: 84, tr: 86 };
+  const addrOf = (type, pub, N) => type === 'tr' ? btc.p2tr(pub.slice(1), undefined, N).address : type === 'pkh' ? btc.p2pkh(pub, N).address : type === 'sh-wpkh' ? btc.p2sh(btc.p2wpkh(pub, N), N).address : btc.p2wpkh(pub, N).address;
+  const rows = () => [...$('wvList').querySelectorAll('li')].map((li) => li.textContent);
+  let bad = 0, n = 0;
+  for (let r = 0; r < 16; r++) {
+    const mn = entropyToMnemonic(new Uint8Array(nc.randomBytes(16)), wordlist), seed = mnemonicToSeedSync(mn, ''), net = r % 2 ? 'test' : 'main', N = net === 'main' ? btc.NETWORK : btc.TEST_NETWORK;
+    const type = ['wpkh', 'tr', 'sh-wpkh', 'pkh'][r % 4], acct = nc.randomInt(4), kind = type === 'wpkh' && r % 3 === 0 ? 'zpub' : type === 'sh-wpkh' && r % 3 === 0 ? 'ypub' : 'xpub';
+    const root = HDKey.fromMasterSeed(seed, { private: 0, public: V[net][kind] }), path = `m/${PUR[type]}'/${net === 'main' ? 0 : 1}'/${acct}'`, acc = root.derive(path);
+    const fp = HDKey.fromMasterSeed(seed).fingerprint.toString(16).padStart(8, '0');
+    const useDesc = r % 2 === 0, chain = r % 3 === 1 ? 1 : 0;
+    const desc = (type === 'sh-wpkh' ? 'sh(wpkh(' : type + '(') + '[' + fp + path.slice(1).replace(/'/g, 'h') + ']' + HDKey.fromMasterSeed(seed, { private: 0, public: V[net].xpub }).derive(path).publicExtendedKey + '/' + chain + '/*)' + (type === 'sh-wpkh' ? ')' : '');
+    $('wpIn').value = useDesc ? desc : acc.publicExtendedKey; $('wpIn').dispatchEvent(new w.Event('input', { bubbles: true })); await w.openWatchOnly();
+    if (!useDesc && kind === 'xpub') { $('wvType').value = type; $('wvType').dispatchEvent(new w.Event('change', { bubbles: true })); }
+    if (!useDesc) { $('wvChain').value = String(chain); $('wvChain').dispatchEvent(new w.Event('change', { bubbles: true })); }
+    const want = (i) => addrOf(type, acc.deriveChild(chain).deriveChild(i).publicKey, N);
+    await until(() => rows().length === 10 && rows()[0] === want(0), 20000);
+    for (let i = 0; i < 10; i++) { n++; if (rows()[i] !== want(i)) { bad++; console.log('WATCH-ONLY MISMATCH', type, net, kind, useDesc, chain, i); break; } }
+    $('wvNext').click(); await until(() => rows()[0] === want(10), 20000); n++; if (rows()[9] !== want(19)) { bad++; console.log('WATCH-ONLY PAGE 2 MISMATCH', type, net); }
+    n++; if (useDesc !== /\b[0-9a-f]{8}\b/.test($('wvFp').textContent) || (useDesc && !$('wvFp').textContent.includes(fp))) { bad++; console.log('WATCH-ONLY FINGERPRINT', useDesc, fp); }
+  }
+  $('wpIn').value = ''; $('wpIn').dispatchEvent(new w.Event('input', { bubbles: true }));
+  R.ok(bad === 0, `${n} watch-only checks (16 random accounts: every address type, mainnet and testnet, xpub/ypub/zpub and descriptors, receive and change, two pages) equal the independent libraries (${bad} mismatches)`);
+  // payment-request QR codes read back
+  bad = 0; n = 0;
+  for (const [am, lb, ms] of [['0.0015', 'Rent', ''], ['21000000', '', ''], ['', 'Café & tea / 100%', 'Thanks, see you?'], ['0.00000001', 'a=b&c', '#1']]) {
+    const addr = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu', A = w.bip21Amount(am), uri = w.bip21Uri(addr, A.v, lb, ms), dec = jsqrDecode(w.qrMatrix(uri).rows);
+    const u = new URL(uri.replace('bitcoin:', 'bitcoin://'));
+    n++; if (!dec || dec.data !== uri || u.host !== addr || (u.searchParams.get('label') || '') !== lb || (u.searchParams.get('message') || '') !== ms || (u.searchParams.get('amount') || '') !== A.v) { bad++; console.log('BIP21 MISMATCH', am, lb, ms); }
+  }
+  R.ok(bad === 0, `${n} payment-request links decode (jsQR, then a standard URL parser) to exactly the address, amount, label and message (${bad} mismatches)`);
+  // Electrum seed detection against Node's HMAC
+  bad = 0; n = 0; let found = 0;
+  const pfx = (p) => { const h = nc.createHmac('sha512', 'Seed version').update(p).digest('hex'); return h.startsWith('100') ? 'SegWit' : h.startsWith('101') ? 'two-factor (2FA)' : h.startsWith('102') ? 'two-factor (2FA) SegWit' : h.startsWith('01') ? 'standard' : null; };
+  for (let i = 0; i < 3000; i++) {
+    const ws = Array.from({ length: 12 }, () => wordlist[nc.randomInt(2048)]).join(' '), want = pfx(ws), got = await w.electrumSeedType(ws.toUpperCase().replace(/ /g, '  '));
+    n++; if (got !== want) { bad++; console.log('ELECTRUM MISMATCH', ws); } if (want) found++;
+  }
+  R.ok(bad === 0 && found > 0, `${n} random 12-word phrases (${found} of them Electrum-marked): Electrum seed detection equals Node's HMAC-SHA512 rule, capitals and extra spaces ignored (${bad} mismatches)`);
+}
+
 R.done('oracle');

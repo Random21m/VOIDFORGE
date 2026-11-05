@@ -4928,7 +4928,7 @@ async function parseWatchInput(raw){
     if((type === "sh-wpkh") !== (m[6] === ")")) throw new Error("The brackets of this descriptor do not match.");
     if(m[7]){ let ok = false; try { ok = descriptorChecksum(q.slice(0, q.indexOf("#"))) === q; } catch(e) { ok = false; } if(!ok) throw new Error("The descriptor checksum (after #) does not match. Check for a typo."); }
     keyStr = m[4]; if(m[2]) origin = {fp: m[2].toLowerCase(), path: "m" + m[3].replace(/[hH]/g, "'")};
-    if(m[5] === "/1/*") chain = 1;
+    chain = m[5] === "/1/*" ? 1 : 0;
   }
   const k = await parseExtendedKey(keyStr);
   if(k.type === "ms-wsh" || k.type === "ms-sh-wsh") throw new Error("This is a multisig cosigner key (Zpub or Ypub). Use the multisig tool in EXTRA TOOLS.");
@@ -4949,7 +4949,7 @@ async function openWatchOnly(){
   if(w.type){ tSel.value = w.type; } tSel.disabled = w.fixedType;
   const parts = w.origin ? w.origin.path.split("/") : [], last = parts.length === 4 ? parts[3].replace("'", "") : "";
   aIn.value = /^[0-9]+$/.test(last) ? last : "-"; aIn.disabled = true;
-  if(w.chain !== null) cSel.value = String(w.chain);
+  cSel.value = String(w.chain || 0);
   st.className = "status ok";
   st.textContent = "Watch-only wallet opened: " + (w.net === "test" ? "testnet " : "") + "public key" + (w.key.depth !== 3 ? " at depth " + w.key.depth + " (an account key is usually at depth 3; check the addresses carefully)" : "") + "." + (w.fixedType ? "" : " A plain xpub does not say which address type it is for: pick the type your wallet uses.");
   document.getElementById("wvBanner").textContent = "Watch-only: public key only. It shows addresses but can never spend, and it holds no seed words.";

@@ -341,6 +341,8 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     { const seed=await t.w.mnemonicToSeed(AB,''), wo=await t.w.watchOnlyFromSeed(seed,'wpkh',0,'main'), desc=wo.receive;
       await openW(desc); await until(()=>rows().length===10);
       ok(rows()[0]==='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'&&/73c5da0a/.test(t.$('wvFp').textContent)&&t.$('wvIcon').innerHTML.includes('<svg')&&/\[73c5da0a\/84'\/0'\/0'\]\/0\/index/.test(t.$('wvPath').textContent),'watch-only: a descriptor gives the fingerprint, its picture and the key origin in the path');
+      await openW(wo.change); await until(()=>rows().length===10&&t.$('wvChain').value==='1'); const ch1=rows()[0]; await openW(desc); await until(()=>rows()[0]==='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu');
+      ok(t.$('wvChain').value==='0'&&ch1!==rows()[0]&&/Change/.test('Change'),'watch-only: a /1/* descriptor opens change addresses, and a /0/* one goes back to receive');
       await openW(desc.slice(0,-1)+(desc.slice(-1)==='a'?'b':'a')); ok(/checksum/.test(t.$('wpStatus').textContent)&&t.$('walletView').style.display==='none','watch-only: a wrong descriptor checksum is refused');
       await openW('sh(wpkh('+ZPUB+'/0/*))'); ok(/but the key is a zpub/.test(t.$('wpStatus').textContent),'watch-only: a descriptor type that does not match the key is refused'); }
     await openW('xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu'); ok(/PRIVATE/.test(t.$('wpStatus').textContent)&&t.$('walletView').style.display==='none','watch-only: a private key is refused');
