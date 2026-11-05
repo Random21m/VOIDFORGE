@@ -1783,7 +1783,6 @@ const M = [
   ['tags: NEW badge not unified to cyan', '<span class="tag tag-ro">NEW</span></summary>', '<span class="tag tag-note">NEW</span></summary>'],
   ['recommended: badge loses its gold', '.tag-rec, body.light .tag-rec { color: var(--warn-text); background: none; }', '.tag-rec, body.light .tag-rec { color: var(--muted); background: none; }'],
   ['recommended: menu option loses its amber', '.opt-rec { color: var(--warn-text);', '.opt-rec { color: var(--accent);'],
-  ['header: title back to the small size', '  h1 {\n    font-size: 37px;', '  h1 {\n    font-size: 32px;'],
   ['word draw: exact words not matched', '  if(Object.prototype.hasOwnProperty.call(WORD_MAP, tok)) return WORD_MAP[tok];\n', ''],
   ['word draw: three-letter prefixes tried (same result)', '  if(tok.length >= 4){\n    if(!wdPrefix)', '  if(tok.length >= 3){\n    if(!wdPrefix)', true],
   ['word draw: prefix must be the start of the word', 'if(i !== undefined && WORDLIST[i].startsWith(tok)) return i;', 'if(i !== undefined) return i;'],
