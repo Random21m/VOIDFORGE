@@ -193,13 +193,13 @@
   }
   .rc { margin-top:10px; padding:8px 10px 6px; border:1px solid var(--border); border-radius:8px; background:var(--surface); }
   .rc-title { font-size:12.5px; color:var(--muted); margin-bottom:6px; }
-  .rc-cols { display:flex; gap:6px; align-items:flex-end; height:84px; position:relative; }
-  .rc-col { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; min-width:0; }
-  .rc-num { font-size:13px; font-weight:700; line-height:1.1; }
-  .rc-bar { width:70%; max-width:34px; background:var(--accent); border-radius:3px 3px 0 0; min-height:1px; }
-  .rc-exp { position:absolute; left:0; right:0; border-top:1px dashed var(--muted); pointer-events:none; }
-  .rc-labels { display:flex; gap:6px; margin-top:3px; }
-  .rc-label { flex:1; text-align:center; font-size:15px; color:var(--muted); line-height:1.1; }
+  .rc-rows { display:flex; flex-direction:column; gap:7px; margin-bottom:8px; }
+  .rc-row { display:flex; align-items:center; gap:10px; }
+  .rc-label { width:1.6em; text-align:center; font-size:16px; color:var(--muted); line-height:1; flex:none; }
+  .rc-track { flex:1; min-width:0; height:10px; background:var(--bg); border-radius:5px; position:relative; }
+  .rc-bar { height:100%; background:var(--accent); border-radius:5px; min-width:0; }
+  .rc-exp { position:absolute; top:-3px; bottom:-3px; width:0; border-left:2px solid var(--muted); pointer-events:none; }
+  .rc-num { width:2.2em; text-align:right; font-size:13px; font-weight:700; line-height:1; flex:none; }
   .rc-note { font-size:12.5px; color:var(--muted); margin-top:4px; }
   .hint { font-size: 13.5px; color: var(--muted); }
   .dict-cats { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
@@ -624,6 +624,9 @@
   #cardGen .gen-right { position: static; max-height: none; overflow: visible; background: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; padding: 18px 0 0; margin-top: 18px; }
   @media (min-width: 861px) { #cardGen .gen-right { max-height: none; overflow: visible; } }
   .seed-title { color: var(--muted); letter-spacing: .12em; }
+  .seed-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 8px; }
+  .big-count { font-size: 16px; line-height: 1.3; margin-top: 0; }
+  .big-sub { font-size: 13px; margin-bottom: 0; }
   #wordGrid, #cardGen .gen-right #wordGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   @media (max-width: 559px) { #wordGrid, #cardGen .gen-right #wordGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .wcell { animation: none; box-shadow: none; font-size: 18px; font-weight: 700; padding: 10px 12px; min-width: 0; }
@@ -758,7 +761,7 @@
       </div>
       <div id="wdCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
       <div id="wdMsg" class="hint" aria-live="polite" style="margin:4px 0 0; color:var(--danger);"></div>
-      <div class="hint" style="margin:4px 0 0;">The passphrase (if any) comes from Advanced options below. Coin: pick which side is 1 and keep it the same for every flip.</div>
+      <div class="hint" style="margin:4px 0 0;">The passphrase (if any) is added after the words are made, in the box under them. Coin: pick which side is 1 and keep it the same for every flip.</div>
       <div class="btn-row" style="margin-top:8px;">
         <button type="button" id="wdBtn" onclick="wdGenerate()" disabled>MAKE SEED FROM WORDS</button>
         <button type="button" class="secondary small" onclick="wdClear()">CLEAR</button>
@@ -775,16 +778,6 @@
         <div id="demoGrid" aria-label="Demo words, not your seed"></div>
       </div>
     </details>
-    </details>
-    <details id="advanced" data-g="3">
-      <summary id="advSummary">Advanced options (passphrase, note)</summary>
-      <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
-        <input type="password" id="passphrase" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Optional passphrase" style="flex:1; min-width:0;" oninput="updateAdvSummary()">
-        <button type="button" class="secondary small" onclick="togglePassphrase(this)">SHOW</button>
-      </div>
-      <input type="password" id="passphrase2" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Confirm passphrase (must match)" style="margin-top:6px;" oninput="updateAdvSummary()">
-      <div style="font-size:13.5px; color:var(--muted); margin-top:6px;">A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> makes a different wallet from the same words. Write it down separately: without it the funds cannot be recovered. Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div>
-      <input type="text" id="note" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Optional note (not used in the seed)" style="margin-top:6px;">
     </details>
     <details id="rollStats" data-g="2">
       <summary>Your rolls: history and fairness chart<small>See what you rolled and whether the faces came up evenly.</small></summary>
@@ -813,7 +806,18 @@
       <button class="secondary small" onclick="copyAddress(this)">COPY ADDRESS</button>
       <button class="secondary small needs-words" onclick="downloadSeed()">DOWNLOAD</button>
     </div>
+    <details id="advanced" data-g="3 4 5">
+      <summary id="advSummary">Passphrase and note (optional)</summary>
+      <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
+        <input type="password" id="passphrase" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Optional passphrase" style="flex:1; min-width:0;" oninput="updateAdvSummary()">
+        <button type="button" class="secondary small" onclick="togglePassphrase(this)">SHOW</button>
+      </div>
+      <input type="password" id="passphrase2" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Confirm passphrase (must match)" style="margin-top:6px;" oninput="updateAdvSummary()">
+      <div style="font-size:13.5px; color:var(--muted); margin-top:6px;">A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> makes a different wallet from the same words. Write it down separately: without it the funds cannot be recovered. Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div>
+      <input type="text" id="note" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Optional note (not used in the seed)" style="margin-top:6px;">
+    </details>
     <div data-g="4 5" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;"><div class="fp" id="fingerprint"></div><div id="fpIcon" class="lh" title="Fingerprint picture (LifeHash): the same picture Sparrow Wallet shows for this fingerprint"></div></div>
+    <div id="fpBaseRow" data-g="4 5" style="display:none; align-items:center; gap:14px; flex-wrap:wrap; margin-top:6px;"><div class="fp" id="fpBase"></div><div id="fpBaseIcon" class="lh" title="Fingerprint picture (LifeHash) of the wallet without the passphrase"></div></div>
     <div id="address" data-g="4 5" style="margin-top:6px; font-size:13.5px; word-break:break-all; color:var(--muted);"></div>
    </div>
    <div class="gen-bottom">
@@ -1451,23 +1455,22 @@ function renderRollChart(rolls, isCoin){
   const counts = faces.map(f => { let c = 0; for(const ch of rolls) if(ch === f) c++; return c; });
   const expected = rolls.length / faces.length;
   const top = Math.max(Math.max.apply(null, counts), expected) || 1;
-  const px = 64;
   box.textContent = "";
   const title = document.createElement("div"); title.className = "rc-title";
-  title.textContent = "How many times each " + (isCoin ? "side" : "face") + " came up (dashed line = even share)";
+  title.textContent = "How many times each " + (isCoin ? "side" : "face") + " came up (tick = even share)";
   box.appendChild(title);
-  const cols = document.createElement("div"); cols.className = "rc-cols";
-  const labels = document.createElement("div"); labels.className = "rc-labels";
+  const rows = document.createElement("div"); rows.className = "rc-rows";
   faces.forEach((f, i) => {
-    const col = document.createElement("div"); col.className = "rc-col";
+    const row = document.createElement("div"); row.className = "rc-row";
+    const lab = document.createElement("div"); lab.className = "rc-label"; lab.textContent = glyph[f];
+    const track = document.createElement("div"); track.className = "rc-track";
+    const bar = document.createElement("div"); bar.className = "rc-bar"; bar.style.width = (counts[i] / top * 100).toFixed(1) + "%";
+    const tick = document.createElement("div"); tick.className = "rc-exp"; tick.style.left = (expected / top * 100).toFixed(1) + "%";
+    track.appendChild(bar); track.appendChild(tick);
     const num = document.createElement("div"); num.className = "rc-num"; num.textContent = String(counts[i]);
-    const bar = document.createElement("div"); bar.className = "rc-bar"; bar.style.height = Math.round(counts[i] / top * px) + "px";
-    col.appendChild(num); col.appendChild(bar); cols.appendChild(col);
-    const lab = document.createElement("div"); lab.className = "rc-label"; lab.textContent = glyph[f]; labels.appendChild(lab);
+    row.appendChild(lab); row.appendChild(track); row.appendChild(num); rows.appendChild(row);
   });
-  const exp = document.createElement("div"); exp.className = "rc-exp"; exp.style.bottom = Math.round(expected / top * px) + "px";
-  cols.appendChild(exp);
-  box.appendChild(cols); box.appendChild(labels);
+  box.appendChild(rows);
   const note = document.createElement("div"); note.className = "rc-note";
   note.textContent = "Even share: " + (Math.round(expected * 10) / 10) + " each. Real dice or coins drift above and below it; only large, lasting gaps are a concern.";
   box.appendChild(note);
@@ -1487,14 +1490,14 @@ let seedSig = null, seedKind = "";
 let forgeRun = 0;
 function inputSig(kind){
   const v = id => document.getElementById(id).value;
-  const pass = JSON.stringify([v("passphrase"), v("passphrase2")]);
-  if(kind === "wd") return "wd|" + pass;  // a seed from the Word draw box depends on the passphrase only
-  return "rolls|" + getMode() + "|" + document.querySelector('input[name="words"]:checked').value + "|" + clean(v("rolls")) + "|" + pass;
+  // The passphrase is not part of the words (v2.1.0): changing it after FORGE re-works the fingerprint and addresses (rePass) instead of clearing the words.
+  if(kind === "wd") return "wd";  // a seed from the Word draw box does not depend on the rolls box at all
+  return "rolls|" + getMode() + "|" + document.querySelector('input[name="words"]:checked').value + "|" + clean(v("rolls"));
 }
 function staleCheck(){
   if(seedSig === null || !hasSeed() || inputSig(seedKind) === seedSig) return;
   seedSig = null; forgeRun++;
-  setResult("You changed the rolls, the word count or the passphrase after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.");
+  setResult("You changed the rolls, the word count or the dice/coin choice after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.");
   document.getElementById("fingerprint").textContent = ""; document.getElementById("address").textContent = "";
 }
 function updateCount(){
@@ -1539,7 +1542,7 @@ function updateCount(){
   updateSeedPanel();
 }
 document.getElementById("rolls").oninput = updateCount;
-["passphrase", "passphrase2"].forEach(id => document.getElementById(id).addEventListener("input", staleCheck));
+["passphrase", "passphrase2"].forEach(id => document.getElementById(id).addEventListener("input", rePass));
 document.querySelectorAll('input[name="words"]').forEach(r=>r.onchange=updateCount);
 
 function undoRoll(){
@@ -3494,27 +3497,35 @@ async function generate(){
     document.getElementById("address").textContent = "";
     return;
   }
-  if(document.getElementById("passphrase").value !== document.getElementById("passphrase2").value){
-    setResult("The two passphrase boxes do not match. A mistyped passphrase gives a different wallet, so fix them (or clear both) and try again.");
-    document.getElementById("advanced").open = true;
-    document.getElementById("fingerprint").textContent = "";
-    document.getElementById("address").textContent = "";
-    return;
-  }
   const an = analyzeRolls(rolls, getMode()==="coin");
   if(an.level==="bad" && !confirm("Your input looks non-random (" + an.problems.join("; ") + "). A seed made from it may be weak. Forge anyway?")) return;
   const mnemonic = await rollsToMnemonic(rolls, wc);
   await finishSeed(mnemonic, {rolls, words: mnemonic.split(" "), coin: getMode()==="coin"});
 }
 // Everything that happens once the seed words exist (shared by dice/coin and Word draw): show them, fingerprint, addresses, watch-only.
+// The passphrase line that goes into the result text (and so into DOWNLOAD and the printed sheets).
+function passPhraseLine(p1, p2){
+  if(p1 !== p2) return "Passphrase: the two boxes do not match (fix them or clear both)";
+  return "Passphrase: " + (p1 ? "used (" + Array.from(p1).length + " characters, not shown here)" : "none");
+}
 async function finishSeed(mnemonic, ctx){
-  const pass = document.getElementById("passphrase").value, run = ++forgeRun;
+  const p1 = document.getElementById("passphrase").value, p2 = document.getElementById("passphrase2").value, run = ++forgeRun;
   seedSig = null;
-  setResult(mnemonic + "\n\nPassphrase: " + (pass ? "used (" + Array.from(pass).length + " characters, not shown here)" : "none"), mnemonic.split(" "));
+  setResult(mnemonic + "\n\n" + passPhraseLine(p1, p2), mnemonic.split(" "));
   exCtx = ctx; seedKind = ctx ? "rolls" : "wd"; seedSig = inputSig(seedKind);
+  await deriveShown(mnemonic, p1, p2, run);
+}
+// Works out and shows everything that depends on the passphrase: fingerprints (with and without it), addresses, the watch-only box.
+// The words never depend on it. "run" is the run counter, so work that is overtaken by a newer FORGE or passphrase edit writes nothing.
+async function deriveShown(mnemonic, p1, p2, run){
   const fpEl = document.getElementById("fingerprint"), adEl = document.getElementById("address");
-  fpEl.textContent = "Master fingerprint: computing..."; adEl.textContent = "";
   clearWatch(); clearFpIcons();
+  if(p1 !== p2){
+    fpEl.textContent = "Fingerprint and addresses are not shown: the two passphrase boxes do not match. A mistyped passphrase gives a different wallet.";
+    adEl.textContent = ""; return;
+  }
+  const pass = p1;
+  fpEl.textContent = "Master fingerprint: computing..."; adEl.textContent = "";
   try {
     const fp = await mnemonicFingerprint(mnemonic, pass);
     if(run !== forgeRun) return;
@@ -3523,6 +3534,15 @@ async function finishSeed(mnemonic, ctx){
   } catch(e) {
     if(run !== forgeRun) return;
     fpEl.textContent = "Master fingerprint unavailable: " + e.message;
+  }
+  if(pass){
+    try {
+      const base = await mnemonicFingerprint(mnemonic, "");
+      if(run !== forgeRun) return;
+      document.getElementById("fpBase").textContent = "Without the passphrase: " + base;
+      document.getElementById("fpBaseRow").style.display = "flex";
+      showFpIcon("fpBaseIcon", base);
+    } catch(e) { if(run !== forgeRun) return; }
   }
   try {
     const first = await mnemonicFirstAddress(mnemonic, pass);
@@ -3547,6 +3567,22 @@ async function finishSeed(mnemonic, ctx){
     document.getElementById("watchBox").style.display = "";
   } catch(e) { if(run === forgeRun) clearWatch(); }
   if(run === forgeRun && ms) msBanner();
+}
+// The passphrase boxes changed after a seed was made: the words stay, everything that depends on the passphrase is worked out again.
+async function rePass(){
+  if(!hasSeed()) return;
+  const p1 = document.getElementById("passphrase").value, p2 = document.getElementById("passphrase2").value, run = ++forgeRun;
+  const mnemonic = document.getElementById("genResult").textContent.split("\n")[0], line = passPhraseLine(p1, p2);
+  drillEnd();
+  document.getElementById("genResult").textContent = mnemonic + "\n\n" + line;
+  document.getElementById("passNote").textContent = line;
+  await deriveShown(mnemonic, p1, p2, run);
+}
+// DOWNLOAD and the print sheets say whether a passphrase was used, so they wait until the two boxes agree.
+function passMismatch(){
+  if(document.getElementById("passphrase").value === document.getElementById("passphrase2").value) return false;
+  alert("The two passphrase boxes do not match. Fix them (or clear both) first, so the file or sheet says the right thing about your passphrase.");
+  return true;
 }
 // After a QR code opens, make sure all of it is on screen (clear of the sticky tab bar), not cut off at the bottom.
 function scrollQrIntoView(id){ const el = document.getElementById(id); if(!el) return; try { el.scrollIntoView({behavior: "smooth", block: "nearest"}); } catch(e) {} }
@@ -3640,6 +3676,7 @@ function printSqBlank(){
 }
 function printSeedQr(){
   if(!hasSeed()) return alert("Generate a seed first");
+  if(passMismatch()) return;
   if(!sqRows) return alert("Press SHOW SEEDQR or SHOW COMPACTSEEDQR first, then print the one you want.");
   if(!confirm("Printing sends your seed (as a QR code) to a printer and its spooler. Only print on a trusted offline computer with a directly connected printer. The passphrase is never printed. Continue?")) return;
   const n = sqRows.length, words = document.getElementById("genResult").textContent.split("\n")[0].split(" ").length;
@@ -3656,6 +3693,7 @@ function clearVerifyIcons(){
 }
 function clearFpIcons(){
   document.getElementById("fpIcon").textContent = "";
+  document.getElementById("fpBaseIcon").textContent = ""; document.getElementById("fpBase").textContent = ""; document.getElementById("fpBaseRow").style.display = "none";
   clearVerifyIcons();
 }
 function clearAddrs(){
@@ -4001,7 +4039,7 @@ function toggleVerifyPassphrase(btn){
 }
 function updateAdvSummary(){
   const has = document.getElementById("passphrase").value !== "" || document.getElementById("passphrase2").value !== "";
-  document.getElementById("advSummary").textContent = "Advanced options (passphrase, note)" + (has ? " \u2014 PASSPHRASE SET" : "");
+  document.getElementById("advSummary").textContent = "Passphrase and note (optional)" + (has ? " \u2014 PASSPHRASE SET" : "");
 }
 // One place that sets the result area. `words` (array) means a real seed is showing.
 // Display-only: show just the first four letters of each word (every BIP39 word is unique by its first four letters), e.g. for stamping metal backups.
@@ -4100,6 +4138,7 @@ function togglePassphrase(btn){
 }
 function printSeed(){
   if(!hasSeed()) return alert("Generate a seed first");
+  if(passMismatch()) return;
   const phrase = document.getElementById("genResult").textContent.split("\n")[0];
   if(!confirm("Printing sends your seed to a printer and its spooler. Only print on a trusted offline computer with a directly connected printer. The passphrase is never printed. Continue?")) return;
   const po = document.getElementById("printOnly"); po.textContent = "";
@@ -4455,6 +4494,7 @@ function downloadTool() {
 
 function downloadSeed() {
   if (!hasSeed()) return alert("Generate a seed first");
+  if (passMismatch()) return;
   const text = document.getElementById("genResult").textContent;
   if (!confirm("This saves your seed and rolls to a PLAIN-TEXT file. Only do this on a trusted offline computer. The passphrase is not saved. Continue?")) return;
   const rolls = (exCtx && exCtx.rolls) || document.getElementById("rolls").value; // the rolls that made these words, not whatever is typed now
@@ -4787,12 +4827,6 @@ async function wdGenerate(){
   const wc = +document.getElementById("wdLen").value, need = wdNeeds(wc);
   const pr = wdParse(document.getElementById("wdWords").value), flips = document.getElementById("wdFlips").value.replace(/[^01]/g, "");
   if(pr.bad.length || pr.count !== need.words || flips.length !== need.flips){ wdUpdate(); return; }
-  if(document.getElementById("passphrase2").value !== document.getElementById("passphrase").value){
-    setResult("The two passphrase boxes do not match. A mistyped passphrase gives a different wallet, so fix them (or clear both) and try again.");
-    document.getElementById("advanced").open = true;
-    document.getElementById("fingerprint").textContent = ""; document.getElementById("address").textContent = "";
-    return;
-  }
   const same = pr.idx.every(n => n === pr.idx[0]), sorted = pr.idx.every((n, i) => i === 0 || n > pr.idx[i - 1]);
   if((same || sorted) && !confirm("Your words look " + (same ? "all the same" : "alphabetical") + ", which is extremely unlikely for random draws. A seed made from them may be weak. Make it anyway?")) return;
   if(/^(0+|1+)$/.test(flips) && !confirm("All of your coin flips are the same (" + flips + "). That can happen by chance, but check that you really flipped a coin and typed them in order. Continue?")) return;
