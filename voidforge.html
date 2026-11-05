@@ -758,7 +758,7 @@
   <div class="card" id="cardGen">
    <div class="gen-left">
     <h2>MAKE A SEED</h2>
-    <p class="sub">Pick 12 or 24 words, enter your dice rolls or coin flips, then press FORGE SEED and write the words on paper.</p>
+    <p class="sub" id="stepWhy">Pick 12 or 24 words, enter your dice rolls or coin flips, then press FORGE SEED and write the words on paper.</p>
 
     <div class="ms-ban" id="msBanner" style="display:none" aria-live="polite">
       <div class="ms-t" id="msBanTitle"></div>
@@ -4226,6 +4226,12 @@ function updateSeedPanel(){
   bs.textContent = seed ? "Seed made. Write the words down." : met ? "Enough " + unit + ". Press FORGE SEED." : (need - n) + " more " + unit + " to go";
   bs.className = "big-sub " + (met ? "met" : "short"); rc.className = met ? "met" : "short";
   const cur = seed ? 4 : met ? 3 : 2;
+  const WHY = {
+    2: method === "words" ? "Pick each word yourself from a bag of word tiles. The page only checks them and builds the seed." : "Your dice or coin are the randomness. VOIDFORGE only runs them through SHA-256, so nothing hidden is mixed in.",
+    3: "Press FORGE SEED to turn your rolls into the BIP39 words that are your wallet\u2019s backup.",
+    4: "Write the words on paper, in order. A passphrase is optional and makes a completely different wallet."
+  };
+  document.getElementById("stepWhy").textContent = WHY[cur];
   document.querySelectorAll("#stepBar li").forEach(li => { const k = +li.getAttribute("data-s"); li.className = k < cur ? "done" : k === cur ? "cur" : ""; if(k === cur) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current"); });
 }
 

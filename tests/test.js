@@ -812,6 +812,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     // step bar
     const cur=()=>[...tc.d.querySelectorAll('#stepBar li')].map(l=>l.className||'-').join(',');
     tc.mode('dice'); tc.set(''); ok(cur()==='done,cur,-,-,-'&&tc.d.querySelectorAll('#stepBar li[aria-current]').length===1,'step bar: Choose done, Roll current, one step marked current');
+    { const why=()=>tc.$('stepWhy').textContent; ok(/SHA-256, so nothing hidden/.test(why()),'step help: Roll step explains that only SHA-256 is applied'); tc.set(rnd(50,6)); ok(/Press FORGE SEED to turn your rolls into the BIP39 words/.test(why()),'step help: Forge step says what FORGE does'); tc.$('forgeBtn').disabled=false; await tc.w.generate(); ok(/passphrase is optional and makes a completely different wallet/.test(why()),'step help: Passphrase step says what a passphrase does'); tc.w.wipeSeed(); ok(/SHA-256, so nothing hidden/.test(why()),'step help: back to the Roll text after wiping'); tc.set(''); }
     tc.set(rnd(50,6)); ok(cur()==='done,done,cur,-,-','step bar: Forge is current once there are enough rolls');
     tc.$('forgeBtn').disabled=false; await tc.w.generate(); ok(cur()==='done,done,done,cur,-'&&/Seed made/.test(sub().textContent),'step bar: Passphrase (optional) is current after forging');
     tc.w.wipeSeed(); ok(cur()==='done,cur,-,-,-'&&big().textContent==='0 / 50','step bar and counter go back to the start after wiping');

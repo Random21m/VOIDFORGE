@@ -1206,6 +1206,10 @@ async function probe(w, mutated) {
     if (cur() !== 'done,cur,-,-,-' || w.document.querySelectorAll('#stepBar li[aria-current]').length !== 1 || w.document.querySelector('#stepBar li[aria-current]').getAttribute('data-s') !== '2') fails.push('layout: step bar starts at Roll with one step marked current');
     setR(D50); if (cur() !== 'done,done,cur,-,-' || w.document.querySelector('#stepBar li[aria-current]').getAttribute('data-s') !== '3') fails.push('layout: step bar moves to Forge when there are enough rolls');
     await w.generate(); if (cur() !== 'done,done,done,cur,-' || !/Seed made/.test(sub().textContent) || w.document.querySelector('#stepBar li[aria-current]').getAttribute('data-s') !== '4') fails.push('layout: step bar moves to Check once a seed exists');
+    { const why = () => $('stepWhy').textContent; w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); setR('');
+      if (!/SHA-256, so nothing hidden/.test(why())) fails.push('step help: the Roll step explains that only SHA-256 is applied');
+      setR(D50); if (!/Press FORGE SEED to turn your rolls into the BIP39 words/.test(why())) fails.push('step help: the Forge step says what FORGE does');
+      await w.generate(); if (!/passphrase is optional and makes a completely different wallet/.test(why())) fails.push('step help: the Passphrase step says what a passphrase does'); }
     const real = $('genResult').textContent.split('\n')[0].split(' ');
     const cells = () => [...$('wordGrid').children];
     if (cells().length !== 12 || cells().some((c) => c.classList.contains('empty')) || cells().map((c) => c.lastChild.textContent).join(' ') !== real.join(' ') || $('wordGrid').classList.contains('slots') || $('wordGrid').style.display !== 'grid' || $('genResult').classList.contains('nores')) fails.push('layout: forging replaces the empty slots with the real words');
@@ -1795,6 +1799,9 @@ const M = [
   ['word draw: dice explainer left showing', '  document.getElementById("explainBox").style.display = "none";\n  wdShow(st, wc);', '  wdShow(st, wc);'],
   ['word draw: steps not shown', '  wdShow(st, wc);\n  if(guideOn)', '  if(guideOn)'],
   ['word draw: guide stays on step 1', '  wdShow(st, wc);\n  if(guideOn){ guideN = 3; guideRender(); }', '  wdShow(st, wc);\n  if(guideOn){ guideRender(); }'],
+  ['step help: Roll text lost', 'Your dice or coin are the randomness. VOIDFORGE only runs them through SHA-256, so nothing hidden is mixed in.', 'Your dice or coin are the randomness.'],
+  ['step help: Forge step shows no text', '    3: "Press FORGE SEED to turn your rolls into the BIP39 words that are your wallet\\u2019s backup.",', '    3: "",'],
+  ['step help: never updated', '  document.getElementById("stepWhy").textContent = WHY[cur];\n', ''],
   ['preview: grey note stays after FORGE', 'wdWipe(); drillEnd(); if(words) previewClear(); document.body', 'wdWipe(); drillEnd(); document.body'],
   ['word draw: dice FORGE leaves old steps', 'function setResult(text, words){\n  wdWipe(); drillEnd(); if(words) previewClear(); document.body.classList.toggle("has-seed", !!words);\n', 'function setResult(text, words){\n  drillEnd(); if(words) previewClear(); document.body.classList.toggle("has-seed", !!words);\n'],
   ['word draw: CLEAR leaves the boxes', '  wdClear();\n', ''],
