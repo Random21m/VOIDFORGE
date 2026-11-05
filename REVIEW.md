@@ -1,6 +1,6 @@
 # Review guide
 
-VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines in `voidforge.html`. Line numbers are approximate (v1.29.0).
+VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines in `voidforge.html`. Line numbers are approximate (v1.29.1).
 
 | What | Where | Look for |
 |---|---|---|
@@ -46,7 +46,7 @@ VOIDFORGE is meant to be read. The security-relevant code is a few hundred lines
 
 **Support this project / Bitcoin dictionary (v1.27.3):** `drawSupportQr`, `copySupport`, `buildDict`, `dictFilter` are both display-only with no secret-adjacent data; nothing here reads the seed or sends anything over the network (the Lightning QR is drawn from a fixed, published text value; the dictionary is a static array filtered client-side). Worth checking only for the honesty of the claims made in the UI text, and that the BIP/SLIP-coverage test (`tests/test.js`) still fails if the page names a standard the dictionary lacks an entry for.
 
-**Stale-result guard (v1.26.1):** `inputSig`, `staleCheck` and `seedSig` record the inputs (rolls, word count, mode, both passphrases) at the moment of FORGE. If any of them changes afterwards, the words, fingerprint, address and watch-only data are cleared, so what is on screen (and what DOWNLOAD saves) always belongs to the inputs that made it. A Word draw seed depends on the passphrase only. The saved file uses the rolls remembered from FORGE, not whatever is in the box now.
+**Stale-result guard (v1.26.1):** `inputSig`, `staleCheck` and `seedSig` record the inputs (rolls, word count, mode, both passphrases) at the moment of FORGE. If any of them changes afterwards, the words, fingerprint, address and watch-only data are cleared, so what is on screen (and what DOWNLOAD saves) always belongs to the inputs that made it. A Word draw seed depends on the passphrase only. The saved file uses the rolls remembered from FORGE, not whatever is in the box now. **Run counter (v1.29.1):** `forgeRun` moves on at every FORGE (`finishSeed`), every clearing by `staleCheck` and every `wipeSeed` (CLEAR ALL). `finishSeed` checks it after each `await` (fingerprint, first address, address list, watch-only data) and stops if it has moved, so an older run that is still working out its fingerprint and addresses can never write them back after you changed an input or cleared the page.
 
 Tests worth reading too: `tests/oracle.test.mjs` compares the seed math with `@scure` on random inputs, and `tests/mutation.test.mjs` shows which deliberate breaks the in-page self-test catches and which only the CI probe catches.
 

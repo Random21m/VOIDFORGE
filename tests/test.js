@@ -306,6 +306,13 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     g.set(R1.slice(0,49)+(R1[49]==='1'?'2':'1')); ok(!seedOn()&&!fpOn()&&!adOn(),'stale guard: changing a roll after FORGE clears the result');
     await forge(R1); g.set(R1.slice(0,-1)); ok(!seedOn()&&!fpOn()&&!adOn(),'stale guard: removing a roll after FORGE clears the result');
     await forge(R1); g.w.undoRoll(); ok(!seedOn(),'stale guard: UNDO after FORGE clears the result');
+    { // v1.29.1 run counter: an edit, or CLEAR ALL, while FORGE is still working out the fingerprint and addresses must not let the old run write them back
+      const mid=async(act)=>{ g.mode('dice'); g.words(12); g.set(R1); g.$('passphrase').value=''; g.$('passphrase2').value=''; const p=g.w.generate(); for(let i=0;i<5000&&!/computing/.test(g.$('fingerprint').textContent);i++) await new Promise(r=>setTimeout(r,0)); const saw=/computing/.test(g.$('fingerprint').textContent); act(); await p; await new Promise(r=>setTimeout(r,400)); return saw; };
+      ok(await mid(()=>typePass('abc')), 'run counter: the edit really landed while the fingerprint was still being computed');
+      ok(!seedOn()&&!fpOn()&&!adOn()&&g.$('addrList').textContent===''&&!/computing/.test(g.$('fingerprint').textContent),'run counter: an edit during FORGE leaves no old fingerprint, address or address list behind');
+      typePass(''); await mid(()=>g.w.wipeSeed());
+      ok(!seedOn()&&!fpOn()&&!adOn()&&g.$('addrList').textContent==='','run counter: CLEAR ALL during FORGE leaves no old fingerprint, address or address list behind');
+      typePass(''); await forge(R1); ok(seedOn()&&fpOn()&&adOn(),'run counter: a normal FORGE afterwards still shows its fingerprint and address'); }
     await forge(R1); g.words(24); ok(!seedOn()&&!fpOn()&&g.d.querySelectorAll('#wordGrid .wcell').length===24&&g.d.querySelectorAll('#wordGrid .wcell:not(.empty)').length===0,'stale guard: changing the word count after FORGE clears the result');
     await forge(R1); g.mode('coin'); ok(!seedOn()&&!fpOn(),'stale guard: switching dice/coin after FORGE clears the result'); g.mode('dice');
     await forge(R1,'p1'); g.$('passphrase2').value='p2'; g.$('passphrase2').dispatchEvent(new g.w.Event('input',{bubbles:true})); ok(!seedOn(),'stale guard: editing the confirm-passphrase box also clears the result');

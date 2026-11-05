@@ -224,6 +224,14 @@ async function probe(w, mutated) {
     await forge(D50, 'pp'); $('passphrase').value = 'pq'; ev('passphrase'); if (on()) fails.push('stale: editing an existing passphrase clears the result');
     await forge(); $('rolls').value = D50.slice(0, 49) + (D50[49] === '1' ? '2' : '1'); w.updateCount(); if (!gone()) fails.push('stale: changing a roll clears everything');
     await forge(); w.undoRoll(); if (on()) fails.push('stale: UNDO clears the result');
+    { // v1.29.1 run counter: an old FORGE must not write its fingerprint and addresses back after an edit or CLEAR ALL
+      const mid = async (act) => { mode('dice'); words(12); $('rolls').value = D50; ev('rolls'); $('passphrase').value = ''; $('passphrase2').value = ''; const pr = w.generate(); for (let i = 0; i < 5000 && !/computing/.test($('fingerprint').textContent); i++) await new Promise((r) => setTimeout(r, 0)); const saw = /computing/.test($('fingerprint').textContent); act(); await pr; await new Promise((r) => setTimeout(r, 400)); return saw; };
+      const leftover = () => /[0-9a-f]{8}/.test($('fingerprint').textContent) || /bc1q/.test($('address').textContent) || $('addrList').textContent !== '';
+      if (!(await mid(() => { $('passphrase').value = 'abc'; ev('passphrase'); }))) fails.push('run counter: the edit lands while the fingerprint is computing');
+      if (leftover()) fails.push('run counter: an edit during FORGE leaves an old fingerprint, address or list behind');
+      $('passphrase').value = ''; ev('passphrase'); await mid(() => w.wipeSeed());
+      if (leftover()) fails.push('run counter: CLEAR ALL during FORGE leaves an old fingerprint, address or list behind');
+      $('passphrase').value = ''; ev('passphrase'); }
     await forge(); words(24); if (!gone()) fails.push('stale: changing the word count clears everything'); words(12);
     await forge(); mode('coin'); if (!gone()) fails.push('stale: switching dice/coin clears everything'); mode('dice');
     await forge('1'.repeat(50)); mode('coin'); if (!gone()) fails.push('stale: switching dice/coin clears even when the cleaned rolls look the same'); mode('dice');
@@ -2306,6 +2314,11 @@ const M = [
   ['exit guide: button moved into step 1 only', '<div class="gtop"><div class="gtitle" id="gTitle">Step 1 of 5</div><button type="button" class="secondary small" id="gExit" onclick="toggleGuide()">EXIT GUIDE</button></div>', '<div class="gtop"><div class="gtitle" id="gTitle">Step 1 of 5</div></div>'],
   ['exit guide: button label wrong', '>EXIT GUIDE</button>', '>GUIDE</button>'],
   // v1.26.1 stale-result guard
+  ["run counter: a stale clear does not move it on", "  seedSig = null; forgeRun++;", "  seedSig = null;"],
+  ["run counter: old fingerprint written back", "    if(run !== forgeRun) return;\n    fpEl.textContent = \"Master fingerprint: \"", "    fpEl.textContent = \"Master fingerprint: \""],
+  ["run counter: old first address written back", "    if(run !== forgeRun) return;\n    adEl.textContent = \"First receive address", "    adEl.textContent = \"First receive address"],
+  ["run counter: old address list written back", "    if(run !== forgeRun) return;\n    showAddrs(segwit, taproot);", "    showAddrs(segwit, taproot);"],
+  ["run counter: CLEAR ALL does not stop a running FORGE", "function wipeSeed(){\n  forgeRun++;\n", "function wipeSeed(){\n"],
   ["stale: guard never fires", "  if(seedSig === null || !hasSeed() || inputSig(seedKind) === seedSig) return;", "  return;"],
   ["stale: never recorded", "seedSig = inputSig(seedKind);", "seedSig = null;"],
   ["stale: passphrase box not watched", "[\"passphrase\", \"passphrase2\"].forEach(id => document.getElementById(id).addEventListener(\"input\", staleCheck));", "[\"passphrase2\"].forEach(id => document.getElementById(id).addEventListener(\"input\", staleCheck));"],
