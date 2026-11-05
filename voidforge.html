@@ -1092,7 +1092,8 @@
       <div class="hint" id="wvErr" style="margin:0; color:var(--danger);"></div>
       <div class="hint" id="wvPath" style="margin:0;"></div>
       <ol id="wvList" class="addr-list"></ol>
-      <div class="btn-row"><button type="button" class="secondary small" id="wvPrev" onclick="wvPage(-1)">PREVIOUS 10</button><button type="button" class="secondary small" id="wvNext" onclick="wvPage(1)">NEXT 10</button><button type="button" class="secondary small" onclick="copyAddrList(this,'wvList')">COPY THESE 10</button></div>
+      <div class="btn-row"><button type="button" class="secondary small" id="wvPrev" onclick="wvPage(-1)">PREVIOUS 10</button><button type="button" class="secondary small" id="wvNext" onclick="wvPage(1)">NEXT 10</button><button type="button" class="secondary small" onclick="copyAddrList(this,'wvList')">COPY THESE 10</button><button type="button" class="secondary small" id="wvSheetBtn" onclick="printRecoverySheet()">PRINT RECOVERY SHEET</button></div>
+      <p class="hint" style="margin:6px 0 0;">The recovery sheet holds no words and no passphrase: only the fingerprint, address type, path and the first addresses, plus how to restore. Keep it with your paper backup so someone you trust can tell which wallet the words belong to.</p>
       <div id="wvqBox" class="qrbox"><div id="wvqCap" class="hint"></div><div id="wvqImg" class="qr-img"></div><button type="button" class="secondary small" onclick="hideAddrQr('wvq')">HIDE QR</button></div>
       <div class="sec-block">
         <h3 class="sec">SeedQR<span class="tag tag-secret">SECRET</span></h3>
@@ -2316,6 +2317,7 @@ const DICT = [
   ["Chain analysis", "Companies and researchers following the blockchain to link addresses and payments to real people.", "", "Privacy & security"],
   ["Chain code", "An extra 32 bytes that travel with a key in BIP32, so child keys can be worked out safely.", "", "Keys & seeds"],
   ["Change", "The part of a payment that goes back to you. Spending part of a coin sends the rest to a change address of your own.", "Transaction inspector.", "Transactions"],
+  ["Change address", "An address your wallet pays its own leftover coins to when you send part of a coin. It sits on the second chain of the account (the 1 in m/84'/0'/0'/1/index) and the wallet handles it for you.", "Open this wallet: the Change choice.", "Addresses & scripts"],
   ["Checksum", "Extra data that lets software notice a typo. In a BIP39 seed the last word partly acts as the checksum.", "Reforge, wrong-word reports.", "Units & math"],
   ["Child key and parent key", "In a key tree, a child key is worked out from its parent. Knowing a hardened child never reveals its parent.", "", "Keys & seeds"],
   ["Child seed", "A new seed derived from a parent seed (BIP85). The same parent, word count and index always give the same child.", "Extra tools.", "Keys & seeds"],
@@ -2452,6 +2454,7 @@ const DICT = [
   ["Random number generator (RNG)", "A source of random numbers. Computer ones can be flawed, which is why VOIDFORGE uses physical dice and coins.", "", "Keys & seeds"],
   ["Raw transaction", "The transaction as bytes, usually shown in hex, exactly as it is sent to the network.", "Transaction inspector reads raw transactions.", "Transactions"],
   ["RBF (replace-by-fee)", "A transaction can be marked so it may be replaced by a version that pays a higher fee while it waits to be mined.", "Transaction inspector.", "Transactions"],
+  ["Receive address", "An address your wallet gives you to be paid at. A wallet makes a fresh one for each payment, numbered 0, 1, 2 and so on on the first chain of the account (the 0 in m/84'/0'/0'/0/index).", "Open this wallet: the Receive choice; the first 5 receiving addresses.", "Addresses & scripts"],
   ["Receiving address", "One of the addresses made to be given out to be paid. Change addresses are a separate chain of your own addresses.", "First 5 receiving addresses.", "Addresses & scripts"],
   ["Redeem script and witness script", "The hidden script behind a P2SH or P2WSH address, revealed only when the coin is spent.", "", "Addresses & scripts"],
   ["Reforge", "The recovery tool in this page: it fills in missing seed words, finds a wrong or swapped word, or tries passphrase guesses, and reports only results it has checked against your wallet's fingerprint, an address or its xpub.", "EXTRA TOOLS.", "VOIDFORGE"],
@@ -4753,8 +4756,30 @@ async function wvRefresh(){
   const ol = document.getElementById("wvList"); ol.textContent = "";
   rows.forEach(r => ol.appendChild(addrLi(r.address, "address " + r.index)));
   document.getElementById("wvPath").textContent = (net === "test" ? "TESTNET (practice coins only). " : "") + (chain ? "Change" : "Receive") + " addresses " + rows[0].index + " to " + rows[rows.length - 1].index + ", " + SCRIPT_TYPES[type].label + ": " + rows[0].path.replace(/\/[0-9]+$/, "/") + "index";
+  wvCtx.shown = {type, net, chain, acct, rows};
   document.getElementById("wvPrev").disabled = wvFrom === 0;
   document.getElementById("wvNext").disabled = wvFrom + WV_PAGE > 2147483647;
+}
+function printRecoverySheet(){
+  if(!wvCtx || !wvCtx.shown) return alert("Check a seed phrase first, then open the wallet.");
+  const sh = wvCtx.shown, n = wvCtx.mnemonic.split(" ").length, T = SCRIPT_TYPES[sh.type];
+  const po = document.getElementById("printOnly"); po.textContent = "";
+  const add = (cls, text) => { const d = document.createElement("div"); if(cls) d.className = cls; d.textContent = text; po.appendChild(d); return d; };
+  add("ps-title", "VOIDFORGE RECOVERY SHEET");
+  add("ps-sub", "No seed words and no passphrase are on this sheet. It says which wallet your " + n + " words open, so the right one can be rebuilt. Keep it with the paper backup, not in the same place as the passphrase.");
+  add("ps-info", document.getElementById("wvFp").textContent + "\nPassphrase used: " + (wvCtx.pass ? "YES (kept separately; it is not written here)" : "NO") + "\nSeed phrase length: " + n + " words\nNetwork: " + (sh.net === "test" ? "TESTNET (practice coins only)" : "Mainnet") + "\nAddress type: " + T.label + "\nDerivation path: m/" + T.purpose + "'/" + NETS[sh.net].coin + "'/" + sh.acct + "'/" + sh.chain + "/index\nAccount number: " + sh.acct);
+  add("ps-rule", "");
+  add("ps-info", (sh.chain ? "Change" : "Receive") + " addresses " + sh.rows[0].index + " to " + sh.rows[sh.rows.length - 1].index + " (public; to compare in the wallet app):\n" + sh.rows.slice(0, 3).map(r => r.index + ": " + r.address).join("\n"));
+  add("ps-rule", "");
+  add("ps-fields", "To restore: in a wallet app, choose to restore from a seed phrase, type the words in order, add the passphrase if one was used, pick the address type above (and the account number if the app asks), then check that the fingerprint and first addresses match this sheet.\n\nDate: ____________    Backup kept at: ______________________");
+  add("ps-rule", "");
+  add("ps-warn", "Addresses are public, but anyone who sees them can link them to this wallet. Do not post this sheet.");
+  document.body.classList.add("print-seed");
+  let done = false;
+  const cleanup = () => { if(done) return; done = true; po.replaceChildren(); document.body.classList.remove("print-seed"); };
+  window.addEventListener("afterprint", cleanup, {once:true});
+  setTimeout(cleanup, 120000);
+  window.print();
 }
 function wvPage(d){
   if(!wvCtx) return;

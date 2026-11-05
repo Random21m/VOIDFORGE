@@ -278,6 +278,49 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(!txt.includes('SECRETPASS')&&/Passphrase used: YES/.test(txt)&&txt.includes(t.$('fingerprint').textContent)&&/Reforge/.test(txt)&&/No two BIP39 words start with the same 4 letters/.test(txt),'stamp sheet: fingerprint, passphrase yes/no without the passphrase, and how to get the words back');
     t.w.dispatchEvent(new t.w.Event('afterprint')); ok(t.$('printOnly').textContent==='','stamp sheet is cleaned up after printing');
     ok(!!t.$('stampBtn')&&/printStamp/.test(t.$('stampBtn').getAttribute('onclick')),'PRINT STAMP SHEET button is on the page'); }
+  { // Wallet view (v2.1.0): any valid 12 to 24 word phrase typed in the Check tab
+    const AB='abandon '.repeat(11)+'about', sleep=ms=>new Promise(r=>setTimeout(r,ms));
+    const until=async f=>{ for(let n=0;n<400&&!f();n++) await sleep(25); return f(); };
+    const rows=()=>[...t.$('wvList').querySelectorAll('li')].map(li=>li.textContent);
+    const pick=(id,v)=>{ t.$(id).value=v; t.$(id).dispatchEvent(new t.w.Event(id==='wvAcct'?'input':'change',{bubbles:true})); };
+    const t0=t; t=load(); await t.ready();
+    ok(t.$('walletView').style.display==='none','wallet view: hidden until a phrase is checked');
+    t.$('phrase').value=AB; t.$('verifyPass').value=''; await t.w.verify(); await until(()=>rows().length===10);
+    ok(t.$('walletView').style.display!=='none'&&/73c5da0a/.test(t.$('wvFp').textContent)&&t.$('wvIcon').innerHTML.includes('<svg'),'wallet view: opens after VERIFY with the master fingerprint and its picture');
+    ok(rows()[0]==='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'&&t.$('wvList').querySelectorAll('li button.qr-mini').length===10&&rows().every(a=>/^bc1q/.test(a)),'wallet view: the published first SegWit address, ten rows, each with a QR button');
+    ok(/imported/i.test(t.$('wvBanner').textContent)&&/not made by this page/.test(t.$('wvBanner').textContent),'wallet view: says plainly that these words were imported, not made here');
+    pick('wvType','tr'); await until(()=>/^bc1p/.test(rows()[0]||'')); ok(rows()[0]==='bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr','wallet view: the published first Taproot (BIP86) address');
+    pick('wvType','pkh'); await until(()=>/^1/.test(rows()[0]||'')); ok(rows()[0]==='1LqBGSKuX5yYUonjxT5qGfpUsXKYYWeabA','wallet view: the published first Legacy (BIP44) address');
+    pick('wvType','sh-wpkh'); await until(()=>/^3/.test(rows()[0]||'')); ok(rows()[0]==='37VucYSaXLCAsxYyAPfbSi9eh4iEcbShgf','wallet view: the published first Nested SegWit (BIP49) address');
+    pick('wvType','wpkh'); pick('wvNet','test'); await until(()=>/^tb1q/.test(rows()[0]||'')); ok(/TESTNET/.test(t.$('wvPath').textContent)&&/^tb1q/.test(rows()[0]),'wallet view: testnet gives tb1 addresses and a TESTNET note');
+    pick('wvNet','main'); await until(()=>/^bc1q/.test(rows()[0]||''));
+    const first=rows().slice(); t.$('wvNext').click(); await until(()=>rows()[0]!==first[0]); const second=rows().slice();
+    ok(second.length===10&&!second.some(a=>first.includes(a))&&/addresses 10 to 19/.test(t.$('wvPath').textContent)&&!t.$('wvPrev').disabled,'wallet view: NEXT 10 shows addresses 10 to 19');
+    t.$('wvPrev').click(); await until(()=>rows()[0]===first[0]); ok(t.$('wvPrev').disabled&&rows().join()===first.join(),'wallet view: PREVIOUS 10 comes back, and is off at the start');
+    pick('wvAcct','2'); await until(()=>rows()[0]!==first[0]); const acc2=rows()[0]; pick('wvChain','1'); await until(()=>rows()[0]!==acc2);
+    ok(/m\/84'\/0'\/2'\/1\/index/.test(t.$('wvPath').textContent)&&/Change/.test(t.$('wvPath').textContent),'wallet view: account and change chain are in the path');
+    pick('wvAcct','abc'); await sleep(50); ok(/whole number/.test(t.$('wvErr').textContent)&&t.$('wvList').textContent==='','wallet view: a bad account number is refused and no stale addresses stay');
+    pick('wvAcct','0'); pick('wvChain','0'); await until(()=>rows()[0]===first[0]);
+    // QR on a row, SeedQR for 12 words, recovery sheet
+    t.$('wvList').querySelector('li button.qr-mini').click(); ok(t.$('wvqBox').style.display==='block'&&t.$('wvqImg').innerHTML.includes('<svg')&&t.$('wvqCap').textContent.includes(first[0]),'wallet view: the QR button shows that address as a QR code');
+    t.d.querySelector('#wvSqBtns button').click(); ok(t.$('wvsBox').style.display==='block'&&/SECRET/.test(t.$('wvsCap').textContent)&&/12 words/.test(t.$('wvsCap').textContent),'wallet view: SeedQR for 12 words, marked SECRET');
+    const p0=t.st.printed; t.w.printRecoverySheet(); const rtxt=t.st.printHTML;
+    ok(t.st.printed===p0+1&&/^VOIDFORGE RECOVERY SHEET/.test(rtxt)&&rtxt.includes('73c5da0a')&&rtxt.includes(first[0])&&!/abandon/.test(rtxt)&&/Passphrase used: NO/.test(rtxt),'recovery sheet: fingerprint, type, path and first addresses; never the words');
+    t.w.dispatchEvent(new t.w.Event('afterprint'));
+    t.$('phrase').value=AB+' '; t.$('phrase').dispatchEvent(new t.w.Event('input',{bubbles:true}));
+    ok(t.$('walletView').style.display==='none'&&t.$('wvList').textContent===''&&t.$('wvsImg').textContent===''&&t.$('wvqImg').textContent===''&&t.$('wvFp').textContent==='','wallet view: editing the words wipes the whole view');
+    // a passphrase changes the wallet, and the recovery sheet never prints it
+    t.$('phrase').value=AB; t.$('verifyPass').value='SECRETPASS'; await t.w.verify(); await until(()=>rows().length===10);
+    ok(rows()[0]!==first[0]&&!/73c5da0a/.test(t.$('wvFp').textContent)&&/with passphrase/.test(t.$('wvFp').textContent),'wallet view: with a passphrase it is a different wallet and says so');
+    t.w.printRecoverySheet(); ok(!t.st.printHTML.includes('SECRETPASS')&&/Passphrase used: YES/.test(t.st.printHTML),'recovery sheet: says a passphrase was used, never prints it'); t.w.dispatchEvent(new t.w.Event('afterprint'));
+    // other lengths: 24 words has SeedQR, 15 does not
+    const e24=await t.w.entropyToMnemonic(new Uint8Array(32)), e15=await t.w.entropyToMnemonic(new Uint8Array(20));
+    t.$('verifyPass').value=''; t.$('phrase').value=e24; await t.w.verify(); await until(()=>rows().length===10);
+    ok(t.$('wvSqBtns').style.display!=='none'&&/24 words/.test(t.$('wvSqNote').textContent),'wallet view: 24 words offer SeedQR');
+    t.$('phrase').value=e15; await t.w.verify(); await until(()=>rows().length===10);
+    ok(t.$('wvSqBtns').style.display==='none'&&/No SeedQR exists for 15 words/.test(t.$('wvSqNote').textContent),'wallet view: 15 words say plainly that no SeedQR exists');
+    t.$('phrase').value='abandon abandon'; await t.w.verify(); ok(t.$('walletView').style.display==='none','wallet view: an invalid phrase opens nothing');
+    t.$('phrase').value=AB; await t.w.verify(); await until(()=>rows().length===10); t.w.wipeSeed(); ok(t.$('walletView').style.display==='none'&&t.$('wvList').textContent==='','wallet view: CLEAR ALL wipes it'); t=t0; }
   { // Roll sheet (v1.34.0): a blank numbered sheet for dice or coin, sized to the chosen mode and word count
     const setMode=m=>{ t.d.querySelector('input[name="mode"][value="'+m+'"]').checked=true; }, setWords=n=>{ t.d.querySelector('input[name="words"][value="'+n+'"]').checked=true; };
     const sheet=()=>{ const p0=t.st.printed; t.w.printRollSheet(); const r={n:t.st.printed-p0,cells:t.st.printCells.slice(),txt:t.st.printHTML,cls:t.st.printClass}; t.w.dispatchEvent(new t.w.Event('afterprint')); return r; };

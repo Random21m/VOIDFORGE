@@ -11,6 +11,8 @@ A seed is only as safe as your backup. This page covers what to keep and how to 
 
 Never store the words as a photo, text, email, cloud note or password-manager entry.
 
+**Recovery sheet (v2.1.0).** In *Check a backup*, type your words, press VERIFY and open *Open this wallet*. PRINT RECOVERY SHEET prints a sheet with the master fingerprint, whether a passphrase was used (never the passphrase), the address type, the derivation path and the first addresses, and a short list of restore steps. It holds no words, so it can sit with the paper backup and tell whoever restores which wallet and address type to pick. The same box lists any account and any address type, with a QR code for each address, so you can compare them in the wallet you restored into.
+
 ## Check the backup before you rely on it
 
 1. On the same offline computer, press **FORGE SEED** and write everything down (the printout and download say plainly whether a passphrase was used). Then use **VERIFY**: type the words back from your paper, add the passphrase if you used one, and paste the fingerprint or first address you wrote down into the last box. VERIFY says **MATCH (with passphrase)**, **MATCH (without passphrase)**, or **NO MATCH**. Matching the first address is the stronger check. VERIFY never displays or saves the passphrase.
