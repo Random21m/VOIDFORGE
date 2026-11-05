@@ -834,6 +834,66 @@ async function probe(w, mutated) {
     if (mk[0]) { mk[0].querySelector('button.qr-mini').click(); const d = w.document.createElement('div'); d.innerHTML = w.qrSvg(w.qrMatrix(mk[0].textContent).rows); if ($('aqBox').style.display !== 'block' || $('aqImg').innerHTML !== d.innerHTML || !$('aqCap').textContent.includes(mk[0].textContent)) fails.push('address QR: the button under the seed shows exactly that address'); }
     w.clearAll(); await sleep(20);
   } catch (e) { fails.push('wallet view: the probe crashed: ' + e.message); }
+  try { // v2.2.0: watch-only view, Electrum warning, payment request, backup checklist, key-reuse check
+    const AB = 'abandon '.repeat(11) + 'about', sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
+    const until = async (f) => { for (let k = 0; k < 400 && !f(); k++) await sleep(25); return f(); };
+    const rows = () => [...$('wvList').querySelectorAll('li')].map((li) => li.textContent);
+    const openW = async (v) => { $('wpIn').value = v; $('wpIn').dispatchEvent(new w.Event('input', { bubbles: true })); await w.openWatchOnly(); };
+    w.print = () => {}; w.confirm = () => true; w.alert = () => {};
+    w.clearAll(); await sleep(20);
+    const ZPUB = 'zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs';
+    const XPUB86 = 'xpub6BgBgsespWvERF3LHQu6CnqdvfEvtMcQjYrcRzx53QJjSxarj2afYWcLteoGVky7D3UKDP9QyrLprQ3VCECoY49yfdDEHGCtMMj92pReUsQ';
+    await openW(ZPUB); await until(() => rows().length === 10);
+    if (rows()[0] !== 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu' || rows()[9] === rows()[0]) fails.push('watch-only: the zpub gives its published addresses');
+    if (!$('wvType').disabled || $('wvType').value !== 'wpkh' || !$('wvNet').disabled) fails.push('watch-only: a zpub locks the type and network');
+    if (!/Watch-only/.test($('wvBanner').textContent) || $('wvSqBlock').style.display !== 'none' || $('wvSheetBtn').style.display !== 'none') fails.push('watch-only: says so, and offers no SeedQR or recovery sheet');
+    if (!/not known/.test($('wvFp').textContent)) fails.push('watch-only: no fingerprint is made up for a plain xpub');
+    await openW(XPUB86); await until(() => rows().length === 10); $('wvType').value = 'tr'; $('wvType').dispatchEvent(new w.Event('change', { bubbles: true })); await until(() => /^bc1p/.test(rows()[0] || ''));
+    if (rows()[0] !== 'bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr' || $('wvType').disabled) fails.push('watch-only: a plain xpub lets you pick Taproot and gives the published address');
+    { const seed = await w.mnemonicToSeed(AB, ''), wo = await w.watchOnlyFromSeed(seed, 'wpkh', 0, 'main');
+      await openW(wo.change); await until(() => rows().length === 10); const c0 = rows()[0];
+      if ($('wvChain').value !== '1' || c0 === 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu') fails.push('watch-only: a /1/* descriptor opens change addresses');
+      await openW(wo.receive); await until(() => rows()[0] === 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu');
+      if ($('wvChain').value !== '0' || !/73c5da0a/.test($('wvFp').textContent) || !$('wvIcon').innerHTML.includes('<svg')) fails.push('watch-only: a /0/* descriptor opens receive addresses with its fingerprint and picture');
+      await openW(wo.receive.slice(0, -1) + (wo.receive.slice(-1) === 'a' ? 'b' : 'a')); if (!/checksum/.test($('wpStatus').textContent) || $('walletView').style.display !== 'none') fails.push('watch-only: a wrong checksum is refused');
+      await openW('sh(wpkh(' + ZPUB + '/0/*))'); if (!/but the key is a zpub/.test($('wpStatus').textContent)) fails.push('watch-only: a descriptor that does not match its key is refused'); }
+    await openW('xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu'); if (!/PRIVATE/.test($('wpStatus').textContent)) fails.push('watch-only: a private key is refused');
+    await openW(ZPUB); await until(() => rows().length === 10); $('wpIn').value += ' '; $('wpIn').dispatchEvent(new w.Event('input', { bubbles: true }));
+    if ($('walletView').style.display !== 'none' || $('wvType').disabled || $('wvSqBlock').style.display === 'none') fails.push('watch-only: editing the key wipes the view and restores the controls');
+    // Electrum
+    { const r = await w.checkPhrase('wild father tree among universe such mobile favorite target dynamic credit identify'); if (r.ok || !/Electrum seed \(SegWit type\)/.test(r.msg)) fails.push('Electrum: the SegWit example seed is named');
+      const r2 = await w.checkPhrase('abandon '.repeat(12).trim()); if (r2.ok || /Electrum/.test(r2.msg)) fails.push('Electrum: an ordinary bad phrase gets no note'); }
+    // payment request
+    { const A = w.bip21Amount; if (A('0.0015').v !== '0.0015' || A('1.10000000').v !== '1.1' || A('21000000').v !== '21000000' || A('0').ok || A('1.123456789').ok || A('21000000.00000001').ok) fails.push('payment request: amounts are checked');
+      if (w.bip21Uri('bc1qx', '0.5', 'Café & tea', 'Thanks!') !== 'bitcoin:bc1qx?amount=0.5&label=Caf%C3%A9%20%26%20tea&message=Thanks!') fails.push('payment request: the link is built and encoded');
+      $('phrase').value = AB; $('verifyPass').value = ''; await w.verify(); await until(() => rows().length === 10);
+      $('wvList').querySelector('li button.qr-mini').click(); $('wvqAmt').value = '0.0015'; $('wvqAmt').dispatchEvent(new w.Event('input'));
+      const uri = 'bitcoin:bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu?amount=0.0015', d = w.document.createElement('div'); d.innerHTML = w.qrSvg(w.qrMatrix(uri).rows);
+      if ($('wvqUri').textContent !== uri || $('wvqImg').innerHTML !== d.innerHTML) fails.push('payment request: the QR becomes the bitcoin: link');
+      w.hideAddrQr('wvq'); if ($('wvqAmt').value !== '' || $('wvqBox').style.display !== 'none') fails.push('payment request: HIDE QR clears it'); }
+    // checklist
+    { mode('dice'); words(12); $('passphrase').value = ''; $('passphrase2').value = ''; $('rolls').value = D50; $('rolls').oninput(); await w.generate(); await w.eval('passWork');
+      if ($('bkList').style.display === 'none' || $('bk2').checked || !/0 of 4/.test($('bkNote').textContent)) fails.push('checklist: appears with the words, nothing ticked');
+      const wd = $('genResult').textContent.split('\n')[0]; w.drillStart(); $('drillWords').value = wd; await w.drillCheck(); w.drillEnd();
+      if (!$('bk2').checked) fails.push('checklist: a passed drill ticks itself');
+      $('phrase').value = wd; await w.verify(); await until(() => rows().length === 10); w.printRecoverySheet(); w.dispatchEvent(new w.Event('afterprint'));
+      if (!$('bk4').checked) fails.push('checklist: the recovery sheet for these words ticks itself');
+      $('bk1').checked = true; $('bk3').checked = true; w.bkUpdate(); if (!/All four done/.test($('bkNote').textContent)) fails.push('checklist: says when all four are done');
+      $('passphrase').value = 'x'; $('passphrase2').value = 'x'; $('passphrase').dispatchEvent(new w.Event('input', { bubbles: true })); await w.rePass();
+      if ($('bk2').checked || $('bk4').checked || !$('bk1').checked) fails.push('checklist: a passphrase change unticks the drill and the sheet');
+      w.wipeSeed(); if ($('bkList').style.display !== 'none' || $('bk1').checked) fails.push('checklist: CLEAR ALL clears and hides it'); }
+    // key reuse
+    { const seed = await w.mnemonicToSeed(AB, ''), a0 = await w.watchOnlyFromSeed(seed, 'wpkh', 0, 'main'), a1 = await w.watchOnlyFromSeed(seed, 'wpkh', 1, 'main');
+      const run = async (v) => { $('reuseIn').value = v; await w.checkKeyReuse(); return $('reuseStatus').textContent; };
+      if (!/No reused key/.test(await run(a0.receive))) fails.push('key reuse: a clean descriptor passes');
+      if (!/appears 2 times/.test(await run(a0.receive + '\n' + a0.change))) fails.push('key reuse: the same key twice is found');
+      if (!/appears 2 times/.test(await run(a0.zpub + '\n' + a0.xpub))) fails.push('key reuse: zpub and xpub of one key count as one key');
+      if (!/2 different keys come from the same master fingerprint/.test(await run('wsh(sortedmulti(2,' + a0.receive.replace(/\/0\/\*$/, '') + ',' + a1.receive.replace(/\/0\/\*$/, '') + '))'))) fails.push('key reuse: two multisig keys from one seed are found');
+      if (!/is given with different keys/.test(await run('wpkh([73c5da0a/84h/0h/0h]' + a1.xpub + '/0/*)\nwpkh([73c5da0a/84h/0h/0h]' + a0.xpub + '/0/*)'))) fails.push('key reuse: one origin with two keys is found');
+      if (!/PRIVATE/.test(await run('wpkh(xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu/0/*)'))) fails.push('key reuse: private keys are refused');
+      w.clearReuse(); }
+    w.clearAll(); await sleep(20);
+  } catch (e) { fails.push('v2.2.0 probe crashed: ' + e.message); }
   try { // rolling-dice logo and the live preview words
     const setRolls = (v) => { $('rolls').value = v; $('rolls').oninput(); };
     w.clearAll(); await new Promise(r => setTimeout(r, 20)); mode('dice'); words(12);
@@ -851,7 +911,7 @@ async function probe(w, mutated) {
     { // Bitcoin dictionary (v1.27.3)
       const box = $('dictBox'), items = [...$('dictList').querySelectorAll('.dict-item')], names = items.map((e) => e.querySelector('dt').textContent), def = (e) => e.querySelector('dd').firstChild.textContent;
       const q = (v) => { $('dictSearch').value = v; w.dictFilter(); return items.filter((e) => e.style.display !== 'none').map((e) => e.querySelector('dt').textContent); };
-      const dictFacts=[['Change address',/second chain/],['Change address',/leftover coins/],['Receive address',/first chain/],['Receive address',/fresh one for each payment/],['Base85',/85 different characters/],['Base85',/RFC 1924/],['SHAKE256',/SHA-3 family/],['BIP85',/passwords or dice rolls/],['Wordlist',/2048/],['Wordlist',/first four letters/],['Fingerprint (master fingerprint)',/Eight characters/],['Satoshi (sat)',/hundred-millionth/],['Gap limit',/usually 20/],['Passphrase (the 25th word)',/completely different wallet/],['Testnet',/tb1/],['Taproot',/bc1p/],['Native SegWit',/bc1q/],['Legacy address',/starting with 1\./],['Nested SegWit',/starting with 3\./],['BIP39',/12 or 24 words/],['BIP85',/child seed/],['BIP84',/m\/84'\/0'\/0'/],['BIP86',/m\/86'\/0'\/0'/],['PBKDF2',/2048 rounds/],['Dice entropy',/2\.58 bits/],['Coin flip entropy',/128 flips.*256/],['OP_RETURN',/never be spent/],['Bit',/128 bits.*256/],['Block',/ten minutes/],['Fee (miner fee)',/inputs minus the outputs/],['Bitcoin',/21 million/],['Halving',/210,000/],['Difficulty',/2016 blocks/],['Virtual byte (vByte) and weight',/4,000,000/],['Genesis block',/3 January 2009/],['Whitepaper',/31 October 2008/],['Block header',/80-byte/],['WIF (Wallet Import Format)',/5, K or L/],['P2WPKH',/bc1q/],['P2TR',/bc1p/],['BIP44',/m\/44'\/0'\/0'/],['BIP49',/m\/49'\/0'\/0'/],['Bitcoin Pizza Day',/10,000 bitcoin/],['Byte',/32 bytes.*16 bytes/],['P2PKH',/starting with 1/],['P2SH',/starting with 3/],['BIP125',/replace-by-fee/],['BIP350',/bech32m/],['Block reward',/50 bitcoin/]];
+      const dictFacts=[['Electrum seed',/different checksum/],['Key reuse (multisig)',/one seed then counts as two signers/],['BIP21',/at most 8 decimals/],['Change address',/second chain/],['Change address',/leftover coins/],['Receive address',/first chain/],['Receive address',/fresh one for each payment/],['Base85',/85 different characters/],['Base85',/RFC 1924/],['SHAKE256',/SHA-3 family/],['BIP85',/passwords or dice rolls/],['Wordlist',/2048/],['Wordlist',/first four letters/],['Fingerprint (master fingerprint)',/Eight characters/],['Satoshi (sat)',/hundred-millionth/],['Gap limit',/usually 20/],['Passphrase (the 25th word)',/completely different wallet/],['Testnet',/tb1/],['Taproot',/bc1p/],['Native SegWit',/bc1q/],['Legacy address',/starting with 1\./],['Nested SegWit',/starting with 3\./],['BIP39',/12 or 24 words/],['BIP85',/child seed/],['BIP84',/m\/84'\/0'\/0'/],['BIP86',/m\/86'\/0'\/0'/],['PBKDF2',/2048 rounds/],['Dice entropy',/2\.58 bits/],['Coin flip entropy',/128 flips.*256/],['OP_RETURN',/never be spent/],['Bit',/128 bits.*256/],['Block',/ten minutes/],['Fee (miner fee)',/inputs minus the outputs/],['Bitcoin',/21 million/],['Halving',/210,000/],['Difficulty',/2016 blocks/],['Virtual byte (vByte) and weight',/4,000,000/],['Genesis block',/3 January 2009/],['Whitepaper',/31 October 2008/],['Block header',/80-byte/],['WIF (Wallet Import Format)',/5, K or L/],['P2WPKH',/bc1q/],['P2TR',/bc1p/],['BIP44',/m\/44'\/0'\/0'/],['BIP49',/m\/49'\/0'\/0'/],['Bitcoin Pizza Day',/10,000 bitcoin/],['Byte',/32 bytes.*16 bytes/],['P2PKH',/starting with 1/],['P2SH',/starting with 3/],['BIP125',/replace-by-fee/],['BIP350',/bech32m/],['Block reward',/50 bitcoin/]];
       if (!box || box.open || !/Bitcoin dictionary/.test(box.querySelector('summary').textContent) || items.length < 250) fails.push('dictionary: closed box with 250+ entries');
       const col = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
       if (!names.every((n, k) => k === 0 || col.compare(names[k - 1], n) <= 0) || new Set(names.map((n) => n.toLowerCase())).size !== names.length) fails.push('dictionary: A to Z and no duplicates');
@@ -1922,19 +1982,49 @@ const M = [
   ["wallet view: chain ignored", "[[purpose,true],[coin,true],[account,true],[chain,false]]", "[[purpose,true],[coin,true],[account,true],[0,false]]"],
   ["wallet view: second page shows the first", "chain, wvFrom, WV_PAGE);", "chain, 0, WV_PAGE);"],
   ["wallet view: no QR button on a row", "  li.appendChild(b); return li;", "  return li;"],
-  ["wallet view: QR shows another address", "q = qrMatrix(addr); } catch(e) { return alert(\"QR code unavailable", "q = qrMatrix(addr + \"x\"); } catch(e) { return alert(\"QR code unavailable"],
-  ["wallet view: not called imported", "Imported: these words were typed or scanned here, not made by this page.", "These words were typed or scanned here."],
+  ["wallet view: QR shows another address", "q = qrMatrix(text); } catch(e) { uriEl.textContent = \"QR code unavailable", "q = qrMatrix(text + \"x\"); } catch(e) { uriEl.textContent = \"QR code unavailable"],
+  ["wallet view: not called imported", "textContent = \"Imported: these words were typed or scanned here, not made by this page.", "textContent = \"These words were typed or scanned here."],
   ["wallet view: passphrase not noted", "\"Master fingerprint: \" + fp + (pass ? \" (with passphrase)\" : \"\");\n    showFpIcon(\"wvIcon\", fp);", "\"Master fingerprint: \" + fp;\n    showFpIcon(\"wvIcon\", fp);"],
-  ["wallet view: edit keeps the view", "for(const id of [\"phrase\",\"verifyPass\"]) document.getElementById(id).addEventListener(\"input\", clearWalletView);", "for(const id of []) document.getElementById(id).addEventListener(\"input\", clearWalletView);"],
+  ["wallet view: edit keeps the view", "for(const id of [\"phrase\",\"verifyPass\"]) document.getElementById(id).addEventListener(\"input\", () => { if(wvCtx && wvCtx.kind !== \"pub\") clearWalletView(); });", "for(const id of [\"phrase\",\"verifyPass\"]) document.getElementById(id).addEventListener(\"input\", () => {});"],
   ["wallet view: SeedQR offered for 15 words", "if(n === 12 || n === 24){ sq.textContent", "if(n >= 12){ sq.textContent"],
   ["recovery sheet: prints the passphrase", "(wvCtx.pass ? \"YES (kept separately; it is not written here)\" : \"NO\")", "(wvCtx.pass ? \"YES \" + wvCtx.pass : \"NO\")"],
-  ["wallet view: bad account accepted", "const badAcct = !/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647;", "const badAcct = false;"],
+  ["wallet view: bad account accepted", "const badAcct = wvCtx.kind !== \"pub\" && (!/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647);", "const badAcct = false;"],
   ["wallet view: SeedQR not marked secret", "SECRET: anyone who scans it controls the funds. It holds the words only", "Anyone who scans it controls the funds. It holds the words only"],
   ["wallet view: CLEAR ALL leaves it", "document.getElementById(\"verifyStatus\").textContent=\"\"; clearWalletView();", "document.getElementById(\"verifyStatus\").textContent=\"\";"],
   ["address QR: no button under the seed", "list.forEach((a, i) => ol.appendChild(addrLi(a, \"receive address \" + (i + 1))));", "list.forEach((a, i) => { const li = document.createElement(\"li\"); li.textContent = a; ol.appendChild(li); });"],
   ["wallet view: PREVIOUS never off", "document.getElementById(\"wvPrev\").disabled = wvFrom === 0;", "document.getElementById(\"wvPrev\").disabled = false;"],
   ["wallet view: testnet note dropped", "(net === \"test\" ? \"TESTNET (practice coins only). \" : \"\")", "\"\""],
-  ["recovery sheet: nothing printed", "if(!wvCtx || !wvCtx.shown) return alert(\"Check a seed phrase first, then open the wallet.\");", "if(true) return;"],
+  ["recovery sheet: nothing printed", "if(!wvCtx || !wvCtx.shown || wvCtx.kind === \"pub\") return alert(\"Check a seed phrase first, then open the wallet.\");", "if(true) return;"],
+  ["watch-only: change ending ignored", "    chain = m[5] === \"/1/*\" ? 1 : 0;", "    chain = 0;"],
+  ["watch-only: chain not set on open", "  cSel.value = String(w.chain || 0);", "  "],
+  ["watch-only: type not locked", "if(w.type){ tSel.value = w.type; } tSel.disabled = w.fixedType;", "if(w.type){ tSel.value = w.type; } tSel.disabled = false;"],
+  ["watch-only: network not locked", "nSel.value = w.net; nSel.disabled = true;", "nSel.value = w.net; nSel.disabled = false;"],
+  ["watch-only: checksum not checked", "if(!ok) throw new Error(\"The descriptor checksum (after #) does not match. Check for a typo.\");", "if(false) throw new Error(\"The descriptor checksum (after #) does not match. Check for a typo.\");"],
+  ["watch-only: key and descriptor type may differ", "if(type && keyType && type !== keyType) throw", "if(false) throw"],
+  ["watch-only: SeedQR offered", "document.getElementById(\"wvSqBlock\").style.display = \"none\"; document.getElementById(\"wvSheetBtn\")", "document.getElementById(\"wvSqBlock\").style.display = \"\"; document.getElementById(\"wvSheetBtn\")"],
+  ["watch-only: no fingerprint from the descriptor", "  if(w.origin){ document.getElementById(\"wvFp\").textContent = \"Master fingerprint (from the descriptor): \" + w.origin.fp; showFpIcon(\"wvIcon\", w.origin.fp); }", "  if(false){ }"],
+  ["watch-only: edit keeps the view", "document.getElementById(\"wpIn\").addEventListener(\"input\", () => { if(wvCtx && wvCtx.kind === \"pub\") clearWalletView();", "document.getElementById(\"wpIn\").addEventListener(\"input\", () => {"],
+  ["watch-only: controls stay locked after", "  for(const id of [\"wvType\",\"wvNet\",\"wvAcct\"]) document.getElementById(id).disabled = false;\n", "\n"],
+  ["watch-only: taproot ignores the point", "  if(type === \"tr\") return taprootAddressFromPoint(pointFromPub(pub), N.hrp);", "  if(type === \"tr\") return taprootAddressFromPoint(pointFromPub(pub), \"bc\").then(a => a + \"\");\n  if(false) return;"],
+  ["Electrum: SegWit prefix wrong", "  if(h.startsWith(\"100\")) return \"SegWit\";", "  if(h.startsWith(\"10\")) return \"SegWit\";"],
+  ["Electrum: wrong HMAC key", "new TextEncoder().encode(\"Seed version\")", "new TextEncoder().encode(\"Seed\")"],
+  ["Electrum: note never added to a bad checksum", "return {ok:false, msg:\"Checksum failed\" + await electrumNote(phrase)};", "return {ok:false, msg:\"Checksum failed\"};"],
+  ["payment request: no decimal limit", "if(!/^(\\d{1,8})(\\.\\d{1,8})?$/.test(a))", "if(!/^(\\d{1,8})(\\.\\d{1,9})?$/.test(a))"],
+  ["payment request: 21 million not enforced", "if(sats > 2100000000000000n)", "if(sats > 2100000000000001n)"],
+  ["payment request: zero accepted", "if(sats === 0n) return {ok:false", "if(false) return {ok:false"],
+  ["payment request: label not encoded", "if(label) q.push(\"label=\" + encodeURIComponent(label));", "if(label) q.push(\"label=\" + label);"],
+  ["payment request: QR stays a plain address", "else if(am.v || lbl || msg){ text = bip21Uri(addr, am.v, lbl, msg);", "else if(false){ text = bip21Uri(addr, am.v, lbl, msg);"],
+  ["payment request: HIDE keeps the amount", "  for(const k of [\"Amt\",\"Lbl\",\"Msg\"]) document.getElementById(pfx + k).value = \"\";\n", "\n"],
+  ["checklist: drill does not tick", "  bkTick(\"bk2\");\n", "\n"],
+  ["checklist: recovery sheet does not tick", "&& !passMismatchQuiet()) bkTick(\"bk4\");", "&& !passMismatchQuiet()) {}"],
+  ["checklist: passphrase change keeps ticks", "drillEnd(); for(const id of [\"bk2\",\"bk4\"]) document.getElementById(id).checked = false; bkUpdate();", "drillEnd();"],
+  ["checklist: never shown", "wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words);", "wdWipe(); drillEnd(); if(words) previewClear(); bkReset(false);"],
+  ["checklist: all-done message wrong", "n === 4 ? \"All four done: this backup is ready.\"", "n === 3 ? \"All four done: this backup is ready.\""],
+  ["key reuse: zpub and xpub of one key differ", "ids.push(Object.assign({}, k, {id: hex(p.pub) + hex(p.chain)}));", "ids.push(Object.assign({}, k, {id: k.key}));"],
+  ["key reuse: same seed in one multisig not found", "if(set.size > 1) warn.push(\"Line \" + ln", "if(set.size > 9) warn.push(\"Line \" + ln"],
+  ["key reuse: one origin two keys not found", "for(const g of Object.values(byOrigin)) if(new Set(g.map(k => k.id)).size > 1)", "for(const g of Object.values(byOrigin)) if(false)"],
+  ["key reuse: private key accepted", "if(list.some(k => /^[xyztuvXYZTUV]prv/.test(k.key))) return", "if(false) return"],
+  ['dictionary: Electrum seed fact lost', 'same English words as BIP39 but a different checksum', 'same English words as BIP39 and the same checksum'],
   ['dictionary: Change address on the wrong chain', 'It sits on the second chain of the account (the 1 in', 'It sits on the first chain of the account (the 1 in'],
   ['dictionary: Receive address on the wrong chain', 'on the first chain of the account (the 0 in', 'on the second chain of the account (the 0 in'],
   ['dictionary: entry topic dropped', 'item.dataset.c = e[3];', 'item.dataset.c = "Basics";'],
@@ -2003,8 +2093,8 @@ const M = [
   ['step help: Forge step shows no text', '    3: "Press FORGE SEED to turn your rolls into the BIP39 words that are your wallet\\u2019s backup.",', '    3: "",'],
   ['step help: never updated', '  document.getElementById("stepWhy").textContent = WHY[cur];\n', ''],
   ['preview: too-few-rolls FORGE wipes the grey words', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote(); previewRefresh();', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote();'],
-  ['preview: grey note stays after FORGE', 'wdWipe(); drillEnd(); if(words) previewClear(); document.body', 'wdWipe(); drillEnd(); document.body'],
-  ['word draw: dice FORGE leaves old steps', 'function setResult(text, words){\n  wdWipe(); drillEnd(); if(words) previewClear(); document.body.classList.toggle("has-seed", !!words);\n', 'function setResult(text, words){\n  drillEnd(); if(words) previewClear(); document.body.classList.toggle("has-seed", !!words);\n'],
+  ["preview: grey note stays after FORGE", "wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body", "wdWipe(); drillEnd(); bkReset(!!words); document.body"],
+  ["word draw: dice FORGE leaves old steps", "function setResult(text, words){\n  wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body.classList.toggle(\"has-seed\", !!words);\n", "function setResult(text, words){\n  drillEnd(); if(words) previewClear(); bkReset(!!words); document.body.classList.toggle(\"has-seed\", !!words);\n"],
   ['word draw: CLEAR leaves the boxes', '  wdClear();\n', ''],
   ['word draw: CLEAR button leaves the words', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();'],
   ['word draw: CLEAR button leaves the flips', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdWords").value = "";\n  wdWipe(); wdUpdate();'],
@@ -2553,7 +2643,7 @@ const M = [
   ["coin faces: no label text", "b.appendChild(t);\n    }\n    else", "}\n    else"],
   ["calmer page: a second GUIDE ME button is back", "<div id=\"guideNew\">New here?", "<div id=\"guideNew\"><button type=\"button\">GUIDE ME</button> New here?"],
   ["calmer page: seed buttons not grouped", "<div class=\"btn-row seed-actions\" style=\"margin-top:6px;\" data-g=\"3 4\">", "<div class=\"btn-row\" style=\"margin-top:6px;\" data-g=\"3 4\">"],
-  ["calmer page: has-seed never set", "previewClear(); document.body.classList.toggle(\"has-seed\", !!words);", "previewClear();"],
+  ["calmer page: has-seed never set", "bkReset(!!words); document.body.classList.toggle(\"has-seed\", !!words);", "bkReset(!!words);"],
   ["calmer page: seed buttons always shown", "body:not(.has-seed) .seed-actions, body:not(.has-seed) .print-btn { display: none; }", "body:not(.has-seed) .seed-actions, body:not(.has-seed) .print-btn { }"],
   ["calmer page: roll count hidden on wide screens", "  #cardGen .gen-right { position: static; max-height: none;", "  #rollCount { display: none; }\n  #cardGen .gen-right { position: static; max-height: none;"],
   ["calmer page: second warning note back", "<div id=\"wordGrid\" data-g=\"3 4\" aria-hidden=\"true\"></div>", "<p class=\"forge-note\">Making real keys? Keep clipboard history off.</p><div id=\"wordGrid\" data-g=\"3 4\" aria-hidden=\"true\"></div>"],

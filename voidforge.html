@@ -2023,8 +2023,8 @@ async function addressFromPub(type, pub, net){
   if(type === "tr") return taprootAddressFromPoint(pointFromPub(pub), N.hrp);
   const h = await hash160(pub);
   if(type === "wpkh") return bech32Encode(N.hrp,0,h);
-  if(type === "pkh") return base58check(Uint8Array.from([N.pkh, ...h]));
-  if(type === "sh-wpkh") return base58check(Uint8Array.from([N.sh, ...await hash160(Uint8Array.from([0x00, 0x14, ...h]))]));
+  if(type === "pkh") return base58check(Uint8Array.of(N.pkh, ...h));
+  if(type === "sh-wpkh") return base58check(Uint8Array.of(N.sh, ...await hash160(Uint8Array.of(0x00, 0x14, ...h))));
   throw new Error("unknown address type");
 }
 function addressNetOf(addr){ return /^(tb1|[2mn])/.test(addr) ? "test" : "main"; }
@@ -2323,7 +2323,7 @@ const DICT = [
   ["Bech32 and bech32m", "The address spelling used for bc1q (bech32) and bc1p (bech32m) addresses. It has a built-in checksum so a typo is caught instead of sending coins to the wrong place.", "", "Addresses & scripts"],
   ["Binary", "Counting with only 0 and 1. Coin flips are binary: heads 1, tails 0.", "", "Units & math"],
   ["BIP", "Bitcoin Improvement Proposal: a numbered public design document for a Bitcoin standard, such as BIP39 for seed words.", "", "Standards (BIPs)"],
-  ["BIP21", "The standard for bitcoin: payment links that carry an address, amount and label.", "", "Standards (BIPs)"],
+  ["BIP21", "The standard for bitcoin: payment links that carry an address, amount and label. The amount is in bitcoin, with at most 8 decimals.", "Payment request (BIP-21) under any address QR code.", "Standards (BIPs)"],
   ["BIP32", "The standard that lets one seed make a whole tree of keys (an HD wallet). Every key has a path such as m/84'/0'/0'/0/0.", "How your seed was made, watch-only export.", "Standards (BIPs)"],
   ["BIP39", "The standard that turns random bytes into 12 or 24 words from a list of 2048, with a checksum. Any wallet that follows it can restore your seed from the words.", "The whole Make a seed tab.", "Standards (BIPs)"],
   ["BIP44", "The standard path for single-key Legacy wallets (addresses starting with 1): m/44'/0'/0'.", "", "Standards (BIPs)"],
@@ -2399,6 +2399,7 @@ const DICT = [
   ["Dust", "A coin so small that the fee to spend it would cost more than it is worth.", "", "Transactions"],
   ["Dust attack", "Sending tiny amounts to many addresses, hoping the owner spends them together and so reveals which addresses belong to one wallet.", "", "Privacy & security"],
   ["ECDSA", "The original Bitcoin signature scheme, on the secp256k1 curve.", "", "Keys & seeds"],
+  ["Electrum seed", "The seed phrase format of the Electrum wallet. It uses the same English words as BIP39 but a different checksum and a version number hidden in a hash, so a BIP39 wallet rejects it or opens an empty wallet. Restore it in Electrum as an Electrum seed.", "CHECK A BACKUP names it when a phrase fails the BIP39 check.", "Keys & seeds"],
   ["Elliptic curve (secp256k1)", "The maths curve that Bitcoin's keys and signatures are built on. Its name is secp256k1.", "", "Keys & seeds"],
   ["Endianness", "The order bytes are written in. Bitcoin often uses little-endian, so some numbers look backwards.", "", "Units & math"],
   ["Entropy", "Unpredictability, counted in bits. A seed is only as safe as the randomness it was made from.", "Entropy check, Roll chart.", "Keys & seeds"],
@@ -2435,6 +2436,7 @@ const DICT = [
   ["Inheritance planning", "Making sure the people you trust can find and restore your wallet if something happens to you, without exposing it today.", "", "Wallets & backups"],
   ["Input and output", "The two sides of a transaction: inputs are the coins being spent, outputs are the new coins being made (the payment and the change).", "Transaction inspector.", "Transactions"],
   ["Key pair", "A private key and the public key worked out from it.", "", "Keys & seeds"],
+  ["Key reuse (multisig)", "Using the same public key, or keys from the same seed, more than once in a wallet setup. In a multisig it quietly lowers the protection: one seed then counts as two signers.", "EXTRA TOOLS, Check descriptors for a reused key.", "Wallets & backups"],
   ["Key stretching", "Making a secret slow to test on purpose, so guessing is costly. BIP39 does this with PBKDF2.", "", "Keys & seeds"],
   ["KYC (know your customer)", "Identity checks a company makes before it serves you. They can link your name to your addresses.", "", "Wallets & backups"],
   ["Layer 2", "A system built on top of Bitcoin, such as Lightning, that moves payments off the main chain and settles on it.", "", "Lightning & layers"],
@@ -2567,7 +2569,7 @@ const DICT = [
   ["Wallet", "Software or a device that manages your keys and builds transactions. Your coins live on the blockchain; the wallet holds the keys to them.", "", "Wallets & backups"],
   ["Wallet birthday", "The date or block when a wallet was first used. A restore can skip older blocks, which makes it faster.", "", "Wallets & backups"],
   ["Wallet file", "A file a wallet program keeps on disk, holding its keys or key information. It must be backed up.", "", "Wallets & backups"],
-  ["Watch-only wallet", "A wallet that has only public keys. It shows addresses and balances but cannot spend, so it is safe on a phone.", "Watch-only box.", "Wallets & backups"],
+  ["Watch-only wallet", "A wallet that has only public keys. It shows addresses and balances but cannot spend, so it is safe on a phone.", "Watch-only box; CHECK A BACKUP, Or open a watch-only wallet.", "Wallets & backups"],
   ["Whale", "A person or company holding a very large amount of bitcoin.", "", "Culture & markets"],
   ["Whitepaper", "The nine-page paper \"Bitcoin: A Peer-to-Peer Electronic Cash System\", published on 31 October 2008, which described Bitcoin.", "", "Basics"],
   ["WIF (Wallet Import Format)", "A text way to write one private key (starting with 5, K or L) so it can be imported into a wallet. One key, not a whole wallet.", "BIP85 in Child seed.", "Keys & seeds"],
