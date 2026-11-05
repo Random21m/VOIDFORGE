@@ -340,6 +340,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     pick('wvType','tr'); await until(()=>/^bc1p/.test(rows()[0]||'')); ok(rows()[0]==='bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr','watch-only: the published BIP86 xpub as Taproot gives the published first address');
     { const seed=await t.w.mnemonicToSeed(AB,''), wo=await t.w.watchOnlyFromSeed(seed,'wpkh',0,'main'), desc=wo.receive;
       await openW(desc); await until(()=>rows().length===10);
+      ok(t.$('wvAcct').value==='0'&&t.$('wvAcct').disabled,'watch-only: the account number is read from the descriptor path (0h gives 0)');
       ok(rows()[0]==='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'&&/73c5da0a/.test(t.$('wvFp').textContent)&&t.$('wvIcon').innerHTML.includes('<svg')&&/\[73c5da0a\/84'\/0'\/0'\]\/0\/index/.test(t.$('wvPath').textContent),'watch-only: a descriptor gives the fingerprint, its picture and the key origin in the path');
       await openW(wo.change); await until(()=>rows().length===10&&t.$('wvChain').value==='1'); const ch1=rows()[0]; await openW(desc); await until(()=>rows()[0]==='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu');
       ok(t.$('wvChain').value==='0'&&ch1!==rows()[0]&&/Change/.test('Change'),'watch-only: a /1/* descriptor opens change addresses, and a /0/* one goes back to receive');

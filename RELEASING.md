@@ -33,6 +33,6 @@ The in-page Bitcoin dictionary (ABOUT & HELP) is general, not only about VOIDFOR
 Delete red and cancelled workflow runs (`gh api -X DELETE repos/Random21m/VOIDFORGE/actions/runs/<id>`), mark the previous release "Superseded by vX", check that the README, REVIEW.md, RELEASING.md and the in-page changelog all name the new version, and leave no stray files in the repo (`git ls-files`). A run that failed only because of a flaky test is re-run after the test is fixed, and the fix is recorded in the notes.
 
 ## Current build
-`voidforge.html` v2.2.0, SHA256: `21c1b736b976a4ba78e61cc4d5037973d0f33e3539f87e9e435b552d49d1b8c4`
-Content ID (CIDv1): `bafkreibbyg3tnolwus5hrzq4ytkqg6lt2dzt4njz7b7j4q23kuwutunyyq`
+`voidforge.html` v2.2.0, SHA256: `ee1dfd9e749e3e05dde735f67fd7927a8f3324657dc02b4259fa5de5cb156baa`
+Content ID (CIDv1): `bafkreihodx6z45e6hyc53zzv6z75pet2r4zsizl5yavuewp2lxs4wfllvi`
 (Recompute after any edit.)

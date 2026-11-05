@@ -4950,7 +4950,7 @@ async function openWatchOnly(){
   const tSel = document.getElementById("wvType"), nSel = document.getElementById("wvNet"), aIn = document.getElementById("wvAcct"), cSel = document.getElementById("wvChain");
   nSel.value = w.net; nSel.disabled = true;
   if(w.type){ tSel.value = w.type; } tSel.disabled = w.fixedType;
-  const parts = w.origin ? w.origin.path.split("/") : [], last = parts.length === 4 ? parts[3].replace("'", "") : "";
+  const parts = w.origin ? w.origin.path.split("/") : [], last = parts.length === 4 ? parts[3].replace(/'/g, "") : "";
   aIn.value = /^[0-9]+$/.test(last) ? last : "-"; aIn.disabled = true;
   cSel.value = String(w.chain || 0);
   st.className = "status ok";
