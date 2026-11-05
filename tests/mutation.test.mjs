@@ -801,6 +801,7 @@ async function probe(w, mutated) {
       words(24); setRolls(D50.slice(0, 9)); await w.previewRefresh(); if (pv().length !== 24) fails.push('preview: 24 slots in 24-word mode'); words(12);
       setRolls(''); await w.previewRefresh(); if (pv().length || $('pvNote').textContent) fails.push('preview: nothing with no rolls');
       setRolls(D50); await w.previewRefresh(); await w.generate(); if (w.document.querySelectorAll('#wordGrid .wcell.pv').length || $('pvNote').textContent) fails.push('preview: FORGE replaces the grey words with the real ones');
+      setRolls(D50.slice(0, 7)); await w.previewRefresh(); await w.generate(); await w.previewRefresh(); { const eX = (await w.rollsToMnemonic(D50.slice(0, 7), 12)).split(' '); if (pv().join('|') !== eX.join('|') || !/PREVIEW/.test($('pvNote').textContent)) fails.push('preview: FORGE with too few rolls keeps the grey words'); }
       setRolls(D50.slice(0, 5)); await w.previewRefresh(); w.clearAll(); await new Promise(r => setTimeout(r, 20)); if (pv().length || $('pvNote').textContent) fails.push('preview: CLEAR removes the grey words');
     }
     { // Bitcoin dictionary (v1.27.3)
@@ -1937,6 +1938,7 @@ const M = [
   ['step help: Roll text lost', 'Your dice or coin are the randomness. VOIDFORGE only runs them through SHA-256, so nothing hidden is mixed in.', 'Your dice or coin are the randomness.'],
   ['step help: Forge step shows no text', '    3: "Press FORGE SEED to turn your rolls into the BIP39 words that are your wallet\\u2019s backup.",', '    3: "",'],
   ['step help: never updated', '  document.getElementById("stepWhy").textContent = WHY[cur];\n', ''],
+  ['preview: too-few-rolls FORGE wipes the grey words', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote(); previewRefresh();', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote();'],
   ['preview: grey note stays after FORGE', 'wdWipe(); drillEnd(); if(words) previewClear(); document.body', 'wdWipe(); drillEnd(); document.body'],
   ['word draw: dice FORGE leaves old steps', 'function setResult(text, words){\n  wdWipe(); drillEnd(); if(words) previewClear(); document.body.classList.toggle("has-seed", !!words);\n', 'function setResult(text, words){\n  drillEnd(); if(words) previewClear(); document.body.classList.toggle("has-seed", !!words);\n'],
   ['word draw: CLEAR leaves the boxes', '  wdClear();\n', ''],

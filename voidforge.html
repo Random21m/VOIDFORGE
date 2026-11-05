@@ -746,6 +746,7 @@
 <button class="guide-btn" id="guideBtn" onclick="toggleGuide()" aria-pressed="false">GUIDE ME</button>
 <button class="size-btn" id="sizeBtn" onclick="toggleSize()" aria-pressed="false">TEXT A+</button>
 <button class="print-btn" onclick="printSeed()">PRINT SEED</button>
+<button class="print-btn" id="stampBtn" onclick="printStamp()">PRINT STAMP SHEET</button>
 <button class="theme-toggle" onclick="toggleTheme()">DARK</button>
 </div></details>
 </div>
@@ -873,7 +874,6 @@
     <div class="result nores" id="genResult" data-g="3 4" role="status">—</div>
     <div class="btn-row seed-actions" style="margin-top:6px;" data-g="3 4">
       <button class="secondary small needs-words" id="abbrBtn" onclick="toggleAbbr()">SHOW FIRST 4 LETTERS</button>
-      <button class="secondary small needs-words" id="stampBtn" onclick="printStamp()">PRINT STAMP SHEET</button>
       <button class="secondary small needs-words" onclick="sendToVerify()">SEND TO CHECK</button>
       <button class="secondary small" onclick="copyFingerprint(this)">COPY FINGERPRINT</button>
       <button class="secondary small" onclick="copyAddress(this)">COPY ADDRESS</button>
@@ -4253,7 +4253,7 @@ function setResult(text, words){
     if(guideOn) guideRender();
     document.getElementById("nextStep").textContent = "Write these " + words.length + " words down in order, then try the Restore drill below to test your paper. PRINT SEED prints them.";
   } else {
-    delete g.dataset.seed; g.classList.remove("sr"); grid.style.display = ""; grid.classList.remove("slots"); renderSlots(); updateAbbrNote();
+    delete g.dataset.seed; g.classList.remove("sr"); grid.style.display = ""; grid.classList.remove("slots"); renderSlots(); updateAbbrNote(); previewRefresh();
     document.getElementById("passNote").textContent = ""; document.getElementById("nextStep").textContent = "";
     clearWatch();
     clearFpIcons();
@@ -4742,7 +4742,8 @@ async function wvRefresh(){
   if(!wvCtx) return;
   const mine = ++wvSeq, err = document.getElementById("wvErr"), raw = document.getElementById("wvAcct").value.trim();
   hideAddrQr("wvq");
-  if(!/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647){ err.textContent = "The account must be a whole number from 0 to 2147483647."; document.getElementById("wvList").textContent = ""; document.getElementById("wvPath").textContent = ""; return; }
+  const badAcct = !/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647;
+  if(badAcct){ err.textContent = "The account must be a whole number from 0 to 2147483647."; document.getElementById("wvList").textContent = ""; document.getElementById("wvPath").textContent = ""; return; }
   err.textContent = "";
   const type = document.getElementById("wvType").value, net = document.getElementById("wvNet").value, chain = parseInt(document.getElementById("wvChain").value, 10), acct = parseInt(raw, 10);
   let rows;
