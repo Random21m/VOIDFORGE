@@ -698,6 +698,14 @@
   .seed-head { margin: 4px 0; }
   .big-count { font-size: 15px; }
   .guide-btn, .size-btn, .theme-toggle { padding: 5px 10px; font-size: 12px; }
+  .big-count.short, .big-sub.short, #rollCount.short { color: var(--muted) !important; }
+  #ignoredNote { color: var(--muted) !important; font-weight: 500 !important; }
+  #onlineWarn, #fatalWarn { background: transparent; color: var(--text); border: 1px solid var(--bad-text); border-left-width: 4px; text-align: left; font-weight: 600; font-size: 13px; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; }
+  #statusLine { justify-content: flex-start; margin-bottom: 4px; }
+  #netTag, #selfTestBadge { text-align: left; font-size: 12px; }
+  #guideNew { text-align: left; font-size: 12.5px; margin: 0 0 8px; }
+  .sec { font-size: 14px; font-weight: 700; margin: 12px 0 4px; color: var(--text); letter-spacing: .02em; }
+  .sec-block { margin-top: 14px; padding-top: 4px; border-top: 1px solid var(--border); }
   @media (max-width: 345px) {
     #topbar .tb-in { padding: 10px 8px; gap: 6px; }
     #brandDie { width: 24px; height: 24px; }
@@ -1023,6 +1031,7 @@
       </div>
       <div class="status" id="prStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
     </details>
+    <h3 class="sec">Check your words</h3>
     <textarea id="phrase" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Type or paste your seed words to check..."></textarea>
     <div class="hint" style="margin:4px 0 0;">Also accepts a SeedSigner SeedQR digit string (48 or 96 digits) or CompactSeedQR hex. Type it in; do not scan a real seed QR with a connected phone.</div>
     <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
@@ -1040,8 +1049,9 @@
     </div>
     <div class="status" id="verifyStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-all;"></div>
     <div class="status" id="verifyMatch" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-    <div style="margin-top:14px;">
-      <div class="hint" style="margin:0 0 6px;"><b>Is this address yours?</b> Paste a receive or change address from a wallet app (bc1q SegWit, bc1p Taproot, 3 nested SegWit or 1 legacy; the box on the right is the account, almost always 0). It is searched in the wallet made by the words and passphrase above.</div>
+    <div class="sec-block">
+      <h3 class="sec">Is this address yours?</h3>
+      <div class="hint" style="margin:0 0 6px;">Paste a receive or change address from a wallet app (bc1q SegWit, bc1p Taproot, 3 nested SegWit or 1 legacy; the box on the right is the account, almost always 0). It is searched in the wallet made by the words and passphrase above.</div>
       <div style="display:flex; gap:6px;"><input type="text" id="checkAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Address (bc1q, bc1p, 3 or 1)" style="flex:1; min-width:0;"><input type="text" id="checkAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number (almost always 0)" style="width:56px; flex:none;"></div>
       <div class="btn-row" style="margin-top:8px;"><button type="button" id="checkAddrBtn" onclick="checkAddress()">CHECK ADDRESS</button></div>
       <div class="status" id="addrCheckStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
@@ -1590,7 +1600,7 @@ function updateCount(){
     statusEl.textContent = an.msg; statusEl.style.color = "var(--muted)"; fillEl.style.width = "0%";
   } else if (an.level === "ok") {
     fillEl.style.width = "100%"; fillEl.style.background = "var(--ok-text)";
-    statusEl.textContent = "No obvious problems (this check cannot prove your dice or coin are random)"; statusEl.style.color = "var(--ok-text)";
+    statusEl.textContent = "No obvious problems"; statusEl.style.color = "var(--ok-text)";
   } else if (an.level === "warn") {
     fillEl.style.width = "60%"; fillEl.style.background = "var(--warn-text)";
     statusEl.textContent = "Slightly unusual counts (can happen by chance)"; statusEl.style.color = "var(--warn-text)";
@@ -1600,7 +1610,7 @@ function updateCount(){
   }
   const bits = isCoin ? rolls.length : rolls.length * Math.log2(6);
   document.getElementById("bitsNote").textContent = rolls.length
-    ? "\u2248 " + Math.floor(bits) + " bits of entropy IF every " + (isCoin ? "flip" : "roll") + " was fair and independent (a 12-word seed uses 128, a 24-word seed 256). Bad dice or habits mean less."
+    ? "\u2248 " + Math.floor(bits) + " bits so far, if every " + (isCoin ? "flip" : "roll") + " was fair (a 12-word seed needs 128, a 24-word seed 256). This check cannot prove your " + (isCoin ? "coin is" : "dice are") + " random."
     : "";
   updateRollHistory(rolls);
   if(!hasSeed()) renderSlots();
