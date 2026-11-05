@@ -35,7 +35,7 @@
     position: relative;
   }
   #topbar { position: absolute; top: 14px; left: 12px; right: 12px; max-width: 736px; margin: 0 auto; display: flex; flex-wrap: nowrap; gap: 8px; justify-content: center; z-index: 5; }
-  #topbar button { margin: 0; flex: 0 1 auto; min-width: 0; padding: 6px 9px; font-size: 12.5px; letter-spacing: .3px; }
+  #topbar button { margin: 0; flex: 0 1 auto; min-width: 0; padding: 6px 9px; font-size: 12px; letter-spacing: .3px; }
   .theme-toggle, .print-btn {
     position: static;
     background: var(--surface2);
@@ -168,7 +168,7 @@
   body.drill-on #wordGrid, body.drill-on #genResult, body.drill-on #abbrNote, body.drill-on #passNote, body.drill-on #nextStep { visibility: hidden; }
   body.drill-on .needs-words, body.drill-on .print-btn, body.drill-on #seedQrBox, body.drill-on #explainBox { display: none !important; }
   #drillBox textarea { min-height: 70px; }
-  #drillBox label { display: block; margin: 8px 0 4px; font-size: 13.5px; color: var(--muted); }
+  #drillBox label { display: block; margin: 8px 0 4px; font-size: 13px; color: var(--muted); }
   #drillStatus { white-space: pre-wrap; margin-top: 8px; }
   button.btn-clear { background: rgba(255,68,102,.08); color: var(--bad-text); border: 1px solid var(--bad-text); }
   button.btn-test { background: rgba(0,255,157,.12); color: var(--ok-text); border: 1px solid var(--ok-text); }
@@ -192,7 +192,7 @@
     word-break: break-word;
   }
   .rc { margin-top:10px; padding:8px 10px 6px; border:1px solid var(--border); border-radius:8px; background:var(--surface); }
-  .rc-title { font-size:12.5px; color:var(--muted); margin-bottom:6px; }
+  .rc-title { font-size: 12px; color:var(--muted); margin-bottom:6px; }
   .rc-rows { display:flex; flex-direction:column; gap:7px; margin-bottom:8px; }
   .rc-row { display:flex; align-items:center; gap:10px; }
   .rc-label { width:1.6em; text-align:center; font-size:16px; color:var(--muted); line-height:1; flex:none; }
@@ -200,19 +200,19 @@
   .rc-bar { height:100%; background:var(--accent); border-radius:5px; min-width:0; }
   .rc-exp { position:absolute; top:-3px; bottom:-3px; width:0; border-left:2px solid var(--muted); pointer-events:none; }
   .rc-num { width:2.2em; text-align:right; font-size:13px; font-weight:700; line-height:1; flex:none; }
-  .rc-note { font-size:12.5px; color:var(--muted); margin-top:4px; }
-  .hint { font-size: 13.5px; color: var(--muted); }
+  .rc-note { font-size: 12px; color:var(--muted); margin-top:4px; }
+  .hint { font-size: 13px; color: var(--muted); }
   .dict-cats { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-  .dict-cat { padding: 4px 10px; font-size: 12.5px; font-weight: 600; letter-spacing: 0; border-radius: 99px; background: var(--surface); color: var(--muted); border: 1px solid var(--border); box-shadow: none; }
+  .dict-cat { padding: 4px 10px; font-size: 12px; font-weight: 600; letter-spacing: 0; border-radius: 99px; background: var(--surface); color: var(--muted); border: 1px solid var(--border); box-shadow: none; }
   .dict-cat[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
   .dict-list { margin: 0; max-height: 60vh; overflow-y: auto; padding-right: 6px; }
   .dict-item { padding: 8px 0; border-top: 1px solid var(--border); }
   .dict-item dt { font-weight: 700; color: var(--accent); }
   .dict-item dd { margin: 3px 0 0; line-height: 1.5; }
-  .dict-item small { display: block; margin-top: 3px; color: var(--muted); font-size: 12.5px; }
+  .dict-item small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
   .support-qr { width: 100%; max-width: 230px; margin: 10px auto 4px; border-radius: 10px; overflow: hidden; }
   .support-qr svg { display: block; width: 100%; height: auto; }
-  .wlabel { margin-top: 10px; font-size: 13.5px; color: var(--muted); }
+  .wlabel { margin-top: 10px; font-size: 13px; color: var(--muted); }
   .wval { font-family: monospace; font-size: 13px; word-break: break-all; margin: 4px 0 6px; user-select: all; }
   .lh { width: 64px; height: 64px; line-height: 0; margin-top: 12px; border-radius: 6px; overflow: hidden; }
   .lh:empty { display: none; }
@@ -241,7 +241,7 @@
   #about code { font-family: monospace; font-size: 13px; color: var(--accent); word-break: break-word; }
   #about table { border-collapse: collapse; width: 100%; }
   #about th, #about td { border: 1px solid var(--border); padding: 4px 8px; text-align: center; }
-  footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 12px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: 12px; }
   @media print {
     .theme-toggle, .print-btn, button, .radio-group, textarea, input { display: none !important; }
     .result, .fp { border: 1px solid #000; }
@@ -313,7 +313,7 @@
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
   .start { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 4px; }
   .start button { display: flex; flex-direction: column; gap: 3px; align-items: center; padding: 10px 6px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; font-weight: 700; letter-spacing: .3px; }
-  .start button small { font-weight: 400; font-size: 12.5px; color: var(--muted); letter-spacing: 0; }
+  .start button small { font-weight: 400; font-size: 12px; color: var(--muted); letter-spacing: 0; }
   .start button:hover { border-color: var(--accent); }
   .sub { font-size: 14px; color: var(--muted); margin: -4px 0 12px; line-height: 1.5; }
   .tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .8px; padding: 2px 7px; border-radius: 99px; border: 1px solid; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
@@ -343,10 +343,10 @@
   .tag-ro { color: var(--accent); border-color: var(--accent); }
   .tools details { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-top: 10px !important; }
   .tools summary { cursor: pointer; font-weight: 600; font-size: 14px; }
-  summary small { display: block; font-weight: 400; color: var(--muted); font-size: 13.5px; margin-top: 2px; }
-  summary small { display: block; font-weight: 400; color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+  summary small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; margin-top: 2px; }
+  summary small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; margin-top: 2px; }
   @media (max-width: 480px) { .start button { font-size: 13px; } .start button small { display: none; } .card { padding: 14px 12px; } }
-  .steps { font-size: 12.5px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); text-align: center; margin-top: 14px; }
+  .steps { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); text-align: center; margin-top: 14px; }
   .result.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; padding: 0; border: 0; margin: -1px; min-height: 0; }
   #wordGrid { display: none; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 10px; }
   @media (min-width: 520px) { #wordGrid { grid-template-columns: repeat(3, 1fr); } }
@@ -378,7 +378,7 @@
   body.guided #guidePanel { display: block; }
   body.guided #guideNew { display: none; }
   #guidePanel .gtop { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-  #guidePanel .gtitle { font-size: 12.5px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
+  #guidePanel .gtitle { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
   #guidePanel h3 { font-size: 17px; margin: 4px 0 6px; }
   #guidePanel p { font-size: 13px; line-height: 1.5; margin: 0 0 6px; }
   #guidePanel .gdots { display: flex; gap: 6px; margin: 8px 0; }
@@ -398,7 +398,7 @@
   .ms-ban p { font-size: 13px; line-height: 1.5; margin: 6px 0; }
   #msBox { margin-top: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
   #msBox summary { cursor: pointer; font-weight: 600; }
-  #msBox summary small { display: block; font-weight: 400; font-size: 13.5px; color: var(--muted); }
+  #msBox summary small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
   #msBox select, #msBox input[type=text] { min-width: 0; }
 
   #startGate { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100; background: rgba(4,4,8,.78); display: none; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(3px); }
@@ -412,13 +412,13 @@
   .sg-item { display: flex; gap: 12px; padding: 10px 12px; margin-bottom: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; font-size: 14.5px; line-height: 1.55; }
   .sg-ico { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: var(--warn-text); color: #000; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 14px; margin-top: 1px; }
   body.light .sg-ico { color: #fff; }
-  .sg-fix { display: block; margin-top: 3px; color: var(--muted); font-size: 13.5px; }
+  .sg-fix { display: block; margin-top: 3px; color: var(--muted); font-size: 13px; }
   .sg-fix b { color: var(--success); }
   body.light .sg-fix b { color: #066b3d; }
   #startGate .sg-go { display: block; width: 100%; margin: 14px 0 0; padding: 12px; font-size: 15px; }
-  #startGate .sg-foot { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+  #startGate .sg-foot { text-align: center; color: var(--muted); font-size: 12px; margin-top: 8px; }
   .before-card .bc-grid { display: grid; gap: 8px; margin-top: 10px; }
-  .forge-note { margin: 8px 0 0; padding: 8px 12px; font-size: 13.5px; color: var(--muted); border-left: 3px solid var(--warn-text); background: var(--surface2); border-radius: 6px; line-height: 1.5; }
+  .forge-note { margin: 8px 0 0; padding: 8px 12px; font-size: 13px; color: var(--muted); border-left: 3px solid var(--warn-text); background: var(--surface2); border-radius: 6px; line-height: 1.5; }
   .ms-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
   .ms-big { text-align: center; font-size: 34px; font-weight: 800; letter-spacing: .04em; margin: 6px 0 0; color: var(--text); }
   .ms-big small { display: block; font-size: 13px; font-weight: 500; letter-spacing: 0; color: var(--muted); }
@@ -437,7 +437,7 @@
   .ms-slider input:focus-visible::-moz-range-thumb { outline: 2px solid var(--text); outline-offset: 2px; }
   .ms-ticks { position: relative; height: 18px; margin: 2px 11px 0; color: var(--muted); font-size: 12px; }
   .ms-ticks span { position: absolute; transform: translateX(-50%); }
-  .ms-legend { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin: 4px 0; }
+  .ms-legend { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 4px 0; }
   .ms-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
   .ms-pop { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin: 8px 0 2px; }
   #msBox .ms-preset, body.light #msBox .ms-preset { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
@@ -450,13 +450,13 @@
   .ms-slot .ms-icon { width: 44px; height: 44px; flex: none; line-height: 0; border-radius: 6px; overflow: hidden; }
   .ms-slot .ms-icon svg { width: 100%; height: 100%; }
   .ms-slot .ms-txt { flex: 1; min-width: 140px; font-size: 13px; }
-  .ms-slot .ms-mono { font-family: monospace; font-size: 12.5px; color: var(--muted); word-break: break-all; }
+  .ms-slot .ms-mono { font-family: monospace; font-size: 12px; color: var(--muted); word-break: break-all; }
   .ms-bad { color: var(--danger); font-size: 14px; margin: 6px 0; }
   .ms-warn { border: 1px solid var(--danger); border-radius: 8px; padding: 8px 10px; font-size: 14px; line-height: 1.5; margin: 8px 0; }
   .ms-test { background: var(--danger); color: #000; font-weight: 700; font-size: 13px; text-align: center; padding: 6px 8px; border-radius: 8px; margin: 8px 0; }
   .ms-why { display: grid; gap: 8px; margin: 10px 0 12px; }
-  .ms-why-i { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; padding: 9px 12px; font-size: 13.5px; line-height: 1.55; }
-  .ms-prog2 { margin: 8px 0 4px; font-size: 13.5px; color: var(--muted); }
+  .ms-why-i { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; padding: 9px 12px; font-size: 13px; line-height: 1.55; }
+  .ms-prog2 { margin: 8px 0 4px; font-size: 13px; color: var(--muted); }
   .ms-prog2 .ms-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin-top: 6px; }
   .ms-prog2 .ms-bar i { display: block; height: 100%; background: var(--ok-text); border-radius: 4px; transition: width .4s; }
   .ms-num { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex: none; color: var(--muted); }
@@ -474,7 +474,7 @@
   @media print { #wdBox { display: none !important; } }
   #wdBox { margin-top: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
   #wdBox summary { cursor: pointer; font-weight: 600; }
-  #wdBox summary small { display: block; font-weight: 400; font-size: 13.5px; color: var(--muted); }
+  #wdBox summary small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
   #wdOut { margin-top: 10px; }
   .wd-row { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; padding: 3px 0; border-bottom: 1px dashed var(--border); word-break: break-word; }
   .wd-key { color: var(--accent); font-weight: 700; }
@@ -491,7 +491,7 @@
   .strip .linklike { margin: 0 0 0 auto; padding: 0; background: none; border: none; color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: 0; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; box-shadow: none; }
   .tabs { display: flex; gap: 4px; margin: 0 0 14px; border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 4; background: var(--bg); padding-top: 4px; }
   .tabs button { flex: 1 1 0; min-width: 0; margin: 0 0 -2px; padding: 9px 8px 8px; background: #12324a; border: none; border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0; color: #e6f7ff; font-size: 14px; font-weight: 700; letter-spacing: .4px; box-shadow: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-  .tabs button small { font-weight: 400; font-size: 11.5px; letter-spacing: 0; color: #e6f7ff; }
+  .tabs button small { font-weight: 400; font-size: 12px; letter-spacing: 0; color: #e6f7ff; }
   .tabs button:hover { background: #1a4766; color: #fff; }
   .tabs button[aria-selected="true"] { background: #00f0ff; color: #04141c; border-bottom-color: #ffb800; }
   .tabs button[aria-selected="true"] small { color: #04141c; }
@@ -506,7 +506,7 @@
   .tab-off { display: none !important; }
   .card { scroll-margin-top: 72px; }
   .stepbar { list-style: none; display: flex; gap: 6px; margin: 0 0 12px; padding: 0; }
-  .stepbar li { flex: 1 1 0; text-align: center; font-size: 12.5px; font-weight: 700; padding: 7px 6px; border-radius: 8px; background: var(--surface2); color: var(--muted); }
+  .stepbar li { flex: 1 1 0; text-align: center; font-size: 12px; font-weight: 700; padding: 7px 6px; border-radius: 8px; background: var(--surface2); color: var(--muted); }
   .stepbar li.done { color: var(--ok-text); }
   .stepbar li.done::before { content: "\2713  "; }
   .stepbar li.cur { background: var(--accent); color: #001018; }
@@ -522,7 +522,7 @@
   @media (min-width: 861px) { #cardGen .gen-right { max-height: calc(100vh - 92px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; } }
   .seed-title { font-size: 12px; font-weight: 800; letter-spacing: 2px; color: var(--accent); }
   .big-count { font-size: 34px; font-weight: 800; line-height: 1.15; margin-top: 2px; }
-  .big-sub { font-size: 13.5px; font-weight: 600; margin-bottom: 10px; }
+  .big-sub { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
   .big-count.short, .big-sub.short { color: var(--bad-text); }
   .big-count.met, .big-sub.met { color: var(--ok-text); }
   .big-count.met::before { content: "\2713  "; }
@@ -533,7 +533,7 @@
   @media (min-width: 520px) { #cardGen .gen-right #wordGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .wcell.empty { opacity: .55; animation: none; }
   .wcell.pv { opacity: .7; font-weight: 500; border-style: dashed; }
-  #pvNote:not(:empty) { margin: 6px 0 0; font-size: 12.5px; color: var(--bad-text); }
+  #pvNote:not(:empty) { margin: 6px 0 0; font-size: 12px; color: var(--bad-text); }
   #genResult.nores { display: none; }
   #tp-about { max-width: 860px; margin-left: auto; margin-right: auto; }
   @media (max-width: 860px) {
@@ -563,7 +563,7 @@
   #topbar .tb-sp { flex: 1; }
   #topbar .dl-btn { background: transparent; color: var(--text); border: 1.5px solid var(--bd2); }
   #menuBox { position: relative; }
-  #menuBox > summary { list-style: none; cursor: pointer; border: 1.5px solid var(--bd2); border-radius: 6px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; letter-spacing: .05em; color: var(--text); white-space: nowrap; }
+  #menuBox > summary { list-style: none; cursor: pointer; border: 1.5px solid var(--bd2); border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 700; letter-spacing: .05em; color: var(--text); white-space: nowrap; }
   #menuBox > summary::-webkit-details-marker { display: none; }
   #menuBox > summary::marker { content: ""; }
   #menuBox .menu-list { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 190px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
@@ -575,14 +575,14 @@
   button { background: var(--btn); color: var(--btntx); border: 1.5px solid transparent; border-radius: 6px; padding: 10px 16px; font-weight: 700; letter-spacing: .04em; box-shadow: none; transition: none; }
   body.light button { color: var(--btntx); }
   button.secondary, .theme-toggle, .print-btn, .guide-btn, .size-btn, body.light button.secondary, body.light .theme-toggle, body.light .print-btn, body.light .guide-btn, body.light .size-btn { background: transparent; color: var(--text); border: 1.5px solid var(--bd2); border-radius: 6px; padding: 8px 14px; font-size: 13px; }
-  button.small, button.secondary.small { padding: 6px 12px; font-size: 12.5px; }
+  button.small, button.secondary.small { padding: 6px 12px; font-size: 12px; }
   button.btn-clear, body.light button.btn-clear { background: transparent; color: var(--bad-text); border: 1.5px solid var(--bad-text); }
   button.btn-test, body.light button.btn-test { background: transparent; color: var(--text); border: 1.5px solid var(--bd2); }
   .guide-btn.on, body.light .guide-btn.on { background: var(--accent); color: var(--bg); border-color: var(--accent); }
   button.copied { box-shadow: none; }
   button.tap:active, button.tap.pop { box-shadow: none; animation: none; }
   #forgeBtn:not(:disabled) { animation: none; }
-  .tag, body.light .tag { border: 0; background: none; padding: 0; border-radius: 0; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; margin-left: 8px; }
+  .tag, body.light .tag { border: 0; background: none; padding: 0; border-radius: 0; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; margin-left: 8px; }
   .tag-secret, body.light .tag-secret { color: var(--bad-text); font-weight: 800; }
   .tag-public { color: var(--ok-text); }
   .tag-rec, body.light .tag-rec { color: var(--warn-text); background: none; }
@@ -623,14 +623,14 @@
   .mk-len { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin: 0 0 12px; }
   .mk-len label { font-weight: 600; font-size: 14px; white-space: nowrap; }
   .mk-len select { flex: 0 0 auto; width: auto; min-width: 120px; }
-  .mk-len span { color: var(--muted); font-size: 13.5px; }
+  .mk-len span { color: var(--muted); font-size: 13px; }
   .legacy-radios { display: none; }
   #wdBox > summary { display: none; }
   body:not(.m-words) #wdBox { display: none; }
   body.m-words .gen-left > [data-g="2"] { display: none !important; }
   #wdBox { background: none !important; border: 0 !important; padding: 0 !important; margin-top: 0 !important; }
   .wd-how { margin: 0 0 8px; }
-  .wd-how > summary { cursor: pointer; font-weight: 600; font-size: 13.5px; color: var(--muted); }
+  .wd-how > summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--muted); }
   body.m-words #forgeBtn, body.m-words #bigCount, body.m-words #bigSub { display: none; }
   #wordGrid, #cardGen .gen-right #wordGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   @media (max-width: 559px) { #wordGrid, #cardGen .gen-right #wordGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -646,7 +646,7 @@
   #about details, .tools details, #advanced, #rollStats, #wdBox, #msBox { background: transparent; border: 1px solid var(--border); border-radius: 8px; }
   #rollStats { margin-top: 10px; padding: 8px 12px; font-size: 13px; }
   #rollStats > summary { cursor: pointer; font-weight: 600; }
-  #rollStats > summary small { display: block; font-weight: 400; font-size: 13.5px; color: var(--muted); }
+  #rollStats > summary small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
   #onlineWarn, #fatalWarn, .ms-test { background: #FF8A90; color: #1a0000; }
   .ms-fill { background: var(--gold); }
   .rc-bar { background: var(--gold); }
@@ -662,7 +662,7 @@
   /* Compact pass (v2.1.0): clean, business-like, nothing wider or taller than it needs to be */
   .card, body.light .card { padding: 14px 16px; margin-bottom: 14px; }
   .card h2 { margin-bottom: 2px; }
-  .sub { font-size: 13.5px; margin: 0 0 6px; line-height: 1.4; }
+  .sub { font-size: 13px; margin: 0 0 6px; line-height: 1.4; }
   .stepbar { margin: 0 0 10px; }
   .mk-tabs { margin: 8px 0 8px; }
   .mk-tabs button { padding: 7px 6px; font-size: 14px; }
@@ -679,9 +679,9 @@
   .seed-head { margin: 6px 0; }
   #wordGrid { gap: 5px; margin-top: 6px; }
   .wcell { padding: 5px 10px; font-size: 15px; }
-  #secretNote, #passNote, #nextStep, #abbrNote { margin-top: 4px; font-size: 12.5px; }
+  #secretNote, #passNote, #nextStep, #abbrNote { margin-top: 4px; font-size: 12px; }
   .seed-actions { gap: 6px; }
-  .seed-actions button { padding: 5px 9px; font-size: 12.5px; }
+  .seed-actions button { padding: 5px 9px; font-size: 12px; }
   .fp:not(:empty)::before { display: inline; margin: 0 8px 0 0; }
   .fp { margin-top: 6px; font-size: 15px; letter-spacing: .5px; }
   #fpIcon { width: 56px; height: 56px; margin-top: 6px; }
@@ -703,7 +703,7 @@
   #onlineWarn, #fatalWarn { background: transparent; color: var(--text); border: 1px solid var(--bad-text); border-left-width: 4px; text-align: left; font-weight: 600; font-size: 13px; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; }
   #statusLine { justify-content: flex-start; margin-bottom: 4px; }
   #netTag, #selfTestBadge { text-align: left; font-size: 12px; }
-  #guideNew { text-align: left; font-size: 12.5px; margin: 0 0 8px; }
+  #guideNew { text-align: left; font-size: 12px; margin: 0 0 8px; }
   .sec { font-size: 14px; font-weight: 700; margin: 12px 0 4px; color: var(--text); letter-spacing: .02em; }
   .sec-block { margin-top: 14px; padding-top: 4px; border-top: 1px solid var(--border); }
   @media (max-width: 345px) {
@@ -734,7 +734,7 @@
 <div class="container">
   <div id="onlineWarn" role="alert"></div>
   <div id="fatalWarn" role="alert"></div>
-  <div id="noJs" role="alert" style="background:#ff4466; color:#000; font-weight:700; font-size:13.5px; text-align:center; padding:10px 12px; border-radius:10px; margin-bottom:14px;">
+  <div id="noJs" role="alert" style="background:#ff4466; color:#000; font-weight:700; font-size: 13px; text-align:center; padding:10px 12px; border-radius:10px; margin-bottom:14px;">
     This page&rsquo;s script is NOT running, so nothing below works. Open voidforge.html itself in a current desktop browser (Safari 14+, Chrome, Firefox) with JavaScript on. File previews (Quick Look, email, phone Files) and old browsers block it. Do not use it for real funds until the green SELF-TEST PASSED badge appears. This tool is meant for an offline computer, not a phone.
   </div>
   <div id="statusLine">
@@ -821,18 +821,18 @@
     </div>
     <div id="tapRow" data-g="2" class="radio-group" style="margin-top:8px; margin-bottom:6px;" aria-label="Tap to add a roll or flip"></div>
     <textarea id="rolls" data-g="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Dice: rolls 1-6. Coin: flips as 1 and 0."></textarea>
-    <div id="coinHint" data-g="2" style="display:none; font-size:13.5px; margin-top:6px; color:var(--muted);">Pick which side is 1 and which is 0 (the usual choice: heads = 1, tails = 0) and keep it the same for every flip. Only the 1/0 string is used, so any consistent choice is fine, but you cannot get the mapping back from the words. Write down the exact string or your mapping with your backup.</div>
+    <div id="coinHint" data-g="2" style="display:none; font-size: 13px; margin-top:6px; color:var(--muted);">Pick which side is 1 and which is 0 (the usual choice: heads = 1, tails = 0) and keep it the same for every flip. Only the 1/0 string is used, so any consistent choice is fine, but you cannot get the mapping back from the words. Write down the exact string or your mapping with your backup.</div>
     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;" data-g="2">
-      <div id="rollCount" aria-live="polite" style="font-size:13.5px;color:var(--muted);font-weight:600;">0 / 50 rolls</div>
+      <div id="rollCount" aria-live="polite" style="font-size: 13px;color:var(--muted);font-weight:600;">0 / 50 rolls</div>
       <button class="secondary small" onclick="undoRoll()">UNDO</button>
     </div>
     <div class="entropy-bar" data-g="2"><div class="entropy-fill" id="entropyFill"></div></div>
-    <div id="entropyStatus" data-g="2" style="font-size:13.5px; margin-top:4px; font-weight:600;"></div>
-    <div id="bitsNote" data-g="2" style="font-size:13.5px; margin-top:4px; color:var(--muted);"></div>
-    <div id="ignoredNote" data-g="2" style="font-size:13.5px; margin-top:4px; font-weight:600; color:var(--danger);"></div>
+    <div id="entropyStatus" data-g="2" style="font-size: 13px; margin-top:4px; font-weight:600;"></div>
+    <div id="bitsNote" data-g="2" style="font-size: 13px; margin-top:4px; color:var(--muted);"></div>
+    <div id="ignoredNote" data-g="2" style="font-size: 13px; margin-top:4px; font-weight:600; color:var(--danger);"></div>
     <details id="rollStats" data-g="2">
       <summary>Your rolls: history and fairness chart<small>See what you rolled and whether the faces came up evenly.</small></summary>
-    <div id="rollHistory" data-g="2" style="font-size:12.5px;color:var(--muted);margin-top:6px;min-height:16px;"></div>
+    <div id="rollHistory" data-g="2" style="font-size: 12px;color:var(--muted);margin-top:6px;min-height:16px;"></div>
     <div id="diceVisual" data-g="2" style="font-size:30px; letter-spacing:4px; margin-top:4px; min-height:28px;"></div>
     <div id="rollChart" data-g="2" class="rc" role="img" aria-label="Chart of how many times each face came up" style="display:none;"></div>
     </details>
@@ -865,12 +865,12 @@
         <button type="button" class="secondary small" onclick="togglePassphrase(this)">SHOW</button>
       </div>
       <input type="password" id="passphrase2" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Confirm passphrase (must match)" style="margin-top:6px;" oninput="updateAdvSummary()">
-      <details class="wd-how"><summary>About passphrases</summary><div style="font-size:13.5px; color:var(--muted); margin-top:6px;">A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> makes a different wallet from the same words. Write it down separately: without it the funds cannot be recovered. Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div></details>
+      <details class="wd-how"><summary>About passphrases</summary><div style="font-size: 13px; color:var(--muted); margin-top:6px;">A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> makes a different wallet from the same words. Write it down separately: without it the funds cannot be recovered. Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div></details>
       <input type="text" id="note" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Optional note (not used in the seed)" style="margin-top:6px;">
     </details>
     <div data-g="3 4 5" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;"><div class="fp" id="fingerprint"></div><div id="fpIcon" class="lh" title="Fingerprint picture (LifeHash): the same picture Sparrow Wallet shows for this fingerprint"></div></div>
     <div id="fpBaseRow" data-g="3 4 5" style="display:none; align-items:center; gap:14px; flex-wrap:wrap; margin-top:6px;"><div class="fp" id="fpBase"></div><div id="fpBaseIcon" class="lh" title="Fingerprint picture (LifeHash) of the wallet without the passphrase"></div></div>
-    <div id="address" data-g="3 4 5" style="margin-top:6px; font-size:13.5px; word-break:break-all; color:var(--muted);"></div>
+    <div id="address" data-g="3 4 5" style="margin-top:6px; font-size: 13px; word-break:break-all; color:var(--muted);"></div>
    </div>
    <div class="gen-bottom">
     <details id="drillBox" data-g="5" style="display:none; margin-top:8px;">
@@ -997,7 +997,7 @@
       <details id="coreBox" class="ms-sub" style="margin-top:12px;">
         <summary style="cursor:pointer; font-weight:600;">Import into Bitcoin Core<span class="tag tag-note">ADVANCED</span></summary>
         <p class="hint" style="margin:8px 0;">Bitcoin Core can watch this wallet without holding any private key. These two commands first make an empty watch-only wallet, then load the descriptors into it. Core then shows the balance and addresses but can never spend. Run them in Core&rsquo;s console or with <code>bitcoin-cli</code>.</p>
-        <label for="coreWhen" style="font-weight:600; font-size:13.5px;">Has this wallet been used before?</label>
+        <label for="coreWhen" style="font-weight:600; font-size: 13px;">Has this wallet been used before?</label>
         <select id="coreWhen" aria-label="Has this wallet been used before" style="width:100%; margin:4px 0 6px;"><option value="now">No, it is brand new (no scan needed)</option><option value="0">Yes, it already has history (scan the whole chain, slow)</option></select>
         <div class="hint" style="margin:0 0 4px;">The &ldquo;birthday&rdquo; tells Core where to start looking. New wallet: from now. Used wallet: from the beginning, which can take hours but never misses a payment.</div>
         <div class="wval" id="coreCmd" style="white-space:pre-wrap;"></div>
@@ -1006,7 +1006,7 @@
       </details>
       <p class="hint" style="margin:8px 0 0;">In your wallet app choose &ldquo;watch-only&rdquo;, &ldquo;import xpub/zpub&rdquo; or &ldquo;import descriptor&rdquo; and paste. Then check that its first receiving addresses equal the five shown above (the first one also equals the First receive address under the fingerprint, for native SegWit, account 0, mainnet). See RECOVERY.md for steps per app.</p>
     </details>
-    <div class="status" id="testResults" style="white-space:pre-wrap; font-family:monospace; font-size:12.5px; font-weight:400;"></div>
+    <div class="status" id="testResults" style="white-space:pre-wrap; font-family:monospace; font-size: 12px; font-weight:400;"></div>
    </div>
   </div>
   </div>
@@ -1109,7 +1109,7 @@
         <button type="button" class="secondary small" onclick="clearPsbt(true)">CLEAR</button>
       </div>
       <div class="status" id="psbtStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-      <pre id="psbtOut" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13.5px; margin:8px 0 0;"></pre>
+      <pre id="psbtOut" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size: 13px; margin:8px 0 0;"></pre>
     </details>
     <details id="cmpBox">
       <summary>Compare two transactions<span class="tag tag-ro">READ ONLY</span><small>Did the signer change anything? Is a fee bump a plain fee bump?</small></summary>
@@ -1124,7 +1124,7 @@
         <button type="button" class="secondary small" onclick="clearCompare(true)">CLEAR</button>
       </div>
       <div class="status" id="cmpStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-      <pre id="cmpOut" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13.5px; margin:8px 0 0;"></pre>
+      <pre id="cmpOut" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size: 13px; margin:8px 0 0;"></pre>
     </details>
     <details id="childBox">
       <summary>Child seed (BIP85)<span class="tag tag-secret">SECRET</span><small>Make a separate new seed, key or password from this one.</small></summary>
@@ -1237,7 +1237,7 @@
     AIR-GAPPED USE ONLY for real funds.<br>
     Never enter a real seed on a connected device.<br>
     Always verify with a second offline tool before trusting real Bitcoin.
-    <div id="disclaimer" style="margin-top:8px; font-size:13.5px; opacity:.9;">VOIDFORGE is an educational tool and has not been independently audited. Provided as is, without warranty. You alone are responsible for your funds and backups. Lost words or passphrase mean lost funds. Test the backup and start with a small amount.</div>
+    <div id="disclaimer" style="margin-top:8px; font-size: 13px; opacity:.9;">VOIDFORGE is an educational tool and has not been independently audited. Provided as is, without warranty. You alone are responsible for your funds and backups. Lost words or passphrase mean lost funds. Test the backup and start with a small amount.</div>
   </div>
 
   <div class="card before-card" id="beforeCard"><h2><span class="ico">&#9888;</span> BEFORE YOU MAKE REAL KEYS</h2>
@@ -1417,8 +1417,7 @@
   <div id="printQr"></div>
 
   <footer>
-    SHA256(rolls or flips) → BIP39 • Same method as SeedSigner and Coldcard dice modes<br>
-    <span style="font-size:13.5px; margin-top:6px; display:inline-block;">VOIDFORGE v2.0.0 &bull; source: github.com/Random21m/VOIDFORGE (one link on this page, in About, to the online practice copy)</span>
+    VOIDFORGE v2.0.0 &bull; SHA-256 of your rolls or flips &rarr; BIP39, as SeedSigner and Coldcard do &bull; source: github.com/Random21m/VOIDFORGE
   </footer>
 </div>
 
