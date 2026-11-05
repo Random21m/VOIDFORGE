@@ -981,7 +981,7 @@ async function probe(w, mutated) {
   $('passphrase').value = ''; $('passphrase2').value = '';
   // tap buttons append the right values
   $('rolls').value = ''; w.updateCount(); const taps = [...w.document.querySelectorAll('#tapRow button')];
-  if (taps.length !== 6 || !taps.every((b, i) => { const r = b.querySelector('svg rect'), c = [...b.querySelectorAll('svg circle')]; return r && /fill:var\(--gold\)/.test(r.getAttribute('style')) && c.length === i + 1 && c.every((x) => x.getAttribute('fill') === '#1E2124'); })) fails.push('dice buttons: flat gold die with dark pips');
+  if (taps.length !== 6 || !taps.every((b, i) => { const r = b.querySelector('svg rect'), c = [...b.querySelectorAll('svg circle')]; return r && /fill:var\(--surface\)/.test(r.getAttribute('style')) && /stroke:var\(--accent\)/.test(r.getAttribute('style')) && c.length === i + 1 && c.every((x) => /fill:var\(--accent\)/.test(x.getAttribute('style'))); })) fails.push('dice buttons: unchanged outline die');
   if (taps.length !== 6) fails.push('six dice tap buttons'); else { taps[3].onclick(); taps[0].onclick(); if ($('rolls').value !== '41') fails.push('tap buttons append the right roll'); }
   $('rolls').value = '';
   // VERIFY must show the published BIP84 vector address
@@ -2363,7 +2363,8 @@ const M = [
   ["coin faces: heads and tails use the same sign", "<g class=\"sat\"", "<g class=\"btc\""],
   ["coin faces: a gradient is back", "<circle cx=\"50\" cy=\"50\" r=\"46\" style=\"fill:var(--gold)\"/>", "<defs><radialGradient id=\"x\"><stop offset=\"0\" stop-color=\"#fff\"/></radialGradient></defs><circle cx=\"50\" cy=\"50\" r=\"46\" style=\"fill:var(--gold)\"/>"],
   ["coin faces: Bitcoin sign loses its bars", "<path d=\"M45 22 V30 M55 22 V30 M45 71 V79 M55 71 V79\"/>", ""],
-  ["dice buttons: back to a plain outline", "rx=\"22\" style=\"fill:var(--gold)\"/>' + pips", "rx=\"22\" style=\"fill:var(--surface)\"/>' + pips"],
+  ["dice buttons: outline missing", "style=\"fill:var(--surface); stroke:var(--accent); stroke-width:6\"/>' + pips", "style=\"fill:var(--surface)\"/>' + pips"],
+  ["dice buttons: pips not accent", "r=\"10\" style=\"fill:var(--accent)\"/>').join(\"\")", "r=\"10\" style=\"fill:var(--text)\"/>').join(\"\")"],
   ["tucked away: roll history box starts open", "<details id=\"rollStats\" data-g=\"2\">", "<details id=\"rollStats\" data-g=\"2\" open>"],
   ["redesign: centre pip missing from the header die", "<circle class=\"dp\" cx=\"32\" cy=\"32\" r=\"5.6\"/>", ""],
   ["redesign: the name is not gold", "letter-spacing: .16em; color: var(--goldtx); background: none;", "letter-spacing: .16em; color: var(--text); background: none;"],
