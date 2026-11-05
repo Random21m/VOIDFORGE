@@ -1610,7 +1610,7 @@ function updateCount(){
   }
   const bits = isCoin ? rolls.length : rolls.length * Math.log2(6);
   document.getElementById("bitsNote").textContent = rolls.length
-    ? "\u2248 " + Math.floor(bits) + " bits so far, if every " + (isCoin ? "flip" : "roll") + " was fair (a 12-word seed needs 128, a 24-word seed 256). This check cannot prove your " + (isCoin ? "coin is" : "dice are") + " random."
+    ? "\u2248 " + Math.floor(bits) + " bits so far, IF every " + (isCoin ? "flip" : "roll") + " was fair (a 12-word seed needs 128, a 24-word seed 256). This check cannot prove your " + (isCoin ? "coin is" : "dice are") + " random."
     : "";
   updateRollHistory(rolls);
   if(!hasSeed()) renderSlots();
