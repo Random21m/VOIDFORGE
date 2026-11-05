@@ -817,7 +817,7 @@ async function probe(w, mutated) {
       if (!/m\/84'\/0'\/2'\/1\/index/.test($('wvPath').textContent)) fails.push('wallet view: the account and change chain are in the path'); }
     pick('wvAcct', 'abc'); await sleep(50); if (!/whole number/.test($('wvErr').textContent) || $('wvList').textContent !== '') fails.push('wallet view: a bad account number is refused');
     pick('wvAcct', '0'); pick('wvChain', '0'); await until(() => rows()[0] === first[0]);
-    $('wvList').querySelector('li button.qr-mini').click(); if ($('wvqBox').style.display !== 'block' || !$('wvqImg').innerHTML.includes('<svg') || !$('wvqCap').textContent.includes(first[0])) fails.push('wallet view: the QR button shows that address');
+    $('wvList').querySelector('li button.qr-mini').click(); { const d = w.document.createElement('div'); d.innerHTML = w.qrSvg(w.qrMatrix(first[0]).rows); if ($('wvqBox').style.display !== 'block' || $('wvqImg').innerHTML !== d.innerHTML || !$('wvqCap').textContent.includes(first[0])) fails.push('wallet view: the QR button shows exactly that address'); }
     $('wvSqBtns').querySelector('button').click(); if ($('wvsBox').style.display !== 'block' || !/SECRET/.test($('wvsCap').textContent)) fails.push('wallet view: SeedQR is marked SECRET');
     printed = 0; w.printRecoverySheet(); if (printed !== 1 || !/^VOIDFORGE RECOVERY SHEET/.test(ptxt) || !ptxt.includes('73c5da0a') || !ptxt.includes(first[0]) || /abandon/.test(ptxt) || !/Passphrase used: NO/.test(ptxt)) fails.push('recovery sheet: fingerprint, type, path and addresses, never the words');
     w.dispatchEvent(new w.Event('afterprint'));
@@ -831,7 +831,7 @@ async function probe(w, mutated) {
     // the same QR button on the Make tab rows
     mode('dice'); words(12); $('rolls').value = D50; $('rolls').oninput(); await w.generate(); await w.eval('passWork'); await until(() => w.document.querySelectorAll('#trList li').length === 5);
     const mk = [...w.document.querySelectorAll('#addrList li, #trList li')]; if (mk.length !== 10 || mk.some((li) => !li.querySelector('button.qr-mini'))) fails.push('address QR: every row under the seed has a QR button');
-    if (mk[0]) { mk[0].querySelector('button.qr-mini').click(); if ($('aqBox').style.display !== 'block' || !$('aqCap').textContent.includes(mk[0].textContent)) fails.push('address QR: the button under the seed shows that address'); }
+    if (mk[0]) { mk[0].querySelector('button.qr-mini').click(); const d = w.document.createElement('div'); d.innerHTML = w.qrSvg(w.qrMatrix(mk[0].textContent).rows); if ($('aqBox').style.display !== 'block' || $('aqImg').innerHTML !== d.innerHTML || !$('aqCap').textContent.includes(mk[0].textContent)) fails.push('address QR: the button under the seed shows exactly that address'); }
     w.clearAll(); await sleep(20);
   } catch (e) { fails.push('wallet view: the probe crashed: ' + e.message); }
   try { // rolling-dice logo and the live preview words
