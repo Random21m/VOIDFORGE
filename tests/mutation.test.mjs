@@ -790,6 +790,46 @@ async function probe(w, mutated) {
     w.toggleSize(); if (B.classList.contains('big') || $('sizeBtn').getAttribute('aria-pressed') !== 'false') fails.push('text size: A- goes back');
     w.confirm = () => true;
   } catch (e) { fails.push('guide: the probe crashed: ' + e.message); }
+  try { // wallet view (v2.1.0): addresses, QR on every row, SeedQR, recovery sheet
+    const AB = 'abandon '.repeat(11) + 'about', sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
+    const until = async (f) => { for (let k = 0; k < 400 && !f(); k++) await sleep(25); return f(); };
+    const rows = () => [...$('wvList').querySelectorAll('li')].map((li) => li.textContent);
+    const pick = (id, v) => { $(id).value = v; $(id).dispatchEvent(new w.Event(id === 'wvAcct' ? 'input' : 'change', { bubbles: true })); };
+    let printed = 0, ptxt = ''; w.print = () => { printed++; ptxt = $('printOnly').textContent; }; w.confirm = () => true; w.alert = () => {};
+    w.clearAll(); await sleep(20);
+    $('phrase').value = AB; $('verifyPass').value = ''; await w.verify(); await until(() => rows().length === 10);
+    if ($('walletView').style.display === 'none' || !/73c5da0a/.test($('wvFp').textContent) || !$('wvIcon').innerHTML.includes('<svg')) fails.push('wallet view: opens with the master fingerprint and its picture');
+    if (rows()[0] !== 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu') fails.push('wallet view: first SegWit address');
+    if ($('wvList').querySelectorAll('li button.qr-mini').length !== 10) fails.push('wallet view: a QR button on every address row');
+    if (!/not made by this page/.test($('wvBanner').textContent)) fails.push('wallet view: says the words were imported');
+    pick('wvType', 'tr'); await until(() => /^bc1p/.test(rows()[0] || '')); if (rows()[0] !== 'bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr') fails.push('wallet view: first Taproot address');
+    pick('wvType', 'pkh'); await until(() => /^1/.test(rows()[0] || '')); if (rows()[0] !== '1LqBGSKuX5yYUonjxT5qGfpUsXKYYWeabA') fails.push('wallet view: first Legacy address');
+    pick('wvType', 'sh-wpkh'); await until(() => /^3/.test(rows()[0] || '')); if (rows()[0] !== '37VucYSaXLCAsxYyAPfbSi9eh4iEcbShgf') fails.push('wallet view: first Nested SegWit address');
+    pick('wvType', 'wpkh'); pick('wvNet', 'test'); await until(() => /^tb1q/.test(rows()[0] || '')); if (!/^tb1q/.test(rows()[0]) || !/TESTNET/.test($('wvPath').textContent)) fails.push('wallet view: testnet addresses and note');
+    pick('wvNet', 'main'); await until(() => /^bc1q/.test(rows()[0] || '')); const first = rows().slice();
+    $('wvNext').click(); await until(() => rows()[0] !== first[0]); if (!/addresses 10 to 19/.test($('wvPath').textContent) || rows().some((a) => first.includes(a))) fails.push('wallet view: NEXT 10 shows the next ten addresses');
+    $('wvPrev').click(); await until(() => rows()[0] === first[0]); if (rows().join() !== first.join() || !$('wvPrev').disabled) fails.push('wallet view: PREVIOUS 10 comes back and is off at the start');
+    pick('wvAcct', '2'); await until(() => rows()[0] !== first[0]); const a2 = rows()[0]; pick('wvChain', '1'); await until(() => rows()[0] !== a2);
+    if (!/m\/84'\/0'\/2'\/1\/index/.test($('wvPath').textContent)) fails.push('wallet view: the account and change chain are in the path');
+    pick('wvAcct', 'abc'); await sleep(50); if (!/whole number/.test($('wvErr').textContent) || $('wvList').textContent !== '') fails.push('wallet view: a bad account number is refused');
+    pick('wvAcct', '0'); pick('wvChain', '0'); await until(() => rows()[0] === first[0]);
+    $('wvList').querySelector('li button.qr-mini').click(); if ($('wvqBox').style.display !== 'block' || !$('wvqImg').innerHTML.includes('<svg') || !$('wvqCap').textContent.includes(first[0])) fails.push('wallet view: the QR button shows that address');
+    $('wvSqBtns').querySelector('button').click(); if ($('wvsBox').style.display !== 'block' || !/SECRET/.test($('wvsCap').textContent)) fails.push('wallet view: SeedQR is marked SECRET');
+    printed = 0; w.printRecoverySheet(); if (printed !== 1 || !/^VOIDFORGE RECOVERY SHEET/.test(ptxt) || !ptxt.includes('73c5da0a') || !ptxt.includes(first[0]) || /abandon/.test(ptxt) || !/Passphrase used: NO/.test(ptxt)) fails.push('recovery sheet: fingerprint, type, path and addresses, never the words');
+    w.dispatchEvent(new w.Event('afterprint'));
+    $('phrase').value = AB + ' '; $('phrase').dispatchEvent(new w.Event('input', { bubbles: true })); if ($('walletView').style.display !== 'none' || $('wvList').textContent !== '' || $('wvsImg').textContent !== '' || $('wvqImg').textContent !== '') fails.push('wallet view: editing the words wipes it');
+    $('phrase').value = AB; $('verifyPass').value = 'SECRETPASS'; await w.verify(); await until(() => rows().length === 10);
+    if (rows()[0] === first[0] || !/with passphrase/.test($('wvFp').textContent)) fails.push('wallet view: a passphrase gives a different wallet and says so');
+    printed = 0; w.printRecoverySheet(); if (ptxt.includes('SECRETPASS') || !/Passphrase used: YES/.test(ptxt)) fails.push('recovery sheet: never prints the passphrase'); w.dispatchEvent(new w.Event('afterprint'));
+    const e15 = await w.entropyToMnemonic(new Uint8Array(20)); $('verifyPass').value = ''; $('phrase').value = e15; await w.verify(); await until(() => rows().length === 10);
+    if ($('wvSqBtns').style.display !== 'none' || !/No SeedQR exists for 15 words/.test($('wvSqNote').textContent)) fails.push('wallet view: 15 words have no SeedQR and the page says so');
+    $('phrase').value = AB; await w.verify(); await until(() => rows().length === 10); w.wipeSeed(); if ($('walletView').style.display !== 'none' || $('wvList').textContent !== '') fails.push('wallet view: CLEAR ALL wipes it');
+    // the same QR button on the Make tab rows
+    mode('dice'); words(12); $('rolls').value = D50; $('rolls').oninput(); await w.generate(); await w.eval('passWork'); await until(() => w.document.querySelectorAll('#trList li').length === 5);
+    const mk = [...w.document.querySelectorAll('#addrList li, #trList li')]; if (mk.length !== 10 || mk.some((li) => !li.querySelector('button.qr-mini'))) fails.push('address QR: every row under the seed has a QR button');
+    if (mk[0]) { mk[0].querySelector('button.qr-mini').click(); if ($('aqBox').style.display !== 'block' || !$('aqCap').textContent.includes(mk[0].textContent)) fails.push('address QR: the button under the seed shows that address'); }
+    w.clearAll(); await sleep(20);
+  } catch (e) { fails.push('wallet view: the probe crashed: ' + e.message); }
   try { // rolling-dice logo and the live preview words
     const setRolls = (v) => { $('rolls').value = v; $('rolls').oninput(); };
     w.clearAll(); await new Promise(r => setTimeout(r, 20)); mode('dice'); words(12);
@@ -1873,6 +1913,24 @@ const M = [
   ['dictionary: topic filter never resets', 'b.onclick = () => { dictCat = c;', 'b.onclick = () => { dictCat = dictCat;'],
   ['dictionary: pressed state not shown', 'x.setAttribute("aria-pressed", x === b ? "true" : "false"));', 'x.setAttribute("aria-pressed", "false"));'],
   ['dictionary: no-match line loses the topic', '(dictCat === "All" ? "" : " in " + dictCat)', '""'],
+  ["wallet view: coin type ignored", "[[purpose,true],[coin,true],[account,true],[chain,false]]", "[[purpose,true],[0,true],[account,true],[chain,false]]"],
+  ["wallet view: account ignored", "[[purpose,true],[coin,true],[account,true],[chain,false]]", "[[purpose,true],[coin,true],[0,true],[chain,false]]"],
+  ["wallet view: chain ignored", "[[purpose,true],[coin,true],[account,true],[chain,false]]", "[[purpose,true],[coin,true],[account,true],[0,false]]"],
+  ["wallet view: second page shows the first", "chain, wvFrom, WV_PAGE);", "chain, 0, WV_PAGE);"],
+  ["wallet view: no QR button on a row", "  li.appendChild(b); return li;", "  return li;"],
+  ["wallet view: QR shows another address", "q = qrMatrix(addr); } catch(e) { return alert(\"QR code unavailable", "q = qrMatrix(addr + \"x\"); } catch(e) { return alert(\"QR code unavailable"],
+  ["wallet view: not called imported", "Imported: these words were typed or scanned here, not made by this page.", "These words were typed or scanned here."],
+  ["wallet view: passphrase not noted", "\"Master fingerprint: \" + fp + (pass ? \" (with passphrase)\" : \"\");\n    showFpIcon(\"wvIcon\", fp);", "\"Master fingerprint: \" + fp;\n    showFpIcon(\"wvIcon\", fp);"],
+  ["wallet view: edit keeps the view", "for(const id of [\"phrase\",\"verifyPass\"]) document.getElementById(id).addEventListener(\"input\", clearWalletView);", "for(const id of []) document.getElementById(id).addEventListener(\"input\", clearWalletView);"],
+  ["wallet view: SeedQR offered for 15 words", "if(n === 12 || n === 24){ sq.textContent", "if(n >= 12){ sq.textContent"],
+  ["recovery sheet: prints the passphrase", "(wvCtx.pass ? \"YES (kept separately; it is not written here)\" : \"NO\")", "(wvCtx.pass ? \"YES \" + wvCtx.pass : \"NO\")"],
+  ["wallet view: bad account accepted", "const badAcct = !/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647;", "const badAcct = false;"],
+  ["wallet view: SeedQR not marked secret", "SECRET: anyone who scans it controls the funds. It holds the words only", "Anyone who scans it controls the funds. It holds the words only"],
+  ["wallet view: CLEAR ALL leaves it", "document.getElementById(\"verifyStatus\").textContent=\"\"; clearWalletView();", "document.getElementById(\"verifyStatus\").textContent=\"\";"],
+  ["address QR: no button under the seed", "list.forEach((a, i) => ol.appendChild(addrLi(a, \"receive address \" + (i + 1))));", "list.forEach((a, i) => { const li = document.createElement(\"li\"); li.textContent = a; ol.appendChild(li); });"],
+  ["wallet view: PREVIOUS never off", "document.getElementById(\"wvPrev\").disabled = wvFrom === 0;", "document.getElementById(\"wvPrev\").disabled = false;"],
+  ["wallet view: testnet note dropped", "(net === \"test\" ? \"TESTNET (practice coins only). \" : \"\")", "\"\""],
+  ["recovery sheet: nothing printed", "if(!wvCtx || !wvCtx.shown) return alert(\"Check a seed phrase first, then open the wallet.\");", "if(true) return;"],
   ['dictionary: Change address on the wrong chain', 'It sits on the second chain of the account (the 1 in', 'It sits on the first chain of the account (the 1 in'],
   ['dictionary: Receive address on the wrong chain', 'on the first chain of the account (the 0 in', 'on the second chain of the account (the 0 in'],
   ['dictionary: entry topic dropped', 'item.dataset.c = e[3];', 'item.dataset.c = "Basics";'],

@@ -4776,7 +4776,7 @@ function printRecoverySheet(){
   add("ps-warn", "Addresses are public, but anyone who sees them can link them to this wallet. Do not post this sheet.");
   document.body.classList.add("print-seed");
   let done = false;
-  const cleanup = () => { if(done) return; done = true; po.replaceChildren(); document.body.classList.remove("print-seed"); };
+  const cleanup = () => { if(done) return; done = true; while(po.firstChild) po.removeChild(po.firstChild); document.body.classList.remove("print-seed"); };
   window.addEventListener("afterprint", cleanup, {once:true});
   setTimeout(cleanup, 120000);
   window.print();
