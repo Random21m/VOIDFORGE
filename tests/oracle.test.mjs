@@ -763,19 +763,20 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
     if (type === 'sh-wpkh') return btc.p2sh(btc.p2wpkh(k.publicKey, N), N).address;
     return btc.p2wpkh(k.publicKey, N).address;
   };
+  const until = async (cond, ms = 60000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { try { if (cond()) return true; } catch (e) {} await new Promise((f) => setTimeout(f, 25)); } return false; };
   let bad = 0, n = 0, qrs = 0, sq = 0;
   const set = (id, v) => { viewOf(id).value = v; viewOf(id).dispatchEvent(new w.Event(id === 'wvAcct' ? 'input' : 'change', {bubbles: true})); };
   for (const [bytes, wc] of [[16, 12], [20, 15], [24, 18], [28, 21], [32, 24]]) for (let r = 0; r < 3; r++) {
     const mn = entropyToMnemonic(new Uint8Array(nc.randomBytes(bytes)), wordlist), pw = r === 0 ? '' : 'Pässwörd ' + r;
-    $('phrase').value = mn; $('verifyPass').value = pw; await w.verify(); await new Promise((f) => setTimeout(f, 50));
+    $('phrase').value = mn; $('verifyPass').value = pw; await w.verify(); await until(() => viewOf('wvFp').textContent.includes(fpOracle(mn, pw)) && viewOf('wvList').querySelectorAll('li').length === 10);
     const wv = viewOf('walletView');
     n++; if (wv.style.display === 'none' || !viewOf('wvFp').textContent.includes(fpOracle(mn, pw))) { bad++; console.log('WALLET VIEW NOT SHOWN OR FINGERPRINT WRONG', wc); continue; }
     n++; if (!viewOf('wvIcon').innerHTML.includes('<svg')) { bad++; console.log('WALLET VIEW LIFEHASH MISSING', wc); }
     for (const type of ['wpkh', 'tr', 'sh-wpkh', 'pkh']) {
       const net = nc.randomInt(2) ? 'main' : 'test', acct = nc.randomInt(3) ? nc.randomInt(5) : nc.randomInt(100000), chain = nc.randomInt(2);
-      set('wvType', type); set('wvNet', net); set('wvChain', String(chain)); set('wvAcct', String(acct)); await new Promise((f) => setTimeout(f, 150));
+      set('wvType', type); set('wvNet', net); set('wvChain', String(chain)); set('wvAcct', String(acct)); await until(() => viewOf('wvList').querySelectorAll('li').length === 10 && viewOf('wvList').querySelector('li').textContent === oracleAddr(mn, pw, type, net, acct, chain, 0));
       for (const page of [0, 1]) {
-        if (page) { viewOf('wvNext').click(); await new Promise((f) => setTimeout(f, 150)); }
+        if (page) { viewOf('wvNext').click(); await until(() => viewOf('wvList').querySelector('li') && viewOf('wvList').querySelector('li').textContent === oracleAddr(mn, pw, type, net, acct, chain, 10)); }
         const lis = Array.from(viewOf('wvList').querySelectorAll('li'));
         n++; if (lis.length !== 10) { bad++; console.log('WALLET VIEW ROW COUNT', wc, type, lis.length); continue; }
         lis.forEach((li, j) => { n++; const want = oracleAddr(mn, pw, type, net, acct, chain, page * 10 + j); if (li.textContent !== want) { bad++; console.log('WALLET VIEW ADDRESS MISMATCH', wc, type, net, acct, chain, page * 10 + j); } });
@@ -785,7 +786,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
         const box = viewOf('wvqBox'), svgRows = w.qrMatrix(li.textContent).rows, dec = jsqrDecode(svgRows);
         if (box.style.display === 'none' || !viewOf('wvqImg').innerHTML.includes('<svg') || !dec || dec.data !== li.textContent || viewOf('wvqImg').innerHTML !== w.qrSvg(svgRows)) { bad++; console.log('WALLET VIEW QR MISMATCH', wc, type); }
       }
-      set('wvType', 'wpkh'); set('wvNet', 'main'); set('wvChain', '0'); set('wvAcct', '0'); await new Promise((f) => setTimeout(f, 100));
+      set('wvType', 'wpkh'); set('wvNet', 'main'); set('wvChain', '0'); set('wvAcct', '0'); await until(() => viewOf('wvList').querySelector('li') && viewOf('wvList').querySelector('li').textContent === oracleAddr(mn, pw, 'wpkh', 'main', 0, 0, 0));
     }
     // SeedQR: only for 12 and 24 words, secret, and it decodes back to the same words
     const btns = viewOf('wvSqBtns'), note = viewOf('wvSqNote').textContent; n++;
@@ -804,7 +805,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   }
   R.ok(bad === 0, `${n} wallet-view checks (12, 15, 18, 21 and 24 words, with and without a passphrase; every address type, network, account, chain and page of addresses) equal the independent libraries; ${qrs} address QR codes and ${sq} SeedQR codes are read back by jsQR (${bad} mismatches)`);
   // the Make tab address rows carry the same QR button, and the Taproot rows too
-  $('rolls').value = rnd(50, 6); $('rolls').oninput(); await w.generate();
+  $('rolls').value = rnd(50, 6); $('rolls').oninput(); await w.generate(); await w.eval('passWork'); await until(() => w.document.querySelectorAll('#trList li').length === 5);
   const rows = Array.from(w.document.querySelectorAll('#addrList li, #trList li')); bad = 0;
   for (const li of rows) { const b = li.querySelector('button.qr-mini'); if (!b) { bad++; continue; } b.click(); const dec = jsqrDecode(w.qrMatrix(li.textContent).rows); if (!dec || dec.data !== li.textContent || viewOf('aqBox').style.display === 'none') bad++; }
   R.ok(rows.length === 10 && bad === 0, `Make tab: all ${rows.length} address rows (5 SegWit, 5 Taproot) have a QR button and the QR reads back as that address (${bad} mismatches)`);
