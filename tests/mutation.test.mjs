@@ -237,6 +237,8 @@ async function probe(w, mutated) {
       if (!(await mid(() => { $('passphrase').value = 'abc'; ev('passphrase'); }, () => /bc1q/.test($('address').textContent) && $('addrList').textContent === ''))) fails.push('run counter: the edit lands after the first address and before the address list');
       if (leftover()) fails.push('run counter: an edit before the address list leaves an old list behind');
       $('passphrase').value = ''; ev('passphrase');
+      if (!(await mid(() => { $('rolls').value = D50 + '1'; ev('rolls'); }))) fails.push('run counter: a roll edit lands while the fingerprint is computing');
+      if (leftover()) fails.push('run counter: a roll edit during FORGE (the stale clear) leaves an old fingerprint, address or list behind');
       $('passphrase').value = ''; ev('passphrase'); await mid(() => w.wipeSeed());
       if (leftover()) fails.push('run counter: CLEAR ALL during FORGE leaves an old fingerprint, address or list behind');
       $('passphrase').value = ''; ev('passphrase'); }
@@ -726,7 +728,9 @@ async function probe(w, mutated) {
       if (sel.value !== '0' || chk.checked || [...sel.options].map((o) => o.value).join() !== '0,2,5,10,30') fails.push('auto-clear: off by default with the five choices');
       w.autoWipe('setup'); $('autoNote').textContent = '';
       if (w.autoWipe('x') !== false || note() !== '') fails.push('auto-clear: with nothing on the page a wipe does nothing');
-      await arm(); if (w.autoWipe('because of a test') !== true) fails.push('auto-clear: a wipe with secrets reports it');
+      await arm(); { const wd = $('genResult').textContent.split('\n')[0]; $('phrase').value = wd; await w.verify(); for (let k = 0; k < 400 && $('wvList').querySelectorAll('li').length !== 10; k++) await new Promise((r2) => setTimeout(r2, 25)); w.wvSeedQr('seedqr'); }
+      if (w.autoWipe('because of a test') !== true) fails.push('auto-clear: a wipe with secrets reports it');
+      if ($('walletView').style.display !== 'none' || $('wvsImg').textContent !== '' || $('wvList').textContent !== '' || $('phrase').value !== '') fails.push('auto-clear: the wallet view and its SeedQR are wiped too');
       if (left().length || w.hasSeed() || $('childOut').textContent !== '' || $('reforgeOut').textContent !== '' || $('reforgeOut').style.display !== 'none' || !/^Wiped automatically because of a test at /.test(note())) fails.push('auto-clear: seed, rolls, passphrases, typed words, Reforge and child outputs wiped (left: ' + left().join(',') + ')');
       if (w.autoWipe('x') !== false || !/because of a test/.test(note())) fails.push('auto-clear: a second wipe with nothing left changes nothing');
       let cleared = 0; const ci = w.clearInterval; w.clearInterval = (x) => { cleared++; return ci.call(w, x); };
@@ -1159,7 +1163,9 @@ async function probe(w, mutated) {
     w.msCancel(); if (w.eval('ms') !== null) fails.push('multisig: START OVER resets');
     w.clearAll(); await slp(20);
   } catch (e) { fails.push('multisig: the probe crashed: ' + e.message); }
-  if ($('fpIcon').querySelector('svg')) { /* keep icon until an error */ }
+  { await run('dice', 12, D50, ''); await new Promise((r) => setTimeout(r, 60)); const had = !!$('fpIcon').querySelector('svg');
+    $('rolls').value = D50.slice(0, 10); $('rolls').oninput(); await new Promise((r) => setTimeout(r, 20));
+    if (!had || $('fpIcon').innerHTML !== '' || w.hasSeed()) fails.push('fingerprint picture cleared when changed rolls clear the words'); }
   // passphrase confirmation must block a mismatch
   await run('dice', 12, D50, ''); w.showQr('wZpub', 'zpub');
   mode('dice'); words(12); $('rolls').value = D50; $('rolls').oninput(); $('passphrase').value = 'abc'; $('passphrase2').value = 'abd'; await w.generate();
