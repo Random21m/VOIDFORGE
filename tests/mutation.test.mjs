@@ -1250,7 +1250,7 @@ async function probe(w, mutated) {
     mb.open = true; w.document.querySelector('.theme-toggle').click(); if (mb.open) fails.push('redesign: choosing an item closes the MENU'); w.document.querySelector('.theme-toggle').click(); mb.open = false;
     if (!/\.tabs button\[aria-selected="true"\][^{]*\{[^}]*border-bottom-color: var\(--gold\)/.test(css)) fails.push('redesign: the selected tab has a gold underline');
     if (!/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(css)) fails.push('redesign: labels are plain coloured words');
-    if (!/#cardGen \{ display: block; \}/.test(css)) fails.push('redesign: Make a seed is one column');
+    if (!/#cardGen \{ display: block; \}\s*#cardGen \.gen-right \{ position: static; max-height: none;/.test(css)) fails.push('redesign: Make a seed is one column');
     { const rs = $('rollStats'); if (!rs || rs.tagName !== 'DETAILS' || rs.open || !rs.contains($('rollChart')) || !rs.contains($('rollHistory')) || !rs.contains($('diceVisual'))) fails.push('tucked away: roll history and the fairness chart live in one closed box'); }
     { // Calmer first screen: one GUIDE ME, seed buttons only after a seed, one closed More options box, no second warning note
       const d = w.document, gb = [...d.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'GUIDE ME'), gn = $('guideNew');
