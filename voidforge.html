@@ -627,6 +627,21 @@
   .seed-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 8px; }
   .big-count { font-size: 16px; line-height: 1.3; margin-top: 0; }
   .big-sub { font-size: 13px; margin-bottom: 0; }
+  .mk-tabs { display: flex; margin: 14px 0 10px; border-bottom: 1px solid var(--border); }
+  .mk-tabs button { flex: 1; background: transparent; box-shadow: none; border: 0; border-bottom: 3px solid transparent; border-radius: 0; margin: 0 0 -1px; padding: 10px 6px; color: var(--muted); font-size: 15px; font-weight: 700; letter-spacing: 0; text-transform: none; cursor: pointer; }
+  .mk-tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+  .mk-len { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin: 0 0 12px; }
+  .mk-len label { font-weight: 600; font-size: 14px; white-space: nowrap; }
+  .mk-len select { flex: 0 0 auto; width: auto; min-width: 120px; }
+  .mk-len span { color: var(--muted); font-size: 13.5px; }
+  .legacy-radios { display: none; }
+  #wdBox > summary { display: none; }
+  body:not(.m-words) #wdBox { display: none; }
+  body.m-words .gen-left > [data-g="2"], body.m-words #moreBox { display: none !important; }
+  #wdBox { background: none !important; border: 0 !important; padding: 0 !important; margin-top: 0 !important; }
+  .wd-how { margin: 0 0 8px; }
+  .wd-how > summary { cursor: pointer; font-weight: 600; font-size: 13.5px; color: var(--muted); }
+  body.m-words #forgeBtn, body.m-words #bigCount, body.m-words #bigSub { display: none; }
   #wordGrid, #cardGen .gen-right #wordGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   @media (max-width: 559px) { #wordGrid, #cardGen .gen-right #wordGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .wcell { animation: none; box-shadow: none; font-size: 18px; font-weight: 700; padding: 10px 12px; min-width: 0; }
@@ -725,12 +740,40 @@
         <p>Last step, and the most important. Compare the <span class="term" tabindex="0" data-tip="A short code (8 characters) that identifies your seed without revealing it. Wallet apps show it too, so you can see you have the same seed.">fingerprint</span> and first address in a second wallet app, make a paper backup if you like (SeedQR or the printed sheet), then press <b>START DRILL</b> in the Restore drill below: it hides the words on screen and has you type them back from your paper. (The <b>CHECK A BACKUP</b> tab can also check words you already have.) Start with a small amount first.</p></div>
       <div class="gnav"><button type="button" class="secondary small" id="gBack" onclick="guideStep(-1)">&larr; BACK</button><span id="guideWhy"></span><button type="button" class="small" id="gNext" onclick="guideStep(1)">NEXT &rarr;</button></div>
     </div>
-    <div class="radio-group" id="wordRadios" data-g="1">
+    <div class="mk-tabs" id="methodTabs" role="tablist" aria-label="How you make the seed" data-g="1">
+      <button type="button" role="tab" id="mt-dice" data-method="dice" aria-selected="true">Dice</button>
+      <button type="button" role="tab" id="mt-coin" data-method="coin" aria-selected="false">Coin</button>
+      <button type="button" role="tab" id="mt-words" data-method="words" aria-selected="false">Word draw</button>
+    </div>
+    <div class="mk-len" id="lenRow" data-g="1"><label for="wordSel">Seed length</label><select id="wordSel" aria-label="Seed length"><option value="12">12 words</option><option value="24">24 words</option></select><span id="lenNote" aria-live="polite"></span></div>
+    <details id="wdBox" data-g="1">
+      <summary>Word draw: made your words with physical tiles?<span class="tag tag-secret">SECRET</span><small>Type words drawn from word tiles (such as SeedSigner&rsquo;s SeedPills) plus a few coin flips.</small></summary>
+      <details class="wd-how"><summary>How Word draw works</summary>      <p class="hint" style="margin:6px 0 0;">Word tiles let you pick the words by hand: mix them in a bag, draw one without looking, flip it to choose a face, write the word down and <b>put the tile back</b> before the next draw. Each word is 11 random bits. A 12-word seed needs 11 drawn words and 7 coin flips; a 24-word seed needs 23 words and 3 flips. The flips are needed because part of the last word is a <span class="term" tabindex="0" data-tip="A few extra bits, calculated from all the others, that let wallets catch typing mistakes. The last word of a seed is partly made of them.">checksum</span>. Type your words (the first four letters of each are enough) and your flips; VOIDFORGE finishes the last word the standard BIP39 way, with no hashing, so any BIP39 wallet reads the result. Repeated words are fine, because every draw goes back in the bag. It never fills in the flips for you. Typed words are secret: use it only where nobody can see your screen.</p></details>
+
+      <div style="display:none;"><label for="wdLen" style="font-weight:600;">Seed length</label><select id="wdLen" aria-label="Seed length" style="flex:1; min-width:0;" onchange="wdUpdate()"><option value="12">12 words (draw 11 + 7 flips)</option><option value="24">24 words (draw 23 + 3 flips)</option></select></div>
+      <textarea id="wdWords" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The words you drew" placeholder="Type the words you drew, in order (first four letters are enough)" oninput="wdUpdate()" style="margin-top:8px;"></textarea>
+      <input type="text" id="wdFlips" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Your coin flips as 1 and 0" placeholder="Your coin flips as 1 and 0" oninput="wdUpdate()" style="margin-top:6px;">
+      <div style="margin-top:8px;">
+        <label for="wdFind" style="font-weight:600;">Word finder</label>
+        <details class="wd-how"><summary>Using dice instead of tiles?</summary><div class="hint" style="margin:6px 0 0;">Type a word number (1&ndash;2048), or a D8 roll followed by two 16-sided dice (0&ndash;F), written with a space between them, such as <b>3 A 7</b> (a plain number with no spaces is a word number). The word number is (D8 &minus; 1) &times; 256 + the two hex digits + 1. For the final word of a 24-word seed, a last D8 roll gives 3 bits: write it as flips (1 = 000, 2 = 001 ... 8 = 111).</div></details>
+        <input type="text" id="wdFind" inputmode="text" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Word number or D8 plus two hex dice" placeholder="Word number, or D8 + two hex dice like 3 A 7" oninput="wdFind()">
+        <div id="wdFound" class="hint" aria-live="polite" style="margin:4px 0 0; font-weight:600;"></div>
+      </div>
+      <div id="wdCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
+      <div id="wdMsg" class="hint" aria-live="polite" style="margin:4px 0 0; color:var(--danger);"></div>
+      <div class="hint" style="margin:4px 0 0;">The passphrase (if any) is added after the words are made, in the box under them. Coin: pick which side is 1 and keep it the same for every flip.</div>
+      <div class="btn-row" style="margin-top:8px;">
+        <button type="button" id="wdBtn" onclick="wdGenerate()" disabled>MAKE SEED FROM WORDS</button>
+        <button type="button" class="secondary small" onclick="wdClear()">CLEAR</button>
+      </div>
+      <div id="wdOut" style="display:none;"></div>
+    </details>
+    <div class="radio-group legacy-radios" id="wordRadios" data-g="1">
       <label><input type="radio" name="words" value="12" checked onchange="updateLabels()"><span id="lbl12">12 (50)</span></label>
       <label><input type="radio" name="words" value="24" onchange="updateLabels()"><span id="lbl24">24 (99)</span></label>
     </div>
 
-    <div class="radio-group" style="margin-top:8px;" data-g="1">
+    <div class="radio-group legacy-radios" style="margin-top:8px;" data-g="1">
       <label><input type="radio" name="mode" value="dice" checked onchange="onModeChange()"><span>Dice (1-6)</span></label>
       <label><input type="radio" name="mode" value="coin" onchange="onModeChange()"><span>Coin (1/0)</span></label>
     </div>
@@ -747,27 +790,6 @@
     <div id="ignoredNote" data-g="2" style="font-size:13.5px; margin-top:4px; font-weight:600; color:var(--danger);"></div>
     <details id="moreBox">
       <summary>More options<small>Word tiles, and a demo of how rolls scramble the words.</small></summary>
-    <details id="wdBox" data-g="1">
-      <summary>Word draw: made your words with physical tiles?<span class="tag tag-secret">SECRET</span><small>Type words drawn from word tiles (such as SeedSigner&rsquo;s SeedPills) plus a few coin flips.</small></summary>
-      <p class="hint" style="margin:8px 0 0;">Word tiles let you pick the words by hand: mix them in a bag, draw one without looking, flip it to choose a face, write the word down and <b>put the tile back</b> before the next draw. Each word is 11 random bits. A 12-word seed needs 11 drawn words and 7 coin flips; a 24-word seed needs 23 words and 3 flips. The flips are needed because part of the last word is a <span class="term" tabindex="0" data-tip="A few extra bits, calculated from all the others, that let wallets catch typing mistakes. The last word of a seed is partly made of them.">checksum</span>. Type your words (the first four letters of each are enough) and your flips; VOIDFORGE finishes the last word the standard BIP39 way, with no hashing, so any BIP39 wallet reads the result. Repeated words are fine, because every draw goes back in the bag. It never fills in the flips for you. Typed words are secret: use it only where nobody can see your screen.</p>
-      <div style="display:flex; gap:8px; align-items:center; margin-top:8px;"><label for="wdLen" style="font-weight:600;">Seed length</label><select id="wdLen" aria-label="Seed length" style="flex:1; min-width:0;" onchange="wdUpdate()"><option value="12">12 words (draw 11 + 7 flips)</option><option value="24">24 words (draw 23 + 3 flips)</option></select></div>
-      <textarea id="wdWords" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The words you drew" placeholder="Type the words you drew, in order (first four letters are enough)" oninput="wdUpdate()" style="margin-top:8px;"></textarea>
-      <input type="text" id="wdFlips" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Your coin flips as 1 and 0" placeholder="Your coin flips as 1 and 0" oninput="wdUpdate()" style="margin-top:6px;">
-      <div style="margin-top:8px;">
-        <label for="wdFind" style="font-weight:600;">Word finder</label>
-        <div class="hint" style="margin:2px 0 4px;">Using dice instead of tiles? Type a word number (1&ndash;2048), or a D8 roll followed by two 16-sided dice (0&ndash;F), written with a space between them, such as <b>3 A 7</b> (a plain number with no spaces is a word number). The word number is (D8 &minus; 1) &times; 256 + the two hex digits + 1. For the final word of a 24-word seed, a last D8 roll gives 3 bits: write it as flips (1 = 000, 2 = 001 ... 8 = 111).</div>
-        <input type="text" id="wdFind" inputmode="text" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Word number or D8 plus two hex dice" placeholder="Word number, or D8 + two hex dice like 3 A 7" oninput="wdFind()">
-        <div id="wdFound" class="hint" aria-live="polite" style="margin:4px 0 0; font-weight:600;"></div>
-      </div>
-      <div id="wdCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
-      <div id="wdMsg" class="hint" aria-live="polite" style="margin:4px 0 0; color:var(--danger);"></div>
-      <div class="hint" style="margin:4px 0 0;">The passphrase (if any) is added after the words are made, in the box under them. Coin: pick which side is 1 and keep it the same for every flip.</div>
-      <div class="btn-row" style="margin-top:8px;">
-        <button type="button" id="wdBtn" onclick="wdGenerate()" disabled>MAKE SEED FROM WORDS</button>
-        <button type="button" class="secondary small" onclick="wdClear()">CLEAR</button>
-      </div>
-      <div id="wdOut" style="display:none;"></div>
-    </details>
     <details id="demoBox" data-g="2">
       <summary>Watch the words change<span class="tag tag-note">DEMO ONLY</span><small>See why one different roll changes every word.</small></summary>
       <p class="hint" style="margin:8px 0 0;">Curious how rolls turn into words? Switch this on and add rolls: the demo words below are re-made after every roll, and you will see that <b>one new roll changes every word</b>. That scrambling is why nobody can work backwards from the words to your rolls. These words are made from your rolls plus a demo tag, so they are <b>never your real seed</b>. They are not saved, printed or carried into FORGE.</p>
@@ -1384,7 +1406,26 @@ function getMode(){
   return document.querySelector('input[name="mode"]:checked')?.value || "dice";
 }
 
-let lastMode = "dice";
+let lastMode = "dice", method = "dice";
+// The three ways to make a seed (v2.1.0): Dice, Coin, Word draw. The dice/coin radio buttons and the 12/24 radio buttons are kept (hidden) as the single source of truth; the tabs and the length menu drive them.
+function syncMethodUi(){
+  const wc = +document.querySelector('input[name="words"]:checked').value, coin = getMode() === "coin";
+  if(method !== "words") method = getMode();
+  document.body.classList.toggle("m-words", method === "words");
+  ["dice", "coin", "words"].forEach(k => { const b = document.getElementById("mt-" + k); b.setAttribute("aria-selected", k === method ? "true" : "false"); b.tabIndex = k === method ? 0 : -1; });
+  document.getElementById("wordSel").value = String(wc); document.getElementById("wdLen").value = String(wc);
+  const n = wdNeeds(wc);
+  document.getElementById("lenNote").textContent = method === "words" ? n.words + " words from your tiles, then " + n.flips + " coin flips" : (getNeeded(wc) + (coin ? " coin flips" : " dice rolls"));
+  if(method === "words") document.getElementById("wdBox").open = true;
+}
+function setMethod(m){
+  if(m === "words"){ method = "words"; syncMethodUi(); wdUpdate(); return; }
+  const wasWords = method === "words"; method = m;
+  const r = document.querySelector('input[name="mode"][value="' + m + '"]');
+  if(!r.checked){ r.checked = true; onModeChange(); }
+  if(wasWords) method = getMode();
+  method = getMode(); syncMethodUi();
+}
 function onModeChange(){
   const m = getMode();
   if(m === lastMode) return;
@@ -1396,6 +1437,7 @@ function onModeChange(){
   }
   box.value = "";
   lastMode = m;
+  if(method !== "words") method = m;
   updateLabels();
 }
 
@@ -1502,6 +1544,7 @@ function staleCheck(){
 }
 function updateCount(){
   staleCheck();
+  if(document.getElementById("wordSel")) syncMethodUi();
   if(guideOn) guideRender();
   if(document.getElementById("demoOn").checked) demoRefresh();
   const n = clean(document.getElementById("rolls").value).length;
@@ -4615,8 +4658,18 @@ function updateLabels(){
     if(el) el.textContent = w + " (" + map[w] + ")";
   });
   updateCount();
+  syncMethodUi();
 }
 updateLabels(); msInitSlider();
+document.getElementById("methodTabs").addEventListener("click", e => { const b = e.target.closest ? e.target.closest("button[data-method]") : null; if(b) setMethod(b.getAttribute("data-method")); });
+document.getElementById("methodTabs").addEventListener("keydown", e => {
+  const order = ["dice", "coin", "words"]; if(e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  const i = (order.indexOf(method) + (e.key === "ArrowRight" ? 1 : 2)) % 3; e.preventDefault(); setMethod(order[i]); document.getElementById("mt-" + order[i]).focus();
+});
+document.getElementById("wordSel").addEventListener("change", () => {
+  const v = document.getElementById("wordSel").value, r = document.querySelector('input[name="words"][value="' + v + '"]');
+  r.checked = true; r.dispatchEvent(new Event("change", {bubbles: true})); document.getElementById("wdLen").value = v; wdUpdate(); syncMethodUi();
+});
 
 // ---- Restore drill (v1.27.0): type the words back from paper; the page says which positions are wrong, never what the right words are ----
 let drillCtx = null;
@@ -4661,6 +4714,7 @@ async function drillCheck(){
 const GUIDE_STEPS = 5;
 function guideHidden(el, n){ const g = (el.getAttribute("data-g") || "").split(/\s+/); return g.indexOf(String(n)) < 0; }
 function guideCanNext(n){
+  if(n === 2 && method === "words") return true;
   if(n === 2) return clean(document.getElementById("rolls").value).length >= getNeeded(document.querySelector('input[name="words"]:checked').value);
   if(n === 3) return hasSeed();
   return true;
