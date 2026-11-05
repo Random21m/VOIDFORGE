@@ -504,9 +504,11 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t.$('rolls').value=''; t.w.updateCount();
     const taps=[...t.d.querySelectorAll('#tapRow button')]; ok(taps.length===6,'six dice tap buttons in dice mode');
     ok(taps.every((b,i)=>b.querySelectorAll('svg circle').length===i+1&&b.textContent.trim()===String(i+1)),'each dice button draws a face with the right number of pips and shows its number');
+    ok(taps.length===6&&taps.every((b,i)=>{ const r=b.querySelector('svg rect'), c=[...b.querySelectorAll('svg circle')]; return r&&/fill:var\(--gold\)/.test(r.getAttribute('style'))&&c.length===i+1&&c.every(x=>x.getAttribute('fill')==='#1E2124'); }),'dice buttons: flat gold die with dark pips, the same look as the logo');
     taps[0].onclick(); taps[5].onclick(); taps[2].onclick(); eq(t.$('rolls').value,'163','tap buttons append rolls and update the counter'); ok(/3 \/ 50/.test(t.$('rollCount').textContent),'counter updates after taps');
     const coin=t.d.querySelector('input[name="mode"][value="coin"]'); t.$('rolls').value=''; coin.checked=true; t.w.onModeChange();
     const ct=[...t.d.querySelectorAll('#tapRow button')]; ok(ct.length===2&&ct[0].dataset.v==='1'&&ct[1].dataset.v==='0'&&/HEADS/.test(ct[0].textContent)&&/TAILS/.test(ct[1].textContent),'coin mode shows 1 and 0 tap buttons');
+    ok(!!ct[0].querySelector('svg g.btc')&&ct[0].querySelectorAll('svg g.btc path').length===2&&!ct[0].querySelector('svg g.sat')&&!!ct[1].querySelector('svg g.sat')&&ct[1].querySelectorAll('svg g.sat path').length===2&&!ct.some(b=>b.querySelector('svg text, radialGradient')),'coin faces: heads shows the Bitcoin sign, tails shows the sat sign, both flat gold with no gradient or letters');
     ct[1].onclick(); ct[0].onclick(); eq(t.$('rolls').value,'01','coin taps append flips');
     const dice=t.d.querySelector('input[name="mode"][value="dice"]'); t.$('rolls').value=''; dice.checked=true; t.w.onModeChange();
     t.$('passphrase').value='a'; t.$('passphrase2').value='a'; t.w.togglePassphrase(t.d.querySelector('button[onclick^="togglePassphrase"]')); ok(t.$('passphrase').type==='text'&&t.$('passphrase2').type==='text','SHOW reveals both passphrase boxes');
