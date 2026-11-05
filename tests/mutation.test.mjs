@@ -522,6 +522,10 @@ async function probe(w, mutated) {
     if ($('phrase').value !== '') fails.push('an error message is never used as a seed');
     $('rolls').value = D50; $('passphrase').value = 'a'; $('passphrase2').value = 'b'; await w.generate(); $('phrase').value = ''; await w.sendToVerify();
     if ($('phrase').value !== expect.d50) fails.push('a passphrase mismatch does not change the words that SEND TO VERIFY moves');
+    { const al = []; const oa = w.alert, oc = w.confirm; w.alert = (m) => al.push(String(m)); w.confirm = () => true;
+      for (const fn of ['printSeed', 'downloadSeed', 'printSeedQr']) { const before = al.length; try { await w[fn](); } catch (e) { /* jsdom has no printing or downloads */ }
+        if (al.length !== before + 1 || !/do not match/.test(al[al.length - 1])) fails.push('passphrase mismatch: ' + fn + ' is refused with a message'); }
+      w.alert = oa; w.confirm = oc; }
     $('passphrase').value = ''; $('passphrase2').value = ''; await w.eval('passWork'); }
   r = await run('dice', 12, D50 + '1', ''); if (r !== 'Remove 1 roll (51 of 50).') fails.push('too many rolls message');
   r = await run('dice', 12, D50.slice(0, 40), ''); if (r !== 'Enter 10 more rolls (40 of 50).') fails.push('too few rolls message');
