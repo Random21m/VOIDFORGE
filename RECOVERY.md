@@ -34,6 +34,10 @@ A watch-only wallet shows this wallet's addresses and balance and can create uns
 
 Afterwards check that the app's first receiving address equals the **First receive address** VOIDFORGE showed. If you used a passphrase, the export is only for that passphrase. Treat the zpub like private financial information: anyone who has it can see all your addresses and balance, though they cannot spend. Spending later needs the seed words, for example on a hardware wallet or a restored wallet.
 
+**Electrum seeds (v2.2.0).** If VERIFY says your phrase "looks like an Electrum seed", it is not a BIP39 phrase: restore it in Electrum and choose *Electrum seed*, not BIP39. A BIP39 wallet would reject it, or open an empty wallet.
+
+**Checking a watch-only wallet (v2.2.0).** To see the addresses of a wallet without its seed, paste its account public key (xpub, ypub, zpub) or descriptor into *Or open a watch-only wallet* in *Check a backup*. Compare those addresses with your wallet app. Public keys cannot spend, but they do reveal every address of that account, so share them carefully.
+
 ## Restoring
 
 - Choose "restore wallet" / "import seed" in a BIP39-compatible wallet and enter the words (and the passphrase, if any).
