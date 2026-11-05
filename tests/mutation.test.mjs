@@ -197,6 +197,7 @@ async function probe(w, mutated) {
     if (!a || !a.classList.contains('btn-clear') || a.classList.contains('secondary')) fails.push('buttons: CLEAR is red');
     if (!b || !b.classList.contains('btn-test') || b.classList.contains('secondary')) fails.push('buttons: SELF-TEST is green');
     if (!/\n  button\.btn-clear \{[^}]*color: var\(--bad-text\)/.test(css)) fails.push('buttons: red text');
+    if (!/\n  button\.btn-clear, body\.light button\.btn-clear \{[^}]*color: var\(--bad-text\)/.test(css)) fails.push('buttons: red text in the new look');
     if (!/\n  button\.btn-clear \{[^}]*border: 1px solid var\(--bad-text\)/.test(css)) fails.push('buttons: red border');
     if (!/\n  button\.btn-test \{[^}]*color: var\(--ok-text\)/.test(css)) fails.push('buttons: green text');
     if (!/\n  button\.btn-test \{[^}]*border: 1px solid var\(--ok-text\)/.test(css)) fails.push('buttons: green border');
@@ -2323,7 +2324,7 @@ const M = [
   ["buttons: red style loses its border", "border: 1px solid var(--bad-text); }\n  button.btn-test", "border: 1px solid var(--border); }\n  button.btn-test"],
   ["buttons: green style loses its text colour", "button.btn-test { background: rgba(0,255,157,.12); color: var(--ok-text);", "button.btn-test { background: rgba(0,255,157,.12); color: var(--text);"],
   ["buttons: green style loses its border", "border: 1px solid var(--ok-text); }\n  body.light button.btn-clear", "border: 1px solid var(--border); }\n  body.light button.btn-clear"],
-  ["buttons: light theme red text overridden", "body.light button.btn-clear { background: rgba(192,20,60,.04); color: var(--bad-text); }", "body.light button.btn-clear { background: rgba(192,20,60,.04); color: #fff; }"],
+  ["buttons: red text overridden in the new look", "button.btn-clear, body.light button.btn-clear { background: transparent; color: var(--bad-text);", "button.btn-clear, body.light button.btn-clear { background: transparent; color: #fff;"],
   ["buttons: light theme green text overridden", "body.light button.btn-test { background: rgba(6,104,58,.08); color: var(--ok-text); }", "body.light button.btn-test { background: rgba(6,104,58,.08); color: #fff; }"],
   ["buttons: red tint too strong for contrast", "rgba(255,68,102,.08)", "rgba(255,68,102,.30)"],
   ["buttons: light red tint too strong for contrast", "rgba(192,20,60,.04)", "rgba(192,20,60,.30)"],
