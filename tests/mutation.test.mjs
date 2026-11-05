@@ -715,30 +715,19 @@ async function probe(w, mutated) {
     w.toggleSize(); if (B.classList.contains('big') || $('sizeBtn').getAttribute('aria-pressed') !== 'false') fails.push('text size: A- goes back');
     w.confirm = () => true;
   } catch (e) { fails.push('guide: the probe crashed: ' + e.message); }
-  try { // rolling-dice logo and the demo words
-    const demoOf = (r, n) => entropyToMnemonic(sha('VOIDFORGE DEMO, NOT A SEED|' + r).slice(0, n * 4 / 3), wordlist).split(' ');
-    const cells = () => [...w.document.querySelectorAll('#demoGrid .dm-w')].map(e => e.textContent), setRolls = (v) => { $('rolls').value = v; $('rolls').oninput(); };
+  try { // rolling-dice logo and the live preview words
+    const setRolls = (v) => { $('rolls').value = v; $('rolls').oninput(); };
     w.clearAll(); await new Promise(r => setTimeout(r, 20)); mode('dice'); words(12);
-    if ($('demoOn').checked || $('demoOut').style.display !== 'none' || cells().length) fails.push('demo: off and empty by default');
-    $('demoOn').checked = true; await w.demoToggle();
-    if ($('demoOut').style.display !== '' || cells().length || !/Add a roll/.test($('demoInfo').textContent) || !/NOT your seed words/.test($('demoOut').textContent)) fails.push('demo: with no rolls it asks for one and shows the NOT YOUR SEED banner');
-    setRolls(D50.slice(0, 7)); await w.demoRefresh();
-    const e1 = demoOf(D50.slice(0, 7), 12); if (cells().join('|') !== e1.map((x, i) => (i + 1) + '. ' + x).join('|') || !/from your 7 rolls so far/.test($('demoInfo').textContent)) fails.push('demo: words are the tagged hash of the rolls');
-    setRolls(D50.slice(0, 8)); await w.demoRefresh();
-    const e2 = demoOf(D50.slice(0, 8), 12), nch = e2.filter((x, i) => x !== e1[i]).length, marked = w.document.querySelectorAll('#demoGrid .dm-ch').length;
-    if (cells().join('|') !== e2.map((x, i) => (i + 1) + '. ' + x).join('|') || $('demoInfo').textContent !== nch + ' of 12 words changed with your last roll.' || marked !== nch || nch < 8) fails.push('demo: a new roll re-makes every word and counts what changed');
-    setRolls(D50.slice(0, 9)); await new Promise(r => setTimeout(r, 60)); if (cells().join('|') !== demoOf(D50.slice(0, 9), 12).map((x, i) => (i + 1) + '. ' + x).join('|')) fails.push('demo: every roll updates the words by itself');
-    setRolls('1'); await w.demoRefresh(); setRolls('11'); await w.demoRefresh(); if (!/from your 1 roll so far/.test($('demoInfo').textContent) && !/of 12 words changed/.test($('demoInfo').textContent)) fails.push('demo: singular roll wording');
-    setRolls(D50); await w.demoRefresh(); const e50 = demoOf(D50, 12);
-    if (cells().join('|') !== e50.map((x, i) => (i + 1) + '. ' + x).join('|') || e50.join(' ') === expect.d50) fails.push('demo: with all 50 rolls the demo words are still not the real seed');
-    words(24); setRolls(D99); await w.demoRefresh(); if (cells().length !== 24 || cells().join('|') !== demoOf(D99, 24).map((x, i) => (i + 1) + '. ' + x).join('|')) fails.push('demo: 24 words'); words(12);
-    setRolls(D50); await w.demoRefresh(); $('demoOn').checked = false; await w.demoToggle(); if ($('demoOut').style.display !== 'none' || cells().length || $('demoInfo').textContent) fails.push('demo: switching off wipes the words');
-    $('demoOn').checked = true; await w.demoToggle(); const before = cells().join('|'); await w.generate();
-    if ($('demoOn').checked || $('demoOut').style.display !== 'none' || cells().length || $('demoInfo').textContent || !before) fails.push('demo: FORGE wipes the demo words');
-    const real = $('genResult').textContent.split('\n')[0]; if (real !== expect.d50 || before.includes('. ' + real.split(' ')[0] + '|') && false) fails.push('demo: FORGE still makes the real seed');
-    $('demoOn').checked = true; await w.demoToggle(); w.clearAll(); await new Promise(r => setTimeout(r, 20)); if ($('demoOn').checked || cells().length || $('demoOut').style.display !== 'none') fails.push('demo: CLEAR wipes the demo words');
-    $('demoOn').checked = true; setRolls(D50.slice(0, 3)); await w.demoRefresh(); const mid = cells().join('|'); $('demoOn').checked = false; await w.demoToggle(); setRolls(D50.slice(0, 4)); await w.demoRefresh(); if (cells().length) fails.push('demo: stays empty while off');
-    if (w.document.querySelectorAll('#demoBox input').length !== 1 || w.document.querySelector('#demoBox a, #demoBox script, #demoBox img')) fails.push('demo: only the one switch, no links or images');
+    { // live preview: grey words follow the rolls
+      const pv = () => [...w.document.querySelectorAll('#wordGrid .wcell.pv')].map((e) => e.textContent.replace(/^\d+\.?\s*/, '').trim());
+      setRolls(D50.slice(0, 7)); await w.previewRefresh(); const e1 = (await w.rollsToMnemonic(D50.slice(0, 7), 12)).split(' ');
+      if (pv().join('|') !== e1.join('|') || !/PREVIEW/.test($('pvNote').textContent) || /^[a-z]/.test($('genResult').textContent.trim() && '')) fails.push('preview: grey words equal the words made from the rolls so far');
+      setRolls(D50.slice(0, 8)); await w.previewRefresh(); const e2 = (await w.rollsToMnemonic(D50.slice(0, 8), 12)).split(' '); if (pv().join('|') !== e2.join('|')) fails.push('preview: words change with the next roll');
+      words(24); setRolls(D50.slice(0, 9)); await w.previewRefresh(); if (pv().length !== 24) fails.push('preview: 24 slots in 24-word mode'); words(12);
+      setRolls(''); await w.previewRefresh(); if (pv().length || $('pvNote').textContent) fails.push('preview: nothing with no rolls');
+      setRolls(D50.slice(0, 5)); await w.previewRefresh(); await w.generate(); if (w.document.querySelectorAll('#wordGrid .wcell.pv').length || $('pvNote').textContent) fails.push('preview: FORGE replaces the grey words with the real ones');
+      setRolls(D50.slice(0, 5)); await w.previewRefresh(); w.clearAll(); await new Promise(r => setTimeout(r, 20)); if (pv().length || $('pvNote').textContent) fails.push('preview: CLEAR removes the grey words');
+    }
     { // Bitcoin dictionary (v1.27.3)
       const box = $('dictBox'), items = [...$('dictList').querySelectorAll('.dict-item')], names = items.map((e) => e.querySelector('dt').textContent), def = (e) => e.querySelector('dd').firstChild.textContent;
       const q = (v) => { $('dictSearch').value = v; w.dictFilter(); return items.filter((e) => e.style.display !== 'none').map((e) => e.querySelector('dt').textContent); };
@@ -818,7 +807,7 @@ async function probe(w, mutated) {
       const labels = [...doc.querySelectorAll('summary, option')].filter((e) => /recommended/i.test(e.textContent));
       if (doc.querySelectorAll('.tag-rec').length !== 2 || doc.querySelectorAll('option.opt-rec').length !== 1 || labels.length !== 3 || !labels.every((e) => e.querySelector('.tag-rec') || e.classList.contains('opt-rec'))) fails.push('recommended: every label is a gold word or a gold option');
       const notes = [...doc.querySelectorAll('.tag-note')], ros = [...doc.querySelectorAll('.tag-ro')];
-      if (notes.length !== 3 || !notes.every((e) => /^(DEMO ONLY|ADVANCED)$/.test(e.textContent)) || [...doc.querySelectorAll('summary')].some((e) => /\((demo only|advanced)/i.test(e.textContent))) fails.push('tags: DEMO ONLY and ADVANCED are grey labels, not plain (brackets)');
+      if (notes.length !== 2 || !notes.every((e) => /^ADVANCED$/.test(e.textContent)) || [...doc.querySelectorAll('summary')].some((e) => /\((demo only|advanced)/i.test(e.textContent))) fails.push('tags: ADVANCED is a grey label, not plain (brackets)');
       if (ros.filter((e) => e.textContent === 'NEW').length !== 2) fails.push('tags: every "NEW" label is the same grey tag-ro style');
       const sheet = mutated.match(/<style>[\s\S]*?<\/style>/)[0];
       if (!/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(sheet) || !/\.tag-rec, body\.light \.tag-rec \{ color: var\(--warn-text\); background: none; \}/.test(sheet) || !/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(sheet)) fails.push('recommended: gold words, no pill');
@@ -839,7 +828,7 @@ async function probe(w, mutated) {
       if (helpers.length < 10 || !helpers.every((b) => b.classList.contains('secondary') || b.classList.contains('btn-clear') || b.classList.contains('print-btn'))) fails.push('buttons: small helper buttons stay grey secondary (or the same-grey print-btn/theme-toggle style)');
     }
     w.clearAll();
-  } catch (e) { fails.push('demo: the probe crashed: ' + e.message); }
+  } catch (e) { fails.push('preview: the probe crashed: ' + e.message); }
   try { // Word draw
     if (!w.Element.prototype.scrollIntoView) w.Element.prototype.scrollIntoView = function () {};
     const A11 = 'abandon '.repeat(11), LEG = 'legal winner thank year wave sausage worth useful legal winner thank';
@@ -1271,7 +1260,7 @@ async function probe(w, mutated) {
     if (!/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(css)) fails.push('redesign: labels are plain coloured words');
     if (!/#cardGen \{ display: block; \}\s*#cardGen \.gen-right \{ position: static; max-height: none;/.test(css)) fails.push('redesign: Make a seed is one column');
     { const css = mutated.match(/<style>[\s\S]*?<\/style>/)[0]; if (!/@media \(max-width: 559px\) \{ #wordGrid, #cardGen \.gen-right #wordGrid \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \} \}/.test(css) || !/\.wcell \{ animation: none; box-shadow: none; font-size: 18px; font-weight: 700; padding: 10px 12px; min-width: 0; \}/.test(css) || !/@media \(max-width: 400px\) \{ \.wcell \{ font-size: 16px;/.test(css) || !/@media \(max-width: 345px\) \{ \.wcell \{ font-size: 14\.5px;/.test(css)) fails.push('seed words: two columns below 560px and smaller type on narrow phones'); }
-    { const rs = $('rollStats'); if (!rs || rs.previousElementSibling.id !== 'advanced' || $('advanced').previousElementSibling.id !== 'moreBox' || $('moreBox').previousElementSibling.id !== 'ignoredNote') fails.push('order under the roll entry: More options, Advanced options, then the roll history box'); if (!rs || rs.tagName !== 'DETAILS' || rs.open || !rs.contains($('rollChart')) || !rs.contains($('rollHistory')) || !rs.contains($('diceVisual'))) fails.push('tucked away: roll history and the fairness chart live in one closed box');
+    { const rs = $('rollStats'); if (!rs || rs.previousElementSibling.id !== 'ignoredNote') fails.push('order under the roll entry: the roll history box follows the roll entry'); if (!rs || rs.tagName !== 'DETAILS' || rs.open || !rs.contains($('rollChart')) || !rs.contains($('rollHistory')) || !rs.contains($('diceVisual'))) fails.push('tucked away: roll history and the fairness chart live in one closed box');
       { const css = mutated.match(/<style>[\s\S]*?<\/style>/)[0]; if (!/#rollStats \{ margin-top: 10px; padding: 8px 12px; font-size: 13px; \}/.test(css) || !/#rollStats > summary \{ cursor: pointer; font-weight: 600; \}/.test(css)) fails.push('tucked away: the roll history box is styled like the other option boxes'); } }
     { // Calmer first screen: one GUIDE ME, seed buttons only after a seed, one closed More options box, no second warning note
       const d = w.document, gb = [...d.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'GUIDE ME'), gn = $('guideNew');
@@ -1279,7 +1268,7 @@ async function probe(w, mutated) {
       if (d.querySelector('.forge-note')) fails.push('calmer page: no second warning note by FORGE SEED');
       if (!d.querySelector('.btn-row.seed-actions #abbrBtn') || d.querySelectorAll('.seed-actions button').length !== 5) fails.push('calmer page: the five seed buttons are grouped');
       if (!/body:not\(\.has-seed\) \.seed-actions, body:not\(\.has-seed\) \.print-btn \{ display: none; \}/.test(css)) fails.push('calmer page: seed buttons are hidden until there is a seed');
-      const mbx = $('moreBox'); if (!mbx || mbx.tagName !== 'DETAILS' || mbx.open || !mbx.contains($('wdBox')) || !mbx.contains($('demoBox')) || mbx.contains($('advanced'))) fails.push('calmer page: one closed More options box');
+      if ($('moreBox') || $('demoBox')) fails.push('calmer page: no More options box and no demo box');
       if (/#rollCount \{ display: none; \}/.test(css)) fails.push('calmer page: the roll count stays on every screen size');
       w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if (d.body.classList.contains('has-seed')) fails.push('calmer page: no seed, so seed buttons stay hidden');
       await run('dice', 12, D50); if (!d.body.classList.contains('has-seed')) fails.push('calmer page: a seed shows the seed buttons'); }
@@ -1333,7 +1322,7 @@ const M = [
   ['address: witness version 0 -> 1',       'bech32Encode("bc",0,h160)', 'bech32Encode("bc",1,h160)'],
   ['address: hash160 skips RIPEMD-160',     'const h160=ripemd160(await sha256bytes(pubkeyBytes(k)));', 'const h160=(await sha256bytes(pubkeyBytes(k))).slice(0,20);'],
   ['address: mainnet prefix -> testnet',    'bech32Encode("bc",0,h160)', 'bech32Encode("tb",0,h160)'],
-  ['passphrase confirmation bypassed',      'if(document.getElementById("passphrase").value !== document.getElementById("passphrase2").value){', 'if(false){'],
+  ['passphrase confirmation bypassed',      'if(document.getElementById("passphrase").value === document.getElementById("passphrase2").value) return false;', 'return false;'],
   ['tap button appends wrong value',        'el.value += v; updateCount();', 'el.value += "1"; updateCount();'],
   ['address: child key not reduced mod n (needed about half the time)', 'child=(il+k)%SN;', 'child=(il+k);'],
   ['VERIFY ignores the typed passphrase (fingerprint)', 'fp1 = await mnemonicFingerprint(r.mnemonic, vp)', 'fp1 = await mnemonicFingerprint(r.mnemonic, "")'],
@@ -1620,7 +1609,7 @@ const M = [
   ['seedqr: source not named', ' (read from "+pc.kind+")" : ""', ' (read from)" : ""'],
   ['compare: taproot list only first address', 'ids.list.some(t => t === fold)', 'ids.list.slice(0,1).some(t => t === fold)'],
   ['passphrase line: YES/NO swapped (print and download)', '(used ? "YES (keep it separate; it is not " + kind + " here)" : "NO")', '(used ? "NO" : "YES (keep it separate; it is not " + kind + " here)")'],
-  ['result line: no-passphrase wording wrong', ': "none"), mnemonic.split(" "));', ': "used"), mnemonic.split(" "));'],
+  ['result line: no-passphrase wording wrong', ': "none");\n}', ': "used");\n}'],
   ['grid: word numbers off by one',           'n.textContent = (i + 1) + "."', 'n.textContent = i + "."'],
   ['seed flag never set (SEND TO VERIFY would refuse)', 'g.dataset.seed = "1";', 'g.dataset.seed = "";'],
   ['seed flag not cleared after an error (error text treated as a seed)', 'delete g.dataset.seed;', ''],
@@ -1642,15 +1631,15 @@ const M = [
   ['taproot list not cleared after an error', 'document.getElementById("addrList").textContent = ""; document.getElementById("trList").textContent = "";', 'document.getElementById("addrList").textContent = "";'],
   ['taproot list never filled', 'tl.textContent = "";\n  (trList || []).forEach', 'tl.textContent = "";\n  ([]).forEach'],
   ['guide: NEXT unlocks one roll late', '.length >= getNeeded(document.querySelector(\'input[name="words"]:checked\').value);', '.length > getNeeded(document.querySelector(\'input[name="words"]:checked\').value);'],
-  ['guide: step 4 not locked until FORGE', '  if(n === 4) return hasSeed();', '  if(n === 4) return true;'],
+  ['guide: step 4 not locked until FORGE', '  if(n === 3) return hasSeed();', '  if(n === 3) return true;'],
   ['guide: step 2 not locked', '  if(n === 2) return clean(', '  if(n === 2) return true || clean('],
   ['guide: NEXT can skip a locked step', '  if(d > 0 && !guideCanNext(guideN)) return;\n', ''],
   ['guide: DONE does not leave the guide', 'if(d > 0 && guideN >= GUIDE_STEPS){ toggleGuide(); jumpTo("cardCheck"); return; }', 'if(d > 0 && guideN >= GUIDE_STEPS){ return; }'],
   ['guide: hidden test off by one', 'return g.indexOf(String(n)) < 0;', 'return g.indexOf(String(n)) <= 0;'],
   ['guide: hidden test inverted', 'return g.indexOf(String(n)) < 0;', 'return g.indexOf(String(n)) >= 0;'],
-  ['guide: passphrase box not opened at step 3', '  if(guideN === 3) document.getElementById("advanced").open = true;\n', ''],
+  ['guide: passphrase box not opened at step 3', '  if(guideN === 4) document.getElementById("advanced").open = true;\n', ''],
   ['guide: last step button not DONE', 'next.textContent = guideN >= GUIDE_STEPS ? "DONE" : "NEXT \\u2192";', 'next.textContent = "NEXT \\u2192";'],
-  ['guide: reopening ignores an existing seed', 'if(guideOn) guideN = hasSeed() ? 4 : 1;', 'if(guideOn) guideN = 1;'],
+  ['guide: reopening ignores an existing seed', 'if(guideOn) guideN = hasSeed() ? 3 : 1;', 'if(guideOn) guideN = 1;'],
   ['guide: CLEAR does not return to step 1', 'if(guideOn){ guideN = 1; guideRender(); }', 'if(guideOn){ guideRender(); }'],
   ['guide: BACK enabled on step 1', 'back.disabled = guideN <= 1;', 'back.disabled = false;'],
   ['guide: progress dots off by one', 'el.classList.toggle("on", i < guideN)', 'el.classList.toggle("on", i <= guideN)'],
@@ -1660,7 +1649,7 @@ const M = [
   ['guide: button state not shown', 'b.setAttribute("aria-pressed", guideOn ? "true" : "false"); b.textContent = guideOn ? "GUIDE: ON" : "GUIDE ME";', 'b.textContent = guideOn ? "GUIDE: ON" : "GUIDE ME";'],
   ['guide: body class not toggled', 'document.body.classList.toggle("guided", guideOn);', ''],
   ['guide: FORGE does not refresh the guide', '    if(guideOn) guideRender();\n    document.getElementById("nextStep").textContent = "Write these', '    document.getElementById("nextStep").textContent = "Write these'],
-  ['guide: roll count does not refresh the guide', 'function updateCount(){\n  staleCheck();\n  if(guideOn) guideRender();\n', 'function updateCount(){\n  staleCheck();\n'],
+  ['guide: roll count does not refresh the guide', 'function updateCount(){\n  staleCheck();\n  if(document.getElementById("wordSel")) syncMethodUi();\n  if(guideOn) guideRender();\n', 'function updateCount(){\n  staleCheck();\n  if(document.getElementById("wordSel")) syncMethodUi();\n'],
   ['terms: hover does not show', 'document.addEventListener("mouseover", e => { const t = term(e); if(t) show(t); });', ''],
   ['terms: moving away does not hide', 'document.addEventListener("mouseout", e => { if(term(e)) hide(); });', ''],
   ['terms: focus does not show', 'document.addEventListener("focusin", e => { const t = term(e); if(t) show(t); });', ''],
@@ -1674,23 +1663,6 @@ const M = [
   ['text size: button state not shown', 'b.setAttribute("aria-pressed", on ? "true" : "false"); b.textContent = on ? "TEXT A-" : "TEXT A+";', 'b.textContent = on ? "TEXT A-" : "TEXT A+";'],
   ['text size: choice not remembered (browser storage)', 'try { localStorage.setItem("voidforge-big", on ? "1" : "0"); } catch(e) {}', '', true],
   ['guide: locked-step hint text', 'why.textContent = ok ? "" : (guideN === 2 ? "Keep rolling to unlock NEXT" : "Press FORGE SEED to unlock NEXT");', 'why.textContent = "";', true],
-  ['demo: not tagged (would equal the real seed)', 'const d = await sha256("VOIDFORGE DEMO, NOT A SEED|" + rolls);', 'const d = await sha256(rolls);'],
-  ['demo: always 12 words', 'const entLen = {12:16,24:32}[wc];\n  const d = await sha256("VOIDFORGE', 'const entLen = 16;\n  const d = await sha256("VOIDFORGE'],
-  ['demo: not wiped on switch off', 'function demoToggle(){ if(!document.getElementById("demoOn").checked) demoWipe(); return demoRefresh(); }', 'function demoToggle(){ return demoRefresh(); }', true],
-  ['demo: wipe leaves words', 'document.getElementById("demoGrid").textContent = ""; document.getElementById("demoInfo").textContent = "";\n  document.getElementById("demoOut").style.display = "none";\n}', 'document.getElementById("demoOut").style.display = "none";\n}'],
-  ['demo: wipe leaves panel visible', '  document.getElementById("demoOut").style.display = "none";\n}\nfunction demoOff()', '}\nfunction demoOff()'],
-  ['demo: FORGE does not wipe', 'function setResult(text, words){\n  demoOff(); wdWipe(); drillEnd(); document.body.classList.toggle("has-seed", !!words);\n', 'function setResult(text, words){\n  wdWipe(); drillEnd(); document.body.classList.toggle("has-seed", !!words);\n'],
-  ['demo: switch stays on after wipe', 'function demoOff(){ document.getElementById("demoOn").checked = false; demoWipe(); }', 'function demoOff(){ demoWipe(); }'],
-  ['demo: not refreshed after each roll', '  if(document.getElementById("demoOn").checked) demoRefresh();\n', ''],
-  ['demo: shows when switched off', '  if(!document.getElementById("demoOn").checked){ demoWipe(); return; }\n  const my', '  const my'],
-  ['demo: no-rolls prompt missing', 'info.textContent = "Add a roll to see the demo words."; return; }', 'info.textContent = ""; return; }'],
-  ['demo: changed words not counted', 'if(ch) changed++;', ''],
-  ['demo: changed words not marked', 'c.className = "dm-w" + (ch ? " dm-ch" : "");', 'c.className = "dm-w";'],
-  ['demo: previous words not kept', '  demoPrev = words;\n  info.textContent', '  info.textContent'],
-  ['demo: stale result can overwrite', '  if(my !== demoSeq) return;\n  const prev', '  const prev'],
-  ['demo: words not numbered', 'c.textContent = (i + 1) + ". " + w; grid.appendChild(c); });\n  demoPrev', 'c.textContent = w; grid.appendChild(c); });\n  demoPrev'],
-  ['demo: plural wording', '" roll" + (rolls.length === 1 ? "" : "s") + " so far.', '" roll so far.'],
-  ['demo: previous words compared across lengths', 'const prev = demoPrev && demoPrev.length === words.length ? demoPrev : null;', 'const prev = demoPrev;', true],
   ['download: CID uses wrong codec', 'all.set([1, 0x55, 0x12, 0x20]);', 'all.set([1, 0x70, 0x12, 0x20]);'],
   ['download: CID hash prefix wrong', '0x12, 0x20]); all.set(hash, 4);', '0x12, 0x21]); all.set(hash, 4);'],
   ['download: CID alphabet wrong', 'const A = "abcdefghijklmnopqrstuvwxyz234567"; let bits', 'const A = "abcdefghijklmnopqrstuvwxyz234568"; let bits'],
@@ -1782,7 +1754,6 @@ const M = [
   ['recommended: drill badge lost', 'prove your paper backup works<span class="tag tag-rec">RECOMMENDED</span>', 'prove your paper backup works (recommended)'],
   ['recommended: second-tool badge lost', 'in a second tool<span class="tag tag-rec">RECOMMENDED</span>', 'in a second tool (recommended)'],
   ['recommended: menu option not coloured', '<option value="ms-wsh" class="opt-rec">', '<option value="ms-wsh">'],
-  ['tags: demo badge lost', 'Watch the words change<span class="tag tag-note">DEMO ONLY</span>', 'Watch the words change (demo only)'],
   ['tags: core badge lost', 'Import into Bitcoin Core<span class="tag tag-note">ADVANCED</span>', 'Import into Bitcoin Core (advanced)'],
   ['tags: silent payment badges lost', 'Silent Payment address<span class="tag tag-note">ADVANCED</span><span class="tag tag-ro">NEW</span>', 'Silent Payment address (advanced, new)'],
   ['tags: NEW badge not unified to cyan', '<span class="tag tag-ro">NEW</span></summary>', '<span class="tag tag-note">NEW</span></summary>'],
@@ -1812,7 +1783,6 @@ const M = [
   ['word draw: button ignores the flip count', 'pr.count === need.words && cleaned.length === need.flips);', 'pr.count === need.words);'],
   ['word draw: button ignores the self-test (the page has its own gate)', 'document.getElementById("wdBtn").disabled = !(selfTestState === "pass" && ', 'document.getElementById("wdBtn").disabled = !(', true],
   ['word draw: bad input does not stop the seed', 'flips.length !== need.flips){ wdUpdate(); return; }', 'flips.length !== need.flips){ wdUpdate(); }'],
-  ['word draw: passphrase mismatch accepted', '  if(document.getElementById("passphrase2").value !== document.getElementById("passphrase").value){\n    setResult("The two passphrase boxes do not match. A mistyped passphrase gives a different wallet, so fix them (or clear both) and try again.");\n    document.getElementById("advanced").open = true;\n    document.getElementById("fingerprint").textContent = ""; document.getElementById("address").textContent = "";\n    return;\n  }\n  const same', '  const same'],
   ['word draw: identical words not noticed', 'const same = pr.idx.every(n => n === pr.idx[0]), sorted', 'const same = false, sorted'],
   ['word draw: alphabetical order not noticed', 'sorted = pr.idx.every((n, i) => i === 0 || n > pr.idx[i - 1]);', 'sorted = false;'],
   ['word draw: weak-words question skipped', 'if((same || sorted) && !confirm(', 'if(false && !confirm('],
@@ -1821,8 +1791,8 @@ const M = [
   ['word draw: identical-flips question skipped', 'if(/^(0+|1+)$/.test(flips) && !confirm(', 'if(false && !confirm('],
   ['word draw: dice explainer left showing', '  document.getElementById("explainBox").style.display = "none";\n  wdShow(st, wc);', '  wdShow(st, wc);'],
   ['word draw: steps not shown', '  wdShow(st, wc);\n  if(guideOn)', '  if(guideOn)'],
-  ['word draw: guide stays on step 1', '  wdShow(st, wc);\n  if(guideOn){ guideN = 4; guideRender(); }', '  wdShow(st, wc);\n  if(guideOn){ guideRender(); }'],
-  ['word draw: dice FORGE leaves old steps', 'function setResult(text, words){\n  demoOff(); wdWipe(); drillEnd(); document.body.classList.toggle("has-seed", !!words);\n', 'function setResult(text, words){\n  demoOff(); drillEnd(); document.body.classList.toggle("has-seed", !!words);\n'],
+  ['word draw: guide stays on step 1', '  wdShow(st, wc);\n  if(guideOn){ guideN = 3; guideRender(); }', '  wdShow(st, wc);\n  if(guideOn){ guideRender(); }'],
+  ['word draw: dice FORGE leaves old steps', 'function setResult(text, words){\n  wdWipe(); drillEnd(); document.body.classList.toggle("has-seed", !!words);\n', 'function setResult(text, words){\n  drillEnd(); document.body.classList.toggle("has-seed", !!words);\n'],
   ['word draw: CLEAR leaves the boxes', '  wdClear();\n', ''],
   ['word draw: CLEAR button leaves the words', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();'],
   ['word draw: CLEAR button leaves the flips', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdWords").value = "";\n  wdWipe(); wdUpdate();'],
@@ -1833,7 +1803,7 @@ const M = [
   ['word draw: words rows missing', '  st.wordBits.forEach((b, i) => add((1 + i) + ".",', '  st.wordBits.slice(0, 0).forEach((b, i) => add((1 + i) + ".",'],
   ['word draw: flips row missing', '  add("Flips", st.flips + "  (" + st.flips.length + " bits)");\n', ''],
   ['word draw: no-hashing note missing', '  const n = document.createElement("div"); n.className = "hint"; n.style.margin = "6px 0 0"; n.textContent = "No hashing is applied to your words: they are the seed. Only the checksum is calculated."; o.appendChild(n);\n', ''],
-  ['word draw: no scroll to the result (display only)', '  if(guideOn){ guideN = 4; guideRender(); }\n  jumpTo("genResult");', '  if(guideOn){ guideN = 4; guideRender(); }', true],
+  ['word draw: no scroll to the result (display only)', '  if(guideOn){ guideN = 3; guideRender(); }\n  jumpTo("genResult");', '  if(guideOn){ guideN = 3; guideRender(); }', true],
   ['address list not cleared after an error', 'function clearAddrs(){\n  document.getElementById("addrList").textContent = "";', 'function clearAddrs(){\n  '],
   ['address guide hidden after FORGE', 'document.getElementById("checkGuide").style.display = ""; document.getElementById("drillBox").style.display = "";\n}', 'document.getElementById("checkGuide").style.display = "none"; document.getElementById("drillBox").style.display = "";\n}'],
   ['4-letter view: three letters', 'e.textContent = abbrOn ? e.dataset.w.slice(0, 4) : e.dataset.w;', 'e.textContent = abbrOn ? e.dataset.w.slice(0, 3) : e.dataset.w;'],
@@ -2226,8 +2196,8 @@ const M = [
   ['panel: to-go text wrong', '(need - n) + " more " + unit + " to go"', '(need - n + 1) + " more " + unit + " to go"'],
   ['panel: seed text missing', 'seed ? "Seed made. Write the words down." : met', 'seed ? "" : met'],
   ['panel: enough text missing', '"Enough " + unit + ". Press FORGE SEED."', '"Enough " + unit + "."'],
-  ['panel: step ignores seed', 'const cur = seed ? 5 : met ? 4 : 2;', 'const cur = met ? 4 : 2;'],
-  ['panel: step ignores enough rolls', 'const cur = seed ? 5 : met ? 4 : 2;', 'const cur = seed ? 5 : 2;'],
+  ['panel: step ignores seed', 'const cur = seed ? 4 : met ? 3 : 2;', 'const cur = met ? 3 : 2;'],
+  ['panel: step ignores enough rolls', 'const cur = seed ? 4 : met ? 3 : 2;', 'const cur = seed ? 4 : 2;'],
   ['panel: step done marks wrong', 'li.className = k < cur ? "done" : k === cur ? "cur" : "";', 'li.className = k <= cur ? "done" : "";'],
   ['panel: step current never marked', 'if(k === cur) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");', 'li.removeAttribute("aria-current");'],
   ['panel: step current stays marked', 'else li.removeAttribute("aria-current"); });', '});'],
@@ -2310,19 +2280,13 @@ const M = [
   ["run counter: CLEAR ALL does not stop a running FORGE", "function wipeSeed(){\n  forgeRun++;\n", "function wipeSeed(){\n"],
   ["stale: guard never fires", "  if(seedSig === null || !hasSeed() || inputSig(seedKind) === seedSig) return;", "  return;"],
   ["stale: never recorded", "seedSig = inputSig(seedKind);", "seedSig = null;"],
-  ["stale: passphrase box not watched", "[\"passphrase\", \"passphrase2\"].forEach(id => document.getElementById(id).addEventListener(\"input\", staleCheck));", "[\"passphrase2\"].forEach(id => document.getElementById(id).addEventListener(\"input\", staleCheck));"],
-  ["stale: confirm box not watched", "[\"passphrase\", \"passphrase2\"].forEach(id => document.getElementById(id).addEventListener(\"input\", staleCheck));", "[\"passphrase\"].forEach(id => document.getElementById(id).addEventListener(\"input\", staleCheck));"],
-  ["stale: no passphrase watching at all", "[\"passphrase\", \"passphrase2\"].forEach(id => document.getElementById(id).addEventListener(\"input\", staleCheck));", "[].forEach(id => document.getElementById(id).addEventListener(\"input\", staleCheck));"],
   ["stale: updateCount does not check", "function updateCount(){\n  staleCheck();", "function updateCount(){"],
   ["stale: rolls missing from signature", "clean(v(\"rolls\"))", "\"\""],
   ["stale: word count missing from signature", "\"|\" + document.querySelector('input[name=\"words\"]:checked').value + \"|\" + clean(v(\"rolls\"))", "\"|\" + clean(v(\"rolls\"))"],
   ["stale: mode missing from signature", "\"rolls|\" + getMode() + \"|\"", "\"rolls|\" + \"|\"", true],  // equivalent: switching dice/coin always empties the rolls box (or reverts the switch), so the rolls part of the signature already changes
-  ["stale: first passphrase missing from signature", "JSON.stringify([v(\"passphrase\"), v(\"passphrase2\")])", "JSON.stringify([v(\"passphrase2\")])"],
-  ["stale: confirm passphrase missing from signature", "JSON.stringify([v(\"passphrase\"), v(\"passphrase2\")])", "JSON.stringify([v(\"passphrase\")])"],
-  ["stale: word draw seed treated like rolls", "  if(kind === \"wd\") return \"wd|\" + pass;", "  "],
   ["stale: kind always rolls", "seedKind = ctx ? \"rolls\" : \"wd\";", "seedKind = \"rolls\";"],
   ["stale: fingerprint and address left", "  document.getElementById(\"fingerprint\").textContent = \"\"; document.getElementById(\"address\").textContent = \"\";\n}\nfunction updateCount", "\n}\nfunction updateCount"],
-  ["stale: no message", "setResult(\"You changed the rolls, the word count or the passphrase after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.\");", "setResult(\"\\u2014\");"],
+  ["stale: no message", "setResult(\"You changed the rolls, the word count or the dice/coin choice after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.\");", "setResult(\"\\u2014\");"],
   ["stale: download uses typed rolls", "const rolls = (exCtx && exCtx.rolls) || document.getElementById(\"rolls\").value;", "const rolls = document.getElementById(\"rolls\").value;"],
   // v1.26.2 red CLEAR and green SELF-TEST
   ["buttons: CLEAR not red", "<button class=\"btn-clear\" onclick=\"clearAll()\">", "<button class=\"secondary\" onclick=\"clearAll()\">"],
@@ -2338,7 +2302,7 @@ const M = [
   // v1.27.0 restore drill
   ["drill: start does not hide the words", "  document.body.classList.add(\"drill-on\");\n", ""],
   ["drill: end keeps the words hidden", "drillCtx = null; document.body.classList.remove(\"drill-on\");", "drillCtx = null;"],
-  ["drill: a new result does not end the drill", "demoOff(); wdWipe(); drillEnd();", "demoOff(); wdWipe();"],
+  ["drill: a new result does not end the drill", "wdWipe(); drillEnd();", "wdWipe();"],
   ["drill: word count not checked", "if(typed.length !== want.length){", "if(false){"],
   ["drill: unknown words not flagged", "if(unknown.length){", "if(false){"],
   ["drill: wrong words ignored", "if(wrong.length){ bad(", "if(false){ bad("],
@@ -2376,12 +2340,11 @@ const M = [
   ["coin faces: coin not drawn", "b.appendChild(coinFace(v === \"1\", v));", ""],
   ["coin faces: no label text", "b.appendChild(t);\n    }\n    else", "}\n    else"],
   ["calmer page: a second GUIDE ME button is back", "<div id=\"guideNew\">New here?", "<div id=\"guideNew\"><button type=\"button\">GUIDE ME</button> New here?"],
-  ["calmer page: seed buttons not grouped", "<div class=\"btn-row seed-actions\" style=\"margin-top:6px;\" data-g=\"4\">", "<div class=\"btn-row\" style=\"margin-top:6px;\" data-g=\"4\">"],
+  ["calmer page: seed buttons not grouped", "<div class=\"btn-row seed-actions\" style=\"margin-top:6px;\" data-g=\"3 4\">", "<div class=\"btn-row\" style=\"margin-top:6px;\" data-g=\"3 4\">"],
   ["calmer page: has-seed never set", "drillEnd(); document.body.classList.toggle(\"has-seed\", !!words);", "drillEnd();"],
   ["calmer page: seed buttons always shown", "body:not(.has-seed) .seed-actions, body:not(.has-seed) .print-btn { display: none; }", "body:not(.has-seed) .seed-actions, body:not(.has-seed) .print-btn { }"],
   ["calmer page: roll count hidden on wide screens", "  #cardGen .gen-right { position: static; max-height: none;", "  #rollCount { display: none; }\n  #cardGen .gen-right { position: static; max-height: none;"],
-  ["calmer page: More options starts open", "<details id=\"moreBox\">", "<details id=\"moreBox\" open>"],
-  ["calmer page: second warning note back", "<div id=\"wordGrid\" data-g=\"4\" aria-hidden=\"true\"></div>", "<p class=\"forge-note\">Making real keys? Keep clipboard history off.</p><div id=\"wordGrid\" data-g=\"4\" aria-hidden=\"true\"></div>"],
+  ["calmer page: second warning note back", "<div id=\"wordGrid\" data-g=\"3 4\" aria-hidden=\"true\"></div>", "<p class=\"forge-note\">Making real keys? Keep clipboard history off.</p><div id=\"wordGrid\" data-g=\"3 4\" aria-hidden=\"true\"></div>"],
   ["coin faces: sat sign loses a bar", "<rect x=\"29.5\" y=\"46\" width=\"41\" height=\"7\"/>", ""],
   ["coin faces: sat sign not tilted", "<g class=\"sat\" transform=\"rotate(10 50 50)\"", "<g class=\"sat\""],
   ["coin faces: Bitcoin lines thicker than the sat sign", "stroke-width=\"7\" stroke-linejoin=\"round\"><path d=\"M39 30", "stroke-width=\"6\" stroke-linejoin=\"round\"><path d=\"M39 30"],
@@ -2396,8 +2359,7 @@ const M = [
   ["seed words: boxes can grow past their column", "padding: 10px 12px; min-width: 0; }", "padding: 10px 12px; }"],
   ["seed words: no smaller type on small phones", "@media (max-width: 400px) { .wcell { font-size: 16px;", "@media (max-width: 400px) { .wcell { font-size: 18px;"],
   ["seed words: no smallest type on narrow phones", "@media (max-width: 345px) { .wcell { font-size: 14.5px;", "@media (max-width: 345px) { .wcell { font-size: 18px;"],
-  ["More options box moved away from the roll entry", "<details id=\"moreBox\">", "<p id=\"pushdown3\"></p><details id=\"moreBox\">"],
-  ["passphrase box moved away from the roll history box", "<details id=\"advanced\" data-g=\"3\">", "<p id=\"pushdown2\"></p><details id=\"advanced\" data-g=\"3\">"],
+  ["passphrase box moved away from the roll history box", "<details id=\"advanced\" data-g=\"4\">", "<p id=\"pushdown2\"></p><details id=\"advanced\" data-g=\"4\">"],
   ["roll history box moved away from the passphrase box", "<details id=\"rollStats\" data-g=\"2\">", "<p id=\"pushdown\"></p><details id=\"rollStats\" data-g=\"2\">"],
   ["tucked away: roll history box starts open", "<details id=\"rollStats\" data-g=\"2\">", "<details id=\"rollStats\" data-g=\"2\" open>"],
   ["redesign: centre pip missing from the header die", "<circle class=\"dp\" cx=\"32\" cy=\"32\" r=\"5.6\"/>", ""],
