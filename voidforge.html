@@ -688,6 +688,22 @@
   #fpBaseIcon { width: 40px; height: 40px; margin-top: 0; }
   #fpBase { margin-top: 0; font-size: 13px; font-weight: 600; }
   #fpBase::before { content: none !important; }
+  /* Professional pass (v2.1.0): smaller buttons, no pulsing, muted notes, one calm look */
+  .btn-row > button { padding: 7px 14px; font-size: 13px; letter-spacing: .03em; }
+  .btn-row > button.small { padding: 5px 10px; font-size: 12px; }
+  #forgeBtn:not(:disabled) { animation: none; }
+  #pvNote:not(:empty) { color: var(--muted); font-size: 12px; }
+  #rollStats > summary small { display: none; }
+  .result { font-size: 14px; padding: 8px 12px; min-height: 0; line-height: 1.45; }
+  .seed-head { margin: 4px 0; }
+  .big-count { font-size: 15px; }
+  .guide-btn, .size-btn, .theme-toggle { padding: 5px 10px; font-size: 12px; }
+  @media (max-width: 345px) {
+    #topbar .tb-in { padding: 10px 8px; gap: 6px; }
+    #brandDie { width: 24px; height: 24px; }
+    #topbar h1, body.light #topbar h1 { font-size: 14px; letter-spacing: .05em; }
+    #topbar .dl-btn, #menuBox > summary { padding: 5px 7px; font-size: 11px; }
+  }
 </style>
 </head>
 <body class="dice-wait">
