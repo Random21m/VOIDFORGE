@@ -225,10 +225,17 @@ async function probe(w, mutated) {
     await forge(); $('rolls').value = D50.slice(0, 49) + (D50[49] === '1' ? '2' : '1'); w.updateCount(); if (!gone()) fails.push('stale: changing a roll clears everything');
     await forge(); w.undoRoll(); if (on()) fails.push('stale: UNDO clears the result');
     { // v1.29.1 run counter: an old FORGE must not write its fingerprint and addresses back after an edit or CLEAR ALL
-      const mid = async (act) => { mode('dice'); words(12); $('rolls').value = D50; ev('rolls'); $('passphrase').value = ''; $('passphrase2').value = ''; const pr = w.generate(); for (let i = 0; i < 5000 && !/computing/.test($('fingerprint').textContent); i++) await new Promise((r) => setTimeout(r, 0)); const saw = /computing/.test($('fingerprint').textContent); act(); await pr; await new Promise((r) => setTimeout(r, 400)); return saw; };
+      const mid = async (act, cond = () => /computing/.test($('fingerprint').textContent)) => { mode('dice'); words(12); $('rolls').value = D50; ev('rolls'); $('passphrase').value = ''; $('passphrase2').value = ''; const pr = w.generate(); for (let i = 0; i < 5000 && !cond(); i++) await new Promise((r) => setTimeout(r, 0)); const saw = cond(); act(); await pr; await new Promise((r) => setTimeout(r, 400)); return saw; };
       const leftover = () => /[0-9a-f]{8}/.test($('fingerprint').textContent) || /bc1q/.test($('address').textContent) || $('addrList').textContent !== '';
       if (!(await mid(() => { $('passphrase').value = 'abc'; ev('passphrase'); }))) fails.push('run counter: the edit lands while the fingerprint is computing');
       if (leftover()) fails.push('run counter: an edit during FORGE leaves an old fingerprint, address or list behind');
+      $('passphrase').value = ''; ev('passphrase');
+      if (!(await mid(() => { $('passphrase').value = 'abc'; ev('passphrase'); }, () => /Master fingerprint: [0-9a-f]{8}/.test($('fingerprint').textContent) && $('address').textContent === ''))) fails.push('run counter: the edit lands after the fingerprint and before the first address');
+      if (leftover()) fails.push('run counter: an edit before the first address leaves an old address or list behind');
+      $('passphrase').value = ''; ev('passphrase');
+      if (!(await mid(() => { $('passphrase').value = 'abc'; ev('passphrase'); }, () => /bc1q/.test($('address').textContent) && $('addrList').textContent === ''))) fails.push('run counter: the edit lands after the first address and before the address list');
+      if (leftover()) fails.push('run counter: an edit before the address list leaves an old list behind');
+      $('passphrase').value = ''; ev('passphrase');
       $('passphrase').value = ''; ev('passphrase'); await mid(() => w.wipeSeed());
       if (leftover()) fails.push('run counter: CLEAR ALL during FORGE leaves an old fingerprint, address or list behind');
       $('passphrase').value = ''; ev('passphrase'); }

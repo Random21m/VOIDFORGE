@@ -307,9 +307,13 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     await forge(R1); g.set(R1.slice(0,-1)); ok(!seedOn()&&!fpOn()&&!adOn(),'stale guard: removing a roll after FORGE clears the result');
     await forge(R1); g.w.undoRoll(); ok(!seedOn(),'stale guard: UNDO after FORGE clears the result');
     { // v1.29.1 run counter: an edit, or CLEAR ALL, while FORGE is still working out the fingerprint and addresses must not let the old run write them back
-      const mid=async(act)=>{ g.mode('dice'); g.words(12); g.set(R1); g.$('passphrase').value=''; g.$('passphrase2').value=''; const p=g.w.generate(); for(let i=0;i<5000&&!/computing/.test(g.$('fingerprint').textContent);i++) await new Promise(r=>setTimeout(r,0)); const saw=/computing/.test(g.$('fingerprint').textContent); act(); await p; await new Promise(r=>setTimeout(r,400)); return saw; };
+      const mid=async(act,cond=()=>/computing/.test(g.$('fingerprint').textContent))=>{ g.mode('dice'); g.words(12); g.set(R1); g.$('passphrase').value=''; g.$('passphrase2').value=''; const p=g.w.generate(); for(let i=0;i<5000&&!cond();i++) await new Promise(r=>setTimeout(r,0)); const saw=cond(); act(); await p; await new Promise(r=>setTimeout(r,400)); return saw; };
       ok(await mid(()=>typePass('abc')), 'run counter: the edit really landed while the fingerprint was still being computed');
       ok(!seedOn()&&!fpOn()&&!adOn()&&g.$('addrList').textContent===''&&!/computing/.test(g.$('fingerprint').textContent),'run counter: an edit during FORGE leaves no old fingerprint, address or address list behind');
+      typePass(''); ok(await mid(()=>typePass('abc'),()=>/Master fingerprint: [0-9a-f]{8}/.test(g.$('fingerprint').textContent)&&g.$('address').textContent===''), 'run counter: an edit lands after the fingerprint is shown and before the first address');
+      ok(!seedOn()&&!fpOn()&&!adOn()&&g.$('addrList').textContent==='','run counter: an edit before the first address leaves no old address or list behind');
+      typePass(''); ok(await mid(()=>typePass('abc'),()=>/bc1q/.test(g.$('address').textContent)&&g.$('addrList').textContent===''), 'run counter: an edit lands after the first address is shown and before the address list');
+      ok(!seedOn()&&!fpOn()&&!adOn()&&g.$('addrList').textContent==='','run counter: an edit before the address list leaves no old list behind');
       typePass(''); await mid(()=>g.w.wipeSeed());
       ok(!seedOn()&&!fpOn()&&!adOn()&&g.$('addrList').textContent==='','run counter: CLEAR ALL during FORGE leaves no old fingerprint, address or address list behind');
       typePass(''); await forge(R1); ok(seedOn()&&fpOn()&&adOn(),'run counter: a normal FORGE afterwards still shows its fingerprint and address'); }
