@@ -471,19 +471,7 @@
   .ms-sub { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
   .ms-sub .wlabel:first-child { margin-top: 0; }
   @media print { #msBanner { display: none !important; } }
-  #moreBox { margin-top: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
-  #moreBox > summary { cursor: pointer; font-weight: 600; }
-  #moreBox > summary small { display: block; font-weight: 400; font-size: 13.5px; color: var(--muted); }
-  #moreBox #wdBox, #moreBox #demoBox { background: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; padding: 8px 0 0; margin-top: 10px; }
-  #demoBox { margin-top: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
-  #demoBox summary { cursor: pointer; font-weight: 600; }
-  #demoBox summary small { display: block; font-weight: 400; font-size: 13.5px; color: var(--muted); }
-  .demo-ban { background: var(--danger); color: #000; font-weight: 700; font-size: 13px; text-align: center; padding: 6px 8px; border-radius: 8px; margin: 8px 0; letter-spacing: .3px; }
-  #demoGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 6px; opacity: .9; }
-  @media (min-width: 520px) { #demoGrid { grid-template-columns: repeat(3, 1fr); } }
-  .dm-w { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; padding: 4px 8px; border: 1px dashed var(--border); border-radius: 6px; color: var(--muted); }
-  .dm-ch { border-color: var(--accent); color: var(--text); }
-  @media print { #demoBox, #wdBox { display: none !important; } }
+  @media print { #wdBox { display: none !important; } }
   #wdBox { margin-top: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
   #wdBox summary { cursor: pointer; font-weight: 600; }
   #wdBox summary small { display: block; font-weight: 400; font-size: 13.5px; color: var(--muted); }
@@ -544,6 +532,8 @@
   #wordGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   @media (min-width: 520px) { #cardGen .gen-right #wordGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .wcell.empty { opacity: .55; animation: none; }
+  .wcell.pv { opacity: .7; font-weight: 500; border-style: dashed; }
+  #pvNote:not(:empty) { margin: 6px 0 0; font-size: 12.5px; color: var(--bad-text); }
   #genResult.nores { display: none; }
   #tp-about { max-width: 860px; margin-left: auto; margin-right: auto; }
   @media (max-width: 860px) {
@@ -637,7 +627,7 @@
   .legacy-radios { display: none; }
   #wdBox > summary { display: none; }
   body:not(.m-words) #wdBox { display: none; }
-  body.m-words .gen-left > [data-g="2"], body.m-words #moreBox { display: none !important; }
+  body.m-words .gen-left > [data-g="2"] { display: none !important; }
   #wdBox { background: none !important; border: 0 !important; padding: 0 !important; margin-top: 0 !important; }
   .wd-how { margin: 0 0 8px; }
   .wd-how > summary { cursor: pointer; font-weight: 600; font-size: 13.5px; color: var(--muted); }
@@ -653,12 +643,11 @@
   #fpIcon { box-shadow: 0 0 0 1px var(--border); }
   .term { border-bottom-color: var(--muted); }
   .dict-item dt, #about code, .wd-key { color: var(--text); }
-  #about details, .tools details, #advanced, #moreBox, #rollStats, #wdBox, #demoBox, #msBox { background: transparent; border: 1px solid var(--border); border-radius: 8px; }
-  #moreBox #wdBox, #moreBox #demoBox { background: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
+  #about details, .tools details, #advanced, #rollStats, #wdBox, #msBox { background: transparent; border: 1px solid var(--border); border-radius: 8px; }
   #rollStats { margin-top: 10px; padding: 8px 12px; font-size: 13px; }
   #rollStats > summary { cursor: pointer; font-weight: 600; }
   #rollStats > summary small { display: block; font-weight: 400; font-size: 13.5px; color: var(--muted); }
-  #onlineWarn, #fatalWarn, .ms-test, .demo-ban { background: #FF8A90; color: #1a0000; }
+  #onlineWarn, #fatalWarn, .ms-test { background: #FF8A90; color: #1a0000; }
   .ms-fill { background: var(--gold); }
   .rc-bar { background: var(--gold); }
   .forge-note { border-left-color: var(--border); }
@@ -670,6 +659,35 @@
     #topbar h1, body.light #topbar h1 { font-size: 16px; letter-spacing: .1em; }
     #topbar .dl-btn, #menuBox > summary { padding: 6px 9px; font-size: 12px; }
   }
+  /* Compact pass (v2.1.0): clean, business-like, nothing wider or taller than it needs to be */
+  .card, body.light .card { padding: 14px 16px; margin-bottom: 14px; }
+  .card h2 { margin-bottom: 2px; }
+  .sub { font-size: 13.5px; margin: 0 0 6px; line-height: 1.4; }
+  .stepbar { margin: 0 0 10px; }
+  .mk-tabs { margin: 8px 0 8px; }
+  .mk-tabs button { padding: 7px 6px; font-size: 14px; }
+  .mk-len { margin: 0 0 8px; }
+  .mk-len select { padding-top: 6px; padding-bottom: 6px; }
+  button.tap { min-height: 52px; padding: 4px 2px; gap: 1px; }
+  button.tap svg { width: 26px; height: 26px; }
+  #tapRow { margin-top: 4px !important; margin-bottom: 6px !important; gap: 6px; }
+  textarea#rolls { min-height: 44px; height: 44px; }
+  #rollCount { font-size: 13px; }
+  .entropy-bar { margin-top: 4px; }
+  #entropyStatus, #bitsNote, #ignoredNote { margin-top: 2px !important; font-size: 13px !important; }
+  #rollStats, #advanced { margin-top: 8px; padding: 6px 12px; }
+  .seed-head { margin: 6px 0; }
+  #wordGrid { gap: 5px; margin-top: 6px; }
+  .wcell { padding: 5px 10px; font-size: 15px; }
+  #secretNote, #passNote, #nextStep, #abbrNote { margin-top: 4px; font-size: 12.5px; }
+  .seed-actions { gap: 6px; }
+  .seed-actions button { padding: 5px 9px; font-size: 12.5px; }
+  .fp:not(:empty)::before { display: inline; margin: 0 8px 0 0; }
+  .fp { margin-top: 6px; font-size: 15px; letter-spacing: .5px; }
+  #fpIcon { width: 56px; height: 56px; margin-top: 6px; }
+  #fpBaseIcon { width: 40px; height: 40px; margin-top: 0; }
+  #fpBase { margin-top: 0; font-size: 13px; font-weight: 600; }
+  #fpBase::before { content: none !important; }
 </style>
 </head>
 <body class="dice-wait">
@@ -731,7 +749,7 @@
       <div class="gstep" data-gs="1"><h3>Choose how your seed is made</h3>
         <p>Your wallet starts as a very large random number. Real dice (or a coin) are how you create it yourself, instead of trusting a computer to pick it. First choose the length: <b>12 words</b> is strong enough for almost everyone and needs about 50 dice rolls. <b>24 words</b> is the longest option and needs about 99 rolls. Then choose <b>dice</b> (easier for most people) or <b>coin</b> (many more flips). If you have physical word tiles, use the <b>Word draw</b> box instead. <b>Making real keys?</b> Read BEFORE YOU MAKE REAL KEYS just above this card first.</p></div>
       <div class="gstep" data-gs="2"><h3>Roll your dice</h3>
-        <p>Roll a real die, then tap the number it shows. Do not make numbers up: people are bad at being random, and the whole point is that nobody could guess your rolls. You need <b id="gNeed">50</b> <span id="gUnit">rolls</span>. The bar fills as you go, and NEXT unlocks when you have enough. Curious how rolls become words? Try the demo switch below the bar. Make sure nobody can see your screen.</p></div>
+        <p>Roll a real die, then tap the number it shows. Do not make numbers up: people are bad at being random, and the whole point is that nobody could guess your rolls. You need <b id="gNeed">50</b> <span id="gUnit">rolls</span>. The bar fills as you go, and NEXT unlocks when you have enough. The grey words below change with every roll, so you can see how one roll changes every word. Make sure nobody can see your screen.</p></div>
       <div class="gstep" data-gs="3"><h3>Forge the seed and write it down</h3>
         <p>Press <b>FORGE SEED</b>. Your rolls are scrambled together into your seed words. (A passphrase, if you want one, comes next, after you can see the words.) Write the words on paper, in order, with a pen. <b>Never</b> take a photo, type them into a connected device, or store them in a cloud. Anyone who has these words has your money. NEXT unlocks once the words are shown.</p></div>
       <div class="gstep" data-gs="4"><h3>Optional: add a passphrase</h3>
@@ -788,19 +806,6 @@
     <div id="entropyStatus" data-g="2" style="font-size:13.5px; margin-top:4px; font-weight:600;"></div>
     <div id="bitsNote" data-g="2" style="font-size:13.5px; margin-top:4px; color:var(--muted);"></div>
     <div id="ignoredNote" data-g="2" style="font-size:13.5px; margin-top:4px; font-weight:600; color:var(--danger);"></div>
-    <details id="moreBox">
-      <summary>More options<small>Word tiles, and a demo of how rolls scramble the words.</small></summary>
-    <details id="demoBox" data-g="2">
-      <summary>Watch the words change<span class="tag tag-note">DEMO ONLY</span><small>See why one different roll changes every word.</small></summary>
-      <p class="hint" style="margin:8px 0 0;">Curious how rolls turn into words? Switch this on and add rolls: the demo words below are re-made after every roll, and you will see that <b>one new roll changes every word</b>. That scrambling is why nobody can work backwards from the words to your rolls. These words are made from your rolls plus a demo tag, so they are <b>never your real seed</b>. They are not saved, printed or carried into FORGE.</p>
-      <label style="display:flex; gap:8px; align-items:center; margin-top:8px; font-weight:600;"><input type="checkbox" id="demoOn" onchange="demoToggle()"> Show the demo</label>
-      <div id="demoOut" style="display:none;">
-        <div class="demo-ban">DEMO ONLY: these are NOT your seed words. Do not write them down.</div>
-        <div id="demoInfo" class="hint" aria-live="polite" style="margin:0;"></div>
-        <div id="demoGrid" aria-label="Demo words, not your seed"></div>
-      </div>
-    </details>
-    </details>
     <details id="rollStats" data-g="2">
       <summary>Your rolls: history and fairness chart<small>See what you rolled and whether the faces came up evenly.</small></summary>
     <div id="rollHistory" data-g="2" style="font-size:12.5px;color:var(--muted);margin-top:6px;min-height:16px;"></div>
@@ -816,6 +821,7 @@
       <button class="btn-test small" onclick="toggleSelfTests()">SELF-TEST</button>
     </div>
     <div id="wordGrid" data-g="3 4" aria-hidden="true"></div>
+    <div id="pvNote" class="hint" data-g="3 4" aria-live="polite"></div>
     <div id="secretNote" data-g="3 4" class="hint" style="margin:8px 0 0;"><span class="tag tag-secret" style="margin-left:0;">SECRET</span> These words are your money. Write them on paper and never share them.</div>
     <div id="abbrNote" data-g="3 4" class="hint" aria-live="polite"></div>
     <div id="passNote" data-g="3 4"></div>
@@ -835,7 +841,7 @@
         <button type="button" class="secondary small" onclick="togglePassphrase(this)">SHOW</button>
       </div>
       <input type="password" id="passphrase2" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Confirm passphrase (must match)" style="margin-top:6px;" oninput="updateAdvSummary()">
-      <div style="font-size:13.5px; color:var(--muted); margin-top:6px;">A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> makes a different wallet from the same words. Write it down separately: without it the funds cannot be recovered. Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div>
+      <details class="wd-how"><summary>About passphrases</summary><div style="font-size:13.5px; color:var(--muted); margin-top:6px;">A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> makes a different wallet from the same words. Write it down separately: without it the funds cannot be recovered. Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div></details>
       <input type="text" id="note" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Optional note (not used in the seed)" style="margin-top:6px;">
     </details>
     <div data-g="3 4 5" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;"><div class="fp" id="fingerprint"></div><div id="fpIcon" class="lh" title="Fingerprint picture (LifeHash): the same picture Sparrow Wallet shows for this fingerprint"></div></div>
@@ -1546,7 +1552,7 @@ function updateCount(){
   staleCheck();
   if(document.getElementById("wordSel")) syncMethodUi();
   if(guideOn) guideRender();
-  if(document.getElementById("demoOn").checked) demoRefresh();
+  previewRefresh();
   const n = clean(document.getElementById("rolls").value).length;
   const wc = document.querySelector('input[name="words"]:checked').value;
   const need = getNeeded(wc);
@@ -4101,7 +4107,7 @@ function updateAbbrNote(){
   document.getElementById("abbrNote").textContent = (abbrOn && hasSeed()) ? "Showing only the first 4 letters of each word. The full words are still your backup; write down full words unless your backup method uses 4-letter abbreviations." : "";
 }
 function setResult(text, words){
-  demoOff(); wdWipe(); drillEnd(); document.body.classList.toggle("has-seed", !!words);
+  wdWipe(); drillEnd(); document.body.classList.toggle("has-seed", !!words);
   const g = document.getElementById("genResult"), grid = document.getElementById("wordGrid");
   g.textContent = text; g.classList.toggle("nores", text === "\u2014"); grid.textContent = "";
   hideExplain(); { const eb = document.getElementById("explainBox"); eb.style.display = (words && [12,24].includes(words.length)) ? "" : "none"; eb.open = false; }
@@ -4158,6 +4164,26 @@ document.getElementById("tabs").addEventListener("keydown", (e) => {
 });
 
 // ---- Your seed panel (v1.25.0): roll counter (red until enough, then green with a tick), step bar, numbered word slots ----
+// Live preview (v2.1.0): while you roll, the grey word slots show the words your rolls so far would make (the same SHA-256 method FORGE uses),
+// so you can watch one new roll change every word. They are only a preview: nothing is final, checked or usable until FORGE SEED.
+let pvSeq = 0;
+function previewClear(){
+  pvSeq++;
+  document.querySelectorAll("#wordGrid .wcell.pv").forEach(c => { c.classList.remove("pv"); if(c.children[1]) c.children[1].textContent = "\u2014"; });
+  document.getElementById("pvNote").textContent = "";
+}
+async function previewRefresh(){
+  const my = ++pvSeq, note = document.getElementById("pvNote");
+  const rolls = clean(document.getElementById("rolls").value), wc = +document.querySelector('input[name="words"]:checked').value;
+  if(hasSeed() || method === "words" || !rolls){ previewClear(); return; }
+  renderSlots();
+  const grid = document.getElementById("wordGrid");
+  if(!grid.classList.contains("slots")) return;
+  const words = (await rollsToMnemonic(rolls, wc)).split(" ");
+  if(my !== pvSeq || hasSeed()) return;
+  grid.querySelectorAll(".wcell").forEach((c, i) => { c.classList.add("pv"); if(c.children[1]) c.children[1].textContent = words[i] || "\u2014"; });
+  note.textContent = "PREVIEW: these grey words change with every roll. They are not your seed until you press FORGE SEED.";
+}
 function renderSlots(){
   const grid = document.getElementById("wordGrid"); if(hasSeed()) return;
   const n = parseInt(document.querySelector('input[name="words"]:checked').value, 10) === 24 ? 24 : 12;
@@ -4776,8 +4802,7 @@ try { if(localStorage.getItem("voidforge-big") === "1") toggleSize(); } catch(e)
   document.addEventListener("keydown", e => { if(e.key === "Escape") hide(); });
   document.addEventListener("touchstart", e => { if(!term(e)) hide(); }, {passive:true});
 })();
-// ---- Rolling-dice logo and the "watch the words change" demo (v1.19.4). Display only: the demo words use a demo tag, so they are never the real seed. ----
-let demoSeq = 0, demoPrev = null;
+// ---- Menu (v1.19.4) ----
 // The top-right MENU holds GUIDE ME, TEXT A+, PRINT SEED and the theme switch: it closes after a choice, a click elsewhere, or Escape.
 (function(){
   const mb = document.getElementById("menuBox");
@@ -4787,32 +4812,6 @@ let demoSeq = 0, demoPrev = null;
 })();
 drawSupportQr();
 buildDict();
-async function demoWordsFor(rolls, wc){
-  const entLen = {12:16,24:32}[wc];
-  const d = await sha256("VOIDFORGE DEMO, NOT A SEED|" + rolls);
-  return (await entropyToMnemonic(d.slice(0, entLen))).split(" ");
-}
-function demoWipe(){
-  demoSeq++; demoPrev = null;
-  document.getElementById("demoGrid").textContent = ""; document.getElementById("demoInfo").textContent = "";
-  document.getElementById("demoOut").style.display = "none";
-}
-function demoOff(){ document.getElementById("demoOn").checked = false; demoWipe(); }
-function demoToggle(){ if(!document.getElementById("demoOn").checked) demoWipe(); return demoRefresh(); }
-async function demoRefresh(){
-  if(!document.getElementById("demoOn").checked){ demoWipe(); return; }
-  const my = ++demoSeq, out = document.getElementById("demoOut"), info = document.getElementById("demoInfo"), grid = document.getElementById("demoGrid");
-  const rolls = clean(document.getElementById("rolls").value), wc = +document.querySelector('input[name="words"]:checked').value;
-  out.style.display = "";
-  if(!rolls){ grid.textContent = ""; demoPrev = null; info.textContent = "Add a roll to see the demo words."; return; }
-  const words = await demoWordsFor(rolls, wc);
-  if(my !== demoSeq) return;
-  const prev = demoPrev && demoPrev.length === words.length ? demoPrev : null;
-  let changed = 0; grid.textContent = "";
-  words.forEach((w, i) => { const c = document.createElement("div"), ch = !!prev && prev[i] !== w; if(ch) changed++; c.className = "dm-w" + (ch ? " dm-ch" : ""); c.textContent = (i + 1) + ". " + w; grid.appendChild(c); });
-  demoPrev = words;
-  info.textContent = prev ? changed + " of " + words.length + " words changed with your last roll." : "These words come from your " + rolls.length + " roll" + (rolls.length === 1 ? "" : "s") + " so far. Add another and watch.";
-}
 // ---- Word draw (v1.19.5): words drawn from physical tiles + a few coin flips -> standard BIP39 (no hashing). ----
 let wdPrefix = null;
 function wdResolve(tok){
