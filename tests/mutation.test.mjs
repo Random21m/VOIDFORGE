@@ -811,7 +811,10 @@ async function probe(w, mutated) {
     $('wvNext').click(); await until(() => rows()[0] !== first[0]); if (!/addresses 10 to 19/.test($('wvPath').textContent) || rows().some((a) => first.includes(a))) fails.push('wallet view: NEXT 10 shows the next ten addresses');
     $('wvPrev').click(); await until(() => rows()[0] === first[0]); if (rows().join() !== first.join() || !$('wvPrev').disabled) fails.push('wallet view: PREVIOUS 10 comes back and is off at the start');
     pick('wvAcct', '2'); await until(() => rows()[0] !== first[0]); const a2 = rows()[0]; pick('wvChain', '1'); await until(() => rows()[0] !== a2);
-    if (!/m\/84'\/0'\/2'\/1\/index/.test($('wvPath').textContent)) fails.push('wallet view: the account and change chain are in the path');
+    { const at = async (acct, chain, i) => { let [k, c] = await w.masterFromSeed(await w.mnemonicToSeed(AB, '')); for (const [x, h] of [[84, true], [0, true], [acct, true], [chain, false], [i, false]]) [k, c] = await w.ckdPriv(k, c, x, h); return w.addressFromKey('wpkh', k, 'main'); };
+      if (a2 !== await at(2, 0, 0)) fails.push('wallet view: account 2 gives the addresses of account 2');
+      if (rows()[0] !== await at(2, 1, 0) || rows()[9] !== await at(2, 1, 9)) fails.push('wallet view: the change chain gives change addresses');
+      if (!/m\/84'\/0'\/2'\/1\/index/.test($('wvPath').textContent)) fails.push('wallet view: the account and change chain are in the path'); }
     pick('wvAcct', 'abc'); await sleep(50); if (!/whole number/.test($('wvErr').textContent) || $('wvList').textContent !== '') fails.push('wallet view: a bad account number is refused');
     pick('wvAcct', '0'); pick('wvChain', '0'); await until(() => rows()[0] === first[0]);
     $('wvList').querySelector('li button.qr-mini').click(); if ($('wvqBox').style.display !== 'block' || !$('wvqImg').innerHTML.includes('<svg') || !$('wvqCap').textContent.includes(first[0])) fails.push('wallet view: the QR button shows that address');
