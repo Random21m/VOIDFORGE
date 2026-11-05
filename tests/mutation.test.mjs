@@ -518,9 +518,11 @@ async function probe(w, mutated) {
     const cs = [...w.document.querySelectorAll('#wordGrid .wcell')];
     if (cs.length !== 12 || cs[0].textContent !== '1.' + expect.d50.split(' ')[0] || cs[11].textContent !== '12.' + expect.d50.split(' ')[11]) fails.push('numbered word grid');
     $('phrase').value = ''; await w.sendToVerify(); if ($('phrase').value !== expect.d50) fails.push('SEND TO VERIFY moves the words');
-    $('rolls').value = D50; $('passphrase').value = 'a'; $('passphrase2').value = 'b'; await w.generate(); $('phrase').value = ''; await w.sendToVerify();
+    $('passphrase').value = ''; $('passphrase2').value = ''; await w.eval('passWork'); w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); $('phrase').value = ''; await w.sendToVerify();
     if ($('phrase').value !== '') fails.push('an error message is never used as a seed');
-    $('passphrase').value = ''; $('passphrase2').value = ''; }
+    $('rolls').value = D50; $('passphrase').value = 'a'; $('passphrase2').value = 'b'; await w.generate(); $('phrase').value = ''; await w.sendToVerify();
+    if ($('phrase').value !== expect.d50) fails.push('a passphrase mismatch does not change the words that SEND TO VERIFY moves');
+    $('passphrase').value = ''; $('passphrase2').value = ''; await w.eval('passWork'); }
   r = await run('dice', 12, D50 + '1', ''); if (r !== 'Remove 1 roll (51 of 50).') fails.push('too many rolls message');
   r = await run('dice', 12, D50.slice(0, 40), ''); if (r !== 'Enter 10 more rolls (40 of 50).') fails.push('too few rolls message');
   { const bs = [...w.document.querySelectorAll('#tapRow button')];
