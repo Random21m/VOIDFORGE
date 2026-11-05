@@ -712,7 +712,21 @@
     #topbar h1, body.light #topbar h1 { font-size: 14px; letter-spacing: .05em; }
     #topbar .dl-btn, #menuBox > summary { padding: 5px 7px; font-size: 11px; }
   }
+
+  /* v2.1.0: QR button on every address row, and the wallet view in the Check tab */
+  .addr-list li { display:flex; align-items:flex-start; gap:8px; }
+  .addr-list li .qr-mini { flex:0 0 auto; margin-left:auto; padding:3px 6px; line-height:0; border-radius:6px; font-size:0; }
+  .addr-list li .qr-mini svg { width:14px; height:14px; }
+  .qrbox { display:none; margin-top:10px; text-align:center; }
+  .qrbox .qr-img { width:min(100%,300px); margin:8px auto; background:#fff; line-height:0; }
+  .wv-ctl { display:flex; gap:6px; align-items:center; margin:8px 0 6px; flex-wrap:wrap; }
+  .wv-ctl select { flex:1 1 130px; min-width:0; }
+  .wv-ctl input { width:64px; flex:none; }
+  #wvBanner { border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:8px; padding:8px 12px; margin:8px 0; font-size:13px; color:var(--muted); }
+  #wvFpRow { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:8px 0 0; }
+  #wvList { margin-top:6px; }
 </style>
+
 </head>
 <body class="dice-wait">
 <div id="topbar">
@@ -889,7 +903,8 @@
       <summary>First 5 receiving addresses, SegWit and Taproot (to compare in another wallet)</summary>
       <ol id="addrList" class="addr-list"></ol>
       <button class="secondary small" onclick="copyAddrList(this,'addrList')">COPY ALL 5</button>
-      <p class="hint" style="margin:8px 0 0;">BIP84 native SegWit, m/84'/0'/0'/0/0 to 0/4. These are public addresses (no spending power), but anyone who sees them can link them to this wallet.</p>
+      <div id="aqBox" class="qrbox"><div id="aqCap" class="hint"></div><div id="aqImg" class="qr-img"></div><button type="button" class="secondary small" onclick="hideAddrQr('aq')">HIDE QR</button></div>
+      <p class="hint" style="margin:8px 0 0;">BIP84 native SegWit, m/84'/0'/0'/0/0 to 0/4. The small QR button on each row shows that address as a QR code. These are public addresses (no spending power), but anyone who sees them can link them to this wallet.</p>
       <div id="trBox" style="display:none; margin-top:10px;">
         <p class="hint" style="margin:0;"><b>Taproot (BIP86)</b>, m/86'/0'/0'/0/0 to 0/4, addresses start with <code>bc1p</code>. For wallets that use Taproot. This is a separate address type from the same seed; the zpub and descriptors above are for the SegWit addresses only.</p>
         <ol id="trList" class="addr-list"></ol>
@@ -1049,6 +1064,29 @@
     </div>
     <div class="status" id="verifyStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-all;"></div>
     <div class="status" id="verifyMatch" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+    <details id="walletView" style="display:none; margin-top:10px;">
+      <summary>Open this wallet<span class="tag tag-public">PUBLIC ADDRESSES</span><small>Addresses with QR codes, for the words checked above.</small></summary>
+      <p class="hint" id="wvWhy" style="margin:8px 0 0;">This lists the addresses your wallet app would show for these words, so you can compare them in the app. Pick the same address type and account number the app uses. The words are the same for every type.</p>
+      <div id="wvBanner">Imported: these words were typed or scanned here, not made by this page. The same words and passphrase give the same wallet in any app.</div>
+      <div id="wvFpRow"><div class="fp" id="wvFp"></div><div id="wvIcon" class="lh" title="Fingerprint picture (LifeHash) of this wallet"></div></div>
+      <div class="wv-ctl">
+        <select id="wvType" aria-label="Address type"><option value="wpkh">Native SegWit (bc1q...)</option><option value="tr">Taproot (bc1p...)</option><option value="sh-wpkh">Nested SegWit (3...)</option><option value="pkh">Legacy (1...)</option></select>
+        <select id="wvChain" aria-label="Receive or change"><option value="0">Receive</option><option value="1">Change</option></select>
+        <select id="wvNet" aria-label="Network"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
+        <input type="text" id="wvAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number">
+      </div>
+      <div class="hint" id="wvErr" style="margin:0; color:var(--danger);"></div>
+      <div class="hint" id="wvPath" style="margin:0;"></div>
+      <ol id="wvList" class="addr-list"></ol>
+      <div class="btn-row"><button type="button" class="secondary small" id="wvPrev" onclick="wvPage(-1)">PREVIOUS 10</button><button type="button" class="secondary small" id="wvNext" onclick="wvPage(1)">NEXT 10</button><button type="button" class="secondary small" onclick="copyAddrList(this,'wvList')">COPY THESE 10</button></div>
+      <div id="wvqBox" class="qrbox"><div id="wvqCap" class="hint"></div><div id="wvqImg" class="qr-img"></div><button type="button" class="secondary small" onclick="hideAddrQr('wvq')">HIDE QR</button></div>
+      <div class="sec-block">
+        <h3 class="sec">SeedQR<span class="tag tag-secret">SECRET</span></h3>
+        <p class="hint" id="wvSqNote" style="margin:0 0 6px;"></p>
+        <div class="btn-row" id="wvSqBtns"><button type="button" class="secondary small" onclick="wvSeedQr('seedqr')">SHOW SEEDQR</button><button type="button" class="secondary small" onclick="wvSeedQr('compact')">SHOW COMPACTSEEDQR</button><button type="button" class="secondary small" onclick="wvSeedQrHide()">HIDE</button></div>
+        <div id="wvsBox" class="qrbox"><div id="wvsCap" class="hint"></div><div id="wvsImg" class="qr-img"></div></div>
+      </div>
+    </details>
     <div class="sec-block">
       <h3 class="sec">Is this address yours?</h3>
       <div class="hint" style="margin:0 0 6px;">Paste a receive or change address from a wallet app (bc1q SegWit, bc1p Taproot, 3 nested SegWit or 1 legacy; the box on the right is the account, almost always 0). It is searched in the wallet made by the words and passphrase above.</div>
@@ -3775,14 +3813,35 @@ function clearFpIcons(){
   clearVerifyIcons();
 }
 function clearAddrs(){
-  document.getElementById("addrList").textContent = ""; document.getElementById("trList").textContent = "";
+  document.getElementById("addrList").textContent = ""; document.getElementById("trList").textContent = ""; hideAddrQr("aq");
   for(const id of ["addrBox","checkGuide","drillBox"]){ const d = document.getElementById(id); d.style.display = "none"; d.open = false; }
 }
+// One address row: the address, then a small QR button (its icon has no text, so the row's text stays exactly the address).
+const QR_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M1 1h6v6H1zM2 2v4h4V2zM3 3h2v2H3zM9 1h6v6H9zM10 2v4h4V2zM11 3h2v2h-2zM1 9h6v6H1zM2 10v4h4v-4zM3 11h2v2H3zM9 9h2v2H9zM13 9h2v2h-2zM11 11h2v2h-2zM9 13h2v2H9zM13 13h2v2h-2z"/></svg>';
+function addrLi(addr, label){
+  const li = document.createElement("li"); li.appendChild(document.createTextNode(addr));
+  const b = document.createElement("button"); b.type = "button"; b.className = "secondary small qr-mini";
+  b.setAttribute("aria-label", "Show the QR code for " + label); b.title = "Show QR code"; b.setAttribute("data-addr", addr); b.innerHTML = QR_ICON;
+  li.appendChild(b); return li;
+}
+function showAddrQr(pfx, addr){
+  let q; try { q = qrMatrix(addr); } catch(e) { return alert("QR code unavailable: " + e.message); }
+  document.getElementById(pfx + "Img").innerHTML = qrSvg(q.rows);
+  document.getElementById(pfx + "Cap").textContent = addr + " (a public address: scanning it cannot spend anything)";
+  document.getElementById(pfx + "Box").style.display = "block";
+  scrollQrIntoView(pfx + "Box");
+}
+function hideAddrQr(pfx){
+  document.getElementById(pfx + "Img").textContent = ""; document.getElementById(pfx + "Cap").textContent = "";
+  document.getElementById(pfx + "Box").style.display = "none";
+}
+for(const [list, pfx] of [["addrList","aq"],["trList","aq"],["wvList","wvq"]]) document.getElementById(list).addEventListener("click", e => { const b = e.target.closest ? e.target.closest("button.qr-mini") : null; if(b) showAddrQr(pfx, b.getAttribute("data-addr")); });
 function showAddrs(list, trList){
+  hideAddrQr("aq");
   const ol = document.getElementById("addrList"); ol.textContent = "";
-  list.forEach(a => { const li = document.createElement("li"); li.textContent = a; ol.appendChild(li); });
+  list.forEach((a, i) => ol.appendChild(addrLi(a, "receive address " + (i + 1))));
   const tl = document.getElementById("trList"); tl.textContent = "";
-  (trList || []).forEach(a => { const li = document.createElement("li"); li.textContent = a; tl.appendChild(li); });
+  (trList || []).forEach((a, i) => tl.appendChild(addrLi(a, "Taproot address " + (i + 1))));
   document.getElementById("trBox").style.display = (trList && trList.length) ? "" : "none";
   document.getElementById("addrBox").style.display = ""; document.getElementById("checkGuide").style.display = ""; document.getElementById("drillBox").style.display = "";
 }
@@ -4307,7 +4366,7 @@ function wipeSeed(){
   document.getElementById("verifyRecorded").value="";
   document.getElementById("verifyMatch").textContent="";
   document.getElementById("verifyPass").type="password";
-  document.getElementById("verifyStatus").textContent="";
+  document.getElementById("verifyStatus").textContent=""; clearWalletView();
   document.getElementById("testResults").textContent="";
   setResult("\u2014"); updateAdvSummary(); if(guideOn){ guideN = 1; guideRender(); }
   wdClear();
@@ -4526,10 +4585,80 @@ function msPrint(){
   printSqSheet("VOIDFORGE MULTISIG RECOVERY SHEET" + (ms.net === "test" ? " (TESTNET)" : ""), qrSvg(q.rows), q.version > 15, msSheetText(), "");
 }
 
+// ===== Wallet view (v2.1.0): any valid 12, 15, 18, 21 or 24 word phrase typed in the Check tab, with the passphrase box next to it =====
+// It only lists addresses (public) and, for 12 and 24 words, offers the SeedQR formats (secret). Nothing is stored; it is wiped when the words change.
+let wvCtx = null, wvFrom = 0, wvSeq = 0;
+const WV_PAGE = 10;
+async function walletAddresses(seed, type, net, account, chain, from, n){
+  const purpose = SCRIPT_TYPES[type].purpose, coin = NETS[net].coin;
+  let [k,c] = await masterFromSeed(seed);
+  for(const [i,h] of [[purpose,true],[coin,true],[account,true],[chain,false]]) [k,c] = await ckdPriv(k,c,i,h);
+  const out = [];
+  for(let i = from; i < from + n && i <= 2147483647; i++){ const [ck] = await ckdPriv(k,c,i,false); out.push({index:i, path:"m/" + purpose + "'/" + coin + "'/" + account + "'/" + chain + "/" + i, address: await addressFromKey(type, ck, net)}); }
+  return out;
+}
+function wvSeedQrHide(){
+  document.getElementById("wvsImg").textContent = ""; document.getElementById("wvsCap").textContent = ""; document.getElementById("wvsBox").style.display = "none";
+}
+function wvSeedQr(kind){
+  if(!wvCtx) return;
+  const words = wvCtx.mnemonic.split(" ");
+  let q; try { q = seedQrMatrix(words, kind); } catch(e) { return alert("SeedQR unavailable: " + e.message); }
+  document.getElementById("wvsImg").innerHTML = qrSvg(q.rows);
+  document.getElementById("wvsCap").textContent = seedQrName(kind) + " for these " + words.length + " words, " + q.rows.length + " x " + q.rows.length + " squares. SECRET: anyone who scans it controls the funds. It holds the words only, not the passphrase. Scan it only with an offline device (such as a SeedSigner).";
+  document.getElementById("wvsBox").style.display = "block"; scrollQrIntoView("wvsBox");
+}
+function clearWalletView(){
+  wvCtx = null; wvFrom = 0; wvSeq++;
+  document.getElementById("wvList").textContent = ""; document.getElementById("wvFp").textContent = ""; document.getElementById("wvIcon").textContent = "";
+  document.getElementById("wvErr").textContent = ""; document.getElementById("wvPath").textContent = "";
+  hideAddrQr("wvq"); wvSeedQrHide();
+  const d = document.getElementById("walletView"); d.style.display = "none"; d.open = false;
+}
+async function wvRefresh(){
+  if(!wvCtx) return;
+  const mine = ++wvSeq, err = document.getElementById("wvErr"), raw = document.getElementById("wvAcct").value.trim();
+  hideAddrQr("wvq");
+  if(!/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647){ err.textContent = "The account must be a whole number from 0 to 2147483647."; document.getElementById("wvList").textContent = ""; document.getElementById("wvPath").textContent = ""; return; }
+  err.textContent = "";
+  const type = document.getElementById("wvType").value, net = document.getElementById("wvNet").value, chain = parseInt(document.getElementById("wvChain").value, 10), acct = parseInt(raw, 10);
+  let rows;
+  try { rows = await walletAddresses(await mnemonicToSeed(wvCtx.mnemonic, wvCtx.pass), type, net, acct, chain, wvFrom, WV_PAGE); }
+  catch(e) { if(mine === wvSeq) err.textContent = "Addresses unavailable: " + e.message; return; }
+  if(mine !== wvSeq || !wvCtx) return;
+  const ol = document.getElementById("wvList"); ol.textContent = "";
+  rows.forEach(r => ol.appendChild(addrLi(r.address, "address " + r.index)));
+  document.getElementById("wvPath").textContent = (net === "test" ? "TESTNET (practice coins only). " : "") + (chain ? "Change" : "Receive") + " addresses " + rows[0].index + " to " + rows[rows.length - 1].index + ", " + SCRIPT_TYPES[type].label + ": " + rows[0].path.replace(/\/[0-9]+$/, "/") + "index";
+  document.getElementById("wvPrev").disabled = wvFrom === 0;
+  document.getElementById("wvNext").disabled = wvFrom + WV_PAGE > 2147483647;
+}
+function wvPage(d){
+  if(!wvCtx) return;
+  wvFrom = Math.max(0, Math.min(2147483647 - WV_PAGE + 1, wvFrom + d * WV_PAGE)); wvRefresh();
+}
+function wvReset(){ if(!wvCtx) return; wvFrom = 0; wvRefresh(); }
+async function openWalletView(mnemonic, pass){
+  clearWalletView();
+  wvCtx = {mnemonic, pass}; const mine = wvSeq;
+  const n = mnemonic.split(" ").length, sq = document.getElementById("wvSqNote"), btns = document.getElementById("wvSqBtns");
+  if(n === 12 || n === 24){ sq.textContent = "A SeedQR holds these " + n + " words for a SeedSigner or similar offline device. Anyone who scans it controls the funds."; btns.style.display = ""; }
+  else { sq.textContent = "No SeedQR exists for " + n + " words: the SeedQR formats cover only 12 and 24 words. Keep these words on paper."; btns.style.display = "none"; }
+  document.getElementById("walletView").style.display = "";
+  try {
+    const fp = await mnemonicFingerprint(mnemonic, pass);
+    if(mine !== wvSeq) return;
+    document.getElementById("wvFp").textContent = "Master fingerprint: " + fp + (pass ? " (with passphrase)" : "");
+    showFpIcon("wvIcon", fp);
+  } catch(e) { if(mine === wvSeq) document.getElementById("wvFp").textContent = "Master fingerprint unavailable: " + e.message; }
+  if(mine === wvSeq) await wvRefresh();
+}
+for(const id of ["wvType","wvChain","wvNet"]) document.getElementById(id).addEventListener("change", wvReset);
+document.getElementById("wvAcct").addEventListener("input", wvReset);
+
 async function verify(){
   if(!gateOk()) return;
   const st = document.getElementById("verifyStatus");
-  clearVerifyIcons();
+  clearVerifyIcons(); clearWalletView();
   const r = await checkPhrase(document.getElementById("phrase").value);
   st.className = "status " + (r.ok ? "ok" : "bad");
   st.textContent = r.msg;
@@ -4554,6 +4683,7 @@ async function verify(){
     }
     const mt = document.getElementById("verifyMatch"), m = matchRecorded(rawRec, fp0, a0, fp1, a1, !!vp, ids0, ids1);
     mt.className = "status " + (m ? (m.ok ? "ok" : "bad") : ""); mt.textContent = m ? m.text : "";
+    openWalletView(r.mnemonic, vp);
   }
 }
 
@@ -4566,6 +4696,7 @@ function toggleTheme() {
 }
 for(const id of ["checkAddr","checkAcct","phrase","verifyPass"]) document.getElementById(id).addEventListener("input", resetAddrScan);
 for(const id of ["phrase","verifyPass","childWords","childIndex","childLen","childSides","childRolls"]) document.getElementById(id).addEventListener("input", clearChild);
+for(const id of ["phrase","verifyPass"]) document.getElementById(id).addEventListener("input", clearWalletView);
 document.getElementById("wType").addEventListener("change", refreshWatch);
 document.getElementById("wNet").addEventListener("change", refreshWatch);
 document.getElementById("wAcct").addEventListener("input", refreshWatch);
