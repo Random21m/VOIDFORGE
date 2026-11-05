@@ -712,6 +712,12 @@
   #guideNew { text-align: left; font-size: 12px; margin: 0 0 8px; }
   .sec { font-size: 14px; font-weight: 700; margin: 12px 0 4px; color: var(--text); letter-spacing: .02em; }
   .sec-block { margin-top: 14px; padding-top: 4px; border-top: 1px solid var(--border); }
+  /* v2.2.0: backup checklist under the words */
+  #bkList { margin-top: 12px; border: 1px solid var(--border); border-radius: 8px; padding: 4px 12px 10px; }
+  #bkList label { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; font-size: 13px; line-height: 1.4; }
+  #bkList input { margin-top: 2px; flex: none; }
+  #bkNote { margin: 6px 0 0; }
+  #bkNote.ok { color: var(--ok-text); font-weight: 600; }
   @media (max-width: 345px) {
     #topbar .tb-in { padding: 10px 8px; gap: 6px; }
     #brandDie { width: 24px; height: 24px; }
@@ -733,6 +739,9 @@
   #wvBanner { border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:8px; padding:8px 12px; margin:8px 0; font-size:13px; color:var(--muted); }
   #wvFpRow { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:8px 0 0; }
   #wvList { margin-top:6px; }
+  .qrbox .bip21 { text-align:left; margin:8px 0; }
+  .b21-row { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 6px; }
+  .b21-row input { flex:1 1 140px; min-width:0; }
 </style>
 
 </head>
@@ -896,6 +905,15 @@
     <div id="address" data-g="3 4 5" style="margin-top:6px; font-size: 13px; word-break:break-all; color:var(--muted);"></div>
    </div>
    <div class="gen-bottom">
+    <div id="bkList" data-g="5" style="display:none;">
+      <h3 class="sec">Backup checklist</h3>
+      <p class="hint" style="margin:0 0 4px;">Tick each step when it is done. Two of them tick themselves. Nothing is saved: the list clears with the words.</p>
+      <label><input type="checkbox" id="bk1" onchange="bkUpdate()"> Words written on paper, in order, and checked against the screen</label>
+      <label><input type="checkbox" id="bk2" onchange="bkUpdate()"> Restore drill passed (ticks itself when the drill below passes)</label>
+      <label><input type="checkbox" id="bk3" onchange="bkUpdate()"> Fingerprint and first address match in a second tool, such as a hardware wallet</label>
+      <label><input type="checkbox" id="bk4" onchange="bkUpdate()"> Recovery sheet printed (ticks itself: SEND TO CHECK, VERIFY, Open this wallet, PRINT RECOVERY SHEET)</label>
+      <div id="bkNote" class="hint" aria-live="polite"></div>
+    </div>
     <details id="autoClearBox" style="margin-top:8px;">
       <summary>Auto-clear: let the page wipe itself<small>Optional. Off unless you turn it on.</small></summary>
       <p class="hint" style="margin:8px 0 0;">Off by default. When on, VOIDFORGE wipes the seed, rolls, passphrase and results without asking, so words are not left on the screen if you walk away. <b>Write your words down first:</b> a wipe cannot be undone. Nothing about this setting is saved; it is off again when the page reloads.</p>
@@ -919,7 +937,7 @@
       <summary>First 5 receiving addresses, SegWit and Taproot (to compare in another wallet)</summary>
       <ol id="addrList" class="addr-list"></ol>
       <button class="secondary small" onclick="copyAddrList(this,'addrList')">COPY ALL 5</button>
-      <div id="aqBox" class="qrbox"><div id="aqCap" class="hint"></div><div id="aqImg" class="qr-img"></div><button type="button" class="secondary small" onclick="hideAddrQr('aq')">HIDE QR</button></div>
+      <div id="aqBox" class="qrbox"><div id="aqCap" class="hint"></div><div id="aqImg" class="qr-img"></div><details class="bip21" id="aqReq"><summary>Payment request (BIP-21)<small>Add an amount, label or message; the QR becomes a bitcoin: link.</small></summary><div class="b21-row"><input type="text" id="aqAmt" inputmode="decimal" placeholder="Amount in BTC (optional)" aria-label="Amount in BTC" autocomplete="off" spellcheck="false"><input type="text" id="aqLbl" placeholder="Label (optional)" aria-label="Label" autocomplete="off" spellcheck="false"><input type="text" id="aqMsg" placeholder="Message (optional)" aria-label="Message" autocomplete="off" spellcheck="false"></div><div class="hint" id="aqUri" style="word-break:break-all;"></div><button type="button" class="secondary small" onclick="copyReq(this,'aq')">COPY LINK</button></details><button type="button" class="secondary small" onclick="hideAddrQr('aq')">HIDE QR</button></div>
       <p class="hint" style="margin:8px 0 0;">BIP84 native SegWit, m/84'/0'/0'/0/0 to 0/4. The small QR button on each row shows that address as a QR code. These are public addresses (no spending power), but anyone who sees them can link them to this wallet.</p>
       <div id="trBox" style="display:none; margin-top:10px;">
         <p class="hint" style="margin:0;"><b>Taproot (BIP86)</b>, m/86'/0'/0'/0/0 to 0/4, addresses start with <code>bc1p</code>. For wallets that use Taproot. This is a separate address type from the same seed; the zpub and descriptors above are for the SegWit addresses only.</p>
@@ -1096,7 +1114,7 @@
       <ol id="wvList" class="addr-list"></ol>
       <div class="btn-row"><button type="button" class="secondary small" id="wvPrev" onclick="wvPage(-1)">PREVIOUS 10</button><button type="button" class="secondary small" id="wvNext" onclick="wvPage(1)">NEXT 10</button><button type="button" class="secondary small" onclick="copyAddrList(this,'wvList')">COPY THESE 10</button><button type="button" class="secondary small" id="wvSheetBtn" onclick="printRecoverySheet()">PRINT RECOVERY SHEET</button></div>
       <p class="hint" style="margin:6px 0 0;">The recovery sheet holds no words and no passphrase: only the fingerprint, address type, path and the first addresses, plus how to restore. Keep it with your paper backup so someone you trust can tell which wallet the words belong to.</p>
-      <div id="wvqBox" class="qrbox"><div id="wvqCap" class="hint"></div><div id="wvqImg" class="qr-img"></div><button type="button" class="secondary small" onclick="hideAddrQr('wvq')">HIDE QR</button></div>
+      <div id="wvqBox" class="qrbox"><div id="wvqCap" class="hint"></div><div id="wvqImg" class="qr-img"></div><details class="bip21" id="wvqReq"><summary>Payment request (BIP-21)<small>Add an amount, label or message; the QR becomes a bitcoin: link.</small></summary><div class="b21-row"><input type="text" id="wvqAmt" inputmode="decimal" placeholder="Amount in BTC (optional)" aria-label="Amount in BTC" autocomplete="off" spellcheck="false"><input type="text" id="wvqLbl" placeholder="Label (optional)" aria-label="Label" autocomplete="off" spellcheck="false"><input type="text" id="wvqMsg" placeholder="Message (optional)" aria-label="Message" autocomplete="off" spellcheck="false"></div><div class="hint" id="wvqUri" style="word-break:break-all;"></div><button type="button" class="secondary small" onclick="copyReq(this,'wvq')">COPY LINK</button></details><button type="button" class="secondary small" onclick="hideAddrQr('wvq')">HIDE QR</button></div>
       <div class="sec-block">
         <h3 class="sec">SeedQR<span class="tag tag-secret">SECRET</span></h3>
         <p class="hint" id="wvSqNote" style="margin:0 0 6px;"></p>
@@ -2741,12 +2759,29 @@ async function phraseFromCode(raw){
   if(/^[0-9a-fA-F]+$/.test(q) && [32,40,48,56,64].includes(q.length)) return {words:await entropyToMnemonic(fromHex(q.toLowerCase())), kind:"CompactSeedQR hex"};
   return null;
 }
+// Electrum seeds (v2.2.0): Electrum's own phrases use the same English words but are not BIP39. Electrum marks them with the first hex digits of
+// HMAC-SHA512(key "Seed version", phrase): "01" standard, "100" SegWit, "101" two-factor, "102" two-factor SegWit. Checked only when BIP39 says no.
+async function electrumSeedType(phrase){
+  const t = String(phrase || "").normalize("NFKD").toLowerCase().replace(/[\u0300-\u036f]/g, "").trim().split(/\s+/).filter(Boolean).join(" ");
+  if(!t) return null;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode("Seed version"), {name:"HMAC", hash:"SHA-512"}, false, ["sign"]);
+  const h = hex(new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(t))));
+  if(h.startsWith("100")) return "SegWit";
+  if(h.startsWith("101")) return "two-factor (2FA)";
+  if(h.startsWith("102")) return "two-factor (2FA) SegWit";
+  if(h.startsWith("01")) return "standard";
+  return null;
+}
+async function electrumNote(phrase){
+  let k = null; try { k = await electrumSeedType(phrase); } catch(e) { k = null; }
+  return k ? " This looks like an Electrum seed (" + k + " type), not a BIP39 phrase. Restore it in Electrum and choose \u201cElectrum seed\u201d, not BIP39; other wallets may not accept it." : "";
+}
 async function checkPhrase(phrase){
   const pc = await phraseFromCode(phrase);
   if(pc && pc.error) return {ok:false, msg:pc.error};
   if(pc) phrase = pc.words;
   const words = phrase.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if(![12,15,18,21,24].includes(words.length)) return {ok:false, msg:"Invalid length"};
+  if(![12,15,18,21,24].includes(words.length)) return {ok:false, msg:"Invalid length" + await electrumNote(phrase)};
   for(const w of words){ if(!Object.prototype.hasOwnProperty.call(WORD_MAP, w)) return {ok:false, msg:"Unknown word: "+w}; }
   const bits = words.map(w=>WORD_MAP[w].toString(2).padStart(11,"0")).join("");
   const cLen = Math.floor((words.length*11)/32);
@@ -2754,7 +2789,7 @@ async function checkPhrase(phrase){
   const eBytes = new Uint8Array(eBits/8);
   for(let i=0;i<eBytes.length;i++) eBytes[i]=parseInt(bits.slice(i*8,(i+1)*8),2);
   const h = new Uint8Array(await crypto.subtle.digest("SHA-256", eBytes));
-  if(bits.slice(eBits)!==bytesToBits(h).slice(0,cLen)) return {ok:false, msg:"Checksum failed"};
+  if(bits.slice(eBits)!==bytesToBits(h).slice(0,cLen)) return {ok:false, msg:"Checksum failed" + await electrumNote(phrase)};
   return {ok:true, msg:"Valid "+words.length+"-word BIP39 phrase"+(pc ? " (read from "+pc.kind+")" : ""), mnemonic:words.join(" "), fromCode:!!pc};
 }
 
@@ -3703,19 +3738,33 @@ async function deriveShown(mnemonic, p1, p2, run){
   if(run === forgeRun && ms) msBanner();
 }
 // The passphrase boxes changed after a seed was made: the words stay, everything that depends on the passphrase is worked out again.
+// Backup checklist (v2.2.0): four steps; the drill and the recovery sheet tick themselves. Kept only on the page; cleared with the words.
+const BK_IDS = ["bk1","bk2","bk3","bk4"];
+function bkUpdate(){
+  const n = BK_IDS.filter(id => document.getElementById(id).checked).length, note = document.getElementById("bkNote");
+  note.textContent = n === 4 ? "All four done: this backup is ready." : n + " of 4 done.";
+  note.className = "hint" + (n === 4 ? " ok" : "");
+}
+function bkReset(show){
+  BK_IDS.forEach(id => { document.getElementById(id).checked = false; });
+  document.getElementById("bkList").style.display = show ? "" : "none";
+  bkUpdate();
+}
+function bkTick(id){ if(!hasSeed()) return; document.getElementById(id).checked = true; bkUpdate(); }
 async function rePass(){
   if(!hasSeed()) return;
   const p1 = document.getElementById("passphrase").value, p2 = document.getElementById("passphrase2").value, key = JSON.stringify([p1, p2]);
   if(key === passKey) return passWork;  // the boxes still hold what the screen was worked out from
   passKey = key; const run = ++forgeRun;
   const mnemonic = document.getElementById("genResult").textContent.split("\n")[0], line = passPhraseLine(p1, p2);
-  drillEnd();
+  drillEnd(); for(const id of ["bk2","bk4"]) document.getElementById(id).checked = false; bkUpdate();
   document.getElementById("genResult").textContent = mnemonic + "\n\n" + line;
   document.getElementById("passNote").textContent = line;
   passWork = deriveShown(mnemonic, p1, p2, run);
   return passWork;
 }
 // DOWNLOAD and the print sheets say whether a passphrase was used, so they wait until the two boxes agree.
+function passMismatchQuiet(){ return document.getElementById("passphrase").value !== document.getElementById("passphrase2").value; }
 function passMismatch(){
   if(document.getElementById("passphrase").value === document.getElementById("passphrase2").value) return false;
   alert("The two passphrase boxes do not match. Fix them (or clear both) first, so the file or sheet says the right thing about your passphrase.");
@@ -3845,17 +3894,55 @@ function addrLi(addr, label){
   b.setAttribute("aria-label", "Show the QR code for " + label); b.title = "Show QR code"; b.setAttribute("data-addr", addr); b.innerHTML = QR_ICON;
   li.appendChild(b); return li;
 }
-function showAddrQr(pfx, addr){
-  let q; try { q = qrMatrix(addr); } catch(e) { return alert("QR code unavailable: " + e.message); }
+// BIP-21 payment request: bitcoin:<address>?amount=&label=&message= (RFC 3986 percent-encoding). Amount in BTC, at most 8 decimals, above 0 and at most 21 million.
+function bip21Amount(raw){
+  const a = String(raw || "").trim(); if(!a) return {ok:true, v:""};
+  if(!/^(\d{1,8})(\.\d{1,8})?$/.test(a)) return {ok:false, msg:"Amount: digits and one dot only, at most 8 decimals (for example 0.0015)."};
+  const [i, f = ""] = a.split("."), sats = BigInt(i) * 100000000n + BigInt((f + "00000000").slice(0, 8));
+  if(sats === 0n) return {ok:false, msg:"Amount: must be more than 0, or leave it empty."};
+  if(sats > 2100000000000000n) return {ok:false, msg:"Amount: more than 21 million bitcoin cannot exist."};
+  const whole = (sats / 100000000n).toString(), frac = (sats % 100000000n).toString().padStart(8, "0").replace(/0+$/, "");
+  return {ok:true, v: frac ? whole + "." + frac : whole};
+}
+function bip21Uri(addr, amount, label, message){
+  const q = [];
+  if(amount) q.push("amount=" + amount);
+  if(label) q.push("label=" + encodeURIComponent(label));
+  if(message) q.push("message=" + encodeURIComponent(message));
+  return "bitcoin:" + addr + (q.length ? "?" + q.join("&") : "");
+}
+function drawAddrQr(pfx){
+  const box = document.getElementById(pfx + "Box"), addr = box.dataset.addr; if(!addr) return;
+  const am = bip21Amount(document.getElementById(pfx + "Amt").value), lbl = document.getElementById(pfx + "Lbl").value.trim(), msg = document.getElementById(pfx + "Msg").value.trim();
+  const uriEl = document.getElementById(pfx + "Uri");
+  let text = addr;
+  if(!am.ok){ uriEl.textContent = am.msg; uriEl.style.color = "var(--danger)"; }
+  else if(am.v || lbl || msg){ text = bip21Uri(addr, am.v, lbl, msg); uriEl.textContent = text; uriEl.style.color = ""; }
+  else { uriEl.textContent = ""; uriEl.style.color = ""; }
+  let q; try { q = qrMatrix(text); } catch(e) { uriEl.textContent = "QR code unavailable: " + e.message; uriEl.style.color = "var(--danger)"; return; }
+  box.dataset.text = text;
   document.getElementById(pfx + "Img").innerHTML = qrSvg(q.rows);
-  document.getElementById(pfx + "Cap").textContent = addr + " (a public address: scanning it cannot spend anything)";
-  document.getElementById(pfx + "Box").style.display = "block";
+  document.getElementById(pfx + "Cap").textContent = text === addr ? addr + " (a public address: scanning it cannot spend anything)" : "Payment request for " + addr + ". A phone wallet that scans it fills in the amount, label and message for you.";
+}
+function showAddrQr(pfx, addr){
+  const box = document.getElementById(pfx + "Box"); box.dataset.addr = addr;
+  drawAddrQr(pfx);
+  if(!box.dataset.text) return;
+  box.style.display = "block";
   scrollQrIntoView(pfx + "Box");
 }
 function hideAddrQr(pfx){
+  const box = document.getElementById(pfx + "Box"); delete box.dataset.addr; delete box.dataset.text;
   document.getElementById(pfx + "Img").textContent = ""; document.getElementById(pfx + "Cap").textContent = "";
-  document.getElementById(pfx + "Box").style.display = "none";
+  for(const k of ["Amt","Lbl","Msg"]) document.getElementById(pfx + k).value = "";
+  document.getElementById(pfx + "Uri").textContent = ""; document.getElementById(pfx + "Req").open = false;
+  box.style.display = "none";
 }
+function copyReq(btn, pfx){
+  const t = document.getElementById(pfx + "Box").dataset.text; if(!t) return;
+  safeCopy(t).then(()=>showCopied(btn)).catch(()=>alert("Copy failed. Select the link and copy it manually."));
+}
+for(const pfx of ["aq","wvq"]) for(const k of ["Amt","Lbl","Msg"]) document.getElementById(pfx + k).addEventListener("input", () => drawAddrQr(pfx));
 for(const [list, pfx] of [["addrList","aq"],["trList","aq"],["wvList","wvq"]]) document.getElementById(list).addEventListener("click", e => { const b = e.target.closest ? e.target.closest("button.qr-mini") : null; if(b) showAddrQr(pfx, b.getAttribute("data-addr")); });
 function showAddrs(list, trList){
   hideAddrQr("aq");
@@ -4246,7 +4333,7 @@ function updateAbbrNote(){
   document.getElementById("abbrNote").textContent = (abbrOn && hasSeed()) ? "Showing only the first 4 letters of each word. The full words are still your backup; write down full words unless your backup method uses 4-letter abbreviations." : "";
 }
 function setResult(text, words){
-  wdWipe(); drillEnd(); if(words) previewClear(); document.body.classList.toggle("has-seed", !!words);
+  wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body.classList.toggle("has-seed", !!words);
   const g = document.getElementById("genResult"), grid = document.getElementById("wordGrid");
   g.textContent = text; g.classList.toggle("nores", text === "\u2014"); grid.textContent = "";
   hideExplain(); { const eb = document.getElementById("explainBox"); eb.style.display = (words && [12,24].includes(words.length)) ? "" : "none"; eb.open = false; }
@@ -4766,6 +4853,7 @@ async function wvRefresh(){
 function printRecoverySheet(){
   if(!wvCtx || !wvCtx.shown) return alert("Check a seed phrase first, then open the wallet.");
   const sh = wvCtx.shown, n = wvCtx.mnemonic.split(" ").length, T = SCRIPT_TYPES[sh.type];
+  if(hasSeed() && wvCtx.mnemonic === document.getElementById("genResult").textContent.split("\n")[0] && wvCtx.pass === document.getElementById("passphrase").value && !passMismatchQuiet()) bkTick("bk4");
   const po = document.getElementById("printOnly"); po.textContent = "";
   const add = (cls, text) => { const d = document.createElement("div"); if(cls) d.className = cls; d.textContent = text; po.appendChild(d); return d; };
   add("ps-title", "VOIDFORGE RECOVERY SHEET");
@@ -5048,6 +5136,7 @@ async function drillCheck(){
   if(!drillCtx.pass && pw){ bad("The words match, but this seed was made without a passphrase. Clear the passphrase box and check again."); return; }
   let fp = ""; try { fp = await mnemonicFingerprint(typed.join(" "), drillCtx.pass || ""); } catch(e) { fp = ""; }
   st.classList.add("ok");
+  bkTick("bk2");
   st.textContent = "Drill passed. Every word" + (drillCtx.pass ? " and the passphrase" : "") + " matches" + (fp ? ", and your paper rebuilds master fingerprint " + fp + "." : ".") + " This paper backup can restore the wallet. Keep it safe, and press END DRILL to show the words again.";
 }
 
