@@ -806,6 +806,8 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   }
   R.ok(bad === 0, `${n} wallet-view checks (12, 15, 18, 21 and 24 words, with and without a passphrase; every address type, network, account, chain and page of addresses) equal the independent libraries; ${qrs} address QR codes and ${sq} SeedQR codes are read back by jsQR (${bad} mismatches)`);
   // the Make tab address rows carry the same QR button, and the Taproot rows too
+  { const radio = w.document.querySelector('input[name=mode][value=dice]'); radio.checked = true; radio.onchange(); const wr = w.document.querySelector('input[name=words][value="12"]'); wr.checked = true; wr.onchange(); }
+  $('passphrase').value = ''; $('passphrase2').value = '';
   $('rolls').value = rnd(50, 6); $('rolls').oninput(); await w.generate(); await w.eval('passWork'); await until(() => w.document.querySelectorAll('#trList li').length === 5);
   const rows = Array.from(w.document.querySelectorAll('#addrList li, #trList li')); bad = 0;
   for (const li of rows) { const b = li.querySelector('button.qr-mini'); if (!b) { bad++; continue; } b.click(); const dec = jsqrDecode(w.qrMatrix(li.textContent).rows); if (!dec || dec.data !== li.textContent || viewOf('aqBox').style.display === 'none') bad++; }
