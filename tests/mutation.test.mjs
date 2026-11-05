@@ -1251,7 +1251,8 @@ async function probe(w, mutated) {
     if (!/\.tabs button\[aria-selected="true"\][^{]*\{[^}]*border-bottom-color: var\(--gold\)/.test(css)) fails.push('redesign: the selected tab has a gold underline');
     if (!/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(css)) fails.push('redesign: labels are plain coloured words');
     if (!/#cardGen \{ display: block; \}\s*#cardGen \.gen-right \{ position: static; max-height: none;/.test(css)) fails.push('redesign: Make a seed is one column');
-    { const rs = $('rollStats'); if (!rs || rs.tagName !== 'DETAILS' || rs.open || !rs.contains($('rollChart')) || !rs.contains($('rollHistory')) || !rs.contains($('diceVisual'))) fails.push('tucked away: roll history and the fairness chart live in one closed box'); }
+    { const rs = $('rollStats'); if (!rs || rs.tagName !== 'DETAILS' || rs.open || !rs.contains($('rollChart')) || !rs.contains($('rollHistory')) || !rs.contains($('diceVisual'))) fails.push('tucked away: roll history and the fairness chart live in one closed box');
+      { const css = mutated.match(/<style>[\s\S]*?<\/style>/)[0]; if (!/#rollStats \{ margin-top: 10px; padding: 8px 12px; font-size: 13px; \}/.test(css) || !/#rollStats > summary \{ cursor: pointer; font-weight: 600; \}/.test(css)) fails.push('tucked away: the roll history box is styled like the other option boxes'); } }
     { // Calmer first screen: one GUIDE ME, seed buttons only after a seed, one closed More options box, no second warning note
       const d = w.document, gb = [...d.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'GUIDE ME'), gn = $('guideNew');
       if (gb.length !== 1 || !gn || gn.querySelector('button')) fails.push('calmer page: one GUIDE ME button');
@@ -2364,6 +2365,7 @@ const M = [
   ["coin faces: Bitcoin sign loses its bars", "<path d=\"M45 22 V30 M55 22 V30 M45 71 V79 M55 71 V79\"/>", ""],
   ["dice buttons: outline missing", "style=\"fill:var(--surface); stroke:var(--accent); stroke-width:6\"/>' + pips", "style=\"fill:var(--surface)\"/>' + pips"],
   ["dice buttons: pips not accent", "r=\"10\" style=\"fill:var(--accent)\"/>').join(\"\")", "r=\"10\" style=\"fill:var(--text)\"/>').join(\"\")"],
+  ["tucked away: roll history box heading unstyled", "  #rollStats > summary { cursor: pointer; font-weight: 600; }\n", ""],
   ["tucked away: roll history box starts open", "<details id=\"rollStats\" data-g=\"2\">", "<details id=\"rollStats\" data-g=\"2\" open>"],
   ["redesign: centre pip missing from the header die", "<circle class=\"dp\" cx=\"32\" cy=\"32\" r=\"5.6\"/>", ""],
   ["redesign: the name is not gold", "letter-spacing: .16em; color: var(--goldtx); background: none;", "letter-spacing: .16em; color: var(--text); background: none;"],
