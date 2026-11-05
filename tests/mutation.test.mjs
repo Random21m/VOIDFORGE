@@ -850,6 +850,10 @@ async function probe(w, mutated) {
     if (!/not known/.test($('wvFp').textContent)) fails.push('watch-only: no fingerprint is made up for a plain xpub');
     await openW(XPUB86); await until(() => rows().length === 10); $('wvType').value = 'tr'; $('wvType').dispatchEvent(new w.Event('change', { bubbles: true })); await until(() => /^bc1p/.test(rows()[0] || ''));
     if (rows()[0] !== 'bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr' || $('wvType').disabled) fails.push('watch-only: a plain xpub lets you pick Taproot and gives the published address');
+    { const seed = await w.mnemonicToSeed(AB, ''), tw = await w.watchOnlyFromSeed(seed, 'tr', 0, 'test'); let [k, c] = await w.masterFromSeed(seed);
+      for (const [i, h] of [[86, true], [1, true], [0, true], [0, false], [0, false]]) [k, c] = await w.ckdPriv(k, c, i, h);
+      const want = await w.addressFromKey('tr', k, 'test'); await openW(tw.receive); await until(() => rows().length === 10);
+      if (rows()[0] !== want || !/^tb1p/.test(rows()[0])) fails.push('watch-only: a testnet Taproot descriptor gives tb1p addresses'); }
     { const seed = await w.mnemonicToSeed(AB, ''), wo = await w.watchOnlyFromSeed(seed, 'wpkh', 0, 'main');
       await openW(wo.change); await until(() => rows().length === 10); const c0 = rows()[0];
       if ($('wvChain').value !== '1' || c0 === 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu') fails.push('watch-only: a /1/* descriptor opens change addresses');
@@ -862,7 +866,8 @@ async function probe(w, mutated) {
     if ($('walletView').style.display !== 'none' || $('wvType').disabled || $('wvSqBlock').style.display === 'none') fails.push('watch-only: editing the key wipes the view and restores the controls');
     // Electrum
     { const r = await w.checkPhrase('wild father tree among universe such mobile favorite target dynamic credit identify'); if (r.ok || !/Electrum seed \(SegWit type\)/.test(r.msg)) fails.push('Electrum: the SegWit example seed is named');
-      const r2 = await w.checkPhrase('abandon '.repeat(12).trim()); if (r2.ok || /Electrum/.test(r2.msg)) fails.push('Electrum: an ordinary bad phrase gets no note'); }
+      const r2 = await w.checkPhrase('abandon '.repeat(12).trim()); if (r2.ok || /Electrum/.test(r2.msg)) fails.push('Electrum: an ordinary bad phrase gets no note');
+      if (await w.electrumSeedType('say brain hammer whip plug sad budget improve scout myself interest input') !== 'two-factor (2FA)' || await w.electrumSeedType('neglect morning hat science deputy alarm seed eager cover letter pencil second') !== 'two-factor (2FA) SegWit' || await w.electrumSeedType('shoulder between fitness double soap point region fade rose guide kitten loud') !== null) fails.push('Electrum: two-factor types named, and a 103 prefix is not Electrum'); }
     // payment request
     { const A = w.bip21Amount; if (A('0.0015').v !== '0.0015' || A('1.10000000').v !== '1.1' || A('21000000').v !== '21000000' || A('0').ok || A('1.123456789').ok || A('21000000.00000001').ok) fails.push('payment request: amounts are checked');
       if (w.bip21Uri('bc1qx', '0.5', 'Café & tea', 'Thanks!') !== 'bitcoin:bc1qx?amount=0.5&label=Caf%C3%A9%20%26%20tea&message=Thanks!') fails.push('payment request: the link is built and encoded');

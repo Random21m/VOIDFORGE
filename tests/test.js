@@ -353,7 +353,8 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     { const r=await t.w.checkPhrase('wild father tree among universe such mobile favorite target dynamic credit identify');
       ok(!r.ok&&/Electrum seed \(SegWit type\)/.test(r.msg),'Electrum: the Electrum SegWit example seed is recognised and named');
       const r2=await t.w.checkPhrase('abandon '.repeat(11)+'abandon'); ok(!r2.ok&&!/Electrum/.test(r2.msg),'Electrum: an ordinary bad phrase gets no Electrum note');
-      const r3=await t.w.checkPhrase(AB); ok(r3.ok&&!/Electrum/.test(r3.msg),'Electrum: a valid BIP39 phrase is never called Electrum'); }
+      const r3=await t.w.checkPhrase(AB); ok(r3.ok&&!/Electrum/.test(r3.msg),'Electrum: a valid BIP39 phrase is never called Electrum');
+      ok(await t.w.electrumSeedType('say brain hammer whip plug sad budget improve scout myself interest input')==='two-factor (2FA)'&&await t.w.electrumSeedType('neglect morning hat science deputy alarm seed eager cover letter pencil second')==='two-factor (2FA) SegWit'&&await t.w.electrumSeedType('shoulder between fitness double soap point region fade rose guide kitten loud')===null,'Electrum: two-factor types are named, and a phrase whose hash starts 103 is not Electrum'); }
     // payment request (BIP-21)
     { const A=t.w.bip21Amount; ok(A('0.0015').v==='0.0015'&&A('1').v==='1'&&A('1.10000000').v==='1.1'&&A('21000000').v==='21000000'&&A('').v===''&&!A('0').ok&&!A('1.123456789').ok&&!A('21000000.00000001').ok&&!A('1,5').ok&&!A('-1').ok,'payment request: amounts are checked (8 decimals, above 0, at most 21 million)');
       ok(t.w.bip21Uri('bc1qx','0.5','Café & tea','Thanks!')==='bitcoin:bc1qx?amount=0.5&label=Caf%C3%A9%20%26%20tea&message=Thanks!','payment request: link is built and encoded as BIP-21 says');
