@@ -805,7 +805,8 @@ async function probe(w, mutated) {
     pick('wvType', 'tr'); await until(() => /^bc1p/.test(rows()[0] || '')); if (rows()[0] !== 'bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr') fails.push('wallet view: first Taproot address');
     pick('wvType', 'pkh'); await until(() => /^1/.test(rows()[0] || '')); if (rows()[0] !== '1LqBGSKuX5yYUonjxT5qGfpUsXKYYWeabA') fails.push('wallet view: first Legacy address');
     pick('wvType', 'sh-wpkh'); await until(() => /^3/.test(rows()[0] || '')); if (rows()[0] !== '37VucYSaXLCAsxYyAPfbSi9eh4iEcbShgf') fails.push('wallet view: first Nested SegWit address');
-    pick('wvType', 'wpkh'); pick('wvNet', 'test'); await until(() => /^tb1q/.test(rows()[0] || '')); if (!/^tb1q/.test(rows()[0]) || !/TESTNET/.test($('wvPath').textContent)) fails.push('wallet view: testnet addresses and note');
+    pick('wvType', 'wpkh'); pick('wvNet', 'test'); await until(() => /^tb1q/.test(rows()[0] || '')); { let [k, c] = await w.masterFromSeed(await w.mnemonicToSeed(AB, '')); for (const [i, h] of [[84, true], [1, true], [0, true], [0, false], [0, false]]) [k, c] = await w.ckdPriv(k, c, i, h);
+      if (rows()[0] !== await w.addressFromKey('wpkh', k, 'test') || !/TESTNET/.test($('wvPath').textContent)) fails.push('wallet view: testnet addresses (coin type 1) and note'); }
     pick('wvNet', 'main'); await until(() => /^bc1q/.test(rows()[0] || '')); const first = rows().slice();
     $('wvNext').click(); await until(() => rows()[0] !== first[0]); if (!/addresses 10 to 19/.test($('wvPath').textContent) || rows().some((a) => first.includes(a))) fails.push('wallet view: NEXT 10 shows the next ten addresses');
     $('wvPrev').click(); await until(() => rows()[0] === first[0]); if (rows().join() !== first.join() || !$('wvPrev').disabled) fails.push('wallet view: PREVIOUS 10 comes back and is off at the start');
