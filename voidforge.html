@@ -4978,9 +4978,18 @@ async function keyReuseReport(text){
     let p; try { p = await parseExtendedKey(k.key); } catch(e) { return {ok:false, text:"Line " + k.line + ": " + e.message}; }
     ids.push(Object.assign({}, k, {id: hex(p.pub) + hex(p.chain)}));
   }
+  // Descriptors that differ only in their receive or change ending (/0/*, /1/*, /<0;1>/*) or checksum are one wallet, so a key shared by them is normal.
+  const src = String(text || "").split(/\r?\n/), walletOf = (ln) => src[ln - 1].replace(/\s+/g, "").replace(/#[0-9a-z]{8}$/, "").replace(/\/(?:0|1|<0;1>)\/\*/g, "/*");
   const lines = new Set(ids.map(k => k.line)), warn = [], short = (k) => k.key.slice(0, 8) + "\u2026" + k.key.slice(-6);
   const byId = {}; ids.forEach(k => (byId[k.id] = byId[k.id] || []).push(k));
-  for(const g of Object.values(byId)) if(g.length > 1) warn.push("The same public key (" + short(g[0]) + ") appears " + g.length + " times, on line" + (new Set(g.map(k => k.line)).size > 1 ? "s " : " ") + Array.from(new Set(g.map(k => k.line))).join(" and ") + ". " + (new Set(g.map(k => k.line)).size === 1 ? "One key used twice in one multisig gives less protection than it looks: it can sign twice." : "Using one key in two wallets links them together and mixes their security."));
+  for(const g of Object.values(byId)){
+    if(g.length < 2) continue;
+    const wallets = new Set(g.map(k => walletOf(k.line))), lns = Array.from(new Set(g.map(k => k.line))), perLine = {};
+    g.forEach(k => { perLine[k.line] = (perLine[k.line] || 0) + 1; });
+    const twiceIn = Object.keys(perLine).filter(l => perLine[l] > 1);
+    if(twiceIn.length) warn.push("The same public key (" + short(g[0]) + ") appears " + perLine[twiceIn[0]] + " times in one descriptor (line " + twiceIn[0] + "). One key used twice in one multisig gives less protection than it looks: it can sign twice.");
+    if(wallets.size > 1) warn.push("The same public key (" + short(g[0]) + ") appears in " + wallets.size + " different wallets (lines " + lns.join(" and ") + "). Using one key in two wallets links them together and mixes their security.");
+  }
   const byOrigin = {}; ids.filter(k => k.fp).forEach(k => (byOrigin[k.fp + k.path] = byOrigin[k.fp + k.path] || []).push(k));
   for(const g of Object.values(byOrigin)) if(new Set(g.map(k => k.id)).size > 1) warn.push("Fingerprint " + g[0].fp + " with path " + g[0].path + " is given with different keys (lines " + Array.from(new Set(g.map(k => k.line))).join(", ") + "). The same seed and path always give the same key, so one of them is wrong, or comes from a different passphrase.");
   for(const ln of lines){

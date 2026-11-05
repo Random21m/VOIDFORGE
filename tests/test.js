@@ -380,10 +380,12 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     { const seed=await t.w.mnemonicToSeed(AB,''), a0=await t.w.watchOnlyFromSeed(seed,'wpkh',0,'main'), a1=await t.w.watchOnlyFromSeed(seed,'wpkh',1,'main');
       const run=async v=>{ t.$('reuseIn').value=v; await t.w.checkKeyReuse(); return t.$('reuseStatus').textContent; };
       let r=await run(a0.receive); ok(/1 public key found in 1 line\. No reused key/.test(r)&&/ok/.test(t.$('reuseStatus').className),'key reuse: one clean descriptor passes');
-      r=await run(a0.receive+'\n'+a0.change); ok(/appears 2 times, on lines 1 and 2/.test(r),'key reuse: the same key in two descriptors is found');
+      r=await run(a0.receive+'\n'+a0.change); ok(/No reused key/.test(r),'key reuse: the receive and change descriptors of one wallet are not reuse');
+      r=await run(a0.receive+'\npkh('+a0.xpub+'/0/*)'); ok(/appears in 2 different wallets \(lines 1 and 2\)/.test(r),'key reuse: one key in two different wallets is found');
+      r=await run('wsh(sortedmulti(2,'+a0.xpub+'/0/*,'+a0.xpub+'/0/*))'); ok(/appears 2 times in one descriptor \(line 1\)/.test(r),'key reuse: one key twice in one multisig is found');
       r=await run('wsh(sortedmulti(2,'+a0.receive.replace(/\/0\/\*$/,'')+','+a1.receive.replace(/\/0\/\*$/,'')+'))'); ok(/2 different keys come from the same master fingerprint 73c5da0a/.test(r),'key reuse: two multisig keys from one seed are found');
       r=await run('wpkh([73c5da0a/84h/0h/0h]'+a1.xpub+'/0/*)\nwpkh([73c5da0a/84h/0h/0h]'+a0.xpub+'/0/*)'); ok(/is given with different keys/.test(r),'key reuse: one fingerprint and path with two different keys is found');
-      r=await run(a0.zpub+'\n'+a0.xpub); ok(/appears 2 times/.test(r),'key reuse: the same key written as zpub and as xpub counts as the same key');
+      r=await run(a0.zpub+'\n'+a0.xpub); ok(/appears in 2 different wallets/.test(r),'key reuse: the same key written as zpub and as xpub counts as the same key');
       r=await run('wpkh(xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu/0/*)'); ok(/PRIVATE/.test(r),'key reuse: private keys are refused');
       r=await run('hello'); ok(/No extended public keys/.test(r),'key reuse: nothing to check is explained'); }
     t=t0; }

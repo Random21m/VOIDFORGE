@@ -891,8 +891,10 @@ async function probe(w, mutated) {
     { const seed = await w.mnemonicToSeed(AB, ''), a0 = await w.watchOnlyFromSeed(seed, 'wpkh', 0, 'main'), a1 = await w.watchOnlyFromSeed(seed, 'wpkh', 1, 'main');
       const run = async (v) => { $('reuseIn').value = v; await w.checkKeyReuse(); return $('reuseStatus').textContent; };
       if (!/No reused key/.test(await run(a0.receive))) fails.push('key reuse: a clean descriptor passes');
-      if (!/appears 2 times/.test(await run(a0.receive + '\n' + a0.change))) fails.push('key reuse: the same key twice is found');
-      if (!/appears 2 times/.test(await run(a0.zpub + '\n' + a0.xpub))) fails.push('key reuse: zpub and xpub of one key count as one key');
+      if (!/No reused key/.test(await run(a0.receive + '\n' + a0.change))) fails.push('key reuse: receive and change of one wallet are not reuse');
+      if (!/appears in 2 different wallets/.test(await run(a0.receive + '\npkh(' + a0.xpub + '/0/*)'))) fails.push('key reuse: one key in two wallets is found');
+      if (!/appears 2 times in one descriptor/.test(await run('wsh(sortedmulti(2,' + a0.xpub + '/0/*,' + a0.xpub + '/0/*))'))) fails.push('key reuse: one key twice in one multisig is found');
+      if (!/appears in 2 different wallets/.test(await run(a0.zpub + '\n' + a0.xpub))) fails.push('key reuse: zpub and xpub of one key count as one key');
       if (!/2 different keys come from the same master fingerprint/.test(await run('wsh(sortedmulti(2,' + a0.receive.replace(/\/0\/\*$/, '') + ',' + a1.receive.replace(/\/0\/\*$/, '') + '))'))) fails.push('key reuse: two multisig keys from one seed are found');
       if (!/is given with different keys/.test(await run('wpkh([73c5da0a/84h/0h/0h]' + a1.xpub + '/0/*)\nwpkh([73c5da0a/84h/0h/0h]' + a0.xpub + '/0/*)'))) fails.push('key reuse: one origin with two keys is found');
       if (!/^STOP: this contains a PRIVATE key.*treat that key as exposed/.test(await run('wpkh(xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu/0/*)'))) fails.push('key reuse: private keys are refused with the exposed-key warning');
@@ -2025,6 +2027,9 @@ const M = [
   ["checklist: passphrase change keeps ticks", "drillEnd(); for(const id of [\"bk2\",\"bk4\"]) document.getElementById(id).checked = false; bkUpdate();", "drillEnd();"],
   ["checklist: never shown", "wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words);", "wdWipe(); drillEnd(); if(words) previewClear(); bkReset(false);"],
   ["checklist: all-done message wrong", "n === 4 ? \"All four done: this backup is ready.\"", "n === 3 ? \"All four done: this backup is ready.\""],
+  ["key reuse: receive and change counted as two wallets", ".replace(/#[0-9a-z]{8}$/, \"\").replace(/\\/(?:0|1|<0;1>)\\/\\*/g, \"/*\");", ".replace(/#[0-9a-z]{8}$/, \"\");"],
+  ["key reuse: one key twice in one descriptor not found", "if(twiceIn.length) warn.push(", "if(false) warn.push("],
+  ["key reuse: one key in two wallets not found", "if(wallets.size > 1) warn.push(", "if(false) warn.push("],
   ["key reuse: zpub and xpub of one key differ", "ids.push(Object.assign({}, k, {id: hex(p.pub) + hex(p.chain)}));", "ids.push(Object.assign({}, k, {id: k.key}));"],
   ["key reuse: same seed in one multisig not found", "if(set.size > 1) warn.push(\"Line \" + ln", "if(set.size > 9) warn.push(\"Line \" + ln"],
   ["key reuse: one origin two keys not found", "for(const g of Object.values(byOrigin)) if(new Set(g.map(k => k.id)).size > 1)", "for(const g of Object.values(byOrigin)) if(false)"],
