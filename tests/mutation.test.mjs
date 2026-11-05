@@ -226,7 +226,7 @@ async function probe(w, mutated) {
     await forge(); $('rolls').value = D50.slice(0, 49) + (D50[49] === '1' ? '2' : '1'); w.updateCount(); if (!gone()) fails.push('stale: changing a roll clears everything');
     await forge(); w.undoRoll(); if (on()) fails.push('stale: UNDO clears the result');
     { // v1.29.1 run counter: an old FORGE must not write its fingerprint and addresses back after an edit or CLEAR ALL
-      const mid = async (act, cond = () => /computing/.test($('fingerprint').textContent)) => { mode('dice'); words(12); $('rolls').value = D50; ev('rolls'); $('passphrase').value = ''; $('passphrase2').value = ''; const pr = w.generate(); for (let i = 0; i < 5000 && !cond(); i++) await new Promise((r) => setTimeout(r, 0)); const saw = cond(); act(); await pr; await new Promise((r) => setTimeout(r, 400)); return saw; };
+      const mid = async (act, cond = () => /computing/.test($('fingerprint').textContent)) => { await w.eval('passWork'); mode('dice'); words(12); $('rolls').value = D50; ev('rolls'); $('passphrase').value = ''; $('passphrase2').value = ''; const pr = w.generate(); for (let i = 0; i < 5000 && !cond(); i++) await new Promise((r) => setTimeout(r, 0)); const saw = cond(); act(); await pr; await new Promise((r) => setTimeout(r, 400)); return saw; };
       const leftover = () => /[0-9a-f]{8}/.test($('fingerprint').textContent) || /bc1q/.test($('address').textContent) || $('addrList').textContent !== '';
       if (!(await mid(() => { $('passphrase').value = 'abc'; ev('passphrase'); }))) fails.push('run counter: the edit lands while the fingerprint is computing');
       if (leftover()) fails.push('run counter: an edit during FORGE leaves an old fingerprint, address or list behind');
