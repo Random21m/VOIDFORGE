@@ -721,12 +721,14 @@
 
   /* v2.1.0: QR button on every address row, and the wallet view in the Check tab */
   .addr-list li { display:flex; align-items:flex-start; gap:8px; }
-  .addr-list li .qr-mini { flex:0 0 auto; margin-left:auto; padding:3px 6px; line-height:0; border-radius:6px; font-size:0; }
+  .addr-list li .qr-mini { flex:0 0 auto; padding:3px 6px; line-height:0; border-radius:6px; font-size:0; }
   .addr-list li .qr-mini svg { width:14px; height:14px; }
+  body .addr-list li .qr-mini, body.light .addr-list li .qr-mini { padding:3px 6px; min-height:0; }
   .qrbox { display:none; margin-top:10px; text-align:center; }
   .qrbox .qr-img { width:min(100%,300px); margin:8px auto; background:#fff; line-height:0; }
   .wv-ctl { display:flex; gap:6px; align-items:center; margin:8px 0 6px; flex-wrap:wrap; }
-  .wv-ctl select { flex:1 1 130px; min-width:0; }
+  .wv-ctl select { flex:1 1 96px; min-width:0; }
+  .wv-ctl #wvType { flex:2 1 230px; }
   .wv-ctl input { width:64px; flex:none; }
   #wvBanner { border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:8px; padding:8px 12px; margin:8px 0; font-size:13px; color:var(--muted); }
   #wvFpRow { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:8px 0 0; }
