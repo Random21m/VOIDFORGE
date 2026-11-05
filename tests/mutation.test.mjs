@@ -1332,7 +1332,7 @@ async function probe(w, mutated) {
     const die = $('brandDie'), h1 = w.document.querySelector('#topbar h1'), mb = $('menuBox'), css = [...w.document.querySelectorAll('style')].map((x) => x.textContent).join('\n');
     if (!die || die.querySelectorAll('.dp').length !== 5 || !h1 || h1.textContent !== 'VOIDFORGE') fails.push('redesign: the header has one five-pip die and the name');
     if (!/#brandDie \.db \{ fill: var\(--gold\); \}/.test(css) || !/#topbar h1[^{]*\{[^}]*color: var\(--goldtx\)/.test(css)) fails.push('redesign: the die and the name are gold');
-    if ([...mb.querySelectorAll('.menu-list button')].map((b) => b.textContent.trim()).join('|') !== 'GUIDE ME|TEXT A+|PRINT SEED|DARK') fails.push('redesign: the MENU holds GUIDE ME, TEXT A+, PRINT SEED and the theme switch');
+    if ([...mb.querySelectorAll('.menu-list button')].map((b) => b.textContent.trim()).join('|') !== 'GUIDE ME|TEXT A+|PRINT SEED|PRINT STAMP SHEET|DARK') fails.push('redesign: the MENU holds GUIDE ME, TEXT A+, PRINT SEED, PRINT STAMP SHEET and the theme switch');
     mb.open = true; w.document.body.dispatchEvent(new w.MouseEvent('click', { bubbles: true })); if (mb.open) fails.push('redesign: a click outside closes the MENU');
     mb.open = true; w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape' })); if (mb.open) fails.push('redesign: Escape closes the MENU');
     mb.open = true; w.document.querySelector('.theme-toggle').click(); if (mb.open) fails.push('redesign: choosing an item closes the MENU'); w.document.querySelector('.theme-toggle').click(); mb.open = false;

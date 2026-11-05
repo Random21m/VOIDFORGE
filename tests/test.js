@@ -862,7 +862,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const homeless=['rolls','forgeBtn','phrase','psbtInput','cmpA','msN','about','beforeCard','disclaimer'].filter(id=>!tl.$(id).closest('.tabpanel')); ok(homeless.length===0,'feature inventory: every tool lives inside a tab'+(homeless.length?' ('+homeless.join(', ')+')':''));
       ok(['printOnly','printQr'].every(id=>!tl.$(id).closest('.tabpanel')),'printing works from any tab: the print sheets sit outside the tabs');
       const btns=[...tl.d.querySelectorAll('button')].filter(b=>!b.closest('.tabpanel')&&!b.closest('#startGate')&&!b.closest('#tabs')).map(b=>b.textContent.trim().replace(/\s+/g,' ')).sort().join('|');
-      eq(btns,['DARK','DOWNLOAD FOR USB','GUIDE ME','PRINT SEED','TEXT A+','Read before real keys \u2192'].sort().join('|'),'page frame holds exactly the top buttons and the notice link'); }
+      eq(btns,['DARK','DOWNLOAD FOR USB','GUIDE ME','PRINT SEED','PRINT STAMP SHEET','TEXT A+','Read before real keys \u2192'].sort().join('|'),'page frame holds exactly the top buttons and the notice link'); }
     // the three warnings and the disclaimer moved to About, with their text intact
     ok(/AIR-GAPPED USE ONLY/.test(tl.$('tp-about').textContent)&&/not been independently audited/.test(tl.$('disclaimer').textContent)&&tl.$('beforeCard').querySelectorAll('.sg-item').length===3,'About & help holds the air-gap warning, the disclaimer and the three computer-memory warnings');
     ok(!tl.$('tp-make').contains(tl.$('about'))&&tl.$('tp-tools').contains(tl.$('cardMulti'))&&tl.$('tp-tools').contains(tl.$('cardTools'))&&tl.$('tp-check').contains(tl.$('cardCheck')),'each card sits in the right tab');
