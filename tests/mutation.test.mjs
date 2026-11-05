@@ -1270,6 +1270,7 @@ async function probe(w, mutated) {
     if (!/\.tabs button\[aria-selected="true"\][^{]*\{[^}]*border-bottom-color: var\(--gold\)/.test(css)) fails.push('redesign: the selected tab has a gold underline');
     if (!/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(css)) fails.push('redesign: labels are plain coloured words');
     if (!/#cardGen \{ display: block; \}\s*#cardGen \.gen-right \{ position: static; max-height: none;/.test(css)) fails.push('redesign: Make a seed is one column');
+    { const css = mutated.match(/<style>[\s\S]*?<\/style>/)[0]; if (!/@media \(max-width: 559px\) \{ #wordGrid, #cardGen \.gen-right #wordGrid \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \} \}/.test(css) || !/\.wcell \{ animation: none; box-shadow: none; font-size: 18px; font-weight: 700; padding: 10px 12px; min-width: 0; \}/.test(css) || !/@media \(max-width: 400px\) \{ \.wcell \{ font-size: 16px;/.test(css) || !/@media \(max-width: 345px\) \{ \.wcell \{ font-size: 14\.5px;/.test(css)) fails.push('seed words: two columns below 560px and smaller type on narrow phones'); }
     { const rs = $('rollStats'); if (!rs || rs.previousElementSibling.id !== 'ignoredNote' || rs.nextElementSibling.id !== 'advanced' || $('advanced').nextElementSibling.id !== 'moreBox') fails.push('order under the roll entry: fairness chart box, then passphrase, then More options'); if (!rs || rs.tagName !== 'DETAILS' || rs.open || !rs.contains($('rollChart')) || !rs.contains($('rollHistory')) || !rs.contains($('diceVisual'))) fails.push('tucked away: roll history and the fairness chart live in one closed box');
       { const css = mutated.match(/<style>[\s\S]*?<\/style>/)[0]; if (!/#rollStats \{ margin-top: 10px; padding: 8px 12px; font-size: 13px; \}/.test(css) || !/#rollStats > summary \{ cursor: pointer; font-weight: 600; \}/.test(css)) fails.push('tucked away: the roll history box is styled like the other option boxes'); } }
     { // Calmer first screen: one GUIDE ME, seed buttons only after a seed, one closed More options box, no second warning note
@@ -2391,6 +2392,10 @@ const M = [
   ["dice buttons: outline missing", "style=\"fill:var(--surface); stroke:var(--accent); stroke-width:6\"/>' + pips", "style=\"fill:var(--surface)\"/>' + pips"],
   ["dice buttons: pips not accent", "r=\"10\" style=\"fill:var(--accent)\"/>').join(\"\")", "r=\"10\" style=\"fill:var(--text)\"/>').join(\"\")"],
   ["tucked away: roll history box heading unstyled", "  #rollStats > summary { cursor: pointer; font-weight: 600; }\n", ""],
+  ["seed words: three columns again on mid-width phones", "@media (max-width: 559px) { #wordGrid, #cardGen .gen-right #wordGrid", "@media (max-width: 420px) { #wordGrid, #cardGen .gen-right #wordGrid"],
+  ["seed words: boxes can grow past their column", "padding: 10px 12px; min-width: 0; }", "padding: 10px 12px; }"],
+  ["seed words: no smaller type on small phones", "@media (max-width: 400px) { .wcell { font-size: 16px;", "@media (max-width: 400px) { .wcell { font-size: 18px;"],
+  ["seed words: no smallest type on narrow phones", "@media (max-width: 345px) { .wcell { font-size: 14.5px;", "@media (max-width: 345px) { .wcell { font-size: 18px;"],
   ["passphrase box pushed down below More options", "<details id=\"advanced\" data-g=\"3\">", "<p id=\"pushdown2\"></p><details id=\"advanced\" data-g=\"3\">"],
   ["roll history box pushed down from under the roll entry", "<details id=\"rollStats\" data-g=\"2\">", "<p id=\"pushdown\"></p><details id=\"rollStats\" data-g=\"2\">"],
   ["tucked away: roll history box starts open", "<details id=\"rollStats\" data-g=\"2\">", "<details id=\"rollStats\" data-g=\"2\" open>"],

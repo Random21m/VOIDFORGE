@@ -625,8 +625,10 @@
   @media (min-width: 861px) { #cardGen .gen-right { max-height: none; overflow: visible; } }
   .seed-title { color: var(--muted); letter-spacing: .12em; }
   #wordGrid, #cardGen .gen-right #wordGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  @media (max-width: 420px) { #wordGrid, #cardGen .gen-right #wordGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  .wcell { animation: none; box-shadow: none; font-size: 18px; font-weight: 700; padding: 10px 12px; }
+  @media (max-width: 559px) { #wordGrid, #cardGen .gen-right #wordGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .wcell { animation: none; box-shadow: none; font-size: 18px; font-weight: 700; padding: 10px 12px; min-width: 0; }
+  @media (max-width: 400px) { .wcell { font-size: 16px; padding: 9px 8px; gap: 5px; } .wcell b { min-width: 1.6em; font-size: 12px; } }
+  @media (max-width: 345px) { .wcell { font-size: 14.5px; padding: 8px 6px; gap: 4px; } }
   .entropy-bar, body.light .entropy-bar { background: var(--border); }
   .entropy-fill { background: var(--gold); background-image: none; }
   .fp { color: var(--text); }
