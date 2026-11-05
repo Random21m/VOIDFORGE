@@ -220,9 +220,9 @@ async function probe(w, mutated) {
     const forge = async (rolls = D50, pw = '') => { await run('dice', 12, rolls, pw); };
     await forge(); if (!on()) fails.push('stale: a seed is made');
     w.updateCount(); w.hideExplain(); w.updateCount(); $('passphrase').value = ''; ev('passphrase'); $('rolls').value = D50 + ' x y'; w.updateCount(); if (!on()) fails.push('stale: no real change keeps the result');
-    $('passphrase').value = 'x'; ev('passphrase'); if (!gone() || !/changed the rolls/.test($('genResult').textContent)) fails.push('stale: a passphrase edit clears everything');
-    await forge(); $('passphrase2').value = 'y'; ev('passphrase2'); if (!gone()) fails.push('stale: a confirm-passphrase edit clears everything');
-    await forge(D50, 'pp'); $('passphrase').value = 'pq'; ev('passphrase'); if (on()) fails.push('stale: editing an existing passphrase clears the result');
+    $('passphrase').value = 'x'; ev('passphrase'); await w.eval('passWork'); if (!on() || !/not shown here/.test($('genResult').textContent) || $('wordGrid').querySelectorAll('.wcell:not(.empty)').length !== 12) fails.push('stale: a passphrase edit keeps the words and re-works the fingerprint');
+    await forge(); $('passphrase').value = 'x'; ev('passphrase'); $('passphrase2').value = 'y'; ev('passphrase2'); await w.eval('passWork'); if (!on() || !/do not match/.test($('genResult').textContent) || $('address').textContent !== '') fails.push('stale: a mismatching confirm-passphrase keeps the words but hides the fingerprint and addresses'); $('passphrase').value = ''; $('passphrase2').value = ''; ev('passphrase'); ev('passphrase2'); await w.eval('passWork');
+    await forge(D50, 'pp'); $('passphrase').value = 'pq'; ev('passphrase'); await w.eval('passWork'); if (!on()) fails.push('stale: editing an existing passphrase keeps the result');
     await forge(); $('rolls').value = D50.slice(0, 49) + (D50[49] === '1' ? '2' : '1'); w.updateCount(); if (!gone()) fails.push('stale: changing a roll clears everything');
     await forge(); w.undoRoll(); if (on()) fails.push('stale: UNDO clears the result');
     { // v1.29.1 run counter: an old FORGE must not write its fingerprint and addresses back after an edit or CLEAR ALL
@@ -249,7 +249,7 @@ async function probe(w, mutated) {
     { const A11 = 'abandon '.repeat(11); $('wdLen').value = '12'; $('wdWords').value = A11; $('wdFlips').value = '0000000'; $('passphrase').value = ''; $('passphrase2').value = ''; w.wdUpdate(); await w.wdGenerate();
       if (!on()) fails.push('stale: a Word draw seed is made');
       $('rolls').value = '1234'; w.updateCount(); words(24); words(12); mode('coin'); mode('dice'); if (!on()) fails.push('stale: rolls, length and mode do not matter to a Word draw seed');
-      $('passphrase').value = 'z'; ev('passphrase'); if (on()) fails.push('stale: a passphrase edit clears a Word draw seed'); }
+      $('passphrase').value = 'z'; ev('passphrase'); await w.eval('passWork'); if (!on()) fails.push('stale: a passphrase edit keeps a Word draw seed'); }
     w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); }
   { // Translation and passphrase notes (v1.29.0)
     const d = w.document, m = d.querySelector('meta[name="google"]'), adv = w.document.getElementById('passphrase').closest('details');
