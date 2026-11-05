@@ -1098,8 +1098,15 @@
     </div>
     <div class="status" id="verifyStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-all;"></div>
     <div class="status" id="verifyMatch" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+    <div class="sec-block" id="wpBlock">
+      <h3 class="sec">Or open a watch-only wallet<span class="tag tag-public">PUBLIC KEYS ONLY</span></h3>
+      <p class="hint" style="margin:0 0 6px;">Paste an account public key (xpub, ypub, zpub, or tpub, upub, vpub for testnet) or a single-key descriptor such as <code>wpkh([fingerprint/84h/0h/0h]xpub.../0/*)</code>. It shows the same addresses without any seed words. It can never spend.</p>
+      <textarea id="wpIn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Public key or descriptor" placeholder="xpub..., zpub... or wpkh([...]xpub.../0/*)"></textarea>
+      <div class="btn-row" style="margin-top:6px;"><button type="button" id="wpBtn" onclick="openWatchOnly()">OPEN WATCH-ONLY</button></div>
+      <div class="status" id="wpStatus" aria-live="polite" style="word-break:break-word; margin-top:6px;"></div>
+    </div>
     <details id="walletView" style="display:none; margin-top:10px;">
-      <summary>Open this wallet<span class="tag tag-public">PUBLIC ADDRESSES</span><small>Addresses with QR codes, for the words checked above.</small></summary>
+      <summary>Open this wallet<span class="tag tag-public">PUBLIC ADDRESSES</span><small>Addresses with QR codes, for the words or key above.</small></summary>
       <p class="hint" id="wvWhy" style="margin:8px 0 0;">This lists the addresses your wallet app would show for these words, so you can compare them in the app. Pick the same address type and account number the app uses. The words are the same for every type.</p>
       <div id="wvBanner">Imported: these words were typed or scanned here, not made by this page. The same words and passphrase give the same wallet in any app.</div>
       <div id="wvFpRow"><div class="fp" id="wvFp"></div><div id="wvIcon" class="lh" title="Fingerprint picture (LifeHash) of this wallet"></div></div>
@@ -1112,10 +1119,10 @@
       <div class="hint" id="wvErr" style="margin:0; color:var(--danger);"></div>
       <div class="hint" id="wvPath" style="margin:0;"></div>
       <ol id="wvList" class="addr-list"></ol>
-      <div class="btn-row"><button type="button" class="secondary small" id="wvPrev" onclick="wvPage(-1)">PREVIOUS 10</button><button type="button" class="secondary small" id="wvNext" onclick="wvPage(1)">NEXT 10</button><button type="button" class="secondary small" onclick="copyAddrList(this,'wvList')">COPY THESE 10</button><button type="button" class="secondary small" id="wvSheetBtn" onclick="printRecoverySheet()">PRINT RECOVERY SHEET</button></div>
-      <p class="hint" style="margin:6px 0 0;">The recovery sheet holds no words and no passphrase: only the fingerprint, address type, path and the first addresses, plus how to restore. Keep it with your paper backup so someone you trust can tell which wallet the words belong to.</p>
+      <div class="btn-row" id="wvPager"><button type="button" class="secondary small" id="wvPrev" onclick="wvPage(-1)">PREVIOUS 10</button><button type="button" class="secondary small" id="wvNext" onclick="wvPage(1)">NEXT 10</button><button type="button" class="secondary small" onclick="copyAddrList(this,'wvList')">COPY THESE 10</button><button type="button" class="secondary small" id="wvSheetBtn" onclick="printRecoverySheet()">PRINT RECOVERY SHEET</button></div>
+      <p class="hint" id="wvSheetHint" style="margin:6px 0 0;">The recovery sheet holds no words and no passphrase: only the fingerprint, address type, path and the first addresses, plus how to restore. Keep it with your paper backup so someone you trust can tell which wallet the words belong to.</p>
       <div id="wvqBox" class="qrbox"><div id="wvqCap" class="hint"></div><div id="wvqImg" class="qr-img"></div><details class="bip21" id="wvqReq"><summary>Payment request (BIP-21)<small>Add an amount, label or message; the QR becomes a bitcoin: link.</small></summary><div class="b21-row"><input type="text" id="wvqAmt" inputmode="decimal" placeholder="Amount in BTC (optional)" aria-label="Amount in BTC" autocomplete="off" spellcheck="false"><input type="text" id="wvqLbl" placeholder="Label (optional)" aria-label="Label" autocomplete="off" spellcheck="false"><input type="text" id="wvqMsg" placeholder="Message (optional)" aria-label="Message" autocomplete="off" spellcheck="false"></div><div class="hint" id="wvqUri" style="word-break:break-all;"></div><button type="button" class="secondary small" onclick="copyReq(this,'wvq')">COPY LINK</button></details><button type="button" class="secondary small" onclick="hideAddrQr('wvq')">HIDE QR</button></div>
-      <div class="sec-block">
+      <div class="sec-block" id="wvSqBlock">
         <h3 class="sec">SeedQR<span class="tag tag-secret">SECRET</span></h3>
         <p class="hint" id="wvSqNote" style="margin:0 0 6px;"></p>
         <div class="btn-row" id="wvSqBtns"><button type="button" class="secondary small" onclick="wvSeedQr('seedqr')">SHOW SEEDQR</button><button type="button" class="secondary small" onclick="wvSeedQr('compact')">SHOW COMPACTSEEDQR</button><button type="button" class="secondary small" onclick="wvSeedQrHide()">HIDE</button></div>
@@ -1302,6 +1309,13 @@
         <div class="btn-row" style="margin-top:10px;"><button type="button" class="secondary small" onclick="msCancel()">START OVER</button></div>
         <p class="hint" style="margin:8px 0 0;">Honest note: after you press ADD, the seed is erased from the page, but a browser cannot promise it also erased every trace from memory. For the strictest safety, reload or restart before the next key, or make the next key on another device and paste its public key.</p>
       </div>
+    </details>
+    <details id="reuseBox">
+      <summary>Check descriptors for a reused key<span class="tag tag-public">PUBLIC KEYS ONLY</span><small>Catches the same key, or the same seed, used twice in a wallet or a multisig setup.</small></summary>
+      <p class="hint" style="margin:8px 0 6px;">Paste one or more output descriptors (one per line), for example the multisig descriptor from your wallet app and the single-key descriptors you also use. VOIDFORGE lists every public key in them and warns when a key appears twice, when two keys of one multisig come from the same seed, or when the same fingerprint and path give different keys. Private keys are refused.</p>
+      <textarea id="reuseIn" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Descriptors, one per line" placeholder="wsh(sortedmulti(2,[fp/48h/0h/0h/2h]xpub.../0/*,...))&#10;wpkh([fp/84h/0h/0h]xpub.../0/*)"></textarea>
+      <div class="btn-row" style="margin-top:6px;"><button type="button" id="reuseBtn" onclick="checkKeyReuse()">CHECK KEYS</button><button type="button" class="secondary small" onclick="clearReuse()">CLEAR</button></div>
+      <div class="status" id="reuseStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
     </details>
   </div>
   </div>
@@ -1848,8 +1862,10 @@ async function taggedHash(tag, msg){
   const th=await sha256bytes(new TextEncoder().encode(tag)), b=new Uint8Array(64+msg.length);
   b.set(th,0); b.set(th,32); b.set(msg,64); return sha256bytes(b);
 }
-async function taprootAddress(k, hrp){
-  let P=emul(k,SG); if(P[1]&1n) P=[P[0],SP-P[1]];
+async function taprootAddress(k, hrp){ return taprootAddressFromPoint(emul(k,SG), hrp); }
+// Taproot output for an internal public key point (also used by the watch-only view, which has no private key).
+async function taprootAddressFromPoint(P, hrp){
+  if(P[1]&1n) P=[P[0],SP-P[1]];
   const xonly=fromHex(P[0].toString(16).padStart(64,"0"));
   const t=BigInt("0x"+hex(await taggedHash("TapTweak",xonly)));
   if(t>=SN) throw new Error("Invalid tweak");
@@ -1996,6 +2012,16 @@ async function addressFromKey(type, k, net){
   const N = NETS[net || "main"];
   if(type === "tr") return taprootAddress(k, N.hrp);
   const h = await hash160(pubkeyBytes(k));
+  if(type === "wpkh") return bech32Encode(N.hrp,0,h);
+  if(type === "pkh") return base58check(Uint8Array.from([N.pkh, ...h]));
+  if(type === "sh-wpkh") return base58check(Uint8Array.from([N.sh, ...await hash160(Uint8Array.from([0x00, 0x14, ...h]))]));
+  throw new Error("unknown address type");
+}
+// The address of a compressed public key for one address type (watch-only view; no private key involved).
+async function addressFromPub(type, pub, net){
+  const N = NETS[net || "main"];
+  if(type === "tr") return taprootAddressFromPoint(pointFromPub(pub), N.hrp);
+  const h = await hash160(pub);
   if(type === "wpkh") return bech32Encode(N.hrp,0,h);
   if(type === "pkh") return base58check(Uint8Array.from([N.pkh, ...h]));
   if(type === "sh-wpkh") return base58check(Uint8Array.from([N.sh, ...await hash160(Uint8Array.from([0x00, 0x14, ...h]))]));
@@ -4813,11 +4839,18 @@ async function walletAddresses(seed, type, net, account, chain, from, n){
   for(let i = from; i < from + n && i <= 2147483647; i++){ const [ck] = await ckdPriv(k,c,i,false); out.push({index:i, path:"m/" + purpose + "'/" + coin + "'/" + account + "'/" + chain + "/" + i, address: await addressFromKey(type, ck, net)}); }
   return out;
 }
+// Addresses of an account public key: key/chain/index, public derivation only (no private key exists here).
+async function watchAddresses(ctx, type, chain, from, n){
+  const k = ctx.key, [cp, cc] = await ckdPub(k.pub, k.chain, chain), base = ctx.origin ? "[" + ctx.origin.fp + ctx.origin.path.slice(1) + "]" : "key";
+  const out = [];
+  for(let i = from; i < from + n && i <= 2147483647; i++){ const [pk] = await ckdPub(cp, cc, i); out.push({index: i, path: base + "/" + chain + "/" + i, address: await addressFromPub(type, pk, ctx.net)}); }
+  return out;
+}
 function wvSeedQrHide(){
   document.getElementById("wvsImg").textContent = ""; document.getElementById("wvsCap").textContent = ""; document.getElementById("wvsBox").style.display = "none";
 }
 function wvSeedQr(kind){
-  if(!wvCtx) return;
+  if(!wvCtx || wvCtx.kind === "pub") return;
   const words = wvCtx.mnemonic.split(" ");
   let q; try { q = seedQrMatrix(words, kind); } catch(e) { return alert("SeedQR unavailable: " + e.message); }
   document.getElementById("wvsImg").innerHTML = qrSvg(q.rows);
@@ -4829,18 +4862,22 @@ function clearWalletView(){
   document.getElementById("wvList").textContent = ""; document.getElementById("wvFp").textContent = ""; document.getElementById("wvIcon").textContent = "";
   document.getElementById("wvErr").textContent = ""; document.getElementById("wvPath").textContent = "";
   hideAddrQr("wvq"); wvSeedQrHide();
+  for(const id of ["wvType","wvNet","wvAcct"]) document.getElementById(id).disabled = false;
+  if(document.getElementById("wvAcct").value === "-") document.getElementById("wvAcct").value = "0";
+  document.getElementById("wvBanner").textContent = "Imported: these words were typed or scanned here, not made by this page. The same words and passphrase give the same wallet in any app.";
+  for(const id of ["wvSqBlock","wvSheetBtn","wvSheetHint"]) document.getElementById(id).style.display = "";
   const d = document.getElementById("walletView"); d.style.display = "none"; d.open = false;
 }
 async function wvRefresh(){
   if(!wvCtx) return;
   const mine = ++wvSeq, err = document.getElementById("wvErr"), raw = document.getElementById("wvAcct").value.trim();
   hideAddrQr("wvq");
-  const badAcct = !/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647;
+  const badAcct = wvCtx.kind !== "pub" && (!/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647);
   if(badAcct){ err.textContent = "The account must be a whole number from 0 to 2147483647."; document.getElementById("wvList").textContent = ""; document.getElementById("wvPath").textContent = ""; return; }
   err.textContent = "";
   const type = document.getElementById("wvType").value, net = document.getElementById("wvNet").value, chain = parseInt(document.getElementById("wvChain").value, 10), acct = parseInt(raw, 10);
   let rows;
-  try { rows = await walletAddresses(await mnemonicToSeed(wvCtx.mnemonic, wvCtx.pass), type, net, acct, chain, wvFrom, WV_PAGE); }
+  try { rows = wvCtx.kind === "pub" ? await watchAddresses(wvCtx, type, chain, wvFrom, WV_PAGE) : await walletAddresses(await mnemonicToSeed(wvCtx.mnemonic, wvCtx.pass), type, net, acct, chain, wvFrom, WV_PAGE); }
   catch(e) { if(mine === wvSeq) err.textContent = "Addresses unavailable: " + e.message; return; }
   if(mine !== wvSeq || !wvCtx) return;
   const ol = document.getElementById("wvList"); ol.textContent = "";
@@ -4851,7 +4888,7 @@ async function wvRefresh(){
   document.getElementById("wvNext").disabled = wvFrom + WV_PAGE > 2147483647;
 }
 function printRecoverySheet(){
-  if(!wvCtx || !wvCtx.shown) return alert("Check a seed phrase first, then open the wallet.");
+  if(!wvCtx || !wvCtx.shown || wvCtx.kind === "pub") return alert("Check a seed phrase first, then open the wallet.");
   const sh = wvCtx.shown, n = wvCtx.mnemonic.split(" ").length, T = SCRIPT_TYPES[sh.type];
   if(hasSeed() && wvCtx.mnemonic === document.getElementById("genResult").textContent.split("\n")[0] && wvCtx.pass === document.getElementById("passphrase").value && !passMismatchQuiet()) bkTick("bk4");
   const po = document.getElementById("printOnly"); po.textContent = "";
@@ -4877,6 +4914,86 @@ function wvPage(d){
   wvFrom = Math.max(0, Math.min(2147483647 - WV_PAGE + 1, wvFrom + d * WV_PAGE)); wvRefresh();
 }
 function wvReset(){ if(!wvCtx) return; wvFrom = 0; wvRefresh(); }
+// Watch-only input (v2.2.0): an account extended public key or a single-key descriptor wpkh / sh(wpkh) / pkh / tr, with an optional
+// [fingerprint/path] key origin, an optional /0/*, /1/* or /<0;1>/* ending and an optional #checksum. Private keys are refused.
+async function parseWatchInput(raw){
+  const q = String(raw || "").replace(/\s+/g, "");
+  if(!q) throw new Error("Paste an xpub, ypub or zpub (tpub, upub or vpub for testnet), or a descriptor.");
+  if(/^[a-z]+\(/.test(q) && !/^(wpkh|sh\(wpkh|pkh|tr)\(/.test(q)) throw new Error("This view reads single-key wpkh(), sh(wpkh()), pkh() and tr() descriptors. For multisig, use the multisig tool in EXTRA TOOLS.");
+  let keyStr = q, type = null, origin = null, chain = null;
+  if(/^(wpkh|sh\(wpkh|pkh|tr)\(/.test(q)){
+    const m = /^(wpkh|sh\(wpkh|pkh|tr)\((?:\[([0-9a-fA-F]{8})((?:\/[0-9]{1,10}[h'H]?){0,10})\])?([1-9A-HJ-NP-Za-km-z]{100,120})(\/0\/\*|\/1\/\*|\/<0;1>\/\*)?\)(\))?(?:#([0-9a-z]{8}))?$/.exec(q);
+    if(!m) throw new Error("This descriptor could not be read. Check that it is complete: one key, with an optional [fingerprint/path] before it and /0/* after it.");
+    type = m[1] === "sh(wpkh" ? "sh-wpkh" : m[1];
+    if((type === "sh-wpkh") !== (m[6] === ")")) throw new Error("The brackets of this descriptor do not match.");
+    if(m[7]){ let ok = false; try { ok = descriptorChecksum(q.slice(0, q.indexOf("#"))) === q; } catch(e) { ok = false; } if(!ok) throw new Error("The descriptor checksum (after #) does not match. Check for a typo."); }
+    keyStr = m[4]; if(m[2]) origin = {fp: m[2].toLowerCase(), path: "m" + m[3].replace(/[hH]/g, "'")};
+    if(m[5] === "/1/*") chain = 1;
+  }
+  const k = await parseExtendedKey(keyStr);
+  if(k.type === "ms-wsh" || k.type === "ms-sh-wsh") throw new Error("This is a multisig cosigner key (Zpub or Ypub). Use the multisig tool in EXTRA TOOLS.");
+  const keyType = k.type === "other" ? null : k.type;
+  if(type && keyType && type !== keyType) throw new Error("The descriptor is for " + SCRIPT_TYPES[type].label + ", but the key is a " + (keyType === "wpkh" ? "zpub or vpub" : "ypub or upub") + " (" + SCRIPT_TYPES[keyType].label + ").");
+  return {key: k, net: k.net, type: type || keyType, fixedType: !!(type || keyType), origin, chain};
+}
+async function openWatchOnly(){
+  if(!gateOk()) return;
+  const st = document.getElementById("wpStatus");
+  let w;
+  try { w = await parseWatchInput(document.getElementById("wpIn").value); }
+  catch(e) { clearWalletView(); st.className = "status bad"; st.textContent = e.message; return; }
+  clearWalletView();
+  wvCtx = {kind: "pub", key: w.key, net: w.net, origin: w.origin}; const mine = wvSeq;
+  const tSel = document.getElementById("wvType"), nSel = document.getElementById("wvNet"), aIn = document.getElementById("wvAcct"), cSel = document.getElementById("wvChain");
+  nSel.value = w.net; nSel.disabled = true;
+  if(w.type){ tSel.value = w.type; } tSel.disabled = w.fixedType;
+  const parts = w.origin ? w.origin.path.split("/") : [], last = parts.length === 4 ? parts[3].replace("'", "") : "";
+  aIn.value = /^[0-9]+$/.test(last) ? last : "-"; aIn.disabled = true;
+  if(w.chain !== null) cSel.value = String(w.chain);
+  st.className = "status ok";
+  st.textContent = "Watch-only wallet opened: " + (w.net === "test" ? "testnet " : "") + "public key" + (w.key.depth !== 3 ? " at depth " + w.key.depth + " (an account key is usually at depth 3; check the addresses carefully)" : "") + "." + (w.fixedType ? "" : " A plain xpub does not say which address type it is for: pick the type your wallet uses.");
+  document.getElementById("wvBanner").textContent = "Watch-only: public key only. It shows addresses but can never spend, and it holds no seed words.";
+  document.getElementById("wvSqBlock").style.display = "none"; document.getElementById("wvSheetBtn").style.display = "none"; document.getElementById("wvSheetHint").style.display = "none";
+  document.getElementById("walletView").style.display = ""; document.getElementById("walletView").open = true;
+  if(w.origin){ document.getElementById("wvFp").textContent = "Master fingerprint (from the descriptor): " + w.origin.fp; showFpIcon("wvIcon", w.origin.fp); }
+  else document.getElementById("wvFp").textContent = "Master fingerprint: not known. A plain xpub does not contain it; a descriptor with [fingerprint/path] does.";
+  if(mine === wvSeq) await wvRefresh();
+}
+// Key-reuse check (v2.2.0): every extended public key in the pasted descriptors, with its [fingerprint/path] origin if given.
+// Keys are compared by their public key and chain code, so the same key written as xpub and as zpub still counts as the same key.
+function descriptorKeyList(text){
+  const out = [], re = /(?:\[([0-9a-fA-F]{8})((?:\/[0-9]{1,10}[h'H]?){0,10})\])?([xyztuvXYZTUV](?:pub|prv)[1-9A-HJ-NP-Za-km-z]{100,115})/g;
+  String(text || "").split(/\r?\n/).forEach((line, li) => { let m; re.lastIndex = 0; while((m = re.exec(line))) out.push({line: li + 1, fp: m[1] ? m[1].toLowerCase() : null, path: m[1] ? "m" + m[2].replace(/[hH]/g, "'") : null, key: m[3]}); });
+  return out;
+}
+async function keyReuseReport(text){
+  const list = descriptorKeyList(text);
+  if(!list.length) return {ok:false, text:"No extended public keys (xpub, ypub, zpub, tpub, Ypub, Zpub...) were found. Paste whole descriptors, one per line."};
+  if(list.some(k => /^[xyztuvXYZTUV]prv/.test(k.key))) return {ok:false, text:"STOP: this contains a PRIVATE key (xprv, yprv, zprv, tprv...). Never paste private keys here. Remove it, and treat that key as exposed if it was ever online."};
+  const ids = [];
+  for(const k of list){
+    let p; try { p = await parseExtendedKey(k.key); } catch(e) { return {ok:false, text:"Line " + k.line + ": " + e.message}; }
+    ids.push(Object.assign({}, k, {id: hex(p.pub) + hex(p.chain)}));
+  }
+  const lines = new Set(ids.map(k => k.line)), warn = [], short = (k) => k.key.slice(0, 8) + "\u2026" + k.key.slice(-6);
+  const byId = {}; ids.forEach(k => (byId[k.id] = byId[k.id] || []).push(k));
+  for(const g of Object.values(byId)) if(g.length > 1) warn.push("The same public key (" + short(g[0]) + ") appears " + g.length + " times, on line" + (new Set(g.map(k => k.line)).size > 1 ? "s " : " ") + Array.from(new Set(g.map(k => k.line))).join(" and ") + ". " + (new Set(g.map(k => k.line)).size === 1 ? "One key used twice in one multisig gives less protection than it looks: it can sign twice." : "Using one key in two wallets links them together and mixes their security."));
+  const byOrigin = {}; ids.filter(k => k.fp).forEach(k => (byOrigin[k.fp + k.path] = byOrigin[k.fp + k.path] || []).push(k));
+  for(const g of Object.values(byOrigin)) if(new Set(g.map(k => k.id)).size > 1) warn.push("Fingerprint " + g[0].fp + " with path " + g[0].path + " is given with different keys (lines " + Array.from(new Set(g.map(k => k.line))).join(", ") + "). The same seed and path always give the same key, so one of them is wrong, or comes from a different passphrase.");
+  for(const ln of lines){
+    const inLine = ids.filter(k => k.line === ln && k.fp), byFp = {};
+    inLine.forEach(k => (byFp[k.fp] = byFp[k.fp] || new Set()).add(k.id));
+    for(const [fp, set] of Object.entries(byFp)) if(set.size > 1) warn.push("Line " + ln + ": " + set.size + " different keys come from the same master fingerprint " + fp + ". In a multisig that means one seed controls " + set.size + " of the keys, so losing or leaking that one seed counts " + set.size + " times.");
+  }
+  const head = ids.length + " public key" + (ids.length === 1 ? "" : "s") + " found in " + lines.size + " line" + (lines.size === 1 ? "" : "s") + ".";
+  return warn.length ? {ok:false, text: head + "\n\nWARNING:\n- " + warn.join("\n- ")} : {ok:true, text: head + " No reused key, no seed used twice within one descriptor, and no fingerprint and path given with two different keys."};
+}
+async function checkKeyReuse(){
+  if(!gateOk()) return;
+  const st = document.getElementById("reuseStatus"), r = await keyReuseReport(document.getElementById("reuseIn").value);
+  st.className = "status " + (r.ok ? "ok" : "bad"); st.textContent = r.text;
+}
+function clearReuse(){ document.getElementById("reuseIn").value = ""; const st = document.getElementById("reuseStatus"); st.textContent = ""; st.className = "status"; }
 async function openWalletView(mnemonic, pass){
   clearWalletView();
   wvCtx = {mnemonic, pass}; const mine = wvSeq;
@@ -4936,7 +5053,9 @@ function toggleTheme() {
 }
 for(const id of ["checkAddr","checkAcct","phrase","verifyPass"]) document.getElementById(id).addEventListener("input", resetAddrScan);
 for(const id of ["phrase","verifyPass","childWords","childIndex","childLen","childSides","childRolls"]) document.getElementById(id).addEventListener("input", clearChild);
-for(const id of ["phrase","verifyPass"]) document.getElementById(id).addEventListener("input", clearWalletView);
+for(const id of ["phrase","verifyPass"]) document.getElementById(id).addEventListener("input", () => { if(wvCtx && wvCtx.kind !== "pub") clearWalletView(); });
+document.getElementById("reuseIn").addEventListener("input", () => { const st = document.getElementById("reuseStatus"); st.textContent = ""; st.className = "status"; });
+document.getElementById("wpIn").addEventListener("input", () => { if(wvCtx && wvCtx.kind === "pub") clearWalletView(); const st = document.getElementById("wpStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wType").addEventListener("change", refreshWatch);
 document.getElementById("wNet").addEventListener("change", refreshWatch);
 document.getElementById("wAcct").addEventListener("input", refreshWatch);
@@ -4997,6 +5116,8 @@ function setGate(state, text, cls){
   document.getElementById("verifyBtn").disabled = !on;
   document.getElementById("checkAddrBtn").disabled = !on;
   document.getElementById("checkAcctsBtn").disabled = !on;
+  document.getElementById("wpBtn").disabled = !on;
+  document.getElementById("reuseBtn").disabled = !on;
   document.getElementById("childBtn").disabled = !on;
   wdUpdate();
 }
