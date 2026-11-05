@@ -691,17 +691,18 @@ async function probe(w, mutated) {
     if (!nextOff()) fails.push('guide: NEXT locked with no rolls');
     $('rolls').value = D50.slice(0, 49); $('rolls').oninput(); if (!nextOff()) fails.push('guide: NEXT still locked one roll short');
     $('rolls').value = D50; $('rolls').oninput(); if (nextOff()) fails.push('guide: NEXT unlocks with enough rolls');
-    $('advanced').open = false; w.guideStep(1); if (!/step 3 of 5/.test($('gTitle').textContent) || gh('advanced') || !$('advanced').open || nextOff()) fails.push('guide: step 3 shows the passphrase box and can be skipped');
+    $('advanced').open = false; w.guideStep(1); if (!/step 3 of 5/.test($('gTitle').textContent) || !gh('advanced') || gh('wordGrid') || gh('genResult') || !gh('rolls') || !nextOff()) fails.push('guide: step 3 shows the FORGE button and the words, and is locked until FORGE');
     w.guideStep(-1); if (!/step 2 of 5/.test($('gTitle').textContent)) fails.push('guide: BACK goes back one step');
     { const gx = $('gExit'); if (!gx || !$('guidePanel').contains(gx) || gx.closest('.gstep') || !/EXIT GUIDE/.test(gx.textContent)) fails.push('guide: EXIT GUIDE button is in the always-visible top of the panel');
       for (const n of [1, 2, 3, 4, 5]) { w.guideN = n; w.guideRender(); if (!gx || gx.closest('.gh') || $('guidePanel').querySelectorAll('.gstep').length !== 5 || gx.closest('.gstep')) fails.push('guide: EXIT GUIDE present on step ' + n); }
       w.guideN = 2; w.guideRender(); if (gx) gx.click(); if (B.classList.contains('guided') || w.document.querySelectorAll('.gh').length || $('guideBtn').getAttribute('aria-pressed') !== 'false' || $('guideBtn').textContent !== 'GUIDE ME') fails.push('guide: EXIT GUIDE turns the guide off and shows everything'); w.toggleGuide(); w.guideStep(1); }
-    w.guideStep(1); w.guideStep(1); if (!/step 4 of 5/.test($('gTitle').textContent) || gh('wordGrid') || gh('forgeBtn'.replace('forgeBtn', 'genResult')) || !gh('rolls') || !nextOff()) fails.push('guide: step 4 locked until FORGE');
-    w.guideStep(1); if (/step 5/.test($('gTitle').textContent)) fails.push('guide: cannot skip FORGE');
+    w.guideStep(1); if (!/step 3 of 5/.test($('gTitle').textContent) || gh('wordGrid') || gh('genResult') || !gh('rolls') || !nextOff()) fails.push('guide: step 3 locked until FORGE');
+    w.guideStep(1); if (/step 4/.test($('gTitle').textContent)) fails.push('guide: cannot skip FORGE');
     await w.generate(); if (nextOff()) fails.push('guide: FORGE unlocks NEXT');
+    w.guideStep(1); if (!/step 4 of 5/.test($('gTitle').textContent) || gh('advanced') || !$('advanced').open || gh('wordGrid') || nextOff()) fails.push('guide: step 4 shows the passphrase box under the words and can be skipped');
     w.guideStep(1); if (!/step 5 of 5/.test($('gTitle').textContent) || $('gNext').textContent !== 'DONE' || gh('watchBox') || gh('addrBox') || !gh('wordGrid')) fails.push('guide: step 5 shows the checks and DONE');
     w.guideStep(1); if (B.classList.contains('guided') || w.document.querySelectorAll('.gh').length) fails.push('guide: DONE turns the guide off and shows everything');
-    w.toggleGuide(); if (!/step 4 of 5/.test($('gTitle').textContent)) fails.push('guide: reopening with a seed starts at the words');
+    w.toggleGuide(); if (!/step 3 of 5/.test($('gTitle').textContent)) fails.push('guide: reopening with a seed starts at the words');
     w.clearAll(); await new Promise(r => setTimeout(r, 20)); if (!/step 1 of 5/.test($('gTitle').textContent)) fails.push('guide: CLEAR returns to step 1');
     mode('coin'); words(24); if ($('gNeed').textContent !== '256' || $('gUnit').textContent !== 'flips') fails.push('guide: coin 24 words needs 256 flips');
     mode('dice'); words(24); if ($('gNeed').textContent !== '99') fails.push('guide: dice 24 words needs 99 rolls'); words(12);
@@ -1288,7 +1289,7 @@ async function detect(mutated) {
   if (!/PASSED/.test(badge)) return { by: 'self-test gate' };
   let f; try { f = await probe(w, mutated); } catch (e) { return { by: 'end-to-end probe (page error: ' + String(e && e.message).slice(0, 60) + ')' }; }
   if (process.env.MUT_DEBUG && f.length) console.log('PROBE FAILS:', f);
-  return f.length ? { by: 'end-to-end probe (' + f[0] + ')' } : { by: null };
+  return f.length ? { by: 'end-to-end probe (' + (process.env.MUT_ONLY === '^$' ? f.join(' || ') : f[0]) + ')' } : { by: null };
 }
 
 // [name, find (must occur exactly once), replace, equivalent?]
