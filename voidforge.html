@@ -742,22 +742,6 @@
     <div id="entropyStatus" data-g="2" style="font-size:13.5px; margin-top:4px; font-weight:600;"></div>
     <div id="bitsNote" data-g="2" style="font-size:13.5px; margin-top:4px; color:var(--muted);"></div>
     <div id="ignoredNote" data-g="2" style="font-size:13.5px; margin-top:4px; font-weight:600; color:var(--danger);"></div>
-    <details id="rollStats" data-g="2">
-      <summary>Your rolls: history and fairness chart<small>See what you rolled and whether the faces came up evenly.</small></summary>
-    <div id="rollHistory" data-g="2" style="font-size:12.5px;color:var(--muted);margin-top:6px;min-height:16px;"></div>
-    <div id="diceVisual" data-g="2" style="font-size:30px; letter-spacing:4px; margin-top:4px; min-height:28px;"></div>
-    <div id="rollChart" data-g="2" class="rc" role="img" aria-label="Chart of how many times each face came up" style="display:none;"></div>
-    </details>
-    <details id="advanced" data-g="3">
-      <summary id="advSummary">Advanced options (passphrase, note)</summary>
-      <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
-        <input type="password" id="passphrase" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Optional passphrase" style="flex:1; min-width:0;" oninput="updateAdvSummary()">
-        <button type="button" class="secondary small" onclick="togglePassphrase(this)">SHOW</button>
-      </div>
-      <input type="password" id="passphrase2" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Confirm passphrase (must match)" style="margin-top:6px;" oninput="updateAdvSummary()">
-      <div style="font-size:13.5px; color:var(--muted); margin-top:6px;">A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> makes a different wallet from the same words. Write it down separately: without it the funds cannot be recovered. Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div>
-      <input type="text" id="note" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Optional note (not used in the seed)" style="margin-top:6px;">
-    </details>
     <details id="moreBox">
       <summary>More options<small>Word tiles, and a demo of how rolls scramble the words.</small></summary>
     <details id="wdBox" data-g="1">
@@ -791,6 +775,22 @@
         <div id="demoGrid" aria-label="Demo words, not your seed"></div>
       </div>
     </details>
+    </details>
+    <details id="advanced" data-g="3">
+      <summary id="advSummary">Advanced options (passphrase, note)</summary>
+      <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
+        <input type="password" id="passphrase" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Optional passphrase" style="flex:1; min-width:0;" oninput="updateAdvSummary()">
+        <button type="button" class="secondary small" onclick="togglePassphrase(this)">SHOW</button>
+      </div>
+      <input type="password" id="passphrase2" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Confirm passphrase (must match)" style="margin-top:6px;" oninput="updateAdvSummary()">
+      <div style="font-size:13.5px; color:var(--muted); margin-top:6px;">A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> makes a different wallet from the same words. Write it down separately: without it the funds cannot be recovered. Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div>
+      <input type="text" id="note" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Optional note (not used in the seed)" style="margin-top:6px;">
+    </details>
+    <details id="rollStats" data-g="2">
+      <summary>Your rolls: history and fairness chart<small>See what you rolled and whether the faces came up evenly.</small></summary>
+    <div id="rollHistory" data-g="2" style="font-size:12.5px;color:var(--muted);margin-top:6px;min-height:16px;"></div>
+    <div id="diceVisual" data-g="2" style="font-size:30px; letter-spacing:4px; margin-top:4px; min-height:28px;"></div>
+    <div id="rollChart" data-g="2" class="rc" role="img" aria-label="Chart of how many times each face came up" style="display:none;"></div>
     </details>
    </div>
    <div class="gen-right" id="genRight">
