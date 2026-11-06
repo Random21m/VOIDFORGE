@@ -17,6 +17,8 @@ function load(opts={}){
       w.addEventListener('error',e=>errors.push(e.message));
       w.URL.createObjectURL=b=>{st.blob=b;return 'blob:x';}; w.URL.revokeObjectURL=()=>{};
       w.HTMLAnchorElement.prototype.click=function(){}; w.Element.prototype.scrollIntoView=function(){};
+      if(opts.offline) Object.defineProperty(w.navigator,'onLine',{configurable:true,get:()=>false});
+      if(opts.ack) w.sessionStorage.setItem('voidforge-ack','1');
       if(opts.focusSpy){ st.focus=[]; w.HTMLElement.prototype.focus=function(o){ st.focus.push([this.id,o]); }; }
       w.print=()=>{ st.printed++; st.printHTML=w.document.getElementById('printOnly').textContent; st.printCells=[...w.document.querySelectorAll('#printOnly .ps-cell')].map(c=>c.textContent); st.printClass=w.document.body.className; st.printQrText=w.document.getElementById('printQr').textContent; st.printQrHTML=w.document.getElementById('printQr').innerHTML; };
       Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async t=>{st.clip.push(t);}}});
@@ -163,9 +165,9 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(ic.length===2&&hs.every(h=>h.startsWith('data:'))&&(svgText.match(/<circle/g)||[]).length===5&&/^<svg[^>]*viewBox="0 0 64 64"/.test(svgText)&&/fill="#E3B83F"/.test(svgText)&&pb.subarray(1,4).toString()==='PNG'&&pb.readUInt32BE(16)===32&&pb.readUInt32BE(20)===32,'page icon: a data: SVG with the five-pip die and a 32x32 PNG are built in, and no icon link points to the network');
       ok(!t.w.document.querySelector('link[rel~="apple-touch-icon"], link[rel="manifest"]')&&/never from a website\. Check the file.s SHA256 first \(see the README\)\. The online copy on the project page is for practice only\. Its address is random21m\.github\.io\/VOIDFORGE, the only link on this page/.test(t.w.document.body.textContent),'page icon: nothing else is linked, and the About page says the online copy is for practice only'); }
     { // Every main "go" action across the page is a primary (cyan) button, not grey "secondary" -- a uniform rule, not just START DRILL (v1.27.3)
-      const primaryIds=['forgeBtn','prStart','prCheckBtn','checkAddrBtn','checkAcctsBtn','reforgeWordsBtn','psbtBtn','cmpBtn','childBtn'];
-      const missing=primaryIds.filter(id=>{ const b=t.$(id); return !b || b.classList.contains('secondary'); });
-      ok(missing.length===0,'every main action button (FORGE SEED, START PRACTICE, CHECK MY PAPER, CHECK ADDRESS, Reforge SEARCH, INSPECT, COMPARE, DERIVE CHILD SEED) is the cyan primary style, none grey (missing: '+missing.join(', ')+')');
+      const primaryIds=['forgeBtn','prStart','prCheckBtn','checkAddrBtn','checkAcctsBtn','reforgeWordsBtn','psbtBtn','cmpBtn','childBtn','wpBtn','reuseBtn','sigBtn'];
+      const missing=primaryIds.filter(id=>{ const b=t.$(id); return !b || b.classList.contains('secondary') || b.classList.contains('btn-clear'); });
+      ok(missing.length===0,'every main action button (FORGE SEED, START PRACTICE, CHECK MY PAPER, CHECK ADDRESS, TRY ACCOUNTS, Reforge SEARCH, INSPECT, COMPARE, DERIVE CHILD SEED, OPEN WATCH-ONLY, CHECK KEYS, VERIFY SIGNATURE) is the gold primary style, none grey (missing: '+missing.join(', ')+')');
       const drillBtn=[...t.$('drillStart').querySelectorAll('button')][0];
       ok(drillBtn&&drillBtn.textContent.trim()==='START DRILL'&&!drillBtn.classList.contains('secondary'),'START DRILL is also the cyan primary style');
       const css=html.match(/<style>[\s\S]*?<\/style>/)[0];
@@ -393,10 +395,11 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   { // Roll sheet (v1.34.0): a blank numbered sheet for dice or coin, sized to the chosen mode and word count
     const setMode=m=>{ t.d.querySelector('input[name="mode"][value="'+m+'"]').checked=true; }, setWords=n=>{ t.d.querySelector('input[name="words"][value="'+n+'"]').checked=true; };
     const sheet=()=>{ const p0=t.st.printed; t.w.printRollSheet(); const r={n:t.st.printed-p0,cells:t.st.printCells.slice(),txt:t.st.printHTML,cls:t.st.printClass}; t.w.dispatchEvent(new t.w.Event('afterprint')); return r; };
-    let r=sheet(); ok(r.n===1&&r.cells.length===50&&r.cells.every((c,i)=>c===String(i+1))&&/^VOIDFORGE DICE ROLL SHEET/.test(r.txt)&&/50 rolls for a 12-word seed/.test(r.txt)&&/Roll one die and write its number \(1 to 6\)/.test(r.txt)&&/print-seed/.test(r.cls)&&!/1 means/.test(r.txt),'PRINT ROLL SHEET: 50 numbered boxes for 12 words of dice');
-    setWords(24); r=sheet(); ok(r.cells.length===99&&/99 rolls for a 24-word seed/.test(r.txt),'roll sheet: 99 boxes for 24 words of dice');
-    setMode('coin'); r=sheet(); ok(r.cells.length===256&&/^VOIDFORGE COIN FLIP SHEET/.test(r.txt)&&/256 flips for a 24-word seed/.test(r.txt)&&/1 means: ______   0 means: ______/.test(r.txt)&&/write 1 or 0/.test(r.txt),'roll sheet: 256 boxes for 24 words of coin flips, with the sides to fill in');
-    setWords(12); r=sheet(); ok(r.cells.length===128,'roll sheet: 128 boxes for 12 words of coin flips');
+    let r=sheet(); ok(r.n===1&&r.cells.length===60&&r.cells.every((c,i)=>c===String(i+1))&&/^VOIDFORGE DICE ROLL SHEET/.test(r.txt)&&/50 rolls for a 12-word seed/.test(r.txt)&&/Roll one die and write its number \(1 to 6\)/.test(r.txt)&&/print-seed/.test(r.cls)&&!/1 means/.test(r.txt),'PRINT ROLL SHEET: 50 numbered boxes for 12 words of dice, then 10 more');
+    ok(/Extra rolls \(optional\)\. Every one you type in counts\. Exactly 50 gives the same words as SeedSigner and Coldcard; with more, only Coldcard makes the same words\./.test(r.txt),'roll sheet: the extra boxes are optional and the sheet says who makes the same words');
+    setWords(24); r=sheet(); ok(r.cells.length===109&&/99 rolls for a 24-word seed/.test(r.txt),'roll sheet: 99 boxes for 24 words of dice');
+    setMode('coin'); r=sheet(); ok(r.cells.length===266&&/Exactly 256 gives the same words as SeedSigner; with more, SeedSigner makes different words\./.test(r.txt)&&/^VOIDFORGE COIN FLIP SHEET/.test(r.txt)&&/256 flips for a 24-word seed/.test(r.txt)&&/1 means: ______   0 means: ______/.test(r.txt)&&/write 1 or 0/.test(r.txt),'roll sheet: 256 boxes for 24 words of coin flips, with the sides to fill in');
+    setWords(12); r=sheet(); ok(r.cells.length===138,'roll sheet: 128 boxes for 12 words of coin flips, then 10 more');
     setMode('dice'); r=sheet(); ok(/as secret as your seed/.test(r.txt)&&/shred/.test(r.txt)&&t.$('printOnly').textContent===''&&!t.d.body.classList.contains('print-seed'),'roll sheet: warns that a filled sheet is secret, and is cleaned up after printing');
     ok(!!t.$('rollSheetBtn')&&/printRollSheet/.test(t.$('rollSheetBtn').getAttribute('onclick')),'PRINT ROLL SHEET button is on the page'); }
   { // Auto-clear (v1.34.0): optional wipe after idle time or when the tab is hidden (on a fresh page, so the wipe does not disturb the tests that follow)
@@ -722,9 +725,24 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(t.st.alerts.length===2&&t.st.alerts.every(m=>/do not match/.test(m)),'after a mismatch PRINT and DOWNLOAD refuse (SEND TO CHECK still sends the words, which do not depend on the passphrase)');
     t.$('passphrase').value=''; t.$('passphrase2').value=''; t.w.updateAdvSummary(); ok(!/PASSPHRASE SET/.test(t.$('advSummary').textContent),'advanced summary flag clears');
     t.$('rolls').value='123'; t.w.updateCount(); await t.w.generate(); eq(t.$('genResult').textContent,'Enter 47 more rolls (3 of 50).','too few rolls: plain message');
-    t.$('rolls').value='1'.repeat(53); t.w.updateCount(); await t.w.generate(); eq(t.$('genResult').textContent,'Remove 3 rolls (53 of 50).','too many rolls: plain message');
+    // v2.3.0: more than the minimum is allowed and every roll is hashed (as Coldcard does); expected words from Node's SHA-256 and the BIP39 list
+    { const WL=t.w.eval('WORDLIST'), bits=b=>[...b].map(x=>x.toString(2).padStart(8,'0')).join('');
+      const mnFrom=(rolls,wc)=>{ const ent=nc.createHash('sha256').update(rolls).digest().subarray(0,wc===24?32:16), cs=bits(nc.createHash('sha256').update(ent).digest()).slice(0,ent.length/4); return (bits(ent)+cs).match(/.{11}/g).map(b=>WL[parseInt(b,2)]).join(' '); };
+      const R53=rnd(53,6); t.$('rolls').value=R53; t.w.updateCount(); await t.w.generate(); eq(t.$('genResult').textContent.split('\n')[0],mnFrom(R53,12),'more rolls than needed: 53 rolls make 12 words from the SHA-256 of all 53');
+      ok(/^Every roll counts: all 53 are hashed\. Coldcard makes the same words from these rolls; SeedSigner takes exactly 50, so it would make different words\.$/.test(t.$('countNote').textContent),'more rolls: the note says every roll counts, Coldcard matches and SeedSigner does not');
+      const R50=rnd(50,6); t.$('rolls').value=R50; t.w.updateCount(); ok(t.$('countNote').textContent==='Exactly 50 rolls: SeedSigner and Coldcard make the same words from these rolls.','exactly the minimum: the note says SeedSigner and Coldcard match');
+      t.$('rolls').value=R50.slice(0,49); t.w.updateCount(); ok(t.$('countNote').textContent==='','below the minimum: no note');
+      t.$('rolls').value=rnd(100,6); t.w.updateCount(); ok(!/twice/.test(t.$('countNote').textContent),'twice the minimum exactly: no double-paste note');
+      t.$('rolls').value=rnd(101,6); t.w.updateCount(); ok(/all 101 are hashed\..* That is more than twice the 50 needed: fine if you rolled them all, but if you pasted them, check nothing went in twice\.$/.test(t.$('countNote').textContent),'more than twice the minimum: a gentle double-paste note');
+      t.words(24); const R140=rnd(140,6); t.$('rolls').value=R140; t.w.updateCount(); await t.w.generate(); eq(t.$('genResult').textContent.split('\n')[0],mnFrom(R140,24),'more rolls: 140 rolls make 24 words from the SHA-256 of all 140');
+      ok(/SeedSigner takes exactly 99/.test(t.$('countNote').textContent)&&/dice rolls or more$/.test(t.$('lenNote').textContent)&&/^99 dice rolls or more$/.test(t.$('lenNote').textContent),'24 words: the note and the length line say 99 or more');
+      t.mode('coin'); const C130=rnd(130,2); t.words(12); t.$('rolls').value=C130; t.w.updateCount(); await t.w.generate(); eq(t.$('genResult').textContent.split('\n')[0],mnFrom(C130,12),'more flips: 130 flips make 12 words from the SHA-256 of all 130');
+      ok(t.$('countNote').textContent==='Every flip counts: all 130 are hashed. SeedSigner takes exactly 128 flips, so it would make different words.','more flips: the note names SeedSigner only (Coldcard has no coin mode)');
+      t.$('rolls').value=rnd(128,2); t.w.updateCount(); ok(t.$('countNote').textContent==='Exactly 128 flips: SeedSigner makes the same words from these flips.'&&t.$('lenNote').textContent==='128 coin flips or more','exactly 128 flips: SeedSigner matches');
+      t.$('rolls').value=rnd(257,2); t.w.updateCount(); ok(/more than twice the 128 needed: fine if you flipped them all/.test(t.$('countNote').textContent),'more than twice the flips: the double-paste note says flipped');
+      t.mode('dice'); t.words(12); t.$('rolls').value=''; t.w.updateCount(); ok(/You need at least <b id="gNeed">50<\/b> <span id="gUnit">rolls<\/span>; more are fine, and every one counts\./.test(html),'guide: at least 50, more are fine'); }
     t.$('rolls').value='1'.repeat(49); t.w.updateCount(); await t.w.generate(); eq(t.$('genResult').textContent,'Enter 1 more roll (49 of 50).','one roll short: singular');
-    t.$('rolls').value='1'.repeat(51); t.w.updateCount(); await t.w.generate(); eq(t.$('genResult').textContent,'Remove 1 roll (51 of 50).','one roll over: singular');
+
     // roll chart: counts per face, display only
     t.$('rolls').value=''; t.w.updateCount(); eq(t.$('rollChart').style.display,'none','chart hidden when empty');
     t.$('rolls').value='1122223 6x6 6'; t.w.updateCount();
@@ -797,7 +815,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // v1.2: only 12/24 words, no copy-seed button
   eq([...t.d.querySelectorAll('input[name=words]')].map(e=>e.value).join(','),'12,24','only 12 and 24 word options are offered');
   ok(![...t.d.querySelectorAll('button')].some(b=>/COPY SEED/.test(b.textContent))&&typeof t.w.copyResult==='undefined','no copy-seed button or function');
-  { const pb=t.$('privacyBox'); ok(!!pb&&/Privacy/.test(pb.querySelector('summary').textContent)&&pb.querySelectorAll('ul li').length===6&&!pb.querySelector('a,script,img,form,input'),'privacy box has six points and no links or inputs');
+  { const pb=t.$('privacyBox'); ok(!!pb&&/Privacy/.test(pb.querySelector('summary').textContent)&&pb.querySelectorAll('ul li').length===7&&!pb.querySelector('a,script,img,form,input'),'privacy box has seven points (one is the session note for the start notice) and no links or inputs');
     const keys=[...html.matchAll(/localStorage\.setItem\("([^"]+)"/g)].map(m=>m[1]).sort().join(',');
     ok(keys==='voidforge-big,voidforge-theme'&&/Only two things are remembered/.test(pb.textContent),'privacy box: the page stores exactly the theme and text size, as the box says');
     ok(!/\b(fetch|XMLHttpRequest|WebSocket|sendBeacon)\s*\(/.test(html.replace(/const WORDLIST = \[.*?\];/s,'')),'privacy box: no network calls in the page'); }
@@ -974,7 +992,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const homeless=['rolls','forgeBtn','phrase','psbtInput','cmpA','msN','about','beforeCard','disclaimer'].filter(id=>!tl.$(id).closest('.tabpanel')); ok(homeless.length===0,'feature inventory: every tool lives inside a tab'+(homeless.length?' ('+homeless.join(', ')+')':''));
       ok(['printOnly','printQr'].every(id=>!tl.$(id).closest('.tabpanel')),'printing works from any tab: the print sheets sit outside the tabs');
       const btns=[...tl.d.querySelectorAll('button')].filter(b=>!b.closest('.tabpanel')&&!b.closest('#startGate')&&!b.closest('#tabs')).map(b=>b.textContent.trim().replace(/\s+/g,' ')).sort().join('|');
-      eq(btns,['DARK','DOWNLOAD FOR USB','GUIDE ME','PRINT SEED','PRINT STAMP SHEET','TEXT A+','Read before real keys \u2192'].sort().join('|'),'page frame holds exactly the top buttons and the notice link'); }
+      eq(btns,['DARK','DOWNLOAD FOR USB','END SESSION','GUIDE ME','PRINT SEED','PRINT STAMP SHEET','TEXT A+','Read before real keys \u2192'].sort().join('|'),'page frame holds exactly the top buttons and the notice link'); }
     // the three warnings and the disclaimer moved to About, with their text intact
     ok(/AIR-GAPPED USE ONLY/.test(tl.$('tp-about').textContent)&&/not been independently audited/.test(tl.$('disclaimer').textContent)&&tl.$('beforeCard').querySelectorAll('.sg-item').length===3,'About & help holds the air-gap warning, the disclaimer and the three computer-memory warnings');
     ok(!tl.$('tp-make').contains(tl.$('about'))&&tl.$('tp-tools').contains(tl.$('cardMulti'))&&tl.$('tp-tools').contains(tl.$('cardTools'))&&tl.$('tp-check').contains(tl.$('cardCheck')),'each card sits in the right tab');
@@ -1032,11 +1050,95 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     // reference words from the python-mnemonic library's English list
     const W=[["1","abandon",1],["2048","zoo",2048],["257","cactus",257],["680","female",680],["3 A 7","female",680],["3-a-7","female",680],["1 0 0","abandon",1],["8 F F","zoo",2048],["2 0 0","cactus",257],["300","century",300],[" 300 ","century",300]];
     ok(W.every(([i,wd,n])=>{const r=F(i);return r.word===wd&&r.idx===n-1&&r.msg==='Word '+n+': '+wd;}),'word finder: numbers and D8 + hex dice give the right BIP39 words');
-    ok(['9 0 0','0 0 0','3 G 7','abc','3 A','3 A 7 7','-'].every(x=>F(x).word===undefined&&F(x).idx===undefined&&F(x).msg==='Type a number from 1 to 2048, or a D8 roll (1-8) then two hex digits (0-F), like 3 A 7.'),'word finder: bad entries give a hint and no word');
+    ok(['9 0 0','0 0 0','3 G 7','abc','3 A','3 A 7 7','-'].every(x=>F(x).word===undefined&&F(x).idx===undefined&&F(x).msg==='Type a number from 1 to 2048, a D8 roll (1-8) then two hex digits (0-F) like 3 A 7, or a BitBox02 diceware roll like 2143 2 T.'),'word finder: bad entries give a hint and no word');
     ok(['0','2049','99999'].every(x=>F(x).msg==='A word number is between 1 and 2048.'&&F(x).idx===undefined),'word finder: out-of-range numbers are explained');
     ok(F('').msg===''&&F('   ').msg==='','word finder: empty entry says nothing');
     tw.w.document.getElementById('wdFind').value='3 A 7'; tw.w.wdFind(); ok(tw.$('wdFound').textContent==='Word 680: female','word finder: shows the word on the page');
     ok(tw.$('wdFind').closest('#tp-make')!==null,'word finder: lives in the Make a seed tab'); }
+  { // v2.3.0 BitBox02 diceware: the table code in the word finder, ADD WORD, and the 24th word from 3 flips (T = 1, H = 0)
+    const tb=load(); await tb.ready(); const F=x=>tb.w.wdFindWord(x), WL=tb.w.eval('WORDLIST');
+    const bbIdx=(c)=>{ const d=c.slice(0,5).split('').map(Number); return (((d[0]-1)*64+(d[1]-1)*16+(d[2]-1)*4+(d[3]-1))*8)+(d[4]-1)*2+(c[5]==='T'?1:0); };
+    // the printed table rows that BitBox publishes: 1111 = abandon ... abstract, 2111 starts at divorce, 4444 ends at zoo
+    ok(['1111 1 H','1111 1 T','1111 2 H','1111 2 T','1111 3 H','1111 3 T','1111 4 H','1111 4 T'].map(x=>F(x).word).join(' ')==='abandon ability able about above absent absorb abstract','BitBox02 table: row 1111 is abandon to abstract, in the printed order');
+    ok(F('2111 1 H').word==='divorce'&&F('4444 4 T').word==='zoo'&&F('4444 4 H').word==='zone'&&F('1112 1 H').word==='absurd','BitBox02 table: row 2111 starts at divorce, 4444 ends at zoo');
+    let all=true; const seen=new Set(); for(let a=1;a<=4;a++)for(let b2=1;b2<=4;b2++)for(let c=1;c<=4;c++)for(let d=1;d<=4;d++)for(let e=1;e<=4;e++)for(const f of 'HT'){ const code=''+a+b2+c+d+e+f, r=F(code.slice(0,4)+' '+code[4]+' '+f); if(r.idx!==bbIdx(code)||r.word!==WL[bbIdx(code)]) all=false; seen.add(r.idx); }
+    ok(all&&seen.size===2048,'BitBox02 table: all 2048 codes give 2048 different words, by the published formula');
+    ok(F('2143-2-t').word===F('2143 2 T').word&&F('21432T').word===F('2143 2 T').word&&F(' 2143 2 t ').msg==='Word '+(bbIdx('21432T')+1)+': '+WL[bbIdx('21432T')],'BitBox02 table: spaces, dashes and lower case are fine');
+    ok(F('11111').msg==='A word number is between 1 and 2048.'&&['5111 1 H','1111 5 H','1111 1 X','1111 1','1111 1 HT','0111 1 H'].every(x=>F(x).word===undefined&&/BitBox02 diceware roll like 2143 2 T/.test(F(x).msg)),'BitBox02 table: a die above 4, a missing coin or a wrong letter is refused');
+    // ADD WORD and Enter
+    tb.$('wdFind').value='1111 1 H'; ok(tb.w.wdAddFound()===true&&tb.$('wdWords').value==='abandon'&&tb.$('wdFind').value===''&&tb.$('wdFound').textContent==='Added word 1: abandon.','ADD WORD: adds the word and empties the finder');
+    tb.$('wdFind').value='4444 4 T'; tb.$('wdFind').dispatchEvent(new tb.w.KeyboardEvent('keydown',{key:'Enter',bubbles:true})); ok(tb.$('wdWords').value==='abandon zoo'&&/2 \/ 11 words/.test(tb.$('wdCount').textContent),'ADD WORD: Enter in the finder adds the next word and the count follows');
+    tb.$('wdFind').value='5555 5 H'; ok(tb.w.wdAddFound()===false&&tb.$('wdWords').value==='abandon zoo'&&/BitBox02/.test(tb.$('wdFound').textContent),'ADD WORD: a bad entry adds nothing and shows the hint');
+    ok(!!tb.$('wdAddBtn')&&tb.$('wdAddBtn').className==='secondary small'&&tb.$('wdAddBtn').closest('#wdBox'),'ADD WORD: a plain button in the Word draw box');
+    // the 24th word: official BitBox vector (23 x violin) and a random seed, checked with Node's SHA-256
+    { const cand=(idx,i)=>{ const bits=idx.map(n=>n.toString(2).padStart(11,'0')).join('')+i.toString(2).padStart(3,'0'), ent=Buffer.from(bits.match(/.{8}/g).map(b=>parseInt(b,2))); return WL[(i<<8)|nc.createHash('sha256').update(ent).digest()[0]]; };
+      const viol=Array(23).fill(WL.indexOf('violin')); ok([0,1,2,3,4,5,6,7].map(i=>cand(viol,i)).join(' ')==='boss coyote dry habit panel regular speed winter','BitBox02 last word: the reference calculation matches BitBox\'s own test vector');
+      tb.w.setMethod('words'); tb.$('wdLen').value='24'; tb.$('wordSel').value='24'; tb.$('wordSel').dispatchEvent(new tb.w.Event('change')); tb.$('wdWords').value=''; const codes=[], idx=[];
+      for(let k=0;k<23;k++){ const c=Array.from({length:5},()=>1+nc.randomInt(4)).join('')+(nc.randomInt(2)?'T':'H'); codes.push(c); idx.push(bbIdx(c)); tb.$('wdFind').value=c.slice(0,4)+' '+c[4]+' '+c[5]; tb.w.wdAddFound(); }
+      const flipsHT=['H','T','T'].map(()=>nc.randomInt(2)?'T':'H').join(''), i=parseInt(flipsHT.replace(/T/g,'1').replace(/H/g,'0'),2);
+      tb.$('wdFlips').value=flipsHT.replace(/T/g,'1').replace(/H/g,'0'); tb.w.wdUpdate(); ok(!tb.$('wdBtn').disabled,'BitBox02: 23 table words and 3 flips unlock MAKE SEED FROM WORDS');
+      await tb.w.wdGenerate(); const got=tb.$('genResult').textContent.split('\n')[0].split(' ');
+      ok(got.length===24&&got.slice(0,23).join(' ')===idx.map(n=>WL[n]).join(' ')&&got[23]===cand(idx,i),'BitBox02: the 24th word is the candidate BitBox shows for '+flipsHT+' (T = 1, H = 0)'); }
+    ok(/Using BitBox02&rsquo;s diceware table\?/.test(html)&&/T as 1 and H as 0/.test(html)&&/HHH picks the first, TTT the eighth/.test(html),'BitBox02: the Word draw box explains the table codes and the 3 flips'); }
+  { // v2.3.0 Verify a signed message: official BIP-322 vectors (bitcoin/bips) and Bitcoin Core's classic test vector, through the page
+    const ts=load(); await ts.ready(); const V=(a,m,sg)=>ts.w.verifyMessage(a,m,sg);
+    const CORE=['mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB','This is just a test message','INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0='];
+    const W1='bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l', SE='smpAkcwRAIgM2gBAQqvZX15ZiysmKmQpDrG83avLIT492QBzLnQIxYCIBaTpOaD20qRlEylyxFSeEA2ba9YOixpX8z46TSDtS40ASECx/EgAxlkQpQ9hYjgGu6EBCPMVPwVIVJqO4XCsMvViHI=';
+    const SH=['smpAkcwRAIgZRfIY3p7/DoVTty6YZbWS71bc5Vct9p9Fia83eRmw2QCICK/ENGfwLtptFluMGs2KsqoNSk89pO7F29zJLUx9a/sASECx/EgAxlkQpQ9hYjgGu6EBCPMVPwVIVJqO4XCsMvViHI=','smpAkgwRQIhAOzyynlqt93lOKJr+wmmxIens//zPzl9tqIOua93wO6MAiBi5n5EyAcPScOjf1lAqIUIQtr3zKNeavYabHyR8eGhowEhAsfxIAMZZEKUPYWI4BruhAQjzFT8FSFSajuFwrDL1Yhy'];
+    const TR=['bc1pss0zhytly75awhm6x2hhvd5lnzv3vssgrf9axfheq8ldyzn88ges79fler','No prefix fallback','AUCJYOwOjxYAvatTAGYaVlNXBVyFuc4MwNQkOuK2tl8xhfKDONd0NjfYyNSYcRqeCp8hsAnCEPHAVEkO9h6vbQ/R'];
+    let r=await V(...CORE); ok(r.state==='valid'&&/^VALID: the key of this address signed exactly this message\.\nFormat: classic \(BIP-137\), Legacy \(1\.\.\.\)\.\nA signature shows that whoever holds/.test(r.text),'signed message: Bitcoin Core\'s test vector is VALID, classic format');
+    r=await V(CORE[0],CORE[1]+'.',CORE[2]); ok(r.state==='invalid'&&/^NOT VALID: this signature does not match this address and this message\./.test(r.text),'signed message: one character more is NOT VALID');
+    r=await V(CORE[0],CORE[1]+'\r\n',CORE[2]); ok(r.state==='valid'&&/once spaces or line breaks at its start or end are removed/.test(r.text),'signed message: a trailing line break is accepted, with a clear warning');
+    r=await V('mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxC',CORE[1],CORE[2]); ok(r.state==='error'&&/checksum does not match/.test(r.text),'signed message: an address with a typo is refused');
+    r=await V(W1,'',SE); ok(r.state==='valid'&&/BIP-322 simple, Native SegWit/.test(r.text),'signed message: BIP-322 simple P2WPKH, empty message (official vector)');
+    for(const sg of SH){ r=await V(W1,'Hello World',sg); ok(r.state==='valid','signed message: BIP-322 simple P2WPKH "Hello World" (official vector, '+sg.slice(3,10)+'...)'); }
+    r=await V(W1,'Hello World',SH[0].slice(3)); ok(r.state==='valid'&&/without the smp prefix/.test(r.text),'signed message: a BIP-322 signature without the smp prefix is read as simple');
+    r=await V(W1,'Wrong message that was not signed',SE); ok(r.state==='invalid','signed message: official vector, wrong message is NOT VALID');
+    r=await V(...TR); ok(r.state==='valid'&&/BIP-322 simple, Taproot/.test(r.text),'signed message: BIP-322 simple Taproot (official vector)');
+    r=await V(TR[0],'No prefix fallback!',TR[2]); ok(r.state==='invalid','signed message: Taproot with another message is NOT VALID');
+    r=await V(W1,'','smpAA=='); ok(r.state==='invalid','signed message: an empty witness is NOT VALID (official vector)');
+    r=await V(W1,'','not-valid-base64!!!'); ok(r.state==='error'&&/not valid base64/.test(r.text),'signed message: not base64 is refused');
+    r=await V(W1,'','fooAA=='); ok(r.state==='error','signed message: an unknown prefix is refused');
+    r=await V(W1,'',''); ok(r.state==='error'&&r.text==='Paste the signature.','signed message: an empty signature is refused');
+    r=await V('bc1qp0ahvfh83088w49k405szqgg4f3pptr7p2g06tdxfjcd40z4lh4q95lsz9','',SE); ok(r.state==='cannot'&&/single-key addresses only/.test(r.text),'signed message: a multisig (P2WSH) address is "cannot check", never valid');
+    r=await V('bc1pyrgrm6cu6n54jrvkdjd9rvyd3xfyu84s2623awu2srn6mxhscwpsm5644w','incorrect prefix','fulAUDZwFXUp+adN+/UZj5dVrGAbB3zKs1Vcalz5fCF9srxS63eSWNGvH1NYbrBkPt1BJDUyWUz9zgUxfc63/QheT6M'); ok(r.state==='cannot'&&/“full” signature/.test(r.text),'signed message: a "full" signature is "cannot check"');
+    r=await V(TR[0],'x',CORE[2]); ok(r.state==='cannot'&&/do not use the classic signature format/.test(r.text),'signed message: a classic signature for a Taproot address is "cannot check"');
+    r=await V('hello','x',CORE[2]); ok(r.state==='error','signed message: not an address');
+    // the page itself: fill the boxes, press VERIFY SIGNATURE
+    const box=ts.$('sigBox'), btn=ts.$('sigBtn'); ok(!!box&&box.closest('#cardTools')&&/READ ONLY/.test(box.querySelector('summary').textContent)&&btn.textContent==='VERIFY SIGNATURE'&&!btn.classList.contains('secondary')&&/never signs/.test(box.textContent),'signed message: a READ ONLY box in Extra tools with a gold VERIFY SIGNATURE button');
+    ts.$('sigAddr').value=CORE[0]; ts.$('sigMsg').value=CORE[1]; ts.$('sigSig').value=CORE[2]; r=await ts.w.verifyMessageUi(); ok(r.state==='valid'&&ts.$('sigStatus').className==='status ok'&&/^VALID/.test(ts.$('sigStatus').textContent),'signed message: VALID shows in green');
+    ts.$('sigMsg').value='changed'; ts.$('sigMsg').dispatchEvent(new ts.w.Event('input')); ok(ts.$('sigStatus').textContent==='','signed message: editing a box clears the old result');
+    r=await ts.w.verifyMessageUi(); ok(ts.$('sigStatus').className==='status bad'&&/^NOT VALID/.test(ts.$('sigStatus').textContent),'signed message: NOT VALID shows in red');
+    ts.$('sigAddr').value='bc1qp0ahvfh83088w49k405szqgg4f3pptr7p2g06tdxfjcd40z4lh4q95lsz9'; ts.$('sigSig').value=SE; r=await ts.w.verifyMessageUi(); ok(ts.$('sigStatus').className==='status'&&/^CANNOT CHECK/.test(ts.$('sigStatus').textContent),'signed message: "cannot check" is neither green nor red');
+    ts.$('sigAddr').value=''; ts.$('sigSig').value=''; ts.$('sigMsg').value='-----BEGIN BITCOIN SIGNED MESSAGE-----\n'+CORE[1]+'\n-----BEGIN BITCOIN SIGNATURE-----\n'+CORE[0]+'\n'+CORE[2]+'\n-----END BITCOIN SIGNATURE-----\n';
+    r=await ts.w.verifyMessageUi(); ok(r.state==='valid'&&ts.$('sigAddr').value===CORE[0]&&ts.$('sigMsg').value===CORE[1]&&ts.$('sigSig').value===CORE[2]&&/^Read the address, message and signature from the signed-message block\.\nVALID/.test(ts.$('sigStatus').textContent),'signed message: a pasted signed-message block fills the three boxes and is checked');
+    ts.w.clearSig(); ok(['sigAddr','sigMsg','sigSig','sigStatus'].every(id=>(ts.$(id).value||ts.$(id).textContent||'')===''),'signed message: CLEAR empties the box');
+    ok(!/signMessage|function sign[A-Z]|privateKey/.test((html.match(/\/\/ ===== Verify a signed message[\s\S]*?function clearSig/)||[''])[0]),'signed message: the code only verifies (nothing that signs)'); }
+  { // v2.3.0 Keystone dice rules: every 6 counts as 0, 50 / 100 rolls or more, at most 256
+    const tk=load(); await tk.ready(); const WL=tk.w.eval('WORDLIST'), bits=b=>[...b].map(x=>x.toString(2).padStart(8,'0')).join('');
+    const mnK=(rolls,wc)=>{ const ent=nc.createHash('sha256').update(rolls.replace(/6/g,'0')).digest().subarray(0,wc===24?32:16), cs=bits(nc.createHash('sha256').update(ent).digest()).slice(0,ent.length/4); return (bits(ent)+cs).match(/.{11}/g).map(b=>WL[parseInt(b,2)]).join(' '); };
+    const rules=v=>{ tk.$('diceRules').value=v; tk.$('diceRules').dispatchEvent(new tk.w.Event('change')); };
+    ok(tk.$('rulesRow').style.display===''&&tk.$('diceRules').value==='std'&&[...tk.$('diceRules').options].map(o=>o.textContent).join('|')==='SeedSigner and Coldcard|Keystone'&&tk.$('rulesNote').textContent==='','Keystone: a Dice rules menu, SeedSigner and Coldcard by default');
+    rules('keystone'); ok(tk.$('rulesNote').textContent==='each 6 counts as 0; 50 to 256 rolls'&&tk.$('lenNote').textContent==='50 dice rolls or more','Keystone: the menu says each 6 counts as 0, 50 to 256 rolls');
+    const R50='65515223131652132161133154444123616466443112153441'; tk.set(R50); await tk.w.generate(); eq(tk.$('genResult').textContent.split('\n')[0],'tip toward alcohol rule pave weird quarter guilt orange vacuum blast maple','Keystone: 50 rolls with 6 as 0 (vector from an independent Python BIP39)');
+    ok(tk.$('countNote').textContent==='Keystone rules: every 6 counts as 0 and all 50 rolls are hashed, so a Keystone wallet makes the same words from these rolls.','Keystone: the note says a Keystone wallet makes the same words');
+    { let okAll=true; for(let k=0;k<6;k++){ const n=50+nc.randomInt(207), r=rnd(n,6); tk.set(r); await tk.w.generate(); if(tk.$('genResult').textContent.split('\n')[0]!==mnK(r,12)) okAll=false; } ok(okAll,'Keystone: random 50 to 256 rolls match SHA-256 of the rolls with 6 as 0'); }
+    tk.words(24); ok(tk.$('lenNote').textContent==='100 dice rolls or more'&&tk.$('bigCount').textContent.endsWith(' / 100'),'Keystone: 24 words need 100 rolls, not 99');
+    tk.set(rnd(99,6)); await tk.w.generate(); eq(tk.$('genResult').textContent,'Enter 1 more roll (99 of 100).','Keystone: 99 rolls are one short for 24 words');
+    const R100=rnd(100,6); tk.set(R100); await tk.w.generate(); eq(tk.$('genResult').textContent.split('\n')[0],mnK(R100,24),'Keystone: 100 rolls make 24 words from SHA-256 with 6 as 0');
+    const R256=rnd(256,6); tk.set(R256); ok(!/remove/.test(tk.$('countNote').textContent),'Keystone: 256 rolls are allowed'); await tk.w.generate(); eq(tk.$('genResult').textContent.split('\n')[0],mnK(R256,24),'Keystone: 256 rolls make 24 words');
+    tk.set(R256+'3'); ok(tk.$('countNote').textContent==='Keystone takes at most 256 rolls: remove 1.'&&tk.$('bigSub').textContent==='Keystone takes at most 256: remove 1'&&/short/.test(tk.$('bigCount').className),'Keystone: 257 rolls are one too many');
+    await tk.w.generate(); ok(/^Keystone takes at most 256 rolls\. Remove 1 \(257 of 256\), or choose SeedSigner and Coldcard dice rules\.$/.test(tk.$('genResult').textContent)&&!tk.w.hasSeed(),'Keystone: FORGE refuses 257 rolls and says why');
+    tk.words(12); const R60=rnd(60,6); tk.set(R60); await tk.w.generate(); const made=tk.$('genResult').textContent.split('\n')[0];
+    rules('std'); ok(!tk.w.hasSeed()&&/You changed the rolls/.test(tk.$('genResult').textContent),'Keystone: changing the dice rules after FORGE clears the words');
+    await tk.w.generate(); ok(tk.$('genResult').textContent.split('\n')[0]!==made||!/6/.test(R60),'Keystone: the standard rules give different words when there is a 6');
+    rules('keystone'); tk.set(R60); await new Promise(r=>setTimeout(r,30)); tk.set(R60.slice(0,55)); await new Promise(r=>setTimeout(r,60));
+    ok([...tk.d.querySelectorAll('#wordGrid .wcell span')].map(x=>x.textContent).join(' ')===mnK(R60.slice(0,55),12),'Keystone: the grey preview words follow the Keystone rules');
+    tk.set(R60); await tk.w.generate(); await tk.w.showExplain(); const ex=tk.$('exOut').textContent; ok(/Keystone dice rules: every 6 is written as 0/.test(ex)&&/These words match the seed above/.test(ex),'Keystone: How your seed was made shows the 6-as-0 step and matches');
+    tk.st.blob=null; tk.w.downloadSeed(); const dl=await blobText(tk.w,tk.st.blob); ok(/Dice rules: Keystone \(each 6 counts as 0 before hashing\)/.test(dl),'Keystone: the downloaded file says Keystone rules were used');
+    tk.mode('coin'); ok(tk.$('rulesRow').style.display==='none'&&!tk.w.keystoneOn()&&tk.$('lenNote').textContent==='128 coin flips or more','Keystone: the menu is hidden and off in coin mode');
+    tk.mode('dice'); ok(tk.$('rulesRow').style.display===''&&tk.w.keystoneOn(),'Keystone: back to dice, the choice is kept');
+    tk.w.setMethod('words'); ok(tk.$('rulesRow').style.display==='none','Keystone: the menu is hidden in Word draw'); tk.w.setMethod('dice'); }
   ok(/#cardGen \.gen-right \{ grid-column: 2; grid-row: 1 \/ span 2;[^}]*position: sticky/.test(html)&&/#cardGen \.gen-bottom \{ grid-column: 1; grid-row: 2;/.test(html),'layout: the sticky Your seed panel sits beside all the content and never slides over it (QR codes were hidden behind it)');
   { const tg=load(); await tg.ready(); const g=tg.$('startGate'), body=g.querySelector('.sg-body'), go=tg.$('sgGo');
     ok(!!body&&!body.contains(go)&&go.parentNode.classList.contains('sg-box')&&body.parentNode.classList.contains('sg-box'),'start notice: the I understand button sits outside the scrolling text, so it is always on screen (phones could not reach it)');
@@ -1066,6 +1168,25 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(g.querySelectorAll('.sg-fix').length===3&&/I understand, let's go/.test(tg.$('sgGo').textContent),'notice: each warning has a fix and one button closes it');
       tg.d.dispatchEvent(new tg.w.KeyboardEvent('keydown',{key:'Escape'})); ok(!tg.$('startGate'),'notice: Escape closes it');
       const t5=load(); await t5.ready(); ok(!!t5.$('startGate'),'notice: shows again each time the file is opened');
+      // v2.3.0: once per browser session while offline, every load while online; END SESSION forgets it
+      ok(tg.w.sessionStorage.getItem('voidforge-ack')==='1'&&tg.w.sessionStorage.length===1,'notice: closing it notes a single "1" in this tab\'s session storage and nothing else');
+      { const ta=load({offline:true,ack:true,focusSpy:true}); await ta.ready(); ok(!ta.$('startGate')&&!ta.d.body.classList.contains('dice-wait')&&!ta.d.body.classList.contains('sg-skip')&&ta.st.focus.some(x=>x[0]==='rolls'),'notice: offline and already read in this session, it does not show again and the dice are ready');
+        const tb=load({offline:true}); await tb.ready(); ok(!!tb.$('startGate')&&tb.d.body.classList.contains('dice-wait'),'notice: offline, it still shows the first time in a session');
+        const tc2=load({ack:true}); await tc2.ready(); ok(!!tc2.$('startGate')&&tc2.d.body.classList.contains('dice-wait'),'notice: online, it shows on every load even if read before in this session');
+        ok(/body\.js-ok\.sg-skip #startGate \{ display: none; \}/.test(html)&&/if\(startGateSkip\(\)\) document\.body\.classList\.add\("sg-skip"\);/.test(html),'notice: when skipped it is hidden from the first paint, so it never flashes');
+        const tx=load({offline:true,ack:true}); tx.w.Storage.prototype.getItem=()=>{ throw new Error('blocked'); }; ok(tx.w.ackSeen()===false,'notice: blocked storage counts as not read, so the notice shows'); }
+      // END SESSION (MENU)
+      { const te=load({confirm:false}); await te.ready(); let reloads=0; te.w.endSessionReload=()=>{ reloads++; }; te.w.startGateClose(); te.set(rnd(50,6)); await te.w.generate();
+        ok(te.w.endSession()===null&&te.w.hasSeed()&&te.w.sessionStorage.getItem('voidforge-ack')==='1'&&reloads===0,'END SESSION: Cancel keeps everything');
+        const b=te.$('endSessionBtn'); ok(!!b&&b.closest('#menuBox')&&b.className==='btn-clear'&&b.textContent==='END SESSION'&&b.previousElementSibling&&b.previousElementSibling.classList.contains('theme-toggle'),'END SESSION: a red button, last in the MENU');
+        const t2=load(); await t2.ready(); let r2=0; t2.w.endSessionReload=()=>{ r2++; }; t2.w.startGateClose(); t2.set(rnd(99,6)); t2.words(24); t2.set(rnd(99,6)); await t2.w.generate();
+        t2.$('passphrase').value='secret pass'; t2.$('phrase').value='abandon '.repeat(11)+'about'; t2.$('verifyPass').value='x'; t2.$('msAcct').value='7'; t2.$('msN').value='5'; t2.$('bk1').checked=true; t2.$('autoHide').checked=true; t2.$('reuseIn').value='wpkh(xpub)'; t2.$('wpIn').value='zpub';
+        t2.st.clip.length=0; const p=t2.w.endSession(); ok(!!p&&typeof p.then==='function','END SESSION: confirmed, it wipes and then reloads');
+        ok(!t2.w.hasSeed()&&t2.$('rolls').value===''&&t2.$('passphrase').value===''&&t2.$('phrase').value===''&&t2.$('verifyPass').value===''&&t2.$('reuseIn').value===''&&t2.$('wpIn').value==='','END SESSION: rolls, words, passphrases and every typed box are wiped');
+        ok(t2.$('msAcct').value===t2.$('msAcct').defaultValue&&t2.$('msN').value==='3'&&!t2.$('bk1').checked&&!t2.$('autoHide').checked&&t2.d.querySelector('input[name=words][value="12"]').checked,'END SESSION: boxes, ticks and choices go back to how the page opened (so a browser refilling them on reload gets the defaults)');
+        ok(t2.w.sessionStorage.getItem('voidforge-ack')===null&&t2.st.clip.includes(''),'END SESSION: forgets that the notice was read and clears the clipboard');
+        await p; ok(r2===1,'END SESSION: the page reloads once the clipboard is cleared');
+        ok(/function endSessionReload\(\)\{ location\.reload\(\); \}/.test(html),'END SESSION: the reload is a real page reload (the notice shows again, script memory starts fresh)'); }
       ok(/BEFORE YOU MAKE REAL KEYS/.test(tg.$('beforeCard').textContent)&&tg.$('beforeCard').querySelectorAll('.sg-item').length===3&&tg.$('beforeCard').closest('#tp-about')!==null&&/Read before real keys/.test(tg.$('strip').textContent),'the three warnings live in the About tab, reached from the one-line notice'); } }
   { const tc=load(); await tc.ready(); const h=await tc.w.sha256bytes(new TextEncoder().encode('123456'));
     const m24=await tc.w.entropyToMnemonic(h), m12=await tc.w.entropyToMnemonic(h.slice(0,16));

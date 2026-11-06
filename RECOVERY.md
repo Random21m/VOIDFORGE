@@ -52,6 +52,14 @@ Afterwards check that the app's first receiving address equals the **First recei
 - **Words in the wrong order:** the order is part of the seed.
 - **A word missing, unreadable or wrong, two words swapped, or a passphrase you half remember:** use **Reforge** in EXTRA TOOLS on the offline computer. Type the words with `?` for any you lack (or your passphrase guesses, one per line) and something public you still have from the wallet: its master fingerprint, an address, or its account xpub/zpub (a watch-only wallet app shows these). Reforge tries the possibilities and reports only one it has confirmed. An address or xpub is a stronger check than a fingerprint; if it finds a phrase by the fingerprint only, confirm it with an address before moving any funds. It can search one or two lost words or a few hundred thousand passphrase guesses; for bigger searches use an open-source tool such as BTCRecover on a computer you trust, never a website.
 
+## Rebuilding the words from your rolls (v2.3.0)
+
+Your words are the backup; the rolls are only a way to check them. If you kept the roll sheet and want to rebuild the words, you need the exact rolls in order and the rules you used:
+
+- **More rolls than the minimum:** every roll counts. Type all of them; Coldcard's dice seeds (New Seed Words, Advanced) give the same words. SeedSigner takes exactly 50 or 99 rolls, so it gives different words for more.
+- **Keystone dice rules:** choose *Keystone* in the Dice rules menu. Each 6 is written as 0 before hashing, so the same rolls give different words with the other rules.
+- **BitBox02 diceware:** the words came from the table, not from hashing, so retype the 23 words (or their table codes in the Word finder) and the 3 flips with T as 1 and H as 0.
+
 ## Child seeds (BIP85)
 
 A child made with the Child seed (BIP85) tool is not stored anywhere. To get it back you need the parent words, the parent passphrase if one was used, the type (seed words, WIF, xprv, hex, Base64 or Base85 password, or dice), its settings (word count, byte or character length, or dice sides and number of rolls) and the index. Write the type, settings and index down with the parent backup. Anyone who has the parent can recreate every child, and losing the parent loses every child.

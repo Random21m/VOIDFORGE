@@ -862,4 +862,107 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   R.ok(bad === 0 && found > 0, `${n} random 12-word phrases (${found} of them Electrum-marked): Electrum seed detection equals Node's HMAC-SHA512 rule, capitals and extra spaces ignored (${bad} mismatches)`);
 }
 
+// 2k. v2.3.0 dice options against independent code (@scure/bip39 and Node's SHA-256)
+{
+  const $ = (id) => w.document.getElementById(id);
+  const setMode = (m) => { const e = w.document.querySelector(`input[name=mode][value=${m}]`); e.checked = true; e.onchange(); };
+  const setWords = (n) => { const e = w.document.querySelector(`input[name=words][value="${n}"]`); e.checked = true; e.onchange(); };
+  const rules = (v) => { $('diceRules').value = v; $('diceRules').dispatchEvent(new w.Event('change')); };
+  const forge = async (rolls) => { $('rolls').value = rolls; $('rolls').oninput(); $('passphrase').value = ''; $('passphrase2').value = ''; await w.generate(); return $('genResult').textContent.split('\n')[0]; };
+  const oc = w.confirm; w.confirm = () => true;
+  // more than the minimum: every roll or flip is hashed, as Coldcard's dice seeds do
+  let bad = 0, n = 0;
+  rules('std');
+  for (const [kind, words, lo, hi] of [['dice', 12, 50, 300], ['dice', 24, 99, 300], ['coin', 12, 128, 520], ['coin', 24, 256, 700]]) {
+    setMode(kind); setWords(words);
+    for (let i = 0; i < 10; i++) {
+      const len = i === 0 ? lo : lo + 1 + nc.randomInt(hi - lo), rolls = rnd(len, kind === 'dice' ? 6 : 2);
+      const want = entropyToMnemonic(sha(rolls).slice(0, words === 12 ? 16 : 32), wordlist), got = await forge(rolls);
+      n++; if (got !== want || !validateMnemonic(got, wordlist)) { bad++; console.log('MORE-ROLLS MISMATCH', kind, words, len); }
+    }
+  }
+  R.ok(bad === 0, `${n} dice and coin inputs from the minimum up to several times it: words equal @scure's from SHA-256 of every roll (${bad} mismatches)`);
+  // Keystone: every 6 becomes 0, at least 50 / 100 rolls, at most 256
+  bad = 0; n = 0; setMode('dice'); rules('keystone');
+  for (const [words, lo] of [[12, 50], [24, 100]]) {
+    setWords(words);
+    for (let i = 0; i < 12; i++) {
+      const len = i === 0 ? lo : i === 1 ? 256 : lo + nc.randomInt(257 - lo), rolls = rnd(len, 6);
+      const want = entropyToMnemonic(sha(rolls.replace(/6/g, '0')).slice(0, words === 12 ? 16 : 32), wordlist), got = await forge(rolls);
+      n++; if (got !== want) { bad++; console.log('KEYSTONE MISMATCH', words, len); }
+    }
+    n++; if ((await forge(rnd(lo - 1, 6))) !== `Enter 1 more roll (${lo - 1} of ${lo}).`) { bad++; console.log('KEYSTONE MINIMUM', words); }
+    n++; if (!/^Keystone takes at most 256 rolls/.test(await forge(rnd(257, 6))) || w.hasSeed()) { bad++; console.log('KEYSTONE MAXIMUM', words); }
+  }
+  rules('std'); setWords(12); $('rolls').value = ''; $('rolls').oninput();
+  R.ok(bad === 0, `${n} Keystone checks: words equal @scure's from SHA-256 of the rolls with every 6 as 0, 50 / 100 to 256 rolls (${bad} mismatches)`);
+  // BitBox02 diceware: the table formula for all 2048 codes, and the 24th word for HHH ... TTT against a brute-force search with @scure's validateMnemonic
+  bad = 0; n = 0;
+  for (let k = 0; k < 2048; k++) {
+    const d = [(k >> 9) & 3, (k >> 7) & 3, (k >> 5) & 3, (k >> 3) & 3, (k >> 1) & 3].map((x) => x + 1), code = d.slice(0, 4).join('') + ' ' + d[4] + ' ' + (k & 1 ? 'T' : 'H');
+    n++; if (w.wdFindWord(code).word !== wordlist[k]) { bad++; console.log('BITBOX TABLE MISMATCH', code); }
+  }
+  R.ok(bad === 0, `all ${n} BitBox02 diceware codes give the word at that place in @scure's English list (${bad} mismatches)`);
+  bad = 0; n = 0;
+  for (let t = 0; t < 40; t++) {
+    const idx = Array.from({ length: 23 }, () => nc.randomInt(2048)), first = idx.map((x) => wordlist[x]).join(' ');
+    const valid = wordlist.map((x, j) => [x, j]).filter(([x]) => validateMnemonic(first + ' ' + x, wordlist));
+    for (let i = 0; i < 8; i++) {
+      const want = valid.filter(([, j]) => j >> 8 === i).map(([x]) => x), got = (await w.wdSteps(idx, i.toString(2).padStart(3, '0'), 24)).lastWord;
+      n++; if (want.length !== 1 || got !== want[0]) { bad++; console.log('BITBOX LAST WORD MISMATCH', first, i); }
+    }
+  }
+  R.ok(bad === 0, `${n} BitBox02 last-word choices (40 random 23-word sets, flips HHH to TTT): each equals the one valid word in that eighth of the list, found by brute force with @scure (${bad} mismatches)`);
+  w.confirm = oc;
+}
+
+// 2l. v2.3.0 Verify a signed message: signatures made by independent code (@noble/curves for the classic format,
+// @scure/btc-signer signing the BIP-322 to_sign transaction for "simple"), checked by the page.
+{
+  const T = new TextEncoder(), cat = (...a) => { const o = new Uint8Array(a.reduce((x, y) => x + y.length, 0)); let i = 0; for (const y of a) { o.set(y, i); i += y.length; } return o; };
+  const vint = (n) => n < 0xfd ? Uint8Array.of(n) : n <= 0xffff ? Uint8Array.of(0xfd, n & 255, n >> 8) : Uint8Array.of(0xfe, n & 255, (n >> 8) & 255, (n >> 16) & 255, n >>> 24);
+  const le32 = (n) => Uint8Array.of(n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255);
+  const tag = (t, m) => { const th = sha256(T.encode(t)); return sha256(cat(th, th, m)); };
+  const MSGS = ['', 'Hello World', 'I own this address. 2026-11-06', 'Line one\nLine two\n\nLine four', 'Ünïcödé ✓ 測試 🙂', 'x'.repeat(252), 'y'.repeat(253), 'z'.repeat(70000), ' leading and trailing spaces '];
+  const legacyHash = (m) => { const b = T.encode(m); return sha256(sha256(cat(T.encode('\x18Bitcoin Signed Message:\n'), vint(b.length), b))); };
+  const nets = { main: btc.NETWORK, test: btc.TEST_NETWORK };
+  let bad = 0, n = 0;
+  for (let t = 0; t < 24; t++) {
+    const priv = secp256k1.utils.randomPrivateKey(), net = t % 3 === 2 ? 'test' : 'main', N = nets[net];
+    const pubC = secp256k1.getPublicKey(priv, true), pubU = secp256k1.getPublicKey(priv, false), msg = MSGS[t % MSGS.length];
+    const sig = secp256k1.sign(legacyHash(msg), priv);
+    const cases = [['pkh-u', btc.p2pkh(pubU, N).address, 27], ['pkh', btc.p2pkh(pubC, N).address, 31], ['sh-wpkh', btc.p2sh(btc.p2wpkh(pubC, N), N).address, 35], ['sh-wpkh legacy header', btc.p2sh(btc.p2wpkh(pubC, N), N).address, 31], ['wpkh', btc.p2wpkh(pubC, N).address, 39], ['wpkh legacy header', btc.p2wpkh(pubC, N).address, 31]];
+    for (const [kind, address, base] of cases) {
+      const b64 = base64.encode(cat(Uint8Array.of(base + sig.recovery), bhex.decode(sig.r.toString(16).padStart(64, '0')), bhex.decode(sig.s.toString(16).padStart(64, '0'))));
+      n++; const r1 = await w.verifyMessage(address, msg, b64); if (r1.state !== 'valid' || !/^VALID: the key of this address signed exactly this message\./.test(r1.text)) { bad++; console.log('CLASSIC NOT VALID', kind, net, address, JSON.stringify(msg.slice(0, 20)), r1.text); }
+      n++; const r2 = await w.verifyMessage(address, msg + 'x', b64); if (r2.state !== 'invalid') { bad++; console.log('CLASSIC CHANGED MESSAGE NOT CAUGHT', kind); }
+      const other = btc.p2wpkh(secp256k1.getPublicKey(secp256k1.utils.randomPrivateKey(), true), N).address;
+      if (kind === 'wpkh') { n++; const r3 = await w.verifyMessage(other, msg, b64); if (r3.state !== 'invalid') { bad++; console.log('CLASSIC OTHER ADDRESS NOT CAUGHT'); } }
+      if (kind === 'pkh-u') { n++; const r4 = await w.verifyMessage(btc.p2wpkh(pubC, N).address, msg, b64); if (r4.state !== 'invalid') { bad++; console.log('UNCOMPRESSED KEY ACCEPTED FOR SEGWIT'); } }
+    }
+  }
+  R.ok(bad === 0, `${n} classic (BIP-137) checks: signatures made by @noble/curves for every header and address type, mainnet and testnet, long and Unicode messages, are VALID; a changed message or another address is NOT VALID (${bad} mismatches)`);
+  bad = 0; n = 0;
+  const toSpendId = (msg, spk) => { const mh = tag('BIP0322-signed-message', T.encode(msg)); return bhex.encode(sha256(sha256(cat(le32(0), Uint8Array.of(1), new Uint8Array(32), le32(0xffffffff), Uint8Array.of(34, 0, 0x20), mh, le32(0), Uint8Array.of(1), new Uint8Array(8), vint(spk.length), spk, le32(0)))).reverse()); };
+  const simpleSig = (priv, pay, msg, prefix, sighash) => {
+    const tx = new btc.Transaction({ version: 0, allowUnknownOutputs: true });
+    tx.addInput({ txid: toSpendId(msg, pay.script), index: 0, sequence: 0, witnessUtxo: { script: pay.script, amount: 0n }, ...(pay.tapInternalKey ? { tapInternalKey: pay.tapInternalKey } : {}), ...(sighash !== undefined ? { sighashType: sighash } : {}) });
+    tx.addOutput({ script: Uint8Array.of(0x6a), amount: 0n });
+    tx.signIdx(priv, 0, sighash !== undefined ? [sighash] : undefined); tx.finalizeIdx(0);
+    const wit = tx.getInput(0).finalScriptWitness;
+    return (prefix ? 'smp' : '') + base64.encode(cat(vint(wit.length), ...wit.map((x) => cat(vint(x.length), x))));
+  };
+  for (let t = 0; t < 16; t++) {
+    const priv = secp256k1.utils.randomPrivateKey(), pubC = secp256k1.getPublicKey(priv, true), net = t % 4 === 3 ? 'test' : 'main', N = nets[net], msg = MSGS[t % MSGS.length];
+    for (const kind of ['wpkh', 'tr', 'tr-all']) {
+      const pay = kind === 'wpkh' ? btc.p2wpkh(pubC, N) : btc.p2tr(pubC.slice(1), undefined, N), sig = simpleSig(priv, pay, msg, t % 2 === 0, kind === 'tr-all' ? btc.SigHash.ALL : undefined);
+      n++; const r1 = await w.verifyMessage(pay.address, msg, sig); if (r1.state !== 'valid' || !/BIP-322 simple/.test(r1.text)) { bad++; console.log('BIP-322 NOT VALID', kind, net, pay.address, JSON.stringify(msg.slice(0, 20)), r1.text); }
+      n++; const r2 = await w.verifyMessage(pay.address, msg + '!', sig); if (r2.state !== 'invalid') { bad++; console.log('BIP-322 CHANGED MESSAGE NOT CAUGHT', kind); }
+      const otherPay = kind === 'wpkh' ? btc.p2wpkh(secp256k1.getPublicKey(secp256k1.utils.randomPrivateKey(), true), N) : btc.p2tr(secp256k1.getPublicKey(secp256k1.utils.randomPrivateKey(), true).slice(1), undefined, N);
+      n++; const r3 = await w.verifyMessage(otherPay.address, msg, sig); if (r3.state !== 'invalid') { bad++; console.log('BIP-322 OTHER ADDRESS NOT CAUGHT', kind); }
+    }
+  }
+  R.ok(bad === 0, `${n} BIP-322 simple checks: signatures made by @scure/btc-signer (P2WPKH, Taproot with SIGHASH_DEFAULT and ALL, mainnet and testnet, with and without the smp prefix) are VALID; a changed message or another address is NOT VALID (${bad} mismatches)`);
+}
+
 R.done('oracle');
