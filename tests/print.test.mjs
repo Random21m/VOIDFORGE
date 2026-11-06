@@ -205,6 +205,32 @@ await sheet('TEXT A+: stamp sheet 24', () => printStamp());
 await sheet('TEXT A+: summary sheet 24', () => printSummary());
 await p.evaluate(() => toggleSize());
 
+// 8b. v2.5.0: the backup plan with every box at its longest, the recovery sheet with a birthday, and practice mode's PRACTICE line.
+await p.click('#tab-check');
+await p.evaluate(() => {
+  const set = (id, v) => { document.getElementById(id).value = v; };
+  const fill = (n) => ('Qwz plk dvn tyx ').repeat(40).slice(0, n);   // no BIP39 words, so the secret check lets it print
+  document.getElementById('planBox').open = true;
+  set('plFp', '73c5da0a'); set('plBorn', '2026-11-06'); set('plApp', fill(60)); set('plPass', 'away'); set('plKnow', 'yes');
+  for (const i of [1, 2, 3]) { set('plM' + i, i === 2 ? 'metal' : 'paper'); set('plW' + i, fill(80)); set('plL' + i, i === 1 ? 'home' : 'away'); }
+  set('plHelp', fill(120)); set('plNote', fill(400)); planRender();
+});
+await sheet('backup plan, every box at its longest', () => printPlan());
+await p.evaluate(() => { for (const id of ['plM2', 'plM3']) document.getElementById(id).value = ''; for (const id of ['plApp', 'plHelp', 'plNote', 'plFp', 'plBorn']) document.getElementById(id).value = ''; document.getElementById('plPass').value = 'none'; planRender(); });
+await sheet('backup plan, short (one copy, worst case)', () => printPlan());
+ok(await p.evaluate(() => /backup plan/i.test(document.getElementById('planBox').textContent) && document.getElementById('plTest').children.length >= 5), 'backup plan: the stress test is on the page');
+await p.click('#tab-make');
+await p.evaluate(() => practiceMode(true));
+await p.waitForFunction(() => /tb1q/.test(document.getElementById('practiceAddr').textContent));
+for (const [label, fn] of [['backup sheet', () => printSeed()], ['summary sheet', () => printSummary()], ['stamp sheet', () => printStamp()], ['roll sheet 24 +50', () => printRollSheet()]])
+  await sheet('practice mode: ' + label, fn);
+await p.evaluate(() => refreshWatch()); await p.evaluate(() => showQr('wDescR', 'receive descriptor'));
+await sheet('practice mode: descriptor QR', () => printShownQr());
+await p.emulateMedia({ media: 'print' });
+ok(await p.evaluate(() => { printSummary(); const v = getComputedStyle(document.getElementById('printOnly'), '::before').content; return /PRACTICE MODE: TEST NETWORK/.test(v); }), 'practice mode: the printed sheet starts with the PRACTICE line');
+await p.emulateMedia({ media: null });
+await p.evaluate(() => { window.dispatchEvent(new Event('afterprint')); practiceMode(false); });
+
 // 9. First paint (v2.4.0): while the main script is still loading (a slow phone takes a second or two), nothing red may
 // flash: the script-not-running notice and the half-built page stay hidden, and the start notice is already in the page.
 // The main script is swapped for one that records what the browser would paint at that moment.

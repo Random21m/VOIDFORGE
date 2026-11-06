@@ -1425,6 +1425,100 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const dom=new JSDOM(empty,{runScripts:'dangerously',url:'https://example.org/'}); await new Promise(r=>setTimeout(r,30));
     ok(!dom.window.document.documentElement.classList.contains('js')&&!dom.window.document.body.classList.contains('js-ok')&&!!dom.window.document.getElementById('noJs'),'first paint: if the main script does not run, the notice and the page come back');
     dom.window.close(); }
+  // ===== v2.5.0: backup plan and stress test, wallet birthday, practice mode, watch-only file, passphrase warning, secrets not selectable =====
+  { const today=(()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
+    const nextYear=(()=>{ const d=new Date(); const n=new Date(d.getFullYear()+1,d.getMonth(),d.getDate()); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0'); })();
+    const css=html.slice(0,html.indexOf('</style>'));
+    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.5.0','v2.5.0: the footer shows the new version');
+    ok(html.indexOf('<li><b>2.5.0</b>')>0&&html.indexOf('<li><b>2.5.0</b>')<html.indexOf('<li><b>2.4.0</b>'),'v2.5.0: the changelog lists 2.5.0 first');
+    // secrets cannot be highlighted
+    ok(/\n  #wordGrid, #wvAbbrGrid, #childOut, #exOut \{ -webkit-user-select: none; user-select: none; \}\n/.test(css),'secrets on screen: the seed words, the 4-letter grid, child outputs and the explainer cannot be highlighted');
+    const tq=load({confirm:true}); await tq.ready(); const $=tq.$, w=tq.w; w.startGateClose();
+    // passphrase warning
+    const PW=(id,v)=>{ $(id).value=v; $(id).dispatchEvent(new w.Event('input')); if(id==='passphrase') w.updateAdvSummary(); return $(id==='passphrase'?'passWarn':'verifyPassWarn').textContent; };
+    eq(PW('passphrase','correct horse'),'','passphrase warning: none for an ordinary passphrase');
+    for(const [v,re,m] of [[' lead',/starts with a space/,'a leading space'],['trail ',/ends with a space/,'a trailing space'],['a  b',/two spaces in a row/,'two spaces in a row'],['a b',/non-breaking space/,'a non-breaking space'],['﻿bom',/invisible character/,'a byte-order mark'],['a​b',/invisible character/,'a zero-width space'],['a\tb',/tab or a line break/,'a tab']])
+      ok(re.test(PW('passphrase',v))&&/used exactly as typed/.test($('passWarn').textContent),'passphrase warning: '+m);
+    ok(/tab or a line break/.test(w.passHiddenNote('a\nb'))&&w.passHiddenNote('ok')==='','passphrase warning: a line break (pasted where a box keeps it) is named too');
+    ok(/starts with a space, ends with a space and has two spaces in a row/.test(PW('passphrase','  x  ')),'passphrase warning: several problems are listed in one sentence');
+    ok(PW('passphrase',' x')&&$('passphrase').value===' x','passphrase warning: the passphrase itself is never changed');
+    ok(/starts with a space/.test(PW('verifyPass',' x')),'passphrase warning: also under the CHECK A BACKUP passphrase');
+    w.wipeSeed(); ok($('passWarn').textContent===''&&$('verifyPassWarn').textContent==='','passphrase warning: cleared with the passphrase');
+    // backup plan: stress test rules
+    const ST=(o)=>w.planStress(Object.assign({copies:[],pass:'none',know:false},o)).map(r=>r.event+'='+r.v).join('|');
+    const P=(m,h)=>({m,home:h==='home',where:''});
+    eq(ST({copies:[P('paper','home')]}),'A fire or flood at home=lost|A burglar searches your home=thief|You die or cannot act=lost|You forget the passphrase=na|Your hardware wallet or phone is lost or broken=safe|The only copy is lost or damaged=lost','stress test: one paper copy at home, no passphrase, nobody told');
+    eq(ST({copies:[P('paper','home'),P('metal','away')],pass:'away',know:true}),'A fire or flood at home=safe|A burglar searches your home=safe|Someone finds a copy away from home=check|You die or cannot act=safe|You forget the passphrase=safe|Your hardware wallet or phone is lost or broken=safe','stress test: a copy at home and one away, passphrase written and kept away, someone told');
+    eq(ST({copies:[P('paper','home'),P('paper','away')],pass:'mem',know:true}),'A fire or flood at home=safe|A burglar searches your home=safe|Someone finds a copy away from home=safe|You die or cannot act=lost|You forget the passphrase=lost|Your hardware wallet or phone is lost or broken=safe','stress test: a memorised passphrase is lost with you');
+    eq(ST({copies:[P('metal','home')],pass:'same',know:true}),'A fire or flood at home=safe|A burglar searches your home=thief|You die or cannot act=safe|You forget the passphrase=safe|Your hardware wallet or phone is lost or broken=safe|The only copy is lost or damaged=lost','stress test: metal survives a fire, but a passphrase on the same paper helps a thief');
+    eq(ST({copies:[P('paper','home'),P('paper','away')],pass:'home',know:true}),'A fire or flood at home=lost|A burglar searches your home=thief|Someone finds a copy away from home=safe|You die or cannot act=safe|You forget the passphrase=safe|Your hardware wallet or phone is lost or broken=safe','stress test: the only passphrase note at home is lost in a fire and helps a burglar');
+    eq(ST({copies:[P('metal','home'),P('paper','home')],pass:'mem',know:true}),'A fire or flood at home=safe|A burglar searches your home=lost|You die or cannot act=lost|You forget the passphrase=lost|Your hardware wallet or phone is lost or broken=safe','stress test: every copy at home, so a burglary can take your only copies');
+    eq(ST({copies:[P('paper','away'),P('paper','away')],pass:'none',know:true}),'A fire or flood at home=safe|A burglar searches your home=safe|Someone finds a copy away from home=thief|You die or cannot act=safe|You forget the passphrase=na|Your hardware wallet or phone is lost or broken=safe','stress test: copies away from home with no passphrase can be taken by whoever finds one');
+    eq(ST({}),'Where are the words?=lost|A burglar searches your home=safe|You die or cannot act=lost|You forget the passphrase=na|Your hardware wallet or phone is lost or broken=lost','stress test: no copy listed');
+    ok(w.planStress({copies:[P('paper','home')],pass:'none',know:false}).filter(r=>r.v==='lost'||r.v==='thief').every(r=>r.fix.length>10),'stress test: every bad case comes with a fix');
+    // the box on the page
+    ok($('planBox')&&$('planBox').tagName==='DETAILS'&&!$('planBox').open&&$('planBox').closest('#tp-check')!==null&&/NO SECRETS/.test($('planBox').querySelector('summary').textContent),'backup plan: a closed box in CHECK A BACKUP, marked NO SECRETS');
+    ok($('plPrint')&&$('plPrint').classList.contains('secondary')&&$('planBox').querySelectorAll('button:not(.secondary)').length===0,'backup plan: PRINT BACKUP PLAN is a grey helper button, like every other PRINT button');
+    eq($('plTest').querySelectorAll('li').length,6,'backup plan: the stress test shows from the start (one paper copy at home by default)');
+    ok(new RegExp('Next check-up: '+nextYear).test($('plNext').textContent)&&/4 of 6 cases/.test($('plNext').textContent),'backup plan: it says how many cases go wrong and when the next check-up is');
+    $('plM2').value='metal'; $('plM2').dispatchEvent(new w.Event('change')); ok(/A fire or flood at home\. The copy away from home survives/.test($('plTest').textContent),'backup plan: the stress test updates as the boxes change');
+    // print: refusals, then a good plan
+    const PR=async()=>{ const p0=tq.st.printed; await w.printPlan(); const r={n:tq.st.printed-p0,txt:tq.st.printHTML,st:$('plStatus').textContent}; w.dispatchEvent(new w.Event('afterprint')); return r; };
+    $('plFp').value='12345'; let r=await PR(); ok(r.n===0&&/8 letters and digits/.test(r.st),'backup plan: a malformed fingerprint is refused');
+    $('plFp').value='73c5da0a'; $('plNote').value='abandon '.repeat(11)+'about'; r=await PR(); ok(r.n===0&&/seed words/.test(r.st),'backup plan: seed words in a box are never printed');
+    $('plNote').value='keep this: '+'legal winner thank year wave sausage worth useful legal winner thank yellow'; r=await PR(); ok(r.n===0&&/seed words/.test(r.st),'backup plan: seed words inside a sentence are never printed');
+    $('plNote').value=''; $('plW2').value='xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi'; r=await PR(); ok(r.n===0&&/a secret/.test(r.st),'backup plan: a private key in a box is never printed');
+    $('plW2').value='bank safe deposit box'; $('plNote').value='Ask my brother at the bank about the box. The wallet app is Sparrow, and nobody genuine ever asks for the words.';
+    $('plKnow').value='yes'; $('plPass').value='away'; $('plApp').value='Sparrow'; $('plBorn').value='2024-02-29'; $('plW1').value='home safe';
+    r=await PR(); ok(r.n===1&&/^VOIDFORGE BACKUP PLAN/.test(r.txt)&&/Master fingerprint: +73c5da0a/.test(r.txt)&&/Wallet made on: +2024-02-29/.test(r.txt)&&/1\. Paper, at home: home safe\n2\. Metal, away from home: bank safe deposit box/.test(r.txt)&&/Someone trusted knows this plan exists: YES/.test(r.txt),'backup plan: an ordinary note with a few dictionary words prints, with the copies and the people');
+    ok(new RegExp('Next check-up due: '+nextYear).test(r.txt)&&/1\. Find each copy on this plan/.test(r.txt)&&/Checked on:/.test(r.txt)&&/CHECK     Someone finds a copy away from home/.test(r.txt)&&!/abandon|legal winner/.test(r.txt),'backup plan: the sheet has the stress test, the next check-up and the yearly routine');
+    ok(/^Sent to the printer/.test($('plStatus').textContent),'backup plan: it says the plan was sent to the printer');
+    w.planClear(); ok($('plFp').value===''&&$('plM1').value==='paper'&&$('plM2').value===''&&$('plL2').value==='away'&&$('plNote').value===''&&$('plStatus').textContent==='','backup plan: CLEAR puts every box back');
+    // birthday + planOpen from a seed made here
+    tq.set(rnd(50,6)); await w.generate(); await new Promise(r=>setTimeout(r,50));
+    eq(w.eval('sumCtx.date'),today,'wallet birthday: a seed made here is dated today');
+    { const p0=tq.st.printed; w.printSummary(); ok(tq.st.printed===p0+1&&new RegExp('Wallet made on: '+today+' \\(its birthday\\)').test(tq.st.printHTML)&&!/Date made:/.test(tq.st.printHTML),'wallet birthday: on the summary sheet, filled in'); w.dispatchEvent(new w.Event('afterprint')); }
+    ok(!!$('planGoBtn')&&$('planGoBtn').closest('#bkList')!==null,'backup plan: the backup checklist has PLAN WHERE THE COPIES GO');
+    $('planBox').open=false; w.planOpen(); const fpNow=($('fingerprint').textContent.match(/^Master fingerprint: ([0-9a-f]{8})/)||[])[1];
+    ok($('planBox').open&&$('plFp').value===fpNow&&$('plBorn').value===today&&tq.d.querySelector('[aria-selected="true"]').id==='tab-check','backup plan: opened from the checklist it fills in the fingerprint and the birthday');
+    $('plFp').value='aaaaaaaa'; w.planFill(); eq($('plFp').value,'aaaaaaaa','backup plan: it never overwrites a typed fingerprint');
+    await w.sendToVerify(); await w.openWalletView($('genResult').textContent.split('\n')[0],$('passphrase').value);
+    eq($('wvBorn').value,today,'wallet birthday: the wallet made here gets its birthday in Open this wallet');
+    { const p0=tq.st.printed; w.printRecoverySheet(); ok(tq.st.printed===p0+1&&new RegExp('Wallet made on: '+today+'\\n').test(tq.st.printHTML),'wallet birthday: on the recovery sheet'); w.dispatchEvent(new w.Event('afterprint')); }
+    $('wvBorn').value=''; { w.printRecoverySheet(); ok(/Wallet made on: ____________\n/.test(tq.st.printHTML),'wallet birthday: a blank line to fill in when it is not known'); w.dispatchEvent(new w.Event('afterprint')); }
+    w.clearWalletView(); eq($('wvBorn').value,'','wallet birthday: cleared with the wallet view');
+    // practice mode
+    const {HDKey}=require('@scure/bip32'); const {mnemonicToSeedSync}=require('@scure/bip39'); const btc=require('@scure/btc-signer');
+    const words=$('genResult').textContent.split('\n')[0];
+    const tb=HDKey.fromMasterSeed(mnemonicToSeedSync(words,'')).derive("m/84'/1'/0'/0/0"), tbAddr=btc.p2wpkh(tb.publicKey,btc.TEST_NETWORK).address;
+    w.practiceMode(true); await new Promise(r=>setTimeout(r,400));
+    ok(tq.d.body.classList.contains('practice')&&$('practiceMode').checked&&['wNet','wvNet','psbtNet','cmpNet','msNet'].every(id=>$(id).value==='test'&&$(id).disabled),'practice mode: every network menu is on Testnet and locked');
+    ok($('practiceAddr').textContent.endsWith(tbAddr)&&/^Practice mode, test network: first receive address \(m\/84'\/1'\/0'\/0\/0\): tb1/.test($('practiceAddr').textContent),'practice mode: the test-network first address is shown (checked with @scure)');
+    ok(/^vpub/.test($('wZpub').textContent)&&$('wFirst').textContent.split('\n')[0]===tbAddr,'practice mode: the watch-only box follows it');
+    ok(/body\.practice #practiceBan \{ display: block;/.test(css)&&/body\.practice\.print-seed #printOnly::before, body\.practice\.print-qr #printQr::before \{ content: "PRACTICE MODE: TEST NETWORK\. NOT FOR REAL MONEY\.";/.test(css),'practice mode: a banner on the page and a PRACTICE line on every printed sheet');
+    w.practiceMode(false); await new Promise(r=>setTimeout(r,300));
+    ok(!tq.d.body.classList.contains('practice')&&!$('practiceMode').checked&&['wNet','wvNet','psbtNet','cmpNet','msNet'].every(id=>$(id).value==='main'&&!$(id).disabled)&&$('practiceAddr').textContent===''&&/^zpub/.test($('wZpub').textContent),'practice mode: off puts every menu back on Mainnet and removes the test address');
+    w.practiceMode(true); await new Promise(r=>setTimeout(r,300)); w.wipeSeed(); eq($('practiceAddr').textContent,'','practice mode: the test address goes with the seed');
+    await w.practiceWallet(); await new Promise(r=>setTimeout(r,600));
+    ok(tq.d.querySelector('[aria-selected="true"]').id==='tab-check'&&$('phrase').value==='legal winner thank year wave sausage worth useful legal winner thank yellow'&&/tb1q/.test($('wvList').textContent)&&!/bc1q/.test($('wvList').textContent)&&$('wvNet').value==='test','practice mode: OPEN A PRACTICE WALLET opens a public practice phrase on the test network');
+    w.practiceMode(false);
+    // watch-only file
+    tq.set(rnd(50,6)); await w.generate(); await new Promise(r=>setTimeout(r,100));
+    const CS=(()=>{ const IN="0123456789()[],'/*abcdefgh@:$%{}IJKLMNOPQRSTUVWXYZ&+-.;<=>?!^_|~ijklmnopqrstuvwxyzABCDEFGH`#\"\\ ", CH='qpzry9x8gf2tvdw0s3jn54khce6mua7l', G=[0xf5dee51989n,0xa9fdca3312n,0x1bab10e32dn,0x3706b1677an,0x644d626ffdn];
+      const pm=(s)=>{ let c=1n; for(const v of s){ const c0=c>>35n; c=((c&0x7ffffffffn)<<5n)^BigInt(v); for(let i=0;i<5;i++) if((c0>>BigInt(i))&1n) c^=G[i]; } return c; };
+      return (d)=>{ const sym=[]; const grp=[]; for(const ch of d){ const v=IN.indexOf(ch); sym.push(v&31); grp.push(v>>5); if(grp.length===3){ sym.push(grp[0]*9+grp[1]*3+grp[2]); grp.length=0; } } if(grp.length===1) sym.push(grp[0]); else if(grp.length===2) sym.push(grp[0]*3+grp[1]); const c=pm(sym.concat([0,0,0,0,0,0,0,0]))^1n; let out=''; for(let j=0;j<8;j++) out+=CH[Number((c>>(5n*BigInt(7-j)))&31n)]; return out; }; })();
+    for(const ty of ['wpkh','tr','sh-wpkh','pkh']){
+      $('wType').value=ty; await w.refreshWatch(); const txt=w.watchFileText(), lines=txt.split('\n'), live=lines.filter(l=>l.trim()&&!l.startsWith('#'));
+      const recv=$('wDescR').textContent, body=recv.replace(/#[a-z0-9]{8}$/,'').replace('/0/*)','/<0;1>/*)');
+      ok(live.length===1&&live[0]===body+'#'+CS(body),'watch-only file ('+ty+'): one line Sparrow reads, the receive-and-change descriptor with a correct checksum (independent BIP-380 code)');
+      ok(txt.includes('# Receive descriptor: '+recv)&&txt.includes('# Change descriptor:  '+$('wDescC').textContent)&&$('wFirst').textContent.split('\n').every((a,i)=>txt.includes('#   '+i+': '+a))&&new RegExp('Made on: '+today).test(txt),'watch-only file ('+ty+'): the separate descriptors, the first addresses and the birthday as comments');
+      ok(ty==='tr'?/Electrum cannot open Taproot wallets/.test(txt)&&!/master key\):/.test(txt):txt.includes('master key): '+$('wZpub').textContent),'watch-only file ('+ty+'): the Electrum line fits the address type');
+    }
+    $('wType').value='ms-wsh'; await w.refreshWatch(); ok(w.watchFileText()===''&&$('wSaveRow').style.display==='none','watch-only file: not offered for a multisig cosigner key');
+    $('wType').value='wpkh'; await w.refreshWatch(); tq.st.blob=null; w.saveWatchFile(); const ft=await blobText(w,tq.st.blob); ok(ft===w.watchFileText()&&/^# VOIDFORGE watch-only wallet\. Public keys only/.test(ft)&&!ft.includes(words.split(' ')[0]+' '+words.split(' ')[1]),'watch-only file: SAVE WATCH-ONLY FILE saves it, with no seed words in it');
+    $('wNet').value='test'; await w.refreshWatch(); ok(/Network: Testnet/.test(w.watchFileText())&&/tpub/.test(w.watchFileText()),'watch-only file: testnet keys say so');
+    $('wNet').value='main';
+  }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
 
