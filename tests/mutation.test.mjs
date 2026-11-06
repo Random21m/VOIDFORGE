@@ -327,7 +327,11 @@ async function probe(w, mutated) {
       [b, q] = await RP(AB, 'x', A0); if (!/^FOUND and confirmed: these words with NO passphrase/.test(b)) fails.push('reforge passphrase: no passphrase is tried first');
       [b] = await RP(AB, 'trezor', '73c5da0a'); if (!/after trying all 4\./.test(b) || !/about 1 in 1,073,741,824\)/.test(b)) fails.push('reforge passphrase: a fingerprint search tries everything and gives the odds');
       [b] = await RP(AB.replace('about', 'zoo'), 'trezor', TZ); if (!/^Type all 12, 15, 18, 21 or 24 of your seed words first/.test(b)) fails.push('reforge passphrase: an invalid phrase is refused');
-      [b] = await RP(AB, Array.from({ length: 21 }, (_, i) => 'p' + i).join('\n'), TZ); if (!/^Type at most 20 lines/.test(b)) fails.push('reforge passphrase: more than 20 lines refused');
+      // Fast check first: if the 20-line limit were gone, the page would start a search of about 67,000 passphrases (hours in a test run),
+      // so ask the candidate builder directly and skip the slow on-page search when it does not refuse.
+      { let refused = false; try { w.reforgePassCandidates(Array.from({ length: 21 }, (_, i) => 'p' + i).join('\n'), false); } catch (e) { refused = /^Type at most 20 lines/.test(e.message); }
+        if (!refused) fails.push('reforge passphrase: more than 20 lines refused');
+        else { [b] = await RP(AB, Array.from({ length: 21 }, (_, i) => 'p' + i).join('\n'), TZ); if (!/^Type at most 20 lines/.test(b)) fails.push('reforge passphrase: more than 20 lines refused (on the page)'); } }
       const C = (x, t) => w.reforgePassCandidates(x, t), has = (list, ...xs) => xs.every((x) => list.includes(x));
       const c2 = C('a\nb', false), c3 = C('a\nb\nc', false), ct = C('ab', true);
       if (c2[0] !== '' || !has(c2, 'ab', 'ba', 'a b', 'b a', 'AB', 'Ab', 'A b', 'A B') || has(c2, 'aab')) fails.push('reforge passphrase: pairs, spaces and letter cases are tried (and no typos unless ticked)');
