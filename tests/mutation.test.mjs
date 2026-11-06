@@ -2708,10 +2708,24 @@ const ONLY = process.env.MUT_ONLY ? new RegExp(process.env.MUT_ONLY) : null; // 
 // Optional sharding for CI: MUT_SHARD="i/n" runs only every n-th mutation starting at i, so n jobs together run them all.
 const SHARD = process.env.MUT_SHARD ? process.env.MUT_SHARD.split('/').map(Number) : null;
 if (SHARD && !(Number.isInteger(SHARD[0]) && Number.isInteger(SHARD[1]) && SHARD[1] > 0 && SHARD[0] >= 0 && SHARD[0] < SHARD[1])) { console.log('bad MUT_SHARD (use i/n, for example 0/4)'); process.exit(1); }
+// Shards are balanced by how long each mutation took in an earlier full run (tests/fixtures/mut-times.json, seconds; a new
+// mutation counts as the median). Longest first, each goes to the shard with the least time so far; shard 0 starts with
+// SHARD0_HEAD seconds because it also runs the unit and oracle tests. The plan is fixed by the names alone, so every job
+// computes the same split and every mutation runs in exactly one shard.
+const SHARD0_HEAD = 900;
+let shardOf = null;
+if (SHARD) {
+  let times = {}; try { times = JSON.parse(fs.readFileSync(new URL('./fixtures/mut-times.json', import.meta.url), 'utf8')); } catch (e) { times = {}; }
+  const known = Object.values(times).sort((a, b) => a - b), med = known.length ? known[Math.floor(known.length / 2)] : 60;
+  const items = M.map(([name], i) => ({ i, w: Number.isFinite(times[name]) ? times[name] : med })).sort((a, b) => b.w - a.w || a.i - b.i);
+  const load = Array.from({ length: SHARD[1] }, (_, k) => (k === 0 ? SHARD0_HEAD : 0)); shardOf = new Array(M.length);
+  for (const it of items) { let best = 0; for (let k = 1; k < load.length; k++) if (load[k] < load[best]) best = k; shardOf[it.i] = best; load[best] += it.w; }
+  console.log('shard plan: ' + load.map((x, k) => k + '=' + Math.round(x / 60) + 'm').join(' '));
+}
 let mutIndex = -1;
 for (const [name, find, rep, equivalent] of M) {
   mutIndex++;
-  if (SHARD && mutIndex % SHARD[1] !== SHARD[0]) continue;
+  if (SHARD && shardOf[mutIndex] !== SHARD[0]) continue;
   if (ONLY && !ONLY.test(name)) continue;
   const count = html.split(find).length - 1;
   if (count !== 1) { R.ok(false, `mutation target must occur exactly once (${count}x): ${name}`); continue; }

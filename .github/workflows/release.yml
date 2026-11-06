@@ -50,7 +50,8 @@ jobs:
   test:
     # Runs dependency code (npm), so it gets read-only access and never sees a signing or upload token.
     # Skipped when `check` found a green test run on this exact commit.
-    # The mutation suite is split into 16 shards that run side by side (GitHub stops any single job after 6 hours).
+    # The mutation suite is split into 20 shards that run side by side (GitHub stops any single job after 6 hours; 20 is the
+    # free plan's limit on jobs at once). Shards are balanced by measured run time (tests/fixtures/mut-times.json).
     # Every shard must pass before anything is attested. Shard 0 also runs the unit and oracle tests.
     needs: check
     if: needs.check.outputs.green != 'true'
@@ -59,7 +60,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
     permissions:
       contents: read
     steps:
@@ -79,8 +80,8 @@ jobs:
       - name: Unit and oracle tests (shard 0 only)
         if: matrix.shard == 0
         run: node tests/test.js && node tests/oracle.test.mjs
-      - name: Mutation tests (shard ${{ matrix.shard }} of 16)
-        run: MUT_SHARD=${{ matrix.shard }}/16 node tests/mutation.test.mjs
+      - name: Mutation tests (shard ${{ matrix.shard }} of 20)
+        run: MUT_SHARD=${{ matrix.shard }}/20 node tests/mutation.test.mjs
   attest:
     # Installs no packages and runs no project code. Signs and uploads only bytes taken from the git tag.
     needs: [check, test]
