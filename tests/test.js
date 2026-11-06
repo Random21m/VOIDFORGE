@@ -994,7 +994,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const homeless=['rolls','forgeBtn','phrase','psbtInput','cmpA','msN','about','beforeCard','disclaimer'].filter(id=>!tl.$(id).closest('.tabpanel')); ok(homeless.length===0,'feature inventory: every tool lives inside a tab'+(homeless.length?' ('+homeless.join(', ')+')':''));
       ok(['printOnly','printQr'].every(id=>!tl.$(id).closest('.tabpanel')),'printing works from any tab: the print sheets sit outside the tabs');
       const btns=[...tl.d.querySelectorAll('button')].filter(b=>!b.closest('.tabpanel')&&!b.closest('#startGate')&&!b.closest('#tabs')).map(b=>b.textContent.trim().replace(/\s+/g,' ')).sort().join('|');
-      eq(btns,['DARK','DOWNLOAD FOR USB','END SESSION','GUIDE ME','PRINT SEED','PRINT STAMP SHEET','TEXT A+','Read before real keys \u2192'].sort().join('|'),'page frame holds exactly the top buttons and the notice link'); }
+      eq(btns,['DARK','DOWNLOAD FOR USB','END SESSION','GUIDE ME','PRINT SEED','PRINT STAMP SHEET','TEXT A+','Read before real keys \u2192','Turn practice mode off'].sort().join('|'),'page frame holds exactly the top buttons, the notice link and the practice banner\'s off switch (v2.5.0; hidden unless practice mode is on)'); }
     // the three warnings and the disclaimer moved to About, with their text intact
     ok(/AIR-GAPPED USE ONLY/.test(tl.$('tp-about').textContent)&&/not been independently audited/.test(tl.$('disclaimer').textContent)&&tl.$('beforeCard').querySelectorAll('.sg-item').length===3,'About & help holds the air-gap warning, the disclaimer and the three computer-memory warnings');
     ok(!tl.$('tp-make').contains(tl.$('about'))&&tl.$('tp-tools').contains(tl.$('cardMulti'))&&tl.$('tp-tools').contains(tl.$('cardTools'))&&tl.$('tp-check').contains(tl.$('cardCheck')),'each card sits in the right tab');
@@ -1491,15 +1491,15 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const {HDKey}=require('@scure/bip32'); const {mnemonicToSeedSync}=require('@scure/bip39'); const btc=require('@scure/btc-signer');
     const words=$('genResult').textContent.split('\n')[0];
     const tb=HDKey.fromMasterSeed(mnemonicToSeedSync(words,'')).derive("m/84'/1'/0'/0/0"), tbAddr=btc.p2wpkh(tb.publicKey,btc.TEST_NETWORK).address;
-    w.practiceMode(true); await new Promise(r=>setTimeout(r,400));
+    w.practiceMode(true); for(let k=0;k<100&&!($('practiceAddr').textContent.endsWith(tbAddr)&&$('wFirst').textContent.split('\n')[0]===tbAddr);k++) await new Promise(r=>setTimeout(r,50));
     ok(tq.d.body.classList.contains('practice')&&$('practiceMode').checked&&['wNet','wvNet','psbtNet','cmpNet','msNet'].every(id=>$(id).value==='test'&&$(id).disabled),'practice mode: every network menu is on Testnet and locked');
     ok($('practiceAddr').textContent.endsWith(tbAddr)&&/^Practice mode, test network: first receive address \(m\/84'\/1'\/0'\/0\/0\): tb1/.test($('practiceAddr').textContent),'practice mode: the test-network first address is shown (checked with @scure)');
     ok(/^vpub/.test($('wZpub').textContent)&&$('wFirst').textContent.split('\n')[0]===tbAddr,'practice mode: the watch-only box follows it');
     ok(/body\.practice #practiceBan \{ display: block;/.test(css)&&/body\.practice\.print-seed #printOnly::before, body\.practice\.print-qr #printQr::before \{ content: "PRACTICE MODE: TEST NETWORK\. NOT FOR REAL MONEY\.";/.test(css),'practice mode: a banner on the page and a PRACTICE line on every printed sheet');
-    w.practiceMode(false); await new Promise(r=>setTimeout(r,300));
+    w.practiceMode(false); for(let k=0;k<100&&!/^zpub/.test($('wZpub').textContent);k++) await new Promise(r=>setTimeout(r,50));
     ok(!tq.d.body.classList.contains('practice')&&!$('practiceMode').checked&&['wNet','wvNet','psbtNet','cmpNet','msNet'].every(id=>$(id).value==='main'&&!$(id).disabled)&&$('practiceAddr').textContent===''&&/^zpub/.test($('wZpub').textContent),'practice mode: off puts every menu back on Mainnet and removes the test address');
     w.practiceMode(true); await new Promise(r=>setTimeout(r,300)); w.wipeSeed(); eq($('practiceAddr').textContent,'','practice mode: the test address goes with the seed');
-    await w.practiceWallet(); await new Promise(r=>setTimeout(r,600));
+    await w.practiceWallet(); for(let k=0;k<100&&!/tb1q/.test($('wvList').textContent);k++) await new Promise(r=>setTimeout(r,50));
     ok(tq.d.querySelector('[aria-selected="true"]').id==='tab-check'&&$('phrase').value==='legal winner thank year wave sausage worth useful legal winner thank yellow'&&/tb1q/.test($('wvList').textContent)&&!/bc1q/.test($('wvList').textContent)&&$('wvNet').value==='test','practice mode: OPEN A PRACTICE WALLET opens a public practice phrase on the test network');
     w.practiceMode(false);
     // watch-only file

@@ -1782,18 +1782,18 @@ async function probe(w, mutated) {
     w.clearWalletView(); if ($('wvBorn').value !== '') fails.push('birthday: cleared with the wallet view');
     // practice mode
     const tbExp = btc.p2wpkh(HDKey.fromMasterSeed(mnemonicToSeedSync(expect.d50, '')).derive("m/84'/1'/0'/0/0").publicKey, btc.TEST_NETWORK).address;
-    w.practiceMode(true); await new Promise((r2) => setTimeout(r2, 300));
+    w.practiceMode(true); for (let k = 0; k < 100 && !$('practiceAddr').textContent; k++) await new Promise((r2) => setTimeout(r2, 50));
     if (!w.document.body.classList.contains('practice')) fails.push('practice: page marked');
     if (!['wNet', 'wvNet', 'psbtNet', 'cmpNet', 'msNet'].every((id) => $(id).value === 'test' && $(id).disabled)) fails.push('practice: every network menu on Testnet and locked');
     if (!$('practiceAddr').textContent.endsWith(tbExp)) fails.push('practice: test-network first address');
     for (let k = 0; k < 80 && $('wFirst').textContent.split('\n')[0] !== tbExp; k++) await new Promise((r2) => setTimeout(r2, 50));
     if ($('wFirst').textContent.split('\n')[0] !== tbExp) fails.push('practice: the watch box follows (change event)');
     if (!/body\.practice #practiceBan \{ display: block;/.test(css) || !/body\.practice\.print-seed #printOnly::before, body\.practice\.print-qr #printQr::before \{ content: "PRACTICE MODE: TEST NETWORK\. NOT FOR REAL MONEY\.";/.test(css)) fails.push('practice: banner and PRACTICE line on prints');
-    await run('dice', 12, D50); await new Promise((r2) => setTimeout(r2, 300)); if (!$('practiceAddr').textContent.endsWith(tbExp)) fails.push('practice: a new FORGE shows the test address');
+    await run('dice', 12, D50); for (let k = 0; k < 100 && !$('practiceAddr').textContent.endsWith(tbExp); k++) await new Promise((r2) => setTimeout(r2, 50)); if (!$('practiceAddr').textContent.endsWith(tbExp)) fails.push('practice: a new FORGE shows the test address');
     w.setResult('\u2014'); if ($('practiceAddr').textContent !== '') fails.push('practice: the test address goes with the seed');
     w.practiceMode(false); await new Promise((r2) => setTimeout(r2, 100));
     if (w.document.body.classList.contains('practice') || !['wNet', 'wvNet', 'psbtNet', 'cmpNet', 'msNet'].every((id) => $(id).value === 'main' && !$(id).disabled)) fails.push('practice: off restores Mainnet');
-    await w.practiceWallet(); await new Promise((r2) => setTimeout(r2, 400));
+    await w.practiceWallet(); for (let k = 0; k < 100 && !/tb1q/.test($('wvList').textContent); k++) await new Promise((r2) => setTimeout(r2, 50));
     if (!w.document.body.classList.contains('practice') || !/tb1q/.test($('wvList').textContent)) fails.push('practice: OPEN A PRACTICE WALLET turns practice mode on');
     w.practiceMode(false); w.clearWalletView(); $('phrase').value = '';
     // watch-only file
@@ -1807,7 +1807,7 @@ async function probe(w, mutated) {
     }
     $('wType').value = 'ms-wsh'; await w.refreshWatch(); if (w.watchFileText() !== '' || $('wSaveRow').style.display !== 'none') fails.push('watch file: not for a multisig cosigner key');
     $('wType').value = 'wpkh'; $('wNet').value = 'test'; await w.refreshWatch();
-    { let name = ''; const oc = w.HTMLAnchorElement.prototype.click; w.HTMLAnchorElement.prototype.click = function () { name = this.download; }; const ou = w.URL.createObjectURL; w.URL.createObjectURL = () => 'blob:x';
+    { let name = ''; const oc = w.HTMLAnchorElement.prototype.click; w.HTMLAnchorElement.prototype.click = function () { name = this.download; }; const ou = w.URL.createObjectURL; w.URL.createObjectURL = () => 'blob:x'; if (!w.URL.revokeObjectURL) w.URL.revokeObjectURL = () => {};
       w.saveWatchFile(); w.HTMLAnchorElement.prototype.click = oc; w.URL.createObjectURL = ou; if (!/^voidforge-watch-only-[0-9a-f]{8}-testnet\.txt$/.test(name)) fails.push('watch file: name says testnet'); }
     $('wNet').value = 'main'; await w.refreshWatch();
     w.print = op; w.alert = oa; w.planClear(); $('verifyPass').value = ''; $('passphrase').value = ''; $('passphrase2').value = ''; w.updateAdvSummary();
