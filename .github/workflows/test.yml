@@ -12,6 +12,9 @@ on:
     paths-ignore: ['**.md', 'docs/**', 'LICENSE']
   pull_request:
     paths-ignore: ['**.md', 'docs/**', 'LICENSE']
+  # A run can also be started by hand (Actions tab, or `gh workflow run test.yml --ref <branch>`), for example for a merge
+  # commit whose files match the commit before it, which a push does not start.
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
