@@ -1414,6 +1414,17 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(/\ndocument\.getElementById\("diceTest"\)\.checked = false;\nupdateLabels\(\);/.test(html)&&/id="diceTest" autocomplete="off"/.test(html),'dice test: always starts off, even in a browser that restores form state');
     { const D=w.eval('DICT'), b38=D.find(e=>e[0]==='BIP38'); ok(!!b38&&/starts with 6P/.test(b38[1])&&/^6P/.test('6PRVWUbkzzsbcVac2qwfssoUJAN1Xhrg6bNk8J7Nzm5H7kxEbn2Nh2ZoGg')&&D.some(e=>e[0]==='Stamp sheet'),'dictionary: BIP38 (locked keys start with 6P) and Stamp sheet'); }
     ok(!/\(v2\.4\.0\)/.test(ta.d.querySelector('#childBox').textContent)&&/Nothing on its own/.test(ta.$('whatBox').textContent)&&/xpub, zpub or public descriptor/.test(ta.$('whatBox').textContent),'page text: no version numbers in the child box; the guide wording'); }
+  // ===== v2.4.0: no red flash while the page loads =====
+  { const css=html.match(/<style>[\s\S]*?<\/style>/)[0], main=html.indexOf('<script>',html.indexOf('</style>'));
+    ok(html.indexOf('document.documentElement.classList.add("js");')>0&&html.indexOf('document.documentElement.classList.add("js");')<html.indexOf('<style>'),'first paint: a tiny script in the head marks that scripts can run, before any style applies');
+    ok(/\n  html\.js #noJs \{ display: none; \}\n/.test(css)&&/\n  html\.js body:not\(\.js-ok\) \.container \{ visibility: hidden; \}\n/.test(css),'first paint: the script-not-running notice and the half-built page stay hidden while the main script loads');
+    ok(/<div id="noJs" role="alert">/.test(html)&&/\n  #onlineWarn, #fatalWarn, #noJs \{ background: transparent;/.test(css),'first paint: the script-not-running notice looks like the other warnings (no bright red box)');
+    ok(html.indexOf('<div id="startGate"')>0&&html.indexOf('<div id="startGate"')<main,'first paint: the start notice is in the page before the main script, so it appears in the same moment as the page');
+    const tj=load(); await tj.ready(); ok(tj.d.documentElement.classList.contains('js')&&tj.d.body.classList.contains('js-ok'),'first paint: after a normal load the page is marked as running');
+    const z=html.indexOf('</script>',main), empty=html.slice(0,main)+'<script>\n'+html.slice(z);
+    const dom=new JSDOM(empty,{runScripts:'dangerously',url:'https://example.org/'}); await new Promise(r=>setTimeout(r,30));
+    ok(!dom.window.document.documentElement.classList.contains('js')&&!dom.window.document.body.classList.contains('js-ok')&&!!dom.window.document.getElementById('noJs'),'first paint: if the main script does not run, the notice and the page come back');
+    dom.window.close(); }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
 

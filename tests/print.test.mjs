@@ -205,6 +205,30 @@ await sheet('TEXT A+: stamp sheet 24', () => printStamp());
 await sheet('TEXT A+: summary sheet 24', () => printSummary());
 await p.evaluate(() => toggleSize());
 
+// 9. First paint (v2.4.0): while the main script is still loading (a slow phone takes a second or two), nothing red may
+// flash: the script-not-running notice and the half-built page stay hidden, and the start notice is already in the page.
+// The main script is swapped for one that records what the browser would paint at that moment.
+{
+  const fs = require('fs'), src = fs.readFileSync(FILE.slice('file://'.length), 'utf8');
+  const main = src.indexOf('<script>', src.indexOf('</style>')), end = src.indexOf('</script>', main);
+  const variant = async (script) => {
+    const c2 = await browser.newContext({ viewport: { width: 393, height: 851 } }); const q = await c2.newPage();
+    await q.setContent(src.slice(0, main) + '<script>\n' + script + '\n' + src.slice(end), { waitUntil: 'load' });
+    const r = await q.evaluate(() => window.__fp || null);
+    const after = await q.evaluate(() => ({ nojs: getComputedStyle(document.getElementById('noJs')).display, page: getComputedStyle(document.querySelector('.container')).visibility, gate: getComputedStyle(document.getElementById('startGate')).display }));
+    await c2.close(); return { r, after };
+  };
+  const rec = 'window.__fp = { nojs: getComputedStyle(document.getElementById("noJs")).display, page: getComputedStyle(document.querySelector(".container")).visibility, gate: !!document.getElementById("startGate") };';
+  const { r } = await variant(rec);
+  ok(!!r && r.nojs === 'none' && r.page === 'hidden' && r.gate === true, 'first paint: while the main script loads, no red notice and no half-built page, and the start notice is ready (' + JSON.stringify(r) + ')');
+  const { after } = await variant('');
+  ok(after.nojs === 'block' && after.page === 'visible' && after.gate === 'none', 'first paint: if the main script does not run, the notice and the page come back (' + JSON.stringify(after) + ')');
+  const c4 = await browser.newContext({ viewport: { width: 393, height: 851 } }); const q4 = await c4.newPage(); await q4.goto(FILE); await q4.waitForFunction(() => document.body.classList.contains('js-ok'));
+  const nor = await q4.evaluate(() => ({ nojs: getComputedStyle(document.getElementById('noJs')).display, page: getComputedStyle(document.querySelector('.container')).visibility, gate: getComputedStyle(document.getElementById('startGate')).display }));
+  await c4.close();
+  ok(nor.nojs === 'none' && nor.page === 'visible' && nor.gate === 'flex', 'first paint: after a normal load the page and the start notice show, the notice does not (' + JSON.stringify(nor) + ')');
+}
+
 ok(errors.length === 0, 'no page errors (' + errors.join(' | ') + ')');
 await browser.close();
 console.log('PRINT: ' + pass + ' pass, ' + fails.length + ' fail');

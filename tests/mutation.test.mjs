@@ -1718,6 +1718,16 @@ async function probe(w, mutated) {
       const wl = [...w.document.querySelectorAll('#whatBox li')]; if (wl.length !== 10 || wl.filter((e) => e.querySelector('.tag-secret')).length !== 6 || wl.filter((e) => e.querySelector('.tag-public')).length !== 3) fails.push('what guide: 6 secret, 3 public'); }
     w.print = op; w.alert = oa; w.confirm = oc; $('checkAddr').value = ''; $('phrase').value = ''; $('rollStats').open = rsOpen0; $('addrExplain').textContent = ''; $('addrExplain').className = 'status';
   } catch (e) { fails.push('v2.4.0: the probe crashed: ' + e.message); }
+  try { // v2.4.0: no red flash while the page loads (the notice and the half-built page stay hidden until the main script has run)
+    const css = mutated.match(/<style>[\s\S]*?<\/style>/)[0], main = mutated.indexOf('<script>', mutated.indexOf('</style>'));
+    if (!w.document.documentElement.classList.contains('js')) fails.push('first paint: scripts mark the page as able to run');
+    if (!/\n  html\.js #noJs \{ display: none; \}\n/.test(css)) fails.push('first paint: the script-not-running notice is hidden while the script loads');
+    if (!/\n  html\.js body:not\(\.js-ok\) \.container \{ visibility: hidden; \}\n/.test(css)) fails.push('first paint: the half-built page is hidden while the script loads');
+    if (!/\n  #onlineWarn, #fatalWarn, #noJs \{ background: transparent;/.test(css) || /background/.test($('noJs').getAttribute('style') || '')) fails.push('first paint: the notice looks like the other warnings');
+    const gi = mutated.indexOf('<div id="startGate"'); if (gi < 0 || gi > main) fails.push('first paint: the start notice is in the page before the main script');
+    const tb = loadPage(mutated.slice(0, main) + '<script>\n' + mutated.slice(mutated.indexOf('</script>', main)), () => {}); await new Promise((r) => setTimeout(r, 30));
+    if (tb.document.documentElement.classList.contains('js')) fails.push('first paint: a main script that does not run brings the notice back'); tb.close();
+  } catch (e) { fails.push('first paint probe crashed: ' + e.message); }
   try { // v2.3.0 Keystone dice rules (expected words from @scure and Node's SHA-256 of the rolls with every 6 as 0)
     const rules = (v) => { $('diceRules').value = v; $('diceRules').dispatchEvent(new w.Event('change')); };
     const mk = (r, wc) => entropyToMnemonic(sha(r.replace(/6/g, '0')).slice(0, wc === 24 ? 32 : 16), wordlist);
@@ -3405,6 +3415,11 @@ const M = [
   ["child: key shown after HIDE", "o = document.getElementById(\"childOut\");\n    if(my !== childSeq) return;", "o = document.getElementById(\"childOut\");"],
   // both listeners clear a child seed when the parent words change, so the mutant removes both (removing one alone is equivalent)
   ["child: kept after the parent words change", "for(const id of [\"phrase\",\"verifyPass\",\"childWords\",\"childIndex\",\"childLen\",\"childSides\",\"childRolls\"]) document.getElementById(id).addEventListener(\"input\", clearChild);\nfor(const id of [\"phrase\",\"verifyPass\"]) document.getElementById(id).addEventListener(\"input\", () => { verifySeq++; if(wvCtx && wvCtx.kind !== \"pub\") clearWalletView(); if(childCtx || document.getElementById(\"childOut\").textContent) clearChild(); });", "for(const id of [\"childWords\",\"childIndex\",\"childLen\",\"childSides\",\"childRolls\"]) document.getElementById(id).addEventListener(\"input\", clearChild);\nfor(const id of [\"phrase\",\"verifyPass\"]) document.getElementById(id).addEventListener(\"input\", () => { verifySeq++; if(wvCtx && wvCtx.kind !== \"pub\") clearWalletView(); });"],
+  ["first paint: page not marked as able to run scripts", "document.documentElement.classList.add(\"js\");\n", ""],
+  ["first paint: notice not hidden while the script loads", "  html.js #noJs { display: none; }\n", ""],
+  ["first paint: half-built page shown while the script loads", "  html.js body:not(.js-ok) .container { visibility: hidden; }\n", ""],
+  ["first paint: a script that does not run leaves the notice hidden", "if(!document.body.classList.contains(\"js-ok\")) document.documentElement.classList.remove(\"js\");", ""],
+  ["first paint: notice is a bright red box again", "#onlineWarn, #fatalWarn, #noJs { background: transparent;", "#onlineWarn, #fatalWarn { background: transparent;"],
   ["child: HIDE does not stop a running derive", "  childSeq++; childCtx = null;", "  childCtx = null;"],
   ["explain: seed words threshold", "if(known >= 6 && known >= toks.length * 0.8) return", "if(known >= 12 && known >= toks.length * 0.8) return"],
   ["explain: words mixed with other text", "if(known >= 6 && known >= toks.length * 0.8) return", "if(known >= 6) return"],
