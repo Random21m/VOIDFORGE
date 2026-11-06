@@ -1523,7 +1523,7 @@ async function probe(w, mutated) {
   try { // v2.4.0: one-page prints, roll sheet extras, CHECK A BACKUP backups, QR / child / Word draw / summary prints, dice test, keys, typo helper, explain
     const P = { n: 0, cells: [], txt: '', qr: '', qrh: '', lh: 0, sec: '' }, al = [], op = w.print, oa = w.alert, oc = w.confirm; let cnf = true;
     w.print = () => { P.n++; P.cells = [...w.document.querySelectorAll('#printOnly .ps-cell')].map((c) => c.textContent); P.txt = $('printOnly').textContent; P.qr = $('printQr').textContent; P.qrh = $('printQr').innerHTML; P.lh = w.document.querySelectorAll('#printOnly .ps-lh svg').length; P.sec = (w.document.querySelector('#printOnly .ps-secret') || {}).className || ''; P.secTxt = (w.document.querySelector('#printOnly .ps-secret') || {}).textContent || ''; P.cls = w.document.body.className; };
-    const cm = []; w.alert = (m) => al.push(String(m)); w.confirm = (m) => { cm.push(String(m)); return cnf; };
+    const cm = []; w.alert = (m) => al.push(String(m)); w.confirm = (m) => { cm.push(String(m)); return cnf; }; const rsOpen0 = $('rollStats').open;   // restored at the end, so later checks still see the page's own start state
     const done = () => w.dispatchEvent(new w.Event('afterprint')), css = mutated.slice(0, mutated.indexOf('</style>'));
     const pr = (f, ...a) => { const n0 = P.n; al.length = 0; try { w[f](...a); } catch (e) { al.push('THREW ' + e.message); } const got = P.n - n0; if (got) done(); return got; };
     // one page: only the sheet is laid out, from the body
@@ -1716,7 +1716,7 @@ async function probe(w, mutated) {
       if (hit.length !== 1 || hit[0].querySelector('dt').textContent !== 'Taproot' || hit[0].style.display === 'none' || !$('dictBox').open || $('tp-about').classList.contains('tab-off') || $('dictSearch').value !== '') fails.push('dictionary links: open the entry');
       w.showTab('make');
       const wl = [...w.document.querySelectorAll('#whatBox li')]; if (wl.length !== 10 || wl.filter((e) => e.querySelector('.tag-secret')).length !== 6 || wl.filter((e) => e.querySelector('.tag-public')).length !== 3) fails.push('what guide: 6 secret, 3 public'); }
-    w.print = op; w.alert = oa; w.confirm = oc; $('checkAddr').value = ''; $('phrase').value = ''; $('rollStats').open = false; $('addrExplain').textContent = ''; $('addrExplain').className = 'status';
+    w.print = op; w.alert = oa; w.confirm = oc; $('checkAddr').value = ''; $('phrase').value = ''; $('rollStats').open = rsOpen0; $('addrExplain').textContent = ''; $('addrExplain').className = 'status';
   } catch (e) { fails.push('v2.4.0: the probe crashed: ' + e.message); }
   try { // v2.3.0 Keystone dice rules (expected words from @scure and Node's SHA-256 of the rolls with every 6 as 0)
     const rules = (v) => { $('diceRules').value = v; $('diceRules').dispatchEvent(new w.Event('change')); };
@@ -3403,7 +3403,8 @@ const M = [
   ["summary: mismatch not explained", "  if(!hasSeed()) return alert(\"Generate a seed first\");\n  if(passMismatch()) return;\n  const S = seedSummary(); if(!S) return;", "  if(!hasSeed()) return alert(\"Generate a seed first\");\n  const S = seedSummary(); if(!S) return;"],
   ["child: words shown after HIDE", "parent = await mnemonicFingerprint(r.mnemonic, vp);\n    if(my !== childSeq) return;", "parent = await mnemonicFingerprint(r.mnemonic, vp);"],
   ["child: key shown after HIDE", "o = document.getElementById(\"childOut\");\n    if(my !== childSeq) return;", "o = document.getElementById(\"childOut\");"],
-  ["child: kept after the parent words change", " if(childCtx || document.getElementById(\"childOut\").textContent) clearChild(); });", " });"],
+  // both listeners clear a child seed when the parent words change, so the mutant removes both (removing one alone is equivalent)
+  ["child: kept after the parent words change", "for(const id of [\"phrase\",\"verifyPass\",\"childWords\",\"childIndex\",\"childLen\",\"childSides\",\"childRolls\"]) document.getElementById(id).addEventListener(\"input\", clearChild);\nfor(const id of [\"phrase\",\"verifyPass\"]) document.getElementById(id).addEventListener(\"input\", () => { verifySeq++; if(wvCtx && wvCtx.kind !== \"pub\") clearWalletView(); if(childCtx || document.getElementById(\"childOut\").textContent) clearChild(); });", "for(const id of [\"childWords\",\"childIndex\",\"childLen\",\"childSides\",\"childRolls\"]) document.getElementById(id).addEventListener(\"input\", clearChild);\nfor(const id of [\"phrase\",\"verifyPass\"]) document.getElementById(id).addEventListener(\"input\", () => { verifySeq++; if(wvCtx && wvCtx.kind !== \"pub\") clearWalletView(); });"],
   ["child: HIDE does not stop a running derive", "  childSeq++; childCtx = null;", "  childCtx = null;"],
   ["explain: seed words threshold", "if(known >= 6 && known >= toks.length * 0.8) return", "if(known >= 12 && known >= toks.length * 0.8) return"],
   ["explain: words mixed with other text", "if(known >= 6 && known >= toks.length * 0.8) return", "if(known >= 6) return"],
