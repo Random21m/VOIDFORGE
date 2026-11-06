@@ -20,14 +20,16 @@ const pages = (buf) => (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || 
 let pass = 0; const fails = [];
 const ok = (c, m) => { if (c) pass++; else { fails.push(m); console.log('FAIL ' + m); } };
 
+// GitHub sets PW_CHANNEL=chrome, so there a missing browser is a failure. Elsewhere the test uses whatever Chromium or Chrome it
+// can find, and if there is none it says so and is skipped (install one with: npx playwright-core install chromium).
 let browser;
-try {
-  browser = await chromium.launch(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {});
-} catch (e) {
-  // Locally, a Playwright install may keep its Chromium elsewhere; try the usual places before giving up.
+if (process.env.PW_CHANNEL) browser = await chromium.launch({ channel: process.env.PW_CHANNEL });
+else {
   const full = (() => { try { return createRequire('/opt/npm-tools/node_modules/x.js')('playwright'); } catch { return null; } })();
-  if (!full) throw e;
-  browser = await full.chromium.launch();
+  for (const launch of [() => chromium.launch(), () => chromium.launch({ channel: 'chrome' }), () => full && full.chromium.launch()]) {
+    try { browser = await launch(); if (browser) break; } catch { /* try the next one */ }
+  }
+  if (!browser) { console.log('PRINT: SKIPPED (no Chromium or Chrome found; run "npx playwright-core install chromium" to enable this test)'); process.exit(0); }
 }
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 await ctx.setOffline(true);
@@ -98,15 +100,20 @@ await p.evaluate(() => { document.getElementById('watchBox').open = true; docume
 for (const type of ['wpkh', 'tr', 'sh-wpkh', 'pkh']) {
   for (const net of ['main', 'test']) {
     await p.selectOption('#wType', type); await p.selectOption('#wNet', net);
-    await p.waitForFunction(() => document.getElementById('wZpub').textContent.length > 100);
+    const pre = { wpkh: ['zpub', 'vpub'], tr: ['xpub', 'tpub'], 'sh-wpkh': ['ypub', 'upub'], pkh: ['xpub', 'tpub'] }[type][net === 'test' ? 1 : 0];
+    await p.waitForFunction(([pre, ban]) => document.getElementById('wZpub').textContent.startsWith(pre) && document.getElementById('wTestBan').style.display === ban && document.getElementById('wKeyLabel').textContent.includes(pre), [pre, net === 'test' ? '' : 'none']);
     for (const [id, lbl] of [['wZpub', 'public key'], ['wDescR', 'receive descriptor'], ['wDescC', 'change descriptor']]) {
       await p.evaluate(([id, lbl]) => showQr(id, lbl), [id, lbl]);
       await sheet('public QR ' + type + ' ' + net + ' ' + id, () => printShownQr());
     }
   }
 }
+await p.selectOption('#wType', 'ms-wsh'); await p.selectOption('#wNet', 'main');
+await p.waitForFunction(() => document.getElementById('wZpub').textContent.startsWith('Zpub'));
+for (const id of ['wZpub', 'wDescR']) { await p.evaluate((id) => showQr(id, 'cosigner'), id); await sheet('cosigner QR ' + id, () => printShownQr()); }
+ok(await p.evaluate(() => { showQr('wDescR', 'x'); return qrShown.title; }) === 'VOIDFORGE COSIGNER KEY WITH ORIGIN', 'cosigner QR: named as a cosigner key, not a descriptor');
 await p.selectOption('#wType', 'wpkh'); await p.selectOption('#wNet', 'main');
-await p.waitForFunction(() => document.getElementById('spAddr').textContent.startsWith('sp1'));
+await p.waitForFunction(() => document.getElementById('spAddr').textContent.startsWith('sp1') && document.getElementById('wZpub').textContent.startsWith('zpub'));
 await p.evaluate(() => showQr('spAddr', 'Silent Payment address'));
 await sheet('Silent Payment QR', () => printShownQr());
 const a0 = await p.$eval('#addrList [data-addr]', (e) => e.getAttribute('data-addr'));
@@ -114,6 +121,12 @@ await p.evaluate((a) => showAddrQr('aq', a), a0);
 await sheet('address QR', () => printAddrQr('aq'));
 await p.evaluate(() => { document.getElementById('aqAmt').value = '0.0123'; document.getElementById('aqLbl').value = 'Invoice 42'; document.getElementById('aqMsg').value = 'A long message that makes the payment request much bigger. '.repeat(4); drawAddrQr('aq'); });
 await sheet('payment request QR (long message)', () => printAddrQr('aq'));
+for (const len of [600, 1000, 1600]) {
+  await p.evaluate((len) => { document.getElementById('aqMsg').value = 'x'.repeat(len); drawAddrQr('aq'); }, len);
+  if (await p.evaluate(() => !!document.getElementById('aqBox').dataset.text)) await sheet('payment request QR (' + len + '-character message)', () => printAddrQr('aq'));
+}
+await p.evaluate(() => { document.getElementById('aqMsg').value = 'x'.repeat(3000); drawAddrQr('aq'); });
+ok(await p.evaluate(() => !document.getElementById('aqBox').dataset.text && document.getElementById('aqImg').textContent === ''), 'payment request too long for a QR code: the old code is removed, so nothing stale can print');
 
 // 4. CHECK A BACKUP: every word count, with the 4-letter view, the words, the stamp sheet, the recovery sheet and SeedQR.
 await p.click('#tab-check');
@@ -166,6 +179,17 @@ for (const [m, n] of [[2, 2], [2, 3], [3, 5], [5, 7], [6, 9], [7, 10], [15, 15]]
   }, [m, n, cos]);
   await sheet('multisig ' + m + '-of-' + n, () => msPrint());
 }
+
+// 7. TEXT A+ (large text on screen) must not change the printed sheets.
+await p.evaluate(() => toggleSize());
+await p.click('#tab-make');
+await p.selectOption('#wordSel', '24'); await p.selectOption('#rsExtra', '50');
+await sheet('TEXT A+: dice roll sheet 24 +50', () => printRollSheet());
+ok(await p.evaluate(() => hasSeed() && document.body.classList.contains('big')), 'TEXT A+: on, with the 24-word seed still made');
+await sheet('TEXT A+: backup sheet 24', () => printSeed());
+await sheet('TEXT A+: stamp sheet 24', () => printStamp());
+await sheet('TEXT A+: summary sheet 24', () => printSummary());
+await p.evaluate(() => toggleSize());
 
 ok(errors.length === 0, 'no page errors (' + errors.join(' | ') + ')');
 await browser.close();

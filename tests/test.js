@@ -1176,7 +1176,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(!!body&&!body.contains(go)&&go.parentNode.classList.contains('sg-box')&&body.parentNode.classList.contains('sg-box'),'start notice: the I understand button sits outside the scrolling text, so it is always on screen (phones could not reach it)');
     ok(/#startGate \.sg-box \{[^}]*max-height: 100%; overflow: hidden; display: flex; flex-direction: column;/.test(html)&&/#startGate \.sg-body \{ flex: 1 1 auto; min-height: 0; overflow-y: auto;/.test(html)&&/#startGate \.sg-go, #startGate \.sg-foot \{ flex: none; \}/.test(html),'start notice: the box fits the screen, only the text scrolls, the button and footer never shrink or scroll away');
     ok(/#startGate \{ position: fixed; top: 0; right: 0; bottom: 0; left: 0;/.test(html)&&!/inset:/.test(html),'start notice: covers the screen with top/right/bottom/left (the inset shorthand fails on iOS before 14.1)');
-    ok(tg.d.body.classList.contains('js-ok')&&/#startGate \{[^}]*display: none;/.test(html)&&/body\.js-ok #startGate \{ display: flex; \}/.test(html),'start notice: only shown once the script has run, so a phone that blocks scripts shows the red warning instead of a dead button');
+    ok(tg.d.body.classList.contains('js-ok')&&/\n  #startGate \{ position: fixed;[^}]*display: none;/.test(html)&&/body\.js-ok #startGate \{ display: flex; \}/.test(html),'start notice: only shown once the script has run, so a phone that blocks scripts shows the red warning instead of a dead button');
     ok((html.match(/\n  #startGate \{/g)||[]).length===1&&!/#startGate[^{]*\{[^}]*display:[^;}]*!important/.test(html),'start notice: nothing forces the notice to show when the script has not run');
     ok(body.getAttribute('tabindex')==='0'&&/things to know/.test(body.getAttribute('aria-label')||''),'start notice: the scrolling text is reachable by keyboard and named'); }
   ok(/\.tabpanel \[id\] \{ scroll-margin-top: 84px; \}/.test(html),'layout: every section keeps clear of the sticky tab bar when the page jumps to it');
@@ -1343,6 +1343,37 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     $('childApp').value='pwd64'; w.childAppChange(); $('childLen').value='21'; await w.deriveChild(); ok($('childPrintBtn').textContent==='PRINT PASSWORD','child: the button names what it prints');
     w.printChild(); const pw=t8.d.querySelector('#printOnly .ps-secret'); ok(!!pw&&pw.textContent.length===21&&$('childOut').textContent.includes(pw.textContent)&&/^VOIDFORGE CHILD PASSWORD \(BIP85\)/.test(t8.st.printHTML),'child: a password prints in one box'); w.dispatchEvent(new w.Event('afterprint'));
     w.clearChild(); t8.st.alerts.length=0; w.printChild(); ok($('childPrintRow').style.display==='none'&&/DERIVE first/.test(t8.st.alerts[0]),'child: HIDE removes the button and the printable result'); }
+  // ===== v2.4.0 review fixes =====
+  { const t9=load(); await t9.ready(); const $=t9.$, w=t9.w; w.startGateClose();
+    t9.set(rnd(50,6)); await w.generate(); await w.passWork; await new Promise(r=>setTimeout(r,50));
+    // QR prints describe the code that was shown, and a change of network hides it at once
+    w.showQr('wZpub','public key'); const snap=w.eval('qrShown'); $('wNet').value='test'; const rw=w.refreshWatch(); let p0=t9.st.printed; t9.st.alerts.length=0; w.printShownQr();
+    ok(t9.st.printed===p0&&w.eval('qrShown')===null&&$('qrBox').style.display==='none','QR prints: changing the network hides the shown code at once, so it cannot print with the wrong label'); await rw;
+    w.showQr('wDescR','receive descriptor'); w.printShownQr(); ok(/^VOIDFORGE RECEIVE DESCRIPTOR \(TESTNET\)/.test(t9.st.printQrText)&&/\]tpub/.test(t9.st.printQrText),'QR prints: a testnet descriptor is printed as testnet'); w.dispatchEvent(new w.Event('afterprint'));
+    $('wType').value='ms-wsh'; $('wNet').value='main'; await w.refreshWatch(); w.showQr('wDescR','x'); w.printShownQr();
+    ok(/^VOIDFORGE COSIGNER KEY WITH ORIGIN/.test(t9.st.printQrText)&&/Address type: Multisig cosigner/.test(t9.st.printQrText),'QR prints: a cosigner key is printed as a cosigner key, not a descriptor'); w.dispatchEvent(new w.Event('afterprint'));
+    $('wType').value='wpkh'; await w.refreshWatch();
+    eq([15,16,22,23,40].map(v=>String(w.qrPrintSize({version:v}))).join(),'false,pq-ms,pq-ms,pq-ms pq-ms-l,pq-ms pq-ms-l','QR prints: big codes print smaller so the sheet stays one page');
+    // a payment request too long for a QR code leaves nothing stale
+    const a0=t9.d.querySelector('#addrList [data-addr]').getAttribute('data-addr'); w.showAddrQr('aq',a0); $('aqMsg').value='Rent'; w.drawAddrQr('aq'); $('aqMsg').value='x'.repeat(3000); w.drawAddrQr('aq');
+    t9.st.alerts.length=0; p0=t9.st.printed; w.printAddrQr('aq'); ok(t9.st.printed===p0&&$('aqImg').textContent===''&&/unavailable/.test($('aqUri').textContent),'payment request: too long for a QR code, the old code is removed and nothing prints'); w.hideAddrQr('aq'); $('aqMsg').value='';
+    // summary: says why when the passphrase boxes differ; cleared with the seed
+    $('passphrase').value='a'; $('passphrase2').value='b'; t9.st.alerts.length=0; p0=t9.st.printed; w.printSummary(); ok(t9.st.printed===p0&&/do not match/.test(t9.st.alerts.join()),'summary: with different passphrase boxes it says so and prints nothing');
+    $('passphrase').value=''; $('passphrase2').value=''; await w.rePass(); t9.set(rnd(51,6)); ok(!w.hasSeed()&&$('sumLine').textContent==='','summary: the line goes with the seed when the rolls change');
+    // child: HIDE or new parent words stop a result from appearing; CLEAR ALL removes it
+    $('phrase').value='abandon '.repeat(11)+'about'; $('childApp').value='words'; w.childAppChange(); $('childWords').value='12';
+    let dp=w.deriveChild(); w.clearChild(); await dp; ok($('childOut').textContent===''&&$('childPrintRow').style.display==='none','child: HIDE pressed while it works shows nothing afterwards');
+    await w.deriveChild(); $('phrase').value='legal winner thank year wave sausage worth useful legal winner thank yellow'; $('phrase').dispatchEvent(new w.Event('input'));
+    ok($('childOut').textContent===''&&w.eval('childCtx')===null,'child: cleared when the parent words change');
+    $('phrase').value='abandon '.repeat(11)+'about'; await w.deriveChild(); $('checkAddr').value='5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ'; await w.explainAddrUi(); t9.st.confirms=0; w.clearAll();
+    ok($('childOut').textContent===''&&$('childPrintRow').style.display==='none'&&$('checkAddr').value===''&&$('addrExplain').textContent==='','CLEAR ALL: removes the child result, the address box and its explanation');
+    ok(/no copy or save; a print button \(v2\.4\.0\)/.test(t9.d.querySelector('#childBox').textContent),'child: the box says it can be printed');
+    // explainer: more secrets pasted by mistake, and Silent Payment contents
+    const X=async a=>{ const r=await w.explainAddress(a); return r?r.level+' '+r.text:''; };
+    for(const [a,re] of [['1. legal 2. winner 3. thank 4. year 5. wave 6. sausage',/^bad These look like SEED WORDS/],['lega winn than year wave saus',/^bad These look like SEED WORDS/],['0'.repeat(96),/^bad These look like SeedQR digits/],['ab'.repeat(32),/^bad This is 64 hex characters/],['lnurl1dp68gurn8ghj7',/^warn This is an LNURL/],['lntbs1pjqqqqqpp5',/^warn This is a Lightning invoice/],['WSH(SORTEDMULTI(2,A,B))',/^warn This is a descriptor/],['6PRVWUbkzzsbcVac2qwfssoUJAN1Xhrg6bNk8J7Nzm5H7kxEbn2Nh2ZoGg',/^bad This is a password-protected PRIVATE KEY \(BIP-38\)/],['S6c56bnXQiBjk9mqSYE7ykVQ7NzrRy',/^bad This is a mini PRIVATE KEY/],['S6c56bnXQiBjk9mqSYE7ykVQ7NzrRz',/^bad Not a valid address/],['send me the money by friday please now',/^bad Not a Bitcoin address/]])
+      ok(re.test(await X(a)),'explain: '+a.slice(0,24));
+    const B32='qpzry9x8gf2tvdw0s3jn54khce6mua7l', toW=(n)=>{ const out=[]; let acc=0,bits=0; for(let i=0;i<n;i++){ acc=(acc<<8)|(i&255); bits+=8; while(bits>=5){ bits-=5; out.push((acc>>bits)&31); } acc&=(1<<bits)-1; } if(bits) out.push((acc<<(5-bits))&31); return out; };
+    ok(/^bad .*contents are not two keys/.test(await X(w.bech32mText('sp',[0,...toW(2)])))&&/^bad .*contents are not two keys/.test(await X(w.bech32mText('sp',[31,...toW(66)])))&&/^ok Silent Payment address/.test(await X(w.bech32mText('sp',[1,...toW(70)])))&&/^bad .*contents are not two keys/.test(await X(w.bech32mText('sp',[1,...toW(60)]))),'explain: a Silent Payment address must hold two keys (66 bytes; version 31 is reserved)'); }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
 

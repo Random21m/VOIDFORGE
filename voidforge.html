@@ -1282,7 +1282,7 @@
     </details>
     <details id="childBox">
       <summary>Child seed (BIP85)<span class="tag tag-secret">SECRET</span><small>Make a separate new seed, key or password from this one.</small></summary>
-      <p class="hint" style="margin:8px 0;">Makes a brand new seed phrase from the parent words (and passphrase) typed in the CHECK A BACKUP tab, for a separate wallet, using the BIP85 standard. BIP85 can also make a Bitcoin Core HD seed (WIF), a master xprv, hex bytes, a password (Base64 or Base85) or dice rolls: choose one under &ldquo;What to make&rdquo;. The same parent, type, settings and index always give the same result. <b>The child is as secret as the parent.</b> It is only shown here: there is no copy, save or print for it. Use the same safety steps as for a new seed, and keep the parent safe: if you lose the parent you lose every child.</p>
+      <p class="hint" style="margin:8px 0;">Makes a brand new seed phrase from the parent words (and passphrase) typed in the CHECK A BACKUP tab, for a separate wallet, using the BIP85 standard. BIP85 can also make a Bitcoin Core HD seed (WIF), a master xprv, hex bytes, a password (Base64 or Base85) or dice rolls: choose one under &ldquo;What to make&rdquo;. The same parent, type, settings and index always give the same result. <b>The child is as secret as the parent.</b> It is shown here, with no copy or save; a print button (v2.4.0) prints it on one sheet, after asking, for a trusted offline printer only. Use the same safety steps as for a new seed, and keep the parent safe: if you lose the parent you lose every child.</p>
       <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
         <select id="childApp" aria-label="What to make" style="width:auto; flex:none;" onchange="childAppChange()"><option value="words">Seed words</option><option value="wif">Bitcoin Core HD seed (WIF)</option><option value="xprv">Master xprv</option><option value="hex">Hex bytes</option><option value="pwd64">Password (Base64)</option><option value="pwd85">Password (Base85)</option><option value="dice">Dice rolls</option></select>
         <select id="childWords" aria-label="Child seed length" style="width:auto; flex:none;"><option value="12">12 words</option><option value="18">18 words</option><option value="24">24 words</option></select>
@@ -1532,7 +1532,7 @@
     <details>
       <summary>Changelog</summary>
       <ul>
-        <li><b>2.4.0</b> &mdash; <b>A print for everything, one page each, and plain-language helpers.</b> (1) <b>One page, no blank pages.</b> Every printed sheet now comes out on exactly one page, on US Letter and on A4; before, most sheets also printed one or more blank pages. A test prints every sheet in a real browser to check this. (2) <b>Roll sheet extras</b>: a menu next to PRINT ROLL SHEET chooses no extra boxes, 10, 25 or 50 (with Keystone dice rules, up to Keystone&rsquo;s maximum of 256). (3) <b>CHECK A BACKUP</b>: once VERIFY accepts your words, <i>Open this wallet</i> has SHOW FIRST 4 LETTERS, PRINT WORDS, PRINT STAMP SHEET and the three SeedQR prints, for any length from 12 to 24 words. VERIFY also reads 4-letter forms (as on a metal plate) and, for a word it does not know, names the closest BIP39 words. (4) <b>New prints</b>: PRINT THIS QR for the watch-only key and descriptors, the Silent Payment address, and address and payment-request QR codes; PRINT CHILD SEED (or the key or password) for BIP85; a blank Word draw sheet; and a <b>seed summary sheet</b> with no words (how the seed was made, the fingerprint with its picture, the first address), also shown as one line on the backup checklist. (5) <b>Test only, no seed</b>: a switch in &ldquo;Your rolls&rdquo; turns FORGE off so you can roll a die many times just to see whether it is fair. (6) With a tap button focused, the number keys add rolls and Backspace undoes. (7) <b>Explain an address</b> (CHECK A BACKUP): paste any address to see its type, network and whether it has a typo, with links to the dictionary; keys, seed words and Lightning invoices pasted by mistake are called out. (8) <b>What can someone do with this?</b>, a quick guide in the dictionary. The Dice rules menu is wide enough for its longest choice. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
+        <li><b>2.4.0</b> &mdash; <b>A print for everything, one page each, and plain-language helpers.</b> (1) <b>One page, no blank pages.</b> Every printed sheet now comes out on exactly one page, on US Letter and on A4; before, most sheets also printed one or more blank pages. A test prints every sheet in a real browser to check this. (2) <b>Roll sheet extras</b>: a menu next to PRINT ROLL SHEET chooses no extra boxes, 10, 25 or 50 (with Keystone dice rules, up to Keystone&rsquo;s maximum of 256). (3) <b>CHECK A BACKUP</b>: once VERIFY accepts your words, <i>Open this wallet</i> has SHOW FIRST 4 LETTERS, PRINT WORDS, PRINT STAMP SHEET and the three SeedQR prints, for any length from 12 to 24 words. VERIFY also reads 4-letter forms (as on a metal plate) and, for a word it does not know, names the closest BIP39 words. (4) <b>New prints</b>: PRINT THIS QR for the watch-only key and descriptors, the Silent Payment address, and address and payment-request QR codes; PRINT CHILD SEED (or the key or password) for BIP85; a blank Word draw sheet; and a <b>seed summary sheet</b> with no words (how the seed was made, the fingerprint with its picture, the first address), also shown as one line on the backup checklist. (5) <b>Test only, no seed</b>: a switch in &ldquo;Your rolls&rdquo; turns FORGE off so you can roll a die many times just to see whether it is fair. (6) With a tap button focused, the number keys add rolls and Backspace undoes. (7) <b>Explain an address</b> (CHECK A BACKUP): paste any address to see its type, network and whether it has a typo, with links to the dictionary; keys, seed words and Lightning invoices pasted by mistake are called out. (8) <b>What can someone do with this?</b>, a quick guide in the dictionary. (9) CLEAR ALL now also clears a child seed and the address box, a child seed is cleared when its parent words change, and the Dice rules menu is wide enough for its longest choice. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.3.0</b> &mdash; <b>More rolls, Keystone and BitBox02 dice, signed messages and END SESSION.</b> (1) <b>The minimum or more.</b> FORGE SEED now takes 50 or 99 rolls (128 or 256 flips) <i>or more</i>, and every roll counts. A note says who makes the same words: exactly the minimum matches SeedSigner and Coldcard, more matches Coldcard; more than twice the minimum adds a reminder to check for a double paste. PRINT ROLL SHEET has 10 extra dashed boxes. (2) <b>Keystone dice rules</b> (Dice rules menu): each 6 counts as 0 and Keystone needs 50 or 100 rolls, at most 256, as on a Keystone wallet. (3) <b>BitBox02 diceware</b> in Word draw: the Word finder reads table codes such as 2143 2 T, ADD WORD (or Enter) adds the word, and the 3 flips for the last word use T as 1 and H as 0, giving the same 24th word BitBox shows. (4) <b>Verify a signed message</b> (EXTRA TOOLS, read only): classic signatures (BIP-137) for 1..., 3... and bc1q addresses and BIP-322 simple signatures for single-key bc1q and bc1p addresses; VALID names the address it checked, and a match found only after a small change to the message (line breaks, spaces at the ends) shows in amber with a warning; a whole signed-message block can be pasted, but it never replaces an address you typed; multisig and full signatures are reported as CANNOT CHECK. It never signs. (5) <b>END SESSION</b> (MENU) wipes everything, resets every box and reloads the page. (6) The start notice shows once in each browser tab while the computer is offline, and on every load while it is online. (7) A Word draw seed is cleared if you change its words, flips or length afterwards, as a dice seed already was, and PRINT ROLL SHEET records the dice rules. For the same inputs as before (exactly the minimum, SeedSigner and Coldcard rules), words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.2.0</b> &mdash; <b>Watch-only wallets, payment requests and a backup checklist.</b> (1) <b>Or open a watch-only wallet</b> (CHECK A BACKUP): paste an account public key (xpub, ypub, zpub, or tpub, upub, vpub) or a single-key descriptor and see the same address list, with a QR code on every row, from public keys only. A plain xpub does not contain the master fingerprint, so the page shows it only when a descriptor gives it. Private keys and multisig keys are refused. (2) <b>Electrum seed warning:</b> when a phrase fails the BIP39 check, VERIFY also says if it is an Electrum seed, and which type, so you restore it in Electrum. (3) <b>Payment request (BIP-21):</b> under any address QR code, add an amount, label or message and the QR becomes a <code>bitcoin:</code> link a phone wallet reads; the amount is checked (at most 8 decimals, above 0, at most 21 million). (4) <b>Backup checklist</b> under your words: words written, restore drill passed, second tool matched, recovery sheet printed. The drill and the recovery sheet tick themselves, a passphrase change unticks them, and nothing is saved. (5) <b>Check descriptors for a reused key</b> (EXTRA TOOLS): warns when the same key appears twice, when two keys of one multisig come from the same seed, or when one fingerprint and path are given with two different keys.</li>
         <li><b>2.1.0</b> (not released on its own; included in 2.2.0) &mdash; <b>Open any wallet, a QR on every address, and a tidier page.</b> (1) <b>Open this wallet.</b> In CHECK A BACKUP, once VERIFY accepts a 12, 15, 18, 21 or 24 word phrase (with or without a passphrase), a closed box lists its addresses: Native SegWit, Taproot, Nested SegWit or Legacy, mainnet or testnet, any account number, receive or change, ten at a time, with the master fingerprint and its picture. It says plainly that the words were imported, not made here. PRINT RECOVERY SHEET prints the fingerprint, address type, path and first addresses with no words and no passphrase. Making a seed is still 12 or 24 words only. (2) <b>A QR button on every address row</b>, here and under your seed. (3) <b>SeedQR and CompactSeedQR</b> for any 12 or 24 word phrase you check; for 15, 18 and 21 words the page says no such format exists. (4) <b>Live preview.</b> While you roll, the grey word boxes show the words your rolls so far would make, so you can watch one roll change every word. They are not your seed until you press FORGE SEED. This replaces the old demo switch, which is gone. (5) <b>Simpler Make tab.</b> Dice, Coin and Word draw are tabs, the seed length sits beside them, the passphrase box is under the words, and changing the passphrase keeps your words and works out the fingerprint and addresses again. A short line under the step bar says what each step is for. (6) <b>TRY ACCOUNTS 0 TO 20</b> finds which account an address belongs to. PRINT ROLL SHEET prints a blank numbered sheet for your rolls, and PRINT STAMP SHEET (MENU) prints the first four letters of each word in capitals for metal plates. An optional <b>auto-clear</b> wipes the page after idle time or when you leave the tab; it is off whenever the page loads and stores nothing. (7) <b>Looks.</b> Smaller buttons, seed words that always stay inside their boxes, red only for warnings and wiping, one type scale, a one-line footer, and a top bar that fits a 320 pixel screen. Fixed: pressing FORGE SEED with too few rolls no longer wipes the grey preview words, and the preview note no longer stays after a seed is made. The README now gives the right self-test count.</li>
@@ -2984,14 +2984,22 @@ async function explainAddress(text){
   if(/^bitcoin:/i.test(t)){ uri = " It was written as a payment request (BIP-21), a bitcoin: link that can also hold an amount and a label."; t = t.slice(8).split("?")[0]; terms.push("BIP21"); }
   t = t.replace(/\s+/g, "");
   const pub = " What someone can do with it: send bitcoin to it, and look up its payments on a block explorer. Nobody can spend from it with the address alone.";
-  if(/^[a-z]+(\s+[a-z]+){11,}$/i.test(String(text).trim())) return {level: "bad", text: "These look like SEED WORDS, not an address. Anyone who has them controls the funds: never paste them into a website or a connected device.", terms: ["Seed (seed phrase, recovery phrase, mnemonic)"]};
-  if(/^ln(bc|tb|bcrt)[0-9]/i.test(t)) return {level: "warn", text: "This is a Lightning invoice (BOLT11), not an on-chain address. Pay it from a Lightning wallet.", terms: ["Lightning invoice (BOLT11)"]};
-  if(/^[a-z]{2,6}\(/.test(t)) return {level: "warn", text: "This is a descriptor, not an address: it describes a whole wallet. Paste it in \u201cOr open a watch-only wallet\u201d above to see its addresses.", terms: ["Descriptor"]};
+  // Secrets pasted by mistake come first: seed words (also numbered, or as 4-letter forms), SeedQR digits, raw hex.
+  const toks = String(text).toLowerCase().split(/[^a-z]+/).filter(Boolean), known = toks.filter(x => Object.prototype.hasOwnProperty.call(WORD_MAP, x) || wordFromPrefix(x)).length;
+  if(known >= 6 && known >= toks.length * 0.8) return {level: "bad", text: "These look like SEED WORDS, not an address. Anyone who has them controls the funds: never paste them into a website or a connected device.", terms: ["Seed (seed phrase, recovery phrase, mnemonic)"]};
+  if(/^(\d{48}|\d{96})$/.test(t)) return {level: "bad", text: "These look like SeedQR digits, not an address: they are seed words written as numbers. Anyone who has them controls the funds.", terms: ["SeedQR"]};
+  if(/^[0-9a-f]{64}$/i.test(t) || /^[0-9a-f]{32}$/i.test(t)) return {level: "bad", text: "This is " + t.length + " hex characters, not an address. It could be a SECRET (a private key, or a CompactSeedQR of seed words) or something public such as a transaction ID. Treat it as secret unless you know what it is.", terms: ["Hex", "Private key", "CompactSeedQR"]};
+  if(/^lnurl1/i.test(t)) return {level: "warn", text: "This is an LNURL, a Lightning link, not an on-chain address. Open it in a Lightning wallet.", terms: ["LNURL"]};
+  if(/^ln(bc|tb|tbs|bcrt)[0-9]/i.test(t)) return {level: "warn", text: "This is a Lightning invoice (BOLT11), not an on-chain address. Pay it from a Lightning wallet.", terms: ["Lightning invoice (BOLT11)"]};
+  if(/^[a-z]{2,12}\(/i.test(t)) return {level: "warn", text: "This is a descriptor, not an address: it describes a whole wallet. Paste it in \u201cOr open a watch-only wallet\u201d above to see its addresses.", terms: ["Descriptor"]};
   const low = t.toLowerCase(), sep = low.lastIndexOf("1"), hrp = sep > 0 ? low.slice(0, sep) : "";
   if(/^t?sp$/.test(hrp)){
     const data = Array.from(low.slice(sep + 1, -6), ch => B32.indexOf(ch));
     const good = t === low || t === t.toUpperCase() ? data.length > 1 && !data.some(v => v < 0) && bech32mText(hrp, data) === low : false;
     if(!good) return {level: "bad", text: "Not a valid Silent Payment address: the checksum does not match, so at least one character is wrong. Do not send to it.", terms: ["Checksum", "BIP352 (Silent Payments)"]};
+    // BIP-352: version 0 carries exactly two 33-byte keys (66 bytes); versions 1 to 30 at least that; 31 is reserved.
+    const v = data[0], bytes = Math.floor((data.length - 1) * 5 / 8);
+    if(v === 31 || (v === 0 ? bytes !== 66 : bytes < 66)) return {level: "bad", text: "Not a valid Silent Payment address: the checksum is right, but its contents are not two keys as BIP-352 requires. Do not send to it.", terms: ["BIP352 (Silent Payments)"]};
     return {level: "ok", text: "Silent Payment address (BIP-352) on " + (hrp === "sp" ? EXPLAIN_NET.bc : EXPLAIN_NET.tb) + ". It can be reused: each payment goes to a new, unlinkable address that only the receiver can find. Few wallets can send to it yet." + pub + uri, terms: terms.concat(["BIP352 (Silent Payments)", "Address"])};
   }
   if(EXPLAIN_NET[hrp]){
@@ -3002,11 +3010,13 @@ async function explainAddress(text){
     if(d.version === 1 && d.prog.length === 32) return {level: "ok", text: "Taproot address (P2TR) on " + net + ". The checksum is valid. It stands for one key, or a key with hidden spending scripts." + pub + uri, terms: terms.concat(["Taproot", "P2TR"])};
     return {level: "bad", text: "A SegWit version " + d.version + " address with a " + d.prog.length + "-byte program on " + net + ". No wallet uses this kind of address today: do not send to it.", terms: ["SegWit"]};
   }
+  if(/^S[1-9A-HJ-NP-Za-km-z]{21,29}$/.test(t) && (await sha256bytes(new TextEncoder().encode(t + "?")))[0] === 0) return {level: "bad", text: "This is a mini PRIVATE KEY, not an address. Anyone who sees it can spend the bitcoin it holds.", terms: ["Mini private key", "Private key"]};
   if(/^[1-9A-HJ-NP-Za-km-z]{25,112}$/.test(t)){
     let raw; try { raw = await base58decode(t); } catch(e) { return {level: "bad", text: "Not a valid address: the checksum does not match, so at least one character is wrong or missing. Do not send to it.", terms: ["Checksum", "Base58 and Base58Check"]}; }
     const v = raw[0];
     if(raw.length === 21 && (v === 0 || v === 0x6f)) return {level: "ok", text: "Legacy address (P2PKH) on " + (v ? EXPLAIN_NET.tb : EXPLAIN_NET.bc) + ". The checksum is valid. It stands for one public key; sending to it costs more in fees than SegWit." + pub + uri, terms: terms.concat(["Legacy address", "P2PKH"])};
     if(raw.length === 21 && (v === 5 || v === 0xc4)) return {level: "ok", text: "Script address (P2SH) on " + (v === 5 ? EXPLAIN_NET.bc : EXPLAIN_NET.tb) + ". The checksum is valid. It is most often nested SegWit (one key) or an older multisig; the address alone does not say which." + pub + uri, terms: terms.concat(["P2SH", "Nested SegWit"])};
+    if(raw.length === 39 && v === 1 && (raw[1] === 0x42 || raw[1] === 0x43)) return {level: "bad", text: "This is a password-protected PRIVATE KEY (BIP-38), not an address. With its password, anyone can spend the bitcoin it holds.", terms: ["Private key"]};
     if((raw.length === 33 || (raw.length === 34 && raw[33] === 1)) && (v === 0x80 || v === 0xef)) return {level: "bad", text: "This is a PRIVATE KEY (WIF), not an address. Anyone who sees it can spend the bitcoin it holds. Never share it or paste it into a website.", terms: ["WIF (Wallet Import Format)", "Private key"]};
     if(raw.length === 78){
       const ver = hex(raw.slice(0, 4));
@@ -4070,8 +4080,9 @@ function seedSummary(){
 }
 function sumUpdate(){ const S = seedSummary(), el = document.getElementById("sumLine"); if(el) el.textContent = S ? "This seed: " + S.short : ""; }
 function printSummary(){
-  const S = seedSummary(); if(!S) return alert("Generate a seed first");
+  if(!hasSeed()) return alert("Generate a seed first");
   if(passMismatch()) return;
+  const S = seedSummary(); if(!S) return;
   printSheet(add => {
     add("ps-title", "VOIDFORGE SEED SUMMARY");
     add("ps-sub", "No seed words and no passphrase are on this sheet. It records how the seed was made and which wallet it opens, so the right wallet can be found and checked again. Keep it with the paper backup.");
@@ -4126,7 +4137,7 @@ function showQr(id, label){
   document.getElementById("qrImg").innerHTML = qrSvg(q.rows);
   document.getElementById("qrCaption").textContent = "QR code for the " + label + " (public key only). Scan it with your watch-only wallet app. If the app cannot scan it, use COPY instead.";
   document.getElementById("qrBox").style.display = "";
-  qrShown = {id, label};
+  qrShown = qrSnapshot(id, t);
   scrollQrIntoView("qrBox");
 }
 function hideQr(){
@@ -4275,7 +4286,11 @@ function drawAddrQr(pfx){
   if(!am.ok){ uriEl.textContent = am.msg; uriEl.style.color = "var(--danger)"; }
   else if(am.v || lbl || msg){ text = bip21Uri(addr, am.v, lbl, msg); uriEl.textContent = text; uriEl.style.color = ""; }
   else { uriEl.textContent = ""; uriEl.style.color = ""; }
-  let q; try { q = qrMatrix(text); } catch(e) { uriEl.textContent = "QR code unavailable: " + e.message; uriEl.style.color = "var(--danger)"; return; }
+  let q; try { q = qrMatrix(text); } catch(e) {
+    // v2.4.0: the old code is removed too, so neither the screen nor PRINT THIS QR can show a request that is no longer typed in.
+    uriEl.textContent = "QR code unavailable: " + e.message; uriEl.style.color = "var(--danger)";
+    delete box.dataset.text; document.getElementById(pfx + "Img").textContent = ""; document.getElementById(pfx + "Cap").textContent = ""; return;
+  }
   box.dataset.text = text;
   document.getElementById(pfx + "Img").innerHTML = qrSvg(q.rows);
   document.getElementById(pfx + "Cap").textContent = text === addr ? addr + " (a public address: scanning it cannot spend anything)" : "Payment request for " + addr + ". A phone wallet that scans it fills in the amount, label and message for you.";
@@ -4317,6 +4332,7 @@ function copyAddrList(btn, listId){
 let watchCtx = null, watchSeq = 0;
 async function refreshWatch(){
   if(!watchCtx) return;
+  hideQr();
   const mine = ++watchSeq, type = document.getElementById("wType").value, raw = document.getElementById("wAcct").value.trim(), err = document.getElementById("wErr");
   const ids = ["wZpub","wDescR","wDescC","wFirst"];
   if(!/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647){
@@ -4619,7 +4635,7 @@ function childAppChange(){
   for(const id of ["childSides", "childRolls"]) document.getElementById(id).style.display = app === "dice" ? "" : "none";
   clearChild();
 }
-async function deriveChildApp(mnemonic, vp, app, index, say){
+async function deriveChildApp(mnemonic, vp, app, index, say, my){
   const A = BIP85_APPS[app], num = (id, what) => { const v = document.getElementById(id).value.trim(); if(!/^[0-9]{1,10}$/.test(v)) throw new Error(what + " must be a whole number."); return parseInt(v, 10); };
   let n, rolls;
   try {
@@ -4627,7 +4643,8 @@ async function deriveChildApp(mnemonic, vp, app, index, say){
     if(app === "dice"){ n = num("childSides", "The number of sides"); rolls = num("childRolls", "The number of rolls"); }
   } catch(e) { clearChild(); return say("bad", e.message); }
   try {
-    const out = await mnemonicBip85App(mnemonic, vp, app, index, n, rolls), o = document.getElementById("childOut");
+    const out = await mnemonicBip85App(mnemonic, vp, app, index, n, rolls), parent = await mnemonicFingerprint(mnemonic, vp), o = document.getElementById("childOut");
+    if(my !== childSeq) return;   // v2.4.0: cleared (or the parent words changed) while this was working
     let head, extra = "";
     if(app === "wif"){ head = "BITCOIN CORE HD SEED (BIP85 application 2, index " + index + ", WIF private key)"; extra = "\n\nA private key: anyone who sees it can spend from the wallet made with it."; }
     else if(app === "xprv"){
@@ -4638,18 +4655,19 @@ async function deriveChildApp(mnemonic, vp, app, index, say){
     else if(app === "dice"){ head = "DICE ROLLS (BIP85, a " + n + "-sided die numbered 0 to " + (n - 1) + ", " + rolls + " rolls, index " + index + ")"; extra = "\n\nThe values start at 0, as BIP85 says (not 1)."; }
     else head = "PASSWORD (BIP85 " + (app === "pwd64" ? "Base64" : "Base85") + ", " + n + " characters, index " + index + ")";
     o.textContent = head + "\n\n" + out + extra; o.style.display = "";
-    childShow({app, head, text: out, extra: extra.trim(), index, pass: !!vp, parent: await mnemonicFingerprint(mnemonic, vp)});
+    childShow({app, head, text: out, extra: extra.trim(), index, pass: !!vp, parent});
     say("ok", A.name + ", index " + index + ", derived from the parent words" + (vp ? " and passphrase" : "") + ". Write down the parent, the type, the settings shown and the index; that recreates it. Anyone who has the parent can recreate it.");
   } catch(e) { clearChild(); say("bad", "Could not derive: " + e.message); }
 }
-let childCtx = null;
+let childCtx = null, childSeq = 0;
 function clearChild(){
-  childCtx = null; document.getElementById("childPrintRow").style.display = "none";
+  childSeq++; childCtx = null; document.getElementById("childPrintRow").style.display = "none";
   const o = document.getElementById("childOut"); o.textContent = ""; o.style.display = "none";
   const t = document.getElementById("childStatus"); t.textContent = ""; t.className = "status";
 }
 async function deriveChild(){
   if(!gateOk()) return;
+  const my = ++childSeq;
   const say = (cls, t) => { const t0 = document.getElementById("childStatus"); t0.className = "status " + cls; t0.textContent = t; };
   const r = await checkPhrase(document.getElementById("phrase").value);
   if(!r.ok){ clearChild(); return say("bad", "Type your valid parent seed phrase in the box above first. " + r.msg); }
@@ -4657,16 +4675,17 @@ async function deriveChild(){
   if(!/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647){ clearChild(); return say("bad", "The index must be a whole number from 0 to 2147483647."); }
   const index = parseInt(raw, 10), vp = document.getElementById("verifyPass").value;
   const app = document.getElementById("childApp").value;
-  if(app !== "words") return deriveChildApp(r.mnemonic, vp, app, index, say);
+  if(app !== "words") return deriveChildApp(r.mnemonic, vp, app, index, say, my);
   try {
     const child = await mnemonicBip85(r.mnemonic, vp, words, index);
-    const fp = await mnemonicFingerprint(child, ""), a0 = await mnemonicFirstAddress(child, "");
+    const fp = await mnemonicFingerprint(child, ""), a0 = await mnemonicFirstAddress(child, ""), parent = await mnemonicFingerprint(r.mnemonic, vp);
+    if(my !== childSeq) return;   // v2.4.0: cleared (or the parent words changed) while this was working
     const ws = child.split(" "), rows = [];
     for(let i = 0; i < ws.length; i += 3) rows.push(ws.slice(i, i + 3).map((w, j) => (String(i + j + 1).padStart(2, " ") + ". " + w).padEnd(16, " ")).join("").trimEnd());
     const o = document.getElementById("childOut");
     o.textContent = "CHILD SEED (BIP85, English, " + words + " words, index " + index + ")\n\n" + rows.join("\n") + "\n\nChild master fingerprint: " + fp + "\nChild first receive address (BIP84): " + a0;
     o.style.display = "";
-    childShow({app: "words", words: ws, fp, a0, index, pass: !!vp, parent: await mnemonicFingerprint(r.mnemonic, vp)});
+    childShow({app: "words", words: ws, fp, a0, index, pass: !!vp, parent});
     say("ok", "Child seed " + index + " derived from the parent words" + (vp ? " and passphrase" : "") + ". It is a normal seed with no passphrase. Write down the parent, the word count and the index; that recreates it. Anyone who has the parent can recreate every child.");
   } catch(e) { clearChild(); say("bad", "Could not derive the child seed: " + e.message); }
 }
@@ -4693,6 +4712,7 @@ function updateAbbrNote(){
   document.getElementById("abbrNote").textContent = (abbrOn && hasSeed()) ? "Showing only the first 4 letters of each word. The full words are still your backup; write down full words unless your backup method uses 4-letter abbreviations. PRINT STAMP SHEET in the MENU prints them large, for stamping a metal plate." : "";
 }
 function setResult(text, words){
+  sumCtx = null;
   wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body.classList.toggle("has-seed", !!words);
   const g = document.getElementById("genResult"), grid = document.getElementById("wordGrid");
   g.textContent = text; g.classList.toggle("nores", text === "\u2014"); grid.textContent = "";
@@ -4893,17 +4913,23 @@ function printWordSheet(){
   });
 }
 // Print the public QR code shown in the watch-only box (v2.4.0): key, descriptor or Silent Payment address, with its text.
+// The sheet is described when the code is shown (not when it is printed), so the title, network and account always belong to
+// the code on screen; changing the type, network or account hides the code (refreshWatch).
 const QR_PRINT_NAMES = {wZpub: "ACCOUNT PUBLIC KEY", wDescR: "RECEIVE DESCRIPTOR", wDescC: "CHANGE DESCRIPTOR", spAddr: "SILENT PAYMENT ADDRESS"};
+function qrSnapshot(id, text){
+  const sel = document.getElementById("wType"), net = document.getElementById("wNet").value, cos = !!MULTISIG[sel.value];
+  return {id, text, title: "VOIDFORGE " + (cos ? (id === "wZpub" ? "COSIGNER PUBLIC KEY" : "COSIGNER KEY WITH ORIGIN") : QR_PRINT_NAMES[id] || "PUBLIC KEY") + (net === "test" ? " (TESTNET)" : ""),
+    info: [document.getElementById("fingerprint").textContent, id === "spAddr" ? "Address type: Silent Payment (BIP-352)" : "Address type: " + sel.options[sel.selectedIndex].text,
+      "Network: " + (net === "test" ? "TESTNET (practice coins only)" : "Mainnet"), "Account number: " + document.getElementById("wAcct").value.trim()]};
+}
+// QR size on paper: 11 cm, or smaller with smaller text for big codes, so the code and its text stay on one page.
+function qrPrintSize(q){ return q.version <= 15 ? false : q.version <= 22 ? "pq-ms" : "pq-ms pq-ms-l"; }
 function printShownQr(){
   if(!qrShown || !hasSeed()) return alert("Press one of the SHOW QR buttons first.");
-  const t = document.getElementById(qrShown.id).textContent; if(!t) return;
+  const t = qrShown.text;
   let q; try { q = qrMatrix(t); } catch(e) { return alert("QR code unavailable: " + e.message); }
-  const sel = document.getElementById("wType"), net = document.getElementById("wNet").value;
-  const info = [document.getElementById("fingerprint").textContent,
-    qrShown.id === "spAddr" ? "Address type: Silent Payment (BIP-352)" : "Address type: " + sel.options[sel.selectedIndex].text,
-    "Network: " + (net === "test" ? "TESTNET (practice coins only)" : "Mainnet"), "Account number: " + document.getElementById("wAcct").value.trim()];
-  printSqSheet("VOIDFORGE " + (QR_PRINT_NAMES[qrShown.id] || "PUBLIC KEY") + (net === "test" ? " (TESTNET)" : ""), qrSvg(q.rows), q.version > 15,
-    info.join("\n") + "\n\n" + t + "\n\nPUBLIC: no seed words and no private keys, so it cannot spend. Anyone who scans it can see this wallet's addresses and balance: keep it private.\nScan it into a watch-only wallet app and check that the first address matches.\n", "");
+  printSqSheet(qrShown.title, qrSvg(q.rows), qrPrintSize(q),
+    qrShown.info.join("\n") + "\n\n" + t + "\n\nPUBLIC: no seed words and no private keys, so it cannot spend. Anyone who scans it can see this wallet's addresses and balance: keep it private.\nScan it into a watch-only wallet app and check that the first address matches.\n", "");
 }
 // Print an address QR code, or the payment request (BIP-21) made from it (v2.4.0).
 function printAddrQr(pfx){
@@ -4911,7 +4937,7 @@ function printAddrQr(pfx){
   if(!t) return alert("Press QR next to an address first.");
   let q; try { q = qrMatrix(t); } catch(e) { return alert("QR code unavailable: " + e.message); }
   const req = t !== addr, fp = document.getElementById(pfx === "wvq" ? "wvFp" : "fingerprint").textContent;
-  printSqSheet("VOIDFORGE " + (req ? "PAYMENT REQUEST" : "RECEIVE ADDRESS"), qrSvg(q.rows), q.version > 15,
+  printSqSheet("VOIDFORGE " + (req ? "PAYMENT REQUEST" : "RECEIVE ADDRESS"), qrSvg(q.rows), qrPrintSize(q),
     (fp ? fp + "\n" : "") + "Address: " + addr + (req ? "\nPayment link: " + t : "") + "\n\nPUBLIC: an address can only receive. Scanning this QR code cannot spend anything.\nBefore anyone pays, check the address against your wallet app or hardware wallet.\n", "");
 }
 // Child seed (BIP85) print (v2.4.0): the words in boxes, or the key or password in one box, with what recreates it.
@@ -5047,7 +5073,8 @@ function wipeSeed(){
   document.getElementById("verifyRecorded").value="";
   document.getElementById("verifyMatch").textContent="";
   document.getElementById("verifyPass").type="password";
-  document.getElementById("verifyStatus").textContent=""; clearWalletView();
+  document.getElementById("verifyStatus").textContent=""; clearWalletView(); clearChild();
+  document.getElementById("checkAddr").value=""; explainSeq++; document.getElementById("addrExplain").textContent=""; document.getElementById("addrExplain").className="status";
   document.getElementById("testResults").textContent="";
   setResult("\u2014"); updateAdvSummary(); if(guideOn){ guideN = 1; guideRender(); }
   wdClear();
@@ -5744,7 +5771,7 @@ function toggleTheme() {
 }
 for(const id of ["checkAddr","checkAcct","phrase","verifyPass"]) document.getElementById(id).addEventListener("input", resetAddrScan);
 for(const id of ["phrase","verifyPass","childWords","childIndex","childLen","childSides","childRolls"]) document.getElementById(id).addEventListener("input", clearChild);
-for(const id of ["phrase","verifyPass"]) document.getElementById(id).addEventListener("input", () => { if(wvCtx && wvCtx.kind !== "pub") clearWalletView(); });
+for(const id of ["phrase","verifyPass"]) document.getElementById(id).addEventListener("input", () => { if(wvCtx && wvCtx.kind !== "pub") clearWalletView(); if(childCtx || document.getElementById("childOut").textContent) clearChild(); });
 document.getElementById("reuseIn").addEventListener("input", () => { const st = document.getElementById("reuseStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wpIn").addEventListener("input", () => { if(wvCtx && wvCtx.kind === "pub") clearWalletView(); const st = document.getElementById("wpStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wType").addEventListener("change", refreshWatch);
