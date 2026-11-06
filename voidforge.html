@@ -279,6 +279,9 @@
     body.print-seed #printOnly .ps-roll20 .ps-n { font-size: 9px; }
     body.print-seed #printOnly .ps-extra-sub { margin-top: 10px; }
     body.print-seed #printOnly .ps-rule { border-top: 1px solid #000; margin: 14px 0; }
+    body.print-seed #printOnly .ps-sum { display: flex; gap: 16px; align-items: flex-start; }
+    body.print-seed #printOnly .ps-lh { width: 3cm; height: 3cm; flex: none; line-height: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body.print-seed #printOnly .ps-lh svg { width: 100%; height: 100%; }
     body.print-seed #printOnly .ps-secret { font-size: 18px; font-weight: 700; letter-spacing: .5px; border: 1.5px solid #000; border-radius: 6px; padding: 10px 12px; margin: 6px 0 4px; overflow-wrap: anywhere; }
     body.print-seed #printOnly .ps-secret.ps-s { font-size: 12px; letter-spacing: 0; }
     body.print-seed #printOnly .ps-secret.ps-xs { font-size: 8px; letter-spacing: 0; line-height: 1.25; }
@@ -657,7 +660,7 @@
   .mk-len select { flex: 0 0 auto; width: auto; min-width: 120px; }
   .mk-len span { color: var(--muted); font-size: 13px; }
   #lenRow label, #rulesRow label { min-width: 6.6em; }
-  @media (min-width: 560px) { #wordSel, #diceRules { width: 16em; } }
+  @media (min-width: 560px) { #wordSel, #diceRules { width: 18.5em; } }
   @media (max-width: 559px) { #lenRow label, #rulesRow label { flex-basis: 100%; } #wordSel, #diceRules { flex: 1 1 100%; width: 100%; } }
   .legacy-radios { display: none; }
   #wdBox > summary { display: none; }
@@ -764,6 +767,18 @@
   .wv-ctl { display:flex; gap:6px; align-items:center; margin:8px 0 6px; flex-wrap:wrap; }
   .wv-ctl select { flex:1 1 96px; min-width:0; }
   select.rs-extra { width: auto; flex: 0 0 auto; padding: 5px 8px; font-size: 12px; }
+  .dt-switch { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 2px; font-size: 13px; color: var(--muted); cursor: pointer; }
+  .dt-switch input { width: auto; margin-top: 2px; flex: none; }
+  .dt-switch b { color: var(--text); }
+  .what-list, #about .what-list { list-style: none; margin: 4px 0 8px; padding: 0; display: grid; gap: 8px; }
+  .what-list li { display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; }
+  .what-h { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px; }
+  .what-h .dict-link { font-size: 14px; }
+  .what-t { font-size: 13px; color: var(--muted); }
+  .dict-links { margin-top: 6px; font-size: 12px; color: var(--muted); font-weight: 400; }
+  button.dict-link { background: none; border: none; padding: 0; margin: 0; font: inherit; font-weight: 600; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; min-height: 0; box-shadow: none; text-transform: none; letter-spacing: 0; }
+  button.dict-link:hover { color: var(--text); }
+  .dict-item.dict-hit { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 4px; }
   #wvAbbrGrid { display: none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0 0; }
   #wvAbbrGrid.on { display: grid; }
   @media (max-width: 559px) { #wvAbbrGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -890,6 +905,7 @@
       <label><input type="radio" name="mode" value="coin" onchange="onModeChange()"><span>Coin (1/0)</span></label>
     </div>
     <div id="tapRow" data-g="2" class="radio-group" style="margin-top:8px; margin-bottom:6px;" aria-label="Tap to add a roll or flip"></div>
+    <div id="diceTestBan" class="ms-test" data-g="2" style="display:none;">DICE TEST ONLY: no seed is made from these rolls. Turn the test off in &ldquo;Your rolls&rdquo; below to make a seed.</div>
     <textarea id="rolls" data-g="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Dice: rolls 1-6. Coin: flips as 1 and 0."></textarea>
     <div id="coinHint" data-g="2" style="display:none; font-size: 13px; margin-top:6px; color:var(--muted);">Pick which side is 1 and which is 0 (the usual choice: heads = 1, tails = 0) and keep it the same for every flip. Only the 1/0 string is used, so any consistent choice is fine, but you cannot get the mapping back from the words. Write down the exact string or your mapping with your backup.</div>
     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;" data-g="2">
@@ -902,7 +918,9 @@
     <div id="countNote" data-g="2" class="hint" aria-live="polite" style="margin:4px 0 0;"></div>
     <div id="ignoredNote" data-g="2" style="font-size: 13px; margin-top:4px; font-weight:600; color:var(--danger);"></div>
     <details id="rollStats" data-g="2">
-      <summary>Your rolls: history and fairness chart<small>See what you rolled and whether the faces came up evenly.</small></summary>
+      <summary>Your rolls: history and fairness chart<small>See what you rolled and whether the faces came up evenly, or test your dice without making a seed.</small></summary>
+    <label class="dt-switch"><input type="checkbox" id="diceTest" onchange="diceTestToggle()"><span><b>Test only, no seed:</b> roll the same die (or flip the same coin) many times to see whether it comes up evenly. FORGE SEED is off while this is on.</span></label>
+    <div id="diceTestNote" class="hint" aria-live="polite" style="margin:4px 0 0;"></div>
     <div id="rollHistory" data-g="2" style="font-size: 12px;color:var(--muted);margin-top:6px;min-height:16px;"></div>
     <div id="diceVisual" data-g="2" style="font-size:30px; letter-spacing:4px; margin-top:4px; min-height:28px;"></div>
     <div id="rollChart" data-g="2" class="rc" role="img" aria-label="Chart of how many times each face came up" style="display:none;"></div>
@@ -946,11 +964,13 @@
    <div class="gen-bottom">
     <div id="bkList" data-g="5" style="display:none;">
       <h3 class="sec">Backup checklist</h3>
+      <p class="hint" id="sumLine" style="margin:0 0 6px;"></p>
       <p class="hint" style="margin:0 0 4px;">Tick each step when it is done. Two of them tick themselves. Nothing is saved: the list clears with the words.</p>
       <label><input type="checkbox" id="bk1" onchange="bkUpdate()"> Words written on paper, in order, and checked against the screen</label>
       <label><input type="checkbox" id="bk2" onchange="bkUpdate()"> Restore drill passed (ticks itself when the drill below passes)</label>
       <label><input type="checkbox" id="bk3" onchange="bkUpdate()"> Fingerprint and first address match in a second tool, such as a hardware wallet</label>
-      <label><input type="checkbox" id="bk4" onchange="bkUpdate()"> Recovery sheet printed (ticks itself: SEND TO CHECK, VERIFY, Open this wallet, PRINT RECOVERY SHEET)</label>
+      <label><input type="checkbox" id="bk4" onchange="bkUpdate()"> Summary sheet printed, with no words on it (ticks itself: PRINT SUMMARY SHEET below, or PRINT RECOVERY SHEET in CHECK A BACKUP)</label>
+      <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" id="sumBtn" onclick="printSummary()">PRINT SUMMARY SHEET</button></div>
       <div id="bkNote" class="hint" aria-live="polite"></div>
     </div>
     <details id="autoClearBox" style="margin-top:8px;">
@@ -1172,9 +1192,10 @@
       </div>
     </details>
     <div class="sec-block">
-      <h3 class="sec">Is this address yours?</h3>
-      <div class="hint" style="margin:0 0 6px;">Paste a receive or change address from a wallet app (bc1q SegWit, bc1p Taproot, 3 nested SegWit or 1 legacy; the box on the right is the account, almost always 0). It is searched in the wallet made by the words and passphrase above.</div>
+      <h3 class="sec">Explain an address, or check that it is yours</h3>
+      <div class="hint" style="margin:0 0 6px;">Paste any Bitcoin address and VOIDFORGE explains it at once: what kind it is, which network, whether it has a typo, and what someone can do with it. That needs no seed. To find it in your wallet, paste a receive or change address from a wallet app (bc1q SegWit, bc1p Taproot, 3 nested SegWit or 1 legacy; the box on the right is the account, almost always 0). It is searched in the wallet made by the words and passphrase above.</div>
       <div style="display:flex; gap:6px;"><input type="text" id="checkAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Address (bc1q, bc1p, 3 or 1)" style="flex:1; min-width:0;"><input type="text" id="checkAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number (almost always 0)" style="width:56px; flex:none;"></div>
+      <div class="status" id="addrExplain" aria-live="polite" style="word-break:break-word; margin-top:6px;"></div>
       <div class="btn-row" style="margin-top:8px;"><button type="button" id="checkAddrBtn" onclick="checkAddress()">CHECK ADDRESS</button><button type="button" id="checkAcctsBtn" onclick="checkAllAccounts()">TRY ACCOUNTS 0 TO 20</button><button type="button" id="checkAcctsStop" class="secondary small" onclick="acctScanStop = true" disabled>STOP</button></div>
       <div class="hint" style="margin:6px 0 0;">Not sure of the account? TRY ACCOUNTS 0 TO 20 looks at the first 20 receive and change addresses of each account (the account box is ignored), with and without the passphrase above. It takes a while; STOP ends it.</div>
       <div class="status" id="addrCheckStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
@@ -1402,6 +1423,21 @@
     <details id="dictBox">
       <summary>Bitcoin dictionary<small>Plain-word meanings of Bitcoin terms, by topic. Search it.</small></summary>
       <p class="hint" style="margin:8px 0;">Plain-word meanings of Bitcoin terms, not only the ones VOIDFORGE uses: keys and seeds, wallets, transactions, mining, Lightning, privacy and more. Search it or pick a topic. It is built into the page, works offline and stores nothing. It is updated with every release, and where a word appears in VOIDFORGE the entry says where.</p>
+      <details class="wd-how" id="whatBox"><summary>What can someone do with this? A quick guide</summary>
+      <p class="hint" style="margin:6px 0;">What a person could do if they saw or got each of these. Tap a name for its dictionary entry.</p>
+      <ul class="what-list">
+        <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Seed (seed phrase, recovery phrase, mnemonic)')">Seed words (12 or 24 words)</button><span class="tag tag-secret">SECRET</span></span><span class="what-t">Can spend everything, in any wallet app. Keep them on paper or metal, offline.</span></li>
+        <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Passphrase (the 25th word)')">Passphrase</button><span class="tag tag-secret">SECRET</span></span><span class="what-t">Not alone; with the seed words it opens the wallet. Store it apart from the words.</span></li>
+        <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('SeedQR')">SeedQR</button><span class="tag tag-secret">SECRET</span></span><span class="what-t">It is the seed words as a QR code: anyone who scans it can spend everything.</span></li>
+        <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Dice entropy')">Dice rolls or coin flips you used</button><span class="tag tag-secret">SECRET</span></span><span class="what-t">They make your seed again. Shred the roll sheet once the words are checked.</span></li>
+        <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Private key')">Private key (WIF) or xprv</button><span class="tag tag-secret">SECRET</span></span><span class="what-t">Can spend what that key or account holds.</span></li>
+        <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Child seed')">Child seed (BIP85)</button><span class="tag tag-secret">SECRET</span></span><span class="what-t">Can spend its own wallet. The parent seed can make every child again.</span></li>
+        <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Extended public key (xpub, ypub, zpub)')">xpub, zpub or descriptor</button><span class="tag tag-note">PRIVATE</span></span><span class="what-t">Cannot spend, but sees every address and the balance of that account, past and future.</span></li>
+        <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Fingerprint (master fingerprint)')">Master fingerprint</button><span class="tag tag-public">PUBLIC</span></span><span class="what-t">Cannot spend or see balances. It only tells which wallet a backup belongs to.</span></li>
+        <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Address')">An address</button><span class="tag tag-public">PUBLIC</span></span><span class="what-t">Can send you bitcoin and see that address&rsquo;s payments. Use a new one each time.</span></li>
+        <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Signed message')">A signed message</button><span class="tag tag-public">PUBLIC</span></span><span class="what-t">Shows that the owner of an address wrote it. It cannot spend.</span></li>
+      </ul>
+      </details>
       <div id="dictCats" class="dict-cats" role="group" aria-label="Filter the dictionary by topic"></div>
       <input type="text" inputmode="search" id="dictSearch" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Search the Bitcoin dictionary" placeholder="Search a word, such as xpub or gap limit" oninput="dictFilter()">
       <div class="hint" id="dictCount" aria-live="polite" style="margin:6px 0;"></div>
@@ -1632,6 +1668,31 @@ function clean(s){
   return s.replace(/[^1-6]/g,"");
 }
 
+// Test your dice (v2.4.0): a "test only, no seed" switch in the fairness box. While it is on, FORGE SEED is off, no words are
+// previewed, and the rolls only feed the fairness chart and checks. Starting or ending the test clears the rolls box, so test
+// rolls can never become a seed and seed rolls are never mixed into a test.
+function diceTestOn(){ const e = document.getElementById("diceTest"); return !!e && e.checked; }
+function diceTestToggle(){
+  const on = diceTestOn(), box = document.getElementById("rolls"), n = clean(box.value).length;
+  if(n && !confirm(on ? "Start a dice test? The " + n + " rolls or flips in the box are cleared first, so they are not mixed into the test." : "End the dice test? The " + n + " test rolls or flips are cleared, so they are never used for a seed.")){
+    document.getElementById("diceTest").checked = !on; return;
+  }
+  if(n){ box.value = ""; }
+  document.body.classList.toggle("dice-test", on);
+  document.getElementById("diceTestBan").style.display = on ? "" : "none";
+  document.getElementById("forgeBtn").disabled = on || selfTestState !== "pass";
+  if(on) document.getElementById("rollStats").open = true;
+  updateCount();
+}
+function diceTestText(rolls, isCoin){
+  const n = rolls.length, one = isCoin ? "flip" : "roll", min = isCoin ? 20 : 30, good = isCoin ? 100 : 120;
+  if(n < min) return n + " " + one + (n === 1 ? "" : "s") + " so far. Type every result; the test starts at " + min + " and gives a clearer answer at " + good + " or more.";
+  const an = analyzeRolls(rolls, isCoin), ft = faceTest(rolls, isCoin);
+  const more = n < good ? " Keep going to " + good + " or more for a clearer answer." : "";
+  if(an.level === "ok") return n + " " + one + "s tested: no sign of a problem (fairness test p \u2248 " + ft.p.toFixed(2) + "; only a very small p points to an unfair " + (isCoin ? "coin" : "die") + ")." + more;
+  if(an.level === "warn") return n + " " + one + "s tested: slightly uneven, which a fair " + (isCoin ? "coin" : "die") + " also does now and then. Keep going and see if it lasts.";
+  return n + " " + one + "s tested: the checks above found a problem. Try another " + (isCoin ? "coin" : "die") + ", and " + (isCoin ? "flip it high, catching it the same way each time" : "roll it in a cup onto a flat surface") + ".";
+}
 // Randomness sanity check for typed-in rolls/flips. Advisory: it catches lazy patterns, not subtle bias.
 function analyzeRolls(str, isCoin){
   const k = isCoin ? 2 : 6, n = str.length, minN = isCoin ? 20 : 30;
@@ -1779,7 +1840,9 @@ function updateCount(){
   document.getElementById("bitsNote").textContent = rolls.length
     ? "\u2248 " + Math.floor(bits) + " bits so far, IF every " + (isCoin ? "flip" : "roll") + " was fair (a 12-word seed needs 128, a 24-word seed 256). This check cannot prove your " + (isCoin ? "coin is" : "dice are") + " random."
     : "";
-  document.getElementById("countNote").textContent = countNote(rolls.length, need, isCoin, keystoneOn());
+  document.getElementById("countNote").textContent = diceTestOn() ? "" : countNote(rolls.length, need, isCoin, keystoneOn());
+  document.getElementById("diceTestNote").textContent = diceTestOn() ? diceTestText(rolls, isCoin) : "";
+  if(diceTestOn()) document.getElementById("bitsNote").textContent = "";
   updateRollHistory(rolls);
   if(!hasSeed()) renderSlots();
   updateSeedPanel();
@@ -2677,6 +2740,24 @@ function buildDict(){
   });
   dictFilter();
 }
+// Open the dictionary at one entry (v2.4.0): from "Explain an address" and the "What can someone do with this?" guide.
+function dictGo(name){
+  showTab("about");
+  const box = document.getElementById("dictBox"); box.open = true;
+  dictCat = "All"; document.querySelectorAll("#dictCats button").forEach(x => x.setAttribute("aria-pressed", x.textContent === "All" ? "true" : "false"));
+  document.getElementById("dictSearch").value = ""; dictFilter();
+  const it = [...document.querySelectorAll("#dictList .dict-item")].find(e => e.querySelector("dt").textContent === name);
+  if(!it) return;
+  document.querySelectorAll("#dictList .dict-item.dict-hit").forEach(e => e.classList.remove("dict-hit"));
+  it.classList.add("dict-hit"); it.scrollIntoView({behavior: "smooth", block: "center"});
+}
+// Buttons (not links: the page keeps a single <a>) that open dictionary entries.
+function dictLinks(el, names){
+  if(!names || !names.length) return;
+  const row = document.createElement("div"); row.className = "dict-links"; row.appendChild(document.createTextNode("In the dictionary: "));
+  names.forEach((n, i) => { const b = document.createElement("button"); b.type = "button"; b.className = "dict-link"; b.textContent = n; b.onclick = () => dictGo(n); if(i) row.appendChild(document.createTextNode(" \u00b7 ")); row.appendChild(b); });
+  el.appendChild(row);
+}
 function dictFilter(){
   const q = document.getElementById("dictSearch").value.toLowerCase().trim().replace(/\s+/g, " "), items = document.querySelectorAll("#dictList .dict-item");
   let n = 0;
@@ -2890,21 +2971,111 @@ async function electrumNote(phrase){
   let k = null; try { k = await electrumSeedType(phrase); } catch(e) { k = null; }
   return k ? " This looks like an Electrum seed (" + k + " type), not a BIP39 phrase. Restore it in Electrum and choose \u201cElectrum seed\u201d, not BIP39; other wallets may not accept it." : "";
 }
+// Explain an address (v2.4.0): what a pasted address is (type, network, typo or not) and what someone can do with it. It needs
+// no seed and uses only the text. Keys, seed words, Lightning invoices and descriptors pasted by mistake are recognised too.
+const EXPLAIN_NET = {bc: "Bitcoin mainnet (real money)", tb: "testnet or signet (practice coins, worthless)", bcrt: "regtest (a private test network)"};
+async function explainAddress(text){
+  let t = String(text || "").trim(); const terms = [];
+  if(!t) return null;
+  let uri = "";
+  if(/^bitcoin:/i.test(t)){ uri = " It was written as a payment request (BIP-21), a bitcoin: link that can also hold an amount and a label."; t = t.slice(8).split("?")[0]; terms.push("BIP21"); }
+  t = t.replace(/\s+/g, "");
+  const pub = " What someone can do with it: send bitcoin to it, and look up its payments on a block explorer. Nobody can spend from it with the address alone.";
+  if(/^[a-z]+(\s+[a-z]+){11,}$/i.test(String(text).trim())) return {level: "bad", text: "These look like SEED WORDS, not an address. Anyone who has them controls the funds: never paste them into a website or a connected device.", terms: ["Seed (seed phrase, recovery phrase, mnemonic)"]};
+  if(/^ln(bc|tb|bcrt)[0-9]/i.test(t)) return {level: "warn", text: "This is a Lightning invoice (BOLT11), not an on-chain address. Pay it from a Lightning wallet.", terms: ["Lightning invoice (BOLT11)"]};
+  if(/^[a-z]{2,6}\(/.test(t)) return {level: "warn", text: "This is a descriptor, not an address: it describes a whole wallet. Paste it in \u201cOr open a watch-only wallet\u201d above to see its addresses.", terms: ["Descriptor"]};
+  const low = t.toLowerCase(), sep = low.lastIndexOf("1"), hrp = sep > 0 ? low.slice(0, sep) : "";
+  if(/^t?sp$/.test(hrp)){
+    const data = Array.from(low.slice(sep + 1, -6), ch => B32.indexOf(ch));
+    const good = t === low || t === t.toUpperCase() ? data.length > 1 && !data.some(v => v < 0) && bech32mText(hrp, data) === low : false;
+    if(!good) return {level: "bad", text: "Not a valid Silent Payment address: the checksum does not match, so at least one character is wrong. Do not send to it.", terms: ["Checksum", "BIP352 (Silent Payments)"]};
+    return {level: "ok", text: "Silent Payment address (BIP-352) on " + (hrp === "sp" ? EXPLAIN_NET.bc : EXPLAIN_NET.tb) + ". It can be reused: each payment goes to a new, unlinkable address that only the receiver can find. Few wallets can send to it yet." + pub + uri, terms: terms.concat(["BIP352 (Silent Payments)", "Address"])};
+  }
+  if(EXPLAIN_NET[hrp]){
+    const net = EXPLAIN_NET[hrp], d = segwitDecode(t);
+    if(!d) return {level: "bad", text: "Not a valid address: " + (t !== low && t !== t.toUpperCase() ? "it mixes capital and small letters, which bc1 addresses never do" : "the checksum does not match, so at least one character is wrong or missing") + ". Do not send to it.", terms: ["Checksum", "Bech32 and bech32m"]};
+    if(d.version === 0 && d.prog.length === 20) return {level: "ok", text: "Native SegWit address (P2WPKH) on " + net + ". The checksum is valid, so there is no typo. It stands for one public key." + pub + uri, terms: terms.concat(["Native SegWit", "P2WPKH"])};
+    if(d.version === 0 && d.prog.length === 32) return {level: "ok", text: "SegWit script address (P2WSH) on " + net + ". The checksum is valid. It stands for a script, most often a multisig wallet." + pub + uri, terms: terms.concat(["P2WSH", "Multisig"])};
+    if(d.version === 1 && d.prog.length === 32) return {level: "ok", text: "Taproot address (P2TR) on " + net + ". The checksum is valid. It stands for one key, or a key with hidden spending scripts." + pub + uri, terms: terms.concat(["Taproot", "P2TR"])};
+    return {level: "bad", text: "A SegWit version " + d.version + " address with a " + d.prog.length + "-byte program on " + net + ". No wallet uses this kind of address today: do not send to it.", terms: ["SegWit"]};
+  }
+  if(/^[1-9A-HJ-NP-Za-km-z]{25,112}$/.test(t)){
+    let raw; try { raw = await base58decode(t); } catch(e) { return {level: "bad", text: "Not a valid address: the checksum does not match, so at least one character is wrong or missing. Do not send to it.", terms: ["Checksum", "Base58 and Base58Check"]}; }
+    const v = raw[0];
+    if(raw.length === 21 && (v === 0 || v === 0x6f)) return {level: "ok", text: "Legacy address (P2PKH) on " + (v ? EXPLAIN_NET.tb : EXPLAIN_NET.bc) + ". The checksum is valid. It stands for one public key; sending to it costs more in fees than SegWit." + pub + uri, terms: terms.concat(["Legacy address", "P2PKH"])};
+    if(raw.length === 21 && (v === 5 || v === 0xc4)) return {level: "ok", text: "Script address (P2SH) on " + (v === 5 ? EXPLAIN_NET.bc : EXPLAIN_NET.tb) + ". The checksum is valid. It is most often nested SegWit (one key) or an older multisig; the address alone does not say which." + pub + uri, terms: terms.concat(["P2SH", "Nested SegWit"])};
+    if((raw.length === 33 || (raw.length === 34 && raw[33] === 1)) && (v === 0x80 || v === 0xef)) return {level: "bad", text: "This is a PRIVATE KEY (WIF), not an address. Anyone who sees it can spend the bitcoin it holds. Never share it or paste it into a website.", terms: ["WIF (Wallet Import Format)", "Private key"]};
+    if(raw.length === 78){
+      const ver = hex(raw.slice(0, 4));
+      if(EXT_PRIVATE.includes(ver)) return {level: "bad", text: "This is an extended PRIVATE key (xprv and similar), not an address. Anyone who sees it can spend from every address of that wallet or account.", terms: ["Extended private key (xprv)"]};
+      if(EXT_VERSIONS[ver]) return {level: "warn", text: "This is an extended PUBLIC key (xpub, zpub and similar), not an address. Anyone who has it can see every address and the balance of that account, but cannot spend. Paste it in \u201cOr open a watch-only wallet\u201d above to see its addresses.", terms: ["Extended public key (xpub, ypub, zpub)", "Watch-only wallet"]};
+    }
+    return {level: "bad", text: "Valid Base58 text, but not a Bitcoin address VOIDFORGE recognises (it may belong to another coin). Do not send bitcoin to it.", terms: ["Base58 and Base58Check", "Altcoin"]};
+  }
+  return {level: "bad", text: "Not a Bitcoin address VOIDFORGE recognises. Bitcoin addresses start with bc1, 1 or 3 (testnet: tb1, m, n or 2).", terms: ["Address"]};
+}
+let explainSeq = 0;
+async function explainAddrUi(){
+  const my = ++explainSeq, el = document.getElementById("addrExplain"), r = await explainAddress(document.getElementById("checkAddr").value);
+  if(my !== explainSeq) return;
+  el.textContent = ""; el.className = "status";
+  if(!r) return;
+  el.className = "status " + (r.level === "ok" ? "ok" : r.level === "warn" ? "warn" : "bad");
+  el.appendChild(document.createTextNode(r.text)); dictLinks(el, r.terms);
+}
+document.getElementById("checkAddr").addEventListener("input", explainAddrUi);
+// Typo helper (v2.4.0). Every BIP39 word is unique by its first 4 letters, so 4 or more letters that start exactly one word
+// (as on a metal plate) are read as that word. For anything else, the closest BIP39 words are suggested; nothing is changed.
+function wordFromPrefix(t){
+  if(!/^[a-z]{4,8}$/.test(t)) return null;
+  const m = WORDLIST.filter(w => w.startsWith(t));
+  return m.length === 1 ? m[0] : null;
+}
+// Optimal string alignment distance (insert, delete, change or swap two neighbouring letters), stopping early past `max`.
+function wordDistance(a, b, max){
+  if(Math.abs(a.length - b.length) > max) return max + 1;
+  const d = Array.from({length: a.length + 1}, (_, i) => [i]);
+  for(let j = 1; j <= b.length; j++) d[0][j] = j;
+  for(let i = 1; i <= a.length; i++){
+    let low = Infinity;
+    for(let j = 1; j <= b.length; j++){
+      const c = a[i - 1] === b[j - 1] ? 0 : 1;
+      let v = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c);
+      if(i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, d[i - 2][j - 2] + 1);
+      d[i][j] = v; if(v < low) low = v;
+    }
+    if(low > max) return max + 1;
+  }
+  return d[a.length][b.length];
+}
+function closestWords(t, n){
+  const found = [];
+  for(const w of WORDLIST){ const k = wordDistance(t, w, 2); if(k <= 2) found.push([k, w]); }
+  found.sort((x, y) => x[0] - y[0] || (x[1] < y[1] ? -1 : 1));
+  if(found.length && found[0][0] === 1) return found.filter(f => f[0] === 1).slice(0, n || 3).map(f => f[1]);
+  return found.slice(0, n || 3).map(f => f[1]);
+}
+function unknownWordsMsg(words, bad){
+  const one = (i) => { const c = closestWords(words[i], 3); return words[i] + " (word " + (i + 1) + ")" + (c.length ? ": closest BIP39 word" + (c.length > 1 ? "s " : " ") + c.join(", ") : ": no BIP39 word is close"); };
+  return (bad.length === 1 ? "Unknown word: " : "Unknown words: ") + bad.slice(0, 4).map(one).join("; ") + (bad.length > 4 ? "; and " + (bad.length - 4) + " more" : "") + ". Check " + (bad.length === 1 ? "it" : "them") + " on your backup.";
+}
 async function checkPhrase(phrase){
   const pc = await phraseFromCode(phrase);
   if(pc && pc.error) return {ok:false, msg:pc.error};
   if(pc) phrase = pc.words;
   const words = phrase.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if(![12,15,18,21,24].includes(words.length)) return {ok:false, msg:"Invalid length" + await electrumNote(phrase)};
-  for(const w of words){ if(!Object.prototype.hasOwnProperty.call(WORD_MAP, w)) return {ok:false, msg:"Unknown word: "+w}; }
+  const bad = []; let read = 0;
+  words.forEach((w, i) => { if(Object.prototype.hasOwnProperty.call(WORD_MAP, w)) return; const f = wordFromPrefix(w); if(f){ words[i] = f; read++; } else bad.push(i); });
+  if(bad.length) return {ok:false, msg:unknownWordsMsg(words, bad)};
   const bits = words.map(w=>WORD_MAP[w].toString(2).padStart(11,"0")).join("");
   const cLen = Math.floor((words.length*11)/32);
   const eBits = bits.length - cLen;
   const eBytes = new Uint8Array(eBits/8);
   for(let i=0;i<eBytes.length;i++) eBytes[i]=parseInt(bits.slice(i*8,(i+1)*8),2);
   const h = new Uint8Array(await crypto.subtle.digest("SHA-256", eBytes));
-  if(bits.slice(eBits)!==bytesToBits(h).slice(0,cLen)) return {ok:false, msg:"Checksum failed" + await electrumNote(phrase)};
-  return {ok:true, msg:"Valid "+words.length+"-word BIP39 phrase"+(pc ? " (read from "+pc.kind+")" : ""), mnemonic:words.join(" "), fromCode:!!pc};
+  if(bits.slice(eBits)!==bytesToBits(h).slice(0,cLen)){ const en = await electrumNote(phrase); return {ok:false, msg:"Checksum failed" + (en || ". Every word is a BIP39 word, so one is probably wrong, missing or out of order: Reforge in EXTRA TOOLS can search for it.")}; }
+  return {ok:true, msg:"Valid "+words.length+"-word BIP39 phrase"+(pc ? " (read from "+pc.kind+")" : "")+(read ? " (" + read + " word" + (read > 1 ? "s" : "") + " read from the first letters)" : ""), mnemonic:words.join(" "), fromCode:!!pc, expanded: read > 0};
 }
 
 // ================= Reforge (v1.28.0): recover missing or wrong seed words =================
@@ -3786,6 +3957,7 @@ async function runSelfTests(auto){
 
 async function generate(){
   if(!gateOk()) return;
+  if(diceTestOn()) return alert("The dice test is on, so these rolls only test your dice. Turn off \u201cTest only, no seed\u201d in \u201cYour rolls\u201d, then roll for your seed.");
   const rolls = clean(document.getElementById("rolls").value);
   const wc = parseInt(document.querySelector('input[name="words"]:checked').value);
   const need = getNeeded(wc);
@@ -3820,6 +3992,7 @@ async function finishSeed(mnemonic, ctx){
   seedSig = null; passKey = JSON.stringify([p1, p2]);
   setResult(mnemonic + "\n\n" + passPhraseLine(p1, p2), mnemonic.split(" "));
   exCtx = ctx; seedKind = ctx ? "rolls" : "wd"; seedSig = inputSig(seedKind);
+  sumCtx = ctx ? {count: ctx.rolls.length, coin: ctx.coin, keystone: ctx.keystone, words: ctx.words.length} : {wd: true, words: mnemonic.split(" ").length}; sumUpdate();
   await deriveShown(mnemonic, p1, p2, run);
 }
 // Works out and shows everything that depends on the passphrase: fingerprints (with and without it), addresses, the watch-only box.
@@ -3837,7 +4010,7 @@ async function deriveShown(mnemonic, p1, p2, run){
     const fp = await mnemonicFingerprint(mnemonic, pass);
     if(run !== forgeRun) return;
     fpEl.textContent = "Master fingerprint: " + fp + (pass ? " (with passphrase)" : "");
-    showFpIcon("fpIcon", fp);
+    showFpIcon("fpIcon", fp); sumUpdate();
   } catch(e) {
     if(run !== forgeRun) return;
     fpEl.textContent = "Master fingerprint unavailable: " + e.message;
@@ -3878,7 +4051,40 @@ async function deriveShown(mnemonic, p1, p2, run){
 // The passphrase boxes changed after a seed was made: the words stay, everything that depends on the passphrase is worked out again.
 // Backup checklist (v2.2.0): four steps; the drill and the recovery sheet tick themselves. Kept only on the page; cleared with the words.
 const BK_IDS = ["bk1","bk2","bk3","bk4"];
+// Seed summary (v2.4.0): how this seed was made and which wallet it opens, with no words and no passphrase. It shows at the
+// top of the backup checklist and prints as the summary sheet.
+let sumCtx = null;
+function seedSummary(){
+  if(!hasSeed() || !sumCtx) return null;
+  const c = sumCtx, n = c.words, bits = n === 24 ? 256 : 128;
+  const made = c.wd ? "Word draw (" + (n === 24 ? "23 drawn words and 3" : "11 drawn words and 7") + " coin flips)"
+    : c.coin ? c.count + " coin flips" : c.count + " dice rolls, " + (c.keystone ? "Keystone dice rules (each 6 counts as 0)" : "SeedSigner and Coldcard dice rules");
+  const typed = c.wd ? 0 : Math.floor(c.coin ? c.count : c.count * Math.log2(6));
+  const used = /Passphrase: used/.test(document.getElementById("genResult").textContent);
+  const fpT = document.getElementById("fingerprint").textContent, m = fpT.match(/^Master fingerprint: ([0-9a-f]{8})/);
+  return {fp: m ? m[1] : "", used, short: n + " words from " + made + ", passphrase " + (used ? "used" : "none") + (m ? ", fingerprint " + m[1] : "") + ".",
+    lines: ["Seed length: " + n + " words", "Made from: " + made, "Strength: the words hold " + bits + " bits of randomness" + (typed ? " (about " + typed + " bits went in, if every " + (c.coin ? "flip" : "roll") + " was fair)" : ""),
+      "Passphrase used: " + (used ? "YES (kept separately; it is not written here)" : "NO"), fpT, document.getElementById("address").textContent, "Made with VOIDFORGE " + (document.querySelector("footer .ft-name span")?.textContent || "")]};
+}
+function sumUpdate(){ const S = seedSummary(), el = document.getElementById("sumLine"); if(el) el.textContent = S ? "This seed: " + S.short : ""; }
+function printSummary(){
+  const S = seedSummary(); if(!S) return alert("Generate a seed first");
+  if(passMismatch()) return;
+  printSheet(add => {
+    add("ps-title", "VOIDFORGE SEED SUMMARY");
+    add("ps-sub", "No seed words and no passphrase are on this sheet. It records how the seed was made and which wallet it opens, so the right wallet can be found and checked again. Keep it with the paper backup.");
+    const row = add("ps-sum", ""), pic = document.getElementById("fpIcon").innerHTML;
+    if(pic) add("ps-lh", "", row).innerHTML = pic;
+    add("ps-info", S.lines.filter(Boolean).join("\n"), row);
+    add("ps-rule", "");
+    add("ps-fields", "Date made:                      ____________\nWallet app or device used:      ____________\nWhere the words are kept:       ____________\nWhere the passphrase is kept:   ____________");
+    add("ps-rule", "");
+    add("ps-warn", "Addresses are public, but anyone who sees them can link them to this wallet. Do not post this sheet.\nTo check a backup later: type its words into CHECK A BACKUP and compare the fingerprint and first address with this sheet.");
+  });
+  bkTick("bk4");
+}
 function bkUpdate(){
+  sumUpdate();
   const n = BK_IDS.filter(id => document.getElementById(id).checked).length, note = document.getElementById("bkNote");
   note.textContent = n === 4 ? "All four done: this backup is ready." : n + " of 4 done.";
   note.className = "hint" + (n === 4 ? " ok" : "");
@@ -4487,6 +4693,7 @@ function updateAbbrNote(){
   document.getElementById("abbrNote").textContent = (abbrOn && hasSeed()) ? "Showing only the first 4 letters of each word. The full words are still your backup; write down full words unless your backup method uses 4-letter abbreviations. PRINT STAMP SHEET in the MENU prints them large, for stamping a metal plate." : "";
 }
 function setResult(text, words){
+  if(!words) sumCtx = null;
   wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body.classList.toggle("has-seed", !!words);
   const g = document.getElementById("genResult"), grid = document.getElementById("wordGrid");
   g.textContent = text; g.classList.toggle("nores", text === "\u2014"); grid.textContent = "";
@@ -4555,7 +4762,7 @@ function previewClear(){
 async function previewRefresh(){
   const my = ++pvSeq, note = document.getElementById("pvNote");
   const rolls = clean(document.getElementById("rolls").value), wc = +document.querySelector('input[name="words"]:checked').value;
-  if(hasSeed() || method === "words" || !rolls || (keystoneOn() && rolls.length > KEYSTONE_MAX)){ previewClear(); return; }
+  if(hasSeed() || method === "words" || !rolls || diceTestOn() || (keystoneOn() && rolls.length > KEYSTONE_MAX)){ previewClear(); return; }
   renderSlots();
   const grid = document.getElementById("wordGrid");
   if(!grid.classList.contains("slots")) return;
@@ -4577,6 +4784,7 @@ function updateSeedPanel(){
   const over = keystoneOn() && n > KEYSTONE_MAX, unit = getMode() === "coin" ? "flips" : "rolls", met = n >= need && !over, seed = hasSeed();
   const bc = document.getElementById("bigCount"), bs = document.getElementById("bigSub"), rc = document.getElementById("rollCount");
   bc.textContent = n + " / " + need; bc.className = "big-count " + (met ? "met" : "short");
+  if(diceTestOn() && !seed){ bc.textContent = String(n); bc.className = "big-count short"; bs.textContent = "Dice test: no seed is made."; bs.className = "big-sub short"; rc.className = "short"; rc.textContent = n + " " + unit + " tested"; return; }
   bs.textContent = seed ? "Seed made. Write the words down." : met ? "Enough " + unit + ". Press FORGE SEED." : over ? "Keystone takes at most " + KEYSTONE_MAX + ": remove " + (n - KEYSTONE_MAX) : (need - n) + " more " + unit + " to go";
   bs.className = "big-sub " + (met ? "met" : "short"); rc.className = met ? "met" : "short";
   const cur = seed ? 4 : met ? 3 : 2;
@@ -5504,7 +5712,7 @@ async function verify(){
   const r = await checkPhrase(document.getElementById("phrase").value);
   st.className = "status " + (r.ok ? "ok" : "bad");
   st.textContent = r.msg;
-  if(r.ok && r.fromCode) document.getElementById("phrase").value = r.mnemonic;
+  if(r.ok && (r.fromCode || r.expanded)) document.getElementById("phrase").value = r.mnemonic;
   document.getElementById("verifyMatch").textContent = ""; document.getElementById("verifyMatch").className = "status";
   if(r.ok){
     const vp = document.getElementById("verifyPass").value, lines = [r.msg];
@@ -5597,7 +5805,7 @@ function setGate(state, text, cls){
   selfTestState = state;
   const b = document.getElementById("selfTestBadge"); b.textContent = text; b.className = cls || "";
   const on = state === "pass";
-  document.getElementById("forgeBtn").disabled = !on;
+  document.getElementById("forgeBtn").disabled = !on || diceTestOn();
   document.getElementById("verifyBtn").disabled = !on;
   document.getElementById("checkAddrBtn").disabled = !on;
   document.getElementById("checkAcctsBtn").disabled = !on;
@@ -5679,6 +5887,7 @@ function buildTapRow(){
     b.type = "button"; b.className = "secondary tap";
     b.dataset.v = v;
     b.setAttribute("aria-label", coin ? (v === "1" ? "Add flip 1 (heads)" : "Add flip 0 (tails)") : "Add roll " + v);
+    b.title = "Add a " + v + " (or press " + v + " on the keyboard; Backspace undoes the last one)";
     if(coin){
       b.appendChild(coinFace(v === "1", v));
       const t = document.createElement("span"); t.textContent = (v === "1" ? "HEADS" : "TAILS") + " = " + v; t.style.cssText = "font-size:13px; font-weight:700; letter-spacing:.5px;"; b.appendChild(t);
@@ -5688,6 +5897,14 @@ function buildTapRow(){
     row.appendChild(b);
   });
 }
+// Keyboard dice entry (v2.4.0): with a tap button focused, the number keys add rolls (1 to 6, or 1 and 0 for a coin) and
+// Backspace undoes the last one, so a keyboard user can keep tapping without going back to the box. In the box itself typing already works.
+document.getElementById("tapRow").addEventListener("keydown", e => {
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  const ok = getMode() === "coin" ? /^[01]$/ : /^[1-6]$/;
+  if(ok.test(e.key)){ e.preventDefault(); const el = document.getElementById("rolls"); el.value += e.key; updateCount(); }
+  else if(e.key === "Backspace"){ e.preventDefault(); undoRoll(); }
+});
 function updateLabels(){
   buildTapRow();
   const mode = document.querySelector('input[name="mode"]:checked')?.value || "dice";
