@@ -253,26 +253,36 @@
     .theme-toggle, .print-btn, button, .radio-group, textarea, input { display: none !important; }
     .result, .fp { border: 1px solid #000; }
     body { background: white; color: black; }
-    body.print-seed * { visibility: hidden !important; }
-    body.print-seed #printOnly, body.print-seed #printOnly * { visibility: visible !important; }
-    body.print-seed #printOnly { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 24px; font-family: monospace; font-size: 14px; line-height: 1.5; color: #000; background: #fff; white-space: pre-wrap; }
+    /* Only the sheet prints, on one page: everything else is removed from the layout (display: none), so it leaves no blank pages behind. */
+    @page { margin: 12mm; }
+    body.print-seed > :not(#printOnly), body.print-qr > :not(#printQr) { display: none !important; }
+    body.print-seed, body.print-qr { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+    body.print-seed #printOnly { display: block !important; width: 100%; font-family: monospace; font-size: 14px; line-height: 1.5; color: #000; background: #fff; white-space: pre-wrap; }
     body.print-seed #printOnly .ps-title { font-size: 22px; font-weight: 700; letter-spacing: 2px; border-bottom: 3px solid #000; padding-bottom: 6px; }
     body.print-seed #printOnly .ps-sub { font-size: 13px; margin: 8px 0 14px; }
     body.print-seed #printOnly .ps-grid { display: grid; gap: 8px; }
     body.print-seed #printOnly .ps-grid.ps-12 { grid-template-columns: repeat(3, 1fr); }
     body.print-seed #printOnly .ps-grid.ps-24 { grid-template-columns: repeat(4, 1fr); }
+    body.print-seed #printOnly .ps-grid.ps-15, body.print-seed #printOnly .ps-grid.ps-18, body.print-seed #printOnly .ps-grid.ps-21 { grid-template-columns: repeat(3, 1fr); }
     body.print-seed #printOnly .ps-cell { border: 1.5px solid #000; border-radius: 6px; padding: 6px 8px; min-height: 52px; }
     body.print-seed #printOnly .ps-n { font-size: 11px; color: #444; }
     body.print-seed #printOnly .ps-w { font-size: 20px; font-weight: 700; letter-spacing: .5px; }
     body.print-seed #printOnly .ps-grid.ps-stamp { grid-template-columns: repeat(3, 1fr); gap: 10px; }
-    body.print-seed #printOnly .ps-grid.ps-stamp.ps-24 { grid-template-columns: repeat(4, 1fr); }
+    body.print-seed #printOnly .ps-grid.ps-stamp.ps-18, body.print-seed #printOnly .ps-grid.ps-stamp.ps-21, body.print-seed #printOnly .ps-grid.ps-stamp.ps-24 { grid-template-columns: repeat(4, 1fr); }
     body.print-seed #printOnly .ps-stamp .ps-cell { min-height: 78px; text-align: center; }
     body.print-seed #printOnly .ps-stamp .ps-w { font-size: 30px; letter-spacing: 4px; }
     body.print-seed #printOnly .ps-grid.ps-roll { grid-template-columns: repeat(10, 1fr); gap: 4px; }
     body.print-seed #printOnly .ps-roll .ps-cell { min-height: 30px; padding: 2px 4px; border-radius: 3px; }
     body.print-seed #printOnly .ps-roll .ps-cell.ps-extra { border-style: dashed; }
+    body.print-seed #printOnly .ps-grid.ps-roll.ps-roll20 { grid-template-columns: repeat(20, 1fr); gap: 3px; }
+    body.print-seed #printOnly .ps-roll20 .ps-cell { padding: 1px 3px; }
+    body.print-seed #printOnly .ps-roll20 .ps-n { font-size: 9px; }
     body.print-seed #printOnly .ps-extra-sub { margin-top: 10px; }
     body.print-seed #printOnly .ps-rule { border-top: 1px solid #000; margin: 14px 0; }
+    body.print-seed #printOnly .ps-secret { font-size: 18px; font-weight: 700; letter-spacing: .5px; border: 1.5px solid #000; border-radius: 6px; padding: 10px 12px; margin: 6px 0 4px; overflow-wrap: anywhere; }
+    body.print-seed #printOnly .ps-secret.ps-s { font-size: 12px; letter-spacing: 0; }
+    body.print-seed #printOnly .ps-secret.ps-xs { font-size: 8px; letter-spacing: 0; line-height: 1.25; }
+    body.print-seed #printOnly .ps-secret.ps-xxs { font-size: 6.5px; letter-spacing: 0; line-height: 1.2; padding: 6px 8px; }
     body.print-seed #printOnly .ps-info, body.print-seed #printOnly .ps-fields, body.print-seed #printOnly .ps-warn { white-space: pre-wrap; font-size: 13px; }
     body.print-seed #printOnly .ps-warn { font-weight: 700; }
     body.print-seed #printOnly .ps-info { margin-bottom: 8px; }
@@ -280,13 +290,15 @@
   #printOnly { display: none; }
   #printQr { display: none; }
   @media print {
-    body.print-qr * { visibility: hidden !important; }
-    body.print-qr #printQr, body.print-qr #printQr * { visibility: visible !important; }
-    body.print-qr #printQr { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 24px; font-family: monospace; font-size: 14px; line-height: 1.5; color: #000; background: #fff; white-space: pre-wrap; overflow-wrap: anywhere; }
+    body.print-qr #printQr { display: block !important; width: 100%; font-family: monospace; font-size: 14px; line-height: 1.5; color: #000; background: #fff; white-space: pre-wrap; overflow-wrap: anywhere; }
+    body.print-qr #printQr .pq-title { font-size: 22px; font-weight: 700; letter-spacing: 2px; border-bottom: 3px solid #000; padding-bottom: 6px; }
+    body.print-qr #printQr .pq-rule { border-top: 1px solid #000; margin: 14px 0; }
+    body.print-qr #printQr .pq-info { font-size: 13px; }
     body.print-qr #printQr .pq-img { width: 11cm; height: 11cm; margin: 14px 0; line-height: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     body.print-qr #printQr .pq-img svg { width: 100%; height: 100%; }
     body.print-qr #printQr .pq-wide { width: 17cm; height: 17cm; }
-    body.print-qr #printQr .pq-rows { columns: 2; font-size: 11px; line-height: 1.35; margin-top: 10px; }
+    body.print-qr #printQr .pq-guide { width: 13cm; height: 13cm; margin: 8px 0; }
+    body.print-qr #printQr .pq-rows { columns: 2; font-size: 10px; line-height: 1.3; margin-top: 6px; }
   }
   #fatalWarn { display: none; background: var(--danger); color: #000; font-weight: 700; font-size: 13px; text-align: center; padding: 10px 12px; border-radius: 10px; margin-bottom: 14px; }
   #netTag { font-size: 13px; font-weight: 700; text-align: center; margin-bottom: 6px; }
@@ -747,6 +759,10 @@
   .qrbox .qr-img { width:min(100%,300px); margin:8px auto; background:#fff; line-height:0; }
   .wv-ctl { display:flex; gap:6px; align-items:center; margin:8px 0 6px; flex-wrap:wrap; }
   .wv-ctl select { flex:1 1 96px; min-width:0; }
+  select.rs-extra { width: auto; flex: 0 0 auto; padding: 5px 8px; font-size: 12px; }
+  #wvAbbrGrid { display: none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0 0; }
+  #wvAbbrGrid.on { display: grid; }
+  @media (max-width: 559px) { #wvAbbrGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .wv-ctl #wvType { flex:2 1 230px; }
   .wv-ctl input { width:64px; flex:none; }
   #wvBanner { border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:8px; padding:8px 12px; margin:8px 0; font-size:13px; color:var(--muted); }
@@ -855,6 +871,7 @@
       <div class="hint" style="margin:4px 0 0;">The passphrase (if any) is added after the words are made, in the box under them. Coin: pick which side is 1 and keep it the same for every flip (for BitBox02&rsquo;s last word, T is 1 and H is 0).</div>
       <div class="btn-row" style="margin-top:8px;">
         <button type="button" id="wdBtn" onclick="wdGenerate()" disabled>MAKE SEED FROM WORDS</button>
+        <button type="button" class="secondary small" id="wdSheetBtn" onclick="printWordSheet()">PRINT WORD SHEET</button>
         <button type="button" class="secondary small" onclick="wdClear()">CLEAR</button>
       </div>
       <div id="wdOut" style="display:none;"></div>
@@ -873,7 +890,7 @@
     <div id="coinHint" data-g="2" style="display:none; font-size: 13px; margin-top:6px; color:var(--muted);">Pick which side is 1 and which is 0 (the usual choice: heads = 1, tails = 0) and keep it the same for every flip. Only the 1/0 string is used, so any consistent choice is fine, but you cannot get the mapping back from the words. Write down the exact string or your mapping with your backup.</div>
     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;" data-g="2">
       <div id="rollCount" aria-live="polite" style="font-size: 13px;color:var(--muted);font-weight:600;">0 / 50 rolls</div>
-      <span style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;"><button class="secondary small" id="rollSheetBtn" onclick="printRollSheet()">PRINT ROLL SHEET</button><button class="secondary small" onclick="undoRoll()">UNDO</button></span>
+      <span style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; align-items:center;"><select id="rsExtra" class="rs-extra" aria-label="Extra boxes on the printed roll sheet" title="Extra boxes on the printed roll sheet, for rolling more than the minimum"><option value="0">No extra boxes</option><option value="10" selected>10 extra boxes</option><option value="25">25 extra boxes</option><option value="50">50 extra boxes</option></select><button class="secondary small" id="rollSheetBtn" onclick="printRollSheet()">PRINT ROLL SHEET</button><button class="secondary small" onclick="undoRoll()">UNDO</button></span>
     </div>
     <div class="entropy-bar" data-g="2"><div class="entropy-fill" id="entropyFill"></div></div>
     <div id="entropyStatus" data-g="2" style="font-size: 13px; margin-top:4px; font-weight:600;"></div>
@@ -955,7 +972,7 @@
       <summary>First 5 receiving addresses, SegWit and Taproot (to compare in another wallet)</summary>
       <ol id="addrList" class="addr-list"></ol>
       <button class="secondary small" onclick="copyAddrList(this,'addrList')">COPY ALL 5</button>
-      <div id="aqBox" class="qrbox"><div id="aqCap" class="hint"></div><div id="aqImg" class="qr-img"></div><details class="bip21" id="aqReq"><summary>Payment request (BIP-21)<small>Add an amount, label or message; the QR becomes a bitcoin: link.</small></summary><div class="b21-row"><input type="text" id="aqAmt" inputmode="decimal" placeholder="Amount in BTC (optional)" aria-label="Amount in BTC" autocomplete="off" spellcheck="false"><input type="text" id="aqLbl" placeholder="Label (optional)" aria-label="Label" autocomplete="off" spellcheck="false"><input type="text" id="aqMsg" placeholder="Message (optional)" aria-label="Message" autocomplete="off" spellcheck="false"></div><div class="hint" id="aqUri" style="word-break:break-all;"></div><button type="button" class="secondary small" onclick="copyReq(this,'aq')">COPY LINK</button></details><button type="button" class="secondary small" onclick="hideAddrQr('aq')">HIDE QR</button></div>
+      <div id="aqBox" class="qrbox"><div id="aqCap" class="hint"></div><div id="aqImg" class="qr-img"></div><details class="bip21" id="aqReq"><summary>Payment request (BIP-21)<small>Add an amount, label or message; the QR becomes a bitcoin: link.</small></summary><div class="b21-row"><input type="text" id="aqAmt" inputmode="decimal" placeholder="Amount in BTC (optional)" aria-label="Amount in BTC" autocomplete="off" spellcheck="false"><input type="text" id="aqLbl" placeholder="Label (optional)" aria-label="Label" autocomplete="off" spellcheck="false"><input type="text" id="aqMsg" placeholder="Message (optional)" aria-label="Message" autocomplete="off" spellcheck="false"></div><div class="hint" id="aqUri" style="word-break:break-all;"></div><button type="button" class="secondary small" onclick="copyReq(this,'aq')">COPY LINK</button></details><button type="button" class="secondary small" onclick="printAddrQr('aq')">PRINT THIS QR</button><button type="button" class="secondary small" onclick="hideAddrQr('aq')">HIDE QR</button></div>
       <p class="hint" style="margin:8px 0 0;">BIP84 native SegWit, m/84'/0'/0'/0/0 to 0/4. The small QR button on each row shows that address as a QR code. These are public addresses (no spending power), but anyone who sees them can link them to this wallet.</p>
       <div id="trBox" style="display:none; margin-top:10px;">
         <p class="hint" style="margin:0;"><b>Taproot (BIP86)</b>, m/86'/0'/0'/0/0 to 0/4, addresses start with <code>bc1p</code>. For wallets that use Taproot. This is a separate address type from the same seed; the zpub and descriptors above are for the SegWit addresses only.</p>
@@ -1049,7 +1066,7 @@
       <div id="qrBox" style="display:none; margin-top:10px; text-align:center;">
         <div id="qrCaption" class="hint"></div>
         <div id="qrImg" style="width:min(100%,340px); margin:8px auto; background:#fff; line-height:0;"></div>
-        <button class="secondary small" onclick="hideQr()">HIDE QR</button>
+        <div class="btn-row" style="justify-content:center;"><button class="secondary small" onclick="printShownQr()">PRINT THIS QR</button><button class="secondary small" onclick="hideQr()">HIDE QR</button></div>
       </div>
       <details id="spBox" class="ms-sub" style="margin-top:12px;">
         <summary style="cursor:pointer; font-weight:600;">Silent Payment address<span class="tag tag-note">ADVANCED</span><span class="tag tag-ro">NEW</span></summary>
@@ -1124,7 +1141,7 @@
       <div class="status" id="wpStatus" aria-live="polite" style="word-break:break-word; margin-top:6px;"></div>
     </div>
     <details id="walletView" style="display:none; margin-top:10px;">
-      <summary>Open this wallet<span class="tag tag-public">PUBLIC ADDRESSES</span><small>Addresses with QR codes, for the words or key above.</small></summary>
+      <summary>Open this wallet<span class="tag tag-public">PUBLIC ADDRESSES</span><small>Addresses with QR codes, and paper backups of the words, for the words or key above.</small></summary>
       <p class="hint" id="wvWhy" style="margin:8px 0 0;">This lists the addresses your wallet app would show for these words, so you can compare them in the app. Pick the same address type and account number the app uses. The words are the same for every type.</p>
       <div id="wvBanner">Imported: these words were typed or scanned here, not made by this page. The same words and passphrase give the same wallet in any app.</div>
       <div id="wvFpRow"><div class="fp" id="wvFp"></div><div id="wvIcon" class="lh" title="Fingerprint picture (LifeHash) of this wallet"></div></div>
@@ -1139,12 +1156,15 @@
       <ol id="wvList" class="addr-list"></ol>
       <div class="btn-row" id="wvPager"><button type="button" class="secondary small" id="wvPrev" onclick="wvPage(-1)">PREVIOUS 10</button><button type="button" class="secondary small" id="wvNext" onclick="wvPage(1)">NEXT 10</button><button type="button" class="secondary small" onclick="copyAddrList(this,'wvList')">COPY THESE 10</button><button type="button" class="secondary small" id="wvSheetBtn" onclick="printRecoverySheet()">PRINT RECOVERY SHEET</button></div>
       <p class="hint" id="wvSheetHint" style="margin:6px 0 0;">The recovery sheet holds no words and no passphrase: only the fingerprint, address type, path and the first addresses, plus how to restore. Keep it with your paper backup so someone you trust can tell which wallet the words belong to.</p>
-      <div id="wvqBox" class="qrbox"><div id="wvqCap" class="hint"></div><div id="wvqImg" class="qr-img"></div><details class="bip21" id="wvqReq"><summary>Payment request (BIP-21)<small>Add an amount, label or message; the QR becomes a bitcoin: link.</small></summary><div class="b21-row"><input type="text" id="wvqAmt" inputmode="decimal" placeholder="Amount in BTC (optional)" aria-label="Amount in BTC" autocomplete="off" spellcheck="false"><input type="text" id="wvqLbl" placeholder="Label (optional)" aria-label="Label" autocomplete="off" spellcheck="false"><input type="text" id="wvqMsg" placeholder="Message (optional)" aria-label="Message" autocomplete="off" spellcheck="false"></div><div class="hint" id="wvqUri" style="word-break:break-all;"></div><button type="button" class="secondary small" onclick="copyReq(this,'wvq')">COPY LINK</button></details><button type="button" class="secondary small" onclick="hideAddrQr('wvq')">HIDE QR</button></div>
+      <div id="wvqBox" class="qrbox"><div id="wvqCap" class="hint"></div><div id="wvqImg" class="qr-img"></div><details class="bip21" id="wvqReq"><summary>Payment request (BIP-21)<small>Add an amount, label or message; the QR becomes a bitcoin: link.</small></summary><div class="b21-row"><input type="text" id="wvqAmt" inputmode="decimal" placeholder="Amount in BTC (optional)" aria-label="Amount in BTC" autocomplete="off" spellcheck="false"><input type="text" id="wvqLbl" placeholder="Label (optional)" aria-label="Label" autocomplete="off" spellcheck="false"><input type="text" id="wvqMsg" placeholder="Message (optional)" aria-label="Message" autocomplete="off" spellcheck="false"></div><div class="hint" id="wvqUri" style="word-break:break-all;"></div><button type="button" class="secondary small" onclick="copyReq(this,'wvq')">COPY LINK</button></details><button type="button" class="secondary small" onclick="printAddrQr('wvq')">PRINT THIS QR</button><button type="button" class="secondary small" onclick="hideAddrQr('wvq')">HIDE QR</button></div>
       <div class="sec-block" id="wvSqBlock">
-        <h3 class="sec">SeedQR<span class="tag tag-secret">SECRET</span></h3>
-        <p class="hint" id="wvSqNote" style="margin:0 0 6px;"></p>
+        <h3 class="sec">Paper, metal and SeedQR backups<span class="tag tag-secret">SECRET</span></h3>
+        <p class="hint" style="margin:0 0 6px;">Make another backup of these words: print them, show or print their first 4 letters for a metal plate, or print a SeedQR. Print only on a trusted offline computer with a directly connected printer. The passphrase is never shown or printed.</p>
+        <div class="btn-row" id="wvBkBtns"><button type="button" class="secondary small" id="wvAbbrBtn" onclick="wvAbbr()">SHOW FIRST 4 LETTERS</button><button type="button" class="secondary small" onclick="printSeed('check')">PRINT WORDS</button><button type="button" class="secondary small" onclick="printStamp('check')">PRINT STAMP SHEET</button></div>
+        <div id="wvAbbrGrid" aria-label="First 4 letters of each word"></div>
+        <p class="hint" id="wvSqNote" style="margin:10px 0 6px;"></p>
         <div class="btn-row" id="wvSqBtns"><button type="button" class="secondary small" onclick="wvSeedQr('seedqr')">SHOW SEEDQR</button><button type="button" class="secondary small" onclick="wvSeedQr('compact')">SHOW COMPACTSEEDQR</button><button type="button" class="secondary small" onclick="wvSeedQrHide()">HIDE</button></div>
-        <div id="wvsBox" class="qrbox"><div id="wvsCap" class="hint"></div><div id="wvsImg" class="qr-img"></div></div>
+        <div id="wvsBox" class="qrbox"><div id="wvsCap" class="hint"></div><div id="wvsImg" class="qr-img"></div><div class="btn-row" style="justify-content:center;"><button type="button" class="secondary small" onclick="printSeedQr('check')">PRINT THIS QR</button><button type="button" class="secondary small" onclick="printSqGuide('check')">PRINT HAND-COPY GUIDE</button><button type="button" class="secondary small" onclick="printSqBlank('check')">PRINT BLANK GRID</button></div></div>
       </div>
     </details>
     <div class="sec-block">
@@ -1249,6 +1269,7 @@
       </div>
       <div class="status" id="childStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <pre id="childOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+      <div class="btn-row" id="childPrintRow" style="display:none; margin-top:8px;"><button type="button" class="secondary small" id="childPrintBtn" onclick="printChild()">PRINT CHILD SEED</button></div>
     </details>
     <details id="dlBox">
       <summary>Check your download<small>Pick the VOIDFORGE file you downloaded and compare its fingerprint with the published one.</small></summary>
@@ -1532,14 +1553,13 @@
   </div>
   </div>
 
-  <div id="printOnly"></div>
-  <div id="printQr"></div>
-
   <footer>
     <div class="ft-name">VOIDFORGE <span>v2.3.0</span></div>
     <div class="ft-line"><span>SHA-256 of your rolls &rarr; BIP39</span><span>Same method as SeedSigner and Coldcard</span><span>github.com/Random21m/VOIDFORGE</span></div>
   </footer>
 </div>
+<div id="printOnly"></div>
+<div id="printQr"></div>
 
 <script>
 let guideOn = false, guideN = 1, ms = null;
@@ -3886,16 +3906,20 @@ function passMismatch(){
 }
 // After a QR code opens, make sure all of it is on screen (clear of the sticky tab bar), not cut off at the bottom.
 function scrollQrIntoView(id){ const el = document.getElementById(id); if(!el) return; try { el.scrollIntoView({behavior: "smooth", block: "nearest"}); } catch(e) {} }
+let qrShown = null;
 function showQr(id, label){
   const t = document.getElementById(id).textContent;
   if(!t) return alert("Generate a seed first");
+  qrShown = null;
   let q; try { q = qrMatrix(t); } catch(e) { return alert("QR code unavailable: " + e.message); }
   document.getElementById("qrImg").innerHTML = qrSvg(q.rows);
   document.getElementById("qrCaption").textContent = "QR code for the " + label + " (public key only). Scan it with your watch-only wallet app. If the app cannot scan it, use COPY instead.";
   document.getElementById("qrBox").style.display = "";
+  qrShown = {id, label};
   scrollQrIntoView("qrBox");
 }
 function hideQr(){
+  qrShown = null;
   document.getElementById("qrImg").textContent = ""; document.getElementById("qrCaption").textContent = "";
   document.getElementById("qrBox").style.display = "none";
 }
@@ -3947,10 +3971,10 @@ function printSqSheet(title, svg, wide, extra, rowsText){
   const po = document.getElementById("printQr");
   po.textContent = "";
   const add = (cls, text) => { const d = document.createElement("div"); if(cls) d.className = cls; d.textContent = text; po.appendChild(d); return d; };
-  add("", title); add("", "------------------------------------------");
-  add("pq-img" + (wide ? " pq-wide" : ""), "").innerHTML = svg;
+  add("pq-title", title);
+  add("pq-img" + (wide ? (rowsText ? " pq-guide" : " pq-wide") : ""), "").innerHTML = svg;
   if(rowsText) add("pq-rows", rowsText);
-  add("", "------------------------------------------"); add("", extra);
+  add("pq-rule", ""); add("pq-info", extra);
   document.body.classList.add("print-qr");
   let done = false;
   const cleanup = () => { if(done) return; done = true; document.body.classList.remove("print-qr"); po.textContent = ""; };
@@ -3958,30 +3982,37 @@ function printSqSheet(title, svg, wide, extra, rowsText){
   setTimeout(cleanup, 120000);
   window.print();
 }
-function printSqGuide(){
-  if(!hasSeed()) return alert("Generate a seed first");
-  if(!sqRows) return alert("Press SHOW SEEDQR or SHOW COMPACTSEEDQR first, then print the guide for the one you want.");
+function printSqGuide(from){
+  const S = printSrc(from); if(!S) return;
+  const Q = sqSrc(from, "the guide for the one you want"); if(!Q) return;
   if(!confirm("Printing sends your seed (as a QR code grid) to a printer and its spooler. Only print on a trusted offline computer with a directly connected printer. The passphrase is never printed. Continue?")) return;
-  const n = sqRows.length, words = document.getElementById("genResult").textContent.split("\n")[0].split(" ").length;
-  printSqSheet("VOIDFORGE " + seedQrName(sqKind).toUpperCase() + " HAND-COPY GUIDE (" + words + " words, " + n + " x " + n + " squares)",
-    qrGridSvg(sqRows, 0, 0, n, n, qrBlockSize(n), false), true,
-    document.getElementById("fingerprint").textContent + "\n" + passLine("printed") + "\n\nBlack squares are filled; the list gives the filled columns of each row. Leave a blank border of about 4 squares.\nAnyone who can scan or read this controls the funds. Scan your copy into an offline device and check the fingerprint.\nThe words are not printed on this sheet: keep your written words too.\n",
-    sqRows.map((row, y) => "Row " + (y + 1) + ": " + qrRowRuns(row)).join("\n"));
+  const n = Q.rows.length, words = S.words.length;
+  printSqSheet("VOIDFORGE " + seedQrName(Q.kind).toUpperCase() + " HAND-COPY GUIDE (" + words + " words, " + n + " x " + n + " squares)",
+    qrGridSvg(Q.rows, 0, 0, n, n, qrBlockSize(n), false), true,
+    S.fp + "\n" + S.pass + "\n\nBlack squares are filled; the list gives the filled columns of each row. Leave a blank border of about 4 squares.\nAnyone who can scan or read this controls the funds. Scan your copy into an offline device and check the fingerprint.\nThe words are not printed on this sheet: keep your written words too.\n",
+    Q.rows.map((row, y) => "Row " + (y + 1) + ": " + qrRowRuns(row)).join("\n"));
 }
-function printSqBlank(){
-  if(!sqRows) return alert("Press SHOW SEEDQR or SHOW COMPACTSEEDQR first, so the grid has the right size.");
-  const n = sqRows.length;
-  printSqSheet("VOIDFORGE BLANK " + n + " x " + n + " GRID FOR " + seedQrName(sqKind).toUpperCase(), qrGridSvg(sqRows, 0, 0, n, n, qrBlockSize(n), true), true,
+function printSqBlank(from){
+  const Q = sqSrc(from, "a blank grid of the right size"); if(!Q) return;
+  const n = Q.rows.length;
+  printSqSheet("VOIDFORGE BLANK " + n + " x " + n + " GRID FOR " + seedQrName(Q.kind).toUpperCase(), qrGridSvg(Q.rows, 0, 0, n, n, qrBlockSize(n), true), true,
     "Empty grid, no secret on it. Copy the squares from VOIDFORGE (COPY BY HAND) onto it with a pen. Leave a blank border of about 4 squares.\n", "");
 }
-function printSeedQr(){
-  if(!hasSeed()) return alert("Generate a seed first");
-  if(passMismatch()) return;
-  if(!sqRows) return alert("Press SHOW SEEDQR or SHOW COMPACTSEEDQR first, then print the one you want.");
+// The SeedQR a print uses (v2.4.0): the one shown on the MAKE tab, or, with from === "check", the one shown in CHECK A BACKUP.
+function sqSrc(from, what){
+  const kind = from === "check" ? wvsKind : sqKind;
+  if(!kind){ alert("Press SHOW SEEDQR or SHOW COMPACTSEEDQR first, then print " + what + "."); return null; }
+  if(from !== "check") return {kind, rows: sqRows};
+  if(!wvCtx || !wvCtx.mnemonic) return null;
+  try { return {kind, rows: seedQrMatrix(wvCtx.mnemonic.split(" "), kind).rows}; } catch(e) { alert("SeedQR unavailable: " + e.message); return null; }
+}
+function printSeedQr(from){
+  const S = printSrc(from); if(!S) return;
+  const Q = sqSrc(from, "the one you want"); if(!Q) return;
   if(!confirm("Printing sends your seed (as a QR code) to a printer and its spooler. Only print on a trusted offline computer with a directly connected printer. The passphrase is never printed. Continue?")) return;
-  const n = sqRows.length, words = document.getElementById("genResult").textContent.split("\n")[0].split(" ").length;
-  printSqSheet("VOIDFORGE " + seedQrName(sqKind).toUpperCase() + " (" + words + " words, " + n + " x " + n + " squares)", qrSvg(sqRows), false,
-    document.getElementById("fingerprint").textContent + "\n" + passLine("printed") + "\n\nScan with an offline SeedSigner or similar device only.\nAnyone who can scan this QR code controls the funds.\nThe words are not printed on this sheet: keep your written words too.\nCheck it by scanning it into your device and comparing the fingerprint.\n", "");
+  const n = Q.rows.length, words = S.words.length;
+  printSqSheet("VOIDFORGE " + seedQrName(Q.kind).toUpperCase() + " (" + words + " words, " + n + " x " + n + " squares)", qrSvg(Q.rows), false,
+    S.fp + "\n" + S.pass + "\n\nScan with an offline SeedSigner or similar device only.\nAnyone who can scan this QR code controls the funds.\nThe words are not printed on this sheet: keep your written words too.\nCheck it by scanning it into your device and comparing the fingerprint.\n", "");
 }
 async function showFpIcon(iconId, fp, figId){
   try { document.getElementById(iconId).innerHTML = lifeHashSvg(await lifeHash(fp)); if(figId) document.getElementById(figId).style.display = ""; }
@@ -4396,10 +4427,13 @@ async function deriveChildApp(mnemonic, vp, app, index, say){
     else if(app === "dice"){ head = "DICE ROLLS (BIP85, a " + n + "-sided die numbered 0 to " + (n - 1) + ", " + rolls + " rolls, index " + index + ")"; extra = "\n\nThe values start at 0, as BIP85 says (not 1)."; }
     else head = "PASSWORD (BIP85 " + (app === "pwd64" ? "Base64" : "Base85") + ", " + n + " characters, index " + index + ")";
     o.textContent = head + "\n\n" + out + extra; o.style.display = "";
+    childShow({app, head, text: out, extra: extra.trim(), index, pass: !!vp, parent: await mnemonicFingerprint(mnemonic, vp)});
     say("ok", A.name + ", index " + index + ", derived from the parent words" + (vp ? " and passphrase" : "") + ". Write down the parent, the type, the settings shown and the index; that recreates it. Anyone who has the parent can recreate it.");
   } catch(e) { clearChild(); say("bad", "Could not derive: " + e.message); }
 }
+let childCtx = null;
 function clearChild(){
+  childCtx = null; document.getElementById("childPrintRow").style.display = "none";
   const o = document.getElementById("childOut"); o.textContent = ""; o.style.display = "none";
   const t = document.getElementById("childStatus"); t.textContent = ""; t.className = "status";
 }
@@ -4421,6 +4455,7 @@ async function deriveChild(){
     const o = document.getElementById("childOut");
     o.textContent = "CHILD SEED (BIP85, English, " + words + " words, index " + index + ")\n\n" + rows.join("\n") + "\n\nChild master fingerprint: " + fp + "\nChild first receive address (BIP84): " + a0;
     o.style.display = "";
+    childShow({app: "words", words: ws, fp, a0, index, pass: !!vp, parent: await mnemonicFingerprint(r.mnemonic, vp)});
     say("ok", "Child seed " + index + " derived from the parent words" + (vp ? " and passphrase" : "") + ". It is a normal seed with no passphrase. Write down the parent, the word count and the index; that recreates it. Anyone who has the parent can recreate every child.");
   } catch(e) { clearChild(); say("bad", "Could not derive the child seed: " + e.message); }
 }
@@ -4444,7 +4479,7 @@ function toggleAbbr(){
   updateAbbrNote();
 }
 function updateAbbrNote(){
-  document.getElementById("abbrNote").textContent = (abbrOn && hasSeed()) ? "Showing only the first 4 letters of each word. The full words are still your backup; write down full words unless your backup method uses 4-letter abbreviations." : "";
+  document.getElementById("abbrNote").textContent = (abbrOn && hasSeed()) ? "Showing only the first 4 letters of each word. The full words are still your backup; write down full words unless your backup method uses 4-letter abbreviations. PRINT STAMP SHEET in the MENU prints them large, for stamping a metal plate." : "";
 }
 function setResult(text, words){
   wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body.classList.toggle("has-seed", !!words);
@@ -4555,21 +4590,33 @@ function togglePassphrase(btn){
   el.type = el2.type = show ? "text" : "password";
   btn.textContent = show ? "HIDE" : "SHOW";
 }
-function printSeed(){
-  if(!hasSeed()) return alert("Generate a seed first");
-  if(passMismatch()) return;
-  const phrase = document.getElementById("genResult").textContent.split("\n")[0];
+// What a seed print uses (v2.4.0): the seed made on the MAKE tab, or, with from === "check", the words checked in
+// CHECK A BACKUP (Open this wallet). Returns null, after saying why, when there is nothing to print.
+function printSrc(from){
+  if(from === "check"){
+    if(!wvCtx || wvCtx.kind === "pub" || !wvCtx.mnemonic){ alert("Check a seed phrase first (VERIFY), then open the wallet."); return null; }
+    return {words: wvCtx.mnemonic.split(" "), fp: document.getElementById("wvFp").textContent, addr: "", check: true,
+      pass: "Passphrase used: " + (wvCtx.pass ? "YES (keep it separate; it is not printed here)" : "NO")};
+  }
+  if(!hasSeed()){ alert("Generate a seed first"); return null; }
+  if(passMismatch()) return null;
+  return {words: document.getElementById("genResult").textContent.split("\n")[0].split(" "), fp: document.getElementById("fingerprint").textContent,
+    addr: document.getElementById("address").textContent, pass: passLine("printed"), check: false};
+}
+function printSeed(from){
+  const S = printSrc(from); if(!S) return;
   if(!confirm("Printing sends your seed to a printer and its spooler. Only print on a trusted offline computer with a directly connected printer. The passphrase is never printed. Continue?")) return;
   const po = document.getElementById("printOnly"); po.textContent = "";
   const add = (cls, text, parent) => { const d = document.createElement("div"); if(cls) d.className = cls; d.textContent = text; (parent || po).appendChild(d); return d; };
-  const ws = phrase.split(" ");
+  const ws = S.words;
   add("ps-title", "VOIDFORGE BACKUP SHEET");
-  add("ps-sub", ws.length + " words, in order. Write one word in each box, clearly, in pen.");
+  add("ps-sub", ws.length + " words, in order. Check every word against " + (S.check ? "your first backup" : "the screen") + " before you put this sheet away.");
   const g = add("ps-grid ps-" + ws.length, "");
   ws.forEach((w, i) => { const c = add("ps-cell", "", g); add("ps-n", String(i + 1).padStart(2, "0"), c); add("ps-w", w, c); });
   add("ps-rule", "");
-  add("ps-info", document.getElementById("fingerprint").textContent + "\n" + document.getElementById("address").textContent + "\n" + passLine("printed"));
-  add("ps-fields", "Words checked against the screen:  ____\nDate made:                         ____________\nCoin: 1 means ______, 0 means ______ (coin only)\nRolls / flips string stored:       ____________\nPassphrase stored separately:      ____________\nBackup location:                   ____________");
+  add("ps-info", [S.fp, S.addr, S.pass].filter(Boolean).join("\n"));
+  add("ps-fields", S.check ? "Words checked against your first backup:  ____\nDate made:                         ____________\nPassphrase stored separately:      ____________\nBackup location:                   ____________"
+    : "Words checked against the screen:  ____\nDate made:                         ____________\nCoin: 1 means ______, 0 means ______ (coin only)\nRolls / flips string stored:       ____________\nPassphrase stored separately:      ____________\nBackup location:                   ____________");
   add("ps-rule", "");
   add("ps-warn", "Anyone who has these words controls the funds.\nNever photograph them or type them on a connected device.\nLost words cannot be recovered. Check this backup with VERIFY.\nWhen you are done, close the browser and restart the computer.");
   document.body.classList.add("print-seed");
@@ -4580,19 +4627,18 @@ function printSeed(){
   window.print();
 }
 // Stamp sheet (v1.34.0): the first 4 letters of each word in large capitals, for stamping or engraving on a metal plate. Every BIP39 word is unique by its first 4 letters; shorter words are shown in full.
-function printStamp(){
-  if(!hasSeed()) return alert("Generate a seed first");
-  const phrase = document.getElementById("genResult").textContent.split("\n")[0];
+function printStamp(from){
+  const S = printSrc(from); if(!S) return;
   if(!confirm("Printing sends your seed (shortened to 4 letters a word) to a printer and its spooler. Only print on a trusted offline computer with a directly connected printer. The passphrase is never printed. Continue?")) return;
   const po = document.getElementById("printOnly"); po.textContent = "";
   const add = (cls, text, parent) => { const d = document.createElement("div"); if(cls) d.className = cls; d.textContent = text; (parent || po).appendChild(d); return d; };
-  const ws = phrase.split(" ");
+  const ws = S.words;
   add("ps-title", "VOIDFORGE STAMP SHEET");
   add("ps-sub", ws.length + " words, in order, cut to their first 4 letters (shorter words in full). No two BIP39 words start with the same 4 letters, so nothing is ambiguous. Stamp or engrave one box per slot, then read each plate back against this sheet.");
   const g = add("ps-grid ps-stamp ps-" + ws.length, "");
   ws.forEach((w, i) => { const c = add("ps-cell", "", g); add("ps-n", ("0" + (i + 1)).slice(-2), c); add("ps-w", w.slice(0, 4).toUpperCase(), c); });
   add("ps-rule", "");
-  add("ps-info", document.getElementById("fingerprint").textContent + "\n" + passLine("printed"));
+  add("ps-info", S.fp + "\n" + S.pass);
   add("ps-fields", "To get the words back: type the 4-letter forms into Reforge in VOIDFORGE (it reads them as the full words), or find each one in the BIP39 word list.\nPassphrase stored separately:      ____________");
   add("ps-rule", "");
   add("ps-warn", "Anyone who has these letters controls the funds.\nNever photograph the plate or type it on a connected device.\nShred this sheet when the plate is done and checked.\nWhen you are done, close the browser and restart the computer.");
@@ -4604,6 +4650,103 @@ function printStamp(){
   window.print();
 }
 // Roll sheet (v1.34.0): a blank, numbered sheet for writing down dice rolls or coin flips away from the screen. It holds no secret until you fill it in.
+// One printed sheet (v2.4.0, for the newer sheets): build(add) fills the print area, then it prints, and the area is wiped
+// again after printing (or after two minutes if the browser never says printing ended).
+function printSheet(build){
+  const po = document.getElementById("printOnly"); po.textContent = "";
+  const add = (cls, text, parent) => { const d = document.createElement("div"); if(cls) d.className = cls; d.textContent = text; (parent || po).appendChild(d); return d; };
+  build(add);
+  document.body.classList.add("print-seed");
+  let done = false;
+  const cleanup = () => { if(done) return; done = true; po.textContent = ""; document.body.classList.remove("print-seed"); };
+  window.addEventListener("afterprint", cleanup, {once:true});
+  setTimeout(cleanup, 120000);
+  window.print();
+}
+// Word draw sheet (v2.4.0): numbered boxes for the drawn words and the coin flips. Blank when printed.
+function printWordSheet(){
+  const wc = parseInt(document.getElementById("wdLen").value, 10) === 24 ? 24 : 12, need = wdNeeds(wc);
+  printSheet(add => {
+    add("ps-title", "VOIDFORGE WORD DRAW SHEET");
+    add("ps-sub", "For a " + wc + "-word seed: draw (or roll) " + need.words + " words and write each one in the next box, in order. Put each tile back before the next draw. With BitBox02's diceware table, also write the roll (such as 2143 2 T) in the box.");
+    const g = add("ps-grid ps-" + wc, "");
+    for(let i = 1; i <= need.words; i++){ const c = add("ps-cell", "", g); add("ps-n", String(i).padStart(2, "0"), c); }
+    add("ps-sub ps-extra-sub", "Then flip a coin " + need.flips + " times for the last word. VOIDFORGE works out the last word from these flips and the words above.");
+    const f = add("ps-grid ps-roll", "");
+    for(let i = 1; i <= need.flips; i++){ const c = add("ps-cell", "", f); add("ps-n", "Flip " + i, c); }
+    add("ps-rule", "");
+    add("ps-fields", "1 means: ______   0 means: ______   (BitBox02's last word: T is 1, H is 0)\nDate:       ____________\nTyped into VOIDFORGE and checked:  ____");
+    add("ps-rule", "");
+    add("ps-warn", "Once filled in, this sheet is as secret as your seed: anyone who sees it can make your wallet.\nType it in on an offline computer, then shred it (or keep it only as a locked-away backup).\nNever photograph it.");
+  });
+}
+// Print the public QR code shown in the watch-only box (v2.4.0): key, descriptor or Silent Payment address, with its text.
+const QR_PRINT_NAMES = {wZpub: "ACCOUNT PUBLIC KEY", wDescR: "RECEIVE DESCRIPTOR", wDescC: "CHANGE DESCRIPTOR", spAddr: "SILENT PAYMENT ADDRESS"};
+function printShownQr(){
+  if(!qrShown || !hasSeed()) return alert("Press one of the SHOW QR buttons first.");
+  const t = document.getElementById(qrShown.id).textContent; if(!t) return;
+  let q; try { q = qrMatrix(t); } catch(e) { return alert("QR code unavailable: " + e.message); }
+  const sel = document.getElementById("wType"), net = document.getElementById("wNet").value;
+  const info = [document.getElementById("fingerprint").textContent,
+    qrShown.id === "spAddr" ? "Address type: Silent Payment (BIP-352)" : "Address type: " + sel.options[sel.selectedIndex].text,
+    "Network: " + (net === "test" ? "TESTNET (practice coins only)" : "Mainnet"), "Account number: " + document.getElementById("wAcct").value.trim()];
+  printSqSheet("VOIDFORGE " + (QR_PRINT_NAMES[qrShown.id] || "PUBLIC KEY") + (net === "test" ? " (TESTNET)" : ""), qrSvg(q.rows), q.version > 15,
+    info.join("\n") + "\n\n" + t + "\n\nPUBLIC: no seed words and no private keys, so it cannot spend. Anyone who scans it can see this wallet's addresses and balance: keep it private.\nScan it into a watch-only wallet app and check that the first address matches.\n", "");
+}
+// Print an address QR code, or the payment request (BIP-21) made from it (v2.4.0).
+function printAddrQr(pfx){
+  const box = document.getElementById(pfx + "Box"), t = box.dataset.text, addr = box.dataset.addr;
+  if(!t || !addr) return alert("Press QR next to an address first.");
+  let q; try { q = qrMatrix(t); } catch(e) { return alert("QR code unavailable: " + e.message); }
+  const req = t !== addr, fp = document.getElementById(pfx === "wvq" ? "wvFp" : "fingerprint").textContent;
+  printSqSheet("VOIDFORGE " + (req ? "PAYMENT REQUEST" : "RECEIVE ADDRESS"), qrSvg(q.rows), q.version > 15,
+    (fp ? fp + "\n" : "") + "Address: " + addr + (req ? "\nPayment link: " + t : "") + "\n\nPUBLIC: an address can only receive. Scanning this QR code cannot spend anything.\nBefore anyone pays, check the address against your wallet app or hardware wallet.\n", "");
+}
+// Child seed (BIP85) print (v2.4.0): the words in boxes, or the key or password in one box, with what recreates it.
+const CHILD_PRINT_LABEL = {words: "PRINT CHILD SEED", wif: "PRINT HD SEED (WIF)", xprv: "PRINT XPRV", hex: "PRINT HEX", dice: "PRINT DICE ROLLS", pwd64: "PRINT PASSWORD", pwd85: "PRINT PASSWORD"};
+function childShow(c){
+  childCtx = c;
+  document.getElementById("childPrintBtn").textContent = CHILD_PRINT_LABEL[c.app] || "PRINT";
+  document.getElementById("childPrintRow").style.display = "";
+}
+function printChild(){
+  const c = childCtx; if(!c) return alert("Press DERIVE first.");
+  const what = c.app === "words" ? "seed" : c.app === "pwd64" || c.app === "pwd85" ? "password" : "key";
+  if(!confirm("Printing sends this child " + what + " to a printer and its spooler. Only print on a trusted offline computer with a directly connected printer. Continue?")) return;
+  printSheet(add => {
+    const from = "Made with BIP85 from the parent wallet " + c.parent + (c.pass ? " (parent words with a passphrase)" : "") + ", index " + c.index + ". The parent words" + (c.pass ? ", the passphrase" : "") + ", the type and the index make it again.";
+    if(c.app === "words"){
+      add("ps-title", "VOIDFORGE CHILD SEED (BIP85)");
+      add("ps-sub", c.words.length + " words, in order. Check every word against the screen before you put this sheet away.");
+      const g = add("ps-grid ps-" + c.words.length, "");
+      c.words.forEach((w, i) => { const x = add("ps-cell", "", g); add("ps-n", String(i + 1).padStart(2, "0"), x); add("ps-w", w, x); });
+      add("ps-rule", "");
+      add("ps-info", "Child master fingerprint: " + c.fp + "\nChild first receive address (BIP84): " + c.a0 + "\nPassphrase: none (a BIP85 child seed has none)\n" + from);
+    } else {
+      add("ps-title", "VOIDFORGE CHILD " + (what === "password" ? "PASSWORD" : "KEY") + " (BIP85)");
+      add("ps-sub", c.head);
+      add("ps-secret" + (c.text.length > 6000 ? " ps-xxs" : c.text.length > 3000 ? " ps-xs" : c.text.length > 600 ? " ps-s" : ""), c.text);
+      add("ps-rule", "");
+      add("ps-info", (c.extra ? c.extra + "\n" : "") + from);
+    }
+    add("ps-fields", "Used for:        ____________\nDate made:       ____________\nStored where:    ____________");
+    add("ps-rule", "");
+    add("ps-warn", "Anyone who has this " + what + " can use it, and anyone who has the parent words can make it again.\nNever photograph it or type it on a connected device.\nWhen you are done, close the browser and restart the computer.");
+  });
+}
+// Roll sheet extra boxes (v2.4.0): none, 10, 25 or 50, or with Keystone dice rules up to Keystone's maximum of 256 rolls.
+function rsExtraSync(){
+  const sel = document.getElementById("rsExtra"); if(!sel) return;
+  let mx = sel.querySelector('option[value="max"]');
+  if(keystoneOn() && !mx){ mx = document.createElement("option"); mx.value = "max"; mx.textContent = "Extra up to " + KEYSTONE_MAX + " (Keystone maximum)"; sel.appendChild(mx); }
+  else if(!keystoneOn() && mx){ if(sel.value === "max") sel.value = "10"; mx.remove(); }
+}
+function rsExtraCount(need){
+  const v = document.getElementById("rsExtra")?.value || "10", room = KEYSTONE_MAX - need;
+  if(v === "max") return keystoneOn() ? room : 10;
+  const n = Math.max(0, parseInt(v, 10) || 0);
+  return keystoneOn() ? Math.min(n, room) : n;
+}
 function printRollSheet(){
   const coin = getMode() === "coin", wc = document.querySelector('input[name="words"]:checked').value, need = getNeeded(wc), unit = coin ? "flips" : "rolls";
   const po = document.getElementById("printOnly"); po.textContent = "";
@@ -4612,11 +4755,14 @@ function printRollSheet(){
   add("ps-sub", need + " " + unit + " for a " + wc + "-word seed. " + (coin ? "Flip one coin and write 1 or 0 in the next box, in order. Decide which side is 1 and keep it the same for every flip." : "Roll one die and write its number (1 to 6) in the next box, in order. Do not re-roll, skip or reorder."));
   const g = add("ps-grid ps-roll", "");
   for(let i = 1; i <= need; i++){ const c = add("ps-cell", "", g); add("ps-n", String(i), c); }
-  // v2.3.0: one more row of dashed boxes for extra rolls. Optional: every one typed in counts.
-  const ks = keystoneOn();
+  // v2.3.0: dashed boxes for extra rolls. Optional: every one typed in counts. v2.4.0: how many is chosen next to the button.
+  const ks = keystoneOn(), extra = rsExtraCount(need), wide = need + extra > 150;
+  if(wide) g.classList.add("ps-roll20");
+  if(extra > 0){
   add("ps-sub ps-extra-sub", "Extra " + unit + " (optional). Every one you type in counts. " + (ks ? "Keystone dice rules (each 6 counts as 0, at most " + KEYSTONE_MAX + " rolls): a Keystone wallet makes the same words." : coin ? "Exactly " + need + " is the method in SeedSigner's coin-flip code; with more, that code makes different words." : "Exactly " + need + " gives the same words as SeedSigner and Coldcard; with more, only Coldcard makes the same words."));
-  const gx = add("ps-grid ps-roll", "");
-  for(let i = need + 1; i <= need + 10; i++){ const c = add("ps-cell ps-extra", "", gx); add("ps-n", String(i), c); }
+  const gx = add("ps-grid ps-roll" + (wide ? " ps-roll20" : ""), "");
+  for(let i = need + 1; i <= need + extra; i++){ const c = add("ps-cell ps-extra", "", gx); add("ps-n", String(i), c); }
+  }
   add("ps-rule", "");
   add("ps-fields", (coin ? "1 means: ______   0 means: ______\n" : "Dice rules: " + (ks ? "Keystone (each 6 counts as 0)" : "SeedSigner and Coldcard") + "\n") + "Date:       ____________\nTyped into VOIDFORGE and checked:  ____");
   add("ps-rule", "");
@@ -4958,18 +5104,32 @@ async function watchAddresses(ctx, type, chain, from, n){
   for(let i = from; i < from + n && i <= 2147483647; i++){ const [pk] = await ckdPub(cp, cc, i); out.push({index: i, path: base + "/" + chain + "/" + i, address: await addressFromPub(type, pk, ctx.net)}); }
   return out;
 }
+let wvsKind = null;
 function wvSeedQrHide(){
+  wvsKind = null;
   document.getElementById("wvsImg").textContent = ""; document.getElementById("wvsCap").textContent = ""; document.getElementById("wvsBox").style.display = "none";
 }
 function wvSeedQr(kind){
   if(!wvCtx || wvCtx.kind === "pub") return;
   const words = wvCtx.mnemonic.split(" ");
   let q; try { q = seedQrMatrix(words, kind); } catch(e) { return alert("SeedQR unavailable: " + e.message); }
+  wvsKind = kind;
   document.getElementById("wvsImg").innerHTML = qrSvg(q.rows);
   document.getElementById("wvsCap").textContent = seedQrName(kind) + " for these " + words.length + " words, " + q.rows.length + " x " + q.rows.length + " squares. SECRET: anyone who scans it controls the funds. It holds the words only, not the passphrase. Scan it only with an offline device (such as a SeedSigner).";
   document.getElementById("wvsBox").style.display = "block"; scrollQrIntoView("wvsBox");
 }
+// CHECK A BACKUP (v2.4.0): the first 4 letters of the checked words, on screen only while asked for, e.g. to stamp a metal plate.
+function wvAbbr(on){
+  const g = document.getElementById("wvAbbrGrid"), b = document.getElementById("wvAbbrBtn");
+  if(on === undefined) on = !g.classList.contains("on");
+  g.textContent = "";
+  const words = on && wvCtx && wvCtx.kind !== "pub" && wvCtx.mnemonic ? wvCtx.mnemonic.split(" ") : null;
+  if(words) words.forEach((w, i) => { const c = document.createElement("div"); c.className = "wcell"; const n = document.createElement("b"); n.textContent = (i + 1) + "."; const t = document.createElement("span"); t.className = "wtxt"; t.textContent = w.slice(0, 4); c.append(n, t); g.appendChild(c); });
+  g.classList.toggle("on", !!words);
+  b.textContent = words ? "HIDE FIRST 4 LETTERS" : "SHOW FIRST 4 LETTERS";
+}
 function clearWalletView(){
+  wvAbbr(false);
   wvCtx = null; wvFrom = 0; wvSeq++;
   document.getElementById("wvList").textContent = ""; document.getElementById("wvFp").textContent = ""; document.getElementById("wvIcon").textContent = "";
   document.getElementById("wvErr").textContent = ""; document.getElementById("wvPath").textContent = "";
@@ -5532,6 +5692,7 @@ function updateLabels(){
   });
   updateCount();
   syncMethodUi();
+  rsExtraSync();
 }
 updateLabels(); msInitSlider();
 document.getElementById("methodTabs").addEventListener("click", e => { const b = e.target.closest ? e.target.closest("button[data-method]") : null; if(b) setMethod(b.getAttribute("data-method")); });
