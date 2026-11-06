@@ -584,15 +584,16 @@ async function probe(w, mutated) {
     r = await run('dice', 24, D150 + D50); if (!/That is more than twice the 99 needed: fine if you rolled them all, but if you pasted them, check nothing went in twice\.$/.test($('countNote').textContent)) fails.push('more rolls: more than twice the minimum gets the double-paste note');
     r = await run('dice', 12, D50 + D50); if (/twice/.test($('countNote').textContent)) fails.push('more rolls: exactly twice the minimum gets no double-paste note');
     r = await run('dice', 12, D50); if ($('countNote').textContent !== 'Exactly 50 rolls: SeedSigner and Coldcard make the same words from these rolls.') fails.push('more rolls: exactly 50 names SeedSigner and Coldcard');
-    r = await run('coin', 12, C300); if (r !== entropyToMnemonic(sha(C300).slice(0, 16), wordlist) || $('countNote').textContent !== 'Every flip counts: all 300 are hashed. SeedSigner takes exactly 128 flips, so it would make different words. That is more than twice the 128 needed: fine if you flipped them all, but if you pasted them, check nothing went in twice.') fails.push('more flips: 300 flips hashed, with both notes');
-    r = await run('coin', 12, C128); if ($('countNote').textContent !== 'Exactly 128 flips: SeedSigner makes the same words from these flips.' || $('lenNote').textContent !== '128 coin flips or more') fails.push('more flips: exactly 128 names SeedSigner');
+    r = await run('coin', 12, C300); if (r !== entropyToMnemonic(sha(C300).slice(0, 16), wordlist) || $('countNote').textContent !== 'Every flip counts: all 300 are hashed. SeedSigner\'s coin-flip code takes exactly 128 flips, so it would make different words. That is more than twice the 128 needed: fine if you flipped them all, but if you pasted them, check nothing went in twice.') fails.push('more flips: 300 flips hashed, with both notes');
+    r = await run('coin', 12, C128); if ($('countNote').textContent !== 'Exactly 128 flips: the same SHA-256 method as SeedSigner\'s coin-flip code (its device menus make seeds from dice).' || $('lenNote').textContent !== '128 coin flips or more') fails.push('more flips: exactly 128 names SeedSigner');
     $('rolls').value = C128.slice(0, 127); $('rolls').oninput(); if ($('countNote').textContent !== '') fails.push('more flips: no note below the minimum');
     mode('dice'); words(12); $('rolls').value = ''; $('rolls').oninput();
     if ($('lenNote').textContent !== '50 dice rolls or more') fails.push('more rolls: the length line says 50 or more');
     { const oprint = w.print; let cells = null, extra = null, txt = ''; w.print = () => { cells = [...w.document.querySelectorAll('#printOnly .ps-cell')].map((c) => c.textContent); extra = [...w.document.querySelectorAll('#printOnly .ps-cell.ps-extra')].map((c) => c.textContent); txt = $('printOnly').textContent; };
       w.printRollSheet(); w.dispatchEvent(new w.Event('afterprint')); w.print = oprint;
       if (!cells || cells.length !== 60 || cells.some((c, i) => c !== String(i + 1)) || extra.join(',') !== '51,52,53,54,55,56,57,58,59,60' || !/Extra rolls \(optional\)\. Every one you type in counts\. Exactly 50 gives the same words as SeedSigner and Coldcard; with more, only Coldcard makes the same words\./.test(txt)) fails.push('roll sheet: 50 boxes, then 10 dashed optional boxes numbered 51 to 60');
-      if (!/body\.print-seed #printOnly \.ps-roll \.ps-cell\.ps-extra \{ border-style: dashed; \}/.test(mutated)) fails.push('roll sheet: the extra boxes are dashed'); } }
+      if (!/body\.print-seed #printOnly \.ps-roll \.ps-cell\.ps-extra \{ border-style: dashed; \}/.test(mutated)) fails.push('roll sheet: the extra boxes are dashed');
+      if (!/Dice rules: SeedSigner and Coldcard\n/.test(txt)) fails.push('roll sheet: the sheet records the dice rules'); } }
   r = await run('dice', 12, D50, UNI);    if (fpOf() !== fp(expect.d50, UNI)) fails.push('unicode passphrase fingerprint');
   if (adOf() !== addr(expect.d50, UNI)) fails.push('first receive address with unicode passphrase');
   if ($('wZpub').textContent !== watch(expect.d50, UNI).zpub) fails.push('watch-only zpub with unicode passphrase');
@@ -1444,7 +1445,22 @@ async function probe(w, mutated) {
     if ((await V('bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l', 'Hello World', 'smpAkgwRQIhAOzyynlqt93lOKJr+wmmxIens//zPzl9tqIOua93wO6MAiBi5n5EyAcPScOjf1lAqIUIQtr3zKNeavYabHyR8eGhowEhAsfxIAMZZEKUPYWI4BruhAQjzFT8FSFSajuFwrDL1Yhy')) !== 'valid') fails.push('signed message: BIP-322 official P2WPKH vector');
     if ((await V('bc1pss0zhytly75awhm6x2hhvd5lnzv3vssgrf9axfheq8ldyzn88ges79fler', 'No prefix fallback', 'AUCJYOwOjxYAvatTAGYaVlNXBVyFuc4MwNQkOuK2tl8xhfKDONd0NjfYyNSYcRqeCp8hsAnCEPHAVEkO9h6vbQ/R')) !== 'valid') fails.push('signed message: BIP-322 official Taproot vector');
     if ((await V('mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB', 'This is just a test message', 'INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0=')) !== 'valid') fails.push('signed message: Bitcoin Core classic vector');
-    { const r = await w.verifyMessage('mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB', 'This is just a test message\n', 'INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0='); if (r.state !== 'valid' || !/once spaces or line breaks at its start or end are removed/.test(r.text)) fails.push('signed message: a trailing line break is accepted only with the warning'); }
+    { const r = await w.verifyMessage('mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB', 'This is just a test message\n', 'INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0='); if (r.state !== 'valid' || r.variant !== true || !/^VALID, after a small change to the message: the key of mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB/.test(r.text)) fails.push('signed message: a trailing line break is accepted only with the warning'); }
+    { const r = await w.verifyMessage('mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB', 'This is just a test message', 'INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0='); if (r.variant || !/^VALID: the key of mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB signed exactly this message\.\nFormat: classic \(BIP-137\), Legacy \(m\.\.\. or n\.\.\.\)\./.test(r.text)) fails.push('signed message: VALID names the address and the testnet type'); }
+    if ((await V('1BquDSCmzyqhKnMXByiDQEFbY3DkMRi1XP', 'recid two', 'IQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEjRWeJCrze8=')) !== 'valid') fails.push('signed message: recovery id 2 (R.x = r + n)');
+    { // Windows line breaks: signed with \r\n, typed with \n (a text box always gives \n), and the other way round
+      const sgn = (m) => { const mb = T.encode(m), sg = secp256k1.sign(nsha(nsha(cat(T.encode('\x18Bitcoin Signed Message:\n'), vint(mb.length), mb))), priv); return b64(cat(Uint8Array.of(31 + sg.recovery), bhex.decode(sg.r.toString(16).padStart(64, '0')), bhex.decode(sg.s.toString(16).padStart(64, '0')))); };
+      const A = btc.p2pkh(pubC).address;
+      const r1 = await w.verifyMessage(A, 'one\ntwo', sgn('one\r\ntwo')); if (r1.state !== 'valid' || !r1.variant) fails.push('signed message: signed with Windows line breaks, typed with \\n, is VALID with the warning');
+      const r2 = await w.verifyMessage(A, 'one\r\ntwo', sgn('one\ntwo')); if (r2.state !== 'valid' || !r2.variant) fails.push('signed message: signed with \\n, typed with Windows line breaks, is VALID with the warning');
+      const r3 = await w.verifyMessage(A, 'one two', sgn('one two\n')); if (r3.state !== 'valid' || !r3.variant) fails.push('signed message: signed with a final line break, typed without, is VALID with the warning');
+      const r4 = await w.verifyMessage(A, 'one two', sgn('one two!')); if (r4.state !== 'invalid') fails.push('signed message: another text is still NOT VALID'); }
+    { // unprefixed BIP-322 full / proof of funds are CANNOT CHECK; a damaged classic signature is an error
+      const full = 'AgAAAAABAfkBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
+      if ((await V('bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l', 'x', full)) !== 'cannot') fails.push('signed message: an unprefixed full signature (a transaction) is CANNOT CHECK');
+      if ((await V('bc1pss0zhytly75awhm6x2hhvd5lnzv3vssgrf9axfheq8ldyzn88ges79fler', 'x', 'cHNidP8BAAoCAAAAAAAAAAAA')) !== 'cannot') fails.push('signed message: an unprefixed proof of funds (a PSBT) is CANNOT CHECK');
+      const dmg = Buffer.from('INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0=', 'base64'); dmg[0] = 43;
+      if ((await V('mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB', 'This is just a test message', dmg.toString('base64'))) !== 'error') fails.push('signed message: a damaged classic signature is an error'); }
     for (const [a, m, sg, want, why] of [['bc1qp0ahvfh83088w49k405szqgg4f3pptr7p2g06tdxfjcd40z4lh4q95lsz9', '', 'smpAkcwRAIgM2gBAQqvZX15ZiysmKmQpDrG83avLIT492QBzLnQIxYCIBaTpOaD20qRlEylyxFSeEA2ba9YOixpX8z46TSDtS40ASECx/EgAxlkQpQ9hYjgGu6EBCPMVPwVIVJqO4XCsMvViHI=', 'cannot', 'a multisig address cannot be checked'],
       ['bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l', '', 'fulAgAAAAABAQ==', 'cannot', 'a full signature cannot be checked'], ['bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l', '', 'pofAA==', 'cannot', 'a proof of funds cannot be checked'],
       ['bc1pss0zhytly75awhm6x2hhvd5lnzv3vssgrf9axfheq8ldyzn88ges79fler', 'x', 'INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0=', 'cannot', 'a classic signature for Taproot cannot be checked'],
@@ -1456,12 +1472,20 @@ async function probe(w, mutated) {
       { const st = await V(a, m, sg); if (st !== want) fails.push('signed message: ' + why + ' (got ' + st + ')'); }
     // the box on the page
     $('sigAddr').value = 'mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB'; $('sigMsg').value = 'This is just a test message'; $('sigSig').value = 'INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0=';
-    await w.verifyMessageUi(); if ($('sigStatus').className !== 'status ok' || !/^VALID: the key of this address signed exactly this message\.\nFormat: classic \(BIP-137\), Legacy \(1\.\.\.\)\./.test($('sigStatus').textContent)) fails.push('signed message: VALID in green on the page');
+    await w.verifyMessageUi(); if ($('sigStatus').className !== 'status ok' || !/^VALID: the key of mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB signed exactly this message\./.test($('sigStatus').textContent)) fails.push('signed message: VALID in green on the page');
+    $('sigMsg').value = 'This is just a test message\n'; await w.verifyMessageUi(); if ($('sigStatus').className !== 'status warn') fails.push('signed message: a match after a small change is amber');
+    $('sigMsg').value = 'This is just a test message';
     $('sigMsg').value = 'This is just a test message?'; $('sigMsg').dispatchEvent(new w.Event('input')); if ($('sigStatus').textContent !== '') fails.push('signed message: editing clears the result');
     await w.verifyMessageUi(); if ($('sigStatus').className !== 'status bad' || !/^NOT VALID/.test($('sigStatus').textContent)) fails.push('signed message: NOT VALID in red on the page');
     $('sigAddr').value = 'bc1qp0ahvfh83088w49k405szqgg4f3pptr7p2g06tdxfjcd40z4lh4q95lsz9'; await w.verifyMessageUi(); if ($('sigStatus').className !== 'status' || !/^CANNOT CHECK/.test($('sigStatus').textContent)) fails.push('signed message: CANNOT CHECK is neither green nor red');
     $('sigAddr').value = ''; $('sigSig').value = ''; $('sigMsg').value = '-----BEGIN BITCOIN SIGNED MESSAGE-----\nThis is just a test message\n-----BEGIN BITCOIN SIGNATURE-----\nmpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB\nINbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0=\n-----END BITCOIN SIGNATURE-----';
     await w.verifyMessageUi(); if ($('sigAddr').value !== 'mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB' || $('sigMsg').value !== 'This is just a test message' || !/^Read the address, message and signature from the signed-message block\.\nVALID/.test($('sigStatus').textContent)) fails.push('signed message: a signed-message block is read');
+    { const BLOCK = '-----BEGIN BITCOIN SIGNED MESSAGE-----\nThis is just a test message\n-----BEGIN BITCOIN SIGNATURE-----\nmpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB\nINbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0=\n-----END BITCOIN SIGNATURE-----';
+      $('sigAddr').value = 'bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l'; $('sigSig').value = ''; $('sigMsg').value = BLOCK; const r = await w.verifyMessageUi();
+      if (r.state !== 'error' || $('sigAddr').value !== 'bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l' || $('sigStatus').className !== 'status bad' || !/^NOT CHECKED: the signed-message block is for mpLQ/.test($('sigStatus').textContent)) fails.push('signed message: a block for another address than the one typed is NOT CHECKED');
+      $('sigAddr').value = ''; $('sigSig').value = 'smpAA=='; $('sigMsg').value = BLOCK; const r2 = await w.verifyMessageUi(); if (r2.state !== 'error' || $('sigSig').value !== 'smpAA==') fails.push('signed message: a block with another signature than the one typed is NOT CHECKED');
+      $('sigAddr').value = ''; $('sigSig').value = ''; $('sigMsg').value = '-----BEGIN BITCOIN SIGNED MESSAGE-----\nThis is just a test message\n-----BEGIN SIGNATURE-----\nVersion: Bitcoin-qt (1.0)\nAddress: mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB\n\nINbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0=\n-----END BITCOIN SIGNED MESSAGE-----';
+      const r3 = await w.verifyMessageUi(); if (r3.state !== 'valid' || $('sigAddr').value !== 'mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB') fails.push('signed message: a block with an Address: header is read'); }
     w.clearSig(); if ($('sigAddr').value || $('sigMsg').value || $('sigSig').value || $('sigStatus').textContent) fails.push('signed message: CLEAR empties the box');
   } catch (e) { fails.push('signed message: the probe crashed: ' + e.message); }
   try { // v2.3.0 BitBox02 diceware (expected words from @scure's English list and Node's SHA-256)
@@ -1470,11 +1494,26 @@ async function probe(w, mutated) {
     for (let a = 1; a <= 4; a++) for (let b2 = 1; b2 <= 4; b2++) for (let c = 1; c <= 4; c++) for (let d = 1; d <= 4; d++) for (let e = 1; e <= 4; e++) for (const f of 'HT') { const code = '' + a + b2 + c + d + e + f, r = w.wdFindWord(code.slice(0, 4) + ' ' + code[4] + ' ' + f.toLowerCase()); if (r.idx !== bbIdx(code) || r.word !== wordlist[bbIdx(code)] || r.msg !== 'Word ' + (bbIdx(code) + 1) + ': ' + wordlist[bbIdx(code)]) bad++; seen.add(r.idx); }
     if (bad || seen.size !== 2048 || w.wdFindWord('1111 1 H').word !== 'abandon' || w.wdFindWord('2111 1 H').word !== 'divorce' || w.wdFindWord('4444 4 T').word !== 'zoo') fails.push('BitBox02 table: every code gives the word of the printed table');
     for (const x of ['5111 1 H', '1111 5 H', '1111 1 X', '1111 1', '0111 1 H', '1111 1 HT']) if (w.wdFindWord(x).word !== undefined) fails.push('BitBox02 table: ' + x + ' is refused');
-    $('wdWords').value = ''; $('wdFind').value = '1111 1 H'; if (w.wdAddFound() !== true || $('wdWords').value !== 'abandon' || $('wdFind').value !== '' || $('wdFound').textContent !== 'Added word 1: abandon.') fails.push('ADD WORD: adds the word and empties the finder');
+    $('wdWords').value = ''; $('wdLen').value = '12'; $('wdFind').value = '1111 1 H'; if (w.wdAddFound() !== true || $('wdWords').value !== 'abandon' || $('wdFind').value !== '' || $('wdFound').textContent !== 'Added word 1: abandon. BitBox02 diceware makes 24 words: choose 24 words above.') fails.push('ADD WORD: adds the word, empties the finder, and gives the 24-word hint at 12 words');
+    $('wdFind').value = '3 A 7'; w.wdFind(); if ($('wdFound').textContent !== 'Word 680: female') fails.push('word finder: no BitBox hint for other entries');
+    $('wdLen').value = '24'; $('wdFind').value = '1111 1 H'; w.wdFind(); if ($('wdFound').textContent !== 'Word 1: abandon') fails.push('word finder: no hint at 24 words'); $('wdLen').value = '12';
+    for (const [c, wd] of [['1234 1 H', 'brand'], ['1234 4 T', 'brief'], ['3412 1 H', 'rain'], ['3412 4 T', 'rapid']]) if (w.wdFindWord(c).word !== wd) fails.push('BitBox02 table: ' + c + ' is ' + wd + ' (printed table)');
     $('wdFind').value = '4444 4 T'; $('wdFind').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); if ($('wdWords').value !== 'abandon zoo') fails.push('ADD WORD: Enter adds the word');
     $('wdFind').value = 'nope'; if (w.wdAddFound() !== false || $('wdWords').value !== 'abandon zoo') fails.push('ADD WORD: a bad entry adds nothing');
     $('wdWords').value = ''; $('wdFind').value = ''; w.wdFind(); w.wdUpdate();
     const cand = (idx, i) => { const bits = idx.map((n) => n.toString(2).padStart(11, '0')).join('') + i.toString(2).padStart(3, '0'); const ent = Uint8Array.from(bits.match(/.{8}/g).map((x) => parseInt(x, 2))); return entropyToMnemonic(ent, wordlist).split(' ')[23]; };
+    { // a Word draw seed is cleared when its words, flips or length change afterwards (v2.3.0 review fix)
+      w.setMethod('words'); $('wordSel').value = '24'; $('wordSel').dispatchEvent(new w.Event('change'));
+      $('wdWords').value = Array(23).fill('violin').join(' '); $('wdFlips').value = '101'; w.wdUpdate(); await w.wdGenerate();
+      const made = $('genResult').textContent.split('\n')[0];
+      if (!w.hasSeed() || made.split(' ')[23] !== 'regular' || $('wdOut').style.display === 'none') fails.push('Word draw: 23 x violin and flips 101 make the 24th word regular');
+      $('wdFlips').value = '111'; w.wdUpdate();
+      if (w.hasSeed() || !/^You changed the words, the coin flips or the word count after MAKE SEED FROM WORDS/.test($('genResult').textContent) || $('wdOut').textContent !== '') fails.push('Word draw: changing the flips clears the seed and the last-word steps');
+      $('wdFlips').value = '101'; w.wdUpdate(); await w.wdGenerate(); if (!w.hasSeed() || $('genResult').textContent.split('\n')[0] !== made) fails.push('Word draw: the same inputs make the same seed again');
+      $('wdWords').value = Array(22).fill('violin').join(' ') + ' zoo'; w.wdUpdate(); if (w.hasSeed()) fails.push('Word draw: changing a word clears the seed');
+      $('wdWords').value = Array(23).fill('violin').join(' '); w.wdUpdate(); await w.wdGenerate(); words(12); if (w.hasSeed()) fails.push('Word draw: changing the word count clears the seed');
+      $('rolls').value = '1'; $('rolls').oninput(); $('rolls').value = ''; $('rolls').oninput();
+      w.wdClear(); words(12); w.setMethod('dice'); }
     const viol = Array(23).fill(wordlist.indexOf('violin')), got = [];
     for (let i = 0; i < 8; i++) got.push((await w.wdSteps(viol, i.toString(2).padStart(3, '0'), 24)).lastWord);
     if (got.join(' ') !== 'boss coyote dry habit panel regular speed winter' || got.some((x, i) => x !== cand(viol, i))) fails.push('BitBox02 last word: 23 x violin gives BitBox\'s 8 choices in order (HHH first)');
@@ -1483,13 +1522,18 @@ async function probe(w, mutated) {
     const rules = (v) => { $('diceRules').value = v; $('diceRules').dispatchEvent(new w.Event('change')); };
     const mk = (r, wc) => entropyToMnemonic(sha(r.replace(/6/g, '0')).slice(0, wc === 24 ? 32 : 16), wordlist);
     rules('keystone');
-    if ($('rulesNote').textContent !== 'each 6 counts as 0; 50 to 256 rolls' || $('lenNote').textContent !== '50 dice rolls or more') fails.push('Keystone: the menu note and the length line');
+    if ($('rulesNote').textContent !== 'each 6 counts as 0; 50 to 256 rolls' || $('lenNote').textContent !== '50 to 256 dice rolls') fails.push('Keystone: the menu note and the length line');
     let r = await run('dice', 12, D50); if (r !== mk(D50, 12) || r === expect.d50) fails.push('Keystone: 50 rolls are hashed with every 6 as 0');
     if ($('countNote').textContent !== 'Keystone rules: every 6 counts as 0 and all 50 rolls are hashed, so a Keystone wallet makes the same words from these rolls.') fails.push('Keystone: the note says a Keystone wallet makes the same words');
     const D120 = (D99 + D50).slice(0, 120); r = await run('dice', 12, D120); if (r !== mk(D120, 12) || !/That is more than twice the 50 needed/.test($('countNote').textContent)) fails.push('Keystone: 120 rolls all count, with the double-paste note');
-    r = await run('dice', 24, D99); if (r !== 'Enter 1 more roll (99 of 100).' || $('lenNote').textContent !== '100 dice rolls or more') fails.push('Keystone: 24 words need 100 rolls');
+    r = await run('dice', 24, D99); if (r !== 'Enter 1 more roll (99 of 100).' || $('lenNote').textContent !== '100 to 256 dice rolls') fails.push('Keystone: 24 words need 100 rolls');
     const D100 = D99 + '6'; r = await run('dice', 24, D100); if (r !== mk(D100, 24)) fails.push('Keystone: 100 rolls make 24 words');
     const D256 = (D99 + D99 + D99).slice(0, 256); r = await run('dice', 24, D256); if (r !== mk(D256, 24)) fails.push('Keystone: 256 rolls are allowed');
+    { const op = w.print; let txt = ''; w.print = () => { txt = $('printOnly').textContent; }; w.printRollSheet(); w.dispatchEvent(new w.Event('afterprint')); w.print = op;
+      if (!/Keystone dice rules \(each 6 counts as 0, at most 256 rolls\): a Keystone wallet makes the same words\./.test(txt) || !/Dice rules: Keystone \(each 6 counts as 0\)/.test(txt) || /SeedSigner|Coldcard/.test(txt)) fails.push('Keystone: the roll sheet names the Keystone rules only'); }
+    $('rolls').value = D256 + '2'; $('rolls').oninput(); await new Promise((res) => setTimeout(res, 60));
+    if (w.guideCanNext(2) || w.document.querySelectorAll('#wordGrid .wcell.pv').length) fails.push('Keystone: above 256 rolls no guide NEXT and no preview words');
+    $('rolls').value = D256; $('rolls').oninput(); if (!w.guideCanNext(2)) fails.push('Keystone: 256 rolls let the guide go on');
     r = await run('dice', 24, D256 + '2'); if (!/^Keystone takes at most 256 rolls\. Remove 1 \(257 of 256\)/.test(r) || w.hasSeed() || $('countNote').textContent !== 'Keystone takes at most 256 rolls: remove 1.' || $('bigSub').textContent !== 'Keystone takes at most 256: remove 1' || !/short/.test($('bigCount').className)) fails.push('Keystone: 257 rolls are refused');
     r = await run('dice', 12, D50); rules('std'); if (w.hasSeed()) fails.push('Keystone: changing the dice rules after FORGE clears the words');
     r = await run('dice', 12, D50); if (r !== expect.d50) fails.push('Keystone: back to SeedSigner and Coldcard rules, the old words come back');
@@ -1608,11 +1652,12 @@ async function probe(w, mutated) {
     if (a.document.getElementById('startGate') || a.document.body.classList.contains('dice-wait') || a.document.body.classList.contains('sg-skip')) fails.push('session notice: offline and already read in this session, it does not show again and the dice are ready');
     const b = loadPage(mutated, (win) => off(win, false)); await ready(b);
     if (!b.document.getElementById('startGate') || !b.document.body.classList.contains('dice-wait') || b.document.body.classList.contains('sg-skip')) fails.push('session notice: offline, it shows the first time in a session');
-    b.startGateClose(); if (b.sessionStorage.getItem('voidforge-ack') !== '1' || b.sessionStorage.length !== 1) fails.push('session notice: closing it notes a single "1" in session storage and nothing else');
+    b.startGateClose(); if (b.sessionStorage.getItem('voidforge-ack') !== '1' || b.sessionStorage.length !== 1) fails.push('session notice: closing it offline notes a single "1" in session storage and nothing else');
     const c = loadPage(mutated, (win) => { win.sessionStorage.setItem('voidforge-ack', '1'); }); await ready(c);
     if (!c.document.getElementById('startGate') || !c.document.body.classList.contains('dice-wait')) fails.push('session notice: online, it shows on every load');
+    { const d = loadPage(mutated, () => {}); await ready(d); d.startGateClose(); if (d.sessionStorage.length !== 0) fails.push('session notice: closing it online stores nothing'); }
     if (!/\n  body\.js-ok\.sg-skip #startGate \{ display: none; \}/.test(mutated)) fails.push('session notice: when skipped it is hidden from the first paint');
-    const e = loadPage(mutated, () => {}); await ready(e); let rl = 0; e.endSessionReload = () => { rl++; }; e.startGateClose();
+    const e = loadPage(mutated, (win) => off(win, false)); await ready(e); let rl = 0; e.endSessionReload = () => { rl++; }; e.startGateClose();
     const $e = (id) => e.document.getElementById(id);
     $e('rolls').value = D50; $e('rolls').oninput(); await e.generate(); e.confirm = () => false;
     if (e.endSession() !== null || !e.hasSeed() || e.sessionStorage.getItem('voidforge-ack') !== '1' || rl !== 0) fails.push('END SESSION: Cancel keeps everything');
@@ -1802,7 +1847,7 @@ const M = [
   ['roll sheet: ignores coin mode', 'const coin = getMode() === "coin", wc', 'const coin = false, wc'],
   ['roll sheet: ignores the word count', 'need = getNeeded(wc), unit', 'need = getNeeded("12"), unit'],
   ['roll sheet: no secret warning', 'Once filled in, this sheet is as secret as your seed', 'This sheet is harmless'],
-  ['roll sheet: coin sides not asked for', '(coin ? "1 means: ______   0 means: ______\\n" : "")', '""'],
+  ['roll sheet: coin sides not asked for', '(coin ? "1 means: ______   0 means: ______\\n" :', '(coin ? "" :'],
   ['roll sheet: area not cleaned', 'done = true; po.replaceChildren(); document.body.classList.remove("print-seed"); };', 'done = true; document.body.classList.remove("print-seed"); };'],
   ['roll sheet: print class not removed', 'done = true; po.replaceChildren(); document.body.classList.remove("print-seed"); };', 'done = true; po.replaceChildren(); };'],
   ['roll sheet: button not wired', 'id="rollSheetBtn" onclick="printRollSheet()"', 'id="rollSheetBtn" onclick=""'],
@@ -2069,9 +2114,10 @@ const M = [
   ['five addresses: receive chain replaced by change chain', 'for(const [i,h] of [[84,true],[0,true],[0,true],[0,false]]) [k,c]=await ckdPriv(k,c,i,h);\n  const out=[];', 'for(const [i,h] of [[84,true],[0,true],[0,true],[1,false]]) [k,c]=await ckdPriv(k,c,i,h);\n  const out=[];'],
   ['taproot list not cleared after an error', 'document.getElementById("addrList").textContent = ""; document.getElementById("trList").textContent = "";', 'document.getElementById("addrList").textContent = "";'],
   ['taproot list never filled', 'tl.textContent = "";\n  (trList || []).forEach', 'tl.textContent = "";\n  ([]).forEach'],
-  ['guide: NEXT unlocks one roll late', '.length >= getNeeded(document.querySelector(\'input[name="words"]:checked\').value);', '.length > getNeeded(document.querySelector(\'input[name="words"]:checked\').value);'],
+  ['guide: NEXT unlocks one roll late', 'return k >= getNeeded(document.querySelector(\'input[name="words"]:checked\').value) &&', 'return k > getNeeded(document.querySelector(\'input[name="words"]:checked\').value) &&'],
+  ['guide: Keystone maximum ignored', ' && !(keystoneOn() && k > KEYSTONE_MAX); }', '; }'],
   ['guide: step 4 not locked until FORGE', '  if(n === 3) return hasSeed();', '  if(n === 3) return true;'],
-  ['guide: step 2 not locked', '  if(n === 2) return clean(', '  if(n === 2) return true || clean('],
+  ['guide: step 2 not locked', '  if(n === 2){ const k = clean(', '  if(n === 2){ return true; const k = clean('],
   ['guide: NEXT can skip a locked step', '  if(d > 0 && !guideCanNext(guideN)) return;\n', ''],
   ['guide: DONE does not leave the guide', 'if(d > 0 && guideN >= GUIDE_STEPS){ toggleGuide(); jumpTo("cardCheck"); return; }', 'if(d > 0 && guideN >= GUIDE_STEPS){ return; }'],
   ['guide: hidden test off by one', 'return g.indexOf(String(n)) < 0;', 'return g.indexOf(String(n)) <= 0;'],
@@ -2702,7 +2748,7 @@ const M = [
   ['result: empty state does not refill slots', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote();', 'grid.classList.remove("slots"); updateAbbrNote();'],
   ['result: panel not refreshed', '  updateSeedPanel();\n  if(ms) msBanner();', '  if(ms) msBanner();'],
   ['result: empty box shown', 'g.classList.toggle("nores", text === "\\u2014")', 'g.classList.toggle("nores", false)'],
-  ['notice: dice released too early / never', 'document.body.classList.remove("dice-wait", "sg-skip");\n  ackRemember(true);', 'document.body.classList.remove("sg-skip");\n  ackRemember(true);'],
+  ['notice: dice released too early / never', 'document.body.classList.remove("dice-wait", "sg-skip");\n  if(!navigator.onLine)', 'document.body.classList.remove("sg-skip");\n  if(!navigator.onLine)'],
   ['notice: dice held with no notice', 'else { document.body.classList.remove("dice-wait"); focusRollsUnlessTouch(); }', 'else { focusRollsUnlessTouch(); }'],
   ['notice: dice never held', '<body class="dice-wait">', '<body>'],
   ['strip: link goes nowhere', 'onclick="showTab(\'about\',\'beforeCard\')"', 'onclick="showTab(\'make\')"'],
@@ -2733,9 +2779,12 @@ const M = [
   ['finder: lower case rejected', 'const r = String(raw).trim().toUpperCase()', 'const r = String(raw).trim()'],
   ['finder: digits with spaces read as a number', 'if(/^[0-9]+$/.test(r)){', 'if(/^[0-9 ]+$/.test(r)){'],
   ['finder: hex taken as decimal', 'parseInt(t.slice(1), 16)', 'parseInt(t.slice(1), 10)'],
-  ['finder: wrong message', '"Word " + (idx + 1) + ": " + WORDLIST[idx]', '"Word " + idx + ": " + WORDLIST[idx]'],
+  ['finder: wrong message', 'return {idx: idx, word: WORDLIST[idx], msg: "Word " + (idx + 1) + ": " + WORDLIST[idx]};', 'return {idx: idx, word: WORDLIST[idx], msg: "Word " + idx + ": " + WORDLIST[idx]};'],
+  ['BitBox02: wrong message', 'bitbox: true, msg: "Word " + (idx + 1) + ": " + WORDLIST[idx]};', 'bitbox: true, msg: "Word " + idx + ": " + WORDLIST[idx]};'],
+  ['BitBox02: 24-word hint missing', 'return r.bitbox && document.getElementById("wdLen").value !== "24" ?', 'return false ?'],
+  ['BitBox02: 24-word hint for every entry', 'return r.bitbox && document.getElementById("wdLen").value !== "24" ?', 'return document.getElementById("wdLen").value !== "24" ?'],
   ['finder: empty entry complains', 'if(!r) return {msg: ""};', 'if(false) return {msg: ""};'],
-  ['finder: page line not updated', 'document.getElementById("wdFound").textContent = wdFindWord(document.getElementById("wdFind").value).msg;', 'document.getElementById("wdFound").textContent = "";'],
+  ['finder: page line not updated', 'document.getElementById("wdFound").textContent = r.msg + wdBitBoxHint(r); }', 'document.getElementById("wdFound").textContent = ""; }'],
   ['qr: seed panel covers content again', '#cardGen .gen-right { grid-column: 2; grid-row: 1 / span 2;', '#cardGen .gen-right { grid-column: 2; grid-row: 1;'],
   ['qr: bottom area spans under the panel', '#cardGen .gen-bottom { grid-column: 1; grid-row: 2;', '#cardGen .gen-bottom { grid-column: 1 / -1; grid-row: 2;'],
   ['qr: no margin under the tab bar', '#qrBox, #sqBox, #msQrBox { scroll-margin: 80px 0 20px; }', '#qrBox, #sqBox, #msQrBox { scroll-margin: 0; }'],
@@ -2783,7 +2832,7 @@ const M = [
   ["stale: mode missing from signature", "\"rolls|\" + getMode() + \"|\"", "\"rolls|\" + \"|\"", true],  // equivalent: switching dice/coin always empties the rolls box (or reverts the switch), so the rolls part of the signature already changes
   ["stale: kind always rolls", "seedKind = ctx ? \"rolls\" : \"wd\";", "seedKind = \"rolls\";"],
   ["stale: fingerprint and address left", "  document.getElementById(\"fingerprint\").textContent = \"\"; document.getElementById(\"address\").textContent = \"\";\n}\n// More than the minimum (v2.3.0)", "\n}\n// More than the minimum (v2.3.0)"],
-  ["stale: no message", "setResult(\"You changed the rolls, the word count or the dice/coin choice after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.\");", "setResult(\"\\u2014\");"],
+  ["stale: no message", "else setResult(\"You changed the rolls, the word count, the dice/coin choice or the dice rules after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.\");", "else setResult(\"\\u2014\");"],
   ["stale: download uses typed rolls", "const rolls = (exCtx && exCtx.rolls) || document.getElementById(\"rolls\").value;", "const rolls = document.getElementById(\"rolls\").value;"],
   // v1.26.2 red CLEAR and green SELF-TEST
   ["buttons: CLEAR not red", "<button class=\"btn-clear\" onclick=\"clearAll()\">", "<button class=\"secondary\" onclick=\"clearAll()\">"],
@@ -2949,28 +2998,52 @@ const M = [
   ['signed message: any sighash accepted', 'if(sig.length < 9 || sig[sig.length - 1] !== 1) return false;', 'if(sig.length < 9) return false;'],
   ['signed message: loose DER accepted', 'if(n > 1 && v[0] === 0 && !(v[1] & 0x80)) return null;', ''],
   ['signed message: extra witness bytes accepted', '  if(i !== b.length) throw new Error("extra bytes");\n', ''],
-  ['signed message: line-break tolerance gone', '  for(const v of [n1, n2, n3]) if(!variants.includes(v)) variants.push(v);\n', ''],
-  ['signed message: no warning for a trimmed match', '(k ? "this message, once spaces', '(false ? "this message, once spaces'],
+  ['signed message: line-break tolerance gone', 'for(const v of [n1, msg.trim(), n1.trim(), n1.replace(/\\n/g, "\\r\\n"), n1 + "\\n", n1.replace(/\\n/g, "\\r\\n") + "\\r\\n"]) if', 'for(const v of []) if'],
+  ['signed message: Windows line breaks not tried', ', n1.replace(/\\n/g, "\\r\\n"), n1 + "\\n",', ', n1 + "\\n",'],
+  ['signed message: final line break not tried', ', n1 + "\\n", n1.replace(', ', n1.replace('],
+  ['signed message: no warning for a trimmed match', '(k ? "VALID, after a small change to the message:', '(false ? "VALID, after a small change to the message:'],
+  ['signed message: variant not flagged', 'return {state: "valid", variant: k > 0,', 'return {state: "valid", variant: false,'],
+  ['signed message: VALID does not name the address', '"VALID: the key of " + addr + " signed exactly this message."', '"VALID: the key of this address signed exactly this message."'],
+  ['signed message: testnet labelled as mainnet', 'const test = addressNetOf(addr) === "test", kinds', 'const test = false, kinds'],
+  ['signed message: close match shown green', '(r.variant ? " warn" : " ok")', '" ok"'],
+  ['signed message: amber colour missing', '  .status.warn { color: var(--warn-text); }\n', ''],
+  ['signed message: block replaces a typed address', 'if((typedA && !sameA) || (typedS && typedS !== ar.sig)){', 'if(false){'],
+  ['signed message: block replaces a typed signature', 'if((typedA && !sameA) || (typedS && typedS !== ar.sig)){', 'if(typedA && !sameA){'],
+  ['signed message: Address header not read', 'if(/^address$/i.test(h[1]) && h[2] && !addr) addr = h[2].trim(); continue;', 'continue;'],
+  ['signed message: unprefixed full read as simple', '    if(looksLikeFull(b)) return {state: "cannot"', '    if(false) return {state: "cannot"'],
+  ['signed message: PSBT not seen as proof of funds', 'if(b.length >= 5 && b[0] === 0x70 && b[1] === 0x73 && b[2] === 0x62 && b[3] === 0x74 && b[4] === 0xff) return true;', ''],
+  ['signed message: damaged classic not called damaged', 'if(type === "pkh" || type === "sh-wpkh") return {state: "error", text: b.length === 65 ?', 'if(false) return {state: "error", text: b.length === 65 ?'],
+  ['signed message: recovery id 2 and 3 ignored', 'const R = liftX(r + ((recid & 2) ? SN : 0n), (recid & 1) === 1);', 'const R = liftX(r, (recid & 1) === 1);'],
   ['signed message: script addresses not refused', 'if(sw && !((sw.version === 0 && sw.prog.length === 20) || (sw.version === 1 && sw.prog.length === 32))) return', 'if(false) return'],
   ['signed message: classic for Taproot not refused', 'if(!simple && type === "tr") return', 'if(false) return'],
   ['signed message: full signatures not refused', 'if(pre === "ful" || pre === "pof") return', 'if(false) return'],
   ['signed message: smp prefix not read', 'let simple = false; if(pre === "smp"){ simple = true; st = st.slice(3); }', 'let simple = false;'],
-  ['signed message: no-prefix simple not read', 'if(!simple && !(b.length === 65 && b[0] >= 27 && b[0] <= 42)) simple = true;', ''],
+  ['signed message: no-prefix simple not read', '    simple = true;\n  }\n  const sw = segwitDecode(addr);', '  }\n  const sw = segwitDecode(addr);'],
   ['signed message: base58 checksum not checked', 'const pl = await base58decode(addr); if(pl.length !== 21) throw new Error("length");', 'const pl = new Uint8Array(21);'],
   ['signed message: capitals not read', 'addr = /^(bc1|tb1)/i.test(raw) && raw === raw.toUpperCase() ? raw.toLowerCase() : raw;', 'addr = raw;'],
   ['signed message: mixed case accepted', '|| (addr !== addr.toLowerCase() && addr !== addr.toUpperCase())) return null;', ') return null;'],
   ['signed message: block not read', 'const ar = sigArmor(document.getElementById("sigMsg").value);', 'const ar = null;'],
-  ['signed message: valid not green', 'st.className = "status" + (r.state === "valid" ? " ok" :', 'st.className = "status" + (r.state === "valid" ? "" :'],
+  ['signed message: valid not green', '(r.variant ? " warn" : " ok")', '(r.variant ? " warn" : "")'],
   ['signed message: cannot check shown red', 'r.state === "cannot" ? "" : " bad");', 'r.state === "cannot" ? " bad" : " bad");'],
   ['signed message: editing keeps the old result', '["sigAddr", "sigMsg", "sigSig"].forEach(id => document.getElementById(id).addEventListener("input",', '[].forEach(id => document.getElementById(id).addEventListener("input",'],
   ['signed message: CLEAR leaves the boxes', 'for(const id of ["sigAddr", "sigMsg", "sigSig"]) document.getElementById(id).value = "";', ''],
   ['signed message: button grey', '<button type="button" id="sigBtn" onclick="verifyMessageUi()">', '<button type="button" class="secondary" id="sigBtn" onclick="verifyMessageUi()">'],
   ['signed message: self-test vector', '"valid valid invalid"', '"valid invalid invalid"'],
+  // ---- v2.3.0 review fixes ----
+  ['Word draw: seed not cleared when its inputs change', 'function wdUpdate(){\n  staleCheck();\n', 'function wdUpdate(){\n'],
+  ['Word draw: input signature fixed', 'if(kind === "wd") return "wd|" +', 'if(kind === "wd") return "wd"; if(0) return "wd|" +'],
+  ['Word draw: last-word steps left after a stale clear', 'if(seedKind === "wd"){ wdWipe(); setResult(', 'if(seedKind === "wd"){ setResult('],
+  ['roll sheet: Keystone named as SeedSigner and Coldcard', '  const ks = keystoneOn();\n  add("ps-sub ps-extra-sub"', '  const ks = false;\n  add("ps-sub ps-extra-sub"'],
+  ['roll sheet: dice rules not recorded', '"Dice rules: " + (ks ? "Keystone (each 6 counts as 0)" : "SeedSigner and Coldcard") + "\\n"', '""'],
+  ['Keystone: length line without the maximum', '(keystoneOn() ? getNeeded(wc) + " to " + KEYSTONE_MAX + " dice rolls" :', '(false ? getNeeded(wc) + " to " + KEYSTONE_MAX + " dice rolls" :'],
+  ['Keystone: preview above the maximum', ' || (keystoneOn() && rolls.length > KEYSTONE_MAX)){ previewClear(); return; }', '){ previewClear(); return; }'],
+  ['coin note: claims a SeedSigner device', '"Exactly " + need + " flips: the same SHA-256 method as SeedSigner\'s coin-flip code (its device menus make seeds from dice)."', '"Exactly " + need + " flips: SeedSigner makes the same words from these flips."'],
   // ---- v2.3.0: start notice once per session offline, END SESSION ----
   ['session notice: online also skips it', 'function startGateSkip(){ return !navigator.onLine && ackSeen(); }', 'function startGateSkip(){ return ackSeen(); }'],
   ['session notice: never skipped', 'function startGateSkip(){ return !navigator.onLine && ackSeen(); }', 'function startGateSkip(){ return false; }'],
   ['session notice: any stored value counts', 'return sessionStorage.getItem(ACK_KEY) === "1";', 'return sessionStorage.getItem(ACK_KEY) !== "x";'],
-  ['session notice: closing does not remember it', '  ackRemember(true);\n', ''],
+  ['session notice: closing does not remember it', '  if(!navigator.onLine) ackRemember(true);\n', ''],
+  ['session notice: stored while online too', '  if(!navigator.onLine) ackRemember(true);\n', '  ackRemember(true);\n'],
   ['session notice: skip class never set', 'if(startGateSkip()) document.body.classList.add("sg-skip");', ''],
   ['session notice: skipped but left on the page', 'if(document.body.classList.contains("sg-skip")){ startGateClose(); return; }', 'if(document.body.classList.contains("sg-skip")){ return; }'],
   ['session notice: skip class left behind', 'document.body.classList.remove("dice-wait", "sg-skip");', 'document.body.classList.remove("dice-wait");'],

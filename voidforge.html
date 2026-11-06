@@ -223,6 +223,7 @@
   body.light { --ok-text: #06683a; }
   .status.ok { color: var(--success); }
   .status.bad { color: var(--danger); }
+  .status.warn { color: var(--warn-text); }
   .entropy-bar {
     height: 6px;
     background: #222;
@@ -851,7 +852,7 @@
       </div>
       <div id="wdCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
       <div id="wdMsg" class="hint" aria-live="polite" style="margin:4px 0 0; color:var(--danger);"></div>
-      <div class="hint" style="margin:4px 0 0;">The passphrase (if any) is added after the words are made, in the box under them. Coin: pick which side is 1 and keep it the same for every flip.</div>
+      <div class="hint" style="margin:4px 0 0;">The passphrase (if any) is added after the words are made, in the box under them. Coin: pick which side is 1 and keep it the same for every flip (for BitBox02&rsquo;s last word, T is 1 and H is 0).</div>
       <div class="btn-row" style="margin-top:8px;">
         <button type="button" id="wdBtn" onclick="wdGenerate()" disabled>MAKE SEED FROM WORDS</button>
         <button type="button" class="secondary small" onclick="wdClear()">CLEAR</button>
@@ -1409,7 +1410,7 @@
       <ul>
         <li><b>Nothing is sent anywhere.</b> The page has no code that talks to the internet, and a rule built into the file (a Content-Security-Policy) tells the browser to block all network access as a second line of defense. You can read the file to check; there is no server, no account and no tracking.</li>
         <li><b>Only two things are remembered between visits:</b> your light or dark choice and your text size, in your browser&rsquo;s local storage. Your rolls, flips, words, passphrase and fingerprint are <i>never</i> stored. Close the page and they are gone from the page.</li>
-        <li><b>One note for this tab only:</b> while the computer is offline, closing the start notice puts a single &ldquo;1&rdquo; in this tab&rsquo;s session storage, so the notice does not come back every time you reload. The browser deletes it when you close the tab, and END SESSION (MENU) deletes it straight away. Nothing else goes there.</li>
+        <li><b>One note for this tab only:</b> while the computer is offline, closing the start notice puts a single &ldquo;1&rdquo; in this tab&rsquo;s session storage, so the notice does not come back every time you reload. It lasts only as long as the tab, and END SESSION (MENU) deletes it straight away. Nothing else goes there, and nothing at all while the computer is online.</li>
         <li><b>Your secrets live only in the page&rsquo;s memory while it is open.</b> The WIPE button and closing the tab clear them from the page, but not from anything your computer copied in the meantime (see the safety checklist above).</li>
         <li><b>Things leave the page only when you press a button for them:</b> COPY (to your clipboard), PRINT, and DOWNLOAD. Each one makes a copy outside the page, so each is your call.</li>
         <li><b>Secret and public are labelled.</b> Words, the passphrase and SeedQR are secret. The fingerprint, addresses, watch-only export and multisig descriptor are public data, safe to show a second computer, though they let others see your balance.</li>
@@ -1435,7 +1436,7 @@
         <tr><td>12</td><td>50</td><td>128</td></tr>
         <tr><td>24</td><td>99</td><td>256</td></tr>
       </table>
-      <p>The roll or flip string is hashed as plain text. Dice are digits 1&ndash;6; coin flips are the characters <code>1</code> and <code>0</code> (choose which side counts as 1 and keep the exact string). This is the same method SeedSigner uses for its 12/24-word dice and coin-flip modes, and VOIDFORGE reproduces SeedSigner&rsquo;s published dice examples. Coldcard uses the same dice method (SHA-256 of the roll digits as plain text; 24 words, or the first half of the hash for 12), and VOIDFORGE reproduces the worked example in Coldcard&rsquo;s documentation: the rolls <code>123456</code> give <code>mirror reject rookie &hellip; garment</code> (24 words). That example is too short to be safe; it only proves the method matches. Only 12- and 24-word seeds are generated, so every seed can be reproduced by SeedSigner-style tools. The VERIFY box still accepts 12, 15, 18, 21 and 24-word phrases from other tools.</p>
+      <p>The roll or flip string is hashed as plain text. Dice are digits 1&ndash;6; coin flips are the characters <code>1</code> and <code>0</code> (choose which side counts as 1 and keep the exact string). This is the same method SeedSigner uses for its 12/24-word dice seeds (and in its coin-flip code), and VOIDFORGE reproduces SeedSigner&rsquo;s published dice examples. Coldcard uses the same dice method (SHA-256 of the roll digits as plain text; 24 words, or the first half of the hash for 12), and VOIDFORGE reproduces the worked example in Coldcard&rsquo;s documentation: the rolls <code>123456</code> give <code>mirror reject rookie &hellip; garment</code> (24 words). That example is too short to be safe; it only proves the method matches. Only 12- and 24-word seeds are generated, so every seed can be reproduced by SeedSigner-style tools. The VERIFY box still accepts 12, 15, 18, 21 and 24-word phrases from other tools.</p>
     </details>
     <details>
       <summary>Master fingerprint &amp; first address</summary>
@@ -1469,7 +1470,7 @@
     <details>
       <summary>Changelog</summary>
       <ul>
-        <li><b>2.3.0</b> &mdash; <b>More rolls, Keystone and BitBox02 dice, signed messages and END SESSION.</b> (1) <b>The minimum or more.</b> FORGE SEED now takes 50 or 99 rolls (128 or 256 flips) <i>or more</i>, and every roll counts. A note says who makes the same words: exactly the minimum matches SeedSigner and Coldcard, more matches Coldcard; more than twice the minimum adds a reminder to check for a double paste. PRINT ROLL SHEET has 10 extra dashed boxes. (2) <b>Keystone dice rules</b> (Dice rules menu): each 6 counts as 0 and Keystone needs 50 or 100 rolls, at most 256, as on a Keystone wallet. (3) <b>BitBox02 diceware</b> in Word draw: the Word finder reads table codes such as 2143 2 T, ADD WORD (or Enter) adds the word, and the 3 flips for the last word use T as 1 and H as 0, giving the same 24th word BitBox shows. (4) <b>Verify a signed message</b> (EXTRA TOOLS, read only): classic signatures (BIP-137) for 1..., 3... and bc1q addresses and BIP-322 simple signatures for single-key bc1q and bc1p addresses; a whole signed-message block can be pasted; multisig and full signatures are reported as CANNOT CHECK. It never signs. (5) <b>END SESSION</b> (MENU) wipes everything, resets every box and reloads the page. (6) The start notice shows once per browser session while the computer is offline, and on every load while it is online. For the same inputs as before (exactly the minimum, SeedSigner and Coldcard rules), words, fingerprints, addresses, keys and descriptors are unchanged.</li>
+        <li><b>2.3.0</b> &mdash; <b>More rolls, Keystone and BitBox02 dice, signed messages and END SESSION.</b> (1) <b>The minimum or more.</b> FORGE SEED now takes 50 or 99 rolls (128 or 256 flips) <i>or more</i>, and every roll counts. A note says who makes the same words: exactly the minimum matches SeedSigner and Coldcard, more matches Coldcard; more than twice the minimum adds a reminder to check for a double paste. PRINT ROLL SHEET has 10 extra dashed boxes. (2) <b>Keystone dice rules</b> (Dice rules menu): each 6 counts as 0 and Keystone needs 50 or 100 rolls, at most 256, as on a Keystone wallet. (3) <b>BitBox02 diceware</b> in Word draw: the Word finder reads table codes such as 2143 2 T, ADD WORD (or Enter) adds the word, and the 3 flips for the last word use T as 1 and H as 0, giving the same 24th word BitBox shows. (4) <b>Verify a signed message</b> (EXTRA TOOLS, read only): classic signatures (BIP-137) for 1..., 3... and bc1q addresses and BIP-322 simple signatures for single-key bc1q and bc1p addresses; VALID names the address it checked, and a match found only after a small change to the message (line breaks, spaces at the ends) shows in amber with a warning; a whole signed-message block can be pasted, but it never replaces an address you typed; multisig and full signatures are reported as CANNOT CHECK. It never signs. (5) <b>END SESSION</b> (MENU) wipes everything, resets every box and reloads the page. (6) The start notice shows once in each browser tab while the computer is offline, and on every load while it is online. (7) A Word draw seed is cleared if you change its words, flips or length afterwards, as a dice seed already was, and PRINT ROLL SHEET records the dice rules. For the same inputs as before (exactly the minimum, SeedSigner and Coldcard rules), words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.2.0</b> &mdash; <b>Watch-only wallets, payment requests and a backup checklist.</b> (1) <b>Or open a watch-only wallet</b> (CHECK A BACKUP): paste an account public key (xpub, ypub, zpub, or tpub, upub, vpub) or a single-key descriptor and see the same address list, with a QR code on every row, from public keys only. A plain xpub does not contain the master fingerprint, so the page shows it only when a descriptor gives it. Private keys and multisig keys are refused. (2) <b>Electrum seed warning:</b> when a phrase fails the BIP39 check, VERIFY also says if it is an Electrum seed, and which type, so you restore it in Electrum. (3) <b>Payment request (BIP-21):</b> under any address QR code, add an amount, label or message and the QR becomes a <code>bitcoin:</code> link a phone wallet reads; the amount is checked (at most 8 decimals, above 0, at most 21 million). (4) <b>Backup checklist</b> under your words: words written, restore drill passed, second tool matched, recovery sheet printed. The drill and the recovery sheet tick themselves, a passphrase change unticks them, and nothing is saved. (5) <b>Check descriptors for a reused key</b> (EXTRA TOOLS): warns when the same key appears twice, when two keys of one multisig come from the same seed, or when one fingerprint and path are given with two different keys.</li>
         <li><b>2.1.0</b> (not released on its own; included in 2.2.0) &mdash; <b>Open any wallet, a QR on every address, and a tidier page.</b> (1) <b>Open this wallet.</b> In CHECK A BACKUP, once VERIFY accepts a 12, 15, 18, 21 or 24 word phrase (with or without a passphrase), a closed box lists its addresses: Native SegWit, Taproot, Nested SegWit or Legacy, mainnet or testnet, any account number, receive or change, ten at a time, with the master fingerprint and its picture. It says plainly that the words were imported, not made here. PRINT RECOVERY SHEET prints the fingerprint, address type, path and first addresses with no words and no passphrase. Making a seed is still 12 or 24 words only. (2) <b>A QR button on every address row</b>, here and under your seed. (3) <b>SeedQR and CompactSeedQR</b> for any 12 or 24 word phrase you check; for 15, 18 and 21 words the page says no such format exists. (4) <b>Live preview.</b> While you roll, the grey word boxes show the words your rolls so far would make, so you can watch one roll change every word. They are not your seed until you press FORGE SEED. This replaces the old demo switch, which is gone. (5) <b>Simpler Make tab.</b> Dice, Coin and Word draw are tabs, the seed length sits beside them, the passphrase box is under the words, and changing the passphrase keeps your words and works out the fingerprint and addresses again. A short line under the step bar says what each step is for. (6) <b>TRY ACCOUNTS 0 TO 20</b> finds which account an address belongs to. PRINT ROLL SHEET prints a blank numbered sheet for your rolls, and PRINT STAMP SHEET (MENU) prints the first four letters of each word in capitals for metal plates. An optional <b>auto-clear</b> wipes the page after idle time or when you leave the tab; it is off whenever the page loads and stores nothing. (7) <b>Looks.</b> Smaller buttons, seed words that always stay inside their boxes, red only for warnings and wiping, one type scale, a one-line footer, and a top bar that fits a 320 pixel screen. Fixed: pressing FORGE SEED with too few rolls no longer wipes the grey preview words, and the preview note no longer stays after a seed is made. The README now gives the right self-test count.</li>
         <li><b>2.0.0</b> &mdash; <b>A calmer, cleaner look.</b> The page is now one narrow column in flat charcoal and gold. At the top left is a single golden die with the name VOIDFORGE in the same gold, a thin line across the page, and four file-style tabs below it. GUIDE ME, TEXT A+, PRINT SEED and the light/dark switch moved into a MENU at the top right; DOWNLOAD FOR USB stays in view. The page opens in charcoal, and the menu switches to white. The small labels (RECOMMENDED, SECRET, PUBLIC and the grey ones) are now plain coloured words that always keep their word, buttons come in three kinds (gold for the main action, outlined for helpers, red outline for clearing), and every text colour was checked for contrast in both themes. The first screen is quieter: one GUIDE ME, the seed buttons appear once there is a seed, and Word draw, the demo, and the roll history and fairness chart sit in closed boxes. The three rolling dice, the glow and the animations are gone, the owner&rsquo;s picture added in 1.29.0 is removed (the file no longer holds any picture), and the page icon in a tab is the gold die. Nothing about how seeds, words, fingerprints, addresses or keys are made or checked changed, and every earlier feature is still here.</li>
@@ -1572,7 +1573,7 @@ function syncMethodUi(){
   ["dice", "coin", "words"].forEach(k => { const b = document.getElementById("mt-" + k); b.setAttribute("aria-selected", k === method ? "true" : "false"); b.tabIndex = k === method ? 0 : -1; });
   document.getElementById("wordSel").value = String(wc); document.getElementById("wdLen").value = String(wc);
   const n = wdNeeds(wc);
-  document.getElementById("lenNote").textContent = method === "words" ? n.words + " words from your tiles, then " + n.flips + " coin flips" : (getNeeded(wc) + (coin ? " coin flips" : " dice rolls") + " or more");
+  document.getElementById("lenNote").textContent = method === "words" ? n.words + " words from your tiles, then " + n.flips + " coin flips" : (keystoneOn() ? getNeeded(wc) + " to " + KEYSTONE_MAX + " dice rolls" : getNeeded(wc) + (coin ? " coin flips" : " dice rolls") + " or more");
   if(method === "words") document.getElementById("wdBox").open = true;
   document.getElementById("rulesRow").style.display = method === "dice" ? "" : "none";
   document.getElementById("rulesNote").textContent = keystoneOn() ? "each 6 counts as 0; " + getNeeded(wc) + " to " + KEYSTONE_MAX + " rolls" : "";
@@ -1692,13 +1693,15 @@ let forgeRun = 0;
 function inputSig(kind){
   const v = id => document.getElementById(id).value;
   // The passphrase is not part of the words (v2.1.0): changing it after FORGE re-works the fingerprint and addresses (rePass) instead of clearing the words.
-  if(kind === "wd") return "wd";  // a seed from the Word draw box does not depend on the rolls box at all
+  // A seed from the Word draw box depends on its words, flips and length, never on the rolls box (v2.3.0: editing them clears the seed).
+  if(kind === "wd") return "wd|" + document.querySelector('input[name="words"]:checked').value + "|" + wdParse(v("wdWords")).idx.join(",") + "|" + v("wdFlips").replace(/[^01]/g, "");
   return "rolls|" + getMode() + "|" + (keystoneOn() ? "keystone" : "std") + "|" + document.querySelector('input[name="words"]:checked').value + "|" + clean(v("rolls"));
 }
 function staleCheck(){
   if(seedSig === null || !hasSeed() || inputSig(seedKind) === seedSig) return;
   seedSig = null; forgeRun++;
-  setResult("You changed the rolls, the word count or the dice/coin choice after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.");
+  if(seedKind === "wd"){ wdWipe(); setResult("You changed the words, the coin flips or the word count after MAKE SEED FROM WORDS. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press MAKE SEED FROM WORDS again."); }
+  else setResult("You changed the rolls, the word count, the dice/coin choice or the dice rules after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.");
   document.getElementById("fingerprint").textContent = ""; document.getElementById("address").textContent = "";
 }
 // More than the minimum (v2.3.0): FORGE takes the minimum or more. Every roll or flip typed in is hashed, as Coldcard's dice seeds
@@ -1709,8 +1712,8 @@ function countNote(n, need, coin, ks){
   if(ks && n > KEYSTONE_MAX) return "Keystone takes at most " + KEYSTONE_MAX + " rolls: remove " + (n - KEYSTONE_MAX) + ".";
   if(ks) return "Keystone rules: every 6 counts as 0 and all " + n + " rolls are hashed, so a Keystone wallet makes the same words from these rolls." + (n > 2 * need ? " That is more than twice the " + need + " needed: fine if you rolled them all, but if you pasted them, check nothing went in twice." : "");
   const one = coin ? "flip" : "roll";
-  if(n === need) return coin ? "Exactly " + need + " flips: SeedSigner makes the same words from these flips." : "Exactly " + need + " rolls: SeedSigner and Coldcard make the same words from these rolls.";
-  let t = "Every " + one + " counts: all " + n + " are hashed. " + (coin ? "SeedSigner takes exactly " + need + " flips, so it would make different words." : "Coldcard makes the same words from these rolls; SeedSigner takes exactly " + need + ", so it would make different words.");
+  if(n === need) return coin ? "Exactly " + need + " flips: the same SHA-256 method as SeedSigner's coin-flip code (its device menus make seeds from dice)." : "Exactly " + need + " rolls: SeedSigner and Coldcard make the same words from these rolls.";
+  let t = "Every " + one + " counts: all " + n + " are hashed. " + (coin ? "SeedSigner's coin-flip code takes exactly " + need + " flips, so it would make different words." : "Coldcard makes the same words from these rolls; SeedSigner takes exactly " + need + ", so it would make different words.");
   if(n > 2 * need) t += " That is more than twice the " + need + " needed: fine if you " + (coin ? "flipped" : "rolled") + " them all, but if you pasted them, check nothing went in twice.";
   return t;
 }
@@ -3668,7 +3671,8 @@ async function runSelfTests(auto){
       verifyMessage("bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l","Hello World","smpAkcwRAIgZRfIY3p7/DoVTty6YZbWS71bc5Vct9p9Fia83eRmw2QCICK/ENGfwLtptFluMGs2KsqoNSk89pO7F29zJLUx9a/sASECx/EgAxlkQpQ9hYjgGu6EBCPMVPwVIVJqO4XCsMvViHI="),
       verifyMessage("bc1pss0zhytly75awhm6x2hhvd5lnzv3vssgrf9axfheq8ldyzn88ges79fler","No prefix fallback","AUCJYOwOjxYAvatTAGYaVlNXBVyFuc4MwNQkOuK2tl8xhfKDONd0NjfYyNSYcRqeCp8hsAnCEPHAVEkO9h6vbQ/R"),
       verifyMessage("bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l","Wrong message that was not signed","smpAkcwRAIgM2gBAQqvZX15ZiysmKmQpDrG83avLIT492QBzLnQIxYCIBaTpOaD20qRlEylyxFSeEA2ba9YOixpX8z46TSDtS40ASECx/EgAxlkQpQ9hYjgGu6EBCPMVPwVIVJqO4XCsMvViHI=")])).map(r=>r.state).join(" "), "valid valid invalid");
-  eq("Classic signed message (Bitcoin Core test vector): valid, and not valid for another message", async()=>(await verifyMessage("mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB","This is just a test message","INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0=")).state+" "+(await verifyMessage("mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB","This is just a test message!","INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0=")).state, "valid invalid");
+  // The last one has recovery id 2 (R.x = r + n), checked with @noble/curves.
+  eq("Classic signed message (Bitcoin Core test vector): valid, and not valid for another message; recovery id 2", async()=>(await verifyMessage("mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB","This is just a test message","INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0=")).state+" "+(await verifyMessage("mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB","This is just a test message!","INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0=")).state+" "+(await verifyMessage("1BquDSCmzyqhKnMXByiDQEFbY3DkMRi1XP","recid two","IQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEjRWeJCrze8=")).state, "valid invalid valid");
   eq("BitBox02 diceware table: 1111 1 H, 1111 4 T, 2111 1 H, 4444 4 T", ()=>["1111 1 H","1111 4 T","2111 1 H","4444 4 T"].map(x=>wdFindWord(x).word).join(" "),"abandon abstract divorce zoo");
   eq("BitBox02 last word: 23 x violin, flips 000 to 111", async()=>{ const o=[]; for(let i=0;i<8;i++) o.push((await wdSteps(Array(23).fill(WORD_MAP.violin), i.toString(2).padStart(3,"0"), 24)).lastWord); return o.join(" "); },"boss coyote dry habit panel regular speed winter");
   // fingerprints
@@ -4511,7 +4515,7 @@ function previewClear(){
 async function previewRefresh(){
   const my = ++pvSeq, note = document.getElementById("pvNote");
   const rolls = clean(document.getElementById("rolls").value), wc = +document.querySelector('input[name="words"]:checked').value;
-  if(hasSeed() || method === "words" || !rolls){ previewClear(); return; }
+  if(hasSeed() || method === "words" || !rolls || (keystoneOn() && rolls.length > KEYSTONE_MAX)){ previewClear(); return; }
   renderSlots();
   const grid = document.getElementById("wordGrid");
   if(!grid.classList.contains("slots")) return;
@@ -4609,11 +4613,12 @@ function printRollSheet(){
   const g = add("ps-grid ps-roll", "");
   for(let i = 1; i <= need; i++){ const c = add("ps-cell", "", g); add("ps-n", String(i), c); }
   // v2.3.0: one more row of dashed boxes for extra rolls. Optional: every one typed in counts.
-  add("ps-sub ps-extra-sub", "Extra " + unit + " (optional). Every one you type in counts. Exactly " + need + " gives the same words as " + (coin ? "SeedSigner; with more, SeedSigner makes different words." : "SeedSigner and Coldcard; with more, only Coldcard makes the same words."));
+  const ks = keystoneOn();
+  add("ps-sub ps-extra-sub", "Extra " + unit + " (optional). Every one you type in counts. " + (ks ? "Keystone dice rules (each 6 counts as 0, at most " + KEYSTONE_MAX + " rolls): a Keystone wallet makes the same words." : coin ? "Exactly " + need + " is the method in SeedSigner's coin-flip code; with more, that code makes different words." : "Exactly " + need + " gives the same words as SeedSigner and Coldcard; with more, only Coldcard makes the same words."));
   const gx = add("ps-grid ps-roll", "");
   for(let i = need + 1; i <= need + 10; i++){ const c = add("ps-cell ps-extra", "", gx); add("ps-n", String(i), c); }
   add("ps-rule", "");
-  add("ps-fields", (coin ? "1 means: ______   0 means: ______\n" : "") + "Date:       ____________\nTyped into VOIDFORGE and checked:  ____");
+  add("ps-fields", (coin ? "1 means: ______   0 means: ______\n" : "Dice rules: " + (ks ? "Keystone (each 6 counts as 0)" : "SeedSigner and Coldcard") + "\n") + "Date:       ____________\nTyped into VOIDFORGE and checked:  ____");
   add("ps-rule", "");
   add("ps-warn", "Once filled in, this sheet is as secret as your seed: anyone who sees it can make your wallet.\nType it in on an offline computer, then shred it (or keep it only as a locked-away backup of the rolls).\nNever photograph it.");
   document.body.classList.add("print-seed");
@@ -5200,6 +5205,11 @@ function witnessParse(b){
   if(i !== b.length) throw new Error("extra bytes");
   return items;
 }
+// A BIP-322 "full" signature is a whole transaction (version 0, 1 or 2 first), and "proof of funds" is a PSBT (starts with "psbt" 0xff).
+function looksLikeFull(b){
+  if(b.length >= 5 && b[0] === 0x70 && b[1] === 0x73 && b[2] === 0x62 && b[3] === 0x74 && b[4] === 0xff) return true;
+  return b.length >= 60 && b[0] <= 2 && b[1] === 0 && b[2] === 0 && b[3] === 0;
+}
 // One message variant: true / false, or a string = "cannot check" with the reason.
 async function sigCheckOnce(addr, type, net, msg, b, simple){
   if(!simple){
@@ -5237,45 +5247,66 @@ async function verifyMessage(addrIn, msgIn, sigIn){
   if(pre === "ful" || pre === "pof") return {state: "cannot", text: "CANNOT CHECK: this is a BIP-322 “" + (pre === "ful" ? "full" : "proof of funds") + "” signature. This page checks classic signatures and BIP-322 “simple” ones only. Check it in a wallet that supports it."};
   let simple = false; if(pre === "smp"){ simple = true; st = st.slice(3); }
   const b = b64bytes(st); if(!b) return {state: "error", text: "The signature is not valid base64. Paste it exactly as the wallet gave it."};
-  if(!simple && !(b.length === 65 && b[0] >= 27 && b[0] <= 42)) simple = true;  // no prefix: BIP-322 says a verifier may assume "simple"
+  if(!simple && !(b.length === 65 && b[0] >= 27 && b[0] <= 42)){
+    // No prefix and not a classic signature. A whole transaction or PSBT is a BIP-322 "full" or "proof of funds" signature from a
+    // wallet made before the prefixes existed; otherwise BIP-322 says a verifier may assume "simple" (native SegWit addresses only).
+    if(looksLikeFull(b)) return {state: "cannot", text: "CANNOT CHECK: this looks like a BIP-322 \u201cfull\u201d signature (a whole transaction) without its ful prefix. This page checks classic signatures and BIP-322 \u201csimple\u201d ones only."};
+    if(type === "pkh" || type === "sh-wpkh") return {state: "error", text: b.length === 65 ? "This classic signature is damaged: its first byte must be 27 to 42. Paste it exactly as the wallet gave it." : "This is not a classic signature (65 bytes, about 88 characters of base64). Paste it exactly as the wallet gave it."};
+    simple = true;
+  }
   const sw = segwitDecode(addr);
   if(sw && !((sw.version === 0 && sw.prog.length === 20) || (sw.version === 1 && sw.prog.length === 32))) return {state: "cannot", text: "CANNOT CHECK: this looks like a script address (such as multisig). This page checks single-key addresses only."};
   if(!simple && type === "tr") return {state: "cannot", text: "CANNOT CHECK: Taproot (bc1p...) addresses do not use the classic signature format. Ask for a BIP-322 signature, which this page checks."};
   if(simple && (type === "pkh" || type === "sh-wpkh")) return {state: "cannot", text: "CANNOT CHECK: a BIP-322 signature for a " + (type === "pkh" ? "1..." : "3...") + " address must use the “full” format, which this page does not check. (For these addresses, the classic format is checked here.)"};
-  const variants = [msg], n1 = msg.replace(/\r\n/g, "\n"), n2 = msg.trim(), n3 = n1.trim();
-  for(const v of [n1, n2, n3]) if(!variants.includes(v)) variants.push(v);
+  // If the exact text fails: Windows line breaks either way (a text box always gives \n), spaces or line breaks at the ends, a final line break.
+  const variants = [msg], n1 = msg.replace(/\r\n/g, "\n");
+  for(const v of [n1, msg.trim(), n1.trim(), n1.replace(/\n/g, "\r\n"), n1 + "\n", n1.replace(/\n/g, "\r\n") + "\r\n"]) if(!variants.includes(v)) variants.push(v);
   for(let k = 0; k < variants.length; k++){
     const r = await sigCheckOnce(addr, type, addressNetOf(addr), variants[k], b, simple);
     if(typeof r === "string") return {state: "cannot", text: "CANNOT CHECK: this is " + r};
     if(r !== true) continue;
-    const kinds = {"pkh": "Legacy (1...)", "sh-wpkh": "Nested SegWit (3...)", "wpkh": "Native SegWit (bc1q...)", "tr": "Taproot (bc1p...)"};
+    const test = addressNetOf(addr) === "test", kinds = {"pkh": "Legacy (" + (test ? "m... or n..." : "1...") + ")", "sh-wpkh": "Nested SegWit (" + (test ? "2..." : "3...") + ")", "wpkh": "Native SegWit (" + (test ? "tb1q..." : "bc1q...") + ")", "tr": "Taproot (" + (test ? "tb1p..." : "bc1p...") + ")"};
     let fmt;
     if(simple) fmt = "BIP-322 simple, " + kinds[type] + (pre === "smp" ? "" : ", without the smp prefix that newer wallets add");
     else { const h = b[0], hk = h <= 30 ? "pkh-u" : h <= 34 ? "pkh" : h <= 38 ? "sh-wpkh" : "wpkh";
       fmt = "classic (BIP-137), " + kinds[type] + (hk === type ? "" : hk === "pkh-u" ? ", uncompressed key" : hk === "pkh" ? ", with the legacy header that Electrum and Sparrow use for every address type (Bitcoin Core checks 1... addresses only)" : ", although the header names a different address type"); }
-    return {state: "valid", text: "VALID: the key of this address signed " + (k ? "this message, once spaces or line breaks at its start or end are removed (or Windows line breaks changed). Make sure that is the text you expect." : "exactly this message.") +
+    return {state: "valid", variant: k > 0, text: (k ? "VALID, after a small change to the message: the key of " + addr + " signed it once spaces or line breaks at its start or end are removed or added, or its line breaks are written the Windows way. Make sure that is the text you expect." : "VALID: the key of " + addr + " signed exactly this message.") +
       "\nFormat: " + fmt + ".\nA signature shows that whoever holds this address's key signed the message. It does not show who that is, or that any coins are still there."};
   }
   return {state: "invalid", text: "NOT VALID: this signature does not match this address and this message.\nCheck the address, the signature and every character of the message, including spaces and line breaks. A message signed for a different address, or changed after signing, fails here."};
 }
 // A whole armored block (as Coldcard and others export) can be pasted in the message box: the address and signature are taken from it.
 function sigArmor(text){
-  const m = String(text).match(/-----BEGIN BITCOIN SIGNED MESSAGE-----\r?\n([\s\S]*?)\r?\n-----BEGIN (?:BITCOIN )?SIGNATURE-----\r?\n([\s\S]*?)\r?\n?-----END (?:BITCOIN SIGNED MESSAGE|BITCOIN SIGNATURE|SIGNATURE)-----/);
+  const m = String(text).match(/-----BEGIN BITCOIN SIGNED MESSAGE-----[ \t]*\r?\n([\s\S]*?)\r?\n-----BEGIN (?:BITCOIN )?SIGNATURE-----[ \t]*\r?\n([\s\S]*?)\r?\n?-----END (?:BITCOIN SIGNED MESSAGE|BITCOIN SIGNATURE|SIGNATURE)-----/);
   if(!m) return null;
-  const lines = m[2].split(/\r?\n/).map(x => x.trim()).filter(x => x && !/^[A-Za-z-]+: /.test(x));
-  const addr = lines.find(x => addressTypeOf(x)), sig = lines.filter(x => x !== addr).pop();
+  let addr = null; const rest = [];
+  for(const x of m[2].split(/\r?\n/).map(y => y.trim()).filter(Boolean)){
+    const h = /^([A-Za-z-]+):\s*(.*)$/.exec(x);  // header lines such as "Version: ..." or "Address: ..."
+    if(h){ if(/^address$/i.test(h[1]) && h[2] && !addr) addr = h[2].trim(); continue; }
+    if(!addr && addressTypeOf(x)) addr = x; else rest.push(x);
+  }
+  const sig = rest.join("");
   return addr && sig ? {msg: m[1], addr, sig} : null;
 }
 let sigRun = 0;
 async function verifyMessageUi(){
   const st = document.getElementById("sigStatus"), my = ++sigRun;
   const ar = sigArmor(document.getElementById("sigMsg").value);
-  if(ar){ document.getElementById("sigAddr").value = ar.addr; document.getElementById("sigMsg").value = ar.msg; document.getElementById("sigSig").value = ar.sig; }
+  if(ar){
+    // A block never replaces an address or signature you typed: "prove you own X" must not quietly become "someone owns Y".
+    const typedA = document.getElementById("sigAddr").value.trim(), typedS = document.getElementById("sigSig").value.replace(/\s+/g, "");
+    const sameA = typedA === ar.addr || (/^(bc1|tb1)/i.test(typedA) && typedA.toLowerCase() === ar.addr.toLowerCase());
+    if((typedA && !sameA) || (typedS && typedS !== ar.sig)){
+      const bad = {state: "error", text: "NOT CHECKED: the signed-message block " + (typedA && !sameA ? "is for " + ar.addr + ", not for the address you typed (" + typedA + ")" : "has a different signature from the one you typed") + ". A signature only counts for the address you are asking about. Empty the address and signature boxes to check the block on its own."};
+      st.className = "status bad"; st.textContent = bad.text; return bad;
+    }
+    document.getElementById("sigAddr").value = ar.addr; document.getElementById("sigMsg").value = ar.msg; document.getElementById("sigSig").value = ar.sig;
+  }
   st.className = "status"; st.textContent = "Checking...";
   let r; try { r = await verifyMessage(document.getElementById("sigAddr").value, document.getElementById("sigMsg").value, document.getElementById("sigSig").value); }
   catch(e) { r = {state: "error", text: "Could not check this signature: " + e.message}; }
   if(my !== sigRun) return r;
-  st.className = "status" + (r.state === "valid" ? " ok" : r.state === "cannot" ? "" : " bad");
+  st.className = "status" + (r.state === "valid" ? (r.variant ? " warn" : " ok") : r.state === "cannot" ? "" : " bad");
   st.textContent = (ar ? "Read the address, message and signature from the signed-message block.\n" : "") + r.text;
   return r;
 }
@@ -5432,8 +5463,8 @@ updateCount();
 
 // The "Before you make real keys" notice. One click closes it, then the cursor goes to the rolls box.
 // Put the cursor in the rolls box only when the main pointer is a mouse; on a phone or tablet that would pop up the on-screen keyboard (v1.28.0).
-// v2.3.0: while the computer is offline it shows once per browser session: closing it puts a single "1" in this tab's sessionStorage
-// (nothing else; the browser deletes it when the tab closes, and END SESSION deletes it). While the computer is online it shows on every load.
+// v2.3.0: while the computer is offline it shows once in each browser tab: closing it then puts a single "1" in this tab's sessionStorage
+// (nothing else; it lasts only as long as the tab, and END SESSION deletes it). While the computer is online nothing is stored and it shows on every load.
 const ACK_KEY = "voidforge-ack";
 function ackSeen(){ try { return sessionStorage.getItem(ACK_KEY) === "1"; } catch(e) { return false; } }
 function ackRemember(on){ try { if(on) sessionStorage.setItem(ACK_KEY, "1"); else sessionStorage.removeItem(ACK_KEY); } catch(e) {} }
@@ -5445,7 +5476,7 @@ function focusRollsUnlessTouch(){
 function startGateClose(){
   const g = document.getElementById("startGate"); if(g) g.remove();
   document.body.classList.remove("dice-wait", "sg-skip");
-  ackRemember(true);
+  if(!navigator.onLine) ackRemember(true);
   focusRollsUnlessTouch();
 }
 document.addEventListener("keydown", (e) => { if(e.key === "Escape" && document.getElementById("startGate")) startGateClose(); });
@@ -5559,7 +5590,7 @@ const GUIDE_STEPS = 5;
 function guideHidden(el, n){ const g = (el.getAttribute("data-g") || "").split(/\s+/); return g.indexOf(String(n)) < 0; }
 function guideCanNext(n){
   if(n === 2 && method === "words") return true;
-  if(n === 2) return clean(document.getElementById("rolls").value).length >= getNeeded(document.querySelector('input[name="words"]:checked').value);
+  if(n === 2){ const k = clean(document.getElementById("rolls").value).length; return k >= getNeeded(document.querySelector('input[name="words"]:checked').value) && !(keystoneOn() && k > KEYSTONE_MAX); }
   if(n === 3) return hasSeed();
   return true;
 }
@@ -5685,22 +5716,25 @@ function wdFindWord(raw){
     // Word number = (((d1-1)*64 + (d2-1)*16 + (d3-1)*4 + (d4-1)) * 8) + (d5-1)*2 + (tails ? 1 : 0), the order of BitBox's printed table.
     const d = t.slice(0, 5).split("").map(Number);
     idx = (((d[0] - 1) * 64 + (d[1] - 1) * 16 + (d[2] - 1) * 4 + (d[3] - 1)) * 8) + (d[4] - 1) * 2 + (t[5] === "T" ? 1 : 0);
+    return {idx: idx, word: WORDLIST[idx], bitbox: true, msg: "Word " + (idx + 1) + ": " + WORDLIST[idx]};
   } else return {msg: "Type a number from 1 to 2048, a D8 roll (1-8) then two hex digits (0-F) like 3 A 7, or a BitBox02 diceware roll like 2143 2 T."};
   return {idx: idx, word: WORDLIST[idx], msg: "Word " + (idx + 1) + ": " + WORDLIST[idx]};
 }
-function wdFind(){ document.getElementById("wdFound").textContent = wdFindWord(document.getElementById("wdFind").value).msg; }
+function wdFind(){ const r = wdFindWord(document.getElementById("wdFind").value); document.getElementById("wdFound").textContent = r.msg + wdBitBoxHint(r); }
+function wdBitBoxHint(r){ return r.bitbox && document.getElementById("wdLen").value !== "24" ? " BitBox02 diceware makes 24 words: choose 24 words above." : ""; }
 // ADD WORD (or Enter in the finder, v2.3.0): puts the word the finder shows at the end of your words and empties the finder for the next roll.
 function wdAddFound(){
   const f = document.getElementById("wdFind"), r = wdFindWord(f.value);
   if(r.word === undefined){ wdFind(); return false; }
   const box = document.getElementById("wdWords"), cur = box.value.replace(/\s+$/, "");
   box.value = (cur ? cur + " " : "") + r.word;
-  f.value = ""; document.getElementById("wdFound").textContent = "Added word " + (r.idx + 1) + ": " + r.word + ".";
+  f.value = ""; document.getElementById("wdFound").textContent = "Added word " + (r.idx + 1) + ": " + r.word + "." + wdBitBoxHint(r);
   wdUpdate();
   return true;
 }
 document.getElementById("wdFind").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); wdAddFound(); } });
 function wdUpdate(){
+  staleCheck();
   const wc = +document.getElementById("wdLen").value, need = wdNeeds(wc);
   const flipsEl = document.getElementById("wdFlips"), cleaned = flipsEl.value.replace(/[^01]/g, "");
   if(cleaned !== flipsEl.value) flipsEl.value = cleaned;
@@ -5755,6 +5789,6 @@ if(startGateSkip()) document.body.classList.add("sg-skip");
 <div class="sg-item"><div class="sg-ico">3</div><div><b>Keys can stay in memory after you finish.</b> Wiping the page is a precaution, not a guarantee.<span class="sg-fix"><b>What to do:</b> when you are done, close the browser and restart the computer.</span></div></div>
 </div>
 <button type="button" class="sg-go" id="sgGo" onclick="startGateClose()">I understand, let's go</button>
-<p class="sg-foot">Practising with a test seed? Nothing here applies. For real money, start with a small amount. Offline, this shows once per browser session; online, every time the page opens. END SESSION in the MENU wipes the page and shows it again.</p></div></div>
+<p class="sg-foot">Practising with a test seed? Nothing here applies. For real money, start with a small amount. Offline, this shows once in each browser tab; online, every time the page opens. END SESSION in the MENU wipes the page and shows it again.</p></div></div>
 </body>
 </html>

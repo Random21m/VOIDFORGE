@@ -934,7 +934,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
     const cases = [['pkh-u', btc.p2pkh(pubU, N).address, 27], ['pkh', btc.p2pkh(pubC, N).address, 31], ['sh-wpkh', btc.p2sh(btc.p2wpkh(pubC, N), N).address, 35], ['sh-wpkh legacy header', btc.p2sh(btc.p2wpkh(pubC, N), N).address, 31], ['wpkh', btc.p2wpkh(pubC, N).address, 39], ['wpkh legacy header', btc.p2wpkh(pubC, N).address, 31]];
     for (const [kind, address, base] of cases) {
       const b64 = base64.encode(cat(Uint8Array.of(base + sig.recovery), bhex.decode(sig.r.toString(16).padStart(64, '0')), bhex.decode(sig.s.toString(16).padStart(64, '0'))));
-      n++; const r1 = await w.verifyMessage(address, msg, b64); if (r1.state !== 'valid' || !/^VALID: the key of this address signed exactly this message\./.test(r1.text)) { bad++; console.log('CLASSIC NOT VALID', kind, net, address, JSON.stringify(msg.slice(0, 20)), r1.text); }
+      n++; const r1 = await w.verifyMessage(address, msg, b64); if (r1.state !== 'valid' || r1.variant || !r1.text.startsWith('VALID: the key of ' + address + ' signed exactly this message.')) { bad++; console.log('CLASSIC NOT VALID', kind, net, address, JSON.stringify(msg.slice(0, 20)), r1.text); }
       n++; const r2 = await w.verifyMessage(address, msg + 'x', b64); if (r2.state !== 'invalid') { bad++; console.log('CLASSIC CHANGED MESSAGE NOT CAUGHT', kind); }
       const other = btc.p2wpkh(secp256k1.getPublicKey(secp256k1.utils.randomPrivateKey(), true), N).address;
       if (kind === 'wpkh') { n++; const r3 = await w.verifyMessage(other, msg, b64); if (r3.state !== 'invalid') { bad++; console.log('CLASSIC OTHER ADDRESS NOT CAUGHT'); } }
