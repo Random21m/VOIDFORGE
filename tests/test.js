@@ -876,7 +876,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   { let threw=false; try{ await t.w.rollsToMnemonic('1'.repeat(62),15);}catch(e){threw=true;} ok(threw,'15-word generation is rejected'); }
   ok(/Recovery notes/.test(html)&&/move the funds/.test(html),'changelog has recovery notes for removed modes');
   ok((await t.w.checkPhrase('abandon '.repeat(14)+'address')).ok,'VERIFY still accepts 15-word phrases from other tools');
-  { const r=await t.w.checkPhrase('constructor '+'abandon '.repeat(10)+'about'); ok(!r.ok&&r.msg==='Unknown word: constructor','VERIFY reports a JavaScript property name typed as a word as an unknown word (v1.28.0)'); }
+  { const r=await t.w.checkPhrase('constructor '+'abandon '.repeat(10)+'about'); ok(!r.ok&&/^Unknown word: constructor \(word 1\): no BIP39 word is close\. /.test(r.msg),'VERIFY reports a JavaScript property name typed as a word as an unknown word (v1.28.0)'); }
   { const tcn=load(); await tcn.ready(); tcn.mode('coin'); tcn.set('0101'); await tcn.w.generate(); ok(/flips/.test(tcn.$('genResult').textContent)&&!/rolls/.test(tcn.$('genResult').textContent),'coin-mode length message says flips'); }
   { const ts=load(); await ts.ready(); ts.set(rnd(50)); await ts.w.generate(); const w0=ts.$('genResult').textContent.split('\n')[0];
     await ts.w.sendToVerify();
@@ -1224,6 +1224,125 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   { const tc=load(); await tc.ready(); const h=await tc.w.sha256bytes(new TextEncoder().encode('123456'));
     const m24=await tc.w.entropyToMnemonic(h), m12=await tc.w.entropyToMnemonic(h.slice(0,16));
     ok(m24==='mirror reject rookie talk pudding throw happy era myth already payment own sentence push head sting video explain letter bomb casual hotel rather garment'&&m12==='mirror reject rookie talk pudding throw happy era myth already payment owner','Coldcard compatibility: its documented example (rolls 123456) gives the same 24 and 12 words'); }
+  // ===== v2.4.0: one-page prints, roll sheet extras, CHECK A BACKUP backups, QR and child prints, dice test, keyboard entry, typo helper, explain an address, summary =====
+  { const css=html.slice(0,html.indexOf('</style>'));
+    ok(/@page \{ margin: 12mm; \}/.test(css)&&/body\.print-seed > :not\(#printOnly\), body\.print-qr > :not\(#printQr\) \{ display: none !important; \}/.test(css)&&!/body\.print-seed \* \{ visibility: hidden/.test(css)&&!/body\.print-qr \* \{ visibility: hidden/.test(css),'print: everything but the sheet is removed from the layout (display: none), so no blank pages are printed');
+    const tp=load(); await tp.ready(); ok(tp.$('printOnly').parentElement===tp.d.body&&tp.$('printQr').parentElement===tp.d.body,'print: both print areas sit directly in the page body, so the rule above leaves only the sheet');
+    ok(/print\.test\.mjs/.test(fs.readFileSync(path.join(__dirname,'..','.github','workflows','test.yml'),'utf8')),'print: the one-page print test runs in GitHub'); }
+  { const t4=load(); await t4.ready(); const $=t4.$, w=t4.w; w.startGateClose();
+    const opts=()=>[...$('rsExtra').options].map(o=>o.value).join();
+    const sheet=()=>{ const p0=t4.st.printed; w.printRollSheet(); const r={n:t4.st.printed-p0,cells:t4.st.printCells.slice(),txt:t4.st.printHTML,wide:t4.d.querySelectorAll('#printOnly .ps-roll20').length}; w.dispatchEvent(new w.Event('afterprint')); return r; };
+    eq(opts(),'0,10,25,50','roll sheet: the extra-box menu offers none, 10, 25 or 50'); eq($('rsExtra').value,'10','roll sheet: 10 extra boxes by default (as in v2.3.0)');
+    for(const [x,n] of [['0',50],['25',75],['50',100]]){ $('rsExtra').value=x; const r=sheet(); ok(r.n===1&&r.cells.length===n&&r.cells[n-1]===String(n)&&(x==='0')===!/Extra rolls \(optional\)/.test(r.txt),'roll sheet: '+x+' extra boxes gives '+n+' boxes in all'+(x==='0'?', with no extra-rolls note':'')); }
+    $('diceRules').value='keystone'; $('diceRules').dispatchEvent(new w.Event('change')); ok(opts()==='0,10,25,50,max','roll sheet: with Keystone dice rules the menu adds "Extra up to 256"');
+    $('rsExtra').value='max'; let r=sheet(); ok(r.cells.length===256&&r.cells[255]==='256'&&r.wide===2,'roll sheet: Keystone maximum fills the sheet to 256 boxes, in the compact 20-column layout');
+    $('wordSel').value='24'; $('wordSel').dispatchEvent(new w.Event('change')); r=sheet(); ok(r.cells.length===256,'roll sheet: Keystone maximum for 24 words is also 256 boxes in all');
+    $('rsExtra').value='50'; r=sheet(); ok(r.cells.length===150&&r.wide===0,'roll sheet: Keystone 100 + 50 extra stays in the 10-column layout');
+    $('diceRules').value='std'; $('diceRules').dispatchEvent(new w.Event('change')); $('rsExtra').value='max'; $('diceRules').value='keystone'; $('diceRules').dispatchEvent(new w.Event('change')); $('rsExtra').value='max'; $('diceRules').value='std'; $('diceRules').dispatchEvent(new w.Event('change'));
+    ok(opts()==='0,10,25,50'&&$('rsExtra').value==='10','roll sheet: leaving Keystone rules removes "up to 256" and goes back to 10 extra boxes');
+    t4.mode('coin'); $('rsExtra').value='50'; r=sheet(); ok(r.cells.length===306&&r.wide===2,'roll sheet: 24-word coin sheet with 50 extra (306 boxes) uses the compact layout');
+    $('rsExtra').value='25'; eq(w.rsExtraCount(256),25,'roll sheet: without Keystone rules there is no Keystone cap'); }
+  { const t5=load(); await t5.ready(); const $=t5.$, w=t5.w; w.startGateClose();
+    // Word draw sheet
+    let p0=t5.st.printed; w.printWordSheet(); ok(t5.st.printed===p0+1&&t5.st.printCells.length===18&&t5.st.printCells[10]==='11'&&t5.st.printCells[11]==='Flip 1'&&t5.st.printCells[17]==='Flip 7'&&/^VOIDFORGE WORD DRAW SHEET/.test(t5.st.printHTML)&&/as secret as your seed/.test(t5.st.printHTML),'word draw sheet: 11 word boxes and 7 flip boxes for 12 words, with the secret warning'); w.dispatchEvent(new w.Event('afterprint'));
+    $('wdLen').value='24'; p0=t5.st.printed; w.printWordSheet(); ok(t5.st.printCells.length===26&&t5.st.printCells[23]==='Flip 1'&&t5.st.printCells[25]==='Flip 3','word draw sheet: 23 word boxes and 3 flip boxes for 24 words'); w.dispatchEvent(new w.Event('afterprint')); $('wdLen').value='12';
+    ok($('printOnly').textContent===''&&!t5.d.body.classList.contains('print-seed'),'word draw sheet: wiped after printing');
+    // dice test
+    t5.set(rnd(50,6)); const before=$('rolls').value; $('diceTest').checked=true; t5.st.confirms=0; w.diceTestToggle();
+    ok(t5.st.confirms===1&&$('rolls').value===''&&$('forgeBtn').disabled&&$('diceTestBan').style.display===''&&$('rollStats').open,'dice test: turning it on asks, clears the rolls, turns FORGE off and shows the banner');
+    t5.set(rnd(40,6)); ok(/^40 rolls tested: /.test($('diceTestNote').textContent)&&$('countNote').textContent===''&&$('bitsNote').textContent===''&&$('bigSub').textContent==='Dice test: no seed is made.'&&$('rollCount').textContent==='40 rolls tested','dice test: the notes say what the test found, and nothing about seeds');
+    ok(t5.d.querySelectorAll('#wordGrid .wcell.pv').length===0,'dice test: no words are previewed');
+    t5.st.alerts.length=0; await w.generate(); ok(!w.hasSeed()&&/dice test is on/.test(t5.st.alerts.join('|')),'dice test: FORGE refuses while the test is on');
+    t5.set('1'.repeat(120)); ok(/the checks above found a problem/.test($('diceTestNote').textContent),'dice test: an obviously unfair run is called a problem');
+    t5.set('123456'.repeat(4)); ok(/^24 rolls so far\. .*starts at 30/.test($('diceTestNote').textContent),'dice test: below 30 rolls it asks for more');
+    $('diceTest').checked=false; w.diceTestToggle(); ok($('rolls').value===''&&!$('forgeBtn').disabled&&$('diceTestBan').style.display==='none'&&$('diceTestNote').textContent==='','dice test: turning it off clears the test rolls and turns FORGE back on');
+    const t6=load({confirm:false}); await t6.ready(); t6.w.startGateClose(); t6.set('123'); t6.$('diceTest').checked=true; t6.w.diceTestToggle(); ok(!t6.$('diceTest').checked&&t6.$('rolls').value==='123'&&!t6.$('forgeBtn').disabled,'dice test: Cancel keeps the rolls and leaves the test off');
+    // keyboard entry on the tap buttons
+    const key=(k)=>{ const b=t5.d.querySelector('#tapRow button'); const e=new w.KeyboardEvent('keydown',{key:k,bubbles:true,cancelable:true}); b.dispatchEvent(e); return e.defaultPrevented; };
+    t5.set(''); key('3'); key('6'); const k7=key('7'); key('1'); const kb=key('Backspace'); key('Tab');
+    ok($('rolls').value==='36'&&!k7&&kb,'keyboard: with a tap button focused, 1 to 6 add rolls, other keys are ignored, Backspace undoes');
+    const ctrl=new w.KeyboardEvent('keydown',{key:'2',ctrlKey:true,bubbles:true}); t5.d.querySelector('#tapRow button').dispatchEvent(ctrl); eq($('rolls').value,'36','keyboard: Ctrl+number is left to the browser');
+    t5.set(''); t5.mode('coin'); key('1'); key('0'); key('2'); eq($('rolls').value,'10','keyboard: coin mode takes only 1 and 0');
+    ok(/press 1 on the keyboard; Backspace undoes the last one/.test(t5.d.querySelector('#tapRow button').title),'keyboard: the tap buttons say the keys work'); }
+  { const t7=load(); await t7.ready(); const $=t7.$, w=t7.w; w.startGateClose();
+    // typo helper and 4-letter forms
+    let r=await w.checkPhrase('abandon '.repeat(10)+'abandn about'); ok(!r.ok&&r.msg==='Unknown word: abandn (word 11): closest BIP39 word abandon. Check it on your backup.','typo helper: one unknown word gets the closest BIP39 word');
+    r=await w.checkPhrase('abandon '.repeat(10)+'zzzzz xyzzy'); ok(!r.ok&&/^Unknown words: zzzzz \(word 11\): no BIP39 word is close; xyzzy \(word 12\): closest BIP39 word dizzy\. Check them on your backup\.$/.test(r.msg),'typo helper: several unknown words are listed together');
+    r=await w.checkPhrase('aban '.repeat(11)+'abou'); ok(r.ok&&r.expanded&&r.mnemonic==='abandon '.repeat(11)+'about'&&/12 words read from the first letters/.test(r.msg),'4-letter forms (as on a metal plate) are read as the full words');
+    r=await w.checkPhrase('abandon '.repeat(11)+'abou'); ok(r.ok&&/\(1 word read from the first letters\)/.test(r.msg),'one 4-letter word says "1 word"');
+    r=await w.checkPhrase('abandon '.repeat(12)); ok(!r.ok&&/^Checksum failed\. Every word is a BIP39 word, so one is probably wrong, missing or out of order: Reforge in EXTRA TOOLS can search for it\.$/.test(r.msg),'typo helper: a failed checksum points to Reforge');
+    eq(w.wordFromPrefix('aba'),null,'4-letter forms: 3 letters are never expanded'); eq(w.wordFromPrefix('abandonx'),null,'4-letter forms: text longer than the word is not expanded');
+    eq(w.closestWords('adress').join(),'address,dress','typo helper: closest words by one edit'); eq(w.closestWords('abandoon').join(),'abandon','typo helper: an extra letter'); eq(w.wordDistance('abandon','abnadon',3),1,'typo helper: two swapped letters count as one edit');
+    $('phrase').value='aban '.repeat(11)+'abou'; await w.verify(); eq($('phrase').value,'abandon '.repeat(11)+'about','VERIFY writes the full words back into the box after reading 4-letter forms');
+    // CHECK A BACKUP backups
+    const mn='legal winner thank year wave sausage worth useful legal winner thank yellow'; $('phrase').value=mn; await w.openWalletView(mn,'');
+    w.wvAbbr(); ok($('wvAbbrGrid').classList.contains('on')&&[...t7.d.querySelectorAll('#wvAbbrGrid .wtxt')].map(e=>e.textContent).join(' ')===mn.split(' ').map(x=>x.slice(0,4)).join(' ')&&$('wvAbbrBtn').textContent==='HIDE FIRST 4 LETTERS','check: SHOW FIRST 4 LETTERS shows the first 4 letters of the checked words');
+    w.wvAbbr(); ok(!$('wvAbbrGrid').classList.contains('on')&&$('wvAbbrGrid').textContent===''&&$('wvAbbrBtn').textContent==='SHOW FIRST 4 LETTERS','check: pressed again, the letters are wiped from the screen');
+    let p0=t7.st.printed; w.printSeed('check'); ok(t7.st.printed===p0+1&&t7.st.printCells.join(' ')===mn.split(' ').map((x,i)=>String(i+1).padStart(2,'0')+x).join(' ')&&/Master fingerprint: [0-9a-f]{8}/.test(t7.st.printHTML)&&/Passphrase used: NO/.test(t7.st.printHTML)&&/against your first backup/.test(t7.st.printHTML)&&!/Rolls \/ flips/.test(t7.st.printHTML),'check: PRINT WORDS prints the checked words with their fingerprint'); w.dispatchEvent(new w.Event('afterprint'));
+    p0=t7.st.printed; w.printStamp('check'); ok(t7.st.printed===p0+1&&t7.st.printCells[0]==='01LEGA'&&/^VOIDFORGE STAMP SHEET/.test(t7.st.printHTML),'check: PRINT STAMP SHEET prints the checked words as 4 capital letters'); w.dispatchEvent(new w.Event('afterprint'));
+    t7.st.alerts.length=0; p0=t7.st.printed; w.printSeedQr('check'); ok(t7.st.printed===p0&&/Press SHOW SEEDQR/.test(t7.st.alerts.join('|')),'check: PRINT THIS QR needs a shown SeedQR');
+    w.wvSeedQr('compact'); w.printSeedQr('check'); ok(t7.st.printed===p0+1&&/^VOIDFORGE COMPACTSEEDQR \(12 words, 21 x 21 squares\)/.test(t7.st.printQrText)&&/<svg/.test(t7.st.printQrHTML),'check: PRINT THIS QR prints the shown CompactSeedQR of the checked words'); w.dispatchEvent(new w.Event('afterprint'));
+    w.printSqGuide('check'); ok(/HAND-COPY GUIDE \(12 words, 21 x 21 squares\)/.test(t7.st.printQrText)&&/Row 21: /.test(t7.st.printQrText),'check: the hand-copy guide is printed for the checked words'); w.dispatchEvent(new w.Event('afterprint'));
+    w.printSqBlank('check'); ok(/^VOIDFORGE BLANK 21 x 21 GRID FOR COMPACTSEEDQR/.test(t7.st.printQrText),'check: the blank grid matches the shown code'); w.dispatchEvent(new w.Event('afterprint'));
+    w.wvSeedQrHide(); t7.st.alerts.length=0; p0=t7.st.printed; w.printSqBlank('check'); ok(t7.st.printed===p0&&t7.st.alerts.length===1,'check: after HIDE nothing SeedQR-related prints');
+    w.wvAbbr(true); w.clearWalletView(); t7.st.alerts.length=0; p0=t7.st.printed; w.printSeed('check'); w.printStamp('check');
+    ok(t7.st.printed===p0&&t7.st.alerts.length===2&&/Check a seed phrase first/.test(t7.st.alerts[0])&&$('wvAbbrGrid').textContent==='','check: when the checked words are cleared, nothing prints and the letters are gone');
+    // explain an address
+    const X=async a=>{ $('checkAddr').value=a; await w.explainAddrUi(); return [$('addrExplain').className,$('addrExplain').textContent]; };
+    let [c,x]=await X('bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'); ok(c==='status ok'&&/^Native SegWit address \(P2WPKH\) on Bitcoin mainnet .*Nobody can spend from it with the address alone\.In the dictionary: Native SegWit · P2WPKH$/.test(x),'explain: a bc1q address');
+    [c,x]=await X('bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr'); ok(c==='status ok'&&/^Taproot address \(P2TR\)/.test(x),'explain: a bc1p address');
+    [c,x]=await X('bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3'); ok(/^SegWit script address \(P2WSH\)/.test(x),'explain: a P2WSH address');
+    [c,x]=await X('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'); ok(/on testnet or signet \(practice coins, worthless\)/.test(x),'explain: testnet');
+    [c,x]=await X('BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4'); ok(c==='status ok','explain: an all-capitals bc1 address is valid');
+    [c,x]=await X('bc1qW508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'); ok(c==='status bad'&&/mixes capital and small letters/.test(x),'explain: mixed case is refused');
+    [c,x]=await X('bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyv'); ok(c==='status bad'&&/checksum does not match/.test(x),'explain: a typo in a bc1 address');
+    [c,x]=await X('1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2'); ok(/^Legacy address \(P2PKH\) on Bitcoin mainnet/.test(x),'explain: a 1 address');
+    [c,x]=await X('3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy'); ok(/^Script address \(P2SH\) on Bitcoin mainnet/.test(x),'explain: a 3 address');
+    [c,x]=await X('mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn'); ok(/^Legacy address \(P2PKH\) on testnet/.test(x),'explain: an m address is testnet');
+    [c,x]=await X('1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN3'); ok(c==='status bad'&&/checksum does not match/.test(x),'explain: a typo in a 1 address');
+    [c,x]=await X('bitcoin:bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu?amount=0.1'); ok(c==='status ok'&&/payment request \(BIP-21\)/.test(x)&&/BIP21/.test(x),'explain: a bitcoin: link');
+    [c,x]=await X('5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ'); ok(c==='status bad'&&/PRIVATE KEY \(WIF\)/.test(x),'explain: a private key is called out');
+    [c,x]=await X('xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8'); ok(c==='status warn'&&/extended PUBLIC key/.test(x),'explain: an xpub is explained as public but not an address');
+    [c,x]=await X('xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi'); ok(c==='status bad'&&/extended PRIVATE key/.test(x),'explain: an xprv is called out');
+    [c,x]=await X('abandon '.repeat(11)+'about'); ok(c==='status bad'&&/SEED WORDS/.test(x),'explain: seed words are called out');
+    [c,x]=await X('wpkh([d34db33f/84h/0h/0h]xpub6/0/*)'); ok(c==='status warn'&&/descriptor/.test(x),'explain: a descriptor');
+    [c,x]=await X('lnbc1pvjluezsp5zyg3zyg3zyg'); ok(c==='status warn'&&/Lightning invoice/.test(x),'explain: a Lightning invoice');
+    [c,x]=await X('hello'); ok(c==='status bad'&&/Not a Bitcoin address/.test(x),'explain: other text');
+    [c,x]=await X(''); ok(c==='status'&&x==='','explain: an empty box shows nothing');
+    const sp=(await (async()=>{ const seed=await w.mnemonicToSeed('abandon '.repeat(11)+'about',''); return w.spAddressFromSeed(seed,'main',0); })());
+    [c,x]=await X(sp); ok(c==='status ok'&&/^Silent Payment address \(BIP-352\) on Bitcoin mainnet/.test(x),'explain: a Silent Payment address');
+    [c,x]=await X(sp.slice(0,-1)+(sp.endsWith('q')?'p':'q')); ok(c==='status bad'&&/Silent Payment address/.test(x),'explain: a typo in a Silent Payment address');
+    // dictionary links
+    const names=new Set(w.eval('DICT').map(e=>e[0])), targets=[...html.matchAll(/dictGo\('([^']+)'\)/g)].map(m=>m[1]), found=[...html.matchAll(/terms: (?:terms\.concat\()?\[([^\]]*)\]/g)].flatMap(m=>[...m[1].matchAll(/"([^"]+)"/g)].map(y=>y[1]));
+    ok(targets.length===10&&found.length>25&&targets.concat(found).every(n=>names.has(n)),'dictionary links: every name the guide and the explanations link to is a dictionary entry');
+    [c,x]=await X('bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'); $('addrExplain').querySelector('button.dict-link').click();
+    ok(!$('tp-about').classList.contains('tab-off')&&$('dictBox').open&&t7.d.querySelector('.dict-item.dict-hit dt').textContent==='Native SegWit'&&t7.d.querySelectorAll('.dict-hit').length===1,'dictionary links: a link opens the dictionary at that entry');
+    ok(t7.d.querySelectorAll('#whatBox .what-list li').length===10&&t7.d.querySelectorAll('#whatBox .tag-secret').length===6&&t7.d.querySelectorAll('#whatBox .tag-public').length===3,'"What can someone do with this?": 10 items, 6 secret, 3 public, 1 private'); }
+  { const t8=load(); await t8.ready(); const $=t8.$, w=t8.w; w.startGateClose();
+    t8.set('1'.repeat(25)+'2'.repeat(25)); await w.generate(); await w.passWork; await new Promise(r=>setTimeout(r,50));
+    ok(/^This seed: 12 words from 50 dice rolls, SeedSigner and Coldcard dice rules, passphrase none, fingerprint [0-9a-f]{8}\.$/.test($('sumLine').textContent),'summary: one line at the top of the checklist says how the seed was made');
+    let p0=t8.st.printed; w.printSummary(); const words=$('genResult').textContent.split('\n')[0].split(' ');
+    ok(t8.st.printed===p0+1&&/^VOIDFORGE SEED SUMMARY/.test(t8.st.printHTML)&&/Seed length: 12 words\nMade from: 50 dice rolls, SeedSigner and Coldcard dice rules\nStrength: the words hold 128 bits of randomness \(about 129 bits went in/.test(t8.st.printHTML)&&/Master fingerprint: [0-9a-f]{8}/.test(t8.st.printHTML)&&/First receive address \(BIP84/.test(t8.st.printHTML)&&words.every(x=>!new RegExp('\\b'+x+'\\b').test(t8.st.printHTML.replace(/Made with VOIDFORGE.*/,'').replace(/[A-Z][a-z]+.*?:/g,''))),'summary: PRINT SUMMARY SHEET prints how the seed was made, the fingerprint and first address, and no words');
+    ok($('bk4').checked,'summary: printing it ticks the checklist'); w.dispatchEvent(new w.Event('afterprint'));
+    ok(t8.d.querySelectorAll('#printOnly .ps-lh svg').length===0,'summary: wiped after printing');
+    w.wipeSeed&&w.wipeSeed(); ok($('sumLine').textContent==='','summary: cleared with the seed');
+    t8.mode('coin'); t8.set(rnd(140,2)); await w.generate(); await w.passWork; ok(/^This seed: 12 words from 140 coin flips, passphrase none/.test($('sumLine').textContent),'summary: a coin seed says coin flips');
+    // QR prints
+    t8.mode('dice'); t8.set(rnd(50,6)); await w.generate(); await w.passWork; await new Promise(r=>setTimeout(r,50));
+    w.showQr('wZpub','public key'); p0=t8.st.printed; w.printShownQr(); ok(t8.st.printed===p0+1&&/^VOIDFORGE ACCOUNT PUBLIC KEY/.test(t8.st.printQrText)&&t8.st.printQrText.includes($('wZpub').textContent)&&/PUBLIC: no seed words/.test(t8.st.printQrText)&&/<svg/.test(t8.st.printQrHTML),'QR prints: the watch-only key QR prints with its text'); w.dispatchEvent(new w.Event('afterprint'));
+    w.showQr('wDescR','receive descriptor'); w.printShownQr(); ok(/^VOIDFORGE RECEIVE DESCRIPTOR/.test(t8.st.printQrText)&&t8.st.printQrText.includes($('wDescR').textContent),'QR prints: the descriptor QR'); w.dispatchEvent(new w.Event('afterprint'));
+    w.hideQr(); t8.st.alerts.length=0; p0=t8.st.printed; w.printShownQr(); ok(t8.st.printed===p0&&/SHOW QR/.test(t8.st.alerts[0]),'QR prints: nothing prints after HIDE QR');
+    const a0=t8.d.querySelector('#addrList [data-addr]').getAttribute('data-addr'); w.showAddrQr('aq',a0); w.printAddrQr('aq'); ok(/^VOIDFORGE RECEIVE ADDRESS/.test(t8.st.printQrText)&&t8.st.printQrText.includes('Address: '+a0)&&!/Payment link/.test(t8.st.printQrText),'QR prints: an address QR'); w.dispatchEvent(new w.Event('afterprint'));
+    $('aqAmt').value='0.5'; w.drawAddrQr('aq'); w.printAddrQr('aq'); ok(/^VOIDFORGE PAYMENT REQUEST/.test(t8.st.printQrText)&&t8.st.printQrText.includes('Payment link: bitcoin:'+a0+'?amount=0.5'),'QR prints: a payment request'); w.dispatchEvent(new w.Event('afterprint'));
+    w.hideAddrQr('aq'); t8.st.alerts.length=0; w.printAddrQr('aq'); ok(t8.st.alerts.length===1,'QR prints: nothing after HIDE QR');
+    // child seed print
+    $('phrase').value='abandon '.repeat(11)+'about'; $('childApp').value='words'; w.childAppChange(); $('childWords').value='12'; await w.deriveChild();
+    ok($('childPrintRow').style.display===''&&$('childPrintBtn').textContent==='PRINT CHILD SEED','child: a print button appears with the result');
+    const cw=$('childOut').textContent.match(/\d+\. [a-z]+/g).map(s=>s.split(' ')[1]);
+    p0=t8.st.printed; w.printChild(); ok(t8.st.printed===p0+1&&t8.st.printCells.join(' ')===cw.map((x,i)=>String(i+1).padStart(2,'0')+x).join(' ')&&/^VOIDFORGE CHILD SEED \(BIP85\)/.test(t8.st.printHTML)&&/from the parent wallet 73c5da0a, index 0/.test(t8.st.printHTML),'child: PRINT CHILD SEED prints the child words and what recreates them'); w.dispatchEvent(new w.Event('afterprint'));
+    $('childApp').value='pwd64'; w.childAppChange(); $('childLen').value='21'; await w.deriveChild(); ok($('childPrintBtn').textContent==='PRINT PASSWORD','child: the button names what it prints');
+    w.printChild(); const pw=t8.d.querySelector('#printOnly .ps-secret'); ok(!!pw&&pw.textContent.length===21&&$('childOut').textContent.includes(pw.textContent)&&/^VOIDFORGE CHILD PASSWORD \(BIP85\)/.test(t8.st.printHTML),'child: a password prints in one box'); w.dispatchEvent(new w.Event('afterprint'));
+    w.clearChild(); t8.st.alerts.length=0; w.printChild(); ok($('childPrintRow').style.display==='none'&&/DERIVE first/.test(t8.st.alerts[0]),'child: HIDE removes the button and the printable result'); }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
 

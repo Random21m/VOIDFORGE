@@ -965,4 +965,30 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   R.ok(bad === 0, `${n} BIP-322 simple checks: signatures made by @scure/btc-signer (P2WPKH, Taproot with SIGHASH_DEFAULT and ALL, mainnet and testnet, with and without the smp prefix) are VALID; a changed message or another address is NOT VALID (${bad} mismatches)`);
 }
 
+// 2m. v2.4.0 Explain an address: addresses made by @scure/btc-signer (P2WPKH, P2WSH, P2TR, P2PKH, P2SH; mainnet and testnet)
+// are named and placed on the right network; a one-character change is always caught; 4-letter forms and the closest-word
+// helper are checked against the BIP39 English list from @scure/bip39.
+{
+  const nets = { main: btc.NETWORK, test: btc.TEST_NETWORK }, B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz', B32 = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+  let n = 0, bad = 0;
+  for (let t = 0; t < 40; t++) {
+    const net = t % 2 ? 'test' : 'main', N = nets[net], pub = secp256k1.getPublicKey(secp256k1.utils.randomPrivateKey(), true), pub2 = secp256k1.getPublicKey(secp256k1.utils.randomPrivateKey(), true);
+    const cases = [['P2WPKH', btc.p2wpkh(pub, N).address], ['P2WSH', btc.p2wsh(btc.p2ms(1, [pub, pub2]), N).address], ['P2TR', btc.p2tr(pub.slice(1), undefined, N).address],
+      ['P2PKH', btc.p2pkh(pub, N).address], ['P2SH', btc.p2sh(btc.p2wpkh(pub, N), N).address]];
+    for (const [kind, a] of cases) {
+      n++; const r = await w.explainAddress(a), netOk = net === 'main' ? /on Bitcoin mainnet/.test(r.text) : /on testnet or signet/.test(r.text);
+      if (r.level !== 'ok' || !r.text.includes('(' + kind + ')') || !netOk) { bad++; console.log('EXPLAIN WRONG', kind, net, a, r.text.slice(0, 90)); }
+      const i = 4 + nc.randomInt(a.length - 4), alpha = /^(bc|tb)1/.test(a) ? B32 : B58; let c; do { c = alpha[nc.randomInt(alpha.length)]; } while (c === a[i]);
+      const typo = a.slice(0, i) + c + a.slice(i + 1); n++; const r2 = await w.explainAddress(typo);
+      if (r2.level !== 'bad') { bad++; console.log('EXPLAIN TYPO NOT CAUGHT', kind, a, typo, r2.text.slice(0, 80)); }
+    }
+  }
+  R.ok(bad === 0, `${n} explain checks: addresses made by @scure/btc-signer are named (P2WPKH, P2WSH, P2TR, P2PKH, P2SH) on the right network, and every one-character change is called invalid`);
+  bad = 0; let m = 0;
+  for (const word of wordlist) { m++; for (const k of [4, 5, word.length]) if (k <= word.length && k >= 4 && w.wordFromPrefix(word.slice(0, k)) !== word) { bad++; console.log('4-LETTER WRONG', word, k); } }
+  for (let t = 0; t < 300; t++) { const word = wordlist[nc.randomInt(2048)], i = nc.randomInt(word.length), typo = word.slice(0, i) + word.slice(i + 1); m++;
+    if (typo.length >= 3 && !wordlist.includes(typo) && !w.closestWords(typo, 50).includes(word)) { bad++; console.log('CLOSEST MISSES', word, typo, w.closestWords(typo, 50)); } }
+  R.ok(bad === 0, `${m} word checks: every BIP39 word is found from its first 4 or 5 letters (and in full), and a word with one letter dropped is always among the closest words`);
+}
+
 R.done('oracle');

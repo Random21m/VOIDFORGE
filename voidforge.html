@@ -375,6 +375,7 @@
   body.light .tag-note { color: #b8005c; border-color: #b8005c; background: rgba(184,0,92,.08); }
   .opt-rec { color: var(--warn-text); font-weight: 700; }
   .tag-ro { color: var(--accent); border-color: var(--accent); }
+  .tag-private { color: var(--warn-text); border-color: var(--warn-text); }
   .tools details { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-top: 10px !important; }
   .tools summary { cursor: pointer; font-weight: 600; font-size: 14px; }
   summary small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; margin-top: 2px; }
@@ -1184,7 +1185,7 @@
       <div class="sec-block" id="wvSqBlock">
         <h3 class="sec">Paper, metal and SeedQR backups<span class="tag tag-secret">SECRET</span></h3>
         <p class="hint" style="margin:0 0 6px;">Make another backup of these words: print them, show or print their first 4 letters for a metal plate, or print a SeedQR. Print only on a trusted offline computer with a directly connected printer. The passphrase is never shown or printed.</p>
-        <div class="btn-row" id="wvBkBtns"><button type="button" class="secondary small" id="wvAbbrBtn" onclick="wvAbbr()">SHOW FIRST 4 LETTERS</button><button type="button" class="secondary small" onclick="printSeed('check')">PRINT WORDS</button><button type="button" class="secondary small" onclick="printStamp('check')">PRINT STAMP SHEET</button></div>
+        <div class="btn-row" id="wvBkBtns"><button type="button" class="secondary small needs-words" id="wvAbbrBtn" onclick="wvAbbr()">SHOW FIRST 4 LETTERS</button><button type="button" class="secondary small needs-words" onclick="printSeed('check')">PRINT WORDS</button><button type="button" class="secondary small needs-words" onclick="printStamp('check')">PRINT STAMP SHEET</button></div>
         <div id="wvAbbrGrid" aria-label="First 4 letters of each word"></div>
         <p class="hint" id="wvSqNote" style="margin:10px 0 6px;"></p>
         <div class="btn-row" id="wvSqBtns"><button type="button" class="secondary small" onclick="wvSeedQr('seedqr')">SHOW SEEDQR</button><button type="button" class="secondary small" onclick="wvSeedQr('compact')">SHOW COMPACTSEEDQR</button><button type="button" class="secondary small" onclick="wvSeedQrHide()">HIDE</button></div>
@@ -1432,7 +1433,7 @@
         <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Dice entropy')">Dice rolls or coin flips you used</button><span class="tag tag-secret">SECRET</span></span><span class="what-t">They make your seed again. Shred the roll sheet once the words are checked.</span></li>
         <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Private key')">Private key (WIF) or xprv</button><span class="tag tag-secret">SECRET</span></span><span class="what-t">Can spend what that key or account holds.</span></li>
         <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Child seed')">Child seed (BIP85)</button><span class="tag tag-secret">SECRET</span></span><span class="what-t">Can spend its own wallet. The parent seed can make every child again.</span></li>
-        <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Extended public key (xpub, ypub, zpub)')">xpub, zpub or descriptor</button><span class="tag tag-note">PRIVATE</span></span><span class="what-t">Cannot spend, but sees every address and the balance of that account, past and future.</span></li>
+        <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Extended public key (xpub, ypub, zpub)')">xpub, zpub or descriptor</button><span class="tag tag-private">PRIVATE</span></span><span class="what-t">Cannot spend, but sees every address and the balance of that account, past and future.</span></li>
         <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Fingerprint (master fingerprint)')">Master fingerprint</button><span class="tag tag-public">PUBLIC</span></span><span class="what-t">Cannot spend or see balances. It only tells which wallet a backup belongs to.</span></li>
         <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Address')">An address</button><span class="tag tag-public">PUBLIC</span></span><span class="what-t">Can send you bitcoin and see that address&rsquo;s payments. Use a new one each time.</span></li>
         <li><span class="what-h"><button type="button" class="dict-link" onclick="dictGo('Signed message')">A signed message</button><span class="tag tag-public">PUBLIC</span></span><span class="what-t">Shows that the owner of an address wrote it. It cannot spend.</span></li>
@@ -1531,6 +1532,7 @@
     <details>
       <summary>Changelog</summary>
       <ul>
+        <li><b>2.4.0</b> &mdash; <b>A print for everything, one page each, and plain-language helpers.</b> (1) <b>One page, no blank pages.</b> Every printed sheet now comes out on exactly one page, on US Letter and on A4; before, most sheets also printed one or more blank pages. A test prints every sheet in a real browser to check this. (2) <b>Roll sheet extras</b>: a menu next to PRINT ROLL SHEET chooses no extra boxes, 10, 25 or 50 (with Keystone dice rules, up to Keystone&rsquo;s maximum of 256). (3) <b>CHECK A BACKUP</b>: once VERIFY accepts your words, <i>Open this wallet</i> has SHOW FIRST 4 LETTERS, PRINT WORDS, PRINT STAMP SHEET and the three SeedQR prints, for any length from 12 to 24 words. VERIFY also reads 4-letter forms (as on a metal plate) and, for a word it does not know, names the closest BIP39 words. (4) <b>New prints</b>: PRINT THIS QR for the watch-only key and descriptors, the Silent Payment address, and address and payment-request QR codes; PRINT CHILD SEED (or the key or password) for BIP85; a blank Word draw sheet; and a <b>seed summary sheet</b> with no words (how the seed was made, the fingerprint with its picture, the first address), also shown as one line on the backup checklist. (5) <b>Test only, no seed</b>: a switch in &ldquo;Your rolls&rdquo; turns FORGE off so you can roll a die many times just to see whether it is fair. (6) With a tap button focused, the number keys add rolls and Backspace undoes. (7) <b>Explain an address</b> (CHECK A BACKUP): paste any address to see its type, network and whether it has a typo, with links to the dictionary; keys, seed words and Lightning invoices pasted by mistake are called out. (8) <b>What can someone do with this?</b>, a quick guide in the dictionary. The Dice rules menu is wide enough for its longest choice. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.3.0</b> &mdash; <b>More rolls, Keystone and BitBox02 dice, signed messages and END SESSION.</b> (1) <b>The minimum or more.</b> FORGE SEED now takes 50 or 99 rolls (128 or 256 flips) <i>or more</i>, and every roll counts. A note says who makes the same words: exactly the minimum matches SeedSigner and Coldcard, more matches Coldcard; more than twice the minimum adds a reminder to check for a double paste. PRINT ROLL SHEET has 10 extra dashed boxes. (2) <b>Keystone dice rules</b> (Dice rules menu): each 6 counts as 0 and Keystone needs 50 or 100 rolls, at most 256, as on a Keystone wallet. (3) <b>BitBox02 diceware</b> in Word draw: the Word finder reads table codes such as 2143 2 T, ADD WORD (or Enter) adds the word, and the 3 flips for the last word use T as 1 and H as 0, giving the same 24th word BitBox shows. (4) <b>Verify a signed message</b> (EXTRA TOOLS, read only): classic signatures (BIP-137) for 1..., 3... and bc1q addresses and BIP-322 simple signatures for single-key bc1q and bc1p addresses; VALID names the address it checked, and a match found only after a small change to the message (line breaks, spaces at the ends) shows in amber with a warning; a whole signed-message block can be pasted, but it never replaces an address you typed; multisig and full signatures are reported as CANNOT CHECK. It never signs. (5) <b>END SESSION</b> (MENU) wipes everything, resets every box and reloads the page. (6) The start notice shows once in each browser tab while the computer is offline, and on every load while it is online. (7) A Word draw seed is cleared if you change its words, flips or length afterwards, as a dice seed already was, and PRINT ROLL SHEET records the dice rules. For the same inputs as before (exactly the minimum, SeedSigner and Coldcard rules), words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.2.0</b> &mdash; <b>Watch-only wallets, payment requests and a backup checklist.</b> (1) <b>Or open a watch-only wallet</b> (CHECK A BACKUP): paste an account public key (xpub, ypub, zpub, or tpub, upub, vpub) or a single-key descriptor and see the same address list, with a QR code on every row, from public keys only. A plain xpub does not contain the master fingerprint, so the page shows it only when a descriptor gives it. Private keys and multisig keys are refused. (2) <b>Electrum seed warning:</b> when a phrase fails the BIP39 check, VERIFY also says if it is an Electrum seed, and which type, so you restore it in Electrum. (3) <b>Payment request (BIP-21):</b> under any address QR code, add an amount, label or message and the QR becomes a <code>bitcoin:</code> link a phone wallet reads; the amount is checked (at most 8 decimals, above 0, at most 21 million). (4) <b>Backup checklist</b> under your words: words written, restore drill passed, second tool matched, recovery sheet printed. The drill and the recovery sheet tick themselves, a passphrase change unticks them, and nothing is saved. (5) <b>Check descriptors for a reused key</b> (EXTRA TOOLS): warns when the same key appears twice, when two keys of one multisig come from the same seed, or when one fingerprint and path are given with two different keys.</li>
         <li><b>2.1.0</b> (not released on its own; included in 2.2.0) &mdash; <b>Open any wallet, a QR on every address, and a tidier page.</b> (1) <b>Open this wallet.</b> In CHECK A BACKUP, once VERIFY accepts a 12, 15, 18, 21 or 24 word phrase (with or without a passphrase), a closed box lists its addresses: Native SegWit, Taproot, Nested SegWit or Legacy, mainnet or testnet, any account number, receive or change, ten at a time, with the master fingerprint and its picture. It says plainly that the words were imported, not made here. PRINT RECOVERY SHEET prints the fingerprint, address type, path and first addresses with no words and no passphrase. Making a seed is still 12 or 24 words only. (2) <b>A QR button on every address row</b>, here and under your seed. (3) <b>SeedQR and CompactSeedQR</b> for any 12 or 24 word phrase you check; for 15, 18 and 21 words the page says no such format exists. (4) <b>Live preview.</b> While you roll, the grey word boxes show the words your rolls so far would make, so you can watch one roll change every word. They are not your seed until you press FORGE SEED. This replaces the old demo switch, which is gone. (5) <b>Simpler Make tab.</b> Dice, Coin and Word draw are tabs, the seed length sits beside them, the passphrase box is under the words, and changing the passphrase keeps your words and works out the fingerprint and addresses again. A short line under the step bar says what each step is for. (6) <b>TRY ACCOUNTS 0 TO 20</b> finds which account an address belongs to. PRINT ROLL SHEET prints a blank numbered sheet for your rolls, and PRINT STAMP SHEET (MENU) prints the first four letters of each word in capitals for metal plates. An optional <b>auto-clear</b> wipes the page after idle time or when you leave the tab; it is off whenever the page loads and stores nothing. (7) <b>Looks.</b> Smaller buttons, seed words that always stay inside their boxes, red only for warnings and wiping, one type scale, a one-line footer, and a top bar that fits a 320 pixel screen. Fixed: pressing FORGE SEED with too few rolls no longer wipes the grey preview words, and the preview note no longer stays after a seed is made. The README now gives the right self-test count.</li>
@@ -1594,7 +1596,7 @@
   </div>
 
   <footer>
-    <div class="ft-name">VOIDFORGE <span>v2.3.0</span></div>
+    <div class="ft-name">VOIDFORGE <span>v2.4.0</span></div>
     <div class="ft-line"><span>SHA-256 of your rolls &rarr; BIP39</span><span>Same method as SeedSigner and Coldcard</span><span>github.com/Random21m/VOIDFORGE</span></div>
   </footer>
 </div>
@@ -1678,7 +1680,6 @@ function diceTestToggle(){
     document.getElementById("diceTest").checked = !on; return;
   }
   if(n){ box.value = ""; }
-  document.body.classList.toggle("dice-test", on);
   document.getElementById("diceTestBan").style.display = on ? "" : "none";
   document.getElementById("forgeBtn").disabled = on || selfTestState !== "pass";
   if(on) document.getElementById("rollStats").open = true;
@@ -2453,7 +2454,7 @@ const DICT_CATS = ["Basics", "Keys & seeds", "Wallets & backups", "Addresses & s
 const DICT = [
   ["51% attack", "If one party controlled most of the mining power, they could rewrite recent history and double-spend. It would be extremely expensive.", "", "Network & mining"],
   ["Account", "A numbered branch of one seed. Account 0 is the usual first one; other accounts make separate wallets from the same seed.", "Watch-only export: the account number box.", "Wallets & backups"],
-  ["Address", "A short text a person gives you so they can send you bitcoin. It is made from a public key (or script), so sharing it does not reveal your seed.", "First 5 receiving addresses, Is this address yours?", "Addresses & scripts"],
+  ["Address", "A short text a person gives you so they can send you bitcoin. It is made from a public key (or script), so sharing it does not reveal your seed.", "First 5 receiving addresses, Explain an address, or check that it is yours.", "Addresses & scripts"],
   ["Address reuse", "Using the same address again and again. It works, but it lets anyone who looks at the blockchain link your payments together, so wallets give you a fresh address each time.", "", "Privacy & security"],
   ["Address-swapping malware", "Malware that changes an address you copied for another one. Always check the address on a trusted screen, such as your hardware wallet, before sending.", "", "Privacy & security"],
   ["Air gap (offline computer)", "A computer that is not connected to any network. Making a seed on one means nothing can leak the words over the internet.", "The NETWORK: OFFLINE tag, the safety checklist.", "Privacy & security"],
@@ -2534,7 +2535,7 @@ const DICT = [
   ["Cypherpunk", "Someone who uses cryptography to protect privacy and freedom. Many of Bitcoin's ideas come from the cypherpunk community.", "", "Basics"],
   ["Decentralized", "Not controlled by any single person, company or government. Bitcoin's rules are enforced by many independent computers.", "", "Basics"],
   ["Decoy wallet", "A second wallet made with a different passphrase and holding a small amount, to hand over if you are forced to. Plan it carefully.", "", "Wallets & backups"],
-  ["Derivation path", "The route from the master key to one key, written like m/84'/0'/0'/0/0. Each number is a step down the tree.", "Watch-only export, Is this address yours?", "Keys & seeds"],
+  ["Derivation path", "The route from the master key to one key, written like m/84'/0'/0'/0/0. Each number is a step down the tree.", "Watch-only export, Explain an address, or check that it is yours.", "Keys & seeds"],
   ["Descriptor", "A line of text that says exactly which keys and script type make a wallet's addresses. Wallet apps use it to rebuild the same addresses.", "Watch-only export, Compare a key or descriptor.", "Addresses & scripts"],
   ["Dice entropy", "Randomness taken from real dice rolls. Each roll adds about 2.58 bits, so 50 rolls give about 129 bits (12 words) and 99 rolls about 256 bits (24 words). More rolls are fine: every roll is hashed, as Coldcard does.", "Dice mode and the roll counter.", "Keys & seeds"],
   ["Dice rules (Keystone)", "Keystone wallets hash dice rolls like SeedSigner and Coldcard, but write each 6 as 0 first, and ask for at least 50 rolls (12 words) or 100 (24 words), at most 256. The same rolls give different words unless the same rules are used.", "Make a seed: the Dice rules menu.", "Keys & seeds"],
@@ -2554,7 +2555,9 @@ const DICT = [
   ["Exchange", "A company where you can buy, sell and hold bitcoin. If you leave coins there, the company holds the keys.", "", "Wallets & backups"],
   ["Extended private key (xprv)", "A private key plus a chain code from which all the private keys of an account can be worked out. As secret as the seed.", "BIP85 in Child seed.", "Keys & seeds"],
   ["Extended public key (xpub, ypub, zpub)", "A public key that can work out all the addresses of one account. It cannot spend, but anyone who has it can see all your addresses and balance, so share it carefully.", "Watch-only export.", "Keys & seeds"],
-  ["Fairness test", "A statistic (Pearson chi-square) that shows whether the face counts of your dice look uneven. It can raise a concern but can never prove dice are fair.", "Under the roll chart.", "VOIDFORGE"],
+  ["Fairness test", "A statistic (Pearson chi-square) that shows whether the face counts of your dice look uneven. It can raise a concern but can never prove dice are fair.", "Under the roll chart, and the \u201cTest only, no seed\u201d switch.", "VOIDFORGE"],
+  ["Dice test", "Rolling the same die (or flipping the same coin) many times only to see whether it comes up evenly, with no seed made from those rolls.", "The \u201cTest only, no seed\u201d switch in \u201cYour rolls\u201d.", "VOIDFORGE"],
+  ["Summary sheet", "A printed page about a seed with no words and no passphrase on it: how it was made, its master fingerprint and its first address. It helps find and check the right wallet later.", "PRINT SUMMARY SHEET on the backup checklist.", "VOIDFORGE"],
   ["Fee (miner fee)", "What you pay to have a transaction included in a block: the inputs minus the outputs.", "Transaction inspector.", "Transactions"],
   ["Fee bumping", "Raising the fee of a stuck transaction, either by replacing it (RBF) or by spending its output with a high fee (CPFP).", "Compare two transactions shows a fee bump.", "Transactions"],
   ["Fee rate (sat/vB)", "How much fee you pay per virtual byte of transaction size. Miners generally pick the highest fee rates first.", "", "Network & mining"],
@@ -2604,7 +2607,7 @@ const DICT = [
   ["Mempool", "The waiting room where transactions sit until a miner puts them in a block.", "", "Network & mining"],
   ["Merkle root", "The single hash at the top of a Merkle tree, stored in the block header.", "", "Units & math"],
   ["Merkle tree", "A way to boil all the transactions in a block down to one short fingerprint (the Merkle root), so any one transaction can be proven to be in the block.", "", "Network & mining"],
-  ["Metal backup", "A seed stamped or engraved on steel so it survives fire and water, which paper may not.", "", "Wallets & backups"],
+  ["Metal backup", "A seed stamped or engraved on steel so it survives fire and water, which paper may not.", "SHOW FIRST 4 LETTERS and PRINT STAMP SHEET, after FORGE and in CHECK A BACKUP.", "Wallets & backups"],
   ["Miner", "A computer or company doing the mining and building blocks.", "", "Network & mining"],
   ["Mini private key", "A very short private key (30 characters starting with S) once used on physical coins.", "", "Keys & seeds"],
   ["Mining", "Competing to add the next block to the blockchain by doing a lot of hashing. The winner collects the block reward and fees.", "", "Network & mining"],
@@ -2645,7 +2648,7 @@ const DICT = [
   ["PSBT (partly signed Bitcoin transaction)", "A standard file for passing a transaction between a wallet, which builds it, and a signer, which signs it. VOIDFORGE only reads these, it never signs.", "Transaction inspector, Compare two transactions.", "Transactions"],
   ["Public key", "The number worked out from a private key. It can be shared and cannot be used to spend.", "", "Keys & seeds"],
   ["Public key hash (HASH160)", "The short fingerprint of a public key (SHA-256 then RIPEMD-160) that old address types are made from.", "", "Addresses & scripts"],
-  ["QR code", "A square picture that holds text. VOIDFORGE draws QR codes on screen and never uses a camera.", "Watch-only QR, SeedQR, Support this project.", "Basics"],
+  ["QR code", "A square picture that holds text. VOIDFORGE draws QR codes on screen and never uses a camera.", "Watch-only QR, SeedQR, address QR, Support this project. PRINT THIS QR prints them.", "Basics"],
   ["Quorum", "How many keys must sign in a multisig wallet, such as 2 of a 3-key wallet.", "", "Wallets & backups"],
   ["Random number generator (RNG)", "A source of random numbers. Computer ones can be flawed, which is why VOIDFORGE uses physical dice and coins.", "", "Keys & seeds"],
   ["Raw transaction", "The transaction as bytes, usually shown in hex, exactly as it is sent to the network.", "Transaction inspector reads raw transactions.", "Transactions"],
@@ -2722,7 +2725,7 @@ const DICT = [
   ["Whitepaper", "The nine-page paper \"Bitcoin: A Peer-to-Peer Electronic Cash System\", published on 31 October 2008, which described Bitcoin.", "", "Basics"],
   ["WIF (Wallet Import Format)", "A text way to write one private key (starting with 5, K or L) so it can be imported into a wallet. One key, not a whole wallet.", "BIP85 in Child seed.", "Keys & seeds"],
   ["Witness", "The part of a SegWit transaction that holds the signatures and unlocking data, kept apart from the rest.", "", "Transactions"],
-  ["Wordlist", "The fixed list of 2048 words BIP39 uses. Every word is unique by its first four letters.", "SHOW FIRST 4 LETTERS, Reforge.", "Keys & seeds"],
+  ["Wordlist", "The fixed list of 2048 words BIP39 uses. Every word is unique by its first four letters.", "SHOW FIRST 4 LETTERS; VERIFY and Reforge read 4-letter forms.", "Keys & seeds"],
   ["Wrench attack", "Physical force used to make someone hand over their keys. It is one reason to think about decoy wallets and multisig.", "", "Privacy & security"]
 ];
 let dictCat = "All";
@@ -3028,8 +3031,7 @@ document.getElementById("checkAddr").addEventListener("input", explainAddrUi);
 // (as on a metal plate) are read as that word. For anything else, the closest BIP39 words are suggested; nothing is changed.
 function wordFromPrefix(t){
   if(!/^[a-z]{4,8}$/.test(t)) return null;
-  const m = WORDLIST.filter(w => w.startsWith(t));
-  return m.length === 1 ? m[0] : null;
+  return WORDLIST.find(w => w.startsWith(t)) || null;   // 4 letters already pick at most one word
 }
 // Optimal string alignment distance (insert, delete, change or swap two neighbouring letters), stopping early past `max`.
 function wordDistance(a, b, max){
@@ -3992,7 +3994,7 @@ async function finishSeed(mnemonic, ctx){
   seedSig = null; passKey = JSON.stringify([p1, p2]);
   setResult(mnemonic + "\n\n" + passPhraseLine(p1, p2), mnemonic.split(" "));
   exCtx = ctx; seedKind = ctx ? "rolls" : "wd"; seedSig = inputSig(seedKind);
-  sumCtx = ctx ? {count: ctx.rolls.length, coin: ctx.coin, keystone: ctx.keystone, words: ctx.words.length} : {wd: true, words: mnemonic.split(" ").length}; sumUpdate();
+  sumCtx = ctx ? {count: ctx.rolls.length, coin: ctx.coin, keystone: ctx.keystone, words: ctx.words.length} : {wd: true, words: mnemonic.split(" ").length};
   await deriveShown(mnemonic, p1, p2, run);
 }
 // Works out and shows everything that depends on the passphrase: fingerprints (with and without it), addresses, the watch-only box.
@@ -4055,7 +4057,7 @@ const BK_IDS = ["bk1","bk2","bk3","bk4"];
 // top of the backup checklist and prints as the summary sheet.
 let sumCtx = null;
 function seedSummary(){
-  if(!hasSeed() || !sumCtx) return null;
+  if(!hasSeed() || !sumCtx || passMismatchQuiet()) return null;
   const c = sumCtx, n = c.words, bits = n === 24 ? 256 : 128;
   const made = c.wd ? "Word draw (" + (n === 24 ? "23 drawn words and 3" : "11 drawn words and 7") + " coin flips)"
     : c.coin ? c.count + " coin flips" : c.count + " dice rolls, " + (c.keystone ? "Keystone dice rules (each 6 counts as 0)" : "SeedSigner and Coldcard dice rules");
@@ -4120,7 +4122,6 @@ let qrShown = null;
 function showQr(id, label){
   const t = document.getElementById(id).textContent;
   if(!t) return alert("Generate a seed first");
-  qrShown = null;
   let q; try { q = qrMatrix(t); } catch(e) { return alert("QR code unavailable: " + e.message); }
   document.getElementById("qrImg").innerHTML = qrSvg(q.rows);
   document.getElementById("qrCaption").textContent = "QR code for the " + label + " (public key only). Scan it with your watch-only wallet app. If the app cannot scan it, use COPY instead.";
@@ -4214,7 +4215,6 @@ function sqSrc(from, what){
   const kind = from === "check" ? wvsKind : sqKind;
   if(!kind){ alert("Press SHOW SEEDQR or SHOW COMPACTSEEDQR first, then print " + what + "."); return null; }
   if(from !== "check") return {kind, rows: sqRows};
-  if(!wvCtx || !wvCtx.mnemonic) return null;
   try { return {kind, rows: seedQrMatrix(wvCtx.mnemonic.split(" "), kind).rows}; } catch(e) { alert("SeedQR unavailable: " + e.message); return null; }
 }
 function printSeedQr(from){
@@ -4693,7 +4693,6 @@ function updateAbbrNote(){
   document.getElementById("abbrNote").textContent = (abbrOn && hasSeed()) ? "Showing only the first 4 letters of each word. The full words are still your backup; write down full words unless your backup method uses 4-letter abbreviations. PRINT STAMP SHEET in the MENU prints them large, for stamping a metal plate." : "";
 }
 function setResult(text, words){
-  if(!words) sumCtx = null;
   wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body.classList.toggle("has-seed", !!words);
   const g = document.getElementById("genResult"), grid = document.getElementById("wordGrid");
   g.textContent = text; g.classList.toggle("nores", text === "\u2014"); grid.textContent = "";
@@ -4909,7 +4908,7 @@ function printShownQr(){
 // Print an address QR code, or the payment request (BIP-21) made from it (v2.4.0).
 function printAddrQr(pfx){
   const box = document.getElementById(pfx + "Box"), t = box.dataset.text, addr = box.dataset.addr;
-  if(!t || !addr) return alert("Press QR next to an address first.");
+  if(!t) return alert("Press QR next to an address first.");
   let q; try { q = qrMatrix(t); } catch(e) { return alert("QR code unavailable: " + e.message); }
   const req = t !== addr, fp = document.getElementById(pfx === "wvq" ? "wvFp" : "fingerprint").textContent;
   printSqSheet("VOIDFORGE " + (req ? "PAYMENT REQUEST" : "RECEIVE ADDRESS"), qrSvg(q.rows), q.version > 15,
@@ -4955,10 +4954,9 @@ function rsExtraSync(){
   else if(!keystoneOn() && mx){ if(sel.value === "max") sel.value = "10"; mx.remove(); }
 }
 function rsExtraCount(need){
-  const v = document.getElementById("rsExtra")?.value || "10", room = KEYSTONE_MAX - need;
-  if(v === "max") return keystoneOn() ? room : 10;
-  const n = Math.max(0, parseInt(v, 10) || 0);
-  return keystoneOn() ? Math.min(n, room) : n;
+  const v = document.getElementById("rsExtra")?.value || "10";
+  if(v === "max") return keystoneOn() ? KEYSTONE_MAX - need : 10;
+  return parseInt(v, 10) || 0;   // 50 at most, which fits under Keystone's 256 for 12 and 24 words
 }
 function printRollSheet(){
   const coin = getMode() === "coin", wc = document.querySelector('input[name="words"]:checked').value, need = getNeeded(wc), unit = coin ? "flips" : "rolls";

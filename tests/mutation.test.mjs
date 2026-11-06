@@ -315,7 +315,7 @@ async function probe(w, mutated) {
     [a] = await RF('? ? ? ' + 'abandon '.repeat(9)); if (!/at most 2 unknown words, and 3 are unknown/.test(a)) fails.push('reforge: 3 unknown words are refused');
     [a] = await RF('abandon abandon constructor ' + 'abandon '.repeat(8) + 'about'); if (!/'constructor' is not a BIP39 word/.test(a)) fails.push('reforge: a non-word is unknown even if it is an object property name');
     [a] = await RF('aban '.repeat(11) + 'abou'); if (!/12 words were read from their first letters/.test(a)) fails.push('reforge: 4-letter words are read');
-    { const r = await w.checkPhrase('constructor ' + 'abandon '.repeat(10) + 'about'); if (r.ok || r.msg !== 'Unknown word: constructor') fails.push('verify: a property name typed as a word is unknown'); }
+    { const r = await w.checkPhrase('constructor ' + 'abandon '.repeat(10) + 'about'); if (r.ok || !/^Unknown word: constructor \(word 1\): no BIP39 word is close\. /.test(r.msg)) fails.push('verify: a property name typed as a word is unknown'); }
     { let e = ''; try { await w.lastWordCandidates('abandon '.repeat(10).trim().split(' ').concat(['xyzzy'])); } catch (err) { e = err.message; } if (!/^Unknown word: xyzzy/.test(e)) fails.push('last word helper: an unknown word is rejected'); }
     { const t = W4.split(' '); let pairs = 0; for (let i = 0; i < 12; i++) for (let j = i + 1; j < 12; j++) if (t[i] !== t[j]) pairs++;
       const plan = w.reforgePlan(w.reforgeParseWords(W4).idx); let n = 0; for (const c of plan.gen()) n++; if (n !== 1 + pairs + 12 * 2047 || plan.total !== n) fails.push('reforge: the wrong-or-swapped plan tries each candidate once'); }
@@ -1520,6 +1520,142 @@ async function probe(w, mutated) {
     for (let i = 0; i < 8; i++) got.push((await w.wdSteps(viol, i.toString(2).padStart(3, '0'), 24)).lastWord);
     if (got.join(' ') !== 'boss coyote dry habit panel regular speed winter' || got.some((x, i) => x !== cand(viol, i))) fails.push('BitBox02 last word: 23 x violin gives BitBox\'s 8 choices in order (HHH first)');
   } catch (e) { fails.push('BitBox02: the probe crashed: ' + e.message); }
+  try { // v2.4.0: one-page prints, roll sheet extras, CHECK A BACKUP backups, QR / child / Word draw / summary prints, dice test, keys, typo helper, explain
+    const P = { n: 0, cells: [], txt: '', qr: '', qrh: '', lh: 0, sec: '' }, al = [], op = w.print, oa = w.alert, oc = w.confirm; let cnf = true;
+    w.print = () => { P.n++; P.cells = [...w.document.querySelectorAll('#printOnly .ps-cell')].map((c) => c.textContent); P.txt = $('printOnly').textContent; P.qr = $('printQr').textContent; P.qrh = $('printQr').innerHTML; P.lh = w.document.querySelectorAll('#printOnly .ps-lh svg').length; P.sec = (w.document.querySelector('#printOnly .ps-secret') || {}).className || ''; P.secTxt = (w.document.querySelector('#printOnly .ps-secret') || {}).textContent || ''; P.cls = w.document.body.className; };
+    w.alert = (m) => al.push(String(m)); w.confirm = () => cnf;
+    const done = () => w.dispatchEvent(new w.Event('afterprint')), css = mutated.slice(0, mutated.indexOf('</style>'));
+    const pr = (f, ...a) => { const n0 = P.n; al.length = 0; try { w[f](...a); } catch (e) { al.push('THREW ' + e.message); } const got = P.n - n0; if (got) done(); return got; };
+    // one page: only the sheet is laid out, from the body
+    if (!/    @page \{ margin: 12mm; \}\n    body\.print-seed > :not\(#printOnly\), body\.print-qr > :not\(#printQr\) \{ display: none !important; \}/.test(css)) fails.push('print v2.4: only the sheet is laid out, with a page margin');
+    if ($('printOnly').parentElement !== w.document.body || $('printQr').parentElement !== w.document.body) fails.push('print v2.4: the print areas sit directly in the body');
+    for (const re of [/\.ps-grid\.ps-roll\.ps-roll20 \{ grid-template-columns: repeat\(20, 1fr\)/, /#wvAbbrGrid\.on \{ display: grid; \}/, /\.ps-grid\.ps-15, body\.print-seed #printOnly \.ps-grid\.ps-18, body\.print-seed #printOnly \.ps-grid\.ps-21 \{ grid-template-columns: repeat\(3, 1fr\); \}/, /\.ps-grid\.ps-stamp\.ps-18, body\.print-seed #printOnly \.ps-grid\.ps-stamp\.ps-21, body\.print-seed #printOnly \.ps-grid\.ps-stamp\.ps-24 \{ grid-template-columns: repeat\(4, 1fr\); \}/]) if (!re.test(css)) fails.push('print v2.4: layout rule ' + re.source.slice(0, 40));
+    // roll sheet extras
+    { mode('dice'); words(12); $('rolls').value = ''; $('rolls').oninput(); const rs = (x) => { $('rsExtra').value = x; pr('printRollSheet'); return { c: P.cells.length }; };
+      const wide = () => { let k = 0; const op2 = w.print; w.print = () => { k = w.document.querySelectorAll('#printOnly .ps-roll20').length; op2(); }; w.printRollSheet(); done(); w.print = op2; return k; };
+      const opts = () => [...$('rsExtra').options].map((o) => o.value).join();
+      if (opts() !== '0,10,25,50' || rs('0').c !== 50 || /Extra rolls/.test(P.txt) || rs('25').c !== 75 || !/Extra rolls \(optional\)/.test(P.txt) || P.cells[74] !== '75') fails.push('roll sheet v2.4: chosen number of extra boxes');
+      const rules = (v) => { $('diceRules').value = v; $('diceRules').dispatchEvent(new w.Event('change')); };
+      rules('keystone'); if (opts() !== '0,10,25,50,max') fails.push('roll sheet v2.4: Keystone adds up to 256');
+      $('rsExtra').value = 'max'; if (wide() !== 2 || rs('max').c !== 256) fails.push('roll sheet v2.4: Keystone maximum is 256 boxes, compact');
+      rules('std'); if (opts() !== '0,10,25,50' || $('rsExtra').value !== '10') fails.push('roll sheet v2.4: up to 256 goes away with Keystone rules');
+      mode('coin'); $('rsExtra').value = '25'; if (wide() !== 2) fails.push('roll sheet v2.4: 153 coin boxes use the compact layout');
+      $('rsExtra').value = '0'; if (wide() !== 0) fails.push('roll sheet v2.4: 128 coin boxes stay in 10 columns'); mode('dice'); $('rsExtra').value = '10'; }
+    // Word draw sheet
+    { $('wdLen').value = '12'; pr('printWordSheet'); if (P.cells.length !== 18 || P.cells[10] !== '11' || P.cells[17] !== 'Flip 7' || !/as secret as your seed/.test(P.txt)) fails.push('word draw sheet: 11 words and 7 flips');
+      $('wdLen').value = '24'; pr('printWordSheet'); if (P.cells.length !== 26 || P.cells[22] !== '23' || P.cells[25] !== 'Flip 3') fails.push('word draw sheet: 23 words and 3 flips'); $('wdLen').value = '12';
+      if ($('printOnly').textContent !== '' || /print-seed/.test(w.document.body.className)) fails.push('word draw sheet: wiped after printing'); }
+    // dice test and keyboard entry
+    { $('rolls').value = D50; $('rolls').oninput(); cnf = false; $('diceTest').checked = true; w.diceTestToggle();
+      if ($('diceTest').checked || $('rolls').value !== D50) fails.push('dice test: Cancel keeps the rolls and the test off');
+      cnf = true; $('diceTest').checked = true; w.diceTestToggle();
+      if ($('rolls').value !== '' || !$('forgeBtn').disabled || $('diceTestBan').style.display !== '' || !$('rollStats').open) fails.push('dice test: on clears the rolls, FORGE off, banner, box open');
+      $('rolls').value = '123456'.repeat(4); $('rolls').oninput(); if (!/^24 rolls so far\./.test($('diceTestNote').textContent)) fails.push('dice test: asks for more below 30');
+      $('rolls').value = D50; $('rolls').oninput(); if ($('countNote').textContent !== '' || $('bitsNote').textContent !== '' || $('bigSub').textContent !== 'Dice test: no seed is made.' || $('rollCount').textContent !== '50 rolls tested' || w.document.querySelectorAll('#wordGrid .wcell.pv').length || !/^50 rolls tested: /.test($('diceTestNote').textContent)) fails.push('dice test: notes are about the test, no preview');
+      $('rolls').value = '1'.repeat(60); $('rolls').oninput(); if (!/found a problem/.test($('diceTestNote').textContent)) fails.push('dice test: a bad run is a problem');
+      al.length = 0; await w.generate(); if (w.hasSeed() || !/dice test is on/.test(al.join())) fails.push('dice test: FORGE refuses');
+      w.setGate('pass', $('selfTestBadge').textContent, $('selfTestBadge').className); if (!$('forgeBtn').disabled) fails.push('dice test: the self-test gate keeps FORGE off');
+      $('diceTest').checked = false; w.diceTestToggle(); if ($('rolls').value !== '' || $('forgeBtn').disabled || $('diceTestBan').style.display !== 'none' || $('diceTestNote').textContent !== '') fails.push('dice test: off clears the test rolls, FORGE back');
+      const key = (k, o) => { const e = new w.KeyboardEvent('keydown', Object.assign({ key: k, bubbles: true, cancelable: true }, o || {})); w.document.querySelector('#tapRow button').dispatchEvent(e); return e.defaultPrevented; };
+      $('rolls').value = ''; $('rolls').oninput(); key('4'); key('6'); const k9 = key('9'); key('2'); const kb = key('Backspace'); key('3', { ctrlKey: true });
+      if ($('rolls').value !== '46' || k9 || !kb) fails.push('keyboard: digits add, others ignored, Backspace undoes, Ctrl left alone');
+      mode('coin'); key('1'); key('5'); key('0'); if ($('rolls').value !== '10') fails.push('keyboard: coin takes 1 and 0 only'); mode('dice');
+      if (!/^Add a 1 \(or press 1 on the keyboard; Backspace undoes the last one\)$/.test(w.document.querySelector('#tapRow button').title)) fails.push('keyboard: the buttons say so'); }
+    // a seed: summary, QR prints (one FORGE; the other kinds of seed are checked through the summary itself)
+    { const r = await run('dice', 12, D50); await w.passWork; await new Promise((res) => setTimeout(res, 0));
+      const fp0 = fpOf(); if ($('sumLine').textContent !== 'This seed: 12 words from 50 dice rolls, SeedSigner and Coldcard dice rules, passphrase none, fingerprint ' + fp0 + '.') fails.push('summary: the line after FORGE');
+      $('bk4').checked = false; pr('printSummary');
+      if (!/^VOIDFORGE SEED SUMMARY/.test(P.txt) || !P.txt.includes('Seed length: 12 words\nMade from: 50 dice rolls, SeedSigner and Coldcard dice rules\nStrength: the words hold 128 bits of randomness (about 129 bits went in, if every roll was fair)\nPassphrase used: NO\nMaster fingerprint: ' + fp0) || !P.txt.includes($('address').textContent) || P.lh !== 1 || r.split(' ').some((x) => P.txt.includes(' ' + x + ' ')) || !$('bk4').checked) fails.push('summary: the sheet, with LifeHash, no words, ticks the checklist');
+      const sum = (c) => { w.eval('sumCtx = ' + JSON.stringify(c)); const S = w.seedSummary(); w.eval('sumCtx = {count: 50, coin: false, keystone: false, words: 12}'); return S ? S.short + '|' + S.lines[2] : ''; };
+      if (!/^12 words from 128 coin flips, passphrase none, fingerprint [0-9a-f]{8}\.\|Strength: the words hold 128 bits of randomness \(about 128 bits went in, if every flip was fair\)$/.test(sum({ count: 128, coin: true, keystone: false, words: 12 }))) fails.push('summary: coin flips');
+      if (!/^24 words from 100 dice rolls, Keystone dice rules \(each 6 counts as 0\), .*\|Strength: the words hold 256 bits of randomness \(about 258 bits went in/.test(sum({ count: 100, coin: false, keystone: true, words: 24 }))) fails.push('summary: Keystone rules, 24 words');
+      if (!/^24 words from Word draw \(23 drawn words and 3 coin flips\), .*\|Strength: the words hold 256 bits of randomness$/.test(sum({ wd: true, words: 24 }))) fails.push('summary: Word draw');
+      w.showQr('wZpub', 'public key'); pr('printShownQr'); if (!/^VOIDFORGE ACCOUNT PUBLIC KEY/.test(P.qr) || !P.qr.includes($('wZpub').textContent) || !/Address type: Native SegWit/.test(P.qr) || !/<svg/.test(P.qrh)) fails.push('QR prints: the key QR with its text');
+      w.showQr('spAddr', 'Silent Payment address'); pr('printShownQr'); if (!/^VOIDFORGE SILENT PAYMENT ADDRESS/.test(P.qr) || !/Address type: Silent Payment \(BIP-352\)/.test(P.qr)) fails.push('QR prints: Silent Payment');
+      $('wNet').value = 'test'; w.showQr('wDescR', 'receive descriptor'); pr('printShownQr'); if (!/^VOIDFORGE RECEIVE DESCRIPTOR \(TESTNET\)/.test(P.qr)) fails.push('QR prints: testnet named'); $('wNet').value = 'main';
+      w.hideQr(); if (pr('printShownQr') !== 0 || !/SHOW QR/.test(al.join())) fails.push('QR prints: nothing after HIDE QR');
+      const a0 = adOf(); w.showAddrQr('aq', a0); pr('printAddrQr', 'aq'); if (!/^VOIDFORGE RECEIVE ADDRESS/.test(P.qr) || !P.qr.includes('Address: ' + a0) || /Payment link/.test(P.qr) || !P.qr.includes('Master fingerprint: ' + fp0)) fails.push('QR prints: an address');
+      $('aqAmt').value = '0.5'; w.drawAddrQr('aq'); pr('printAddrQr', 'aq'); if (!/^VOIDFORGE PAYMENT REQUEST/.test(P.qr) || !P.qr.includes('Payment link: bitcoin:' + a0 + '?amount=0.5')) fails.push('QR prints: a payment request'); $('aqAmt').value = '';
+      w.hideAddrQr('aq'); if (pr('printAddrQr', 'aq') !== 0 || al.length !== 1) fails.push('QR prints: nothing after HIDE QR (address)');
+      $('passphrase').value = 'p1'; $('passphrase2').value = 'p2'; await w.rePass(); if ($('sumLine').textContent !== '' || pr('printSummary') !== 0 || pr('printSeed') !== 0) fails.push('summary: nothing while the passphrase boxes differ');
+      $('passphrase2').value = 'p1'; await w.rePass(); await new Promise((res) => setTimeout(res, 0)); const fp1 = fpOf();
+      if ($('sumLine').textContent !== 'This seed: 12 words from 50 dice rolls, SeedSigner and Coldcard dice rules, passphrase used, fingerprint ' + fp1 + '.' || fp1 === fp0) fails.push('summary: follows a passphrase change');
+      pr('printSummary'); if (!/Passphrase used: YES \(kept separately; it is not written here\)/.test(P.txt) || P.txt.includes('p1')) fails.push('summary: passphrase used, not shown'); }
+    // CHECK A BACKUP backups
+    { const mn = 'legal winner thank year wave sausage worth useful legal winner thank yellow'; $('phrase').value = mn; $('verifyPass').value = ''; await w.openWalletView(mn, '');
+      w.wvAbbr(); const ab = [...w.document.querySelectorAll('#wvAbbrGrid .wcell')].map((e) => e.textContent).join(' ');
+      if (ab !== mn.split(' ').map((x, i) => (i + 1) + '.' + x.slice(0, 4)).join(' ') || !$('wvAbbrGrid').classList.contains('on') || $('wvAbbrBtn').textContent !== 'HIDE FIRST 4 LETTERS') fails.push('check: SHOW FIRST 4 LETTERS');
+      w.wvAbbr(); if ($('wvAbbrGrid').textContent !== '' || $('wvAbbrGrid').classList.contains('on') || $('wvAbbrBtn').textContent !== 'SHOW FIRST 4 LETTERS') fails.push('check: hides again');
+      pr('printSeed', 'check'); if (P.cells.join(' ') !== mn.split(' ').map((x, i) => String(i + 1).padStart(2, '0') + x).join(' ') || !P.txt.includes($('wvFp').textContent + '\nPassphrase used: NO') || !/Check every word against your first backup/.test(P.txt) || !/Words checked against your first backup/.test(P.txt) || /Rolls \/ flips/.test(P.txt)) fails.push('check: PRINT WORDS');
+      pr('printStamp', 'check'); if (P.cells[0] !== '01LEGA' || P.cells.length !== 12) fails.push('check: PRINT STAMP SHEET');
+      if (pr('printSeedQr', 'check') !== 0 || !/Press SHOW SEEDQR/.test(al.join())) fails.push('check: no SeedQR print before SHOW');
+      w.wvSeedQr('compact'); pr('printSeedQr', 'check'); if (!/^VOIDFORGE COMPACTSEEDQR \(12 words, 21 x 21 squares\)/.test(P.qr) || !P.qr.includes($('wvFp').textContent)) fails.push('check: PRINT THIS QR (CompactSeedQR)');
+      pr('printSqGuide', 'check'); if (!/HAND-COPY GUIDE \(12 words, 21 x 21 squares\)/.test(P.qr) || !/Row 21: /.test(P.qr)) fails.push('check: hand-copy guide');
+      pr('printSqBlank', 'check'); if (!/^VOIDFORGE BLANK 21 x 21 GRID FOR COMPACTSEEDQR/.test(P.qr) || /<path d="M[^"]+" fill="#000"/.test(P.qrh.replace(/<path d="" fill="#000"\/>/, ''))) fails.push('check: blank grid');
+      const wvA = w.document.querySelector('#wvList [data-addr]').getAttribute('data-addr'); w.showAddrQr('wvq', wvA); pr('printAddrQr', 'wvq'); if (!P.qr.includes($('wvFp').textContent) || P.qr.includes($('fingerprint').textContent)) fails.push('QR prints: the checked wallet fingerprint');
+      w.wvSeedQrHide(); if (pr('printSqBlank', 'check') !== 0) fails.push('check: nothing after HIDE');
+      w.wvAbbr(true); w.clearWalletView(); if ($('wvAbbrGrid').textContent !== '' || pr('printSeed', 'check') !== 0 || !/Check a seed phrase first/.test(al[0] || '')) fails.push('check: cleared with the wallet view');
+      w.eval('wvCtx = {kind: "pub"}'); w.wvAbbr(true); if (pr('printSeed', 'check') !== 0 || !/Check a seed phrase first/.test(al[0] || '') || $('wvAbbrGrid').textContent !== '') fails.push('check: nothing for a public key'); w.clearWalletView();
+    }
+    // child seed prints
+    { $('phrase').value = 'abandon '.repeat(11) + 'about'; $('verifyPass').value = ''; $('childApp').value = 'words'; w.childAppChange(); $('childWords').value = '12'; $('childIndex').value = '0'; await w.deriveChild();
+      if ($('childPrintRow').style.display !== '' || $('childPrintBtn').textContent !== 'PRINT CHILD SEED') fails.push('child print: button after DERIVE');
+      const cw = $('childOut').textContent.match(/\d+\. [a-z]+/g).map((x) => x.split(' ')[1]);
+      cnf = false; if (pr('printChild') !== 0) fails.push('child print: asks first'); cnf = true; pr('printChild');
+      if (P.cells.join(' ') !== cw.map((x, i) => String(i + 1).padStart(2, '0') + x).join(' ') || !/^VOIDFORGE CHILD SEED \(BIP85\)/.test(P.txt) || !/Made with BIP85 from the parent wallet 73c5da0a, index 0\. The parent words, the type and the index make it again\./.test(P.txt)) fails.push('child print: the child words and how to make them again');
+      $('verifyPass').value = 'TREZOR'; $('childIndex').value = '3'; await w.deriveChild(); pr('printChild'); if (!/parent wallet [0-9a-f]{8} \(parent words with a passphrase\), index 3\. The parent words, the passphrase, the type/.test(P.txt) || /73c5da0a/.test(P.txt)) fails.push('child print: passphrase and index');
+      $('verifyPass').value = ''; $('childIndex').value = '0'; $('childApp').value = 'pwd64'; w.childAppChange(); $('childLen').value = '21'; await w.deriveChild();
+      if ($('childPrintBtn').textContent !== 'PRINT PASSWORD') fails.push('child print: label follows the type');
+      pr('printChild'); if (!/^VOIDFORGE CHILD PASSWORD \(BIP85\)/.test(P.txt) || P.sec !== 'ps-secret' || P.secTxt.length !== 21 || !$('childOut').textContent.includes(P.secTxt)) fails.push('child print: a password in one box');
+      w.clearChild(); if ($('childPrintRow').style.display !== 'none' || pr('printChild') !== 0 || !/DERIVE first/.test(al.join())) fails.push('child print: HIDE removes it');
+      $('childApp').value = 'words'; w.childAppChange(); }
+    // typo helper, 4-letter forms
+    { let r = await w.checkPhrase('abandon '.repeat(10) + 'abandn about'); if (r.msg !== 'Unknown word: abandn (word 11): closest BIP39 word abandon. Check it on your backup.') fails.push('typo: one unknown word');
+      r = await w.checkPhrase('abandon '.repeat(9) + 'adress zzzzz about'); if (r.msg !== 'Unknown words: adress (word 10): closest BIP39 words address, dress; zzzzz (word 11): no BIP39 word is close. Check them on your backup.') fails.push('typo: two unknown words');
+      if (w.wordDistance('abandon', 'abnadon', 3) !== 1 || w.wordFromPrefix('yel') !== null || w.wordFromPrefix('yell') !== 'yellow') fails.push('typo: swap distance and 4 letters');
+      r = await w.checkPhrase('aban '.repeat(11) + 'abou'); if (!r.ok || r.mnemonic !== 'abandon '.repeat(11) + 'about' || !/\(12 words read from the first letters\)$/.test(r.msg)) fails.push('4-letter: read as full words');
+      r = await w.checkPhrase('abandon '.repeat(11) + 'abou'); if (!/\(1 word read from the first letters\)$/.test(r.msg)) fails.push('4-letter: one word');
+      r = await w.checkPhrase('abandon '.repeat(12)); if (r.msg !== 'Checksum failed. Every word is a BIP39 word, so one is probably wrong, missing or out of order: Reforge in EXTRA TOOLS can search for it.') fails.push('typo: checksum points to Reforge');
+      $('phrase').value = 'aban '.repeat(11) + 'abou'; await w.verify(); if ($('phrase').value !== 'abandon '.repeat(11) + 'about') fails.push('4-letter: VERIFY writes the full words back'); w.clearWalletView(); }
+    // explain an address
+    { const X = async (a) => { $('checkAddr').value = a; await w.explainAddrUi(); return [$('addrExplain').className, $('addrExplain').textContent]; };
+      $('checkAddr').value = 'hello'; $('addrExplain').textContent = ''; $('checkAddr').dispatchEvent(new w.Event('input')); for (let i = 0; i < 40 && $('addrExplain').textContent === ''; i++) await new Promise((res) => setTimeout(res, 5));
+      if (!/^Not a Bitcoin address/.test($('addrExplain').textContent)) fails.push('explain: typing in the box explains it');
+      const seed0 = mnemonicToSeedSync('abandon '.repeat(11) + 'about', ''), r0 = HDKey.fromMasterSeed(seed0), spX = (coin, hrp) => bech32m.encode(hrp, [0, ...bech32m.toWords(new Uint8Array([...r0.derive(`m/352'/${coin}'/0'/1'/0`).publicKey, ...r0.derive(`m/352'/${coin}'/0'/0'/0`).publicKey]))], 1023);
+      const cases = [
+        ['bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu', 'status ok', /^Native SegWit address \(P2WPKH\) on Bitcoin mainnet \(real money\)\..*In the dictionary: Native SegWit · P2WPKH$/],
+        ['bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3', 'status ok', /^SegWit script address \(P2WSH\)/],
+        ['bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr', 'status ok', /^Taproot address \(P2TR\) on Bitcoin mainnet/],
+        ['tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx', 'status ok', /^Native SegWit address \(P2WPKH\) on testnet or signet/],
+        ['bc1zw508d6qejxtdg4y5r3zarvaryvaxxpcs', 'status bad', /^A SegWit version 2 address with a 16-byte program/],
+        ['bc1qW508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4', 'status bad', /mixes capital and small letters/],
+        ['bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyv', 'status bad', /^Not a valid address: the checksum does not match/],
+        ['1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2', 'status ok', /^Legacy address \(P2PKH\) on Bitcoin mainnet/],
+        ['mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn', 'status ok', /^Legacy address \(P2PKH\) on testnet/],
+        ['3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy', 'status ok', /^Script address \(P2SH\) on Bitcoin mainnet/],
+        ['1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN3', 'status bad', /^Not a valid address: the checksum does not match/],
+        ['5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ', 'status bad', /^This is a PRIVATE KEY \(WIF\)/],
+        ['KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn', 'status bad', /^This is a PRIVATE KEY \(WIF\)/],
+        ['xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8', 'status warn', /^This is an extended PUBLIC key/],
+        ['xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi', 'status bad', /^This is an extended PRIVATE key/],
+        ['abandon '.repeat(11) + 'about', 'status bad', /^These look like SEED WORDS/],
+        ['wpkh([d34db33f/84h/0h/0h]xpub6/0/*)', 'status warn', /^This is a descriptor/],
+        ['lnbc1pvjluezsp5zyg3zyg3zyg', 'status warn', /^This is a Lightning invoice/],
+        ['bitcoin:bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu?amount=1', 'status ok', /It was written as a payment request \(BIP-21\).*In the dictionary: BIP21 · Native SegWit · P2WPKH$/],
+        [spX(0, 'sp'), 'status ok', /^Silent Payment address \(BIP-352\) on Bitcoin mainnet/],
+        [spX(1, 'tsp'), 'status ok', /^Silent Payment address \(BIP-352\) on testnet/],
+        [spX(0, 'sp').slice(0, -1) + (spX(0, 'sp').endsWith('q') ? 'p' : 'q'), 'status bad', /^Not a valid Silent Payment address/],
+        ['hello', 'status bad', /^Not a Bitcoin address VOIDFORGE recognises/],
+      ];
+      for (const [a, c, re] of cases) { const [cl, tx] = await X(a); if (cl !== c || !re.test(tx)) { fails.push('explain: ' + a.slice(0, 14)); break; } }
+      await X(''); if ($('addrExplain').textContent !== '' || $('addrExplain').className !== 'status') fails.push('explain: empty box, empty line');
+      w.eval('dictCat = "Units"'); $('dictSearch').value = 'zzzz'; w.dictFilter(); await X('bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr'); w.dictGo('SegWit'); $('addrExplain').querySelector('button.dict-link').click();
+      const hit = [...w.document.querySelectorAll('.dict-item.dict-hit')];
+      if (hit.length !== 1 || hit[0].querySelector('dt').textContent !== 'Taproot' || hit[0].style.display === 'none' || !$('dictBox').open || $('tp-about').classList.contains('tab-off') || $('dictSearch').value !== '') fails.push('dictionary links: open the entry');
+      w.showTab('make');
+      const wl = [...w.document.querySelectorAll('#whatBox li')]; if (wl.length !== 10 || wl.filter((e) => e.querySelector('.tag-secret')).length !== 6 || wl.filter((e) => e.querySelector('.tag-public')).length !== 3) fails.push('what guide: 6 secret, 3 public'); }
+    w.print = op; w.alert = oa; w.confirm = oc; $('checkAddr').value = ''; $('phrase').value = ''; $('rollStats').open = false; $('addrExplain').textContent = ''; $('addrExplain').className = 'status';
+  } catch (e) { fails.push('v2.4.0: the probe crashed: ' + e.message); }
   try { // v2.3.0 Keystone dice rules (expected words from @scure and Node's SHA-256 of the rolls with every 6 as 0)
     const rules = (v) => { $('diceRules').value = v; $('diceRules').dispatchEvent(new w.Event('change')); };
     const mk = (r, wc) => entropyToMnemonic(sha(r.replace(/6/g, '0')).slice(0, wc === 24 ? 32 : 16), wordlist);
@@ -1731,7 +1867,7 @@ const M = [
   ['RIPEMD-160 round constant altered',     '0xA953FD4E', '0xA953FD4F'],
   ['dice cleaning drops sixes',             's.replace(/[^1-6]/g,"")', 's.replace(/[^1-5]/g,"")'],
   ['coin cleaning drops ones',              's.replace(/[^01]/g,"")', 's.replace(/[^0]/g,"")'],
-  ['phrase checksum check disabled',        'if(bits.slice(eBits)!==bytesToBits(h).slice(0,cLen)) return', 'if(false) return'],
+  ['phrase checksum check disabled',        'if(bits.slice(eBits)!==bytesToBits(h).slice(0,cLen)){ const en', 'if(false){ const en'],
   ['CSP weakened',                          "default-src 'none'", "default-src *"],
   ['address: a hardened level made non-hardened', '[[84,true],[0,true],[0,true],[0,false],[0,false]]', '[[84,true],[0,true],[0,false],[0,false],[0,false]]'],
   ['address: purpose 84 -> 44',             'of [[84,true],[0,true],[0,true],[0,false],[0,false]]', 'of [[44,true],[0,true],[0,true],[0,false],[0,false]]'],
@@ -1778,7 +1914,7 @@ const M = [
   ['multisig: origin path missing the script', '"h/" + account + "h/" + M.script + "h";', '"h/" + account + "h";'],
   ['multisig: child number is the account not the script', '((M ? M.script : account)+0x80000000)', '(account+0x80000000)'],
   ['lastword: unknown word not rejected', 'for(const w of words){ if(!reforgeHas(w)) throw new Error("Unknown word: " + w); }', ''],
-  ['verify: property names accepted as words', 'for(const w of words){ if(!Object.prototype.hasOwnProperty.call(WORD_MAP, w)) return {ok:false, msg:"Unknown word: "+w}; }', 'for(const w of words){ if(!(w in WORD_MAP)) return {ok:false, msg:"Unknown word: "+w}; }'],
+  ['verify: property names accepted as words', 'words.forEach((w, i) => { if(Object.prototype.hasOwnProperty.call(WORD_MAP, w)) return;', 'words.forEach((w, i) => { if(w in WORD_MAP) return;'],
   ['reforge: checksum bits misaligned', 'acc = (acc << 11) | idx[i]; bits += 11;', 'acc = (acc << 10) | idx[i]; bits += 11;'],
   ['reforge: checksum compared with the wrong bits', 'return acc === (h[0] >>> (8 - cLen));', 'return acc === (h[0] >>> (7 - cLen));'],
   ['reforge: checksum not compared', 'return acc === (h[0] >>> (8 - cLen));', 'return true;'],
@@ -1817,8 +1953,8 @@ const M = [
   ['reforge passphrase: an invalid phrase accepted', '|| !(await reforgeChecksumOk(Uint16Array.from(parsed.idx))))', ')'],
   ['reforge: fingerprint odds wrong', 'Math.round(2 ** 32 / Math.max(1, n))', 'Math.round(2 ** 31 / Math.max(1, n))'],
   ['stamp sheet: box numbers not padded', 'add("ps-n", ("0" + (i + 1)).slice(-2), c)', 'add("ps-n", String(i + 1), c)'],
-  ['stamp sheet: area not cleaned', 'done = true; po.textContent = ""; document.body.classList.remove("print-seed"); };', 'done = true; document.body.classList.remove("print-seed"); };'],
-  ['stamp sheet: print class not removed', 'done = true; po.textContent = ""; document.body.classList.remove("print-seed"); };', 'done = true; po.textContent = ""; };'],
+  ['stamp sheet: area not cleaned', 'restart the computer.");\n  document.body.classList.add("print-seed");\n  let done = false;\n  const cleanup = () => { if(done) return; done = true; po.textContent = ""; document.body.classList.remove("print-seed"); };', 'restart the computer.");\n  document.body.classList.add("print-seed");\n  let done = false;\n  const cleanup = () => { if(done) return; done = true; document.body.classList.remove("print-seed"); };'],
+  ['stamp sheet: print class not removed', 'restart the computer.");\n  document.body.classList.add("print-seed");\n  let done = false;\n  const cleanup = () => { if(done) return; done = true; po.textContent = ""; document.body.classList.remove("print-seed"); };', 'restart the computer.");\n  document.body.classList.add("print-seed");\n  let done = false;\n  const cleanup = () => { if(done) return; done = true; po.textContent = ""; };'],
   ['auto-clear: idle time shortened', 'm * 60000) autoWipe(', 'm * 6000) autoWipe('],
   ['auto-clear: wipes at once', 'if(m && (now || Date.now()) - autoLast >= m * 60000)', 'if(m)'],
   ['auto-clear: never means wipe', 'if(m && (now || Date.now())', 'if((now || Date.now())'],
@@ -1848,7 +1984,7 @@ const M = [
   ['roll sheet: boxes not numbered', 'const c = add("ps-cell", "", g); add("ps-n", String(i), c);', 'const c = add("ps-cell", "", g); add("ps-n", "", c);'],
   ['roll sheet: ignores coin mode', 'const coin = getMode() === "coin", wc', 'const coin = false, wc'],
   ['roll sheet: ignores the word count', 'need = getNeeded(wc), unit', 'need = getNeeded("12"), unit'],
-  ['roll sheet: no secret warning', 'Once filled in, this sheet is as secret as your seed', 'This sheet is harmless'],
+  ['roll sheet: no secret warning', 'Once filled in, this sheet is as secret as your seed: anyone who sees it can make your wallet.\\nType it in on an offline computer, then shred it (or keep it only as a locked-away backup of the rolls)', 'This sheet is harmless.\\nType it in on an offline computer, then shred it (or keep it only as a locked-away backup of the rolls)'],
   ['roll sheet: coin sides not asked for', '(coin ? "1 means: ______   0 means: ______\\n" :', '(coin ? "" :'],
   ['roll sheet: area not cleaned', 'done = true; po.replaceChildren(); document.body.classList.remove("print-seed"); };', 'done = true; document.body.classList.remove("print-seed"); };'],
   ['roll sheet: print class not removed', 'done = true; po.replaceChildren(); document.body.classList.remove("print-seed"); };', 'done = true; po.replaceChildren(); };'],
@@ -1858,10 +1994,10 @@ const M = [
   ['stamp sheet: not capitals', 'add("ps-w", w.slice(0, 4).toUpperCase(), c);', 'add("ps-w", w.slice(0, 4), c);'],
   ['stamp sheet: no question before printing', 'if(!confirm("Printing sends your seed (shortened to 4 letters a word)', 'if(false && !confirm("Printing sends your seed (shortened to 4 letters a word)'],
   ['stamp sheet: wrong grid class', '"ps-grid ps-stamp ps-" + ws.length', '"ps-grid ps-" + ws.length'],
-  ['stamp sheet: passphrase line dropped', '"\\n" + passLine("printed"));\n  add("ps-fields", "To get the words back', '"\\n");\n  add("ps-fields", "To get the words back'],
+  ['stamp sheet: passphrase line dropped', 'add("ps-info", S.fp + "\\n" + S.pass);\n  add("ps-fields", "To get the words back', 'add("ps-info", S.fp + "\\n");\n  add("ps-fields", "To get the words back'],
   ['stamp sheet: no way back to the words', 'type the 4-letter forms into Reforge in VOIDFORGE', 'type the 4-letter forms into the word list'],
   ['stamp sheet: button not wired', 'id="stampBtn" onclick="printStamp()"', 'id="stampBtn" onclick=""'],
-  ['stamp sheet: printed without a seed', 'if(!hasSeed()) return alert("Generate a seed first");\n  const phrase = document.getElementById("genResult").textContent.split("\\n")[0];\n  if(!confirm("Printing sends your seed (shortened', 'const phrase = document.getElementById("genResult").textContent.split("\\n")[0];\n  if(!confirm("Printing sends your seed (shortened'],
+  ['stamp sheet: printed without a seed', '  if(!hasSeed()){ alert("Generate a seed first"); return null; }\n  if(passMismatch()) return null;\n  return {words:', '  if(passMismatch()) return null;\n  return {words:'],
   ['try accounts: range stops one account short', 'for(let acct = 0; acct <= MAXA; acct++){', 'for(let acct = 0; acct < MAXA; acct++){'],
   ['try accounts: passphrase variant dropped', 'const variants = vp ? [["without passphrase", ""], ["with passphrase", vp]] : [["without passphrase", ""]];', 'const variants = [["without passphrase", ""]];'],
   ['try accounts: depth ignored', 'DEPTH = depth || ACCT_SCAN_DEPTH', 'DEPTH = ACCT_SCAN_DEPTH'],
@@ -2091,12 +2227,12 @@ const M = [
   ['seedqr: hex capitals not accepted', '/^[0-9a-fA-F]+$/.test(q) && [32,40,48,56,64]', '/^[0-9a-f]+$/.test(q) && [32,40,48,56,64]'],
   ['seedqr: hex capitals not lowered', 'fromHex(q.toLowerCase())', 'fromHex(q)', true],
   ['seedqr: wrong wordlist index', 'words.push(WORDLIST[n]);', 'words.push(WORDLIST[n + 1]);'],
-  ['seedqr: converted words not shown in the box', 'if(r.ok && r.fromCode) document.getElementById("phrase").value = r.mnemonic;', ''],
+  ['seedqr: converted words not shown in the box', 'if(r.ok && (r.fromCode || r.expanded)) document.getElementById("phrase").value = r.mnemonic;', 'if(r.ok && r.expanded) document.getElementById("phrase").value = r.mnemonic;'],
   ['seedqr: source not named', ' (read from "+pc.kind+")" : ""', ' (read from)" : ""'],
   ['compare: taproot list only first address', 'ids.list.some(t => t === fold)', 'ids.list.slice(0,1).some(t => t === fold)'],
   ['passphrase line: YES/NO swapped (print and download)', '(used ? "YES (keep it separate; it is not " + kind + " here)" : "NO")', '(used ? "NO" : "YES (keep it separate; it is not " + kind + " here)")'],
   ['result line: no-passphrase wording wrong', ': "none");\n}', ': "used");\n}'],
-  ['grid: word numbers off by one',           'n.textContent = (i + 1) + "."', 'n.textContent = i + "."'],
+  ['grid: word numbers off by one',           'const n = document.createElement("b"); n.textContent = (i + 1) + "."; c.appendChild(n);', 'const n = document.createElement("b"); n.textContent = i + "."; c.appendChild(n);'],
   ['seed flag never set (SEND TO VERIFY would refuse)', 'g.dataset.seed = "1";', 'g.dataset.seed = "";'],
   ['seed flag not cleared after an error (error text treated as a seed)', 'delete g.dataset.seed;', ''],
   ['plain message: too few rolls wording', '"Enter " + diff + " more "', '"Enter " + rolls.length + " more "'],
@@ -2248,7 +2384,7 @@ const M = [
   ["watch-only: taproot ignores the point", "  if(type === \"tr\") return taprootAddressFromPoint(pointFromPub(pub), N.hrp);", "  if(type === \"tr\") return taprootAddressFromPoint(pointFromPub(pub), \"bc\").then(a => a + \"\");\n  if(false) return;"],
   ["Electrum: SegWit prefix wrong", "  if(h.startsWith(\"100\")) return \"SegWit\";", "  if(h.startsWith(\"10\")) return \"SegWit\";"],
   ["Electrum: wrong HMAC key", "new TextEncoder().encode(\"Seed version\")", "new TextEncoder().encode(\"Seed\")"],
-  ["Electrum: note never added to a bad checksum", "return {ok:false, msg:\"Checksum failed\" + await electrumNote(phrase)};", "return {ok:false, msg:\"Checksum failed\"};"],
+  ["Electrum: note never added to a bad checksum", "const en = await electrumNote(phrase); return {ok:false, msg:\"Checksum failed\" + (en ||", "const en = \"\"; return {ok:false, msg:\"Checksum failed\" + (en ||"],
   ["payment request: no decimal limit", "if(!/^(\\d{1,8})(\\.\\d{1,8})?$/.test(a))", "if(!/^(\\d{1,8})(\\.\\d{1,9})?$/.test(a))"],
   ["payment request: 21 million not enforced", "if(sats > 2100000000000000n)", "if(sats > 2100000000000001n)"],
   ["payment request: zero accepted", "if(sats === 0n) return {ok:false", "if(false) return {ok:false"],
@@ -2411,15 +2547,13 @@ const M = [
   ["seedqr: guide stays after closing", "document.getElementById(\"sqGuide\").style.display = \"none\";\n}\nfunction openSqGuide", "}\nfunction openSqGuide"],
   ["seedqr: print code without asking", "if(!confirm(\"Printing sends your seed (as a QR code) to a printer", "if(false && !confirm(\"Printing sends your seed (as a QR code) to a printer"],
   ["seedqr: print guide without asking", "if(!confirm(\"Printing sends your seed (as a QR code grid) to a printer", "if(false && !confirm(\"Printing sends your seed (as a QR code grid) to a printer"],
-  ["seedqr: print without a shown code", "if(!sqRows) return alert(\"Press SHOW SEEDQR or SHOW COMPACTSEEDQR first, then print the one you want.\");", "if(false) return alert(\"Press SHOW SEEDQR or SHOW COMPACTSEEDQR first, then print the one you want.\");"],
-  ["seedqr: print guide without a shown code", "if(!sqRows) return alert(\"Press SHOW SEEDQR or SHOW COMPACTSEEDQR first, then print the guide", "if(false) return alert(\"Press SHOW SEEDQR or SHOW COMPACTSEEDQR first, then print the guide"],
-  ["seedqr: blank grid without a shown code", "if(!sqRows) return alert(\"Press SHOW SEEDQR or SHOW COMPACTSEEDQR first, so the grid", "if(false) return alert(\"Press SHOW SEEDQR or SHOW COMPACTSEEDQR first, so the grid"],
+  ["seedqr: print without a shown code", "if(!kind){ alert(\"Press SHOW SEEDQR or SHOW COMPACTSEEDQR first, then print", "if(false){ alert(\"Press SHOW SEEDQR or SHOW COMPACTSEEDQR first, then print"],
   ["seedqr: guide opened without a shown code", "if(!sqRows) return alert(\"Press SHOW SEEDQR or SHOW COMPACTSEEDQR first.\");", "if(false) return alert(\"Press SHOW SEEDQR or SHOW COMPACTSEEDQR first.\");"],
-  ["seedqr: blank grid sheet prints the filled code", "qrGridSvg(sqRows, 0, 0, n, n, qrBlockSize(n), true), true,", "qrGridSvg(sqRows, 0, 0, n, n, qrBlockSize(n), false), true,"],
+  ["seedqr: blank grid sheet prints the filled code", "qrGridSvg(Q.rows, 0, 0, n, n, qrBlockSize(n), true), true,", "qrGridSvg(Q.rows, 0, 0, n, n, qrBlockSize(n), false), true,"],
   ["seedqr: row list has no row numbers", "\"Row \" + (y + 1) + \": \" + qrRowRuns(row)", "\"Row \" + (y) + \": \" + qrRowRuns(row)"],
   ["seedqr: print area not cleaned", "document.body.classList.remove(\"print-qr\"); po.textContent = \"\"; };", "po.textContent = \"\"; };"],
   ["seedqr: print class not removed", "document.body.classList.remove(\"print-qr\"); po.textContent = \"\"; };", "document.body.classList.remove(\"print-qr\"); };"],
-  ["seedqr: print sheet passphrase line missing", "document.getElementById(\"fingerprint\").textContent + \"\\n\" + passLine(\"printed\") + \"\\n\\nScan with an offline", "document.getElementById(\"fingerprint\").textContent + \"\\n\\nScan with an offline"],
+  ["seedqr: print sheet passphrase line missing", "S.fp + \"\\n\" + S.pass + \"\\n\\nScan with an offline", "S.fp + \"\\n\\nScan with an offline"],
   ["explain: entropy taken from the wrong bytes", "const entropy = digest.slice(0, entLen);", "const entropy = digest.slice(1, entLen + 1);"],
   ["explain: checksum made from the wrong bytes", "const hash2 = await sha256bytes(entropy);", "const hash2 = await sha256bytes(digest);"],
   ["explain: checksum too short", "bytesToBits(hash2).slice(0, entLen * 8 / 32)", "bytesToBits(hash2).slice(0, entLen * 8 / 33)"],
@@ -2451,8 +2585,8 @@ const M = [
   ["print sheet: box numbers not padded", "add(\"ps-n\", String(i + 1).padStart(2, \"0\"), c)", "add(\"ps-n\", String(i + 1), c)"],
   ["print sheet: first word printed in every box", "add(\"ps-w\", w, c)", "add(\"ps-w\", ws[0], c)"],
   ["print sheet: printed without asking", "if(!confirm(\"Printing sends your seed to a printer and its spooler.", "if(false && !confirm(\"Printing sends your seed to a printer and its spooler."],
-  ["print sheet: passphrase line missing", "document.getElementById(\"address\").textContent + \"\\n\" + passLine(\"printed\"));\n  add(\"ps-fields\"", "document.getElementById(\"address\").textContent);\n  add(\"ps-fields\""],
-  ["print sheet: fingerprint missing", "add(\"ps-info\", document.getElementById(\"fingerprint\").textContent + \"\\n\" + document.getElementById(\"address\").textContent", "add(\"ps-info\", document.getElementById(\"address\").textContent"],
+  ["print sheet: passphrase line missing", "add(\"ps-info\", [S.fp, S.addr, S.pass].filter(Boolean).join(\"\\n\"));", "add(\"ps-info\", [S.fp, S.addr].filter(Boolean).join(\"\\n\"));"],
+  ["print sheet: fingerprint missing", "add(\"ps-info\", [S.fp, S.addr, S.pass].filter(Boolean).join(\"\\n\"));", "add(\"ps-info\", [S.addr, S.pass].filter(Boolean).join(\"\\n\"));"],
   ["print sheet: area not cleaned", "document.body.classList.remove(\"print-seed\"); po.textContent = \"\"; };", "po.textContent = \"\"; };"],
   ["print sheet: print class not removed", "document.body.classList.remove(\"print-seed\"); po.textContent = \"\"; };", "document.body.classList.remove(\"print-seed\"); };"],
   ["explain: entropy size 16 -> 15 bytes", "async function explainSteps(rolls, wc){\n  const entLen = {12:16,24:32}[wc];", "async function explainSteps(rolls, wc){\n  const entLen = {12:15,24:32}[wc];"],
@@ -2593,7 +2727,7 @@ const M = [
   ['multisig: recovery sheet leaves out the addresses', '"FIRST RECEIVING ADDRESSES:", ...ms.addrs, "",', '"FIRST RECEIVING ADDRESSES:", "",'],
   ['multisig: recovery sheet testnet label missing', '(ms.net === "test" ? ", TESTNET (practice coins only)" : ", mainnet")', '", mainnet"'],
   ['multisig: sheet title testnet label missing', '"VOIDFORGE MULTISIG RECOVERY SHEET" + (ms.net === "test" ? " (TESTNET)" : "")', '"VOIDFORGE MULTISIG RECOVERY SHEET"'],
-  ['multisig: sheet QR size switch (layout only)', 'q.version > 15, msSheetText()', 'q.version > 14, msSheetText()', true],
+  ['multisig: sheet QR size switch (layout only)', 'ms.n >= 5 ? "pq-ms pq-ms-l" : "pq-ms"', 'ms.n >= 6 ? "pq-ms pq-ms-l" : "pq-ms"', true],
   ['multisig: CLEAR ALL keeps the setup', 'msReset(); wipeSeed();\n}', 'wipeSeed();\n}'],
   ['multisig: reset leaves the descriptor on screen', 'for(const id of ["msDescR","msDescC","msAddrs","msSlots","msRunErr","msBanErr","msErr"])', 'for(const id of ["msDescC","msAddrs","msSlots","msRunErr","msBanErr","msErr"])'],
   ['core guide: new wallet is not watch-only', 'createwallet "voidforge-watch" true true "" false true', 'createwallet "voidforge-watch" false true "" false true'],
@@ -2790,7 +2924,7 @@ const M = [
   ['qr: seed panel covers content again', '#cardGen .gen-right { grid-column: 2; grid-row: 1 / span 2;', '#cardGen .gen-right { grid-column: 2; grid-row: 1;'],
   ['qr: bottom area spans under the panel', '#cardGen .gen-bottom { grid-column: 1; grid-row: 2;', '#cardGen .gen-bottom { grid-column: 1 / -1; grid-row: 2;'],
   ['qr: no margin under the tab bar', '#qrBox, #sqBox, #msQrBox { scroll-margin: 80px 0 20px; }', '#qrBox, #sqBox, #msQrBox { scroll-margin: 0; }'],
-  ['qr: watch-only QR not scrolled', '  document.getElementById("qrBox").style.display = "";\n  scrollQrIntoView("qrBox");', '  document.getElementById("qrBox").style.display = "";'],
+  ['qr: watch-only QR not scrolled', '  qrShown = {id, label};\n  scrollQrIntoView("qrBox");', '  qrShown = {id, label};'],
   ['qr: SeedQR not scrolled', '  document.getElementById("sqBox").style.display = "";\n  scrollQrIntoView("sqBox");', '  document.getElementById("sqBox").style.display = "";'],
   ['qr: multisig QR not scrolled', '  msEl("msQrBox").style.display = "";\n  scrollQrIntoView("msQrBox");', '  msEl("msQrBox").style.display = "";'],
   ['qr: scrolls to the top edge', 'el.scrollIntoView({behavior: "smooth", block: "nearest"})', 'el.scrollIntoView({behavior: "smooth", block: "start"})'],
@@ -2923,7 +3057,7 @@ const M = [
   // ---- v2.3.0: the minimum or more rolls ----
   ['more rolls: refused again', 'if(rolls.length < need){', 'if(rolls.length !== need){'],
   ['more rolls: one short accepted', 'if(rolls.length < need){', 'if(rolls.length < need - 1){'],
-  ['more rolls: note missing', 'document.getElementById("countNote").textContent = countNote(rolls.length, need, isCoin, keystoneOn());', ''],
+  ['more rolls: note missing', 'document.getElementById("countNote").textContent = diceTestOn() ? "" : countNote(rolls.length, need, isCoin, keystoneOn());', 'document.getElementById("countNote").textContent = "";'],
   ['more rolls: note below the minimum', '  if(n < need) return "";\n  if(ks && n > KEYSTONE_MAX)', '  if(ks && n > KEYSTONE_MAX)'],
   ['more rolls: exact note for more', '  if(n === need) return coin ?', '  if(n >= need) return coin ?'],
   ['more rolls: SeedSigner and Coldcard swapped', '"Coldcard makes the same words from these rolls; SeedSigner takes exactly "', '"SeedSigner makes the same words from these rolls; Coldcard takes exactly "'],
@@ -2932,10 +3066,10 @@ const M = [
   ['more rolls: double-paste note never', '  if(n > 2 * need) t +=', '  if(n > 3 * need) t +='],
   ['more rolls: coin note says rolled', '(coin ? "flipped" : "rolled")', '"rolled"'],
   ['more rolls: length line without "or more"', ' + (coin ? " coin flips" : " dice rolls") + " or more")', ' + (coin ? " coin flips" : " dice rolls"))'],
-  ['roll sheet: no extra boxes', 'for(let i = need + 1; i <= need + 10; i++)', 'for(let i = need + 1; i <= need; i++)'],
+  ['roll sheet: no extra boxes', 'for(let i = need + 1; i <= need + extra; i++)', 'for(let i = need + 1; i <= need; i++)'],
   ['roll sheet: extra boxes not dashed', 'const c = add("ps-cell ps-extra", "", gx);', 'const c = add("ps-cell", "", gx);'],
   ['roll sheet: dashed style missing', '    body.print-seed #printOnly .ps-roll .ps-cell.ps-extra { border-style: dashed; }\n', ''],
-  ['roll sheet: extra boxes numbered from 1', 'for(let i = need + 1; i <= need + 10; i++){ const c = add("ps-cell ps-extra", "", gx); add("ps-n", String(i), c); }', 'for(let i = need + 1; i <= need + 10; i++){ const c = add("ps-cell ps-extra", "", gx); add("ps-n", String(i - need), c); }'],
+  ['roll sheet: extra boxes numbered from 1', 'for(let i = need + 1; i <= need + extra; i++){ const c = add("ps-cell ps-extra", "", gx); add("ps-n", String(i), c); }', 'for(let i = need + 1; i <= need + extra; i++){ const c = add("ps-cell ps-extra", "", gx); add("ps-n", String(i - need), c); }'],
   // ---- v2.3.0: Keystone dice rules ----
   ['Keystone: 6 not turned into 0', 'function hashInput(rolls){ return keystoneOn() ? rolls.replace(/6/g, "0") : rolls; }', 'function hashInput(rolls){ return rolls; }'],
   ['Keystone: 1 turned into 0', 'function hashInput(rolls){ return keystoneOn() ? rolls.replace(/6/g, "0") : rolls; }', 'function hashInput(rolls){ return keystoneOn() ? rolls.replace(/1/g, "0") : rolls; }'],
@@ -3034,7 +3168,7 @@ const M = [
   // ---- v2.3.0 review fixes ----
   ['Word draw: seed not cleared when its inputs change', 'function wdUpdate(){\n  staleCheck();\n', 'function wdUpdate(){\n'],
   ['Word draw: input signature fixed', 'if(kind === "wd") return "wd|" +', 'if(kind === "wd") return "wd"; if(0) return "wd|" +'],
-  ['roll sheet: Keystone named as SeedSigner and Coldcard', '  const ks = keystoneOn();\n  add("ps-sub ps-extra-sub"', '  const ks = false;\n  add("ps-sub ps-extra-sub"'],
+  ['roll sheet: Keystone named as SeedSigner and Coldcard', '  const ks = keystoneOn(), extra = rsExtraCount(need)', '  const ks = false, extra = rsExtraCount(need)'],
   ['roll sheet: dice rules not recorded', '"Dice rules: " + (ks ? "Keystone (each 6 counts as 0)" : "SeedSigner and Coldcard") + "\\n"', '""'],
   ['Keystone: length line without the maximum', '(keystoneOn() ? getNeeded(wc) + " to " + KEYSTONE_MAX + " dice rolls" :', '(false ? getNeeded(wc) + " to " + KEYSTONE_MAX + " dice rolls" :'],
   ['Keystone: preview above the maximum', ' || (keystoneOn() && rolls.length > KEYSTONE_MAX)){ previewClear(); return; }', '){ previewClear(); return; }'],
@@ -3060,6 +3194,141 @@ const M = [
   ['END SESSION: no reload', '.then(() => endSessionReload());', '.then(() => {});'],
   ['END SESSION: reload does nothing', 'function endSessionReload(){ location.reload(); }', 'function endSessionReload(){}'],
   ['END SESSION: button missing', '<button class="btn-clear" id="endSessionBtn" onclick="endSession()">END SESSION</button>\n', ''],
+  // ---- v2.4.0: prints, roll sheet extras, CHECK A BACKUP backups, dice test, keyboard, typo helper, explain an address, summary ----
+  ["print v2.4: hidden page still laid out", "    body.print-seed > :not(#printOnly), body.print-qr > :not(#printQr) { display: none !important; }\n", ""],
+  ["print v2.4: no page margin", "    @page { margin: 12mm; }\n", ""],
+  ["print v2.4: print areas inside the page", "  </footer>\n</div>\n<div id=\"printOnly\"></div>\n<div id=\"printQr\"></div>\n", "  </footer>\n<div id=\"printOnly\"></div>\n<div id=\"printQr\"></div>\n</div>\n"],
+  ["print v2.4: compact roll grid rule gone", "    body.print-seed #printOnly .ps-grid.ps-roll.ps-roll20 { grid-template-columns: repeat(20, 1fr); gap: 3px; }\n", ""],
+  ["print v2.4: 15-21 word grid rule gone", "    body.print-seed #printOnly .ps-grid.ps-15, body.print-seed #printOnly .ps-grid.ps-18, body.print-seed #printOnly .ps-grid.ps-21 { grid-template-columns: repeat(3, 1fr); }\n", ""],
+  ["print v2.4: long stamp sheets in 3 columns", "body.print-seed #printOnly .ps-grid.ps-stamp.ps-18, body.print-seed #printOnly .ps-grid.ps-stamp.ps-21, ", ""],
+  ["roll sheet v2.4: Keystone maximum never offered", "if(keystoneOn() && !mx){", "if(false && !mx){"],
+  ["roll sheet v2.4: Keystone maximum kept without Keystone", "else if(!keystoneOn() && mx){", "else if(false && mx){"],
+  ["roll sheet v2.4: maximum stays chosen", "if(sel.value === \"max\") sel.value = \"10\"; mx.remove();", "mx.remove();"],
+  ["roll sheet v2.4: Keystone maximum short", "if(v === \"max\") return keystoneOn() ? KEYSTONE_MAX - need : 10;", "if(v === \"max\") return keystoneOn() ? KEYSTONE_MAX - need - 1 : 10;"],
+  ["roll sheet v2.4: choice ignored", "return parseInt(v, 10) || 0;", "return 10;"],
+  ["roll sheet v2.4: menu not synced", "  syncMethodUi();\n  rsExtraSync();\n}", "  syncMethodUi();\n}"],
+  ["roll sheet v2.4: compact layout never used", "if(wide) g.classList.add(\"ps-roll20\");", ""],
+  ["roll sheet v2.4: extra grid not compact", "const gx = add(\"ps-grid ps-roll\" + (wide ? \" ps-roll20\" : \"\"), \"\");", "const gx = add(\"ps-grid ps-roll\", \"\");"],
+  ["roll sheet v2.4: compact threshold", "wide = need + extra > 150;", "wide = need + extra > 160;"],
+  ["roll sheet v2.4: extra note without extra boxes", "if(extra > 0){\n  add(\"ps-sub ps-extra-sub\"", "if(true){\n  add(\"ps-sub ps-extra-sub\""],
+  ["check prints: public key accepted", "if(!wvCtx || wvCtx.kind === \"pub\" || !wvCtx.mnemonic){ alert(", "if(!wvCtx){ alert("],
+  ["check prints: passphrase line reversed", "\"Passphrase used: \" + (wvCtx.pass ? \"YES (keep it separate; it is not printed here)\" : \"NO\")", "\"Passphrase used: \" + (!wvCtx.pass ? \"YES (keep it separate; it is not printed here)\" : \"NO\")"],
+  ["check prints: new-seed fields", "add(\"ps-fields\", S.check ? \"Words checked against your first backup", "add(\"ps-fields\", false ? \"Words checked against your first backup"],
+  ["check prints: screen named", "\" + (S.check ? \"your first backup\" : \"the screen\") + \" before", "\" + (S.check ? \"the screen\" : \"the screen\") + \" before"],
+  ["print source: passphrase boxes not checked", "  if(!hasSeed()){ alert(\"Generate a seed first\"); return null; }\n  if(passMismatch()) return null;\n", "  if(!hasSeed()){ alert(\"Generate a seed first\"); return null; }\n"],
+  ["SeedQR source: check uses the MAKE code", "const kind = from === \"check\" ? wvsKind : sqKind;", "const kind = wvsKind || sqKind;"],
+  ["SeedQR source: check rows from MAKE", "if(from !== \"check\") return {kind, rows: sqRows};", "if(sqRows) return {kind, rows: sqRows};"],
+  ["check SeedQR: kind not remembered", "  wvsKind = kind;\n", ""],
+  ["check SeedQR: kind kept after HIDE", "function wvSeedQrHide(){\n  wvsKind = null;\n", "function wvSeedQrHide(){\n"],
+  ["check 4 letters: full words shown", "t.className = \"wtxt\"; t.textContent = w.slice(0, 4);", "t.className = \"wtxt\"; t.textContent = w;"],
+  ["check 4 letters: never hides", "if(on === undefined) on = !g.classList.contains(\"on\");", "if(on === undefined) on = true;"],
+  ["check 4 letters: button text stays", "b.textContent = words ? \"HIDE FIRST 4 LETTERS\" : \"SHOW FIRST 4 LETTERS\";", "b.textContent = \"SHOW FIRST 4 LETTERS\";"],
+  ["check 4 letters: not wiped with the wallet", "function clearWalletView(){\n  wvAbbr(false);\n", "function clearWalletView(){\n"],
+  ["check 4 letters: public key", "const words = on && wvCtx && wvCtx.kind !== \"pub\" && wvCtx.mnemonic ?", "const words = on && wvCtx ?"],
+  ["check 4 letters: numbers off", "const n = document.createElement(\"b\"); n.textContent = (i + 1) + \".\"; const t = document.createElement(\"span\");", "const n = document.createElement(\"b\"); n.textContent = i + \".\"; const t = document.createElement(\"span\");"],
+  ["check 4 letters: grid CSS gone", "  #wvAbbrGrid.on { display: grid; }\n", ""],
+  ["check 4 letters: shown in the drill", "class=\"secondary small needs-words\" id=\"wvAbbrBtn\"", "class=\"secondary small\" id=\"wvAbbrBtn\""],
+  ["public QR print: nothing remembered", "  qrShown = {id, label};\n  scrollQrIntoView(\"qrBox\");", "  scrollQrIntoView(\"qrBox\");"],
+  ["public QR print: kept after HIDE", "function hideQr(){\n  qrShown = null;\n", "function hideQr(){\n"],
+  ["public QR print: no name", "\"VOIDFORGE \" + (QR_PRINT_NAMES[qrShown.id] || \"PUBLIC KEY\")", "\"VOIDFORGE PUBLIC KEY\""],
+  ["public QR print: text missing", "info.join(\"\\n\") + \"\\n\\n\" + t + \"\\n\\nPUBLIC:", "info.join(\"\\n\") + \"\\n\\nPUBLIC:"],
+  ["public QR print: testnet not named", "(QR_PRINT_NAMES[qrShown.id] || \"PUBLIC KEY\") + (net === \"test\" ? \" (TESTNET)\" : \"\")", "(QR_PRINT_NAMES[qrShown.id] || \"PUBLIC KEY\")"],
+  ["public QR print: Silent Payment type", "qrShown.id === \"spAddr\" ? \"Address type: Silent Payment (BIP-352)\"", "false ? \"Address type: Silent Payment (BIP-352)\""],
+  ["address QR print: request called an address", "const req = t !== addr, fp", "const req = false, fp"],
+  ["address QR print: link missing", "(req ? \"\\nPayment link: \" + t : \"\")", "\"\""],
+  ["address QR print: no guard", "  if(!t) return alert(\"Press QR next to an address first.\");\n", ""],
+  ["address QR print: wrong wallet fingerprint", "document.getElementById(pfx === \"wvq\" ? \"wvFp\" : \"fingerprint\")", "document.getElementById(\"fingerprint\")"],
+  ["child print: no button", "  document.getElementById(\"childPrintRow\").style.display = \"\";\n}", "}"],
+  ["child print: label stays", "  document.getElementById(\"childPrintBtn\").textContent = CHILD_PRINT_LABEL[c.app] || \"PRINT\";\n", ""],
+  ["child print: kept after HIDE", "  childCtx = null; document.getElementById(\"childPrintRow\").style.display = \"none\";", "  document.getElementById(\"childPrintRow\").style.display = \"none\";"],
+  ["child print: numbers off", "add(\"ps-n\", String(i + 1).padStart(2, \"0\"), x); add(\"ps-w\", w, x);", "add(\"ps-n\", String(i).padStart(2, \"0\"), x); add(\"ps-w\", w, x);"],
+  ["child print: parent missing", "\"Made with BIP85 from the parent wallet \" + c.parent", "\"Made with BIP85 from the parent wallet \""],
+  ["child print: index missing", "\", index \" + c.index + \". The parent words\"", "\". The parent words\""],
+  ["child print: no question", "if(!confirm(\"Printing sends this child \" + what", "if(false && !confirm(\"Printing sends this child \" + what"],
+  ["child print: short secret shrunk", "c.text.length > 600 ? \" ps-s\" : \"\"", "c.text.length > 6 ? \" ps-s\" : \"\""],
+  ["child print: other types not printable", "    childShow({app, head, text: out, extra: extra.trim(), index, pass: !!vp, parent: await mnemonicFingerprint(mnemonic, vp)});\n", ""],
+  ["child print: words not printable", "    childShow({app: \"words\", words: ws, fp, a0, index, pass: !!vp, parent: await mnemonicFingerprint(r.mnemonic, vp)});\n", ""],
+  ["child print: passphrase noted wrongly", "(c.pass ? \" (parent words with a passphrase)\" : \"\")", "(!c.pass ? \" (parent words with a passphrase)\" : \"\")"],
+  ["word sheet: 24 words printed as 12", "=== 24 ? 24 : 12, need = wdNeeds(wc);", "=== 24 ? 12 : 12, need = wdNeeds(wc);"],
+  ["word sheet: flips missing", "    for(let i = 1; i <= need.flips; i++){ const c = add(\"ps-cell\", \"\", f); add(\"ps-n\", \"Flip \" + i, c); }\n", ""],
+  ["word sheet: one word box short", "for(let i = 1; i <= need.words; i++){ const c = add(\"ps-cell\", \"\", g);", "for(let i = 1; i < need.words; i++){ const c = add(\"ps-cell\", \"\", g);"],
+  ["word sheet: no secret warning", "Once filled in, this sheet is as secret as your seed: anyone who sees it can make your wallet.\\nType it in on an offline computer, then shred it (or keep it only as a locked-away backup).", "This sheet is harmless.\\nType it in on an offline computer, then shred it (or keep it only as a locked-away backup)."],
+  ["print sheets: area not wiped", "  build(add);\n  document.body.classList.add(\"print-seed\");\n  let done = false;\n  const cleanup = () => { if(done) return; done = true; po.textContent = \"\";", "  build(add);\n  document.body.classList.add(\"print-seed\");\n  let done = false;\n  const cleanup = () => { if(done) return; done = true;"],
+  ["print sheets: class kept", "  build(add);\n  document.body.classList.add(\"print-seed\");\n  let done = false;\n  const cleanup = () => { if(done) return; done = true; po.textContent = \"\"; document.body.classList.remove(\"print-seed\"); };", "  build(add);\n  document.body.classList.add(\"print-seed\");\n  let done = false;\n  const cleanup = () => { if(done) return; done = true; po.textContent = \"\"; };"],
+  ["dice test: FORGE stays on", "document.getElementById(\"forgeBtn\").disabled = on || selfTestState !== \"pass\";", "document.getElementById(\"forgeBtn\").disabled = selfTestState !== \"pass\";"],
+  ["dice test: FORGE not blocked", "  if(diceTestOn()) return alert(\"The dice test is on", "  if(false) return alert(\"The dice test is on"],
+  ["dice test: rolls kept", "  if(n){ box.value = \"\"; }\n", ""],
+  ["dice test: no question", "if(n && !confirm(on ? \"Start a dice test?", "if(false && !confirm(on ? \"Start a dice test?"],
+  ["dice test: Cancel still switches", "document.getElementById(\"diceTest\").checked = !on; return;", "return;"],
+  ["dice test: no banner", "  document.getElementById(\"diceTestBan\").style.display = on ? \"\" : \"none\";\n", ""],
+  ["dice test: box stays closed", "  if(on) document.getElementById(\"rollStats\").open = true;\n", ""],
+  ["dice test: words previewed", "|| !rolls || diceTestOn() || (keystoneOn()", "|| !rolls || (keystoneOn()"],
+  ["dice test: seed counter shown", "if(diceTestOn() && !seed){ bc.textContent = String(n);", "if(false && !seed){ bc.textContent = String(n);"],
+  ["dice test: no test note", "document.getElementById(\"diceTestNote\").textContent = diceTestOn() ? diceTestText(rolls, isCoin) : \"\";", ""],
+  ["dice test: bits note kept", "  if(diceTestOn()) document.getElementById(\"bitsNote\").textContent = \"\";\n", ""],
+  ["dice test: seed notes kept", "document.getElementById(\"countNote\").textContent = diceTestOn() ? \"\" : countNote(", "document.getElementById(\"countNote\").textContent = false ? \"\" : countNote("],
+  ["dice test: no wait", "if(n < min) return n + \" \" + one", "if(n < 2) return n + \" \" + one"],
+  ["dice test: problems called fine", "if(an.level === \"ok\") return n", "if(an.level !== \"warn\") return n"],
+  ["dice test: self-test gate turns FORGE on", "document.getElementById(\"forgeBtn\").disabled = !on || diceTestOn();", "document.getElementById(\"forgeBtn\").disabled = !on;"],
+  ["keyboard: digits ignored", "if(ok.test(e.key)){ e.preventDefault();", "if(false){ e.preventDefault();"],
+  ["keyboard: coin takes dice digits", "const ok = getMode() === \"coin\" ? /^[01]$/ : /^[1-6]$/;", "const ok = /^[0-6]$/;"],
+  ["keyboard: Backspace ignored", "else if(e.key === \"Backspace\"){ e.preventDefault(); undoRoll(); }", ""],
+  ["keyboard: Ctrl keys taken", "  if(e.ctrlKey || e.metaKey || e.altKey) return;\n", ""],
+  ["keyboard: no hint", "b.title = \"Add a \" + v + \" (or press \" + v + \" on the keyboard; Backspace undoes the last one)\";", ""],
+  ["4-letter: 3 letters expanded", "if(!/^[a-z]{4,8}$/.test(t)) return null;\n  return WORDLIST.find", "if(!/^[a-z]{3,8}$/.test(t)) return null;\n  return WORDLIST.find"],
+  ["4-letter: not read in VERIFY", "const f = wordFromPrefix(w); if(f){ words[i] = f; read++; } else bad.push(i);", "bad.push(i);"],
+  ["4-letter: not said", "(read ? \" (\" + read + \" word\"", "(false ? \" (\" + read + \" word\""],
+  ["4-letter: plural", "(read > 1 ? \"s\" : \"\")", "\"s\""],
+  ["4-letter: VERIFY box keeps short forms", "if(r.ok && (r.fromCode || r.expanded))", "if(r.ok && r.fromCode)"],
+  ["typo: no suggestions", "const c = closestWords(words[i], 3);", "const c = [];"],
+  ["typo: swap counted as two", "v = Math.min(v, d[i - 2][j - 2] + 1);", "v = Math.min(v, d[i - 2][j - 2] + 2);"],
+  ["typo: distance 2 listed with distance 1", "if(found.length && found[0][0] === 1) return found.filter(f => f[0] === 1)", "if(false) return found.filter(f => f[0] === 1)"],
+  ["typo: only first unknown word", "bad.slice(0, 4).map(one)", "bad.slice(0, 1).map(one)"],
+  ["typo: always plural", "(bad.length === 1 ? \"Unknown word: \" : \"Unknown words: \")", "\"Unknown words: \""],
+  ["typo: checksum hint gone", "(en || \". Every word is a BIP39 word, so one is probably wrong, missing or out of order: Reforge in EXTRA TOOLS can search for it.\")", "(en || \"\")"],
+  ["explain: not on typing", "document.getElementById(\"checkAddr\").addEventListener(\"input\", explainAddrUi);", ""],
+  ["explain: P2WPKH length", "d.version === 0 && d.prog.length === 20", "d.version === 0 && d.prog.length === 21"],
+  ["explain: P2WSH", "d.version === 0 && d.prog.length === 32", "d.version === 0 && d.prog.length === 33"],
+  ["explain: Taproot version", "d.version === 1 && d.prog.length === 32", "d.version === 2 && d.prog.length === 32"],
+  ["explain: future version called fine", "return {level: \"bad\", text: \"A SegWit version \" + d.version", "return {level: \"ok\", text: \"A SegWit version \" + d.version"],
+  ["explain: bad bc1 accepted", "if(!d) return {level: \"bad\", text: \"Not a valid address: \"", "if(false) return {level: \"bad\", text: \"Not a valid address: \""],
+  ["explain: mixed case not said", "t !== low && t !== t.toUpperCase() ? \"it mixes capital", "false ? \"it mixes capital"],
+  ["explain: networks mixed up", "const net = EXPLAIN_NET[hrp], d = segwitDecode(t);", "const net = EXPLAIN_NET.bc, d = segwitDecode(t);"],
+  ["explain: testnet legacy unknown", "(v === 0 || v === 0x6f)", "(v === 0)"],
+  ["explain: testnet legacy called mainnet", "\"Legacy address (P2PKH) on \" + (v ? EXPLAIN_NET.tb : EXPLAIN_NET.bc)", "\"Legacy address (P2PKH) on \" + EXPLAIN_NET.bc"],
+  ["explain: P2SH unknown", "(v === 5 || v === 0xc4)", "(v === 0xc4)"],
+  ["explain: private key not flagged", "(v === 0x80 || v === 0xef)", "(v === 0xef)"],
+  ["explain: compressed private key not flagged", "(raw.length === 33 || (raw.length === 34 && raw[33] === 1))", "(raw.length === 33)"],
+  ["explain: xprv not flagged", "if(EXT_PRIVATE.includes(ver)) return {level: \"bad\", text: \"This is an extended PRIVATE key", "if(false) return {level: \"bad\", text: \"This is an extended PRIVATE key"],
+  ["explain: xpub not explained", "if(EXT_VERSIONS[ver]) return {level: \"warn\", text: \"This is an extended PUBLIC key", "if(false) return {level: \"warn\", text: \"This is an extended PUBLIC key"],
+  ["explain: base58 typo accepted", "let raw; try { raw = await base58decode(t); } catch(e) { return {level: \"bad\"", "let raw; try { raw = await base58decode(t); } catch(e) { raw = new Uint8Array(21); } if(false) { return {level: \"bad\""],
+  ["explain: seed words not flagged", "if(/^[a-z]+(\\s+[a-z]+){11,}$/i.test(String(text).trim())) return", "if(false) return"],
+  ["explain: Lightning not recognised", "if(/^ln(bc|tb|bcrt)[0-9]/i.test(t)) return", "if(false) return"],
+  ["explain: descriptor not recognised", "if(/^[a-z]{2,6}\\(/.test(t)) return", "if(false) return"],
+  ["explain: bitcoin: link not read", "if(/^bitcoin:/i.test(t)){ uri =", "if(false){ uri ="],
+  ["explain: Silent Payment checksum not checked", "bech32mText(hrp, data) === low", "true"],
+  ["explain: Silent Payment network", "(hrp === \"sp\" ? EXPLAIN_NET.bc : EXPLAIN_NET.tb)", "EXPLAIN_NET.bc"],
+  ["explain: warnings shown as errors", "r.level === \"warn\" ? \"warn\" : \"bad\"", "\"bad\""],
+  ["explain: no dictionary links", "el.appendChild(document.createTextNode(r.text)); dictLinks(el, r.terms);", "el.appendChild(document.createTextNode(r.text));"],
+  ["dictionary link: stays on the tab", "  showTab(\"about\");\n  const box = document.getElementById(\"dictBox\"); box.open = true;", "  const box = document.getElementById(\"dictBox\"); box.open = true;"],
+  ["dictionary link: box closed", "const box = document.getElementById(\"dictBox\"); box.open = true;\n  dictCat", "const box = document.getElementById(\"dictBox\");\n  dictCat"],
+  ["dictionary link: topic filter kept", "  dictCat = \"All\"; document.querySelectorAll(\"#dictCats button\")", "  document.querySelectorAll(\"#dictCats button\")"],
+  ["dictionary link: search kept", "document.getElementById(\"dictSearch\").value = \"\"; dictFilter();\n  const it", "dictFilter();\n  const it"],
+  ["dictionary link: old highlight kept", "  document.querySelectorAll(\"#dictList .dict-item.dict-hit\").forEach(e => e.classList.remove(\"dict-hit\"));\n", ""],
+  ["dictionary link: no highlight", "it.classList.add(\"dict-hit\"); it.scrollIntoView", "it.scrollIntoView"],
+  ["what guide: seed words not secret", ">Seed words (12 or 24 words)</button><span class=\"tag tag-secret\">SECRET</span>", ">Seed words (12 or 24 words)</button><span class=\"tag tag-public\">PUBLIC</span>"],
+  ["summary: coin called dice", "c.coin ? c.count + \" coin flips\"", "false ? c.count + \" coin flips\""],
+  ["summary: Keystone not said", "(c.keystone ? \"Keystone dice rules (each 6 counts as 0)\"", "(false ? \"Keystone dice rules (each 6 counts as 0)\""],
+  ["summary: 24 words as 128 bits", "bits = n === 24 ? 256 : 128;", "bits = 128;"],
+  ["summary: dice bits as rolls", "Math.floor(c.coin ? c.count : c.count * Math.log2(6))", "Math.floor(c.count)"],
+  ["summary: passphrase always NO", "\"Passphrase used: \" + (used ? \"YES (kept separately; it is not written here)\" : \"NO\"), fpT", "\"Passphrase used: NO\", fpT"],
+  ["summary: fingerprint missing", "\"NO\"), fpT, document.getElementById(\"address\").textContent", "\"NO\"), document.getElementById(\"address\").textContent"],
+  ["summary: no tick", "  });\n  bkTick(\"bk4\");\n}", "  });\n}"],
+  ["summary: printed with mismatched passphrases", "  const S = seedSummary(); if(!S) return alert(\"Generate a seed first\");\n  if(passMismatch()) return;\n", "  const S = seedSummary(); if(!S) return alert(\"Generate a seed first\");\n"],
+  ["summary: mismatched passphrases summarised", "  if(!hasSeed() || !sumCtx || passMismatchQuiet()) return null;", "  if(!hasSeed() || !sumCtx) return null;"],
+  ["summary: no LifeHash", "    if(pic) add(\"ps-lh\", \"\", row).innerHTML = pic;\n", ""],
+  ["summary: line not shown", "if(el) el.textContent = S ? \"This seed: \" + S.short : \"\";", ""],
+  ["summary: line stale after a passphrase change", "showFpIcon(\"fpIcon\", fp); sumUpdate();", "showFpIcon(\"fpIcon\", fp);"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

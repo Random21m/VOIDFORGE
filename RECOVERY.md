@@ -11,6 +11,10 @@ A seed is only as safe as your backup. This page covers what to keep and how to 
 
 Never store the words as a photo, text, email, cloud note or password-manager entry.
 
+**Summary sheet (v2.4.0).** Right after FORGE, the backup checklist shows one line about the seed (how it was made, passphrase or not, fingerprint), and PRINT SUMMARY SHEET prints it on one page with the fingerprint picture and the first address. It has no words and no passphrase on it, so it can sit with the paper backup.
+
+**Another copy of words you already have (v2.4.0).** In *Check a backup*, type the words, press VERIFY and open *Open this wallet*. *Paper, metal and SeedQR backups* has SHOW FIRST 4 LETTERS (for stamping a metal plate), PRINT WORDS, PRINT STAMP SHEET and the SeedQR prints. VERIFY also reads 4-letter forms, so you can check a metal plate by typing what is stamped on it. Print only on a trusted offline computer with a directly connected printer.
+
 **Recovery sheet (v2.1.0).** In *Check a backup*, type your words, press VERIFY and open *Open this wallet*. PRINT RECOVERY SHEET prints a sheet with the master fingerprint, whether a passphrase was used (never the passphrase), the address type, the derivation path and the first addresses, and a short list of restore steps. It holds no words, so it can sit with the paper backup and tell whoever restores which wallet and address type to pick. The same box lists any account and any address type, with a QR code for each address, so you can compare them in the wallet you restored into.
 
 ## Check the backup before you rely on it
