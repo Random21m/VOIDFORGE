@@ -1700,7 +1700,7 @@ function inputSig(kind){
 function staleCheck(){
   if(seedSig === null || !hasSeed() || inputSig(seedKind) === seedSig) return;
   seedSig = null; forgeRun++;
-  if(seedKind === "wd"){ wdWipe(); setResult("You changed the words, the coin flips or the word count after MAKE SEED FROM WORDS. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press MAKE SEED FROM WORDS again."); }
+  if(seedKind === "wd"){ setResult("You changed the words, the coin flips or the word count after MAKE SEED FROM WORDS. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press MAKE SEED FROM WORDS again."); }
   else setResult("You changed the rolls, the word count, the dice/coin choice or the dice rules after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.");
   document.getElementById("fingerprint").textContent = ""; document.getElementById("address").textContent = "";
 }

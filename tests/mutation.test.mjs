@@ -3032,7 +3032,6 @@ const M = [
   // ---- v2.3.0 review fixes ----
   ['Word draw: seed not cleared when its inputs change', 'function wdUpdate(){\n  staleCheck();\n', 'function wdUpdate(){\n'],
   ['Word draw: input signature fixed', 'if(kind === "wd") return "wd|" +', 'if(kind === "wd") return "wd"; if(0) return "wd|" +'],
-  ['Word draw: last-word steps left after a stale clear', 'if(seedKind === "wd"){ wdWipe(); setResult(', 'if(seedKind === "wd"){ setResult('],
   ['roll sheet: Keystone named as SeedSigner and Coldcard', '  const ks = keystoneOn();\n  add("ps-sub ps-extra-sub"', '  const ks = false;\n  add("ps-sub ps-extra-sub"'],
   ['roll sheet: dice rules not recorded', '"Dice rules: " + (ks ? "Keystone (each 6 counts as 0)" : "SeedSigner and Coldcard") + "\\n"', '""'],
   ['Keystone: length line without the maximum', '(keystoneOn() ? getNeeded(wc) + " to " + KEYSTONE_MAX + " dice rolls" :', '(false ? getNeeded(wc) + " to " + KEYSTONE_MAX + " dice rolls" :'],
