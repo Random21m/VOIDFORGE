@@ -28,6 +28,7 @@ function load(opts={}){
     mode(m){ const e=this.d.querySelector(`input[name=mode][value=${m}]`); e.checked=true; e.onchange(); },
     words(n){ const e=this.d.querySelector(`input[name=words][value="${n}"]`); e.checked=true; e.onchange(); }};
 }
+const t9StepCur=(t)=>{ const c=t.d.querySelector('#stepBar li.cur'); return c?c.getAttribute('data-s'):''; };
 const blobText=(w,b)=>b.text?b.text():new Promise((res,rej)=>{const r=new w.FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsText(b);});
 const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.randomInt(6))).join('');
 
@@ -277,7 +278,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   { // Stamp sheet (v1.34.0): the first 4 letters of each word in capitals, for metal plates
     const p0=t.st.printed; t.st.alerts.length=0; t.w.printStamp(); const cells=t.st.printCells.slice(), txt=t.st.printHTML;
     ok(t.st.printed===p0+1&&cells.length===12&&words.split(' ').every((w,i)=>cells[i]===String(i+1).padStart(2,'0')+w.slice(0,4).toUpperCase())&&/print-seed/.test(t.st.printClass)&&/^VOIDFORGE STAMP SHEET/.test(txt),'PRINT STAMP SHEET prints each word as its first 4 letters in capitals');
-    ok(!txt.includes('SECRETPASS')&&/Passphrase used: YES/.test(txt)&&txt.includes(t.$('fingerprint').textContent)&&/Reforge/.test(txt)&&/No two BIP39 words start with the same 4 letters/.test(txt),'stamp sheet: fingerprint, passphrase yes/no without the passphrase, and how to get the words back');
+    ok(!txt.includes('SECRETPASS')&&/Passphrase used: YES/.test(txt)&&txt.includes(t.$('fingerprint').textContent)&&/into VERIFY in CHECK A BACKUP/.test(txt)&&/No two BIP39 words start with the same 4 letters/.test(txt),'stamp sheet: fingerprint, passphrase yes/no without the passphrase, and how to get the words back');
     t.w.dispatchEvent(new t.w.Event('afterprint')); ok(t.$('printOnly').textContent==='','stamp sheet is cleaned up after printing');
     ok(!!t.$('stampBtn')&&/printStamp/.test(t.$('stampBtn').getAttribute('onclick')),'PRINT STAMP SHEET button is on the page'); }
   { // Wallet view (v2.1.0): any valid 12 to 24 word phrase typed in the Check tab
@@ -1367,13 +1368,52 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok($('childOut').textContent===''&&w.eval('childCtx')===null,'child: cleared when the parent words change');
     $('phrase').value='abandon '.repeat(11)+'about'; await w.deriveChild(); $('checkAddr').value='5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ'; await w.explainAddrUi(); t9.st.confirms=0; w.clearAll();
     ok($('childOut').textContent===''&&$('childPrintRow').style.display==='none'&&$('checkAddr').value===''&&$('addrExplain').textContent==='','CLEAR ALL: removes the child result, the address box and its explanation');
-    ok(/no copy or save; a print button \(v2\.4\.0\)/.test(t9.d.querySelector('#childBox').textContent),'child: the box says it can be printed');
+    ok(/no copy or save; its print button prints it on one sheet, after asking/.test(t9.d.querySelector('#childBox').textContent),'child: the box says it can be printed');
     // explainer: more secrets pasted by mistake, and Silent Payment contents
     const X=async a=>{ const r=await w.explainAddress(a); return r?r.level+' '+r.text:''; };
     for(const [a,re] of [['1. legal 2. winner 3. thank 4. year 5. wave 6. sausage',/^bad These look like SEED WORDS/],['lega winn than year wave saus',/^bad These look like SEED WORDS/],['0'.repeat(96),/^bad These look like SeedQR digits/],['ab'.repeat(32),/^bad This is 64 hex characters/],['lnurl1dp68gurn8ghj7',/^warn This is an LNURL/],['lntbs1pjqqqqqpp5',/^warn This is a Lightning invoice/],['WSH(SORTEDMULTI(2,A,B))',/^warn This is a descriptor/],['6PRVWUbkzzsbcVac2qwfssoUJAN1Xhrg6bNk8J7Nzm5H7kxEbn2Nh2ZoGg',/^bad This is a password-protected PRIVATE KEY \(BIP-38\)/],['S6c56bnXQiBjk9mqSYE7ykVQ7NzrRy',/^bad This is a mini PRIVATE KEY/],['S6c56bnXQiBjk9mqSYE7ykVQ7NzrRz',/^bad Not a valid address/],['send me the money by friday please now',/^bad Not a Bitcoin address/]])
       ok(re.test(await X(a)),'explain: '+a.slice(0,24));
     const B32='qpzry9x8gf2tvdw0s3jn54khce6mua7l', toW=(n)=>{ const out=[]; let acc=0,bits=0; for(let i=0;i<n;i++){ acc=(acc<<8)|(i&255); bits+=8; while(bits>=5){ bits-=5; out.push((acc>>bits)&31); } acc&=(1<<bits)-1; } if(bits) out.push((acc<<(5-bits))&31); return out; };
     ok(/^bad .*contents are not two keys/.test(await X(w.bech32mText('sp',[0,...toW(2)])))&&/^bad .*contents are not two keys/.test(await X(w.bech32mText('sp',[31,...toW(66)])))&&/^ok Silent Payment address/.test(await X(w.bech32mText('sp',[1,...toW(70)])))&&/^bad .*contents are not two keys/.test(await X(w.bech32mText('sp',[1,...toW(60)]))),'explain: a Silent Payment address must hold two keys (66 bytes; version 31 is reserved)'); }
+  // ===== v2.4.0 second review fixes =====
+  { const ta=load(); await ta.ready(); const $=ta.$, w=ta.w; w.startGateClose();
+    const X=async a=>{ const r=await w.explainAddress(a); return r?r.level+' '+r.text:''; };
+    ok(/^bad This descriptor holds a PRIVATE key/.test(await X('wpkh([73c5da0a/84h/0h/0h]xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi/0/*)'))&&/^bad This descriptor holds a PRIVATE key/.test(await X('wpkh(KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn)'))&&/^warn This is a descriptor/.test(await X('wpkh(xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8/0/*)')),'explain: a descriptor with an xprv or a WIF key is called SECRET; one with an xpub is not');
+    ok(!/^ok/.test(await X(w.bech32Encode('constructor',0,new Uint8Array(20))))&&!/^ok/.test(await X(w.bech32Encode('__proto__',0,new Uint8Array(20)))),'explain: object property names are not networks');
+    ok(/^bad These look like SeedQR digits/.test(await X('7'.repeat(72)))&&/^bad This is 128 hex characters.*a BIP39 seed/.test(await X('ab'.repeat(64)))&&/^bad This is 56 hex characters/.test(await X('ab'.repeat(28))),'explain: SeedQR digits for 18 words and seed hex are called out');
+    ok(/Its payments cannot be looked up from the address/.test(await X(await w.spAddressFromSeed(await w.mnemonicToSeed('abandon '.repeat(11)+'about',''),'main',0))),'explain: a Silent Payment address is not said to be traceable');
+    w.eval('selfTestState = "fail"'); $('checkAddr').value='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'; await w.explainAddrUi(); ok(/self-test has not passed/.test($('addrExplain').textContent),'explain: not while the self-test has not passed'); w.eval('selfTestState = "pass"');
+    $('checkAddr').value='1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2'; const e1=w.explainAddrUi(); $('checkAddr').value='abandon '.repeat(11)+'about'; const e2=w.explainAddrUi(); await e1; await e2;
+    ok(/^These look like SEED WORDS/.test($('addrExplain').textContent),'explain: an older, slower answer never replaces a newer one');
+    let r=await w.checkPhrase('fals '+'abandon '.repeat(11)); ok(/Some were read from their first letters \(word 1 'fals' as 'false'\); check those first\.$/.test(r.msg),'typo helper: a failed checksum names the words read from their first letters');
+    // dice test with a seed on screen
+    ta.set(rnd(50,6)); await w.generate(); const msgs=[]; w.confirm=m=>{ msgs.push(m); return true; }; $('diceTest').checked=true; w.diceTestToggle();
+    ok(/The seed words on screen, made from these rolls, are cleared too/.test(msgs.join())&&!w.hasSeed()&&$('genResult').textContent==='—','dice test: says it clears the seed on screen, and leaves no "press FORGE again" message');
+    ta.set(rnd(60,6)); ok(t9StepCur(ta)==='2'&&/^Dice test: /.test($('stepWhy').textContent)&&!w.guideCanNext(2),'dice test: the step bar stays on rolling and the guide does not move on to FORGE');
+    $('diceTest').checked=false; w.diceTestToggle();
+    // keyboard repeat
+    const kd=(o)=>{ const e=new w.KeyboardEvent('keydown',Object.assign({key:'5',bubbles:true,cancelable:true},o)); ta.d.querySelector('#tapRow button').dispatchEvent(e); };
+    ta.set(''); kd({}); kd({repeat:true}); kd({repeat:true}); eq($('rolls').value,'5','keyboard: a held key adds one roll');
+    // SEND TO CHECK and VERIFY races
+    $('phrase').value='abandon '.repeat(11)+'about'; $('childApp').value='words'; w.childAppChange(); await w.deriveChild(); ta.set(rnd(50,6)); await w.generate(); await w.sendToVerify();
+    ok(w.eval('childCtx')===null&&$('childOut').textContent==='','SEND TO CHECK: clears a child seed made from the old words');
+    $('phrase').value='legal winner thank year wave sausage worth useful legal winner thank yellow'; const vp=w.verify(); w.wipeSeed(); await vp;
+    ok(w.eval('wvCtx')===null&&$('verifyStatus').textContent===''&&$('walletView').style.display==='none','VERIFY: CLEAR ALL while it works leaves nothing behind');
+    // QR sheets: footers, account, address path and network
+    ta.set(rnd(50,6)); await w.generate(); await w.passWork; await new Promise(r=>setTimeout(r,50));
+    w.showQr('spAddr','x'); w.printShownQr(); ok(/made to be shared and reused/.test(ta.st.printQrText)&&!/keep it private/.test(ta.st.printQrText),'QR prints: the Silent Payment sheet says it is made to be shared'); w.dispatchEvent(new w.Event('afterprint'));
+    $('wType').value='ms-wsh'; await w.refreshWatch(); w.showQr('wZpub','x'); w.printShownQr(); ok(/^VOIDFORGE COSIGNER PUBLIC KEY/.test(ta.st.printQrText)&&/one cosigner key of a multisig wallet/.test(ta.st.printQrText),'QR prints: the cosigner key sheet says what it is'); w.dispatchEvent(new w.Event('afterprint'));
+    $('wType').value='wpkh'; $('wAcct').value='4'; await w.refreshWatch(); w.showQr('wZpub','x'); w.printShownQr(); ok(/Account number: 4\n/.test(ta.st.printQrText),'QR prints: the account number'); w.dispatchEvent(new w.Event('afterprint')); $('wAcct').value='0'; await w.refreshWatch();
+    ta.d.querySelector('#trList button.qr-mini').click(); w.printAddrQr('aq'); ok(ta.st.printQrText.includes("Path: m/86'/0'/0'/0/0\n"),'address QR: a Taproot address sheet has its path'); w.dispatchEvent(new w.Event('afterprint')); w.hideAddrQr('aq');
+    $('phrase').value='legal winner thank year wave sausage worth useful legal winner thank yellow'; await w.openWalletView($('phrase').value,''); $('wvChain').value='1'; $('wvNet').value='test'; await w.wvRefresh();
+    ta.d.querySelector('#wvList button.qr-mini').click(); w.printAddrQr('wvq'); ok(/^VOIDFORGE CHANGE ADDRESS \(TESTNET\)/.test(ta.st.printQrText)&&ta.st.printQrText.includes("Path: m/84'/1'/0'/1/0\nNetwork: TESTNET"),'address QR: a testnet change address is named so, with its path'); w.dispatchEvent(new w.Event('afterprint'));
+    $('wpIn').value='xpub6BosfCnifzxcFwrSzQiqu2DBVTshkCXacvNsWGYJVVhhawA7d4R5WSWGFNbi8Aw6ZRc1brxMyWMzG3DSSSSoekkudhUd9yLb6qx39T9nMdj'; await w.openWatchOnly(); ta.d.querySelector('#wvList button.qr-mini').click(); w.printAddrQr('wvq');
+    ok(!/not known/.test(ta.st.printQrText)&&/^VOIDFORGE RECEIVE ADDRESS/.test(ta.st.printQrText),'address QR: an unknown fingerprint is left out'); w.dispatchEvent(new w.Event('afterprint'));
+    // child naming, page text
+    $('phrase').value='abandon '.repeat(11)+'about'; $('childApp').value='hex'; w.childAppChange(); $('childLen').value='32'; await w.deriveChild(); w.printChild(); ok(/^VOIDFORGE CHILD HEX \(BIP85\)/.test(ta.st.printHTML),'child print: hex is named as hex'); w.dispatchEvent(new w.Event('afterprint'));
+    ok(/\ndocument\.getElementById\("diceTest"\)\.checked = false;\nupdateLabels\(\);/.test(html)&&/id="diceTest" autocomplete="off"/.test(html),'dice test: always starts off, even in a browser that restores form state');
+    { const D=w.eval('DICT'), b38=D.find(e=>e[0]==='BIP38'); ok(!!b38&&/starts with 6P/.test(b38[1])&&/^6P/.test('6PRVWUbkzzsbcVac2qwfssoUJAN1Xhrg6bNk8J7Nzm5H7kxEbn2Nh2ZoGg')&&D.some(e=>e[0]==='Stamp sheet'),'dictionary: BIP38 (locked keys start with 6P) and Stamp sheet'); }
+    ok(!/\(v2\.4\.0\)/.test(ta.d.querySelector('#childBox').textContent)&&/Nothing on its own/.test(ta.$('whatBox').textContent)&&/xpub, zpub or public descriptor/.test(ta.$('whatBox').textContent),'page text: no version numbers in the child box; the guide wording'); }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
 

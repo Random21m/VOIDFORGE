@@ -20,14 +20,15 @@ const pages = (buf) => (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || 
 let pass = 0; const fails = [];
 const ok = (c, m) => { if (c) pass++; else { fails.push(m); console.log('FAIL ' + m); } };
 
-// GitHub sets PW_CHANNEL=chrome, so there a missing browser is a failure. Elsewhere the test uses whatever Chromium or Chrome it
-// can find, and if there is none it says so and is skipped (install one with: npx playwright-core install chromium).
+// GitHub sets PW_CHANNEL=chrome, so there a missing browser is a failure. PW_EXECUTABLE can name a Chromium or Chrome binary.
+// Otherwise the test uses Playwright's Chromium or an installed Chrome, and if there is neither it says so and is skipped
+// (install one with: npx playwright-core install chromium).
 let browser;
 if (process.env.PW_CHANNEL) browser = await chromium.launch({ channel: process.env.PW_CHANNEL });
+else if (process.env.PW_EXECUTABLE) browser = await chromium.launch({ executablePath: process.env.PW_EXECUTABLE });
 else {
-  const full = (() => { try { return createRequire('/opt/npm-tools/node_modules/x.js')('playwright'); } catch { return null; } })();
-  for (const launch of [() => chromium.launch(), () => chromium.launch({ channel: 'chrome' }), () => full && full.chromium.launch()]) {
-    try { browser = await launch(); if (browser) break; } catch { /* try the next one */ }
+  for (const launch of [() => chromium.launch(), () => chromium.launch({ channel: 'chrome' })]) {
+    try { browser = await launch(); break; } catch { /* try the next one */ }
   }
   if (!browser) { console.log('PRINT: SKIPPED (no Chromium or Chrome found; run "npx playwright-core install chromium" to enable this test)'); process.exit(0); }
 }
@@ -99,7 +100,7 @@ for (const [n, rolls] of [['12', '1'.repeat(25) + '2'.repeat(25)], ['24', '3'.re
 await p.evaluate(() => { document.getElementById('watchBox').open = true; document.getElementById('spBox').open = true; document.getElementById('addrBox').open = true; });
 for (const type of ['wpkh', 'tr', 'sh-wpkh', 'pkh']) {
   for (const net of ['main', 'test']) {
-    await p.selectOption('#wType', type); await p.selectOption('#wNet', net);
+    await p.selectOption('#wType', type); await p.selectOption('#wNet', net); await p.evaluate(() => refreshWatch());   // wait for the refresh to finish
     const pre = { wpkh: ['zpub', 'vpub'], tr: ['xpub', 'tpub'], 'sh-wpkh': ['ypub', 'upub'], pkh: ['xpub', 'tpub'] }[type][net === 'test' ? 1 : 0];
     await p.waitForFunction(([pre, ban]) => document.getElementById('wZpub').textContent.startsWith(pre) && document.getElementById('wTestBan').style.display === ban && document.getElementById('wKeyLabel').textContent.includes(pre), [pre, net === 'test' ? '' : 'none']);
     for (const [id, lbl] of [['wZpub', 'public key'], ['wDescR', 'receive descriptor'], ['wDescC', 'change descriptor']]) {
@@ -108,11 +109,11 @@ for (const type of ['wpkh', 'tr', 'sh-wpkh', 'pkh']) {
     }
   }
 }
-await p.selectOption('#wType', 'ms-wsh'); await p.selectOption('#wNet', 'main');
+await p.selectOption('#wType', 'ms-wsh'); await p.selectOption('#wNet', 'main'); await p.evaluate(() => refreshWatch());
 await p.waitForFunction(() => document.getElementById('wZpub').textContent.startsWith('Zpub'));
 for (const id of ['wZpub', 'wDescR']) { await p.evaluate((id) => showQr(id, 'cosigner'), id); await sheet('cosigner QR ' + id, () => printShownQr()); }
 ok(await p.evaluate(() => { showQr('wDescR', 'x'); return qrShown.title; }) === 'VOIDFORGE COSIGNER KEY WITH ORIGIN', 'cosigner QR: named as a cosigner key, not a descriptor');
-await p.selectOption('#wType', 'wpkh'); await p.selectOption('#wNet', 'main');
+await p.selectOption('#wType', 'wpkh'); await p.selectOption('#wNet', 'main'); await p.evaluate(() => refreshWatch());
 await p.waitForFunction(() => document.getElementById('spAddr').textContent.startsWith('sp1') && document.getElementById('wZpub').textContent.startsWith('zpub'));
 await p.evaluate(() => showQr('spAddr', 'Silent Payment address'));
 await sheet('Silent Payment QR', () => printShownQr());
@@ -180,7 +181,20 @@ for (const [m, n] of [[2, 2], [2, 3], [3, 5], [5, 7], [6, 9], [7, 10], [15, 15]]
   await sheet('multisig ' + m + '-of-' + n, () => msPrint());
 }
 
-// 7. TEXT A+ (large text on screen) must not change the printed sheets.
+// 7. Light theme, and the CHECK A BACKUP sheets with a passphrase.
+await p.evaluate(() => toggleTheme());
+await sheet('light theme: backup sheet 24', () => printSeed());
+await sheet('light theme: summary sheet 24', () => printSummary());
+await p.click('#tab-check');
+await p.fill('#phrase', 'legal winner thank year wave sausage worth useful legal winner thank yellow'); await p.fill('#verifyPass', 'a passphrase');
+await p.click('#verifyBtn');
+await p.waitForFunction(() => /\(with passphrase\)/.test(document.getElementById('wvFp').textContent) && document.getElementById('wvList').children.length === 10);
+await sheet('light theme: check words with a passphrase', () => printSeed('check'));
+await sheet('light theme: check recovery sheet with a passphrase', () => printRecoverySheet());
+ok(await p.evaluate(() => { printSeed('check'); const t = document.getElementById('printOnly').textContent; window.dispatchEvent(new Event('afterprint')); return !t.includes('a passphrase') && /Passphrase used: YES/.test(t); }), 'check words with a passphrase: says one was used, never prints it');
+await p.fill('#verifyPass', ''); await p.evaluate(() => toggleTheme());
+
+// 8. TEXT A+ (large text on screen) must not change the printed sheets.
 await p.evaluate(() => toggleSize());
 await p.click('#tab-make');
 await p.selectOption('#wordSel', '24'); await p.selectOption('#rsExtra', '50');
