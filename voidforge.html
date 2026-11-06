@@ -241,7 +241,13 @@
   #about code { font-family: monospace; font-size: 13px; color: var(--accent); word-break: break-word; }
   #about table { border-collapse: collapse; width: 100%; }
   #about th, #about td { border: 1px solid var(--border); padding: 4px 8px; text-align: center; }
-  footer { text-align: center; color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: 12px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; line-height: 1.6; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border); }
+  footer .ft-name { color: var(--gold); font-weight: 700; letter-spacing: .14em; font-size: 12px; margin-bottom: 4px; }
+  footer .ft-name span { color: var(--muted); font-weight: 600; letter-spacing: .04em; }
+  footer .ft-line { display: flex; flex-wrap: wrap; justify-content: center; column-gap: 0; row-gap: 2px; }
+  footer .ft-line span { white-space: nowrap; }
+  footer .ft-line span + span::before { content: "\00b7"; margin: 0 8px; color: var(--border); font-weight: 700; }
+  @media (max-width: 640px) { footer .ft-line { flex-direction: column; } footer .ft-line span + span::before { content: none; } }
   @media print {
     .theme-toggle, .print-btn, button, .radio-group, textarea, input { display: none !important; }
     .result, .fp { border: 1px solid #000; }
@@ -1507,7 +1513,8 @@
   <div id="printQr"></div>
 
   <footer>
-    VOIDFORGE v2.2.0 &bull; SHA-256 of your rolls or flips &rarr; BIP39, as SeedSigner and Coldcard do &bull; source: github.com/Random21m/VOIDFORGE
+    <div class="ft-name">VOIDFORGE <span>v2.2.0</span></div>
+    <div class="ft-line"><span>SHA-256 of your rolls &rarr; BIP39</span><span>Same method as SeedSigner and Coldcard</span><span>github.com/Random21m/VOIDFORGE</span></div>
   </footer>
 </div>
 
