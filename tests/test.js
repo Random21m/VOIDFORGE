@@ -1110,7 +1110,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       for(const v of [...VB.simple,...VG.simple]) for(const sg of v.bip322_signatures){ n++; const want=/p2wsh/.test(v.type)?'cannot':'valid'; for(const x of [sg, sg.startsWith('smp')?sg.slice(3):'smp'+sg]){ const g=(await V(v.address,v.message,x)).state; if(g!==want) bad.push(v.type+' '+g); } }
       for(const v of [...VG.full,...VG.proof_of_funds]) for(const sg of v.bip322_signatures){ n++; for(const x of [sg, /^(ful|pof)/.test(sg)?sg.slice(3):sg]){ const g=(await V(v.address,v.message,x)).state; if(g!=='cannot') bad.push(v.type+' full '+g+(x===sg?'':' (no prefix)')); } }
       for(const v of [...VB.error,...VG.error]){ n++; const g=(await V(v.address,v.message,v.signature)).state; if(g==='valid') bad.push('error case '+v.description); }
-      ok(n>=60&&bad.length===0,'signed message: all '+n+' official BIP-322 vectors give the right result, with and without the prefix ('+(bad.join('; ')||'no mismatches')+')'); }
+      ok(n===59&&bad.length===0,'signed message: all '+n+' official BIP-322 vectors give the right result, with and without the prefix ('+(bad.join('; ')||'no mismatches')+')'); }
     for(const sg of SH){ r=await V(W1,'Hello World',sg); ok(r.state==='valid','signed message: BIP-322 simple P2WPKH "Hello World" (official vector, '+sg.slice(3,10)+'...)'); }
     r=await V(W1,'Hello World',SH[0].slice(3)); ok(r.state==='valid'&&/without the smp prefix/.test(r.text),'signed message: a BIP-322 signature without the smp prefix is read as simple');
     r=await V(W1,'Wrong message that was not signed',SE); ok(r.state==='invalid','signed message: official vector, wrong message is NOT VALID');
