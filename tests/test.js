@@ -521,8 +521,9 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     { const sp=R1.replace(/(.)/g,'$1 '); await forge(sp); g.w.downloadSeed(); const txt=await blobText(g.w,g.st.blob); ok(txt.endsWith('Input: '+R1)||txt.includes('Input: '+R1+'\n'),'stale guard: the saved file records the rolls that made the words (cleaned), not what is typed now'); }
     { const A11='abandon '.repeat(11); g.$('wdLen').value='12'; g.$('wdWords').value=A11; g.$('wdFlips').value='0000000'; g.$('passphrase').value=''; g.$('passphrase2').value=''; g.w.wdUpdate(); await g.w.wdGenerate();
       ok(seedOn()&&/abandon/.test(first()),'stale guard: a seed from the Word draw box exists');
-      g.set(rnd(10,6)); g.words(24); g.words(12); g.mode('coin'); g.mode('dice'); ok(seedOn(),'stale guard: rolls, word count and mode do not matter to a Word draw seed');
-      typePass('zzz'); await g.w.eval('passWork'); ok(seedOn()&&!fpOn(),'passphrase after FORGE: a passphrase edit keeps a Word draw seed too (fingerprint waits for the confirm box)'); }
+      g.set(rnd(10,6)); g.mode('coin'); g.mode('dice'); ok(seedOn(),'stale guard: the rolls box and the dice/coin choice do not matter to a Word draw seed');
+      typePass('zzz'); await g.w.eval('passWork'); ok(seedOn()&&!fpOn(),'passphrase after FORGE: a passphrase edit keeps a Word draw seed too (fingerprint waits for the confirm box)');
+      g.words(24); ok(!seedOn(),'stale guard: changing the word count clears a Word draw seed, as it does a dice seed (v2.3.0)'); g.words(12); typePass(''); }
     // --- restore drill (v1.27.0) ---
     { const body=g.d.body, dr=(id)=>g.$(id), st=()=>dr('drillStatus').textContent, typed=(w,pw)=>{ dr('drillWords').value=w; dr('drillPass').value=pw||''; };
       const vis=(id)=>g.w.getComputedStyle(g.$(id)).display;
@@ -1106,8 +1107,8 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     // CANNOT CHECK with and without their prefix, every error case never VALID
     { const VB=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures','bip322-basic-test-vectors.json'),'utf8')), VG=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures','bip322-generated-test-vectors.json'),'utf8'));
       let bad=[], n=0;
-      for(const v of [...VB.simple,...VG.simple]) for(const sg of v.bip322_signatures){ n++; const want=/p2wsh/.test(v.type)?'cannot':'valid'; for(const x of [sg, sg.slice(3)]){ const g=(await V(v.address,v.message,x)).state; if(g!==want) bad.push(v.type+' '+g); } }
-      for(const v of [...VG.full,...VG.proof_of_funds]) for(const sg of v.bip322_signatures){ n++; for(const x of [sg, sg.slice(3)]){ const g=(await V(v.address,v.message,x)).state; if(g!=='cannot') bad.push(v.type+' full '+g+(x===sg?'':' (no prefix)')); } }
+      for(const v of [...VB.simple,...VG.simple]) for(const sg of v.bip322_signatures){ n++; const want=/p2wsh/.test(v.type)?'cannot':'valid'; for(const x of [sg, sg.startsWith('smp')?sg.slice(3):'smp'+sg]){ const g=(await V(v.address,v.message,x)).state; if(g!==want) bad.push(v.type+' '+g); } }
+      for(const v of [...VG.full,...VG.proof_of_funds]) for(const sg of v.bip322_signatures){ n++; for(const x of [sg, /^(ful|pof)/.test(sg)?sg.slice(3):sg]){ const g=(await V(v.address,v.message,x)).state; if(g!=='cannot') bad.push(v.type+' full '+g+(x===sg?'':' (no prefix)')); } }
       for(const v of [...VB.error,...VG.error]){ n++; const g=(await V(v.address,v.message,v.signature)).state; if(g==='valid') bad.push('error case '+v.description); }
       ok(n>=60&&bad.length===0,'signed message: all '+n+' official BIP-322 vectors give the right result, with and without the prefix ('+(bad.join('; ')||'no mismatches')+')'); }
     for(const sg of SH){ r=await V(W1,'Hello World',sg); ok(r.state==='valid','signed message: BIP-322 simple P2WPKH "Hello World" (official vector, '+sg.slice(3,10)+'...)'); }

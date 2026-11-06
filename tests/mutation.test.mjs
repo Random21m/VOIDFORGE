@@ -250,8 +250,9 @@ async function probe(w, mutated) {
       if (!txt.endsWith('Input: ' + D50)) fails.push('stale: the saved file records the rolls that made the words'); w.URL.createObjectURL = o1; w.HTMLAnchorElement.prototype.click = o2; }
     { const A11 = 'abandon '.repeat(11); $('wdLen').value = '12'; $('wdWords').value = A11; $('wdFlips').value = '0000000'; $('passphrase').value = ''; $('passphrase2').value = ''; w.wdUpdate(); await w.wdGenerate();
       if (!on()) fails.push('stale: a Word draw seed is made');
-      $('rolls').value = '1234'; w.updateCount(); words(24); words(12); mode('coin'); mode('dice'); if (!on()) fails.push('stale: rolls, length and mode do not matter to a Word draw seed');
-      $('passphrase').value = 'z'; ev('passphrase'); await w.eval('passWork'); if (!on()) fails.push('stale: a passphrase edit keeps a Word draw seed'); }
+      $('rolls').value = '1234'; w.updateCount(); mode('coin'); mode('dice'); if (!on()) fails.push('stale: the rolls box and the dice/coin choice do not matter to a Word draw seed');
+      $('passphrase').value = 'z'; ev('passphrase'); await w.eval('passWork'); if (!on()) fails.push('stale: a passphrase edit keeps a Word draw seed');
+      words(24); if (on()) fails.push('stale: changing the word count clears a Word draw seed'); words(12); $('passphrase').value = ''; ev('passphrase'); await w.eval('passWork'); }
     w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); }
   { // Try accounts 0 to 20 (v1.33.0)
     const AB = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
