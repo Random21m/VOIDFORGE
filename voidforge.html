@@ -298,6 +298,10 @@
     body.print-qr #printQr .pq-img svg { width: 100%; height: 100%; }
     body.print-qr #printQr .pq-wide { width: 17cm; height: 17cm; }
     body.print-qr #printQr .pq-guide { width: 13cm; height: 13cm; margin: 8px 0; }
+    body.print-qr #printQr .pq-ms { width: 10cm; height: 10cm; margin: 10px 0; }
+    body.print-qr #printQr .pq-ms ~ .pq-info { font-size: 11px; line-height: 1.35; }
+    body.print-qr #printQr .pq-ms.pq-ms-l { width: 8.5cm; height: 8.5cm; }
+    body.print-qr #printQr .pq-ms-l ~ .pq-info, body.print-qr #printQr .pq-title + .pq-rule + .pq-info { font-size: 10px; line-height: 1.3; }
     body.print-qr #printQr .pq-rows { columns: 2; font-size: 10px; line-height: 1.3; margin-top: 6px; }
   }
   #fatalWarn { display: none; background: var(--danger); color: #000; font-weight: 700; font-size: 13px; text-align: center; padding: 10px 12px; border-radius: 10px; margin-bottom: 14px; }
@@ -3972,7 +3976,8 @@ function printSqSheet(title, svg, wide, extra, rowsText){
   po.textContent = "";
   const add = (cls, text) => { const d = document.createElement("div"); if(cls) d.className = cls; d.textContent = text; po.appendChild(d); return d; };
   add("pq-title", title);
-  add("pq-img" + (wide ? (rowsText ? " pq-guide" : " pq-wide") : ""), "").innerHTML = svg;
+  // `wide`: false (11 cm), true (17 cm, or 13 cm with the row list), or a size class such as "pq-ms". No picture when svg is empty.
+  if(svg) add("pq-img" + (typeof wide === "string" ? " " + wide : wide ? (rowsText ? " pq-guide" : " pq-wide") : ""), "").innerHTML = svg;
   if(rowsText) add("pq-rows", rowsText);
   add("pq-rule", ""); add("pq-info", extra);
   document.body.classList.add("print-qr");
@@ -5081,8 +5086,9 @@ function msSheetText(){
 }
 function msPrint(){
   if(!ms || !ms.done) return;
-  let q; try { q = qrMatrix(ms.descR); } catch(e) { return printSqSheet("VOIDFORGE MULTISIG RECOVERY SHEET", "", false, msSheetText(), ""); }
-  printSqSheet("VOIDFORGE MULTISIG RECOVERY SHEET" + (ms.net === "test" ? " (TESTNET)" : ""), qrSvg(q.rows), q.version > 15, msSheetText(), "");
+  const title = "VOIDFORGE MULTISIG RECOVERY SHEET" + (ms.net === "test" ? " (TESTNET)" : "");
+  let q; try { q = qrMatrix(ms.descR); } catch(e) { return printSqSheet(title, "", "pq-ms", "The descriptor is too long for one QR code: copy it from the text below.\n\n" + msSheetText(), ""); }
+  printSqSheet(title, qrSvg(q.rows), ms.n >= 5 ? "pq-ms pq-ms-l" : "pq-ms", msSheetText(), "");
 }
 
 // ===== Wallet view (v2.1.0): any valid 12, 15, 18, 21 or 24 word phrase typed in the Check tab, with the passphrase box next to it =====

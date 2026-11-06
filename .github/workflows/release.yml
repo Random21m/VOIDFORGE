@@ -77,9 +77,9 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: 22 }
       - run: npm ci --ignore-scripts
-      - name: Unit and oracle tests (shard 0 only)
+      - name: Unit, oracle and print tests (shard 0 only)
         if: matrix.shard == 0
-        run: node tests/test.js && node tests/oracle.test.mjs
+        run: node tests/test.js && node tests/oracle.test.mjs && PW_CHANNEL=chrome node tests/print.test.mjs
       - name: Mutation tests (shard ${{ matrix.shard }} of 20)
         run: MUT_SHARD=${{ matrix.shard }}/20 node tests/mutation.test.mjs
   attest:

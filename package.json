@@ -5,7 +5,7 @@
   "description": "Test dependencies for VOIDFORGE (the tool itself has none: it is one HTML file).",
   "license": "MIT",
   "scripts": {
-    "test": "node tests/test.js && node tests/oracle.test.mjs && node tests/mutation.test.mjs"
+    "test": "node tests/test.js && node tests/oracle.test.mjs && node tests/print.test.mjs && node tests/mutation.test.mjs"
   },
   "devDependencies": {
     "@scure/bip32": "^1.7.0",
@@ -14,6 +14,7 @@
     "jsdom": "^26.0.0",
     "jsqr": "^1.4.0",
     "lifehash": "^1.0.0",
+    "playwright-core": "1.63.0",
     "qrcode-generator": "^1.5.2"
   }
 }

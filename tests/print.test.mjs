@@ -1,0 +1,173 @@
+// VOIDFORGE print test (v2.4.0): every printed sheet must come out as exactly ONE page, on US Letter and on A4,
+// with only the sheet on it. It drives the real page in a real browser (Chromium through Playwright) and counts the
+// pages of the PDF the browser's own print engine makes, which is what a printer would get.
+//
+// Run: node tests/print.test.mjs           (uses Playwright's own Chromium, or set PW_CHANNEL=chrome to use an installed
+//                                           Google Chrome, as the GitHub runner does)
+import { createRequire } from 'module';
+import { randomBytes } from 'crypto';
+import { fileURLToPath } from 'url';
+import path from 'path';
+const require = createRequire(import.meta.url);
+const { chromium } = require('playwright-core');
+const { HDKey } = require('@scure/bip32');
+const { generateMnemonic } = require('@scure/bip39');
+const { wordlist } = require('@scure/bip39/wordlists/english');
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const FILE = 'file://' + (process.env.VF_FILE || path.join(here, '..', 'voidforge.html'));
+const pages = (buf) => (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+let pass = 0; const fails = [];
+const ok = (c, m) => { if (c) pass++; else { fails.push(m); console.log('FAIL ' + m); } };
+
+let browser;
+try {
+  browser = await chromium.launch(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {});
+} catch (e) {
+  // Locally, a Playwright install may keep its Chromium elsewhere; try the usual places before giving up.
+  const full = (() => { try { return createRequire('/opt/npm-tools/node_modules/x.js')('playwright'); } catch { return null; } })();
+  if (!full) throw e;
+  browser = await full.chromium.launch();
+}
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+await ctx.setOffline(true);
+const p = await ctx.newPage();
+const errors = [];
+p.on('pageerror', (e) => errors.push(e.message));
+p.on('dialog', (d) => d.accept());
+await p.goto(FILE);
+await p.waitForFunction(() => document.body.classList.contains('js-ok'));
+await p.click('#sgGo');
+await p.evaluate(() => { window.print = () => {}; });
+
+// Prints the sheet `fn` makes on each paper size. Making a PDF fires the browser's afterprint event, which wipes the
+// sheet, so the sheet is made again for each size. Checks: one page, the sheet has text, and nothing else is laid out.
+async function sheet(label, fn, arg) {
+  for (const format of ['Letter', 'A4']) {
+    await p.evaluate(fn, arg);
+    const st = await p.evaluate(() => {
+      const kind = document.body.classList.contains('print-qr') ? 'printQr' : document.body.classList.contains('print-seed') ? 'printOnly' : '';
+      return { kind, text: kind ? document.getElementById(kind).textContent.length : 0 };
+    });
+    if (!st.kind || st.text < 20) { ok(false, label + ' (' + format + '): no sheet was made'); continue; }
+    await p.emulateMedia({ media: 'print' });
+    const shown = await p.evaluate((kind) => [...document.body.children].filter((e) => e.id !== kind && getComputedStyle(e).display !== 'none').map((e) => e.id || e.className || e.tagName), st.kind);
+    await p.emulateMedia({ media: null });
+    ok(shown.length === 0, label + ' (' + format + '): only the sheet is laid out when printing (also shown: ' + shown.join(', ') + ')');
+    const n = pages(await p.pdf({ format }));
+    ok(n === 1, label + ' (' + format + '): prints on exactly one page (got ' + n + ')');
+    await p.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+    ok(await p.evaluate(() => !document.body.classList.contains('print-seed') && !document.body.classList.contains('print-qr') && !document.getElementById('printOnly').textContent && !document.getElementById('printQr').textContent), label + ': sheet wiped after printing');
+  }
+}
+const forge = async (rolls) => {
+  await p.fill('#rolls', rolls); await p.dispatchEvent('#rolls', 'input');
+  await p.click('#forgeBtn'); await p.waitForFunction(() => document.body.classList.contains('has-seed'));
+};
+
+// 1. Roll sheets: dice, coin and Keystone dice, 12 and 24 words, every extra-box choice.
+await p.selectOption('#wordSel', '12');
+for (const mode of ['dice', 'coin', 'keystone']) {
+  if (mode === 'coin') await p.click('#mt-coin');
+  if (mode === 'keystone') { await p.click('#mt-dice'); await p.selectOption('#diceRules', 'keystone'); }
+  for (const n of ['12', '24']) {
+    await p.selectOption('#wordSel', n);
+    const opts = await p.$$eval('#rsExtra option', (os) => os.map((o) => o.value));
+    ok(opts.join() === (mode === 'keystone' ? '0,10,25,50,max' : '0,10,25,50'), 'roll sheet: extra-box choices for ' + mode + ' (' + opts.join() + ')');
+    for (const x of opts) { await p.selectOption('#rsExtra', x); await sheet('roll sheet ' + mode + ' ' + n + ' +' + x, () => printRollSheet()); }
+  }
+}
+await p.selectOption('#diceRules', 'std'); await p.selectOption('#wordSel', '12');
+
+// 2. Word draw sheets.
+for (const n of ['12', '24']) { await p.selectOption('#wordSel', n); await sheet('word draw sheet ' + n, () => printWordSheet()); }
+
+// 3. A made seed: backup sheet, stamp sheet, SeedQR prints, public QR prints, address QR prints.
+for (const [n, rolls] of [['12', '1'.repeat(25) + '2'.repeat(25)], ['24', '3'.repeat(50) + '4'.repeat(49)]]) {
+  await p.selectOption('#wordSel', n); await forge(rolls);
+  await sheet('backup sheet ' + n, () => printSeed());
+  await sheet('stamp sheet ' + n, () => printStamp());
+  for (const k of ['seedqr', 'compact']) {
+    await p.evaluate((k) => showSeedQr(k), k);
+    await sheet(k + ' ' + n, () => printSeedQr());
+    await sheet(k + ' hand-copy guide ' + n, () => printSqGuide());
+    await sheet(k + ' blank grid ' + n, () => printSqBlank());
+  }
+}
+await p.evaluate(() => { document.getElementById('watchBox').open = true; document.getElementById('spBox').open = true; document.getElementById('addrBox').open = true; });
+for (const type of ['wpkh', 'tr', 'sh-wpkh', 'pkh']) {
+  for (const net of ['main', 'test']) {
+    await p.selectOption('#wType', type); await p.selectOption('#wNet', net);
+    await p.waitForFunction(() => document.getElementById('wZpub').textContent.length > 100);
+    for (const [id, lbl] of [['wZpub', 'public key'], ['wDescR', 'receive descriptor'], ['wDescC', 'change descriptor']]) {
+      await p.evaluate(([id, lbl]) => showQr(id, lbl), [id, lbl]);
+      await sheet('public QR ' + type + ' ' + net + ' ' + id, () => printShownQr());
+    }
+  }
+}
+await p.selectOption('#wType', 'wpkh'); await p.selectOption('#wNet', 'main');
+await p.waitForFunction(() => document.getElementById('spAddr').textContent.startsWith('sp1'));
+await p.evaluate(() => showQr('spAddr', 'Silent Payment address'));
+await sheet('Silent Payment QR', () => printShownQr());
+const a0 = await p.$eval('#addrList [data-addr]', (e) => e.getAttribute('data-addr'));
+await p.evaluate((a) => showAddrQr('aq', a), a0);
+await sheet('address QR', () => printAddrQr('aq'));
+await p.evaluate(() => { document.getElementById('aqAmt').value = '0.0123'; document.getElementById('aqLbl').value = 'Invoice 42'; document.getElementById('aqMsg').value = 'A long message that makes the payment request much bigger. '.repeat(4); drawAddrQr('aq'); });
+await sheet('payment request QR (long message)', () => printAddrQr('aq'));
+
+// 4. CHECK A BACKUP: every word count, with the 4-letter view, the words, the stamp sheet, the recovery sheet and SeedQR.
+await p.click('#tab-check');
+for (const bits of [128, 160, 192, 224, 256]) {
+  const m = generateMnemonic(wordlist, bits), n = m.split(' ').length;
+  await p.fill('#phrase', m); await p.dispatchEvent('#phrase', 'input');
+  await p.click('#verifyBtn');
+  await p.waitForFunction(() => /^Master fingerprint: [0-9a-f]{8}/.test(document.getElementById('wvFp').textContent) && document.getElementById('wvList').children.length === 10);
+  await p.evaluate(() => wvAbbr(true));
+  const ab = await p.$$eval('#wvAbbrGrid .wtxt', (es) => es.map((e) => e.textContent));
+  ok(ab.join(' ') === m.split(' ').map((w) => w.slice(0, 4)).join(' '), 'check: 4-letter view shows the first 4 letters of all ' + n + ' words');
+  await sheet('check: words ' + n, () => printSeed('check'));
+  await sheet('check: stamp sheet ' + n, () => printStamp('check'));
+  await sheet('check: recovery sheet ' + n, () => printRecoverySheet());
+  if (n === 12 || n === 24) {
+    for (const k of ['seedqr', 'compact']) {
+      await p.evaluate((k) => wvSeedQr(k), k);
+      await sheet('check: ' + k + ' ' + n, () => printSeedQr('check'));
+      await sheet('check: ' + k + ' guide ' + n, () => printSqGuide('check'));
+      await sheet('check: ' + k + ' blank ' + n, () => printSqBlank('check'));
+    }
+  }
+}
+
+// 5. Child seeds and keys (BIP85), including the longest outputs.
+await p.fill('#phrase', 'abandon '.repeat(11) + 'about'); await p.dispatchEvent('#phrase', 'input');
+await p.click('#tab-tools');
+const child = async (label, setup) => {
+  await p.evaluate((s) => { for (const [k, v] of Object.entries(s)) document.getElementById(k).value = v; childAppChange(); for (const [k, v] of Object.entries(s)) document.getElementById(k).value = v; }, setup);
+  await p.evaluate(() => deriveChild());
+  await p.waitForFunction(() => document.getElementById('childPrintRow').style.display === '');
+  await sheet('child ' + label, () => printChild());
+};
+for (const w of ['12', '18', '24']) await child('seed ' + w + ' words', { childApp: 'words', childWords: w });
+await child('WIF', { childApp: 'wif' });
+await child('xprv', { childApp: 'xprv' });
+await child('hex 64 bytes', { childApp: 'hex', childLen: '64' });
+await child('password base64 86', { childApp: 'pwd64', childLen: '86' });
+await child('password base85 80', { childApp: 'pwd85', childLen: '80' });
+await child('1000 rolls of a 6-sided die', { childApp: 'dice', childSides: '6', childRolls: '1000' });
+await child('1000 rolls of the largest die', { childApp: 'dice', childSides: '2147483647', childRolls: '1000' });
+
+// 6. Multisig recovery sheets, from 2-of-2 up to the largest QR code (6-of-9) and past it (15 keys, no QR code).
+const cos = Array.from({ length: 15 }, () => { const m = HDKey.fromMasterSeed(randomBytes(32)); return { fp: m.fingerprint.toString(16).padStart(8, '0'), xpub: m.derive("m/48'/0'/0'/2'").publicExtendedKey }; });
+for (const [m, n] of [[2, 2], [2, 3], [3, 5], [5, 7], [6, 9], [7, 10], [15, 15]]) {
+  await p.evaluate(async ([m, n, cos]) => {
+    ms = { m, n, type: 'ms-wsh', net: 'main', account: 0, keys: [], mode: 'paste', busy: false, done: false };
+    for (const c of cos.slice(0, n)) ms.keys.push({ fp: c.fp, path: '48h/0h/0h/2h', key: await parseExtendedKey(c.xpub), xpub: c.xpub, src: 'pasted' });
+    await msFinish();
+  }, [m, n, cos]);
+  await sheet('multisig ' + m + '-of-' + n, () => msPrint());
+}
+
+ok(errors.length === 0, 'no page errors (' + errors.join(' | ') + ')');
+await browser.close();
+console.log('PRINT: ' + pass + ' pass, ' + fails.length + ' fail');
+process.exit(fails.length ? 1 : 0);
