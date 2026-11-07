@@ -4,13 +4,19 @@
 #   SHA256SUMS and CID.txt first, so the demo can only ever serve the file those two name.
 # - test: the unit, oracle and print tests, started by hand (the free plan has 400 CI minutes a month, and the
 #   mutation suite takes hours, so the full suite, mutation tests included, runs before each release on the
-#   maintainer's machine; see RELEASING.md).
+#   maintainer's machine; see RELEASING.md). Run pipeline (Build > Pipelines) starts it at once on any branch.
+# Pipelines are made only for main and for Run pipeline, so pushes of dev branches and tags leave no skipped entries.
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "web"
 stages: [test, deploy]
 
 test:
   stage: test
   image: mcr.microsoft.com/playwright:v1.63.0-noble
   rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
     - when: manual
       allow_failure: true
   script:
