@@ -71,6 +71,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   body.light input[type="text"],
   body.light input[type="number"],
   body.light input[type="password"],
+  body.light input[type="date"],
   body.light .result {
     background: #ffffff;
     color: #1c1e26;
@@ -147,7 +148,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   }
   .radio-group input { display: none; }
   .radio-group input:checked + span { color: var(--accent); font-weight: 600; }
-  textarea, input[type="text"], input[type="password"], input[type="number"], select {
+  textarea, input[type="text"], input[type="password"], input[type="number"], input[type="date"], select {
     width: 100%;
     background: #0a0a10;
     border: 1px solid var(--border);
@@ -296,7 +297,6 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     body.print-seed #printOnly .ps-warn { font-weight: 700; }
     body.print-seed #printOnly .ps-info { margin-bottom: 8px; }
     body.print-seed #printOnly .ps-small { font-size: 11px; }
-    body.practice.print-seed #printOnly::before, body.practice.print-qr #printQr::before { content: "PRACTICE MODE: TEST NETWORK. NOT FOR REAL MONEY."; display: block; font-weight: 700; border: 2px solid #000; padding: 4px 8px; margin-bottom: 8px; }
   }
   #printOnly { display: none; }
   #printQr { display: none; }
@@ -450,26 +450,25 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   html.js #noJs { display: none; }
   html.js body:not(.js-ok) .container { visibility: hidden; }
   /* v2.5.0: secrets on the screen cannot be highlighted, so they are never copied to the clipboard by accident (there is no copy button for them either) */
-  #wordGrid, #wvAbbrGrid, #childOut, #exOut { -webkit-user-select: none; user-select: none; }
+  #wordGrid, #genResult, #wvAbbrGrid, #childOut, #exOut, #reforgeOut { -webkit-user-select: none; user-select: none; }
   .pass-warn { color: var(--warn-text); font-weight: 600; font-size: 13px; margin: 6px 0 0; }
   .pass-warn:empty { display: none; }
   #practiceBan { display: none; }
   body.practice #practiceBan { display: block; color: var(--text); border: 1px solid var(--warn-text); border-left-width: 4px; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 13px; }
-  #practiceAddr { font-size: 13px; word-break: break-all; color: var(--warn-text); font-weight: 600; margin-top: 6px; }
-  #practiceAddr:empty { display: none; }
   .pr-mode { display: flex; gap: 8px; align-items: center; font-weight: 600; margin-top: 6px; }
   .wv-born { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; margin-top: 8px; max-width: 22em; }
   /* v2.5.0 backup plan */
   #planBox .pl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-top: 8px; }
   #planBox .pl-grid label, #planBox .pl-one { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; margin-top: 8px; }
   #planBox .pl-grid label { margin-top: 0; justify-content: flex-end; }
-  #planBox .pl-copy { display: grid; grid-template-columns: 9.5em 1fr 10.5em; gap: 6px; margin-top: 6px; }
+  #planBox .pl-copy { display: grid; grid-template-columns: 4.2em 7em 1fr 7.5em; gap: 6px; margin-top: 6px; align-items: center; }
+  #planBox .pl-n { font-size: 13px; font-weight: 600; }
   #plTest { list-style: none; margin: 6px 0 0; padding: 0; }
   #plTest li { margin: 8px 0; font-size: 13px; line-height: 1.45; }
   #plTest li .tag { margin: 0 6px 0 0; }
   #plTest .pl-fix { display: block; color: var(--muted); }
   #plTest .pl-na { color: var(--muted); }
-  @media (max-width: 560px) { #planBox .pl-grid { grid-template-columns: 1fr; } #planBox .pl-copy { grid-template-columns: 1fr 1fr; } #planBox .pl-copy input { grid-column: 1 / -1; grid-row: 2; } }
+  @media (max-width: 560px) { #planBox .pl-grid { grid-template-columns: 1fr; } #planBox .pl-copy { grid-template-columns: 4.2em 1fr 1fr; } #planBox .pl-copy input { grid-column: 1 / -1; grid-row: 2; } }
   body.light #startGate { background: rgba(30,34,48,.55); }
   #startGate .sg-box { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--warn-text); border-radius: 14px; max-width: 560px; width: 100%; padding: 22px 24px 20px; box-shadow: 0 20px 60px rgba(0,0,0,.5); max-height: 100%; overflow: hidden; display: flex; flex-direction: column; }
   #startGate .sg-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-right: 2px; }
@@ -555,6 +554,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   #statusLine { margin-bottom: 4px; }
   .strip { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 4px 0 12px; padding: 7px 12px; border: 1px solid var(--warn-text); border-radius: 10px; font-size: 13px; background: var(--surface); }
   .strip b { color: var(--warn-text); }
+  #practiceBan .linklike { margin: 0 0 0 6px; padding: 0; background: none; border: none; color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: 0; text-decoration: underline; text-underline-offset: 3px; box-shadow: none; min-height: 0; }
   .strip .linklike { margin: 0 0 0 auto; padding: 0; background: none; border: none; color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: 0; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; box-shadow: none; }
   .tabs { display: flex; gap: 4px; margin: 0 0 14px; border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 4; background: var(--bg); padding-top: 4px; }
   .tabs button { flex: 1 1 0; min-width: 0; margin: 0 0 -2px; padding: 9px 8px 8px; background: #12324a; border: none; border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0; color: #e6f7ff; font-size: 14px; font-weight: 700; letter-spacing: .4px; box-shadow: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
@@ -658,14 +658,14 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .card h2 { font-size: 18px; letter-spacing: 0; color: var(--text); margin-bottom: 8px; }
   .card h2::before { display: none; }
   .sub { font-size: 15px; margin: 0 0 16px; }
-  textarea, input[type="text"], input[type="password"], input[type="number"], select, .result, .wcell, body.light textarea, body.light select, body.light input[type="text"], body.light input[type="number"], body.light input[type="password"], body.light .result, body.light .wcell { background: var(--field); color: var(--text); border: 1.5px solid var(--border); border-radius: 6px; }
+  textarea, input[type="text"], input[type="password"], input[type="number"], input[type="date"], select, .result, .wcell, body.light textarea, body.light select, body.light input[type="text"], body.light input[type="number"], body.light input[type="password"], body.light input[type="date"], body.light .result, body.light .wcell { background: var(--field); color: var(--text); border: 1.5px solid var(--border); border-radius: 6px; }
   .radio-group label { background: transparent; border: 1.5px solid var(--bd2); border-radius: 6px; }
   .radio-group input:checked + span { color: var(--text); }
   .radio-group label:has(input:checked) { background: var(--text); }
   .radio-group label:has(input:checked) span { color: var(--bg); }
   .strip, body.light .strip { background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
   .strip b { color: var(--text); }
-  .strip .linklike { color: var(--goldtx); }
+  .strip .linklike, #practiceBan .linklike { color: var(--goldtx); }
   .tabs, body.light .tabs { background: var(--bg); border-bottom: 1px solid var(--border); gap: 2px; margin: 0 0 20px; padding-top: 0; }
   .tabs button, body.light .tabs button { flex: 0 0 auto; background: transparent; color: var(--muted); border: 0; border-bottom: 3px solid transparent; border-radius: 0; margin: 0 0 -1px; padding: 12px 16px; font-size: 14.5px; letter-spacing: .01em; box-shadow: none; opacity: 1; }
   .tabs button small, body.light .tabs button small { display: none; }
@@ -993,7 +993,6 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <div data-g="3 4 5" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;"><div class="fp" id="fingerprint"></div><div id="fpIcon" class="lh" title="Fingerprint picture (LifeHash): the same picture Sparrow Wallet shows for this fingerprint"></div></div>
     <div id="fpBaseRow" data-g="3 4 5" style="display:none; align-items:center; gap:14px; flex-wrap:wrap; margin-top:6px;"><div class="fp" id="fpBase"></div><div id="fpBaseIcon" class="lh" title="Fingerprint picture (LifeHash) of the wallet without the passphrase"></div></div>
-    <div id="practiceAddr" data-g="3 4 5" aria-live="polite"></div>
     <div id="address" data-g="3 4 5" style="margin-top:6px; font-size: 13px; word-break:break-all; color:var(--muted);"></div>
    </div>
    <div class="gen-bottom">
@@ -1176,23 +1175,23 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       </div>
       <div class="status" id="prStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <h3 class="sec">Practice mode for the whole page</h3>
-      <p class="hint" style="margin:6px 0;">Rehearse the whole job with worthless test coins. While it is on, every address on the page is on the test network (tb1...), the network menus stay on Testnet, and every printed sheet says PRACTICE. A seed made while it is on is an ordinary seed: the test network only changes which addresses are shown. OPEN A PRACTICE WALLET opens a public practice phrase in CHECK A BACKUP, so you can try receiving test coins with nothing at stake.</p>
+      <p class="hint" style="margin:6px 0;">Rehearse the whole job with worthless test coins. While it is on, every address on the page is on the test network (tb1...), the network menus stay on Testnet, and printed sheets with addresses or keys say TESTNET. A seed made while it is on is an ordinary seed: the test network only changes which addresses are shown, and seed backups print as usual. Turn it on or off when no multisig wallet is being made. OPEN A PRACTICE WALLET opens a public practice phrase in CHECK A BACKUP, so you can try receiving test coins with nothing at stake.</p>
       <label class="pr-mode"><input type="checkbox" id="practiceMode" autocomplete="off" onchange="practiceMode(this.checked)"> Practice mode: test network everywhere</label>
       <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" id="prWalletBtn" onclick="practiceWallet()">OPEN A PRACTICE WALLET</button></div>
     </details>
     <details id="planBox">
-      <summary>Backup plan and stress test<span class="tag tag-public">NO SECRETS</span><small>Where your copies are, who can help, and what happens if something goes wrong. Printable.</small></summary>
+      <summary>Backup plan and stress test<span class="tag tag-rec">NO WORDS, KEEP PRIVATE</span><small>Where your copies are, who can help, and what happens if something goes wrong. Printable.</small></summary>
       <p class="hint" style="margin:8px 0;">Fill in what is true for your wallet: places, people and how the passphrase is kept. <b>Never type the words or the passphrase here.</b> The stress test below updates as you type; nothing is saved. The printed plan says where your copies are, so keep it private and give it only to someone you trust.</p>
       <div class="pl-grid">
-        <label>Master fingerprint<input type="text" id="plFp" maxlength="8" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="such as 73c5da0a"></label>
+        <label>Master fingerprint (with the passphrase, if one is used)<input type="text" id="plFp" maxlength="8" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="such as 73c5da0a"></label>
         <label>Wallet made on<input type="date" id="plBorn"></label>
         <label>Wallet app or device<input type="text" id="plApp" maxlength="60" spellcheck="false" autocomplete="off" placeholder="such as Sparrow, or a Coldcard"></label>
-        <label>Passphrase<select id="plPass"><option value="none">No passphrase</option><option value="mem">Yes, memorised only (not written down)</option><option value="same">Yes, written on the same paper as the words</option><option value="home">Yes, written apart from the words, kept at home</option><option value="away">Yes, written apart from the words, kept away from home</option></select></label>
+        <label>Passphrase<select id="plPass"><option value="none">No passphrase</option><option value="mem">Yes, only in my memory</option><option value="same">Yes, on the same paper as the words</option><option value="home">Yes, on a separate note at home</option><option value="away">Yes, on a separate note away from home</option></select></label>
       </div>
       <h3 class="sec">Copies of the words</h3>
-      <div class="pl-copy"><select id="plM1" aria-label="Copy 1 is made of"><option value="">Copy 1: none</option><option value="paper" selected>Copy 1: paper</option><option value="metal">Copy 1: metal</option></select><input type="text" id="plW1" maxlength="80" spellcheck="false" autocomplete="off" aria-label="Where copy 1 is kept" placeholder="Where, such as: home safe"><select id="plL1" aria-label="Copy 1 is kept"><option value="home">At home</option><option value="away">Away from home</option></select></div>
-      <div class="pl-copy"><select id="plM2" aria-label="Copy 2 is made of"><option value="" selected>Copy 2: none</option><option value="paper">Copy 2: paper</option><option value="metal">Copy 2: metal</option></select><input type="text" id="plW2" maxlength="80" spellcheck="false" autocomplete="off" aria-label="Where copy 2 is kept" placeholder="Where, such as: bank safe deposit box"><select id="plL2" aria-label="Copy 2 is kept"><option value="home">At home</option><option value="away" selected>Away from home</option></select></div>
-      <div class="pl-copy"><select id="plM3" aria-label="Copy 3 is made of"><option value="" selected>Copy 3: none</option><option value="paper">Copy 3: paper</option><option value="metal">Copy 3: metal</option></select><input type="text" id="plW3" maxlength="80" spellcheck="false" autocomplete="off" aria-label="Where copy 3 is kept" placeholder="Where"><select id="plL3" aria-label="Copy 3 is kept"><option value="home">At home</option><option value="away" selected>Away from home</option></select></div>
+      <div class="pl-copy"><span class="pl-n">Copy 1</span><select id="plM1" aria-label="Copy 1 is made of"><option value="">None</option><option value="paper" selected>Paper</option><option value="metal">Metal</option></select><input type="text" id="plW1" maxlength="80" spellcheck="false" autocomplete="off" aria-label="Where copy 1 is kept" placeholder="Where, such as: home safe"><select id="plL1" aria-label="Copy 1 is kept"><option value="home">At home</option><option value="away">Away</option></select></div>
+      <div class="pl-copy"><span class="pl-n">Copy 2</span><select id="plM2" aria-label="Copy 2 is made of"><option value="" selected>None</option><option value="paper">Paper</option><option value="metal">Metal</option></select><input type="text" id="plW2" maxlength="80" spellcheck="false" autocomplete="off" aria-label="Where copy 2 is kept" placeholder="Where, such as: bank safe deposit box"><select id="plL2" aria-label="Copy 2 is kept"><option value="home">At home</option><option value="away" selected>Away</option></select></div>
+      <div class="pl-copy"><span class="pl-n">Copy 3</span><select id="plM3" aria-label="Copy 3 is made of"><option value="" selected>None</option><option value="paper">Paper</option><option value="metal">Metal</option></select><input type="text" id="plW3" maxlength="80" spellcheck="false" autocomplete="off" aria-label="Where copy 3 is kept" placeholder="Where"><select id="plL3" aria-label="Copy 3 is kept"><option value="home">At home</option><option value="away" selected>Away</option></select></div>
       <h3 class="sec">If something happens to you</h3>
       <div class="pl-grid">
         <label>Does someone you trust know this plan exists, and where it is?<select id="plKnow"><option value="no">No</option><option value="yes">Yes</option></select></label>
@@ -1599,7 +1598,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details>
       <summary>Changelog</summary>
       <ul>
-        <li><b>2.5.0</b> &mdash; <b>Plan your backup, practise safely, and take a wallet to another app.</b> (1) <b>Backup plan and stress test</b> (CHECK A BACKUP): list where each copy of the words is kept, how the passphrase is kept and who can help. VOIDFORGE then walks through a fire, a burglary, a death, a forgotten passphrase and a lost device, says for each whether the money stays safe, is lost or is open to a thief, and how to fix it. PRINT BACKUP PLAN adds the next yearly check-up date and a 5-minute check-up routine, and refuses to print anything that looks like seed words or a key. PLAN WHERE THE COPIES GO in the backup checklist opens it. (2) <b>Wallet birthday</b>: the date a seed is made is printed on the summary sheet, and can be added to the recovery sheet and the plan. (3) <b>Practice mode</b> (Practise making a backup): every address on the page moves to the test network, the network menus stay on Testnet, a banner says so, every printed sheet says PRACTICE, and OPEN A PRACTICE WALLET opens a public practice phrase for trying out test coins. (4) <b>SAVE WATCH-ONLY FILE</b> (Watch-only wallet): a text file with the public descriptors that Sparrow opens directly, plus the separate descriptors for Bitcoin Core, the account key for Electrum, the first addresses and the birthday. (5) A warning under each passphrase box when the passphrase starts or ends with a space, or has two spaces in a row, a non-breaking space, an invisible character, a tab or a line break: a passphrase is used exactly as typed. (6) Seed words and other secrets on the screen can no longer be highlighted, so they are not copied by accident. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
+        <li><b>2.5.0</b> &mdash; <b>Plan your backup, practise safely, and take a wallet to another app.</b> (1) <b>Backup plan and stress test</b> (CHECK A BACKUP): list where each copy of the words is kept, how the passphrase is kept and who can help. VOIDFORGE then walks through a fire, a burglary, a death, a forgotten passphrase and a lost device, says for each whether the money stays safe, is lost or is open to a thief, and how to fix it. PRINT BACKUP PLAN adds the next yearly check-up date and a 5-minute check-up routine, and refuses to print anything that looks like seed words or a key. PLAN WHERE THE COPIES GO in the backup checklist opens it. (2) <b>Wallet birthday</b>: the date a seed is made is printed on the summary sheet, and can be added to the recovery sheet and the plan. (3) <b>Practice mode</b> (Practise making a backup): every address and key on the page moves to the test network, the network menus stay on Testnet, a banner says so, printed address sheets say TESTNET (seed backups print as usual), and OPEN A PRACTICE WALLET opens a public practice phrase for trying out test coins. VERIFY says when words are one of these public practice phrases. (4) <b>SAVE WATCH-ONLY FILE</b> (Watch-only wallet): a text file with the public descriptors that Sparrow opens directly, plus the separate descriptors for Bitcoin Core, the account key for Electrum, the first addresses and the birthday. (5) A warning under the passphrase boxes in Make a seed and Check a backup when the passphrase starts or ends with a space, or has two spaces in a row, an invisible character, a tab or a line break: a passphrase is used exactly as typed. (6) Seed words and other secrets on the screen can no longer be highlighted, so they are not copied by accident. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.4.0</b> &mdash; <b>A print for everything, one page each, and plain-language helpers.</b> (1) <b>One page, no blank pages.</b> Every printed sheet now comes out on exactly one page, on US Letter and on A4; before, most sheets also printed one or more blank pages. A test prints every sheet in a real browser to check this. (2) <b>Roll sheet extras</b>: a menu next to PRINT ROLL SHEET chooses no extra boxes, 10, 25 or 50 (with Keystone dice rules, up to Keystone&rsquo;s maximum of 256). (3) <b>CHECK A BACKUP</b>: once VERIFY accepts your words, <i>Open this wallet</i> has SHOW FIRST 4 LETTERS, PRINT WORDS and PRINT STAMP SHEET for any length from 12 to 24 words, and the three SeedQR prints for 12 and 24 words. VERIFY also reads 4-letter forms (as on a metal plate) and writes them out in full once the phrase checks out; for a word it does not know, it names the closest BIP39 words and changes nothing. (4) <b>New prints</b>: PRINT THIS QR for the watch-only key and descriptors, the Silent Payment address, and address and payment-request QR codes; PRINT CHILD SEED (or the key or password) for BIP85; a blank Word draw sheet; and a <b>seed summary sheet</b> with no words (how the seed was made, the fingerprint with its picture, the first address), also shown as one line on the backup checklist. (5) <b>Test only, no seed</b>: a switch in &ldquo;Your rolls&rdquo; turns FORGE off so you can roll a die many times just to see whether it is fair. Turning it on or off clears the rolls (and, after asking, a seed made from them), so test rolls never become a seed. (6) With a tap button focused, the number keys add rolls and Backspace undoes. (7) <b>Explain an address</b> (CHECK A BACKUP): paste any address to see its type, network and whether it has a typo, with links to the dictionary; private keys and private descriptors, xpubs, seed words, SeedQR digits, raw hex and Lightning invoices pasted by mistake are called out. (8) <b>What can someone do with this?</b>, a quick guide in the dictionary. (9) CLEAR ALL now also clears a child seed and the address box; SEND TO CHECK clears a child seed made from the old words; a child seed still being made is dropped when you press HIDE or change its parent words; a VERIFY overtaken by CLEAR ALL or an edit writes nothing; and the Dice rules menu is wide enough for its longest choice. (10) On a slow phone the page no longer flashes a red &ldquo;script is NOT running&rdquo; box before the start notice: the page appears once its script has run, and that box (now styled like the other warnings) shows only if the script cannot run. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.3.0</b> &mdash; <b>More rolls, Keystone and BitBox02 dice, signed messages and END SESSION.</b> (1) <b>The minimum or more.</b> FORGE SEED now takes 50 or 99 rolls (128 or 256 flips) <i>or more</i>, and every roll counts. A note says who makes the same words: exactly the minimum matches SeedSigner and Coldcard, more matches Coldcard; more than twice the minimum adds a reminder to check for a double paste. PRINT ROLL SHEET has 10 extra dashed boxes. (2) <b>Keystone dice rules</b> (Dice rules menu): each 6 counts as 0 and Keystone needs 50 or 100 rolls, at most 256, as on a Keystone wallet. (3) <b>BitBox02 diceware</b> in Word draw: the Word finder reads table codes such as 2143 2 T, ADD WORD (or Enter) adds the word, and the 3 flips for the last word use T as 1 and H as 0, giving the same 24th word BitBox shows. (4) <b>Verify a signed message</b> (EXTRA TOOLS, read only): classic signatures (BIP-137) for 1..., 3... and bc1q addresses and BIP-322 simple signatures for single-key bc1q and bc1p addresses; VALID names the address it checked, and a match found only after a small change to the message (line breaks, spaces at the ends) shows in amber with a warning; a whole signed-message block can be pasted, but it never replaces an address you typed; multisig and full signatures are reported as CANNOT CHECK. It never signs. (5) <b>END SESSION</b> (MENU) wipes everything, resets every box and reloads the page. (6) The start notice shows once in each browser tab while the computer is offline, and on every load while it is online. (7) A Word draw seed is cleared if you change its words, flips or length afterwards, as a dice seed already was, and PRINT ROLL SHEET records the dice rules. For the same inputs as before (exactly the minimum, SeedSigner and Coldcard rules), words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.2.0</b> &mdash; <b>Watch-only wallets, payment requests and a backup checklist.</b> (1) <b>Or open a watch-only wallet</b> (CHECK A BACKUP): paste an account public key (xpub, ypub, zpub, or tpub, upub, vpub) or a single-key descriptor and see the same address list, with a QR code on every row, from public keys only. A plain xpub does not contain the master fingerprint, so the page shows it only when a descriptor gives it. Private keys and multisig keys are refused. (2) <b>Electrum seed warning:</b> when a phrase fails the BIP39 check, VERIFY also says if it is an Electrum seed, and which type, so you restore it in Electrum. (3) <b>Payment request (BIP-21):</b> under any address QR code, add an amount, label or message and the QR becomes a <code>bitcoin:</code> link a phone wallet reads; the amount is checked (at most 8 decimals, above 0, at most 21 million). (4) <b>Backup checklist</b> under your words: words written, restore drill passed, second tool matched, recovery sheet printed. The drill and the recovery sheet tick themselves, a passphrase change unticks them, and nothing is saved. (5) <b>Check descriptors for a reused key</b> (EXTRA TOOLS): warns when the same key appears twice, when two keys of one multisig come from the same seed, or when one fingerprint and path are given with two different keys.</li>
@@ -2567,8 +2566,8 @@ const DICT = [
   ["BIP350", "The standard that defines bech32m, used by Taproot (bc1p) addresses.", "", "Standards (BIPs)"],
   ["BIP38", "A standard for locking one private key with a password. The locked key starts with 6P; anyone who has it and the password can spend.", "Explain an address calls one out.", "Standards (BIPs)"],
   ["BIP389 (multipath descriptors)", "One descriptor for both receiving and change addresses: the step that is 0 or 1 is written as 0;1 between angle brackets. Sparrow and newer wallet apps read it.", "The watch-only file.", "Standards (BIPs)"],
-  ["Hidden characters", "Spaces at either end, double spaces, non-breaking spaces and invisible characters. In a passphrase they count like any letter, so one added by accident opens a different wallet.", "VOIDFORGE warns about them under each passphrase box.", "Keys & seeds"],
-  ["Practice mode", "A switch that puts every address on the test network, with worthless test coins, and marks every printed sheet PRACTICE, so the whole job can be rehearsed without risk.", "Practise making a backup, in CHECK A BACKUP.", "VOIDFORGE"],
+  ["Hidden characters", "Spaces at either end, double spaces, tabs and invisible characters. In a passphrase they count like any letter, so one added by accident opens a different wallet.", "VOIDFORGE warns about them under each passphrase box.", "Keys & seeds"],
+  ["Practice mode", "A switch that puts every address and key on the test network, with worthless test coins, so the whole job can be rehearsed without risk. The seed words themselves are the same on every network.", "Practise making a backup, in CHECK A BACKUP.", "VOIDFORGE"],
   ["Stamp sheet", "A printed page with each seed word cut to its first 4 letters in large capitals, as a guide for stamping a metal plate. It is as secret as the words.", "PRINT STAMP SHEET, after FORGE and in CHECK A BACKUP.", "VOIDFORGE"],
   ["BIP352 (Silent Payments)", "A way to receive payments to one reusable code while each payment still lands on a fresh address on the blockchain. Your wallet has to scan for them.", "Silent Payment address in the watch-only box.", "Standards (BIPs)"],
   ["BIP370", "PSBT version 2: an updated format for partly signed transactions.", "", "Standards (BIPs)"],
@@ -2971,6 +2970,8 @@ function lifeHashSvg(rows){
   return out+'</svg>';
 }
 async function mnemonicFirstAddress(mnemonic, passphrase){ return firstAddressFromSeed(await mnemonicToSeed(mnemonic, passphrase)); }
+// v2.5.0 practice mode: the first receive address on the test network (m/84'/1'/0'/0/0) while it is on, else the usual mainnet one.
+async function shownFirstAddress(mnemonic, passphrase){ return practiceOn ? (await walletAddresses(await mnemonicToSeed(mnemonic, passphrase), "wpkh", "test", 0, 0, 0, 1))[0].address : mnemonicFirstAddress(mnemonic, passphrase); }
 async function sha256bytes(b){ return new Uint8Array(await crypto.subtle.digest("SHA-256", b)); }
 async function mnemonicFingerprint(mnemonic, passphrase){ return fingerprintFromSeed(await mnemonicToSeed(mnemonic, passphrase)); }
 
@@ -3874,32 +3875,49 @@ let practiceNext = 0;
 // One switch in Practise making a backup: every network menu is set to Testnet and locked there, the page shows a banner, a seed's
 // test-network first address is shown under the real one, and every printed sheet starts with a PRACTICE line. Nothing is stored.
 const PRACTICE_NETS = ["wNet", "wvNet", "psbtNet", "cmpNet", "msNet"];
-let practiceOn = false, practiceSeq = 0;
+let practiceOn = false, practiceSaved = {};
 function practiceMode(on){
-  practiceOn = !!on;
-  document.body.classList.toggle("practice", practiceOn);
-  document.getElementById("practiceMode").checked = practiceOn;
+  on = !!on;
+  const box = document.getElementById("practiceMode");
+  if(on === practiceOn){ box.checked = on; return; }
+  if(ms){ box.checked = practiceOn; alert("A multisig wallet is being made or shown. Finish it and press START OVER in the multisig box first, then turn practice mode " + (on ? "on" : "off") + "."); return; }
+  practiceOn = on; box.checked = on;
+  document.body.classList.toggle("practice", on);
   for(const id of PRACTICE_NETS){
     const e = document.getElementById(id);
-    e.value = practiceOn ? "test" : "main"; e.disabled = practiceOn;
+    if(on){ practiceSaved[id] = e.value; e.value = "test"; e.disabled = true; }
+    else { e.value = practiceSaved[id] || "main"; e.disabled = false; }
     e.dispatchEvent(new Event("change"));
   }
-  practiceAddrUpdate();
+  if(wvCtx){
+    if(wvCtx.kind === "pub" && wvCtx.net !== (on ? "test" : "main") && on){ clearWalletView(); const st = document.getElementById("wpStatus"); st.className = "status"; st.textContent = "Practice mode is on, so the mainnet watch-only wallet was closed."; }
+    else if(wvCtx.kind === "pub") document.getElementById("wvNet").disabled = true;
+    else document.getElementById("wvNet").disabled = on;
+  }
+  if(!on) practiceWalletClose();
+  reshowSeed();
 }
-async function practiceAddrUpdate(){
-  const el = document.getElementById("practiceAddr"), mine = ++practiceSeq;
-  el.textContent = "";
-  if(!practiceOn || !hasSeed() || passMismatchQuiet()) return;
-  const words = document.getElementById("genResult").textContent.split("\n")[0], pass = document.getElementById("passphrase").value;
-  try {
-    const r = await walletAddresses(await mnemonicToSeed(words, pass), "wpkh", "test", 0, 0, 0, 1);
-    if(mine === practiceSeq && practiceOn && hasSeed()) el.textContent = "Practice mode, test network: first receive address (m/84'/1'/0'/0/0): " + r[0].address + (pass ? " (with passphrase)" : "");
-  } catch(e) {}
+// Shows a made seed's fingerprint, addresses and watch-only box again (used when practice mode changes the network).
+function reshowSeed(){
+  if(!hasSeed()) return null;
+  const mnemonic = document.getElementById("genResult").textContent.split("\n")[0];
+  passWork = deriveShown(mnemonic, document.getElementById("passphrase").value, document.getElementById("passphrase2").value, ++forgeRun);
+  return passWork;
+}
+// The public practice phrases (BIP39 test vectors). Anyone can spend what is sent to them.
+async function practicePhrases(){ const out = []; for(const hex of PRACTICE_ENTROPY){ const e = new Uint8Array(16); for(let i = 0; i < 16; i++) e[i] = parseInt(hex.substr(i * 2, 2), 16); out.push((await practiceMake(e)).join(" ")); } return out; }
+async function isPracticePhrase(m){ return (await practicePhrases()).includes(String(m || "").trim().toLowerCase().split(/\s+/).join(" ")); }
+async function practiceWalletClose(){
+  const box = document.getElementById("phrase");
+  if(!(await isPracticePhrase(box.value))) return;
+  box.value = ""; box.dispatchEvent(new Event("input"));
+  clearWalletView(); const st = document.getElementById("verifyStatus"); st.textContent = ""; st.className = "status";
 }
 // A public practice phrase (the same ones the writing practice uses), opened as a wallet on the test network.
 async function practiceWallet(){
   if(!gateOk()) return;
   if(!practiceOn) practiceMode(true);
+  if(!practiceOn) return;
   const hex = PRACTICE_ENTROPY[0], e = new Uint8Array(16);
   for(let i = 0; i < 16; i++) e[i] = parseInt(hex.substr(i * 2, 2), 16);
   const words = await practiceMake(e);
@@ -4176,24 +4194,24 @@ async function deriveShown(mnemonic, p1, p2, run){
     } catch(e) { if(run !== forgeRun) return; }
   }
   try {
-    const first = await mnemonicFirstAddress(mnemonic, pass);
+    const first = await shownFirstAddress(mnemonic, pass);
     if(run !== forgeRun) return;
-    adEl.textContent = "First receive address (BIP84, m/84'/0'/0'/0/0): " + first + (pass ? " (with passphrase)" : "");
+    adEl.textContent = (practiceOn ? "First receive address, TEST NETWORK for practice (BIP84, m/84'/1'/0'/0/0): " : "First receive address (BIP84, m/84'/0'/0'/0/0): ") + first + (pass ? " (with passphrase)" : "");
   } catch(e) {
     if(run !== forgeRun) return;
     adEl.textContent = "First address unavailable: " + e.message;
   }
-  if(run === forgeRun) practiceAddrUpdate();   // v2.5.0: the test-network address too, while practice mode is on
   try {
-    const segwit = await mnemonicAddresses(mnemonic, pass, 5);
-    let taproot = []; try { taproot = await mnemonicTaproot(mnemonic, pass, 5); } catch(e) { taproot = []; }
+    const test = practiceOn, sd = test ? await mnemonicToSeed(mnemonic, pass) : null;
+    const segwit = test ? (await walletAddresses(sd, "wpkh", "test", 0, 0, 0, 5)).map(r => r.address) : await mnemonicAddresses(mnemonic, pass, 5);
+    let taproot = []; try { taproot = test ? (await walletAddresses(sd, "tr", "test", 0, 0, 0, 5)).map(r => r.address) : await mnemonicTaproot(mnemonic, pass, 5); } catch(e) { taproot = []; }
     if(run !== forgeRun) return;
-    showAddrs(segwit, taproot);
+    showAddrs(segwit, taproot, test ? "test" : "main");
   } catch(e) { if(run !== forgeRun) return; clearAddrs(); }
   if(run !== forgeRun) return;
   try {
     watchCtx = {mnemonic, pass};
-    document.getElementById("wType").value = "wpkh"; document.getElementById("wAcct").value = "0"; document.getElementById("wNet").value = "main";
+    document.getElementById("wType").value = "wpkh"; document.getElementById("wAcct").value = "0"; document.getElementById("wNet").value = practiceOn ? "test" : "main";
     await refreshWatch();
     if(run !== forgeRun) return;
     document.getElementById("watchBox").style.display = "";
@@ -4216,7 +4234,7 @@ function seedSummary(){
   const fpT = document.getElementById("fingerprint").textContent, m = fpT.match(/^Master fingerprint: ([0-9a-f]{8})/);
   return {fp: m ? m[1] : "", used, short: n + " words from " + made + ", passphrase " + (used ? "used" : "none") + (m ? ", fingerprint " + m[1] : "") + ".",
     lines: ["Seed length: " + n + " words", "Made from: " + made, "Strength: the words hold " + bits + " bits of randomness" + (typed ? " (about " + typed + " bits went in, if every " + (c.coin ? "flip" : "roll") + " was fair)" : ""),
-      "Passphrase used: " + (used ? "YES (kept separately; it is not written here)" : "NO"), fpT, document.getElementById("address").textContent, c.date ? "Wallet made on: " + c.date + " (its birthday)" : "", "Made with VOIDFORGE " + (document.querySelector("footer .ft-name span")?.textContent || "")]};
+      "Passphrase used: " + (used ? "YES (kept separately; it is not written here)" : "NO"), fpT, document.getElementById("address").textContent, c.date ? "Wallet made on: " + c.date + " (its birthday, by this computer's clock: a restore can start a day earlier to be safe)" : "", "Made with VOIDFORGE " + (document.querySelector("footer .ft-name span")?.textContent || "")]};
 }
 function sumUpdate(){ const S = seedSummary(), el = document.getElementById("sumLine"); if(el) el.textContent = S ? "This seed: " + S.short : ""; }
 function printSummary(){
@@ -4253,10 +4271,10 @@ function bkReset(show){
 // small fixed set of plain rules for a single-key wallet: each everyday mishap gets one verdict and, where needed, one fix.
 function todayISO(d){ d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
 function plusYearISO(iso){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ""); return m ? todayISO(new Date(+m[1] + 1, +m[2] - 1, +m[3])) : ""; }
-const PLAN_PASS = {none: "No passphrase", mem: "Yes, memorised only (not written down)", same: "Yes, written on the same paper as the words", home: "Yes, written apart from the words, kept at home", away: "Yes, written apart from the words, kept away from home"};
+const PLAN_PASS = {none: "No passphrase", mem: "Yes, only in memory (not written down)", same: "Yes, on the same paper as the words", home: "Yes, on a separate note at home", away: "Yes, on a separate note away from home"};
 const PLAN_V = {safe: {tag: "tag-public", label: "SAFE", print: "SAFE      "}, lost: {tag: "tag-secret", label: "MONEY LOST", print: "LOST      "}, thief: {tag: "tag-secret", label: "A THIEF COULD TAKE IT", print: "THIEF     "}, check: {tag: "tag-rec", label: "CHECK", print: "CHECK     "}, na: {tag: "", label: "NOT USED", print: "NOT USED  "}};
 const PLAN_IDS = ["plFp", "plBorn", "plApp", "plPass", "plM1", "plW1", "plL1", "plM2", "plW2", "plL2", "plM3", "plW3", "plL3", "plKnow", "plHelp", "plNote"];
-const PLAN_ROUTINE = "Once a year, about 5 minutes, on an offline computer:\n1. Find each copy on this plan and check that it can still be read.\n2. Open VOIDFORGE and type the words into CHECK A BACKUP (or do the Restore drill).\n3. The master fingerprint must equal the one on this plan.\n4. If a passphrase is used, add it: the fingerprint must still match.\n5. Press END SESSION, then write today's date below.";
+const PLAN_ROUTINE = "Once a year, about 5 minutes, on an offline computer:\n1. Find each copy on this plan and check that it can still be read.\n2. Open VOIDFORGE and type the words into CHECK A BACKUP, with the passphrase if one is used.\n3. The master fingerprint must equal the one on this plan. (Without the passphrase it is different: that is normal.)\n4. Press END SESSION, then write today's date below.";
 function planState(){
   const v = id => document.getElementById(id).value;
   const copies = [1, 2, 3].map(i => ({m: v("plM" + i), where: v("plW" + i).trim(), home: v("plL" + i) === "home"})).filter(c => c.m === "paper" || c.m === "metal");
@@ -4270,13 +4288,13 @@ function planStress(st){
   else if(P === "home") add("A fire or flood at home", "lost", "A copy of the words survives, but the only passphrase note is at home.", "Keep a second passphrase note away from home, apart from the words.");
   else add("A fire or flood at home", "safe", away.length ? "The copy away from home survives." : "The metal copy should survive.");
   if(!home.length) add("A burglar searches your home", "safe", "No copy of the words is at home.");
-  else if(P === "none") add("A burglar searches your home", "thief", "A burglar who finds the words can take the money: there is no passphrase.", "Keep the words where a burglar cannot reach them (such as a bank safe deposit box), or add a passphrase kept apart from the words.");
+  else if(P === "none") add("A burglar searches your home", "thief", "A burglar who finds the words can take the money: there is no passphrase.", "Keep the words where a burglar cannot reach them (such as a bank safe deposit box), or add a passphrase kept apart from the words (a passphrase makes a new wallet, so the money then has to be moved to it).");
   else if(P === "same") add("A burglar searches your home", "thief", "The passphrase is on the same paper, so a burglar who finds it can take the money.", "Never write the passphrase on the same paper as the words.");
   else if(P === "home") add("A burglar searches your home", "thief", "If the burglar also finds the passphrase note at home, they can take the money.", "Keep the passphrase note away from home, apart from the words.");
-  else if(!away.length) add("A burglar searches your home", "lost", "Without the passphrase the burglar cannot spend, but every copy of the words was at home, so you may no longer have one.", "Keep one copy away from home.");
+  else if(!away.length) add("A burglar searches your home", "lost", "Without the passphrase the burglar cannot spend, but every copy of the words was at home, so you may no longer have one. If a device still holds the wallet, move the money at once.", "Keep one copy away from home.");
   else add("A burglar searches your home", "safe", "Without the passphrase the burglar cannot spend. Still, move the money to a new wallet soon.");
   if(away.length){
-    if(P === "none") add("Someone finds a copy away from home", "thief", "With no passphrase, whoever finds a copy can take the money.", "Choose places only you can open, or add a passphrase kept apart from the words.");
+    if(P === "none") add("Someone finds a copy away from home", "thief", "With no passphrase, whoever finds a copy can take the money.", "Add a passphrase kept apart from the words (it makes a new wallet, so the money then has to be moved to it), or keep the copies only where you alone can open them.");
     else if(P === "same") add("Someone finds a copy away from home", "thief", "The passphrase is on the same paper, so whoever finds it can take the money.", "Never write the passphrase on the same paper as the words.");
     else if(P === "away") add("Someone finds a copy away from home", "check", "Safe only if the passphrase note is kept in a different place from this copy.", "Keep the passphrase note and the words in different places.");
     else add("Someone finds a copy away from home", "safe", "Without the passphrase they cannot spend.");
@@ -4284,6 +4302,7 @@ function planStress(st){
   if(!st.know) add("You die or cannot act", "lost", "Nobody knows this plan exists, so your family may never find the money.", "Tell someone you trust that this plan exists and where it is kept (never the words themselves).");
   else if(P === "mem") add("You die or cannot act", "lost", "The passphrase is only in your head, so your family cannot open the wallet.", "Write the passphrase down and keep it apart from the words, where your family can find it.");
   else if(!n) add("You die or cannot act", "lost", "No copy of the words is listed.");
+  else if(P === "home" || P === "away") add("You die or cannot act", "check", "Someone you trust can follow this plan to the copies, but the words alone open an empty wallet: they also need the passphrase note.", "Make sure that person can also find the passphrase note (say where in the note for your family, or tell them separately).");
   else add("You die or cannot act", "safe", "Someone you trust can follow this plan to the copies.");
   if(P === "none") add("You forget the passphrase", "na", "No passphrase is used.");
   else if(P === "mem") add("You forget the passphrase", "lost", "Nothing is written down, so the money is gone for good.", "Write the passphrase down and keep it apart from the words.");
@@ -4306,27 +4325,36 @@ function planRender(){
     ul.appendChild(li);
   }
   const bad = R.filter(r => r.v === "lost" || r.v === "thief").length;
-  document.getElementById("plNext").textContent = (bad ? bad + " of " + R.length + " cases lose the money or let a thief take it. Follow the fixes, then look again. " : "Every case here keeps the money safe. ") + "Next check-up: " + plusYearISO(todayISO()) + ", then once a year (the steps are on the printed plan).";
+  const chk = R.filter(r => r.v === "check").length;
+  document.getElementById("plNext").textContent = (bad ? bad + " of " + R.length + " cases lose the money or let a thief take it. Follow the fixes, then look again. " : chk ? "No case loses the money, but " + chk + " need" + (chk === 1 ? "s" : "") + " a check: see above. " : "Every case here keeps the money safe. ") + "Next check-up: " + plusYearISO(todayISO()) + ", then once a year (the steps are on the printed plan).";
 }
-// Words or keys typed into a plan box by mistake: 12 or more BIP39 words in a row, or anything Explain an address calls a secret.
+// Secrets typed into the plan by mistake (all boxes are checked together, so words split across boxes count too):
+// 12 or more seed words in a row (also as 4-letter forms or with one misspelt word; short labels such as "w1" or "1st" are skipped),
+// SeedQR digits or hex (also in groups), keys and private descriptors (as Explain an address reads them), or "passphrase: ...".
 async function planSecret(text){
-  const toks = String(text || "").toLowerCase().split(/[^a-z]+/).filter(Boolean);
-  let run = 0;
-  for(const t of toks){ run = Object.prototype.hasOwnProperty.call(WORD_MAP, t) ? run + 1 : 0; if(run >= 12) return "seed words"; }
-  for(const t of String(text || "").split(/\s+/)){
-    if(t.length < 20) continue;
+  const raw = String(text || "");
+  if(/\b(pass\s*phrase|password|passwort|pin)\s*[:=]\s*\S/i.test(raw)) return "a passphrase or password";
+  let run = 0, miss = 0;
+  for(const t of raw.toLowerCase().split(/[^a-z]+/).filter(x => x.length >= 3)){
+    const word = Object.prototype.hasOwnProperty.call(WORD_MAP, t) || (t.length === 4 && wordFromPrefix(t)) || (t.length >= 5 && closestWords(t, 1).some(w => wordDistance(t, w, 1) <= 1));
+    if(word){ run++; if(run >= 12) return "seed words"; }
+    else if(run && !miss){ miss = 1; }
+    else { run = 0; miss = 0; }
+  }
+  const joined = raw.replace(/([0-9a-fA-F])[\s.\-]+(?=[0-9a-fA-F])/g, "$1");
+  if(/\d{48,}/.test(joined) || /[0-9a-fA-F]{64,}/.test(joined)) return "SeedQR digits or a key written as numbers";
+  for(const t of raw.split(/\s+/)){
+    if(!(/^[1-9A-HJ-NP-Za-km-z]{22,}$/.test(t) || /^[a-z]{2,12}\(.+\)/i.test(t))) continue;   // only what could be a key or a descriptor
     const e = await explainAddress(t);
-    if(e && e.level === "bad") return "a secret (a private key, seed words or SeedQR digits)";
+    if(e && e.level === "bad" && /PRIVATE|SECRET/.test(e.text)) return "a private key";
   }
   return "";
 }
 async function printPlan(){
   const st = planState(), say = (c, t) => { const e = document.getElementById("plStatus"); e.className = "status " + c; e.textContent = t; };
   if(st.fp && !/^[0-9a-f]{8}$/.test(st.fp)) return say("bad", "The master fingerprint is 8 letters and digits (0-9 and a-f), such as 73c5da0a. Fix it, or leave the box empty.");
-  for(const t of [st.app, st.help, st.note, ...st.copies.map(c => c.where)]){
-    const k = await planSecret(t);
-    if(k) return say("bad", "Not printed: a box holds what looks like " + k + ". This plan must never hold secrets. Remove it, then print again.");
-  }
+  const k = await planSecret([st.app, st.help, st.note, ...st.copies.map(c => c.where)].join("\n"));
+  if(k) return say("bad", "Not printed: the boxes hold what looks like " + k + ". This plan must never hold secrets. Remove it, then print again.");
   if(!st.copies.length) return say("bad", "List at least one copy of the words first.");
   const R = planStress(st);
   printSheet(add => {
@@ -4345,16 +4373,17 @@ async function printPlan(){
   say("ok", "Sent to the printer. Keep the plan private: it says where your copies are.");
 }
 // Fills the fingerprint and the birthday from a seed made here, or from the wallet open in CHECK A BACKUP. Never overwrites what was typed.
-function planFill(){
+function planFill(fromMake){
   const fp = document.getElementById("plFp"), born = document.getElementById("plBorn");
-  const S = seedSummary(), wm = (document.getElementById("wvFp").textContent.match(/^Master fingerprint: ([0-9a-f]{8})/) || [])[1];
-  if(!fp.value){ if(S && S.fp) fp.value = S.fp; else if(wvCtx && wvCtx.kind !== "pub" && wm) fp.value = wm; }
-  if(!born.value && S && sumCtx && sumCtx.date) born.value = sumCtx.date;
+  const S = seedSummary(), wm = wvCtx && wvCtx.mnemonic ? (document.getElementById("wvFp").textContent.match(/^Master fingerprint: ([0-9a-f]{8})/) || [])[1] : "";
+  const useView = !fromMake && wm;
+  if(!fp.value){ if(useView) fp.value = wm; else if(S && S.fp) fp.value = S.fp; }
+  if(!born.value){ if(useView){ if(document.getElementById("wvBorn").value) born.value = document.getElementById("wvBorn").value; } else if(S && sumCtx && sumCtx.date) born.value = sumCtx.date; }
   planRender();
 }
 function planOpen(){
   showTab("check");
-  const b = document.getElementById("planBox"); b.open = true; planFill();
+  const b = document.getElementById("planBox"); b.open = true; planFill(true);
   try { b.scrollIntoView({block: "start", behavior: "smooth"}); } catch(e) {}
 }
 function planClear(){
@@ -4576,13 +4605,13 @@ for(const [list, pfx] of [["addrList","aq"],["trList","aq"],["wvList","wvq"]]) d
 // Which address a QR button belongs to (v2.4.0), for its printed sheet: its path, and whether it is a change or testnet address.
 function addrMeta(list, b){
   const i = [...document.getElementById(list).children].indexOf(b.closest("li"));
-  if(list !== "wvList") return {path: "m/" + (list === "trList" ? 86 : 84) + "'/0'/0'/0/" + i, change: false, test: false};
+  if(list !== "wvList"){ const t = document.getElementById("addrBox").dataset.net === "test"; return {path: "m/" + (list === "trList" ? 86 : 84) + "'/" + (t ? 1 : 0) + "'/0'/0/" + i, change: false, test: t}; }
   const sh = wvCtx && wvCtx.shown, row = sh && sh.rows[i];
   return row ? {path: row.path, change: sh.chain === 1, test: (wvCtx.kind === "pub" ? wvCtx.net : sh.net) === "test"} : {};
 }
-function showAddrs(list, trList){
+function showAddrs(list, trList, net){
   hideAddrQr("aq");
-  const ol = document.getElementById("addrList"); ol.textContent = "";
+  const ol = document.getElementById("addrList"); ol.textContent = ""; document.getElementById("addrBox").dataset.net = net || "main";
   list.forEach((a, i) => ol.appendChild(addrLi(a, "receive address " + (i + 1))));
   const tl = document.getElementById("trList"); tl.textContent = "";
   (trList || []).forEach((a, i) => tl.appendChild(addrLi(a, "Taproot address " + (i + 1))));
@@ -4599,6 +4628,7 @@ async function refreshWatch(){
   if(!watchCtx) return;
   hideQr();
   const mine = ++watchSeq, type = document.getElementById("wType").value, raw = document.getElementById("wAcct").value.trim(), err = document.getElementById("wErr");
+  watchCtx.file = null;   // v2.5.0: the watch-only file is written only from a finished refresh
   const ids = ["wZpub","wDescR","wDescC","wFirst"];
   if(!/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647){
     err.textContent = "The account must be a whole number from 0 to 2147483647.";
@@ -4625,6 +4655,7 @@ async function refreshWatch(){
   document.getElementById("spAddr").textContent = spA;
   document.getElementById("spBox").style.display = M ? "none" : "";
   document.getElementById("wTestBan").style.display = net === "test" ? "" : "none";
+  watchCtx.file = M ? null : {type, net, acct: acct};
   updateCore();
   hideQr();
 }
@@ -4645,22 +4676,22 @@ document.getElementById("coreWhen").addEventListener("change", updateCore);
 // Watch-only wallet file (v2.5.0): plain text in Sparrow's own descriptor layout. Lines starting with # are comments; the one other line is
 // the receive-and-change descriptor (BIP-389 multipath form) that Sparrow imports. Public keys only. Not offered for a multisig cosigner key.
 function watchFileText(){
-  const r = document.getElementById("wDescR").textContent, c = document.getElementById("wDescC").textContent, key = document.getElementById("wZpub").textContent;
-  if(!r || !c || !key || document.getElementById("wDescGroupC").style.display === "none") return "";
+  const r = document.getElementById("wDescR").textContent, c = document.getElementById("wDescC").textContent, key = document.getElementById("wZpub").textContent, f = watchCtx && watchCtx.file;
+  if(!f || !r || !c || !key || document.getElementById("wDescGroupC").style.display === "none") return "";
   const body = r.replace(/#[a-z0-9]{8}$/, "");
   if(body.split("/0/*)").length !== 2) return "";
   const both = descriptorChecksum(body.replace("/0/*)", "/<0;1>/*)"));
-  const fp = (body.match(/\[([0-9a-f]{8})\//) || [])[1] || "", net = document.getElementById("wNet").value, type = document.getElementById("wType").value;
+  const fp = (body.match(/\[([0-9a-f]{8})\//) || [])[1] || "", net = f.net, type = f.type;
   const born = sumCtx && sumCtx.date && hasSeed() ? sumCtx.date : "";
   const first = document.getElementById("wFirst").textContent.split("\n").filter(Boolean);
   return ["# VOIDFORGE watch-only wallet. Public keys only: it can show addresses and balances, but it can never spend.",
-    "# Master fingerprint: " + fp + "   Address type: " + SCRIPT_TYPES[type].label + "   Account: " + document.getElementById("wAcct").value.trim() + "   Network: " + (net === "test" ? "Testnet (practice coins only)" : "Mainnet") + (born ? "   Made on: " + born : ""),
+    "# Master fingerprint: " + fp + "   Address type: " + SCRIPT_TYPES[type].label + "   Account: " + f.acct + "   Network: " + (net === "test" ? "Testnet (practice coins only)" : "Mainnet") + (born ? "   Made on: " + born : ""),
     "#",
     "# Sparrow: File > Import Wallet > Output Descriptor, then choose this file. It reads the next line:",
     "# Receive and change descriptor:",
     both,
     "#",
-    "# For apps that want them separately (such as Bitcoin Core), copy these without the leading # and space:",
+    "# For apps that want them separately (such as Bitcoin Core), copy the text after \"descriptor:\" on the next two lines:",
     "# Receive descriptor: " + r,
     "# Change descriptor:  " + c,
     "#",
@@ -4676,7 +4707,7 @@ function saveWatchFile(){
   const fp = (t.match(/Master fingerprint: ([0-9a-f]{8})/) || [])[1] || "wallet";
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([t], {type: "text/plain"}));
-  a.download = "voidforge-watch-only-" + fp + (document.getElementById("wNet").value === "test" ? "-testnet" : "") + ".txt";
+  a.download = "voidforge-watch-only-" + fp + (/Network: Testnet/.test(t) ? "-testnet" : "") + ".txt";
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
@@ -4982,12 +5013,12 @@ async function deriveChild(){
   if(app !== "words") return deriveChildApp(r.mnemonic, vp, app, index, say, my);
   try {
     const child = await mnemonicBip85(r.mnemonic, vp, words, index);
-    const fp = await mnemonicFingerprint(child, ""), a0 = await mnemonicFirstAddress(child, ""), parent = await mnemonicFingerprint(r.mnemonic, vp);
+    const fp = await mnemonicFingerprint(child, ""), a0 = await shownFirstAddress(child, ""), parent = await mnemonicFingerprint(r.mnemonic, vp);
     if(my !== childSeq) return;   // v2.4.0: cleared (or the parent words changed) while this was working
     const ws = child.split(" "), rows = [];
     for(let i = 0; i < ws.length; i += 3) rows.push(ws.slice(i, i + 3).map((w, j) => (String(i + j + 1).padStart(2, " ") + ". " + w).padEnd(16, " ")).join("").trimEnd());
     const o = document.getElementById("childOut");
-    o.textContent = "CHILD SEED (BIP85, English, " + words + " words, index " + index + ")\n\n" + rows.join("\n") + "\n\nChild master fingerprint: " + fp + "\nChild first receive address (BIP84): " + a0;
+    o.textContent = "CHILD SEED (BIP85, English, " + words + " words, index " + index + ")\n\n" + rows.join("\n") + "\n\nChild master fingerprint: " + fp + "\nChild first receive address (BIP84" + (practiceOn ? ", test network" : "") + "): " + a0;
     o.style.display = "";
     childShow({app: "words", words: ws, fp, a0, index, pass: !!vp, parent});
     say("ok", "Child seed " + index + " derived from the parent words" + (vp ? " and passphrase" : "") + ". It is a normal seed with no passphrase. Write down the parent, the word count and the index; that recreates it. Anyone who has the parent can recreate every child.");
@@ -5007,12 +5038,11 @@ function updateAdvSummary(){
 // v2.5.0: BIP39 uses the passphrase exactly as typed, so a space at either end or an invisible character makes a different wallet,
 // and people add one by accident (copy and paste, phone keyboards). Say so in plain words; never change what was typed.
 function passHiddenNote(p){
-  const s = String(p || ""), out = [];
-  if(/^[ \t\u00A0\u2007\u202F]/.test(s)) out.push("starts with a space");
-  if(/[ \t\u00A0\u2007\u202F]$/.test(s)) out.push("ends with a space");
+  const s = String(p || "").normalize("NFKD"), out = [];   // BIP39 applies NFKD first: a non-breaking space then becomes an ordinary space
+  if(/^\s/.test(s)) out.push("starts with a space");
+  if(/\s$/.test(s)) out.push("ends with a space");
   if(/ {2}/.test(s)) out.push("has two spaces in a row");
-  if(/[\u00A0\u2007\u202F]/.test(s)) out.push("has a non-breaking space (it looks like a space but is a different character)");
-  if(/[\u200B-\u200D\u2060\uFEFF\u00AD\u180E]/.test(s)) out.push("has an invisible character");
+  if(/\p{Cf}/u.test(s)) out.push("has an invisible character");
   if(/[\t\n\r\v\f]/.test(s)) out.push("has a tab or a line break");
   if(!out.length) return "";
   const list = out.length === 1 ? out[0] : out.slice(0, -1).join(", ") + " and " + out[out.length - 1];
@@ -5039,7 +5069,6 @@ function updateAbbrNote(){
 function setResult(text, words){
   sumCtx = null;
   wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body.classList.toggle("has-seed", !!words);
-  practiceSeq++; document.getElementById("practiceAddr").textContent = "";
   const g = document.getElementById("genResult"), grid = document.getElementById("wordGrid");
   g.textContent = text; g.classList.toggle("nores", text === "\u2014"); grid.textContent = "";
   hideExplain(); { const eb = document.getElementById("explainBox"); eb.style.display = (words && [12,24].includes(words.length)) ? "" : "none"; eb.open = false; }
@@ -5371,8 +5400,8 @@ function updateRollHistory(rolls){
 }
 
 function clearAll(){
-  if(!confirm("Clear all rolls, results, the verify box and (if the browser allows) the clipboard?")) return;
-  msReset(); wipeSeed();
+  if(!confirm("Clear all rolls, results, the verify box, the backup plan and (if the browser allows) the clipboard?")) return;
+  msReset(); wipeSeed(); planClear();
 }
 
 // END SESSION (v2.3.0, in the MENU): wipes everything on the page, forgets that the start notice was read, then reloads the page,
@@ -5380,7 +5409,7 @@ function clearAll(){
 // (not just empty), so a browser that refills boxes on reload refills them with the defaults. The theme and text size stay (not secret).
 function endSession(){
   if(!confirm("End this session?\n\nEverything on the page is wiped: rolls, words, passphrases, every box and (if the browser allows) the clipboard. The page then reloads and the start notice shows again.")) return null;
-  for(const f of [reforgeStop, msReset, wipeSeed, clearChild, hideExplain, hideQr, hideSeedQr, clearReuse, () => hideAddrQr("aq"), () => hideAddrQr("wvq")]){ try { f(); } catch(e) {} }
+  for(const f of [reforgeStop, msReset, () => practiceMode(false), wipeSeed, clearChild, hideExplain, hideQr, hideSeedQr, clearReuse, () => hideAddrQr("aq"), () => hideAddrQr("wvq")]){ try { f(); } catch(e) {} }
   document.querySelectorAll("input, textarea, select").forEach(e => {
     try {
       if(e.tagName === "SELECT") [...e.options].forEach(o => { o.selected = o.defaultSelected; });
@@ -5431,7 +5460,7 @@ function autoMinutes(){ return parseInt(document.getElementById("autoIdle").valu
 function autoHasSecrets(){ return hasSeed() || AUTO_FIELDS.some(id => { const e = document.getElementById(id); return !!(e && e.value); }); }
 function autoWipe(why){
   if(!autoHasSecrets()) return false;
-  reforgeStop(); msReset(); wipeSeed(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
+  reforgeStop(); msReset(); wipeSeed(); planClear(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
   for(const id of AUTO_FIELDS){ const e = document.getElementById(id); if(e) e.value = ""; }
   const ro = document.getElementById("reforgeOut"); ro.textContent = ""; ro.style.display = "none";
   updateCount(); autoTouch();
@@ -5709,6 +5738,7 @@ function clearWalletView(){
   document.getElementById("wvErr").textContent = ""; document.getElementById("wvPath").textContent = "";
   hideAddrQr("wvq"); wvSeedQrHide();
   for(const id of ["wvType","wvNet","wvAcct"]) document.getElementById(id).disabled = false;
+  if(practiceOn){ document.getElementById("wvNet").value = "test"; document.getElementById("wvNet").disabled = true; }
   if(document.getElementById("wvAcct").value === "-") document.getElementById("wvAcct").value = "0";
   document.getElementById("wvBanner").textContent = "Imported: these words were typed or scanned here, not made by this page. The same words and passphrase give the same wallet in any app.";
   for(const id of ["wvSqBlock","wvSheetBtn","wvSheetHint"]) document.getElementById(id).style.display = "";
@@ -5788,6 +5818,7 @@ async function openWatchOnly(){
   let w;
   try { w = await parseWatchInput(document.getElementById("wpIn").value); }
   catch(e) { clearWalletView(); st.className = "status bad"; st.textContent = e.message; return; }
+  if(practiceOn && w.net !== "test"){ clearWalletView(); st.className = "status bad"; st.textContent = "Practice mode is on, so only test-network keys (tpub, upub, vpub) open here. Turn practice mode off (in Practise making a backup) to open this mainnet key."; return; }
   clearWalletView();
   wvCtx = {kind: "pub", key: w.key, net: w.net, origin: w.origin}; const mine = wvSeq;
   const tSel = document.getElementById("wvType"), nSel = document.getElementById("wvNet"), aIn = document.getElementById("wvAcct"), cSel = document.getElementById("wvChain");
@@ -6081,10 +6112,11 @@ async function verify(){
   if(r.ok){
     const vp = document.getElementById("verifyPass").value, lines = [r.msg];
     let fp0, a0, fp1, a1;
-    try { fp0 = await mnemonicFingerprint(r.mnemonic, ""); a0 = await mnemonicFirstAddress(r.mnemonic, ""); lines.push("Without passphrase: fingerprint " + fp0 + " | first address " + a0); showFpIcon("vIcon0", fp0, "vFig0"); }
+    if(await isPracticePhrase(r.mnemonic)) lines.push("PUBLIC PRACTICE PHRASE: these words are a published test phrase (BIP39 test vectors). Anyone can spend what is sent to them. Use them for practice only, never for real money.");
+    try { fp0 = await mnemonicFingerprint(r.mnemonic, ""); a0 = await shownFirstAddress(r.mnemonic, ""); lines.push("Without passphrase: fingerprint " + fp0 + " | first address " + a0 + (practiceOn ? " (test network)" : "")); showFpIcon("vIcon0", fp0, "vFig0"); }
     catch(e) { lines.push("Without passphrase: unavailable (" + e.message + ")"); }
     if(vp){
-      try { fp1 = await mnemonicFingerprint(r.mnemonic, vp); a1 = await mnemonicFirstAddress(r.mnemonic, vp); lines.push("With passphrase (" + Array.from(vp).length + " characters, not shown): fingerprint " + fp1 + " | first address " + a1); showFpIcon("vIcon1", fp1, "vFig1"); }
+      try { fp1 = await mnemonicFingerprint(r.mnemonic, vp); a1 = await shownFirstAddress(r.mnemonic, vp); lines.push("With passphrase (" + Array.from(vp).length + " characters, not shown): fingerprint " + fp1 + " | first address " + a1 + (practiceOn ? " (test network)" : "")); showFpIcon("vIcon1", fp1, "vFig1"); }
       catch(e) { lines.push("With passphrase: unavailable (" + e.message + ")"); }
     } else {
       lines.push("No passphrase entered. To check one, type it in the passphrase box above and press VERIFY again.");
