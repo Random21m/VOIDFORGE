@@ -5,7 +5,7 @@
   "description": "Test dependencies for VOIDFORGE (the tool itself has none: it is one HTML file).",
   "license": "MIT",
   "scripts": {
-    "test": "node tests/test.js && node tests/oracle.test.mjs && node tests/fuzz.test.mjs && node tests/print.test.mjs && node tests/mutation.test.mjs"
+    "test": "node tests/test.js && node tests/oracle.test.mjs && node tests/fuzz.test.mjs && node tests/print.test.mjs && node tests/browsers.test.mjs && node tests/mutation.test.mjs"
   },
   "devDependencies": {
     "@keystonehq/bc-ur-registry": "0.8.1",

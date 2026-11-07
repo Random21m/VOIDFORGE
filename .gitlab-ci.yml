@@ -2,7 +2,7 @@
 # - pages: publishes the online practice copy at https://random21m.gitlab.io/voidforge/ from main: the released
 #   voidforge.html byte for byte, inside the thin wrapper in demo/ (amber banner, icons, offline copy). It checks
 #   SHA256SUMS and CID.txt first, so the demo can only ever serve the file those two name.
-# - test: the unit, oracle and print tests, started by hand (the free plan has 400 CI minutes a month, and the
+# - test: the unit, oracle, fuzz, print and three-browser tests (Chromium, Firefox, WebKit), started by hand (the free plan has 400 CI minutes a month, and the
 #   mutation suite takes hours, so the full suite, mutation tests included, runs before each release on the
 #   maintainer's machine; see RELEASING.md). Run pipeline (Build > Pipelines) starts it at once on any branch.
 # Pipelines are made only for main and for Run pipeline, so pushes of dev branches and tags leave no skipped entries.
@@ -25,6 +25,7 @@ test:
     - node tests/oracle.test.mjs
     - node tests/fuzz.test.mjs
     - node tests/print.test.mjs
+    - node tests/browsers.test.mjs
 
 pages:
   stage: deploy
