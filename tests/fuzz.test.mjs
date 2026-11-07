@@ -15,7 +15,7 @@ import { ripemd160 } from '@noble/hashes/ripemd160';
 import { sha256 as nsha } from '@noble/hashes/sha256';
 import { loadPage, ready, readHtml, makeReporter } from './harness.mjs';
 
-const RUNS = Number(process.env.FUZZ_RUNS) || 60;
+const RUNS = Math.max(1, Math.round(Number(process.env.FUZZ_RUNS) || 60));   // whole numbers only: fast-check never ends with a fractional numRuns
 const SEED = Number(process.env.FUZZ_SEED) || Date.now() % 2147483647;
 const R = makeReporter();
 console.log('fuzz: ' + RUNS + ' runs per property, seed ' + SEED + ' (FUZZ_SEED=' + SEED + ' repeats this run)');
@@ -53,7 +53,7 @@ await prop('BIP39: entropy to words matches @scure', entropyArb, async (e) => (a
 
 // 2. Words and passphrase to seed (NFKD of both, as BIP39 says).
 await prop('BIP39: words + passphrase to seed matches @scure (Unicode passphrases)', fc.tuple(mnemonicArb, passArb),
-  async ([m, p]) => hex(await w.mnemonicToSeed(m, p)) === hex(mnemonicToSeedSync(m, p)) || 'seed differs for passphrase ' + JSON.stringify(p), Math.max(10, RUNS / 3));
+  async ([m, p]) => hex(await w.mnemonicToSeed(m, p)) === hex(mnemonicToSeedSync(m, p)) || 'seed differs for passphrase ' + JSON.stringify(p), Math.max(10, Math.ceil(RUNS / 3)));
 
 // 3. Any path, any address type, both networks: the page's address equals the reference.
 const stepArb = fc.tuple(fc.integer({ min: 0, max: 2147483647 }), fc.boolean());
@@ -65,7 +65,7 @@ await prop('BIP32: addresses on random paths (all four types, both networks) mat
     const got = (await w.walletAddressesFrom(await w.masterFromSeed(seed), steps, type, test ? 'test' : 'main', chain, idx, 1))[0];
     const want = refAddr(type, HDKey.fromMasterSeed(seed).derive(path).publicKey, test);
     return (got.address === want && got.path === path) || path + ' ' + type + ': ' + got.address + ' != ' + want;
-  }, Math.max(10, RUNS / 2));
+  }, Math.max(10, Math.ceil(RUNS / 2)));
 
 // 4. The words checker agrees with @scure, also after one word is swapped for another BIP39 word.
 await prop('VERIFY: a phrase with one word changed is valid exactly when @scure says so', fc.tuple(mnemonicArb, fc.nat(), fc.nat({ max: 2047 })),

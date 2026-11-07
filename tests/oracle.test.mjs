@@ -550,7 +550,8 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
     outs.forEach(([k, a]) => t.addOutput(k === chg ? { script: btc.p2wpkh(pubE(k)).script, amount: a, bip32Derivation: [[pubE(k), { fingerprint: 0xdeadbeef, path: [0x80000054] }]] } : { script: btc.p2wpkh(pubE(k)).script, amount: a }));
     return t;
   };
-  const cmp = async (a, b) => w.compareTx(await w.inspectPsbt(new Uint8Array(a.toPSBT(0)), 'main'), await w.inspectPsbt(new Uint8Array(b.toPSBT(0)), 'main'));
+  // v2.8.1: change marks count only once checked against the wallet's words; here a marked output stands for checked change
+  const cmp = async (a, b) => { const A = await w.inspectPsbt(new Uint8Array(a.toPSBT(0)), 'main'), B = await w.inspectPsbt(new Uint8Array(b.toPSBT(0)), 'main'); for (const o of [...A.outs, ...B.outs]) if (o.fps.length) o.change = 'verified'; return w.compareTx(A, B); };
   let bad = 0, n = 0; const chk = (name, ok) => { n++; if (!ok) { bad++; console.log('COMPARE MISMATCH', name); } };
   const A = mk({});
   // 1. the signer returns the same transaction with signatures added
@@ -558,7 +559,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   let t = await cmp(A, signed); chk('same id', t.includes('The transaction ID is the same') && /SIGNER CHECK: unchanged/.test(t) && /0 signatures -> 1 signature/.test(t) && !/DIFFERENT/.test(t));
   chk('same id equals independent id', (await w.inspectPsbt(new Uint8Array(A.toPSBT(0)), 'main')).txid === A.id);
   // 2. a plain fee bump: change gets smaller, same payment
-  t = await cmp(A, mk({ outs: [[31, 100000n], [32, 56000n]] })); chk('plain bump', /ID.*DIFFERENT/.test(t) && /the second pays 0\.00002000 BTC.*MORE/.test(t) && /plain fee bump/.test(t) && !/NOT look like/.test(t) && /OK    The output that got smaller .* is marked as this wallet's own change/.test(t) && /NOT CHECKED/.test(t));
+  t = await cmp(A, mk({ outs: [[31, 100000n], [32, 56000n]] })); chk('plain bump', /ID.*DIFFERENT/.test(t) && /the second pays 0\.00002000 BTC.*MORE/.test(t) && /plain fee bump/.test(t) && !/NOT look like/.test(t) && /OK    The output that got smaller .* is checked as this wallet's own change/.test(t) && /NOT CHECKED/.test(t));
   // 2b. the same bump but the shrinking output is not marked as change: still allowed, with a warning
   const noFp = mk({ chg: 99 }); t = await cmp(noFp, mk({ chg: 99, outs: [[31, 100000n], [32, 56000n]] })); chk('bump without change info', /NOTE  The output that got smaller .* is not marked as change/.test(t) && /plain fee bump/.test(t));
   // 3. an output was redirected to another address (the attack this check is for)
@@ -576,7 +577,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   t = await cmp(A, mk({ ins: [[5, 90000n], [6, 70000n]], outs: [[31, 100000n], [32, 56000n]] })); chk('no shared coin', /FAIL  The second does not spend any of the same coins/.test(t) && /only in the second: [0-9a-f]{64}:0/.test(t) && /does NOT look like/.test(t));
   // 9. an input was added (allowed in a replacement)
   t = await cmp(A, mk({ ins: [[1, 90000n], [2, 70000n], [7, 20000n]], outs: [[31, 100000n], [32, 76000n]] })); chk('input added', /OK    The second spends at least one of the same coins/.test(t) && /only in the second: [0-9a-f]{64}:2 \(0\.00020000 BTC/.test(t) && /plain fee bump/.test(t) && !/NOT look like/.test(t) && /OK    The output that grew \(an extra coin was added\)/.test(t));
-  t = await cmp(mk({ chg: 99 }), mk({ chg: 99, ins: [[1, 90000n], [2, 70000n], [7, 20000n]], outs: [[31, 100000n], [32, 76000n]] })); chk('input added, output not marked as change', /Payments changed: an output to .* got MORE money and is not marked as change/.test(t) && /does NOT look like/.test(t));
+  t = await cmp(mk({ chg: 99 }), mk({ chg: 99, ins: [[1, 90000n], [2, 70000n], [7, 20000n]], outs: [[31, 100000n], [32, 76000n]] })); chk('input added, output not marked as change', /Payments changed: an output to .* got MORE money and is not checked as this wallet's change/.test(t) && /does NOT look like/.test(t));
   t = await cmp(A, mk({ outs: [[31, 100000n], [32, 60000n]] })); chk('output grew with no added coin', /FAIL  The second does not pay a higher fee/.test(t) && /got MORE money and no coin was added/.test(t) && /does NOT look like/.test(t));
   // 10. fee unknown: no clean verdict
   const bare = new btc.Transaction({ allowUnknownOutputs: true }); bare.addInput({ txid: nc.createHash('sha256').update('coin1').digest('hex'), index: 0, sequence: 0xfffffffd }); bare.addOutput({ script: btc.p2wpkh(pubE(31)).script, amount: 1000n });
