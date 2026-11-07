@@ -1746,7 +1746,7 @@ async function probe(w, mutated) {
     if (PW('passphrase', 'fine') !== '' || PW('passphrase', 'a\u00A0b') !== '') fails.push('passphrase warning: none for an ordinary passphrase, or one non-breaking space (NFKD makes it a space)');
     if (!/starts with a space/.test(PW('verifyPass', ' x'))) fails.push('passphrase warning: under the CHECK passphrase');
     PW('passphrase', ' x'); w.wipeSeed(); if ($('passWarn').textContent || $('verifyPassWarn').textContent) fails.push('passphrase warning: cleared with the passphrase');
-    if (!/\n  #wordGrid, #genResult, #wvAbbrGrid, #childOut, #exOut, #reforgeOut \{ -webkit-user-select: none; user-select: none; \}\n/.test(css)) fails.push('secrets cannot be highlighted');
+    if (!/\n  #wordGrid, #genResult, #wvAbbrGrid, #childOut, #exOut, #reforgeOut, #dpOut \{ -webkit-user-select: none; user-select: none; \}\n/.test(css)) fails.push('secrets cannot be highlighted');
     // stress test rules
     const ST = (o) => w.planStress(Object.assign({ copies: [], pass: 'none', know: false }, o)).map((x) => x.event.split(' ').slice(0, 3).join(' ') + '=' + x.v).join('|');
     const C = (m, h) => ({ m, home: h === 'home', where: '' });
