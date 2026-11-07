@@ -2266,7 +2266,7 @@ async function probe(w, mutated) {
     d = await DF(EL_SW, 'My  Pass ', ref(elRoot(EL_SW, 'my pass'), "m/0'/0/3", 'wpkh'));
     if (!/receive address #3 \(m\/0'\/0\/3\) of these words, with the passphrase\./.test(d.out) || /exactly as typed/.test(d.out)) fails.push('wallet detective: Electrum SegWit seed, passphrase normalized as Electrum does');
     d = await DF(EL_SW, 'My Pass', ref(elRoot(EL_SW, 'My Pass'), "m/0'/0/0", 'wpkh'));
-    if (!/It matched with the passphrase used exactly as typed/.test(d.out)) fails.push('wallet detective: Electrum passphrase as typed');
+    if (!/It matched with the passphrase used exactly as typed/.test(d.out) || /To open it in Electrum/.test(d.out)) fails.push('wallet detective: Electrum passphrase as typed');
     d = await DF('ketchup cost faint boil dwarf occur clean category solve extend garlic miss', '', ref(R0, "m/84'/0'/0'/0/0", 'wpkh'));
     if (!/two-factor \(2FA\) seed/.test(d.st)) fails.push('wallet detective: an Electrum two-factor seed is sent to Electrum');
     w.practiceMode(true); d = await DF(AB, '', ref(R0, "m/84'/0'/0'/0/0", 'wpkh'));
@@ -2285,12 +2285,13 @@ async function probe(w, mutated) {
     if (w.watchSigns().length || $('watchWarn').style.display === 'block') fails.push('watch check: the page itself leaves no sign [' + w.watchSigns().join(' | ') + ']');
     w.watchCheck(); if ($('watchStatus').textContent !== 'NO SIGN FOUND of extensions, translators or other scripts on this page right now.' || !/^That does not make it safe\./.test($('watchOut').textContent)) fails.push('watch check: no sign found, never safe');
     { const s = w.document.createElement('script'); s.src = 'chrome-extension://x/i.js'; w.document.head.appendChild(s); s.remove();
-      $('phrase').setAttribute('data-unknown-helper', '1'); w.document.body.appendChild(w.document.createElement('grammarly-extension')); w.ethereum = {}; await sleep(450);
+      $('phrase').setAttribute('data-unknown-helper', '1'); w.document.body.appendChild(w.document.createElement('grammarly-extension')); w.document.body.appendChild(w.document.createElement('div')); w.ethereum = {}; await sleep(450);
       const sg = w.watchSigns().join('\n');
       if (!/A script this page does not have \(from chrome-extension:\/\/x\/i\.js\)\. It was added and then removed again\./.test(sg)) fails.push('watch check: a script added and removed at once');
       if (!/An attribute data-unknown-helper that this page never sets/.test(sg)) fails.push('watch check: an unknown attribute');
       if (!/An element <grammarly-extension>/.test(sg)) fails.push('watch check: an extension element');
       if (!/an object named “ethereum”/.test(sg)) fails.push('watch check: a wallet extension object');
+      if (!/An element \(<div>\) added straight into the page after it opened/.test(sg)) fails.push('watch check: an element added under body');
       if ($('watchWarn').style.display !== 'block' || !/^Something else may be reading or changing this page\./.test($('watchWarn').textContent)) fails.push('watch check: the warning shows at the top by itself'); }
     w.alert = oa; w.confirm = oc;
   } catch (e) { fails.push('v2.8.0 probe crashed: ' + e.message); }
@@ -4073,7 +4074,7 @@ const M = [
   ["two wallets: do not follow practice mode", "if(wvCtx && wvCtx.mnemonic && wvCtx.pass){ wvDecoyHide(); wvDecoyShow(", "if(false){ wvDecoyHide(); wvDecoyShow("],
   ["two wallets: kept after CLEAR ALL", "hideAddrQr(\"wvq\"); wvSeedQrHide(); wvDecoyHide();", "hideAddrQr(\"wvq\"); wvSeedQrHide();"],  // ---- v2.8.0 ----
   ["wallet detective: Electrum salt", "salt:enc.encode(\"electrum\" + (asTyped", "salt:enc.encode(\"mnemonic\" + (asTyped"],
-  ["wallet detective: Electrum passphrase not lower-cased", "function electrumNorm(t){ return String(t || \"\").normalize(\"NFKD\").toLowerCase()", "function electrumNorm(t){ return String(t || \"\").normalize(\"NFKD\")"],
+  ["wallet detective: Electrum passphrase not lower-cased", ".normalize(\"NFKD\").toLowerCase().replace(ELECTRUM_CCC, \"\")", ".normalize(\"NFKD\").replace(ELECTRUM_CCC, \"\")"],
   ["wallet detective: SegWit Electrum seeds at the root", "{id:\"el-segwit\", seed:\"electrum-segwit\", steps:() => [[0, true]]", "{id:\"el-segwit\", seed:\"electrum-segwit\", steps:() => []"],
   ["wallet detective: no BitPay/Copay SegWit on BIP44", "types:[\"pkh\", \"wpkh\", \"tr\", \"sh-wpkh\"], accts:true, name:\"BIP44\"", "types:[\"pkh\"], accts:true, name:\"BIP44\""],
   ["wallet detective: m/0' path dropped", "{id:\"m0h\", seed:\"bip39\"", "{id:\"m0h\", seed:\"none\""],
@@ -4098,6 +4099,9 @@ const M = [
   ["watch check: not checked again after load", "if(hit && window.vfWatchPing) window.vfWatchPing();", "if(false) window.vfWatchPing();"],
   ["watch check: wallet extension objects ignored", "for(const [g, n] of WATCH_GLOBALS) if(g in window) add(", "for(const [g, n] of WATCH_GLOBALS) if(false) add("],
   ["heir mode: does not open", "  c.style.display = \"\"; document.getElementById(\"heirBtn\").setAttribute(\"aria-expanded\", \"true\");", "  document.getElementById(\"heirBtn\").setAttribute(\"aria-expanded\", \"true\");"],
+  ["wallet detective: Electrum keeps combining marks", ".toLowerCase().replace(ELECTRUM_CCC, \"\")", ".toLowerCase()"],
+  ["wallet detective: Electrum steps for a passphrase Electrum cannot read", "  if(f.asTyped) return \"Electrum itself cannot open it", "  if(false) return \"Electrum itself cannot open it"],
+  ["watch check: elements added under body ignored", "else if(n.nodeType === 1 && window.vfReady && (r.target === document.body", "else if(false && window.vfReady && (r.target === document.body"],
   ["heir mode: the Detective button goes nowhere", "onclick=\"heirGo('check', 'detBlock')\"", "onclick=\"heirGo('tools', 'detBlock')\""],
 ];
 

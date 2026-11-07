@@ -1808,7 +1808,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     d=await DF(AB,'',ref(bip(AB,''),"m/84'/0'/2147483646'/0/1",'wpkh'));
     ok(/\(m\/84'\/0'\/2147483646'\/0\/1\)/.test(d.out)&&/Samourai Wallet and Ashigaru \(Whirlpool post-mix\), Sparrow \(Whirlpool\) and Passport \(post-mix\)/.test(d.out),'Wallet Detective: finds a Whirlpool post-mix address (address from @scure)');
     d=await DF(AB,'',ref(bip(AB,''),"m/0/5",'pkh'));
-    ok(/\(m\/0\/5\)/.test(d.out)&&/Edge, for old Airbitz wallets/.test(d.out),'Wallet Detective: finds the root m/0/i path of old Airbitz wallets');
+    ok(/\(m\/0\/5\)/.test(d.out)&&/Edge, for old Airbitz wallets/.test(d.out)&&/open it in Edge\. Other apps, Sparrow among them, may not accept the root path m/.test(d.out)&&!/To open it in Sparrow/.test(d.out),'Wallet Detective: finds the root m/0/i path of old Airbitz wallets');
     d=await DF(AB,'',ref(bip(AB,''),"m/84'/0'/0'/0/31",'wpkh'));
     ok(/receive address #31 /.test(d.out)&&/It is address #31\. Many apps stop looking after 20 unused addresses in a row, so raise the app's gap limit \(in Sparrow: the Settings tab, Advanced\.\.\., Gap limit\)/.test(d.out),'Wallet Detective: address #31 is found and the gap limit is explained');
     d=await DF(AB,'',ref(bip(AB,''),"m/84'/0'/2'/0/0",'wpkh'));
@@ -1819,11 +1819,11 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     { const want=ref(elRoot(EL_SW,'my pass'),"m/0'/0/9",'wpkh'); d=await DF(EL_SW,'My  Pass ',want);
       ok(/receive address #9 \(m\/0'\/0\/9\) of these words, with the passphrase\./.test(d.out)&&/press Options, tick “Extend this seed with custom words” and press OK; type the passphrase on the Seed Extension page \(Electrum ignores capital letters in it\)/.test(d.out)&&!/exactly as typed/.test(d.out),'Wallet Detective: an Electrum SegWit seed with a passphrase normalized as Electrum does (lower case, spaces collapsed; node PBKDF2 + @scure)'); }
     { const want=ref(elRoot(EL_SW,'My Pass'),"m/0'/0/1",'wpkh'); d=await DF(EL_SW,'My Pass',want);
-      ok(/receive address #1 /.test(d.out)&&/It matched with the passphrase used exactly as typed/.test(d.out),'Wallet Detective: an Electrum seed whose passphrase was used as typed (as Sparrow imports it) is found and explained'); }
+      ok(/receive address #1 /.test(d.out)&&/It matched with the passphrase used exactly as typed/.test(d.out)&&/Electrum itself cannot open it from these words/.test(d.out)&&!/To open it in Electrum/.test(d.out),'Wallet Detective: an Electrum seed whose passphrase was used as typed (as Sparrow imports it) is found and explained'); }
     // refusals
     d=await DF('','',ref(bip(AB,''),"m/84'/0'/0'/0/0",'wpkh')); ok(d.cls==='status bad'&&/^First type the seed words in the box at the top of CHECK A BACKUP\./.test(d.st)&&!d.shown,'Wallet Detective: asks for the words first');
     d=await DF(AB,'',''); ok(d.cls==='status bad'&&/^Type one address this wallet received to, or press LIST FIRST ADDRESSES/.test(d.st),'Wallet Detective: asks for an address');
-    d=await DF(AB,'','bc1q'+'q'.repeat(58)); ok(/script address \(P2WSH\)/.test(d.st),'Wallet Detective: a multisig script address is refused with the reason');
+    d=await DF(AB,'',bech32.encode('bc',[0,...bech32.toWords(nsha(Uint8Array.of(1,2,3)))])); ok(/script address \(P2WSH\)/.test(d.st),'Wallet Detective: a multisig script address is refused with the reason');
     { const a=ref(bip(AB,''),"m/84'/0'/0'/0/0",'wpkh'); d=await DF(AB,'',a.slice(0,-1)+(a.endsWith('q')?'p':'q')); ok(/typo/.test(d.st)&&d.cls==='status bad','Wallet Detective: an address with a typo is refused'); }
     d=await DF(AB,'','73c5da0a'); ok(/not a key or a fingerprint/.test(d.st),'Wallet Detective: a fingerprint is not an address');
     d=await DF('zoo '.repeat(19)+'zoo','',ref(bip(AB,''),"m/84'/0'/0'/0/0",'wpkh')); ok(/SLIP39 \(Shamir\) share of 20 words/.test(d.st),'Wallet Detective: 20 words are named as a SLIP39 share');
@@ -1831,15 +1831,15 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       d=await DF(tf,'',ref(bip(AB,''),"m/84'/0'/0'/0/0",'wpkh')); ok(/two-factor \(2FA\) seed/.test(d.st)&&/Restore 2FA wallet, Disable opens it without the TrustedCoin service/.test(d.st),'Wallet Detective: an Electrum two-factor seed is sent to Electrum'); }
     // NOT FOUND, and the STOP button
     d=await DF(AB,'',ref(bip(AB,''),"m/84'/0'/0'/0/150",'wpkh'));
-    ok(d.cls==='status bad'&&/^NOT FOUND in the settings of the well-known wallet apps \(accounts 0 to 9, the first 100 addresses of account 0, without a passphrase\)/.test(d.st)&&/Muun, Bitkey/.test(d.st)&&!d.shown,'Wallet Detective: NOT FOUND says what was searched and what else to check');
-    { $('detAddr').value=ref(bip(AB,''),"m/84'/0'/0'/0/150",'wpkh'); const p=w.detFind(); await sleep(300); ok($('detStop').disabled===false&&$('detBtn').disabled,'Wallet Detective: STOP is on and FIND is off while it searches'); w.detStop(); await p;
+    ok(d.cls==='status bad'&&/^NOT FOUND in the settings of the well-known wallet apps \(BIP39 paths: accounts 0 to 9 and the first 100 addresses of account 0 where apps use this address type, the first 20 elsewhere; without a passphrase\)/.test(d.st)&&/Muun, Bitkey/.test(d.st)&&!d.shown,'Wallet Detective: NOT FOUND says what was searched and what else to check');
+    { $('detAddr').value=ref(bip(AB,''),"m/84'/0'/0'/0/150",'wpkh'); const p=w.detFind(); await sleep(300); ok($('detStop').disabled===false&&$('detBtn').disabled,'Wallet Detective: STOP is on and FIND is off while it searches'); await w.detFind(); ok(/^A search is still ending\./.test($('detStatus').textContent),'Wallet Detective: pressing FIND during a search says so'); w.detStop(); await p;
       ok($('detStatus').textContent==='Stopped. Nothing was found before you stopped it.'&&!$('detBtn').disabled&&$('detStop').disabled,'Wallet Detective: STOP ends the search'); }
     { $('detAddr').value=ref(bip(AB,''),"m/84'/0'/0'/0/150",'wpkh'); const p=w.detFind(); await sleep(300); $('phrase').value=AB+' '; $('phrase').dispatchEvent(new w.Event('input')); await p;
       ok($('detStatus').textContent===''&&!$('detOut').textContent&&$('detAddr').value!==''&&!$('detBtn').disabled,'Wallet Detective: editing the words during a search stops it and leaves no old result'); }
     // practice mode
     w.practiceMode(true); d=await DF(AB,'',ref(bip(AB,''),"m/84'/0'/0'/0/0",'wpkh')); ok(/^Practice mode is on, so the Detective searches only test-network addresses/.test(d.st),'Wallet Detective: practice mode refuses a real address');
-    d=await DF(AB,'',ref(bip(AB,''),"m/84'/1'/0'/0/4",'wpkh',true)); ok(/receive address #4 \(m\/84'\/1'\/0'\/0\/4\)/.test(d.out),'Wallet Detective: practice mode finds a test-network address on coin type 1 (address from @scure)');
-    $('detAddr').value=''; await w.detList(); ok(/on the test network \(practice mode\)/.test($('detStatus').textContent)&&$('detOut').textContent.includes(ref(bip(AB,''),"m/84'/1'/0'/0/0",'wpkh',true))&&!/\bbc1|\n  [13]/.test($('detOut').textContent),'Wallet Detective: LIST in practice mode shows only test-network addresses');
+    d=await DF(AB,'',ref(bip(AB,''),"m/84'/1'/0'/0/4",'wpkh',true)); ok(/receive address #4 \(m\/84'\/1'\/0'\/0\/4\)/.test(d.out)&&/This is a test-network address, so switch the app to testnet first/.test(d.out),'Wallet Detective: practice mode finds a test-network address on coin type 1 (address from @scure)');
+    $('detAddr').value=''; await w.detList(); ok(/on the test network \(practice mode\)/.test($('detStatus').textContent)&&$('detOut').textContent.includes(ref(bip(AB,''),"m/84'/1'/0'/0/0",'wpkh',true))&&(()=>{ const a=[...$('detOut').textContent.matchAll(/^  ([0-9a-zA-Z]{26,})$/gm)].map(m=>m[1]); return a.length>=8&&a.every(s=>/^(tb1|[2mn])/.test(s)); })(),'Wallet Detective: LIST in practice mode shows only test-network addresses');
     w.practiceMode(false); ok($('detStatus').textContent===''&&!$('detOut').textContent,'Wallet Detective: turning practice mode off clears the result');
     // LIST FIRST ADDRESSES
     $('phrase').value=AB; $('verifyPass').value=''; $('detAddr').value=''; await w.detList();
@@ -1872,6 +1872,8 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(/A frame or embedded object \(<iframe>\)/.test(x.s)&&/A style sheet this page does not have \(class darkreader\)/.test(x.s)&&/A link to a file outside this page \(https:\/\/x\.example\/a\.css\)/.test(x.s)&&/An element with its own hidden content \(<div>\)/.test(x.s)&&/data-darkreader-mode on the page, as Dark Reader/.test(x.s),'watch check: frames, style sheets, outside links, hidden content and a restyler are found'); x.t.w.close();
     x=await T((w,d,$)=>{ $('verifyPass').setAttribute('data-unknown-helper','1'); Object.defineProperty(w.navigator,'webdriver',{configurable:true,get:()=>true}); });
     ok(/An attribute data-unknown-helper that this page never sets, probably added by a browser extension\./.test(x.s)&&/controlled by automation software/.test(x.s),'watch check: an unknown attribute and automation are found'); x.t.w.close();
+    x=await T((w,d)=>{ d.body.appendChild(d.createElement('div')); d.documentElement.appendChild(d.createElement('span')); });
+    ok(/An element \(<div>\) added straight into the page after it opened/.test(x.s)&&/An element \(<span>\) added straight into the page after it opened/.test(x.s),'watch check: elements added straight under <body> or <html> after the page opened are found'); x.t.w.close();
     x=await T((w)=>{ for(let i=0;i<500;i++) w.document.body.appendChild(w.document.createElement('x-y')); });
     ok(x.t.w.vfWatchSeen.length<=200,'watch check: the early notes are capped at 200'); x.t.w.close(); }
   { // Heir mode
