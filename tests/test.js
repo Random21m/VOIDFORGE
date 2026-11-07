@@ -1571,7 +1571,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   { const t6=load({confirm:true}); await t6.ready(); const $=t6.$, w=t6.w; w.startGateClose();
     const {HDKey}=require('@scure/bip32'); const {mnemonicToSeedSync}=require('@scure/bip39'); const btc=require('@scure/btc-signer'); const zlib=require('zlib'), nc=require('crypto');
     const until=async(f)=>{ for(let k=0;k<120&&!f();k++) await new Promise(r=>setTimeout(r,50)); };
-    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.6.0','v2.6.0: the footer shows the new version');
+    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.7.0','v2.7.0: the footer shows the new version');
     ok(html.indexOf('<li><b>2.6.0</b>')>0&&html.indexOf('<li><b>2.6.0</b>')<html.indexOf('<li><b>2.5.0</b>'),'v2.6.0: the changelog lists 2.6.0 first');
     // --- check an address before you pay ---
     const PAY=async(a,b)=>{ $('payA').value=a; $('payB').value=b; await w.payCompare(); return {st:$('payOut').textContent, cls:$('payOut').className, x:[...$('payDiff').children].map(r=>r.querySelectorAll('.pd-x').length)}; };
