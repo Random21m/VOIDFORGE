@@ -1918,8 +1918,8 @@ async function probe(w, mutated) {
     q = await PK('xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8'); if (q.cls !== 'status bad' || !/public key/.test(q.st)) fails.push('private key: an xpub refused');
     const WIF0 = btc.WIF().encode(k0.privateKey);
     await PK(WIF0); $('pkIn').value = WIF0 + 'x'; $('pkIn').dispatchEvent(new w.Event('input')); if (w.eval('wvCtx')) fails.push('private key: editing the box closes it');
-    await PK(WIF0); w.clearAll(); if ($('pkIn').value !== '' || $('pkIn').type !== 'password' || w.eval('wvCtx')) fails.push('private key: CLEAR ALL wipes it');
-    await run('dice', 12, D50); await PK(WIF0); w.autoWipe('test'); if ($('pkIn').value !== '') fails.push('private key: auto-clear wipes it');
+    await PK(WIF0); w.togglePkShow($('pkIn').nextElementSibling || w.document.createElement('button')); if ($('pkIn').type !== 'text') fails.push('private key: SHOW shows it'); w.clearAll(); if ($('pkIn').value !== '' || $('pkIn').type !== 'password' || w.eval('wvCtx')) fails.push('private key: CLEAR ALL wipes it and hides the box again');
+    w.clearAll(); $('pkIn').value = WIF0; if (w.autoWipe('test') !== true || $('pkIn').value !== '') fails.push('private key: a key alone is a secret for auto-clear');
     w.practiceMode(true); q = await PK(WIF0); if (q.cls !== 'status bad' || !/only test-network private keys/.test(q.st) || w.eval('wvCtx')) fails.push('private key: mainnet refused in practice mode');
     { const t0 = root.derive("m/84'/1'/0'/0/0"); q = await PK(btc.WIF(btc.TEST_NETWORK).encode(t0.privateKey)); if (q.list[0] !== btc.p2wpkh(t0.publicKey, btc.TEST_NETWORK).address) fails.push('private key: a testnet WIF in practice mode'); }
     w.practiceMode(false); if (w.eval('wvCtx') || !/private key view was closed/.test($('pkStatus').textContent)) fails.push('private key: closed when practice mode changes');
@@ -1927,6 +1927,7 @@ async function probe(w, mutated) {
     // UR
     const msg = Array.from(nc.randomBytes(700)), cb = CBx.bytes(msg), parts = w.urEncode('bytes', cb, 200);
     { const ref = new UREncoder(UR.fromBuffer(Buffer.from(msg)), 200, 0, 10), rp = []; for (let i = 0; i < ref.fragmentsLength; i++) rp.push(ref.nextPart()); if (JSON.stringify(rp) !== JSON.stringify(parts)) fails.push('UR: parts equal @ngraveio/bc-ur'); }
+    for (const [len, mf] of [[400, 200], [401, 200], [80, 40], [2000, 400]]) { const d = Array.from(nc.randomBytes(len)), ref = new UREncoder(UR.fromBuffer(Buffer.from(d)), mf, 0, 10), rp = []; for (let i = 0; i < ref.fragmentsLength; i++) rp.push(ref.nextPart()); if (JSON.stringify(rp) !== JSON.stringify(w.urEncode('bytes', CBx.bytes(d), mf))) fails.push('UR: fragment sizes equal @ngraveio/bc-ur (' + len + '/' + mf + ')'); }
     { const ref = new UREncoder(UR.fromBuffer(Buffer.from([1, 2, 3])), 200, 0, 10); if (ref.nextPart() !== w.urEncode('bytes', CBx.bytes([1, 2, 3]), 200)[0]) fails.push('UR: a single part equals @ngraveio/bc-ur'); }
     if (hx(w.urDecodeFrames([parts[2], parts[0], parts[3].toUpperCase(), parts[1], parts[0]]).msg) !== hx(cb)) fails.push('UR: parts in any order, repeated, any case');
     if (!/UR parts missing: 2, 4 of 4/.test(err(() => w.urDecodeFrames([parts[0], parts[2]])))) fails.push('UR: missing parts named');
@@ -1938,7 +1939,7 @@ async function probe(w, mutated) {
       if (!/part 2 appears twice with different contents/.test(err(() => w.urDecodeFrames([parts[0], parts[1], bad2, parts[2], parts[3]])))) fails.push('UR: a part that changes is caught'); }
     // BBQr and raw deflate
     const bb = w.bbqrEncode('P', Uint8Array.from(msg), 480);
-    if (bb.length !== 3 || !bb.every((p, i) => p.startsWith('B$2P03' + String(i).padStart(2, '0'))) || !bb.slice(0, -1).every((p) => p.length === bb[0].length)) fails.push('BBQr: header and even parts');
+    if (bb.length !== 3 || !bb.every((p, i) => p.startsWith('B$2P03' + String(i).padStart(2, '0'))) || !bb.slice(0, -1).every((p) => p.length === bb[0].length) || bb[0].length - bb[2].length > 8) fails.push('BBQr: header and even parts');
     if (hx(w.bbqrDecodeFrames([bb[2], bb[0], bb[1]]).bytes) !== hx(msg)) fails.push('BBQr: parts in any order');
     { const big = Uint8Array.from(nc.randomBytes(2000)), many = w.bbqrEncode('U', big, 160); if (many.length < 11 || !many[10].startsWith('B$2U' + many.length.toString(36).toUpperCase().padStart(2, '0') + '0A') || hx(w.bbqrDecodeFrames(many).bytes) !== hx(big)) fails.push('BBQr: part numbers in base 36'); }
     if (!/BBQr parts missing: 2 of 3/.test(err(() => w.bbqrDecodeFrames([bb[0], bb[2]])))) fails.push('BBQr: missing parts named');
@@ -1970,8 +1971,9 @@ async function probe(w, mutated) {
       if (!P.every((p) => p === p.toUpperCase()) || !F.every((f) => f.length === F[0].length) || F.length < 2) fails.push('animated QR: capital letters, every frame the same size'); }
     await w.msAnim('bbqr'); { const d = w.bbqrDecodeFrames(w.eval('animCtx.parts')), t = new TextDecoder().decode(d.bytes); if (d.fileType !== 'U' || !t.includes('/<0;1>/*') || !/#[a-z0-9]{8}$/.test(t)) fails.push('animated QR: BBQr descriptor'); }
     await w.msAnim('cc'); { const d = w.urDecodeFrames(w.eval('animCtx.parts').map((p) => p.toLowerCase())), t = new TextDecoder().decode(w.cborRead(d.msg, 0).v); if (d.type !== 'bytes' || t !== await w.coldcardMultisigText('ms-wsh', 2, KEYS)) fails.push('animated QR: Coldcard file in UR bytes'); }
-    { const seen = new Set(); for (let k = 0; k < 14; k++) { seen.add(w.eval('animCtx.i')); await sleep(50); } const moved = seen.size > 1; w.animPause($('msAnimPause')); const i1 = w.eval('animCtx.i'); await sleep(600);
-      if (!moved || w.eval('animCtx.i') !== i1 || !/\(paused\)/.test($('msAnimCount').textContent)) fails.push('animated QR: moves by itself, PAUSE holds it'); w.animPause($('msAnimPause')); }
+    { const seen = new Set(); for (let k = 0; k < 14; k++) { seen.add(w.eval('animCtx.i')); await sleep(50); } const moved = seen.size > 1; w.animPause($('msAnimPause')); const held = new Set(); for (let k = 0; k < 14; k++) { held.add(w.eval('animCtx.i')); await sleep(50); }
+      if (!moved || held.size !== 1 || !/\(paused\)/.test($('msAnimCount').textContent)) fails.push('animated QR: moves by itself, PAUSE holds it'); w.animPause($('msAnimPause')); }
+    { w.animStart('msAnim', ['AB', 'C'.repeat(300)], 'x', 100000); const F = w.eval('animCtx.frames'); if (F[0].length !== F[1].length) fails.push('animated QR: a short part is drawn at the size of the longest'); w.animStop(); }
     w.msReset(); if ($('msAnimBox').style.display !== 'none' || $('msAnimImg').textContent !== '' || w.eval('animTimer') !== null) fails.push('animated QR: START OVER stops it');
     w.alert = oa; w.confirm = oc;
   } catch (e) { fails.push('v2.6.0 probe crashed: ' + e.message); }
@@ -3851,7 +3853,7 @@ const M = [
   ["private key: editing the box keeps it open", "addEventListener(\"input\", () => { if(wvCtx && wvCtx.secret) clearWalletView();", "addEventListener(\"input\", () => {"],
   ["private key: CLEAR ALL keeps the key", "document.getElementById(\"pkIn\").value=\"\"; document.getElementById(\"pkIn\").type=\"password\";", "document.getElementById(\"pkIn\").type=\"password\";"],
   ["private key: CLEAR ALL leaves it shown", "document.getElementById(\"pkIn\").value=\"\"; document.getElementById(\"pkIn\").type=\"password\";", "document.getElementById(\"pkIn\").value=\"\";"],
-  ["private key: auto-clear keeps the key", "const AUTO_FIELDS = [\"pkIn\", \"rolls\",", "const AUTO_FIELDS = [\"rolls\","],
+  ["private key: a key alone does not count for auto-clear", "const AUTO_FIELDS = [\"pkIn\", \"rolls\",", "const AUTO_FIELDS = [\"rolls\","],
   ["private key: mainnet key in practice mode", "if(practiceOn && p.net !== \"test\"){ st.className", "if(false){ st.className"],
   ["private key: practice change keeps it open", "    if(wvCtx.secret){ clearWalletView();", "    if(false){ clearWalletView();"],
   ["private key: no SECRET banner", "\"SECRET, read only: a private key is open.", "\"Read only: a private key is open."],
