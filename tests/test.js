@@ -164,7 +164,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const svg=hs.find(h=>/^data:image\/svg\+xml,/.test(h)), png=hs.find(h=>/^data:image\/png;base64,/.test(h));
       const svgText=svg?decodeURIComponent(svg.slice(svg.indexOf(',')+1)):'', pb=png?Buffer.from(png.slice(png.indexOf(',')+1),'base64'):Buffer.alloc(0);
       ok(ic.length===2&&hs.every(h=>h.startsWith('data:'))&&(svgText.match(/<circle/g)||[]).length===5&&/^<svg[^>]*viewBox="0 0 64 64"/.test(svgText)&&/fill="#E3B83F"/.test(svgText)&&pb.subarray(1,4).toString()==='PNG'&&pb.readUInt32BE(16)===32&&pb.readUInt32BE(20)===32,'page icon: a data: SVG with the five-pip die and a 32x32 PNG are built in, and no icon link points to the network');
-      ok(!t.w.document.querySelector('link[rel~="apple-touch-icon"], link[rel="manifest"]')&&/never from a website\. Check the file.s SHA256 first \(see the README\)\. The online copy on the project page is for practice only\. Its address is random21m\.github\.io\/VOIDFORGE, the only link on this page/.test(t.w.document.body.textContent),'page icon: nothing else is linked, and the About page says the online copy is for practice only'); }
+      ok(!t.w.document.querySelector('link[rel~="apple-touch-icon"], link[rel="manifest"]')&&/never from a website\. Check the file.s SHA256 first \(see the README\)\. The online copy on the project page is for practice only\. Its address is random21m\.gitlab\.io\/voidforge, the only link on this page/.test(t.w.document.body.textContent),'page icon: nothing else is linked, and the About page says the online copy is for practice only'); }
     { // Every main "go" action across the page is a primary (cyan) button, not grey "secondary" -- a uniform rule, not just START DRILL (v1.27.3)
       const primaryIds=['forgeBtn','prStart','prCheckBtn','checkAddrBtn','checkAcctsBtn','reforgeWordsBtn','psbtBtn','cmpBtn','childBtn','wpBtn','reuseBtn','sigBtn'];
       const missing=primaryIds.filter(id=>{ const b=t.$(id); return !b || b.classList.contains('secondary') || b.classList.contains('btn-clear'); });
@@ -813,7 +813,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   ok(tm.$('rolls').value==='123456'&&tm.d.querySelector('input[name=mode][value=dice]').checked,'cancelling a mode switch keeps rolls and mode');
   // item 5 & 6: CSP, no links
   ok(/Content-Security-Policy/.test(html)&&/default-src 'none'/.test(html),'CSP meta present with default-src none');
-  { const anchors=html.replace(/const WORDLIST = \[.*?\];/s,'').match(/<a\s[^>]*>/gi)||[]; ok(anchors.length===1&&anchors[0]==='<a href="https://random21m.github.io/VOIDFORGE/" target="_blank" rel="noopener noreferrer">','page contains exactly one link: the online practice copy, opening in a new tab with noopener noreferrer'); }
+  { const anchors=html.replace(/const WORDLIST = \[.*?\];/s,'').match(/<a\s[^>]*>/gi)||[]; ok(anchors.length===1&&anchors[0]==='<a href="https://random21m.gitlab.io/voidforge/" target="_blank" rel="noopener noreferrer">','page contains exactly one link: the online practice copy, opening in a new tab with noopener noreferrer'); }
   // v1.2: only 12/24 words, no copy-seed button
   eq([...t.d.querySelectorAll('input[name=words]')].map(e=>e.value).join(','),'12,24','only 12 and 24 word options are offered');
   ok(![...t.d.querySelectorAll('button')].some(b=>/COPY SEED/.test(b.textContent))&&typeof t.w.copyResult==='undefined','no copy-seed button or function');
@@ -1229,7 +1229,12 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   { const css=html.slice(0,html.indexOf('</style>'));
     ok(/@page \{ margin: 12mm; \}/.test(css)&&/body\.print-seed > :not\(#printOnly\), body\.print-qr > :not\(#printQr\) \{ display: none !important; \}/.test(css)&&!/body\.print-seed \* \{ visibility: hidden/.test(css)&&!/body\.print-qr \* \{ visibility: hidden/.test(css),'print: everything but the sheet is removed from the layout (display: none), so no blank pages are printed');
     const tp=load(); await tp.ready(); ok(tp.$('printOnly').parentElement===tp.d.body&&tp.$('printQr').parentElement===tp.d.body,'print: both print areas sit directly in the page body, so the rule above leaves only the sheet');
-    ok(/print\.test\.mjs/.test(fs.readFileSync(path.join(__dirname,'..','.github','workflows','test.yml'),'utf8')),'print: the one-page print test runs in GitHub'); }
+    ok(/node tests\/print\.test\.mjs/.test(fs.readFileSync(path.join(__dirname,'..','.gitlab-ci.yml'),'utf8')),'print: the one-page print test is in the GitLab test job'); }
+  // the online practice copy (GitLab Pages): the wrapper names only GitLab addresses, and the demo serves the released file only after SHA256SUMS and CID.txt check out
+  { const dir=path.join(__dirname,'..','demo'), idx=fs.readFileSync(path.join(dir,'index.html'),'utf8'), ci=fs.readFileSync(path.join(__dirname,'..','.gitlab-ci.yml'),'utf8');
+    const links=[...idx.matchAll(/https?:\/\/[^\s"'<>)]+/g)].map(m=>m[0]);
+    ok(links.length===1&&links[0]==='https://gitlab.com/random21m/voidforge/-/releases'&&/Only trust this address: <b>random21m\.gitlab\.io\/voidforge<\/b>/.test(idx)&&!/github/i.test(idx),'demo: the wrapper links only to the GitLab releases page and names the GitLab demo address');
+    ok(!fs.existsSync(path.join(dir,'voidforge.html'))&&/sha256sum -c SHA256SUMS[\s\S]*CID\.txt[\s\S]*cp voidforge\.html public\/voidforge\.html/.test(ci)&&/\$CI_COMMIT_BRANCH == \$CI_DEFAULT_BRANCH/.test(ci),'demo: GitLab Pages copies the released file from main, after checking SHA256SUMS and CID.txt'); }
   { const t4=load(); await t4.ready(); const $=t4.$, w=t4.w; w.startGateClose();
     const opts=()=>[...$('rsExtra').options].map(o=>o.value).join();
     const sheet=()=>{ const p0=t4.st.printed; w.printRollSheet(); const r={n:t4.st.printed-p0,cells:t4.st.printCells.slice(),txt:t4.st.printHTML,wide:t4.d.querySelectorAll('#printOnly .ps-roll20').length}; w.dispatchEvent(new w.Event('afterprint')); return r; };
@@ -1431,7 +1436,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // --- no network / external references ---
   const src=html.replace(/const WORDLIST = \[.*?\];/s,'');
   ok(!/fetch\(|XMLHttpRequest|WebSocket|sendBeacon|<script[^>]+src=|<link(?! rel="icon" type="image\/[a-z+]+"(?: sizes="\d+x\d+")? href="data:)|@import/.test(src),'no network APIs or external resources');
-  const urls=[...src.matchAll(/https?:\/\/[^\s"'<>)]+/g)].map(m=>m[0]); ok(urls.every(u=>u.startsWith('https://github.com/Random21m/voidforge')||u==='https://random21m.github.io/VOIDFORGE/'),'only URL is the GitHub link: '+urls.join(', '));
+  const urls=[...src.matchAll(/https?:\/\/[^\s"'<>)]+/g)].map(m=>m[0]); ok(urls.every(u=>u.startsWith('https://gitlab.com/random21m/voidforge')||u==='https://random21m.gitlab.io/voidforge/'),'only URL is the GitHub link: '+urls.join(', '));
   ok(t.errors.length===0,'no uncaught page errors '+JSON.stringify(t.errors));
   console.log(failed?`\n${failed} CHECK(S) FAILED`:'\nALL CHECKS PASSED'); process.exit(failed?1:0);
 })();

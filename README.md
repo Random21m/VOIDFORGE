@@ -4,21 +4,21 @@
 
 An offline, educational tool that turns dice rolls or coin flips into a BIP39 seed phrase (12 or 24 words), then helps you back it up and set up a wallet, including multisig (a simple slider picks 2 to 15 keys). One HTML file, no dependencies, no network.
 
-<p align="center"><a href="https://github.com/Random21m/voidforge/releases/latest"><b>&#11015; Download the latest release</b></a><br>
+<p align="center"><a href="https://gitlab.com/random21m/voidforge/-/releases"><b>&#11015; Download the latest release</b></a><br>
 Get <code>voidforge.html</code> and <code>SHA256SUMS</code> from the release page, check the hash, then copy the file to a USB stick for your offline computer. This is the only place to download it. For real funds, use that downloaded file on an offline computer.</p>
 
-<p align="center"><a href="https://random21m.github.io/VOIDFORGE/"><b>&#9654; Try it in your browser</b></a> (an online copy for learning and practice, works on a phone; <a href="#try-it-online-practice-only">read this first</a>)</p>
+<p align="center"><a href="https://random21m.gitlab.io/voidforge/"><b>&#9654; Try it in your browser</b></a> (an online copy for learning and practice, works on a phone; <a href="#try-it-online-practice-only">read this first</a>)</p>
 
 > **Not independently audited.** For serious amounts, generate on dedicated hardware (SeedSigner, Coldcard) and use VOIDFORGE to cross-check the words and fingerprint.
 
 ## Try it online (practice only)
 
-You can try VOIDFORGE without downloading anything, on a computer or a phone: **[random21m.github.io/VOIDFORGE](https://random21m.github.io/VOIDFORGE/)**. It is meant for seeing whether you like it, learning how dice become words, and practising with a seed you will never use.
+You can try VOIDFORGE without downloading anything, on a computer or a phone: **[random21m.gitlab.io/voidforge](https://random21m.gitlab.io/voidforge/)**. It is meant for seeing whether you like it, learning how dice become words, and practising with a seed you will never use.
 
 - **It is the same file as the release.** The online copy serves the latest released `voidforge.html` byte for byte, inside a thin page that adds the amber banner. No server code, no account, no analytics and nothing stored. The file's own rule (a Content-Security-Policy) still blocks all network access, so the page cannot send what you type anywhere.
 - **It still warns you.** Besides the banner, the app shows its red *NETWORK: ONLINE* warning, because a connected device is the wrong place for real keys. The banner has an *Online or downloaded?* note that sets out the difference.
-- **Never for real money.** A connected phone or computer runs other apps, browser extensions and sync services that can see or keep what you type. For real funds download the file from the [latest release](../../releases/latest), check its SHA-256 (the *Check your download* tool in the app does this) and open it on an offline computer.
-- **Only trust this address.** A copy of the page on any other site could be altered. GitHub can see that you loaded the page, though the page itself sends nothing.
+- **Never for real money.** A connected phone or computer runs other apps, browser extensions and sync services that can see or keep what you type. For real funds download the file from the [latest release](https://gitlab.com/random21m/voidforge/-/releases), check its SHA-256 (the *Check your download* tool in the app does this) and open it on an offline computer.
+- **Only trust this address.** A copy of the page on any other site could be altered. GitLab can see that you loaded the page, though the page itself sends nothing.
 - **Add it to your Home Screen** from your browser's share or menu button, if you want a shortcut to the practice copy.
 
 ## Disclaimer: please read
@@ -37,8 +37,8 @@ VOIDFORGE is free software provided **"as is", without warranty of any kind** (s
 
 ## Quick start
 
-1. Download `voidforge.html` from the [latest release](../../releases/latest) and check it: `sha256sum -c SHA256SUMS`.
-2. Copy it to a USB stick and open it in a desktop browser (Safari 14+, Chrome or Firefox) on an **offline computer**. A phone is fine for learning and practice (the page works in a phone browser once you open it from a real file, not a preview, or from the [online practice copy](https://random21m.github.io/VOIDFORGE/)), but never for real funds: use an offline computer for those.
+1. Download `voidforge.html` from the [latest release](https://gitlab.com/random21m/voidforge/-/releases) and check it: `sha256sum -c SHA256SUMS`.
+2. Copy it to a USB stick and open it in a desktop browser (Safari 14+, Chrome or Firefox) on an **offline computer**. A phone is fine for learning and practice (the page works in a phone browser once you open it from a real file, not a preview, or from the [online practice copy](https://random21m.gitlab.io/voidforge/)), but never for real funds: use an offline computer for those.
 3. Confirm the green **SELF-TEST PASSED (81/81)** badge and the **NETWORK: OFFLINE** tag. A red notice saying the script is not running means the page did not start; do not use it.
 4. Pick Dice, Coin or Word draw, choose 12 or 24 words, enter your physical rolls or flips (type, paste, or tap the buttons; the minimum or more, and every one counts) and watch the grey preview words change with every roll, then press FORGE SEED. The words appear as a numbered grid. A passphrase, if you want one, goes in the box right under the words ("Passphrase and note"); changing it does not clear your words, it only works out the fingerprint and addresses again.
 5. Write the words down, then compare the words and the master fingerprint with a second independent offline tool before trusting real funds.
@@ -95,11 +95,11 @@ VOIDFORGE is free software provided **"as is", without warranty of any kind** (s
 - **Watch-only export:** after FORGE, copy the wallet's public key (zpub) or descriptor into a watch-only wallet app to see addresses and balance without the seed. Public keys only; it cannot spend. SHOW QR draws it as a QR code on screen for scanning.
 - Shows the master fingerprint **and the first native SegWit (BIP84) receive address** so you can cross-check with a wallet; asks you to type any passphrase twice; tap buttons for dice 1-6 and coin 1/0. VERIFY can check a phrase with and without a passphrase and tell you whether a fingerprint or address from your backup matches with a passphrase, without one, or neither.
 - Guides: [RECOVERY.md](RECOVERY.md) (what to back up, how to restore) and [SECURITY.md](SECURITY.md) (reporting, known limits).
-- Security advisories: [GHSA-8xcw-qx5p-8rmr](https://github.com/Random21m/voidforge/security/advisories/GHSA-8xcw-qx5p-8rmr) (medium): the release workflow could in theory attest a tampered build if a test dependency were compromised. Reported by MrHodlX, fixed in v1.8.1; every later release uses the hardened workflow.
+- Security advisories: GHSA-8xcw-qx5p-8rmr (medium, published on the project's former GitHub page): the release workflow could in theory attest a tampered build if a test dependency were compromised. Reported by MrHodlX, fixed in v1.8.1; every later release uses the hardened workflow.
 - Method: `SHA256(rolls or flips as text)` → BIP39. Matches SeedSigner's published dice examples; coin mode uses SeedSigner's method (1/0 string). Exactly 50 or 99 rolls give the same words as SeedSigner and Coldcard; more rolls (every one is hashed) give the same words as Coldcard's dice seeds (New Seed Words, Advanced). With the Keystone dice rules each 6 is written as 0 first, as Keystone does.
 - Tests: `npm ci && npm test` (unit tests, differential tests against `@scure/bip39` and `@scure/bip32` plus descriptor fixtures from `embit`, QR fixtures from `qrcode` and the `lifehash` package for the fingerprint picture, a print test that prints every sheet to PDF in a real browser and checks each is exactly one page on Letter and A4, and mutation tests that break the code on purpose to prove the safety net catches it)
 - Want to review it? See [REVIEW.md](REVIEW.md).
-- Do not host this as a web page (no GitHub Pages). Download-only.
+- The only online copy is the practice demo at [random21m.gitlab.io/voidforge](https://random21m.gitlab.io/voidforge/), published from `main` by GitLab Pages (`.gitlab-ci.yml`). For real funds, use the downloaded release file.
 - License: MIT
 
 ## Support the project

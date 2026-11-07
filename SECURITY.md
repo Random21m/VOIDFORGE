@@ -8,7 +8,7 @@ VOIDFORGE is **not independently audited**. It is a single HTML file you can rea
 
 Please report privately, not in a public issue:
 
-1. On GitHub, open the repository's **Security** tab and choose **Report a vulnerability** (private advisory), or
+1. On GitLab, open a **confidential issue**: [new issue](https://gitlab.com/random21m/voidforge/-/issues/new?issuable_template=Security), choose the *Security* template and make sure **This issue is confidential** is ticked, so only the maintainer can read it, or
 2. If that is unavailable, open an issue that says only "security report, please contact me" and **no details**; the maintainer will arrange a private channel.
 
 Please include the version (shown at the bottom of the page), the browser, and steps to reproduce. Reports of anything that could leak a seed, passphrase or rolls, produce a wrong seed or address, or weaken the offline guarantees are the most important.
@@ -23,7 +23,7 @@ Please include the version (shown at the bottom of the page), the browser, and s
 ## Known limits (not vulnerabilities)
 
 - The secp256k1 code is not constant-time. This is acceptable offline but is why the tool must never run on a networked or shared computer.
-- The self-test runs inside the same file it checks, so a tampered file could fake a pass. Verify the SHA256 and the build attestation (see RELEASING.md).
+- The self-test runs inside the same file it checks, so a tampered file could fake a pass. Verify the SHA256 with a tool that is not the page (see RELEASING.md).
 - The randomness check is advisory and cannot prove your dice or coin are fair.
 - Only the BIP84 (native SegWit, mainnet) first address is shown; other wallet types use other paths.
 - Not supported on phones or in file previews.
@@ -38,4 +38,4 @@ Thanks to everyone who reports problems responsibly.
 
 | Date | Reporter | Issue | Advisory |
 |---|---|---|---|
-| 2026-10-27 | MrHodlX | Release workflow could sign files that had been changed after dependencies were installed; fixed in v1.8.1 | [GHSA-8xcw-qx5p-8rmr](https://github.com/Random21m/voidforge/security/advisories/GHSA-8xcw-qx5p-8rmr) |
+| 2026-10-27 | MrHodlX | Release workflow could sign files that had been changed after dependencies were installed; fixed in v1.8.1 | GHSA-8xcw-qx5p-8rmr (on the former GitHub page) |
