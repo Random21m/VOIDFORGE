@@ -1461,7 +1461,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(['home','away'].every(pa=>{ const d=w.planStress({copies:[P('paper','home'),P('metal','away')],pass:pa,know:true}).find(r=>r.event==='You die or cannot act'); return d.v==='check'&&/passphrase note/.test(d.text)&&/passphrase note/.test(d.fix); }),'stress test: with a written passphrase, the family also needs to find the passphrase note');
     ok(/a passphrase makes a new wallet, so the money then has to be moved to it/.test(w.planStress({copies:[P('paper','home')],pass:'none',know:true})[1].fix)&&/move the money at once/.test(w.planStress({copies:[P('paper','home')],pass:'mem',know:true}).find(r=>r.event==='A burglar searches your home').text),'stress test: the fixes say a passphrase makes a new wallet, and to move the money at once when the only copies are stolen');
     // the box on the page
-    ok($('planBox')&&$('planBox').tagName==='DETAILS'&&!$('planBox').open&&$('planBox').closest('#tp-check')!==null&&/NO WORDS, KEEP PRIVATE/.test($('planBox').querySelector('summary').textContent)&&$('planBox').querySelector('summary .tag').classList.contains('tag-rec'),'backup plan: a closed box in CHECK A BACKUP, marked NO WORDS, KEEP PRIVATE');
+    ok($('planBox')&&$('planBox').tagName==='DETAILS'&&!$('planBox').open&&$('planBox').closest('#tp-check')!==null&&/NO WORDS, KEEP PRIVATE/.test($('planBox').querySelector('summary').textContent)&&$('planBox').querySelector('summary .tag').classList.contains('tag-private'),'backup plan: a closed box in CHECK A BACKUP, marked NO WORDS, KEEP PRIVATE');
     ok($('plPrint')&&$('plPrint').classList.contains('secondary')&&$('planBox').querySelectorAll('button:not(.secondary)').length===0,'backup plan: PRINT BACKUP PLAN is a grey helper button, like every other PRINT button');
     eq($('plTest').querySelectorAll('li').length,6,'backup plan: the stress test shows from the start (one paper copy at home by default)');
     ok(new RegExp('Next check-up: '+nextYear).test($('plNext').textContent)&&/4 of 6 cases/.test($('plNext').textContent),'backup plan: it says how many cases go wrong and when the next check-up is');
@@ -1493,7 +1493,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     // birthday + planOpen from a seed made here
     tq.set(rnd(50,6)); await w.generate(); await new Promise(r=>setTimeout(r,50));
     eq(w.eval('sumCtx.date'),today,'wallet birthday: a seed made here is dated today');
-    { const p0=tq.st.printed; w.printSummary(); ok(tq.st.printed===p0+1&&new RegExp('Wallet made on: '+today+' \\(its birthday\\)').test(tq.st.printHTML)&&!/Date made:/.test(tq.st.printHTML),'wallet birthday: on the summary sheet, filled in'); w.dispatchEvent(new w.Event('afterprint')); }
+    { const p0=tq.st.printed; w.printSummary(); ok(tq.st.printed===p0+1&&new RegExp('Wallet made on: '+today+' \\(its birthday, by this computer\'s clock').test(tq.st.printHTML)&&!/Date made:/.test(tq.st.printHTML),'wallet birthday: on the summary sheet, filled in'); w.dispatchEvent(new w.Event('afterprint')); }
     ok(!!$('planGoBtn')&&$('planGoBtn').closest('#bkList')!==null,'backup plan: the backup checklist has PLAN WHERE THE COPIES GO');
     $('planBox').open=false; w.planOpen(); const fpNow=($('fingerprint').textContent.match(/^Master fingerprint: ([0-9a-f]{8})/)||[])[1];
     ok($('planBox').open&&$('plFp').value===fpNow&&$('plBorn').value===today&&tq.d.querySelector('[aria-selected="true"]').id==='tab-check','backup plan: opened from the checklist it fills in the fingerprint and the birthday');
@@ -1518,7 +1518,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       eq(L.join(' ')+' | '+T.join(' '),tbList(words,'',84,5).join(' ')+' | '+tbList(words,'',86,5).join(' '),'practice mode: the address lists are the test-network addresses (checked with @scure)'); }
     ok(/^vpub/.test($('wZpub').textContent)&&$('wFirst').textContent.split('\n')[0]===tbAddr,'practice mode: the watch-only box follows it');
     ok(/body\.practice #practiceBan \{ display: block;/.test(css)&&!/practice[^{]*::before/.test(css),'practice mode: a banner on the page; seed backups print as usual (no practice line on them)');
-    { $('addrList').querySelector('button').click(); const p0=tq.st.printed; w.printAddrQr('aq'); ok(tq.st.printed===p0+1&&/RECEIVE ADDRESS \(TESTNET\)/.test(tq.st.printHTML)&&/Path: m\/84'\/1'\/0'\/0\/0/.test(tq.st.printHTML)&&/Network: TESTNET \(practice coins only\)/.test(tq.st.printHTML)&&tq.st.printHTML.includes(tbAddr),'practice mode: a printed address sheet says TESTNET, with the test-network path'); w.dispatchEvent(new w.Event('afterprint')); w.hideAddrQr('aq'); }
+    { $('addrList').querySelector('button').click(); const p0=tq.st.printed; w.printAddrQr('aq'); ok(tq.st.printed===p0+1&&/^VOIDFORGE RECEIVE ADDRESS \(TESTNET\)/.test(tq.st.printQrText)&&/Path: m\/84'\/1'\/0'\/0\/0/.test(tq.st.printQrText)&&/Network: TESTNET \(practice coins only\)/.test(tq.st.printQrText)&&tq.st.printQrText.includes('Address: '+tbAddr),'practice mode: a printed address sheet says TESTNET, with the test-network path'); w.dispatchEvent(new w.Event('afterprint')); w.hideAddrQr('aq'); }
     // FORGE, a new passphrase, VERIFY and a mainnet watch-only key: practice stays on the test network
     tq.set(rnd(50,6)); await w.generate(); const words2=$('genResult').textContent.split('\n')[0], tb2=tbList(words2,'',84,1)[0];
     await until(()=>$('address').textContent.endsWith(tb2)&&$('wFirst').textContent.split('\n')[0]===tb2);
@@ -1526,10 +1526,10 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     $('passphrase').value='pr'; $('passphrase2').value='pr'; await w.rePass(); const tb3=tbList(words2,'pr',84,1)[0];
     await until(()=>$('address').textContent.includes(tb3)&&$('wFirst').textContent.split('\n')[0]===tb3);
     ok(locked()&&/TEST NETWORK for practice/.test($('address').textContent)&&$('address').textContent.includes(tb3+' (with passphrase)')&&$('wFirst').textContent.split('\n')[0]===tb3,'practice mode: a new passphrase keeps it on the test network');
-    await w.sendToVerify(); await w.verify(); await until(()=>/test network/.test($('verifyStatus').textContent));
+    await w.sendToVerify(); $('verifyPass').value='pr'; await w.verify(); await until(()=>/With passphrase.*test network/.test($('verifyStatus').textContent));
     ok(locked()&&$('verifyStatus').textContent.includes(tb2+' (test network)')&&$('verifyStatus').textContent.includes(tb3+' (test network)')&&!/bc1q/.test($('verifyStatus').textContent),'practice mode: VERIFY gives the test-network first addresses, with and without the passphrase');
     ok(!/PUBLIC PRACTICE PHRASE/.test($('verifyStatus').textContent),'practice mode: VERIFY does not call a new seed a practice phrase');
-    $('passphrase').value=''; $('passphrase2').value=''; await w.rePass();
+    $('passphrase').value=''; $('passphrase2').value=''; $('verifyPass').value=''; await w.rePass();
     $('wpIn').value='zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs'; await w.openWatchOnly();
     ok(/Practice mode is on, so only test-network keys/.test($('wpStatus').textContent)&&!(w.eval('wvCtx')&&w.eval('wvCtx.kind')==='pub')&&locked(),'practice mode: a mainnet watch-only key is refused while it is on');
     $('wpIn').value=$('wZpub').textContent; await w.openWatchOnly();

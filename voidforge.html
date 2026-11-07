@@ -1180,7 +1180,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" id="prWalletBtn" onclick="practiceWallet()">OPEN A PRACTICE WALLET</button></div>
     </details>
     <details id="planBox">
-      <summary>Backup plan and stress test<span class="tag tag-rec">NO WORDS, KEEP PRIVATE</span><small>Where your copies are, who can help, and what happens if something goes wrong. Printable.</small></summary>
+      <summary>Backup plan and stress test<span class="tag tag-private">NO WORDS, KEEP PRIVATE</span><small>Where your copies are, who can help, and what happens if something goes wrong. Printable.</small></summary>
       <p class="hint" style="margin:8px 0;">Fill in what is true for your wallet: places, people and how the passphrase is kept. <b>Never type the words or the passphrase here.</b> The stress test below updates as you type; nothing is saved. The printed plan says where your copies are, so keep it private and give it only to someone you trust.</p>
       <div class="pl-grid">
         <label>Master fingerprint (with the passphrase, if one is used)<input type="text" id="plFp" maxlength="8" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="such as 73c5da0a"></label>
@@ -4272,7 +4272,7 @@ function bkReset(show){
 function todayISO(d){ d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
 function plusYearISO(iso){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ""); return m ? todayISO(new Date(+m[1] + 1, +m[2] - 1, +m[3])) : ""; }
 const PLAN_PASS = {none: "No passphrase", mem: "Yes, only in memory (not written down)", same: "Yes, on the same paper as the words", home: "Yes, on a separate note at home", away: "Yes, on a separate note away from home"};
-const PLAN_V = {safe: {tag: "tag-public", label: "SAFE", print: "SAFE      "}, lost: {tag: "tag-secret", label: "MONEY LOST", print: "LOST      "}, thief: {tag: "tag-secret", label: "A THIEF COULD TAKE IT", print: "THIEF     "}, check: {tag: "tag-rec", label: "CHECK", print: "CHECK     "}, na: {tag: "", label: "NOT USED", print: "NOT USED  "}};
+const PLAN_V = {safe: {tag: "tag-public", label: "SAFE", print: "SAFE      "}, lost: {tag: "tag-secret", label: "MONEY LOST", print: "LOST      "}, thief: {tag: "tag-secret", label: "A THIEF COULD TAKE IT", print: "THIEF     "}, check: {tag: "tag-private", label: "CHECK", print: "CHECK     "}, na: {tag: "", label: "NOT USED", print: "NOT USED  "}};
 const PLAN_IDS = ["plFp", "plBorn", "plApp", "plPass", "plM1", "plW1", "plL1", "plM2", "plW2", "plL2", "plM3", "plW3", "plL3", "plKnow", "plHelp", "plNote"];
 const PLAN_ROUTINE = "Once a year, about 5 minutes, on an offline computer:\n1. Find each copy on this plan and check that it can still be read.\n2. Open VOIDFORGE and type the words into CHECK A BACKUP, with the passphrase if one is used.\n3. The master fingerprint must equal the one on this plan. (Without the passphrase it is different: that is normal.)\n4. Press END SESSION, then write today's date below.";
 function planState(){
