@@ -5,7 +5,7 @@ import nc from 'node:crypto';
 import { entropyToMnemonic, mnemonicToSeedSync, validateMnemonic } from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';
 import { HDKey } from '@scure/bip32';
-import { bech32, bech32m } from '@scure/base';
+import { bech32, bech32m, createBase58check } from '@scure/base';
 import { secp256k1, schnorr } from '@noble/curves/secp256k1';
 import { ripemd160 } from '@noble/hashes/ripemd160';
 import { sha256 } from '@noble/hashes/sha256';
@@ -1001,6 +1001,8 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
 // raw deflate (Node's zlib), QR alphanumeric mode (jsQR), private keys and custom paths (@scure/bip32, @scure/btc-signer).
 {
   const CB = w.eval('CB'), hx = (b) => Buffer.from(b).toString('hex');
+  // bc-ur-registry always writes an xpub version prefix (also for testnet), so keys are compared without the 4 version bytes, and the network by the coin info
+  const b58c = createBase58check(sha256), xkeyBody = (s) => hx(b58c.decode(s).slice(4));
   // UR encode equals bc-ur's pure parts, byte for byte; decode reads bc-ur's parts (fountain parts left out)
   let bad = 0, n = 0;
   for (let t = 0; t < 120; t++) {
@@ -1029,7 +1031,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
     const cbor = w.cryptoOutputMultisig(type, M, cos, net), out = CryptoOutput.fromCBOR(Buffer.from(cbor)); n++;
     const exps = out.getScriptExpressions().map(e => e.getExpression()), mk = out.getMultiKey(), keys = mk.getKeys();
     const ok = JSON.stringify(exps) === JSON.stringify(type === 'ms-wsh' ? ['wsh', 'sortedmulti'] : ['sh', 'wsh', 'sortedmulti']) && mk.getThreshold() === M && keys.length === N &&
-      keys.every((k, i) => k.getBip32Key() === cos[i].xpub && k.getOrigin().getSourceFingerprint().toString('hex') === cos[i].fp && k.getOrigin().getPath() === `48'/${coin}'/0'/${script}'`);
+      keys.every((k, i) => xkeyBody(k.getBip32Key()) === xkeyBody(cos[i].xpub) && k.getUseInfo().getNetwork() === coin && k.getOrigin().getSourceFingerprint().toString('hex') === cos[i].fp && k.getOrigin().getPath() === `48'/${coin}'/0'/${script}'`);
     if (!ok) { bad++; console.log('CRYPTO-OUTPUT DIFFERS', type, M, N, net, exps); }
   }
   R.ok(bad === 0, `${n} random multisig wallets (2 to 15 keys, wsh and sh-wsh, mainnet and testnet): @keystonehq/bc-ur-registry reads the crypto-output back to every key, path, master fingerprint and threshold`);
