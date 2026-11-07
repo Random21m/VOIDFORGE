@@ -76,8 +76,17 @@ const expect = {
   c128: entropyToMnemonic(sha(C128).slice(0, 16), wordlist),
 };
 
-async function probe(w, mutated) {
-  const fails = [], $ = (id) => w.document.getElementById(id);
+// Fail-fast for mutants: the first failure ends the probe (a mutant needs only one), so caught mutants take seconds, not minutes.
+// The control run (fast false) still runs every check and lists every failure.
+class ProbeStop extends Error {}
+process.on('unhandledRejection', (e) => { if (e instanceof ProbeStop) return; console.log('unhandled rejection: ' + (e && e.stack || e)); });
+function failList(fast) {
+  const a = [];
+  if (fast) a.push = function (m) { Array.prototype.push.call(this, m); throw new ProbeStop(String(this[0])); };
+  return a;
+}
+async function probe(w, mutated, fast) {
+  const fails = failList(fast), $ = (id) => w.document.getElementById(id);
   const mode = (m) => { const e = w.document.querySelector(`input[name=mode][value=${m}]`); e.checked = true; e.onchange(); };
   const words = (n) => { const e = w.document.querySelector(`input[name=words][value="${n}"]`); e.checked = true; e.onchange(); };
   const run = async (m, n, input, pw = '') => { mode(m); words(n); $('rolls').value = input; $('rolls').oninput(); $('passphrase').value = pw; $('passphrase2').value = pw; await w.generate(); return $('genResult').textContent.split('\n')[0]; };
@@ -2300,13 +2309,17 @@ async function probe(w, mutated) {
   return fails;
 }
 
-async function detect(mutated) {
+async function detect(mutated, fast) {
   const w = loadPage(mutated, (win) => { win.__focus = []; win.HTMLElement.prototype.focus = function (o) { win.__focus.push([this.id, o]); }; });
+  try { return await detectIn(w, mutated, fast); }
+  finally { for (const f of ['detStop', 'reforgeStop', 'animStop']) { try { if (typeof w[f] === 'function') w[f](); } catch (e) { /* page may be broken */ } } try { w.close(); } catch (e) { /* already closed */ } }
+}
+async function detectIn(w, mutated, fast) {
   if (!w.selfTestDone) return { by: 'page failed to run' };
   await ready(w);
   const badge = w.document.getElementById('selfTestBadge').textContent;
   if (!/PASSED/.test(badge)) return { by: 'self-test gate' };
-  let f; try { f = await probe(w, mutated); } catch (e) { return { by: 'end-to-end probe (page error: ' + String(e && e.message).slice(0, 60) + ')' }; }
+  let f; try { f = await probe(w, mutated, fast); } catch (e) { if (e instanceof ProbeStop) return { by: 'end-to-end probe (' + e.message + ')' }; return { by: 'end-to-end probe (page error: ' + String(e && e.message).slice(0, 60) + ')' }; }
   if (process.env.MUT_DEBUG && f.length) console.log('PROBE FAILS:', f);
   return f.length ? { by: 'end-to-end probe (' + (process.env.MUT_ONLY === '^$' ? f.join(' || ') : f[0]) + ')' } : { by: null };
 }
@@ -4131,6 +4144,10 @@ if (SHARD) {
   for (const it of items) { let best = 0; for (let k = 1; k < load.length; k++) if (load[k] < load[best]) best = k; shardOf[it.i] = best; load[best] += it.w; }
   console.log('shard plan: ' + load.map((x, k) => k + '=' + Math.round(x / 60) + 'm').join(' '));
 }
+// MUT_RESULTS=file: every result is appended to that file as one JSON line, and a restarted run skips the mutations already in it,
+// so a long full run survives an interruption. The file also gives each mutation's time for tests/fixtures/mut-times.json.
+const DONE = new Map();
+if (process.env.MUT_RESULTS && fs.existsSync(process.env.MUT_RESULTS)) for (const l of fs.readFileSync(process.env.MUT_RESULTS, 'utf8').split('\n')) { try { const d = JSON.parse(l); DONE.set(d.name, d); } catch (e) { /* a line cut off by an interruption */ } }
 let mutIndex = -1;
 for (const [name, find, rep, equivalent] of M) {
   mutIndex++;
@@ -4138,7 +4155,9 @@ for (const [name, find, rep, equivalent] of M) {
   if (ONLY && !ONLY.test(name)) continue;
   const count = html.split(find).length - 1;
   if (count !== 1) { R.ok(false, `mutation target must occur exactly once (${count}x): ${name}`); continue; }
-  const res = await detect(html.replace(find, () => rep));
+  if (DONE.has(name)) { const d = DONE.get(name); R.ok(d.by !== null || !!equivalent, d.by ? `${name}: caught by ${d.by} (earlier run)` : `${name}: ${equivalent ? 'survives as expected' : 'SURVIVED (a hole in the safety net)'} (earlier run)`); if (!d.by && !equivalent) survivors.push(name); continue; }
+  const t0 = Date.now(), res = await detect(html.replace(find, () => rep), !process.env.MUT_ALLFAILS);
+  if (process.env.MUT_RESULTS) fs.appendFileSync(process.env.MUT_RESULTS, JSON.stringify({ name, s: Math.round((Date.now() - t0) / 1000), by: res.by }) + '\n');
   if (equivalent) { R.ok(true, `${name}: behaviourally equivalent, ${res.by ? 'caught by ' + res.by : 'survives as expected'}`); continue; }
   R.ok(res.by !== null, res.by ? `${name}: caught by ${res.by}` : `${name}: SURVIVED (a hole in the safety net)`);
   if (!res.by) survivors.push(name);
