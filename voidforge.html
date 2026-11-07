@@ -1513,7 +1513,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <input type="text" id="sigAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Address that signed" placeholder="Address (1..., 3..., bc1q..., bc1p...)">
       <textarea id="sigMsg" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Message, exactly as signed" placeholder="The message, exactly as it was signed" style="margin-top:6px;"></textarea>
       <textarea id="sigSig" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Signature (base64)" placeholder="Signature (base64; a BIP-322 one may start with smp)" style="margin-top:6px;"></textarea>
-      <div class="btn-row" style="margin-top:6px;"><button type="button" id="sigBtn" onclick="verifyMessageUi()">VERIFY SIGNATURE</button><button type="button" class="secondary small" onclick="clearSig()">CLEAR</button></div>
+      <div class="btn-row" style="margin-top:6px;"><button type="button" id="sigBtn" onclick="verifyMessageUi()" disabled>VERIFY SIGNATURE</button><button type="button" class="secondary small" onclick="clearSig()">CLEAR</button></div>
       <div class="status" id="sigStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
     </details>
     <details id="childBox">
@@ -1578,7 +1578,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
           <label>Account<input type="text" id="msAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" style="width:64px;"></label>
         </div>
         <div class="ms-bad" id="msErr"></div>
-        <div class="btn-row"><button type="button" onclick="msStart()">START MULTISIG SETUP</button></div>
+        <div class="btn-row"><button type="button" id="msStartBtn" onclick="msStart()" disabled>START MULTISIG SETUP</button></div>
       </div>
       <div id="msRun" style="display:none">
         <div class="ms-t" id="msRunTitle" style="font-weight:800; color:var(--accent);"></div>
@@ -2564,7 +2564,7 @@ function pubFromPoint(P){ const pub=new Uint8Array(33); pub[0]=2+Number(P[1]&1n)
 // Extended public key (xpub/ypub/zpub/Zpub/Ypub/tpub/...): checks version, length, checksum and that the key is on the curve.
 // Private keys (xprv...) are refused on purpose: a multisig setup only ever needs public keys.
 const EXT_VERSIONS=(()=>{ const m={}; for(const net of ["main","test"]) for(const [t,v] of Object.entries(NETS[net].ver)){ const k=hex(Uint8Array.from(v)); m[k]=m[k]||{net,type:t}; } return m; })();
-const EXT_PRIVATE=["0488ade4","049d7878","04b2430c","0295b005","02aa7a99","04358394","044a4e28","045f18bc","02424c24","02575048"];
+const EXT_PRIVATE=["0488ade4","049d7878","04b2430c","0295b005","02aa7a99","04358394","044a4e28","045f18bc","024285b5","02575048"];   // fixes release: Uprv is 024285b5 (02424c24 gave "UpEX...")
 async function parseExtendedKey(str){
   str=String(str||"").replace(/\s+/g,"");
   const raw=await base58decode(str);
@@ -4133,6 +4133,17 @@ function psbtParseTxOutputs(bytes){ // a full previous transaction (possibly wit
   n=r.varint(); const outs=[]; for(let i=0;i<n;i++){ const value=r.i64(); outs.push({value, script:r.bytes(r.varint())}); }
   return outs;
 }
+// fixes release: a full transaction without its witness data (what its txid is the hash of)
+function psbtStripWitness(bytes){
+  const r=psbtReader(bytes); r.u32(); let n=r.varint(), seg=false;
+  if(n===0){ r.byte(); seg=true; n=r.varint(); }
+  if(!seg) return bytes;
+  for(let i=0;i<n;i++){ r.bytes(32); r.u32(); r.bytes(r.varint()); r.u32(); }
+  n=r.varint(); for(let i=0;i<n;i++){ r.i64(); r.bytes(r.varint()); }
+  const end=r.pos, out=new Uint8Array(4+(end-6)+4);
+  out.set(bytes.slice(0,4),0); out.set(bytes.slice(6,end),4); out.set(bytes.slice(bytes.length-4),4+end-6);
+  return out;
+}
 const eqBytes=(a,b)=>a.length===b.length && a.every((x,i)=>x===b[i]);
 async function psbtAddress(script, net){
   const N=NETS[net||"main"];
@@ -4234,7 +4245,9 @@ async function inspectPsbt(bytes, net){
       else if(x.type===3 && x.val.length===4) inp.sighashReq=x.val[0]|(x.val[1]<<8)|(x.val[2]<<16)|(x.val[3]<<24);
     }
     if(wu){ const q=psbtReader(wu.val); inp.amount=q.i64(); inp.script=q.bytes(q.varint()); }
-    else if(nw){ const o=psbtParseTxOutputs(nw.val)[tx.ins[i].vout]; if(o){ inp.amount=o.value; inp.script=o.script; } }
+    else if(nw){ // fixes release: the full previous transaction must hash to the txid this input spends, or its amount is not trusted
+      const id=hex((await sha256bytes(await sha256bytes(psbtStripWitness(nw.val)))).reverse());
+      if(id===tx.ins[i].txid){ const o=psbtParseTxOutputs(nw.val)[tx.ins[i].vout]; if(o){ inp.amount=o.value; inp.script=o.script; } } else inp.prevMismatch=true; }
     if(inp.script) inp.address=await psbtAddress(inp.script, net);
     res.ins.push(inp);
   }
@@ -4301,7 +4314,8 @@ async function psbtCheckChange(res, root, fpw, net){
 // The checks this tool can do. "Blocking" ones decide between a clean result and NO CLEAN VERDICT.
 function psbtChecks(res, fpWallet){
   const C=[], add=(ok,text,blocking)=>C.push({ok,text,blocking:!!blocking});
-  const unknownIn=res.ins.filter(x=>x.amount===null).length;
+  const unknownIn=res.ins.filter(x=>x.amount===null).length, badPrev=res.ins.filter(x=>x.prevMismatch).length;
+  if(badPrev) add(false, badPrev + " input" + (badPrev===1?" includes a previous transaction that is":"s include previous transactions that are") + " NOT the one being spent (its ID does not match), so " + (badPrev===1?"its amount is":"their amounts are") + " not used. A correct wallet never does this: do not sign.", true);
   add(unknownIn===0, unknownIn===0 ? "Every input amount is known." : unknownIn + " of " + res.ins.length + " input amounts are unknown" + (res.raw ? " (a raw transaction does not carry them)." : " (the PSBT does not include the coins being spent)."), true);
   if(res.fee!==null){
     add(res.fee>=0n, res.fee>=0n ? "The fee is worked out." : "The outputs add up to MORE than the inputs. This transaction is not valid.", true);
@@ -4346,7 +4360,7 @@ function psbtReport(res, fpWallet){
   const L=[];
   L.push("Transaction version " + res.version + ", locktime " + res.locktime + ", " + res.ins.length + " input" + (res.ins.length===1?"":"s") + ", " + res.outs.length + " output" + (res.outs.length===1?"":"s") + ".");
   L.push("");
-  res.ins.forEach((x,i)=>{ L.push("INPUT " + i + ": " + (x.amount===null ? "amount unknown (the PSBT does not include the coin being spent)" : btcText(x.amount)) + (x.address ? "\n   from " + x.address : "") + "\n   coin " + x.txid + ":" + x.vout + "\n   " + (x.final ? "finalized" : x.sigs + " signature" + (x.sigs===1?"":"s") + " so far")); });
+  res.ins.forEach((x,i)=>{ L.push("INPUT " + i + ": " + (x.amount===null ? (x.prevMismatch ? "amount NOT trusted (the previous transaction included is not the one this input spends)" : "amount unknown (the PSBT does not include the coin being spent)") : btcText(x.amount)) + (x.address ? "\n   from " + x.address : "") + "\n   coin " + x.txid + ":" + x.vout + "\n   " + (x.final ? "finalized" : x.sigs + " signature" + (x.sigs===1?"":"s") + " so far")); });
   L.push("");
   res.outs.forEach((x,i)=>{ L.push("OUTPUT " + i + ": " + btcText(x.amount) + "\n   to " + x.address + (x.script && x.script[0]===0x6a ? "\n   data note: " + opReturnText(x.script) + "\n   (this output carries data, not money, and cannot be spent)" : "") + (x.fps.length ? psbtChangeLine(x) : (x.script && x.script[0]===0x6a ? "" : "\n   no wallet key information: treat as a payment to someone else"))); });
   L.push("");
@@ -4482,6 +4496,9 @@ function practiceMode(on){
   }
   if(wvCtx && wvCtx.mnemonic && wvCtx.pass){ wvDecoyHide(); wvDecoyShow(wvCtx.mnemonic, wvCtx.pass); }   // v2.7.0: the side-by-side view follows the network
   detClear(true);   // v2.8.0: a Detective search or list belongs to the old network
+  // fixes release: VERIFY's lines, the child seed, the device dice check and the two transaction tools showed addresses of the old network
+  verifySeq++; { const v = document.getElementById("verifyStatus"); if(v.textContent){ v.className = "status"; v.textContent = "Practice mode was turned " + (on ? "on" : "off") + ": press VERIFY again."; } const m = document.getElementById("verifyMatch"); m.textContent = ""; m.className = "status"; clearVerifyIcons(); }
+  clearChild(); dcClear(true); clearPsbt(false); clearCompare(false);
   if(!on) practiceWalletClose();
   reshowSeed();
 }
@@ -4740,8 +4757,9 @@ async function generate(){
   }
   const an = analyzeRolls(rolls, getMode()==="coin");
   if(an.level==="bad" && !confirm("Your input looks non-random (" + an.problems.join("; ") + "). A seed made from it may be weak. Forge anyway?")) return;
+  const sig0 = inputSig("rolls");   // fixes release: what the boxes held when the words were worked out (see finishSeed)
   const mnemonic = await rollsToMnemonic(hashInput(rolls), wc);
-  await finishSeed(mnemonic, {rolls, words: mnemonic.split(" "), coin: getMode()==="coin", keystone: ks});
+  await finishSeed(mnemonic, {rolls, words: mnemonic.split(" "), coin: getMode()==="coin", keystone: ks}, sig0);
 }
 // Everything that happens once the seed words exist (shared by dice/coin and Word draw): show them, fingerprint, addresses, watch-only.
 // The passphrase line that goes into the result text (and so into DOWNLOAD and the printed sheets).
@@ -4750,13 +4768,16 @@ function passPhraseLine(p1, p2){
   return "Passphrase: " + (p1 ? "used (" + Array.from(p1).length + " characters, not shown here)" : "none");
 }
 let passKey = null, passWork = Promise.resolve();
-async function finishSeed(mnemonic, ctx){
+// sig0: the input signature taken before the words were worked out. A roll typed while they were worked out makes the boxes
+// differ from it, and staleCheck then clears the new words at once (fixes release; before, the signature was taken afterwards).
+async function finishSeed(mnemonic, ctx, sig0){
   const p1 = document.getElementById("passphrase").value, p2 = document.getElementById("passphrase2").value, run = ++forgeRun;
   seedSig = null; passKey = JSON.stringify([p1, p2]);
   setResult(mnemonic + "\n\n" + passPhraseLine(p1, p2), mnemonic.split(" "));
-  exCtx = ctx; seedKind = ctx ? "rolls" : "wd"; seedSig = inputSig(seedKind);
+  exCtx = ctx; seedKind = ctx ? "rolls" : "wd"; seedSig = sig0 !== undefined ? sig0 : inputSig(seedKind);
   sumCtx = ctx ? {count: ctx.rolls.length, coin: ctx.coin, keystone: ctx.keystone, words: ctx.words.length} : {wd: true, words: mnemonic.split(" ").length};
   sumCtx.date = todayISO();   // v2.5.0: the wallet's birthday (a wallet app restoring it need not look at older blocks)
+  staleCheck(); if(seedSig === null) return;   // fixes release: the boxes changed while the words were worked out
   await deriveShown(mnemonic, p1, p2, run);
 }
 // Works out and shows everything that depends on the passphrase: fingerprints (with and without it), addresses, the watch-only box.
@@ -5360,8 +5381,8 @@ function classifyRecorded(raw){
   if(!q) return null;
   if(/^[0-9a-fA-F]{8}$/.test(q)) return "fp";
   if(/^(bc1q|tb1q)[0-9a-z]{38}$/i.test(q)) return "addr";
-  if(/^bc1p[0-9a-z]{58}$/i.test(q) || /^[13][1-9A-HJ-NP-Za-km-z]{25,34}$/.test(q)) return "tr";
-  if(/^[xyz]pub[1-9A-HJ-NP-Za-km-z]{100,115}$/.test(q)) return "key";
+  if(/^(bc1p|tb1p)[0-9a-z]{58}$/i.test(q) || /^[13mn2][1-9A-HJ-NP-Za-km-z]{25,34}$/.test(q)) return "tr";   // fixes release: testnet values too
+  if(/^[xyztuv]pub[1-9A-HJ-NP-Za-km-z]{100,115}$/.test(q)) return "key";
   if(/^(wpkh|sh\(wpkh|pkh|tr)\(/.test(q)) return "desc";
   return "other";
 }
@@ -5382,22 +5403,23 @@ function parseDescriptor(raw){
 // and the first five receiving addresses of one type (account 0).
 async function walletIds(mnemonic, passphrase, want){
   const seed = await mnemonicToSeed(mnemonic, passphrase), out = {fp: await fingerprintFromSeed(seed), cands: [], list: []};
-  for(const [type, account] of (want.pairs || [])){ const w = await watchOnlyFromSeed(seed, type, account); out.cands.push({type, account, xpub: w.xpub, key: w.key}); }
+  const net = want.net || "main";   // fixes release: testnet values are compared on the test network
+  for(const [type, account] of (want.pairs || [])){ const w = await watchOnlyFromSeed(seed, type, account, net); out.cands.push({type, account, xpub: w.xpub, key: w.key}); }
   if(want.listType){
     let [k,c] = await masterFromSeed(seed);
-    for(const [i,h] of [[SCRIPT_TYPES[want.listType].purpose,true],[0,true],[0,true],[0,false]]) [k,c] = await ckdPriv(k,c,i,h);
-    for(let i = 0; i < 5; i++){ const [ck] = await ckdPriv(k,c,i,false); out.list.push(await addressFromKey(want.listType, ck)); }
+    for(const [i,h] of [[SCRIPT_TYPES[want.listType].purpose,true],[NETS[net].coin,true],[0,true],[0,false]]) [k,c] = await ckdPriv(k,c,i,h);
+    for(let i = 0; i < 5; i++){ const [ck] = await ckdPriv(k,c,i,false); out.list.push(await addressFromKey(want.listType, ck, net)); }
   }
   return out;
 }
 // Which (type, account) pairs and address list to compute for what the user typed. Account keys are tried for accounts 0 to 4.
 function wantFor(raw){
   const q = (raw || "").replace(/\s+/g, ""), kind = classifyRecorded(q), all = Object.keys(SCRIPT_TYPES), pairs = [];
-  if(kind === "tr"){ const t = addressTypeOf(/^bc1/i.test(q) ? q.toLowerCase() : q); return t ? {listType: t} : {}; }
+  if(kind === "tr"){ const a = /^(bc1|tb1)/i.test(q) ? q.toLowerCase() : q, t = addressTypeOf(a); return t ? {listType: t, net: addressNetOf(a)} : {}; }
   if(kind === "key"){
-    const types = q.charAt(0) === "z" ? ["wpkh"] : q.charAt(0) === "y" ? ["sh-wpkh"] : all;
+    const c = q.charAt(0), types = "zv".includes(c) ? ["wpkh"] : "yu".includes(c) ? ["sh-wpkh"] : all;
     for(const t of types) for(let a = 0; a < 5; a++) pairs.push([t, a]);
-    return {pairs};
+    return {pairs, net: "tuv".includes(c) ? "test" : "main"};
   }
   if(kind === "desc"){ const d = parseDescriptor(q); return d && d.sumOk ? {pairs: [[d.type, d.account]]} : {}; }
   return {};
@@ -5410,19 +5432,19 @@ function matchRecorded(raw, fp0, a0, fp1, a1, hasPass, ids0, ids1){
   const q = (raw || "").replace(/\s+/g, ""), ql = q.toLowerCase();
   if(kind === "other") return {ok:false, text:"Not recognized. Enter the 8-character fingerprint, an address (bc1q, bc1p, 3 or 1), the xpub/ypub/zpub, or the descriptor from your backup or wallet app."};
   let label = "", test = null, hint = "", hit = "";
-  const pathOf = c => " It is the " + SCRIPT_TYPES[c.type].label + " account key at m/" + SCRIPT_TYPES[c.type].purpose + "'/0'/" + c.account + "'.";
+  const pathOf = c => " It is the " + SCRIPT_TYPES[c.type].label + " account key at m/" + SCRIPT_TYPES[c.type].purpose + "'/" + ("tuv".includes(q.charAt(0)) ? 1 : 0) + "'/" + c.account + "'.";
   if(kind === "fp" || kind === "addr"){
     label = kind === "fp" ? "fingerprint" : "first address";
     test = (f, a) => ql === (kind === "fp" ? f : a);
     hint = kind === "fp" ? " A fingerprint is a short check; matching the first address is stronger." : "";
   } else if(kind === "tr"){
-    const fold = /^bc1/i.test(q) ? ql : q;
+    const fold = /^(bc1|tb1)/i.test(q) ? ql : q;
     label = "address";
     test = (f, a, ids) => !!ids && ids.list.some(t => t === fold);
     hint = " It is one of the first five receiving addresses of that type (account 0).";
   } else if(kind === "key"){
     label = q.slice(0, 4) + " account key";
-    test = (f, a, ids) => { const c = !!ids && ids.cands.find(c => (q.charAt(0) === "x" ? c.xpub : c.key) === q); if(c) hit = pathOf(c); return !!c; };
+    test = (f, a, ids) => { const c = !!ids && ids.cands.find(c => ("xt".includes(q.charAt(0)) ? c.xpub : c.key) === q); if(c) hit = pathOf(c); return !!c; };
   } else {
     const d = parseDescriptor(q);
     if(!d) return {ok:false, text:"Not recognized. This tool checks wpkh, sh(wpkh), pkh and tr descriptors with a key origin like [fingerprint/84h/0h/0h] and an xpub, as VOIDFORGE and Sparrow show them."};
@@ -6493,6 +6515,10 @@ function wipeSeed(){
   wdClear();
   dpClear(); dcClear();   // v2.7.0: the dice passphrase and the device dice check
   detClear();   // v2.8.0: the Wallet Detective
+  seedSig = null; passKey = null; exCtx = null;   // fixes release: these held the rolls and the passphrases after a wipe (found by tests/memory.test.mjs)
+  clearPsbt(true); clearCompare(true); clearSig(); clearReuse();   // fixes release: public but private data (xpubs, descriptors, addresses, amounts)
+  for(const id of ["wpIn", "payA", "payB", "dlPaste"]){ const e = document.getElementById(id); if(e) e.value = ""; }
+  payCompare();
   document.getElementById("fingerprint").textContent="";
   document.getElementById("address").textContent="";
   clearWatch(); clearFpIcons();
@@ -6576,6 +6602,7 @@ function msInitSlider(){
   msUpdateM();
 }
 function msStart(){
+  if(!gateOk()) return;   // fixes release
   const err = msEl("msErr"); err.textContent = "";
   const m = parseInt(msEl("msM").value, 10), n = parseInt(msEl("msN").value, 10), raw = msEl("msAcct").value.trim();
   if(!(n >= 2 && n <= MS_MAX && m >= 1 && m <= n)){ err.textContent = "Total keys must be from 2 to " + MS_MAX + ", and keys needed cannot be more than total keys."; return; }
@@ -6642,6 +6669,7 @@ async function msAddMade(){
   await msRender();
 }
 async function msAddPasted(){
+  if(!gateOk()) return;   // fixes release
   if(!ms || ms.busy || ms.keys.length >= ms.n) return;
   const eb = msEl("msRunErr"); eb.textContent = "";
   try {
@@ -7238,6 +7266,7 @@ function sigArmor(text){
 }
 let sigRun = 0;
 async function verifyMessageUi(){
+  if(!gateOk()) return;   // fixes release: like every other check, only after the self-test passed
   const st = document.getElementById("sigStatus"), my = ++sigRun;
   const ar = sigArmor(document.getElementById("sigMsg").value);
   if(ar){
@@ -7348,7 +7377,8 @@ function toggleTheme() {
   btn.textContent = isLight ? "LIGHT" : "DARK";
   try { localStorage.setItem("voidforge-theme", isLight ? "light" : "dark"); } catch(e) {}
 }
-for(const id of ["checkAddr","checkAcct","phrase","verifyPass"]) document.getElementById(id).addEventListener("input", resetAddrScan);
+for(const id of ["checkAddr","checkAcct","phrase","verifyPass"]) document.getElementById(id).addEventListener("input", () => { resetAddrScan(); const st = document.getElementById("addrCheckStatus"); st.textContent = ""; st.className = "status"; });   // fixes release: an old FOUND never stays
+document.getElementById("verifyRecorded").addEventListener("input", () => { const m = document.getElementById("verifyMatch"); m.textContent = ""; m.className = "status"; });   // fixes release: an old MATCH never stays
 for(const id of ["phrase","verifyPass","childWords","childIndex","childLen","childSides","childRolls"]) document.getElementById(id).addEventListener("input", clearChild);
 for(const id of ["phrase","verifyPass"]) document.getElementById(id).addEventListener("input", () => { verifySeq++; if(wvCtx && wvCtx.mnemonic) clearWalletView(); if(childCtx || document.getElementById("childOut").textContent) clearChild(); });
 document.getElementById("verifyPass").addEventListener("input", passWarnUpdate);
@@ -7365,6 +7395,7 @@ document.getElementById("prInput").addEventListener("input", () => practiceStatu
 document.getElementById("cmpA").addEventListener("input", () => clearCompare(false));
 document.getElementById("cmpB").addEventListener("input", () => clearCompare(false));
 document.getElementById("psbtNet").addEventListener("change", () => clearPsbt(false));
+document.getElementById("cmpNet").addEventListener("change", () => clearCompare(false));   // fixes release: the report belongs to the old network
 document.getElementById("tapRow").addEventListener("click", (e) => { const b = e.target.closest ? e.target.closest("button.tap") : null; if(!b) return; b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop"); });
 document.getElementById("psbtFile").addEventListener("change", (e) => { onPsbtFile(e.target.files[0]); });
 let savedTheme = null;
@@ -7418,6 +7449,8 @@ function setGate(state, text, cls){
   document.getElementById("verifyBtn").disabled = !on;
   document.getElementById("checkAddrBtn").disabled = !on;
   document.getElementById("checkAcctsBtn").disabled = !on;
+  document.getElementById("sigBtn").disabled = !on;   // fixes release
+  document.getElementById("msStartBtn").disabled = !on;
   if(!detBusy) for(const id of ["detBtn", "detListBtn"]) document.getElementById(id).disabled = !on;   // v2.8.0: Wallet Detective
   document.getElementById("wpBtn").disabled = !on;
   document.getElementById("reuseBtn").disabled = !on;
@@ -7752,8 +7785,9 @@ async function wdGenerate(){
   const same = pr.idx.every(n => n === pr.idx[0]), sorted = pr.idx.every((n, i) => i === 0 || n > pr.idx[i - 1]);
   if((same || sorted) && !confirm("Your words look " + (same ? "all the same" : "alphabetical") + ", which is extremely unlikely for random draws. A seed made from them may be weak. Make it anyway?")) return;
   if(/^(0+|1+)$/.test(flips) && !confirm("All of your coin flips are the same (" + flips + "). That can happen by chance, but check that you really flipped a coin and typed them in order. Continue?")) return;
+  const sig0 = inputSig("wd");   // fixes release
   const st = await wdSteps(pr.idx, flips, wc);
-  await finishSeed(st.mnemonic, null);
+  await finishSeed(st.mnemonic, null, sig0);
   document.getElementById("explainBox").style.display = "none";
   wdShow(st, wc);
   if(guideOn){ guideN = 3; guideRender(); }
