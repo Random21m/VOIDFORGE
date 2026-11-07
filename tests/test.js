@@ -1670,6 +1670,44 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     w.msReset(); ok($('msAnimBox').style.display==='none'&&$('msAnimImg').textContent===''&&w.eval('animTimer')===null&&w.eval('animCtx')===null,'animated QR: START OVER stops it and removes the frames');
     t6.w.close();
   }
+  { // v2.6.0 review fixes: CLEAR ALL wipes Reforge and every box, practice-mode COPY ADDRESS and recorded-address check, Word draw download, P2WSH, password managers
+    const r=load(); await r.ready(); const $=r.$, w=r.w, AB='abandon '.repeat(11)+'about', sleep=ms=>new Promise(x=>setTimeout(x,ms));
+    const MAIN0='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu', TEST0='tb1q6rz28mcfaxtmd6v789l9rrlrusdprr9pqcpvkl', MAINP='bc1qv5rmq0kt9yz3pm36wvzct7p3x6mtgehjul0feu'; // @scure: m/84'/0'/0'/0/0, m/84'/1'/0'/0/0, and m/84'/0'/0'/0/0 with passphrase TREZOR
+    const P2WSH='bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3'; // BIP173 sample: version 0, 32-byte program
+    // CLEAR ALL
+    for(const id of w.eval('AUTO_FIELDS')){ const e=$(id); if(e) e.value='secret'; } $('reforgeOut').textContent='FOUND'; $('reforgeOut').style.display=''; $('reforgePassTypos').checked=true;
+    w.clearAll(); await sleep(20);
+    { const left=w.eval('AUTO_FIELDS').filter(id=>$(id)&&$(id).value); ok(left.length===0&&$('reforgeOut').textContent===''&&$('reforgeOut').style.display==='none'&&!$('reforgePassTypos').checked,'CLEAR ALL: wipes the Reforge words, passphrases, guesses and result, the practice words and every box auto-clear wipes (left: '+left.join(',')+')'); }
+    // practice mode: COPY ADDRESS
+    w.practiceMode(true); r.set(rnd(50)); await w.generate();
+    { const a=($('address').textContent.match(/: (tb1q[0-9a-z]+)/)||[])[1]; w.copyAddress(r.d.createElement('button')); await sleep(20); ok(!!a&&r.st.clip[r.st.clip.length-1]===a&&!r.st.alerts.includes('Generate a seed first'),'practice mode: COPY ADDRESS copies the test-network address'); }
+    // VERIFY: a recorded first address is compared on its own network
+    eq(await w.firstAddressOn('main',AB,''),MAIN0,'first address on the main network matches @scure');
+    eq(await w.firstAddressOn('test',AB,''),TEST0,'first address on the test network matches @scure');
+    const VR=async(rec,pw='')=>{ $('phrase').value=AB; $('verifyPass').value=pw; $('verifyRecorded').value=rec; await w.verify(); return $('verifyMatch').textContent; };
+    ok(/^MATCH \(without passphrase\): your first address matches/.test(await VR(MAIN0)),'practice mode: a recorded bc1q address is compared with the real address, not the test-network one');
+    ok(/^MATCH \(without passphrase\)/.test(await VR(TEST0)),'practice mode: a recorded tb1q address matches the test-network address');
+    ok(/^MATCH \(with passphrase\)/.test(await VR(MAINP,'TREZOR')),'practice mode: a recorded bc1q address made with the passphrase matches');
+    ok(/^NO MATCH/.test(await VR('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh')),'practice mode: another address still gives NO MATCH');
+    w.practiceMode(false);
+    ok(/^MATCH \(without passphrase\)/.test(await VR(TEST0)),'a recorded tb1q address matches with practice mode off');
+    ok(/^MATCH \(without passphrase\)/.test(await VR(MAIN0)),'a recorded bc1q address still matches with practice mode off');
+    ok(/^NO MATCH/.test(await VR('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx')),'a recorded tb1q address of other words gives NO MATCH');
+    eq(w.classifyRecorded(TEST0),'addr','a tb1q address is read as a first address');
+    // download: a Word draw seed never gets the rolls box as its input
+    r.set(rnd(50)); $('wdLen').value='12'; $('wdWords').value='zoo abandon wolf ability yard absent window absorb wrist abstract year'; $('wdFlips').value='1 0 1 1 0 0 1'; w.wdUpdate(); await w.wdGenerate();
+    { const typed=$('rolls').value; w.downloadSeed(); const txt=await blobText(w,r.st.blob); ok(/\nInput: Word draw \(the words above were drawn by hand, not made from rolls\); coin flips for the last word: 1011001$/.test(txt)&&!txt.includes(typed),'download: a Word draw seed says it was drawn by hand and gives its coin flips, never what is in the rolls box'); }
+    // P2WSH (multisig) addresses
+    $('phrase').value=AB; $('verifyPass').value=''; $('checkAddr').value=P2WSH; await w.checkAddress();
+    ok(/^This is a script address \(P2WSH\), as a multisig wallet uses/.test($('addrCheckStatus').textContent)&&/bad/.test($('addrCheckStatus').className),'CHECK ADDRESS: a P2WSH (multisig) address is named as a script address, not searched');
+    await w.checkAllAccounts(2,2); ok(/^This is a script address \(P2WSH\)/.test($('addrCheckStatus').textContent),'Try accounts 0 to 20: a P2WSH address is named as a script address, not reported NOT FOUND');
+    $('checkAddr').value=P2WSH.toUpperCase(); await w.checkAddress(); ok(/^This is a script address \(P2WSH\)/.test($('addrCheckStatus').textContent),'CHECK ADDRESS: a P2WSH address in capitals is named too');
+    ok(w.scriptAddrNote(MAIN0)===null&&w.scriptAddrNote(TEST0)===null&&w.scriptAddrNote('bc1pss0zhytly75awhm6x2hhvd5lnzv3vssgrf9axfheq8ldyzn88ges79fler')===null,'a single-key SegWit or a Taproot address is not called a script address');
+    $('checkAddr').value=MAIN0; await w.checkAddress(); ok(/^FOUND: this SegWit address is receive address #0/.test($('addrCheckStatus').textContent),'CHECK ADDRESS: a single-key address is still found');
+    // password managers
+    { const ids=['passphrase','passphrase2','verifyPass','reforgeWordsPass','drillPass','pkIn']; ok(ids.every(id=>{ const e=$(id); return e.getAttribute('data-lpignore')==='true'&&e.getAttribute('data-1p-ignore')==='true'&&e.getAttribute('data-bwignore')==='true'&&e.getAttribute('data-form-type')==='other'; })&&[...r.d.querySelectorAll('input[type=password]')].every(e=>ids.includes(e.id)),'password managers: every secret box (passphrases, private key) tells password-manager extensions to ignore it'); }
+    ok(['passphrase','passphrase2','verifyPass','reforgeWordsPass'].every(id=>$(id).getAttribute('autocomplete')==='new-password'),'passphrase boxes keep autocomplete="new-password", so a saved password is never filled in as a passphrase');
+    r.w.close(); }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
 

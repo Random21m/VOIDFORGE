@@ -2155,6 +2155,39 @@ async function probe(w, mutated) {
       w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if (d.body.classList.contains('has-seed')) fails.push('calmer page: no seed, so seed buttons stay hidden');
       await run('dice', 12, D50); if (!d.body.classList.contains('has-seed')) fails.push('calmer page: a seed shows the seed buttons'); }
     if ($('ownerLogo') || w.document.querySelector('img')) fails.push('redesign: no picture is built into the page'); }
+  try { // v2.6.0 review fixes (expected addresses from @scure): CLEAR ALL, practice-mode COPY ADDRESS and recorded address, Word draw download, P2WSH, password managers
+    const oa = w.alert, oc = w.confirm, ocu = w.URL.createObjectURL, orv = w.URL.revokeObjectURL; w.alert = () => {}; w.confirm = () => true;
+    const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), AB = 'abandon '.repeat(11) + 'about';
+    const taddr = (mn, pw) => { const k = HDKey.fromMasterSeed(mnemonicToSeedSync(mn, pw)).derive("m/84'/1'/0'/0/0"); return bech32.encode('tb', [0, ...bech32.toWords(ripemd160(nsha(k.publicKey)))]); };
+    for (const id of w.eval('AUTO_FIELDS')) { const e = $(id); if (e) e.value = 'secret'; }
+    $('reforgeOut').textContent = 'FOUND'; $('reforgeOut').style.display = '';
+    w.clearAll(); await sleep(20);
+    { const left = w.eval('AUTO_FIELDS').filter((id) => $(id) && $(id).value); if (left.length) fails.push('CLEAR ALL: every box auto-clear wipes is wiped (left: ' + left.join(',') + ')'); }
+    if ($('reforgeOut').textContent !== '' || $('reforgeOut').style.display !== 'none') fails.push('CLEAR ALL: the Reforge result is wiped');
+    const clip = []; Object.defineProperty(w.navigator, 'clipboard', { configurable: true, value: { writeText: async (t) => { clip.push(t); } } });
+    w.practiceMode(true); await run('dice', 12, D50); w.copyAddress(w.document.createElement('button')); await sleep(20);
+    if (clip[clip.length - 1] !== taddr(expect.d50, '')) fails.push('practice mode: COPY ADDRESS copies the test-network address');
+    const VR = async (rec) => { $('phrase').value = AB; $('verifyPass').value = ''; $('verifyRecorded').value = rec; await w.verify(); return $('verifyMatch').textContent; };
+    if (!/^MATCH \(without passphrase\)/.test(await VR(addr(AB, '')))) fails.push('practice mode: a recorded bc1q address is checked against the real address');
+    if (!/^MATCH \(without passphrase\)/.test(await VR(taddr(AB, '')))) fails.push('practice mode: a recorded tb1q address matches');
+    w.practiceMode(false);
+    if (!/^MATCH \(without passphrase\)/.test(await VR(taddr(AB, '')))) fails.push('a recorded tb1q address matches with practice mode off');
+    if (!/^NO MATCH/.test(await VR(taddr(expect.d50, '')))) fails.push('a recorded tb1q address of other words gives NO MATCH');
+    $('verifyRecorded').value = '';
+    let blob = null; w.URL.createObjectURL = (b) => { blob = b; return 'blob:x'; }; w.URL.revokeObjectURL = () => {};
+    $('wdLen').value = '12'; $('wdWords').value = 'zoo abandon wolf ability yard absent window absorb wrist abstract year'; $('wdFlips').value = '1011001'; w.wdUpdate(); await w.wdGenerate();
+    w.downloadSeed();
+    { const txt = blob ? await new Promise((res, rej) => { const fr = new w.FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsText(blob); }) : '';
+      if (!/\nInput: Word draw \(the words above were drawn by hand, not made from rolls\); coin flips for the last word: 1011001$/.test(txt) || txt.includes(D50)) fails.push('download: a Word draw seed gives its coin flips, never the rolls box'); }
+    const P2WSH = 'bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3';
+    $('phrase').value = AB; $('verifyPass').value = ''; $('checkAddr').value = P2WSH; await w.checkAddress();
+    if (!/^This is a script address \(P2WSH\)/.test($('addrCheckStatus').textContent)) fails.push('CHECK ADDRESS: a P2WSH address is named as a script address');
+    await w.checkAllAccounts(1, 2); if (!/^This is a script address \(P2WSH\)/.test($('addrCheckStatus').textContent)) fails.push('Try accounts: a P2WSH address is named as a script address');
+    $('checkAddr').value = addr(AB, ''); await w.checkAddress(); if (!/^FOUND: this SegWit address is receive address #0/.test($('addrCheckStatus').textContent)) fails.push('CHECK ADDRESS: a single-key address is still found');
+    $('checkAddr').value = ''; w.resetAddrScan();
+    if (!['passphrase', 'passphrase2', 'verifyPass', 'reforgeWordsPass', 'drillPass', 'pkIn'].every((id) => { const e = $(id); return e.getAttribute('data-lpignore') === 'true' && e.getAttribute('data-1p-ignore') === 'true' && e.getAttribute('data-bwignore') === 'true' && e.getAttribute('data-form-type') === 'other'; })) fails.push('password managers: every secret box tells them to ignore it');
+    w.alert = oa; w.confirm = oc; w.URL.createObjectURL = ocu; w.URL.revokeObjectURL = orv;
+  } catch (e) { fails.push('v2.6.0 review-fix probe crashed: ' + e.message); }
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
   return fails;
@@ -3897,6 +3930,21 @@ const M = [
   ["animated QR: does not move", "animCtx.i = (animCtx.i + 1) % animCtx.frames.length; animRender();", "animRender();"],
   ["animated QR: PAUSE ignored", "if(animCtx && !animCtx.paused){ animCtx.i", "if(animCtx){ animCtx.i"],
   ["animated QR: START OVER leaves it running", "  ms = null; msHideQr(); animHide(\"msAnim\");", "  ms = null; msHideQr();"],
+  // ---- v2.6.0 review fixes ----
+  ["CLEAR ALL: Reforge result kept", "reforgeStop(); reforgeReset(true); AUTO_FIELDS.forEach(", "reforgeStop(); AUTO_FIELDS.forEach("],
+  ["CLEAR ALL: auto-clear boxes kept", "AUTO_FIELDS.forEach(id => { const e = document.getElementById(id); if(e) e.value = \"\"; });", ""],
+  ["practice: COPY ADDRESS only bc1", "match(/: ((?:bc1|tb1)[0-9a-z]+)/)", "match(/: (bc1[0-9a-z]+)/)"],
+  ["recorded: tb1q not read", "if(/^(bc1q|tb1q)[0-9a-z]{38}$/i.test(q)) return \"addr\";", "if(/^bc1q[0-9a-z]{38}$/i.test(q)) return \"addr\";"],
+  ["recorded: shown network always used", "if(net !== (practiceOn ? \"test\" : \"main\")){ try { c0 =", "if(false){ try { c0 ="],
+  ["recorded: network read wrongly", "const net = /^tb1/i.test(rawRec.replace(/\\s+/g, \"\")) ? \"test\" : \"main\";", "const net = \"main\";"],
+  ["recorded: firstAddressOn networks swapped", "async function firstAddressOn(net, mnemonic, passphrase){ return net === \"test\" ?", "async function firstAddressOn(net, mnemonic, passphrase){ return net !== \"test\" ?"],
+  ["download: Word draw gets the rolls box", "const input = seedKind === \"wd\" ?", "const input = false ?"],
+  ["download: Word draw flips left out", "(wdFl ? \"; coin flips for the last word: \" + wdFl : \"\")", "\"\""],
+  ["P2WSH: CHECK ADDRESS searches it", "{ const sn = scriptAddrNote(addr); if(sn) return say(\"bad\", sn); }\n  const kind0 =", "const kind0 ="],
+  ["P2WSH: Try accounts searches it", "{ const sn = scriptAddrNote(addr); if(sn) return say(\"bad\", sn); }\n  const type = addressTypeOf(addr);", "const type = addressTypeOf(addr);"],
+  ["P2WSH: 20-byte program taken as script", "s.version === 0 && s.prog.length === 32 ?", "s.version === 0 && s.prog.length === 20 ?"],
+  ["password managers: passphrase box not marked", "id=\"passphrase\" data-lpignore=\"true\" data-1p-ignore=\"true\" data-bwignore=\"true\" data-form-type=\"other\"", "id=\"passphrase\""],
+  ["password managers: private key box not marked", "id=\"pkIn\" data-lpignore=\"true\" data-1p-ignore=\"true\" data-bwignore=\"true\" data-form-type=\"other\"", "id=\"pkIn\""],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

@@ -993,10 +993,10 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details id="advanced" data-g="4">
       <summary id="advSummary">Passphrase and note (optional)</summary>
       <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
-        <input type="password" id="passphrase" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Optional passphrase" style="flex:1; min-width:0;" oninput="updateAdvSummary()">
+        <input type="password" id="passphrase" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Optional passphrase" style="flex:1; min-width:0;" oninput="updateAdvSummary()">
         <button type="button" class="secondary small" onclick="togglePassphrase(this)">SHOW</button>
       </div>
-      <input type="password" id="passphrase2" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Confirm passphrase (must match)" style="margin-top:6px;" oninput="updateAdvSummary()">
+      <input type="password" id="passphrase2" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Confirm passphrase (must match)" style="margin-top:6px;" oninput="updateAdvSummary()">
       <div class="pass-warn" id="passWarn" role="status" aria-live="polite"></div>
       <details class="wd-how"><summary>About passphrases</summary><div style="font-size: 13px; color:var(--muted); margin-top:6px;">A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> makes a different wallet from the same words. Write it down separately: without it the funds cannot be recovered. Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div></details>
       <input type="text" id="note" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Optional note (not used in the seed)" style="margin-top:6px;">
@@ -1031,7 +1031,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div id="drillRun" style="display:none;">
         <label for="drillWords" id="drillLabel">Type your words from paper, in order</label>
         <textarea id="drillWords" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="word1 word2 word3 ..."></textarea>
-        <div id="drillPassRow" style="display:none;"><label for="drillPass">Passphrase (from your separate note)</label><input type="password" id="drillPass" autocomplete="off" spellcheck="false"></div>
+        <div id="drillPassRow" style="display:none;"><label for="drillPass">Passphrase (from your separate note)</label><input type="password" id="drillPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" autocomplete="off" spellcheck="false"></div>
         <div class="btn-row" style="margin-top:8px;"><button onclick="drillCheck()">CHECK MY PAPER</button><button class="secondary small" onclick="drillEnd()">END DRILL, SHOW WORDS</button></div>
         <div class="status" id="drillStatus" aria-live="polite"></div>
       </div>
@@ -1218,7 +1218,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <textarea id="phrase" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Type or paste your seed words to check..."></textarea>
     <div class="hint" style="margin:4px 0 0;">Also accepts a SeedSigner SeedQR digit string (48 or 96 digits) or CompactSeedQR hex. Type it in; do not scan a real seed QR with a connected phone.</div>
     <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
-      <input type="password" id="verifyPass" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Passphrase (if you used one)" style="flex:1; min-width:0;">
+      <input type="password" id="verifyPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Passphrase (if you used one)" style="flex:1; min-width:0;">
       <button type="button" class="secondary small" onclick="toggleVerifyPassphrase(this)">SHOW</button>
     </div>
     <div class="pass-warn" id="verifyPassWarn" role="status" aria-live="polite"></div>
@@ -1243,7 +1243,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <div class="sec-block" id="pkBlock">
       <h3 class="sec">Or open a private key, read only<span class="tag tag-secret">SECRET</span></h3>
       <p class="hint" style="margin:0 0 6px;">For an old wallet or a paper wallet: paste an extended private key (xprv, yprv, zprv, or tprv, uprv, vprv for testnet), a WIF private key (starts with 5, K or L, or 9 or c for testnet) or a Casascius mini key (starts with S). VOIDFORGE shows the addresses it controls, so you can look them up somewhere else. It never signs and never sends. <b>Anyone who sees this key can spend everything it holds:</b> use an offline computer, and press CLEAR ALL or END SESSION when you are done.</p>
-      <div style="display:flex; gap:6px; align-items:center;"><input type="password" id="pkIn" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Private key" placeholder="xprv..., WIF or mini key" style="flex:1; min-width:0;"><button type="button" class="secondary small" onclick="togglePkShow(this)">SHOW</button></div>
+      <div style="display:flex; gap:6px; align-items:center;"><input type="password" id="pkIn" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Private key" placeholder="xprv..., WIF or mini key" style="flex:1; min-width:0;"><button type="button" class="secondary small" onclick="togglePkShow(this)">SHOW</button></div>
       <div class="btn-row" style="margin-top:6px;"><button type="button" id="pkBtn" onclick="openPrivateKey()">OPEN READ ONLY</button></div>
       <div class="status" id="pkStatus" aria-live="polite" style="word-break:break-word; margin-top:6px;"></div>
     </div>
@@ -1312,7 +1312,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <p class="hint" style="margin:0 0 8px;">Type your words in order, with <code>?</code> for each word you do not have. Reforge picks the search from what you type: with one or two <code>?</code> it tries every word in those places; with all the words it tries every swap of two words and every single word replaced; with one word fewer (11, 14, 17, 20 or 23) it tries the missing word at every place. A word that is not on the BIP39 list counts as <code>?</code>, and the first 4 letters of a word are enough. To list the words that could be last, type all but the last word, then <code>?</code>. Two <code>?</code> on a 12-word phrase can take a long time; an account xpub/zpub is by far the fastest thing to check against (a fingerprint or an address is several times slower), the page shows progress, and STOP ends the search.</p>
         <textarea id="reforgeWordsInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Your words in order, with ? for each unknown word" placeholder="word1 word2 ? word4 ... (? for each word you do not have)"></textarea>
         <input type="text" id="reforgeWordsCheck" spellcheck="false" autocomplete="off" autocapitalize="off" style="margin-top:6px;" aria-label="Master fingerprint, address or account xpub to check against" placeholder="Check against: master fingerprint (like 73c5da0a), an address, or an account xpub/zpub">
-        <input type="password" id="reforgeWordsPass" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" style="margin-top:6px;" aria-label="Passphrase, only if your wallet uses one" placeholder="Passphrase (only if your wallet uses one)">
+        <input type="password" id="reforgeWordsPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" style="margin-top:6px;" aria-label="Passphrase, only if your wallet uses one" placeholder="Passphrase (only if your wallet uses one)">
         <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
           <button type="button" id="reforgeWordsBtn" onclick="reforgeWords()">SEARCH</button>
           <button type="button" id="reforgeStopBtn" class="secondary small" onclick="reforgeStop()" disabled>STOP</button>
@@ -1645,7 +1645,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details>
       <summary>Changelog</summary>
       <ul>
-        <li><b>2.6.0</b> &mdash; <b>Animated QR codes, older wallets, and checks before you pay.</b> (1) <b>Animated QR for a multisig wallet</b> (Multisig wallet): no one format reaches every device, so pick yours: UR crypto-output for Sparrow, SeedSigner and Nunchuk; BBQr for Coldcard Q; or UR bytes carrying the Coldcard-style setup file for Keystone and Passport. Three frame sizes, and PAUSE. Public keys only. (2) The <b>Transaction inspector</b> also reads the text of an animated QR code pasted as parts (UR crypto-psbt or BBQr), one part per line. (3) <b>Open this wallet</b> takes a <b>custom account path</b> (such as m/0&#39; for some older apps), and <b>Or open a private key, read only</b> opens an xprv, yprv or zprv (or tprv, uprv, vprv), a WIF key or a Casascius mini key to show which addresses it controls. It never signs; the key is wiped by CLEAR ALL, auto-clear and END SESSION, and in practice mode only test-network keys open. (4) <b>Check an address before you pay</b> (CHECK A BACKUP, under Explain an address): compares the address you are about to pay with the one you were given, character by character, and warns when only the start and the end match, as in address poisoning and clipboard-swap scams. (5) <b>What will spending cost later?</b> (EXTRA TOOLS): the size and the fee of spending many small deposits, by address type. New dictionary entries: Address poisoning, Animated QR, BBQr, Custom derivation path and UR. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
+        <li><b>2.6.0</b> &mdash; <b>Animated QR codes, older wallets, and checks before you pay.</b> (1) <b>Animated QR for a multisig wallet</b> (Multisig wallet): no one format reaches every device, so pick yours: UR crypto-output for Sparrow, SeedSigner and Nunchuk; BBQr for Coldcard Q; or UR bytes carrying the Coldcard-style setup file for Keystone and Passport. Three frame sizes, and PAUSE. Public keys only. (2) The <b>Transaction inspector</b> also reads the text of an animated QR code pasted as parts (UR crypto-psbt or BBQr), one part per line. (3) <b>Open this wallet</b> takes a <b>custom account path</b> (such as m/0&#39; for some older apps), and <b>Or open a private key, read only</b> opens an xprv, yprv or zprv (or tprv, uprv, vprv), a WIF key or a Casascius mini key to show which addresses it controls. It never signs; the key is wiped by CLEAR ALL, auto-clear and END SESSION, and in practice mode only test-network keys open. (4) <b>Check an address before you pay</b> (CHECK A BACKUP, under Explain an address): compares the address you are about to pay with the one you were given, character by character, and warns when only the start and the end match, as in address poisoning and clipboard-swap scams. (5) <b>What will spending cost later?</b> (EXTRA TOOLS): the size and the fee of spending many small deposits, by address type. (6) <b>Fixes</b>: CLEAR ALL now also wipes the Reforge boxes, the words or passphrase Reforge found, and the practice words box. In practice mode COPY ADDRESS copies the test-network address, and VERIFY checks a recorded first address on its own network (a bc1q address against the real one, a tb1q address against the test-network one). A seed file saved from Word draw says the words were drawn by hand and gives the coin flips, not what was in the rolls box. CHECK ADDRESS and Try accounts 0 to 20 say when an address is a multisig script address (P2WSH) instead of searching for it. The passphrase and private key boxes ask password-manager extensions not to save them. New dictionary entries: Address poisoning, Animated QR, BBQr, Custom derivation path and UR. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.5.0</b> &mdash; <b>Plan your backup, practise safely, and take a wallet to another app.</b> (1) <b>Backup plan and stress test</b> (CHECK A BACKUP): list where each copy of the words is kept, how the passphrase is kept and who can help. VOIDFORGE then walks through a fire, a burglary, a death, a forgotten passphrase and a lost device, says for each whether the money stays safe, is lost or is open to a thief, and how to fix it. PRINT BACKUP PLAN adds the next yearly check-up date and a 5-minute check-up routine, and refuses to print anything that looks like seed words or a key. PLAN WHERE THE COPIES GO in the backup checklist opens it. (2) <b>Wallet birthday</b>: the date a seed is made is printed on the summary sheet, and can be added to the recovery sheet and the plan. (3) <b>Practice mode</b> (Practise making a backup): every address and key on the page moves to the test network, the network menus stay on Testnet, a banner says so, printed address sheets say TESTNET (seed backups print as usual), and OPEN A PRACTICE WALLET opens a public practice phrase for trying out test coins. VERIFY says when words are one of these public practice phrases. (4) <b>SAVE WATCH-ONLY FILE</b> (Watch-only wallet): a text file with the public descriptors that Sparrow opens directly, plus the separate descriptors for Bitcoin Core, the account key for Electrum, the first addresses and the birthday. (5) A warning under the passphrase boxes in Make a seed and Check a backup when the passphrase starts or ends with a space, or has two spaces in a row, an invisible character, a tab or a line break: a passphrase is used exactly as typed. (6) Seed words and other secrets on the screen can no longer be highlighted, so they are not copied by accident. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.4.0</b> &mdash; <b>A print for everything, one page each, and plain-language helpers.</b> (1) <b>One page, no blank pages.</b> Every printed sheet now comes out on exactly one page, on US Letter and on A4; before, most sheets also printed one or more blank pages. A test prints every sheet in a real browser to check this. (2) <b>Roll sheet extras</b>: a menu next to PRINT ROLL SHEET chooses no extra boxes, 10, 25 or 50 (with Keystone dice rules, up to Keystone&rsquo;s maximum of 256). (3) <b>CHECK A BACKUP</b>: once VERIFY accepts your words, <i>Open this wallet</i> has SHOW FIRST 4 LETTERS, PRINT WORDS and PRINT STAMP SHEET for any length from 12 to 24 words, and the three SeedQR prints for 12 and 24 words. VERIFY also reads 4-letter forms (as on a metal plate) and writes them out in full once the phrase checks out; for a word it does not know, it names the closest BIP39 words and changes nothing. (4) <b>New prints</b>: PRINT THIS QR for the watch-only key and descriptors, the Silent Payment address, and address and payment-request QR codes; PRINT CHILD SEED (or the key or password) for BIP85; a blank Word draw sheet; and a <b>seed summary sheet</b> with no words (how the seed was made, the fingerprint with its picture, the first address), also shown as one line on the backup checklist. (5) <b>Test only, no seed</b>: a switch in &ldquo;Your rolls&rdquo; turns FORGE off so you can roll a die many times just to see whether it is fair. Turning it on or off clears the rolls (and, after asking, a seed made from them), so test rolls never become a seed. (6) With a tap button focused, the number keys add rolls and Backspace undoes. (7) <b>Explain an address</b> (CHECK A BACKUP): paste any address to see its type, network and whether it has a typo, with links to the dictionary; private keys and private descriptors, xpubs, seed words, SeedQR digits, raw hex and Lightning invoices pasted by mistake are called out. (8) <b>What can someone do with this?</b>, a quick guide in the dictionary. (9) CLEAR ALL now also clears a child seed and the address box; SEND TO CHECK clears a child seed made from the old words; a child seed still being made is dropped when you press HIDE or change its parent words; a VERIFY overtaken by CLEAR ALL or an edit writes nothing; and the Dice rules menu is wide enough for its longest choice. (10) On a slow phone the page no longer flashes a red &ldquo;script is NOT running&rdquo; box before the start notice: the page appears once its script has run, and that box (now styled like the other warnings) shows only if the script cannot run. (11) <b>VOIDFORGE moved to GitLab</b>: releases are at gitlab.com/random21m/voidforge and the online practice copy is at random21m.gitlab.io/voidforge. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.3.0</b> &mdash; <b>More rolls, Keystone and BitBox02 dice, signed messages and END SESSION.</b> (1) <b>The minimum or more.</b> FORGE SEED now takes 50 or 99 rolls (128 or 256 flips) <i>or more</i>, and every roll counts. A note says who makes the same words: exactly the minimum matches SeedSigner and Coldcard, more matches Coldcard; more than twice the minimum adds a reminder to check for a double paste. PRINT ROLL SHEET has 10 extra dashed boxes. (2) <b>Keystone dice rules</b> (Dice rules menu): each 6 counts as 0 and Keystone needs 50 or 100 rolls, at most 256, as on a Keystone wallet. (3) <b>BitBox02 diceware</b> in Word draw: the Word finder reads table codes such as 2143 2 T, ADD WORD (or Enter) adds the word, and the 3 flips for the last word use T as 1 and H as 0, giving the same 24th word BitBox shows. (4) <b>Verify a signed message</b> (EXTRA TOOLS, read only): classic signatures (BIP-137) for 1..., 3... and bc1q addresses and BIP-322 simple signatures for single-key bc1q and bc1p addresses; VALID names the address it checked, and a match found only after a small change to the message (line breaks, spaces at the ends) shows in amber with a warning; a whole signed-message block can be pasted, but it never replaces an address you typed; multisig and full signatures are reported as CANNOT CHECK. It never signs. (5) <b>END SESSION</b> (MENU) wipes everything, resets every box and reloads the page. (6) The start notice shows once in each browser tab while the computer is offline, and on every load while it is online. (7) A Word draw seed is cleared if you change its words, flips or length afterwards, as a dice seed already was, and PRINT ROLL SHEET records the dice rules. For the same inputs as before (exactly the minimum, SeedSigner and Coldcard rules), words, fingerprints, addresses, keys and descriptors are unchanged.</li>
@@ -2297,6 +2297,12 @@ async function addressFromPub(type, pub, net){
   throw new Error("unknown address type");
 }
 function addressNetOf(addr){ return /^(tb1|[2mn])/.test(addr) ? "test" : "main"; }
+// v2.6.0: a bc1q/tb1q address with a 32-byte program is a script address (P2WSH, as multisig wallets use), not a single-key one.
+// No one seed makes it, so the address searches say so instead of searching and reporting NOT FOUND.
+function scriptAddrNote(addr){
+  const s = /^(bc1|tb1)q[0-9a-z]{58}$/.test(addr) ? segwitDecode(addr) : null;
+  return s && s.version === 0 && s.prog.length === 32 ? "This is a script address (P2WSH), as a multisig wallet uses, not a single-key address. No one seed makes it on its own, so it cannot be found from these words. Check it in the wallet app that has all of the wallet's keys, or in Set up a multisig wallet on this page with every co-signer's key." : null;
+}
 function addressTypeOf(addr){
   if(/^tb1q/.test(addr)) return "wpkh";
   if(/^tb1p/.test(addr)) return "tr";
@@ -3270,6 +3276,9 @@ function lifeHashSvg(rows){
 async function mnemonicFirstAddress(mnemonic, passphrase){ return firstAddressFromSeed(await mnemonicToSeed(mnemonic, passphrase)); }
 // v2.5.0 practice mode: the first receive address on the test network (m/84'/1'/0'/0/0) while it is on, else the usual mainnet one.
 async function shownFirstAddress(mnemonic, passphrase){ return practiceOn ? (await walletAddresses(await mnemonicToSeed(mnemonic, passphrase), "wpkh", "test", 0, 0, 0, 1))[0].address : mnemonicFirstAddress(mnemonic, passphrase); }
+// v2.6.0: the first address on a chosen network, whatever practice mode shows. A recorded bc1q... address is a real backup, so VERIFY
+// compares it with the real (main network) address even in practice mode, and a recorded tb1q... with the test-network one.
+async function firstAddressOn(net, mnemonic, passphrase){ return net === "test" ? (await walletAddresses(await mnemonicToSeed(mnemonic, passphrase), "wpkh", net, 0, 0, 0, 1))[0].address : mnemonicFirstAddress(mnemonic, passphrase); }
 async function sha256bytes(b){ return new Uint8Array(await crypto.subtle.digest("SHA-256", b)); }
 async function mnemonicFingerprint(mnemonic, passphrase){ return fingerprintFromSeed(await mnemonicToSeed(mnemonic, passphrase)); }
 
@@ -4248,7 +4257,7 @@ const PRACTICE_ENTROPY = ["7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f","808080808080808080
 let practiceNext = 0;
 // ================= Practice mode (v2.5.0) =================
 // One switch in Practise making a backup: every network menu is set to Testnet and locked there, the page shows a banner, a seed's
-// test-network first address is shown under the real one, and every printed sheet starts with a PRACTICE line. Nothing is stored.
+// test-network first address is shown in place of the real one, and printed sheets with addresses or keys say TESTNET. Nothing is stored.
 const PRACTICE_NETS = ["wNet", "wvNet", "psbtNet", "cmpNet", "msNet"];
 let practiceOn = false, practiceSaved = {};
 function practiceMode(on){
@@ -5131,7 +5140,7 @@ function passLine(kind){
   return "Passphrase used: " + (used ? "YES (keep it separate; it is not " + kind + " here)" : "NO");
 }
 function copyAddress(btn){
-  const m = document.getElementById("address").textContent.match(/: (bc1[0-9a-z]+)/);
+  const m = document.getElementById("address").textContent.match(/: ((?:bc1|tb1)[0-9a-z]+)/);   // v2.6.0: tb1 in practice mode
   if(!m) return alert("Generate a seed first");
   safeCopy(m[1]).then(()=>showCopied(btn)).catch(()=>alert("Copy failed. Select the address and copy it manually."));
 }
@@ -5140,7 +5149,7 @@ function classifyRecorded(raw){
   const q = (raw || "").replace(/\s+/g, "");
   if(!q) return null;
   if(/^[0-9a-fA-F]{8}$/.test(q)) return "fp";
-  if(/^bc1q[0-9a-z]{38}$/i.test(q)) return "addr";
+  if(/^(bc1q|tb1q)[0-9a-z]{38}$/i.test(q)) return "addr";
   if(/^bc1p[0-9a-z]{58}$/i.test(q) || /^[13][1-9A-HJ-NP-Za-km-z]{25,34}$/.test(q)) return "tr";
   if(/^[xyz]pub[1-9A-HJ-NP-Za-km-z]{100,115}$/.test(q)) return "key";
   if(/^(wpkh|sh\(wpkh|pkh|tr)\(/.test(q)) return "desc";
@@ -5231,6 +5240,7 @@ async function checkAddress(range){
   if(!r.ok) return say("bad", "Type a valid seed phrase in the box above first. " + r.msg);
   let addr = document.getElementById("checkAddr").value.replace(/\s+/g, "");
   if(/^(bc1|tb1)/i.test(addr)) addr = addr.toLowerCase();
+  { const sn = scriptAddrNote(addr); if(sn) return say("bad", sn); }
   const kind0 = /^(bc1|tb1)q[0-9a-z]{38}$/.test(addr) ? "SegWit" : /^(bc1|tb1)p[0-9a-z]{58}$/.test(addr) ? "Taproot" : /^[32][1-9A-HJ-NP-Za-km-z]{25,34}$/.test(addr) ? "Nested SegWit" : /^[1mn][1-9A-HJ-NP-Za-km-z]{25,34}$/.test(addr) ? "Legacy" : null;
   const kind = kind0 && addressNetOf(addr) === "test" ? "Testnet " + kind0 : kind0;
   if(!kind) return say("bad", "Enter a bc1q... (SegWit), bc1p... (Taproot), 3... (nested SegWit) or 1... (legacy) address, or a testnet address (tb1q..., tb1p..., 2..., m... or n...).");
@@ -5268,6 +5278,7 @@ async function checkAllAccounts(maxAcct, depth){
   if(!r.ok) return say("bad", "First type a valid seed phrase in the box above. " + r.msg);
   let addr = document.getElementById("checkAddr").value.replace(/\s+/g, "");
   if(/^(bc1|tb1)/i.test(addr)) addr = addr.toLowerCase();
+  { const sn = scriptAddrNote(addr); if(sn) return say("bad", sn); }
   const type = addressTypeOf(addr);
   if(!type) return say("bad", "Enter a bc1q... (SegWit), bc1p... (Taproot), 3... (nested SegWit) or 1... (legacy) address, or a testnet address (tb1q..., tb1p..., 2..., m... or n...).");
   const kind = (addressNetOf(addr) === "test" ? "Testnet " : "") + {wpkh: "SegWit", tr: "Taproot", "sh-wpkh": "Nested SegWit", pkh: "Legacy"}[type];
@@ -5778,6 +5789,7 @@ function updateRollHistory(rolls){
 
 function clearAll(){
   if(!confirm("Clear all rolls, results, the verify box, the backup plan and (if the browser allows) the clipboard?")) return;
+  reforgeStop(); reforgeReset(true); AUTO_FIELDS.forEach(id => { const e = document.getElementById(id); if(e) e.value = ""; });   // v2.6.0: also Reforge and every box auto-clear wipes
   msReset(); wipeSeed(); planClear();
 }
 
@@ -6639,8 +6651,13 @@ async function verify(){
     if(kindRec === "tr" || kindRec === "key" || kindRec === "desc"){
       try { const want = wantFor(rawRec); ids0 = await walletIds(r.mnemonic, "", want); if(vp) ids1 = await walletIds(r.mnemonic, vp, want); } catch(e) { ids0 = null; ids1 = null; }
     }
+    let c0 = a0, c1 = a1;   // v2.6.0: compare a recorded address with the first address on its own network (see firstAddressOn)
+    if(kindRec === "addr"){
+      const net = /^tb1/i.test(rawRec.replace(/\s+/g, "")) ? "test" : "main";
+      if(net !== (practiceOn ? "test" : "main")){ try { c0 = await firstAddressOn(net, r.mnemonic, ""); if(vp) c1 = await firstAddressOn(net, r.mnemonic, vp); } catch(e) { c0 = undefined; c1 = undefined; } }
+    }
     if(my !== verifySeq) return;
-    const mt = document.getElementById("verifyMatch"), m = matchRecorded(rawRec, fp0, a0, fp1, a1, !!vp, ids0, ids1);
+    const mt = document.getElementById("verifyMatch"), m = matchRecorded(rawRec, fp0, c0, fp1, c1, !!vp, ids0, ids1);
     mt.className = "status " + (m ? (m.ok ? "ok" : "bad") : ""); mt.textContent = m ? m.text : "";
     openWalletView(r.mnemonic, vp);
   }
@@ -6695,7 +6712,10 @@ function downloadSeed() {
   const text = document.getElementById("genResult").textContent;
   if (!confirm("This saves your seed and rolls to a PLAIN-TEXT file. Only do this on a trusted offline computer. The passphrase is not saved. Continue?")) return;
   const rolls = (exCtx && exCtx.rolls) || document.getElementById("rolls").value; // the rolls that made these words, not whatever is typed now
-  const full = text + "\n\n" + document.getElementById("fingerprint").textContent + "\n" + document.getElementById("address").textContent + "\n" + passLine("saved") + "\n\nInput: " + rolls + (exCtx && exCtx.keystone ? "\nDice rules: Keystone (each 6 counts as 0 before hashing)" : "");
+  // v2.6.0: a Word draw seed was not made from rolls, so never write whatever is in the rolls box as its input
+  const wdFl = document.getElementById("wdFlips").value.replace(/[^01]/g, "");   // as wdGenerate reads them
+  const input = seedKind === "wd" ? "Word draw (the words above were drawn by hand, not made from rolls)" + (wdFl ? "; coin flips for the last word: " + wdFl : "") : rolls;
+  const full = text + "\n\n" + document.getElementById("fingerprint").textContent + "\n" + document.getElementById("address").textContent + "\n" + passLine("saved") + "\n\nInput: " + input + (exCtx && exCtx.keystone ? "\nDice rules: Keystone (each 6 counts as 0 before hashing)" : "");
   const blob = new Blob([full], {type: "text/plain"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
