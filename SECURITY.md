@@ -28,6 +28,22 @@ Please include the version (shown at the bottom of the page), the browser, and s
 - Only the BIP84 (native SegWit, mainnet) first address is shown; other wallet types use other paths.
 - Not supported on phones or in file previews.
 
+## Release signing key
+
+Releases will be signed with this OpenPGP key (ed25519, created 2026-11-06, expires 2028-11-05 unless extended):
+
+`2509 D115 03B7 2CBF BCB5  408F 4B72 9F05 6A52 9340`
+
+The public key is [`voidforge-signing-key.asc`](voidforge-signing-key.asc) in this repository. It carries no email address. **Releases up to v2.6.0 are not signed**; check them with `SHA256SUMS` and `CID.txt` (see RELEASING.md). From the first signed release on, each release also has `SHA256SUMS.asc`. To check it:
+
+```
+gpg --import voidforge-signing-key.asc
+gpg --verify SHA256SUMS.asc SHA256SUMS
+sha256sum -c SHA256SUMS
+```
+
+A good signature names the fingerprint above; compare all 40 characters. The fingerprint is also on the release pages, so a single altered copy can be noticed.
+
 ## Supported versions
 
 Only the latest release is supported.
