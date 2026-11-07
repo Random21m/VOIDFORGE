@@ -15,6 +15,12 @@ import { base64, hex as bhex } from '@scure/base';
 import jsQR from 'jsqr';
 import { readFileSync } from 'node:fs';
 import { loadPage, ready, readHtml, rnd, makeReporter } from './harness.mjs';
+import { createRequire } from 'node:module';
+import zlib from 'node:zlib';
+import { joinQRs, splitQRs } from 'bbqr';
+const requireC = createRequire(import.meta.url);
+const { UR, UREncoder, URDecoder } = requireC('@ngraveio/bc-ur');
+const { CryptoOutput } = requireC('@keystonehq/bc-ur-registry');
 
 const R = makeReporter();
 const w = await ready(loadPage(readHtml()));
@@ -989,6 +995,90 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   for (let t = 0; t < 300; t++) { const word = wordlist[nc.randomInt(2048)], i = nc.randomInt(word.length), typo = word.slice(0, i) + word.slice(i + 1); m++;
     if (typo.length >= 3 && !wordlist.includes(typo) && !w.closestWords(typo, 50).includes(word)) { bad++; console.log('CLOSEST MISSES', word, typo, w.closestWords(typo, 50)); } }
   R.ok(bad === 0, `${m} word checks: every BIP39 word is found from its first 4 or 5 letters (and in full), and a word with one letter dropped is always among the closest words`);
+}
+
+// 2n. v2.6.0 animated QR and pasted QR text: UR (@ngraveio/bc-ur), crypto-output (@keystonehq/bc-ur-registry), BBQr (bbqr),
+// raw deflate (Node's zlib), QR alphanumeric mode (jsQR), private keys and custom paths (@scure/bip32, @scure/btc-signer).
+{
+  const CB = w.eval('CB'), hx = (b) => Buffer.from(b).toString('hex');
+  // UR encode equals bc-ur's pure parts, byte for byte; decode reads bc-ur's parts (fountain parts left out)
+  let bad = 0, n = 0;
+  for (let t = 0; t < 120; t++) {
+    const len = 1 + nc.randomInt(t < 60 ? 300 : 4000), data = nc.randomBytes(len), maxF = [30, 80, 100, 200, 400, 1000][t % 6];
+    const ref = new UREncoder(UR.fromBuffer(data), maxF, 0, 10), refParts = []; const seqLen = ref.fragmentsLength;
+    for (let i = 0; i < seqLen; i++) refParts.push(ref.nextPart());
+    const mine = w.urEncode('bytes', CB.bytes(Array.from(data)), maxF); n++;
+    if (JSON.stringify(mine) !== JSON.stringify(refParts)) { bad++; console.log('UR ENCODE DIFFERS', len, maxF); continue; }
+    const fount = []; for (let i = 0; i < 3; i++) fount.push(ref.nextPart());
+    const shuffled = [...refParts, ...(seqLen > 1 ? fount : [])].sort(() => nc.randomInt(3) - 1).map(x => nc.randomInt(2) ? x.toUpperCase() : x);
+    const dec = w.urDecodeFrames(shuffled), body = w.cborRead(dec.msg, 0).v;
+    if (hx(body) !== hx(data)) { bad++; console.log('UR DECODE DIFFERS', len, maxF); }
+  }
+  R.ok(bad === 0, `${n} UR messages (1 to 4000 bytes, fragment sizes 30 to 1000): parts equal @ngraveio/bc-ur's byte for byte, and bc-ur's parts (shuffled, mixed case, with mixed fountain parts) decode back to the data`);
+  // crypto-output for random multisig wallets: bc-ur-registry rebuilds every key, path and fingerprint
+  bad = 0; n = 0;
+  for (let t = 0; t < 24; t++) {
+    const N = 2 + nc.randomInt(t < 20 ? 6 : 14), M = 1 + nc.randomInt(N), net = t % 3 === 2 ? 'test' : 'main', type = t % 2 ? 'ms-sh-wsh' : 'ms-wsh', coin = net === 'test' ? 1 : 0, script = type === 'ms-wsh' ? 2 : 1;
+    const cos = [];
+    for (let i = 0; i < N; i++) {
+      const root = HDKey.fromMasterSeed(nc.randomBytes(32)), acct = root.derive(`m/48'/${coin}'/0'/${script}'`);
+      const ver = net === 'test' ? {private: 0x04358394, public: 0x043587cf} : {private: 0x0488ade4, public: 0x0488b21e};
+      const xpub = HDKey.fromMasterSeed(nc.randomBytes(32)) && new HDKey({ versions: ver, depth: acct.depth, index: acct.index, parentFingerprint: acct.parentFingerprint, chainCode: acct.chainCode, publicKey: acct.publicKey }).publicExtendedKey;
+      cos.push({ fp: root.fingerprint.toString(16).padStart(8, '0'), path: `48h/${coin}h/0h/${script}h`, key: await w.parseExtendedKey(xpub), xpub });
+    }
+    const cbor = w.cryptoOutputMultisig(type, M, cos, net), out = CryptoOutput.fromCBOR(Buffer.from(cbor)); n++;
+    const exps = out.getScriptExpressions().map(e => e.getExpression()), mk = out.getMultiKey(), keys = mk.getHDKeys();
+    const ok = JSON.stringify(exps) === JSON.stringify(type === 'ms-wsh' ? ['wsh', 'sortedmulti'] : ['sh', 'wsh', 'sortedmulti']) && mk.getThreshold() === M && keys.length === N &&
+      keys.every((k, i) => k.getBip32Key() === cos[i].xpub && k.getOrigin().getSourceFingerprint().toString('hex') === cos[i].fp && k.getOrigin().getPath() === `48'/${coin}'/0'/${script}'`);
+    if (!ok) { bad++; console.log('CRYPTO-OUTPUT DIFFERS', type, M, N, net, exps); }
+  }
+  R.ok(bad === 0, `${n} random multisig wallets (2 to 15 keys, wsh and sh-wsh, mainnet and testnet): @keystonehq/bc-ur-registry reads the crypto-output back to every key, path, master fingerprint and threshold`);
+  // BBQr: bbqr's own parts (H, 2 and Z, of random data) decode; ours join back with bbqr
+  bad = 0; n = 0;
+  for (let t = 0; t < 90; t++) {
+    const len = 1 + nc.randomInt(t < 45 ? 500 : 6000), raw = t % 3 ? nc.randomBytes(len) : Buffer.from('wsh(sortedmulti(2,'.repeat(1 + (len >> 4))), enc = ['H', '2', 'Z'][t % 3], ft = ['P', 'U', 'T', 'J'][t % 4];
+    const sp = splitQRs(new Uint8Array(raw), ft, { encoding: enc, minVersion: 5, maxVersion: 5 + nc.randomInt(20) }); n++;
+    let got; try { got = w.bbqrDecodeFrames([...sp.parts].reverse()); } catch (e) { got = null; }
+    if (!got || got.fileType !== ft || !Buffer.from(got.bytes).equals(raw)) { bad++; console.log('BBQR DECODE DIFFERS', len, sp.encoding); }
+    const mine = w.bbqrEncode(ft, raw, [160, 480, 920][t % 3]), j = joinQRs(mine);
+    if (j.fileType !== ft || !Buffer.from(j.raw).equals(raw) || mine.some((p, i) => i < mine.length - 1 && p.length !== mine[0].length)) { bad++; console.log('BBQR ENCODE NOT READ BY bbqr', len); }
+  }
+  R.ok(bad === 0, `${n} BBQr messages: bbqr's parts (hex, Base32 and deflate, reversed) decode here, and ours (Base32, even parts) are read by bbqr's joinQRs`);
+  bad = 0; n = 0;
+  for (let t = 0; t < 200; t++) {
+    const len = nc.randomInt(20000), data = t % 4 === 0 ? nc.randomBytes(len) : Buffer.from(Array.from({ length: len }, () => 97 + nc.randomInt(1 + t % 20)));
+    for (const level of [0, 1, 6, 9]) { n++; const got = w.inflateRaw(new Uint8Array(zlib.deflateRawSync(data, { windowBits: 10, level }))); if (!Buffer.from(got).equals(data)) { bad++; console.log('INFLATE DIFFERS', len, level); } }
+  }
+  R.ok(bad === 0, `${n} raw-deflate streams from Node's zlib (window bits 10, levels 0, 1, 6, 9, up to 20 kB) inflate to the original bytes`);
+  // QR alphanumeric mode: random upper-case UR and BBQr texts scan back with jsQR
+  const scan = (rows) => { const q = 4, sc = 3, W = (rows.length + 2 * q) * sc, img = new Uint8ClampedArray(W * W * 4); for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const my = Math.floor(y / sc) - q, mx = Math.floor(x / sc) - q, dark = my >= 0 && mx >= 0 && my < rows.length && mx < rows.length && rows[my][mx], v = dark ? 0 : 255, i = (y * W + x) * 4; img[i] = img[i + 1] = img[i + 2] = v; img[i + 3] = 255; } const r = jsQR(img, W, W); return r && r.data; };
+  const AL = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+  bad = 0; n = 0;
+  for (let t = 0; t < 60; t++) { const len = 1 + nc.randomInt(1500), txt = Array.from({ length: len }, () => AL[nc.randomInt(45)]).join(''); n++; const q = w.qrBuild({ mode: 'alnum', text: txt, level: 'M', minVer: t % 2 ? 1 + nc.randomInt(10) : undefined }); if (scan(q.rows) !== txt) { bad++; console.log('ALNUM QR WRONG', len, q.version); } }
+  R.ok(bad === 0, `${n} random alphanumeric QR codes (1 to 1500 characters, some at a fixed larger version) scan back with jsQR to exactly the text`);
+  // private keys read only: addresses equal @scure's
+  bad = 0; n = 0;
+  for (let t = 0; t < 40; t++) {
+    const priv = nc.randomBytes(32), test = t % 4 === 3, comp = t % 5 !== 4;
+    const wif = (await w.base58check(Uint8Array.from([test ? 0xef : 0x80, ...priv, ...(comp ? [1] : [])])));
+    let p; try { p = await w.parsePrivateInput(wif); } catch (e) { p = null; }
+    const pub = secp256k1.getPublicKey(priv, comp), NET = test ? btc.TEST_NETWORK : btc.NETWORK; n++;
+    const want = comp ? [btc.p2wpkh(pub, NET).address, btc.p2tr(schnorr.getPublicKey(priv), undefined, NET).address, btc.p2sh(btc.p2wpkh(pub, NET), NET).address, btc.p2pkh(pub, NET).address] : [btc.p2pkh(pub, NET).address];
+    if (!p || p.kind !== 'single' || p.compressed !== comp || p.net !== (test ? 'test' : 'main')) { bad++; console.log('WIF READ WRONG', wif); continue; }
+    const types = comp ? ['wpkh', 'tr', 'sh-wpkh', 'pkh'] : ['pkh'], gotA = [];
+    for (const ty of types) gotA.push(await w.addressFromPub(ty, w.pubOfPriv(p.k, comp), p.net));
+    if (JSON.stringify(gotA) !== JSON.stringify(want)) { bad++; console.log('WIF ADDRESSES DIFFER', wif, gotA, want); }
+  }
+  R.ok(bad === 0, `${n} random WIF keys (compressed and not, mainnet and testnet): every address equals @scure/btc-signer's`);
+  bad = 0; n = 0;
+  for (let t = 0; t < 12; t++) {
+    const seed = nc.randomBytes(64), root = HDKey.fromMasterSeed(seed), xprv = root.privateExtendedKey, steps = [[0, true], [nc.randomInt(5), false]].slice(0, 1 + t % 2);
+    const path = 'm/' + steps.map(([i, h]) => i + (h ? "'" : '')).join('/'), p = await w.parsePrivateInput(xprv); n++;
+    const rows = await w.walletAddressesFrom([p.k, p.chain], w.parsePath(path), 'wpkh', 'main', 0, 0, 3);
+    const want = [0, 1, 2].map(i => btc.p2wpkh(root.derive(path + '/0/' + i).publicKey).address);
+    if (JSON.stringify(rows.map(r => r.address)) !== JSON.stringify(want) || rows[0].path !== path + '/0/0') { bad++; console.log('CUSTOM PATH DIFFERS', path); }
+  }
+  R.ok(bad === 0, `${n} master xprv keys with custom account paths (such as m/0'): the first addresses equal @scure's`);
 }
 
 R.done('oracle');

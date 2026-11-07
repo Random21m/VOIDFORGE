@@ -1338,7 +1338,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details id="psbtBox">
       <summary>Inspect a transaction (PSBT)<span class="tag tag-ro">READ ONLY</span><small>See where the money goes and the fee before signing.</small></summary>
       <p class="hint" style="margin:8px 0;">Shows what a partly signed Bitcoin transaction (PSBT) from a wallet app would do: where the money comes from, where it goes, and the fee, so you can check it before signing on your hardware wallet. <b>This only reads and displays. It cannot sign, never uses your seed words, and sends nothing.</b> Paste the PSBT (base64 or hex) or choose the .psbt file. If you typed your words in the CHECK A BACKUP tab, outputs that carry this wallet&rsquo;s key information are marked. It also checks any signatures it finds: whether two of them share a <b>nonce</b> (a repeated secret number that lets anyone work out the private key) and whether a signature covers the whole transaction.</p>
-      <textarea id="psbtInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="PSBT (base64 or hex)" placeholder="Paste the PSBT here (starts with cHNidP8 or 70736274ff)"></textarea>
+      <textarea id="psbtInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="PSBT (base64 or hex, or animated QR text)" placeholder="Paste the PSBT here (starts with cHNidP8 or 70736274ff), or the text of an animated QR: UR or BBQr parts, one per line"></textarea>
       <div style="display:flex; gap:6px; align-items:center; margin-top:6px; flex-wrap:wrap;">
         <input type="file" id="psbtFile" accept=".psbt,application/octet-stream" aria-label="Choose a PSBT file" style="flex:1; min-width:0;">
         <select id="psbtNet" aria-label="Network" style="width:auto; flex:none;"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
@@ -1472,6 +1472,15 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
             <div id="msQrCaption" class="hint"></div>
             <div id="msQrImg" style="width:min(100%,340px); margin:8px auto; background:#fff; line-height:0;"></div>
             <button type="button" class="secondary small" onclick="msHideQr()">HIDE QR</button>
+          </div>
+          <div class="wlabel" style="margin-top:12px;">Animated QR for a signing device or wallet app</div>
+          <div class="hint" style="margin:0 0 6px;">No one QR format reaches every device, so pick yours. Each is the same wallet, public keys only.</div>
+          <div class="btn-row"><button type="button" class="secondary small" onclick="msAnim('ur')">SPARROW, SEEDSIGNER, NUNCHUK</button><button type="button" class="secondary small" onclick="msAnim('bbqr')">COLDCARD Q</button><button type="button" class="secondary small" onclick="msAnim('cc')">KEYSTONE, PASSPORT</button></div>
+          <div id="msAnimBox" style="display:none; margin-top:10px; text-align:center;">
+            <div id="msAnimCap" class="hint"></div>
+            <div id="msAnimImg" style="width:min(100%,360px); margin:8px auto; background:#fff; line-height:0;"></div>
+            <div id="msAnimCount" class="hint"></div>
+            <div class="btn-row" style="justify-content:center;"><select id="msAnimSize" aria-label="Frame size" onchange="msAnimSet(this.value)" style="width:auto;"><option value="0">Small frames (easiest to scan)</option><option value="1" selected>Medium frames</option><option value="2">Large frames (fewest parts)</option></select><button type="button" class="secondary small" id="msAnimPause" onclick="animPause(this)">PAUSE</button><button type="button" class="secondary small" onclick="animHide('msAnim')">HIDE</button></div>
           </div>
           </div>
           <div class="ms-sub">
@@ -2456,6 +2465,245 @@ async function multisigDescriptor(type, m, cosigners, branch){
   const inner="sortedmulti(" + m + "," + keys.join(",") + ")";
   return descriptorChecksum(type==="ms-sh-wsh" ? "sh(wsh(" + inner + "))" : "wsh(" + inner + ")");
 }
+// ================= Animated QR codes and pasted QR text (v2.6.0): UR, CBOR, BBQr =================
+// Written from the specifications (Blockchain Commons BCR-2020-005 UR, BCR-2020-012 Bytewords, BCR-2020-010 crypto-output, and the
+// BBQr spec at bbqr.org); tests/ compare them byte for byte with @ngraveio/bc-ur, @keystonehq/bc-ur-registry and bbqr.
+// Public data only: these carry descriptors and PSBTs, never seed words or private keys.
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for(let n = 0; n < 256; n++){ let c = n; for(let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b){ let c = 0xFFFFFFFF; for(const x of b) c = CRC_TABLE[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+const BYTEWORDS = "ableacidalsoapexaquaarchatomauntawayaxisbackbaldbarnbeltbetabiasbluebodybragbrewbulbbuzzcalmcashcatschefcityclawcodecolacookcostcruxcurlcuspcyandarkdatadaysdelidicedietdoordowndrawdropdrumdulldutyeacheasyechoedgeepicevenexamexiteyesfactfairfernfigsfilmfishfizzflapflewfluxfoxyfreefrogfuelfundgalagamegeargemsgiftgirlglowgoodgraygrimgurugushgyrohalfhanghardhawkheathelphighhillholyhopehornhutsicedideaidleinchinkyintoirisironitemjadejazzjoinjoltjowljudojugsjumpjunkjurykeepkenokeptkeyskickkilnkingkitekiwiknoblamblavalazyleaflegsliarlimplionlistlogoloudloveluaulucklungmainmanymathmazememomenumeowmildmintmissmonknailnavyneednewsnextnoonnotenumbobeyoboeomitonyxopenovalowlspaidpartpeckplaypluspoempoolposepuffpumapurrquadquizraceramprealredorichroadrockroofrubyruinrunsrustsafesagascarsetssilkskewslotsoapsolosongstubsurfswantacotasktaxitenttiedtimetinytoiltombtoystriptunatwinuglyundouniturgeuservastveryvetovialvibeviewvisavoidvowswallwandwarmwaspwavewaxywebswhatwhenwhizwolfworkyankyawnyellyogayurtzapszerozestzinczonezoom";
+const BW_MIN = Array.from({length: 256}, (_, i) => BYTEWORDS[i * 4] + BYTEWORDS[i * 4 + 3]);
+const BW_INDEX = Object.fromEntries(BW_MIN.map((w, i) => [w, i]));
+const be32 = (n) => [n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
+function bytewordsMin(body){ const all = [...body, ...be32(crc32(body))]; return all.map(b => BW_MIN[b]).join(""); }
+function bytewordsMinDecode(t){
+  t = String(t).toLowerCase();
+  if(t.length % 2 || !/^[a-z]+$/.test(t)) throw new Error("the part is not complete (an odd number of letters, or a character that is not a letter)");
+  const out = [];
+  for(let i = 0; i < t.length; i += 2){ const v = BW_INDEX[t.slice(i, i + 2)]; if(v === undefined) throw new Error("the part has letters that are not Bytewords"); out.push(v); }
+  if(out.length < 5) throw new Error("the part is too short");
+  const body = out.slice(0, -4), c = be32(crc32(body));
+  if(c.some((x, i) => x !== out[out.length - 4 + i])) throw new Error("a part's checksum does not match: it was copied wrongly");
+  return body;
+}
+// CBOR (RFC 8949): definite lengths, shortest integers. Enough for UR parts, byte strings and crypto-output.
+function cborHead(major, n){
+  if(n < 24) return [(major << 5) | n];
+  if(n < 256) return [(major << 5) | 24, n];
+  if(n < 65536) return [(major << 5) | 25, n >> 8, n & 255];
+  return [(major << 5) | 26, ...be32(n)];
+}
+const CB = {
+  uint: (n) => cborHead(0, n), bytes: (b) => [...cborHead(2, b.length), ...b], bool: (x) => [x ? 0xf5 : 0xf4], tag: (t, v) => [...cborHead(6, t), ...v],
+  arr: (items) => [].concat(cborHead(4, items.length), ...items), map: (pairs) => [].concat(cborHead(5, pairs.length), ...pairs.map(([k, v]) => k.concat(v)))
+};
+// Reads unsigned integers, byte strings and arrays (all that a UR part or a PSBT UR holds).
+function cborRead(b, pos){
+  if(pos >= b.length) throw new Error("the data ends early");
+  const ib = b[pos++], major = ib >> 5, ai = ib & 31;
+  let n;
+  if(ai < 24) n = ai;
+  else if(ai === 24){ n = b[pos]; pos += 1; }
+  else if(ai === 25){ n = (b[pos] << 8) | b[pos + 1]; pos += 2; }
+  else if(ai === 26){ n = ((b[pos] << 24) >>> 0) + ((b[pos + 1] << 16) | (b[pos + 2] << 8) | b[pos + 3]); pos += 4; }
+  else throw new Error("unsupported data inside the QR text");
+  if(n === undefined || Number.isNaN(n) || pos > b.length) throw new Error("the data ends early");
+  if(major === 0) return {v: n, pos};
+  if(major === 2){ if(pos + n > b.length) throw new Error("the data ends early"); return {v: Uint8Array.from(b.slice(pos, pos + n)), pos: pos + n}; }
+  if(major === 4){ if(n > 64) throw new Error("unexpected data inside the QR text"); const a = []; for(let i = 0; i < n; i++){ const r = cborRead(b, pos); a.push(r.v); pos = r.pos; } return {v: a, pos}; }
+  throw new Error("unexpected data inside the QR text");
+}
+// UR encoder: single part when it fits one fragment, else the pure parts 1..seqLen (every reader accepts them in any order, repeated).
+function urFragLen(len, minF, maxF){ const maxCount = Math.ceil(len / minF); let fl = len; for(let c = 1; c <= maxCount; c++){ fl = Math.ceil(len / c); if(fl <= maxF) break; } return fl; }
+function urEncode(type, msg, maxFrag){
+  msg = Array.from(msg);
+  const fl = urFragLen(msg.length, 10, maxFrag);
+  if(fl >= msg.length) return ["ur:" + type + "/" + bytewordsMin(msg)];
+  const seqLen = Math.ceil(msg.length / fl), crc = crc32(msg), parts = [];
+  for(let i = 0; i < seqLen; i++){
+    const frag = msg.slice(i * fl, (i + 1) * fl); while(frag.length < fl) frag.push(0);
+    parts.push("ur:" + type + "/" + (i + 1) + "-" + seqLen + "/" + bytewordsMin(CB.arr([CB.uint(i + 1), CB.uint(seqLen), CB.uint(msg.length), CB.uint(crc), CB.bytes(frag)])));
+  }
+  return parts;
+}
+// UR decoder for pasted text: single parts, or the pure parts 1..seqLen of a multi-part UR. Fountain parts (seqNum > seqLen) are mixes
+// of several fragments and are left out; the first seqLen parts are always enough. Returns {type, msg} with msg the CBOR message.
+function urDecodeFrames(frames){
+  let type = null, single = null, info = null, ignored = 0;
+  const slots = [];
+  for(const f0 of frames){
+    const f = f0.toLowerCase(), segs = f.slice(3).split("/");
+    if(!/^[a-z0-9-]+$/.test(segs[0] || "")) throw new Error("a UR part has no valid type");
+    if(type && segs[0] !== type) throw new Error("the UR parts are of different types (" + type + " and " + segs[0] + ")");
+    type = segs[0];
+    if(segs.length === 2){ single = bytewordsMinDecode(segs[1]); continue; }
+    if(segs.length !== 3 || !/^\d{1,5}-\d{1,5}$/.test(segs[1])) throw new Error("a UR part is not complete, or uses the old UR format (not supported)");
+    const body = cborRead(bytewordsMinDecode(segs[2]), 0).v;
+    if(!Array.isArray(body) || body.length !== 5 || !(body[4] instanceof Uint8Array)) throw new Error("a UR part is damaged");
+    const [sn, sl, ml, ck, data] = body, path = segs[1].split("-").map(Number);
+    if(path[0] !== sn || path[1] !== sl || sl < 1 || sl > 65536 || ml < 1) throw new Error("a UR part is damaged (its numbers do not match)");
+    if(!info) info = {sl, ml, ck, dl: data.length};
+    else if(info.sl !== sl || info.ml !== ml || info.ck !== ck || info.dl !== data.length) throw new Error("the UR parts come from different QR codes");
+    if(sn > sl){ ignored++; continue; }
+    if(slots[sn - 1] && slots[sn - 1].some((x, i) => x !== data[i])) throw new Error("part " + sn + " appears twice with different contents");
+    slots[sn - 1] = data;
+  }
+  if(single) return {type, msg: single};
+  if(!info) throw new Error("no UR part was found");
+  const missing = []; for(let i = 0; i < info.sl; i++) if(!slots[i]) missing.push(i + 1);
+  if(missing.length) throw new Error("UR parts missing: " + missing.join(", ") + " of " + info.sl + (ignored ? " (" + ignored + " mixed part" + (ignored === 1 ? " was" : "s were") + " left out: paste parts 1 to " + info.sl + ")" : "") + ".");
+  const msg = [].concat(...slots.map(x => Array.from(x))).slice(0, info.ml);
+  if(crc32(msg) !== info.ck) throw new Error("the joined UR parts do not check out (checksum)");
+  return {type, msg};
+}
+// Base32 (RFC 4648, upper case, no padding) and base36 part numbers, for BBQr.
+const RFC_B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+function base32Encode(b){ let out = "", acc = 0, n = 0; for(const x of b){ acc = (acc << 8) | x; n += 8; while(n >= 5){ out += RFC_B32[(acc >>> (n - 5)) & 31]; n -= 5; } acc &= (1 << n) - 1; } if(n) out += RFC_B32[(acc << (5 - n)) & 31]; return out; }
+function base32Decode(t){ const out = []; let acc = 0, n = 0; for(const ch of t){ const v = RFC_B32.indexOf(ch); if(v < 0) throw new Error("a BBQr part has a character that is not Base32"); acc = (acc << 5) | v; n += 5; if(n >= 8){ out.push((acc >>> (n - 8)) & 255); n -= 8; } acc &= (1 << n) - 1; } return out; }
+const b36 = (n) => n.toString(36).toUpperCase().padStart(2, "0");
+// BBQr encoder, Base32 ("2"), parts of at most maxChars characters split evenly (as Sparrow does).
+function bbqrEncode(fileType, bytes, maxChars){
+  const enc = base32Encode(bytes), count0 = Math.ceil(enc.length / maxChars);
+  const chunk = Math.ceil(Math.ceil(enc.length / count0) / 8) * 8, count = Math.ceil(enc.length / chunk);
+  if(count > 1295) throw new Error("too long for BBQr");
+  const parts = [];
+  for(let i = 0; i < count; i++) parts.push("B$2" + fileType + b36(count) + b36(i) + enc.slice(i * chunk, (i + 1) * chunk));
+  return parts;
+}
+// BBQr decoder for pasted text: H (hex), 2 (Base32) and Z (Base32 of raw-deflated data).
+function bbqrDecodeFrames(frames){
+  let head = null; const slots = [];
+  for(const f0 of frames){
+    const f = f0.toUpperCase();
+    if(!/^B\$[H2Z][A-Z][0-9A-Z]{4}/.test(f)) throw new Error("a BBQr part has a damaged header");
+    if(head && f.slice(0, 6) !== head) throw new Error("the BBQr parts come from different QR codes");
+    head = f.slice(0, 6);
+    const total = parseInt(f.slice(4, 6), 36), idx = parseInt(f.slice(6, 8), 36), body = f.slice(8);
+    if(total < 1 || idx >= total) throw new Error("a BBQr part number is out of range");
+    if(slots[idx] !== undefined && slots[idx] !== body) throw new Error("BBQr part " + (idx + 1) + " appears twice with different contents");
+    slots[idx] = body;
+  }
+  const total = parseInt(head.slice(4, 6), 36), missing = [];
+  for(let i = 0; i < total; i++) if(slots[i] === undefined) missing.push(i + 1);
+  if(missing.length) throw new Error("BBQr parts missing: " + missing.join(", ") + " of " + total + ".");
+  const encC = head[2]; let bytes = [];
+  for(const body of slots){
+    if(encC === "H"){ if(body.length % 2 || !/^[0-9A-F]*$/.test(body)) throw new Error("a BBQr hex part is damaged"); bytes = bytes.concat(Array.from(fromHex(body.toLowerCase()))); }
+    else bytes = bytes.concat(base32Decode(body));
+  }
+  if(encC === "Z") bytes = inflateRaw(Uint8Array.from(bytes));
+  return {fileType: head[3], bytes: Uint8Array.from(bytes)};
+}
+// Raw DEFLATE decoder (RFC 1951) for BBQr "Z" parts: stored, fixed and dynamic Huffman blocks. Output limited to 4 MB.
+function inflateRaw(src){
+  let pos = 0, bit = 0;
+  const out = [];
+  const bits = (n) => { let v = 0; for(let i = 0; i < n; i++){ if(pos >= src.length) throw new Error("the compressed data ends early"); v |= ((src[pos] >> bit) & 1) << i; if(++bit === 8){ bit = 0; pos++; } } return v; };
+  const build = (lengths) => { const count = new Array(16).fill(0), offs = new Array(16).fill(0), sym = []; for(const l of lengths) count[l]++; count[0] = 0; for(let l = 1; l < 15; l++) offs[l + 1] = offs[l] + count[l]; lengths.forEach((l, s) => { if(l) sym[offs[l]++] = s; }); return {count, sym}; };
+  const decode = (h) => { let code = 0, first = 0, index = 0; for(let len = 1; len < 16; len++){ code |= bits(1); const c = h.count[len]; if(code - c < first) return h.sym[index + (code - first)]; index += c; first += c; first <<= 1; code <<= 1; } throw new Error("the compressed data is damaged"); };
+  const LB = [3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258], LE = [0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0];
+  const DB = [1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577], DE = [0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13];
+  let last;
+  do {
+    last = bits(1); const type = bits(2);
+    if(type === 0){
+      if(bit){ bit = 0; pos++; }
+      if(pos + 4 > src.length) throw new Error("the compressed data ends early");
+      const len = src[pos] | (src[pos + 1] << 8), nlen = src[pos + 2] | (src[pos + 3] << 8); pos += 4;
+      if(len !== (~nlen & 0xffff) || pos + len > src.length) throw new Error("the compressed data is damaged");
+      for(let i = 0; i < len; i++) out.push(src[pos++]);
+    } else if(type === 1 || type === 2){
+      let lit, dist;
+      if(type === 1){ const l = []; for(let i = 0; i < 288; i++) l.push(i < 144 ? 8 : i < 256 ? 9 : i < 280 ? 7 : 8); lit = build(l); dist = build(new Array(30).fill(5)); }
+      else {
+        const nlen = bits(5) + 257, ndist = bits(5) + 1, ncode = bits(4) + 4, ORD = [16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15], cl = new Array(19).fill(0);
+        for(let i = 0; i < ncode; i++) cl[ORD[i]] = bits(3);
+        const ch = build(cl), lens = [];
+        while(lens.length < nlen + ndist){
+          const sy = decode(ch);
+          if(sy < 16) lens.push(sy);
+          else if(sy === 16){ if(!lens.length) throw new Error("the compressed data is damaged"); const r = 3 + bits(2), pv = lens[lens.length - 1]; for(let i = 0; i < r; i++) lens.push(pv); }
+          else { const r = sy === 17 ? 3 + bits(3) : 11 + bits(7); for(let i = 0; i < r; i++) lens.push(0); }
+        }
+        if(lens.length > nlen + ndist) throw new Error("the compressed data is damaged");
+        lit = build(lens.slice(0, nlen)); dist = build(lens.slice(nlen));
+      }
+      for(;;){
+        const sy = decode(lit);
+        if(sy < 256) out.push(sy);
+        else if(sy === 256) break;
+        else {
+          const li = sy - 257; if(li >= 29) throw new Error("the compressed data is damaged");
+          const len = LB[li] + bits(LE[li]), di = decode(dist); if(di >= 30) throw new Error("the compressed data is damaged");
+          const d = DB[di] + bits(DE[di]); if(d > out.length) throw new Error("the compressed data is damaged");
+          for(let i = 0; i < len; i++) out.push(out[out.length - d]);
+        }
+        if(out.length > 4194304) throw new Error("the compressed data is too large");
+      }
+    } else throw new Error("the compressed data is damaged");
+  } while(!last);
+  return Uint8Array.from(out);
+}
+// Pasted QR text (one frame per line, or separated by spaces): UR parts, BBQr parts, or null when it is neither.
+function qrTextDecode(text){
+  const frames = String(text || "").split(/\s+/).filter(Boolean);
+  if(!frames.length) return null;
+  const ur = frames.filter(f => /^ur:/i.test(f)), bb = frames.filter(f => /^B\$/i.test(f));
+  if(ur.length && ur.length === frames.length){ const r = urDecodeFrames(ur); return {kind: "ur", type: r.type, msg: r.msg}; }
+  if(bb.length && bb.length === frames.length){ const r = bbqrDecodeFrames(bb); return {kind: "bbqr", type: r.fileType, bytes: r.bytes}; }
+  if(ur.length || bb.length) throw new Error("the pasted text mixes QR parts with other text: paste only the parts, one per line");
+  return null;
+}
+// crypto-output (BCR-2020-010) for a multisig wallet, in the profile Sparrow writes: sortedmulti (407) inside wsh (401) or sh(wsh(...)),
+// each key a crypto-hdkey (303) with key data, chain code, coin info, origin (path, master fingerprint, depth) and parent fingerprint.
+function cryptoOutputMultisig(type, m, cos, net){
+  const coin = CB.tag(305, CB.map([[CB.uint(1), CB.uint(0)], [CB.uint(2), CB.uint(net === "test" ? 1 : 0)]]));
+  const keys = cos.map(c => {
+    const steps = c.path.split("/").filter(Boolean), comps = [];
+    for(const x of steps){ comps.push(CB.uint(parseInt(x, 10)), CB.bool(/[h']$/i.test(x))); }
+    const origin = CB.tag(304, CB.map([[CB.uint(1), CB.arr(comps)], [CB.uint(2), CB.uint(parseInt(c.fp, 16))], [CB.uint(3), CB.uint(steps.length)]]));
+    return CB.tag(303, CB.map([[CB.uint(3), CB.bytes(c.key.pub)], [CB.uint(4), CB.bytes(c.key.chain)], [CB.uint(5), coin], [CB.uint(6), origin], [CB.uint(8), CB.uint(parseInt(c.key.parentFp, 16))]]));
+  });
+  let out = CB.tag(401, CB.tag(407, CB.map([[CB.uint(1), CB.uint(m)], [CB.uint(2), CB.arr(keys)]])));
+  if(type === "ms-sh-wsh") out = CB.tag(400, out);
+  return out;
+}
+// The Coldcard "multisig setup file" text, which Keystone, Passport, SeedSigner (up to 9 keys) and Nunchuk read from ur:bytes.
+async function coldcardMultisigText(type, m, cos){
+  const paths = cos.map(c => "m/" + c.path.replace(/[hH]/g, "'")), same = paths.every(p => p === paths[0]);
+  const lines = ["# Coldcard Multisig setup file (created by VOIDFORGE)", "#", "Name: VOIDFORGE " + m + "of" + cos.length, "Policy: " + m + " of " + cos.length];
+  if(same) lines.push("Derivation: " + paths[0]);
+  lines.push("Format: " + (type === "ms-sh-wsh" ? "P2SH-P2WSH" : "P2WSH"), "");
+  for(let i = 0; i < cos.length; i++){
+    const c = cos[i], raw = await base58decode(c.key.str), xp = await base58check(Uint8Array.from([...NETS[c.key.net].ver.other, ...raw.slice(4)]));
+    if(!same) lines.push("Derivation: " + paths[i]);
+    lines.push(c.fp.toUpperCase() + ": " + xp);
+    if(!same) lines.push("");
+  }
+  return lines.join("\n").replace(/\n+$/, "") + "\n";
+}
+// Animated QR display. Every frame uses the QR version of the longest part (as Sparrow and Coldcard do), alphanumeric mode, level M.
+const ANIM_SIZES = {ur: [80, 200, 400], bbqr: [160, 480, 920]};
+let animTimer = null, animCtx = null;
+function animStop(){ if(animTimer) clearInterval(animTimer); animTimer = null; animCtx = null; }
+function animRender(){
+  if(!animCtx) return;
+  const c = animCtx, img = document.getElementById(c.prefix + "Img"), cnt = document.getElementById(c.prefix + "Count");
+  img.innerHTML = qrSvg(c.frames[c.i]);
+  cnt.textContent = c.frames.length > 1 ? "Part " + (c.i + 1) + " of " + c.frames.length + (c.paused ? " (paused)" : "") : "One QR code: no animation needed";
+}
+function animStart(prefix, parts, caption, ms){
+  animStop();
+  const up = parts.map(p => p.toUpperCase()), longest = up.reduce((a, b) => b.length > a.length ? b : a, "");
+  const ver = qrBuild({mode: "alnum", text: longest, level: "M"}).version;
+  animCtx = {prefix, frames: up.map(t => qrBuild({mode: "alnum", text: t, level: "M", minVer: ver}).rows), i: 0, paused: false, parts: up};
+  document.getElementById(prefix + "Cap").textContent = caption;
+  document.getElementById(prefix + "Box").style.display = "";
+  animRender();
+  if(up.length > 1) animTimer = setInterval(() => { if(animCtx && !animCtx.paused){ animCtx.i = (animCtx.i + 1) % animCtx.frames.length; animRender(); } }, ms);
+}
+function animPause(btn){ if(!animCtx) return; animCtx.paused = !animCtx.paused; btn.textContent = animCtx.paused ? "PLAY" : "PAUSE"; animRender(); }
+function animHide(prefix){ animStop(); const b = document.getElementById(prefix + "Box"); if(b) b.style.display = "none"; const i = document.getElementById(prefix + "Img"); if(i) i.textContent = ""; }
 // ---- Silent Payments (BIP352) ----
 // A Silent Payment address is "sp" (testnet "tsp") plus bech32m text of: version 0, the scan public key (33 bytes) and the spend public key (33 bytes).
 // Its length (about 116 characters) is allowed to exceed the usual bech32 limit of 90.
@@ -2495,17 +2743,23 @@ function qrRs(data,deg){
   return res;
 }
 function qrMatrix(text, forcedMask){ return qrBuild({mode:"byte", bytes:Array.from(new TextEncoder().encode(text)), level:"M"}, forcedMask); }
+const QR_ALNUM="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
 function qrBuild(spec, forcedMask){
-  const TBL=spec.level==="L"?QR_L:QR_M, eccBits=spec.level==="L"?1:0, numeric=spec.mode==="numeric";
-  const bytes=spec.bytes, digits=spec.digits;
-  const dataBits=numeric?Math.floor(digits.length/3)*10+[0,4,7][digits.length%3]:bytes.length*8;
+  const TBL=spec.level==="L"?QR_L:QR_M, eccBits=spec.level==="L"?1:0, numeric=spec.mode==="numeric", alnum=spec.mode==="alnum";
+  const bytes=spec.bytes, digits=spec.digits, text=spec.text;
+  if(alnum && [...text].some(ch=>QR_ALNUM.indexOf(ch)<0)) throw new Error("not QR alphanumeric text");
+  // character-count bits per mode and version band (v1-9, v10-26, v27-40); alphanumeric added in v2.6.0 for animated UR and BBQr frames
+  const cb=(v)=>numeric?(v<10?10:v<27?12:14):alnum?(v<10?9:v<27?11:13):(v<10?8:16);
+  const dataBits=numeric?Math.floor(digits.length/3)*10+[0,4,7][digits.length%3]:alnum?Math.floor(text.length/2)*11+(text.length%2)*6:bytes.length*8;
   let ver=0, cap=0;
-  for(let v=1;v<=Object.keys(TBL).length;v++){ const dc=TBL[v][1].reduce((s,[n,l])=>s+n*l,0); if(4+(numeric?(v<10?10:12):(v<10?8:16))+dataBits<=dc*8){ ver=v; cap=dc; break; } }
+  for(let v=spec.minVer||1;v<=Object.keys(TBL).length;v++){ const dc=TBL[v][1].reduce((s,[n,l])=>s+n*l,0); if(4+cb(v)+dataBits<=dc*8){ ver=v; cap=dc; break; } }
   if(!ver) throw new Error("Too long for a QR code");
   const bits=[]; const put=(val,len)=>{ for(let i=len-1;i>=0;i--) bits.push((val>>>i)&1); };
-  if(numeric){ put(1,4); put(digits.length,ver<10?10:12);
+  if(numeric){ put(1,4); put(digits.length,cb(ver));
     for(let i=0;i<digits.length;i+=3){ const g=digits.slice(i,i+3); put(parseInt(g,10),g.length===3?10:g.length===2?7:4); } }
-  else { put(4,4); put(bytes.length,ver<10?8:16); for(const b of bytes) put(b,8); }
+  else if(alnum){ put(2,4); put(text.length,cb(ver));
+    for(let i=0;i<text.length;i+=2){ const a=QR_ALNUM.indexOf(text[i]); if(i+1<text.length) put(a*45+QR_ALNUM.indexOf(text[i+1]),11); else put(a,6); } }
+  else { put(4,4); put(bytes.length,cb(ver)); for(const b of bytes) put(b,8); }
   put(0,Math.min(4,cap*8-bits.length)); while(bits.length%8) bits.push(0);
   for(let pad=0xec; bits.length<cap*8; pad^=0xec^0x11) put(pad,8);
   const data=[]; for(let i=0;i<bits.length;i+=8) data.push(parseInt(bits.slice(i,i+8).join(""),2));
@@ -3727,6 +3981,18 @@ async function psbtAddress(script, net){
   return "Unrecognized script: " + hex(script);
 }
 function psbtFromText(text){
+  // v2.6.0: QR text pasted from an animated QR (UR crypto-psbt, psbt or bytes; BBQr P, T or U), one part per line
+  const q=qrTextDecode(text);
+  if(q){
+    if(q.kind==="ur"){
+      if(!["crypto-psbt","psbt","bytes"].includes(q.type)) throw new Error("This UR is of type "+q.type+", not a PSBT (crypto-psbt).");
+      const r=cborRead(q.msg,0); if(!(r.v instanceof Uint8Array) || r.pos!==q.msg.length) throw new Error("This UR does not hold a PSBT.");
+      return r.v;
+    }
+    if(q.type==="P" || q.type==="T") return q.bytes;
+    if(q.type==="U") return psbtFromText(new TextDecoder().decode(q.bytes).replace(/^(ur:|B\$)/i,"x"));
+    throw new Error("This BBQr holds file type "+q.type+", not a PSBT (P) or a transaction (T).");
+  }
   const t=text.replace(/\s+/g,"");
   if(/^70736274ff/i.test(t) && /^[0-9a-f]+$/i.test(t) && t.length%2===0) return fromHex(t.toLowerCase());
   if(/^0[0-9a-f]000000/i.test(t) && /^[0-9a-f]+$/i.test(t) && t.length%2===0 && t.length>=20) return fromHex(t.toLowerCase()); // a raw transaction in hex
@@ -5624,7 +5890,7 @@ function msCosigner(k){ return "[" + k.fp + "/" + k.path + "]" + k.xpub; }
 function msUsePaste(){ if(!ms || ms.keys.length >= ms.n) return; ms.mode = "paste"; msRender(); msEl("msBox").open = true; try { msEl("msPaste").focus(); } catch(e) {} }
 function msUseMake(){ if(!ms) return; ms.mode = "make"; msRender(); }
 function msReset(){
-  ms = null; msHideQr();
+  ms = null; msHideQr(); animHide("msAnim");
   for(const id of ["msDescR","msDescC","msAddrs","msSlots","msRunErr","msBanErr","msErr"]) msEl(id).textContent = "";
   msEl("msPaste").value = ""; msEl("msPasteFp").value = "";
   msEl("msIntro").style.display = ""; msEl("msRun").style.display = "none"; msEl("msDone").style.display = "none"; msEl("msPasteBox").style.display = "none";
@@ -5737,6 +6003,28 @@ async function msFinish(){
   reveal(msEl("msDone"));
   msBanner();
 }
+// Animated multisig wallet QR (v2.6.0): UR crypto-output for Sparrow, SeedSigner and Nunchuk; BBQr text for Coldcard Q; UR bytes with the
+// Coldcard-style setup file for Keystone and Passport. All three carry only the public wallet description.
+let msAnimKind = "ur";
+async function msAnim(kind){
+  if(!ms.done) return;
+  if(kind) msAnimKind = kind;
+  const cos = ms.keys.map(k => ({fp: k.fp, path: k.path, key: k.key})), sz = parseInt(document.getElementById("msAnimSize").value, 10) || 0;
+  const test = ms.net === "test" ? " Testnet wallet." : "";
+  let parts, cap, rate = 200;
+  if(msAnimKind === "ur"){ parts = urEncode("crypto-output", cryptoOutputMultisig(ms.type, ms.m, cos, ms.net), ANIM_SIZES.ur[sz]); cap = "For Sparrow, SeedSigner and Nunchuk (UR crypto-output)." + test; }
+  else if(msAnimKind === "bbqr"){
+    const d = descriptorChecksum(ms.descR.replace(/#[a-z0-9]{8}$/, "").split("/0/*").join("/<0;1>/*"));
+    parts = bbqrEncode("U", new TextEncoder().encode(d), ANIM_SIZES.bbqr[sz]); cap = "For Coldcard Q (BBQr): the wallet descriptor as text." + test; rate = 250;
+  } else {
+    const t = await coldcardMultisigText(ms.type, ms.m, cos);
+    parts = urEncode("bytes", CB.bytes(Array.from(new TextEncoder().encode(t))), ANIM_SIZES.ur[sz]);
+    cap = "For Keystone and Passport (UR bytes): the Coldcard-style multisig setup file. SeedSigner reads it too, for up to 9 keys." + (ms.net === "test" ? " Keystone does not take testnet multisig wallets." : "");
+  }
+  animStart("msAnim", parts, cap + " Hold the screen in front of the device's camera until it has every part.", rate);
+  document.getElementById("msAnimPause").textContent = "PAUSE";
+}
+function msAnimSet(){ if(animCtx && animCtx.prefix === "msAnim") msAnim(); }
 function msCopy(btn, id){
   const t = msEl(id).textContent; if(!t) return;
   safeCopy(t).then(() => showCopied(btn)).catch(() => alert("Copy failed. Select the text and copy it manually."));
