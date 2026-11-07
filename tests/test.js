@@ -994,7 +994,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const homeless=['rolls','forgeBtn','phrase','psbtInput','cmpA','msN','about','beforeCard','disclaimer'].filter(id=>!tl.$(id).closest('.tabpanel')); ok(homeless.length===0,'feature inventory: every tool lives inside a tab'+(homeless.length?' ('+homeless.join(', ')+')':''));
       ok(['printOnly','printQr'].every(id=>!tl.$(id).closest('.tabpanel')),'printing works from any tab: the print sheets sit outside the tabs');
       const btns=[...tl.d.querySelectorAll('button')].filter(b=>!b.closest('.tabpanel')&&!b.closest('#startGate')&&!b.closest('#tabs')).map(b=>b.textContent.trim().replace(/\s+/g,' ')).sort().join('|');
-      eq(btns,['DARK','DOWNLOAD FOR USB','END SESSION','GUIDE ME','PRINT SEED','PRINT STAMP SHEET','TEXT A+','Read before real keys \u2192','Turn practice mode off'].sort().join('|'),'page frame holds exactly the top buttons, the notice link and the practice banner\'s off switch (v2.5.0; hidden unless practice mode is on)'); }
+      eq(btns,['DARK','DOWNLOAD FOR USB','END SESSION','GUIDE ME','PRINT SEED','PRINT STAMP SHEET','TEXT A+','Read before real keys \u2192','Turn practice mode off','IS ANYTHING WATCHING?','I FOUND A BITCOIN BACKUP','CHECK THE WORDS','OPEN THE WALLET DETECTIVE','CLOSE'].sort().join('|'),'page frame holds exactly the top buttons, the notice link, the practice banner\'s off switch (v2.5.0; hidden unless practice mode is on), and Heir mode with its three buttons and the watch check in the MENU (v2.8.0)'); }
     // the three warnings and the disclaimer moved to About, with their text intact
     ok(/AIR-GAPPED USE ONLY/.test(tl.$('tp-about').textContent)&&/not been independently audited/.test(tl.$('disclaimer').textContent)&&tl.$('beforeCard').querySelectorAll('.sg-item').length===3,'About & help holds the air-gap warning, the disclaimer and the three computer-memory warnings');
     ok(!tl.$('tp-make').contains(tl.$('about'))&&tl.$('tp-tools').contains(tl.$('cardMulti'))&&tl.$('tp-tools').contains(tl.$('cardTools'))&&tl.$('tp-check').contains(tl.$('cardCheck')),'each card sits in the right tab');
@@ -1571,7 +1571,6 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   { const t6=load({confirm:true}); await t6.ready(); const $=t6.$, w=t6.w; w.startGateClose();
     const {HDKey}=require('@scure/bip32'); const {mnemonicToSeedSync}=require('@scure/bip39'); const btc=require('@scure/btc-signer'); const zlib=require('zlib'), nc=require('crypto');
     const until=async(f)=>{ for(let k=0;k<120&&!f();k++) await new Promise(r=>setTimeout(r,50)); };
-    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.7.0','v2.7.0: the footer shows the new version');
     ok(html.indexOf('<li><b>2.6.0</b>')>0&&html.indexOf('<li><b>2.6.0</b>')<html.indexOf('<li><b>2.5.0</b>'),'v2.6.0: the changelog lists 2.6.0 first');
     // --- check an address before you pay ---
     const PAY=async(a,b)=>{ $('payA').value=a; $('payB').value=b; await w.payCompare(); return {st:$('payOut').textContent, cls:$('payOut').className, x:[...$('payDiff').children].map(r=>r.querySelectorAll('.pd-x').length)}; };
@@ -1779,6 +1778,115 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     // --- dictionary ---
     { const names=w.eval('DICT').map(e=>e[0]); ok(['Device dice check','Dice passphrase','Roll together','Decoy wallet'].every(n=>names.includes(n)),'dictionary: Device dice check, Dice passphrase, Roll together and Decoy wallet'); }
     r.w.close(); }
+  { // v2.8.0: Wallet Detective, Is anything watching this page?, Heir mode. Expected addresses from @scure and node's own PBKDF2.
+    const {mnemonicToSeedSync}=require('@scure/bip39'); const {HDKey}=require('@scure/bip32');
+    const {bech32,base58check,bech32m}=require('@scure/base'); const {ripemd160}=require('@noble/hashes/ripemd160'); const {sha256:nsha}=require('@noble/hashes/sha256');
+    const b58=base58check(nsha), h160=b=>ripemd160(nsha(b)), sleep=ms=>new Promise(x=>setTimeout(x,ms));
+    const enc=(type,pub,test)=>type==='wpkh'?bech32.encode(test?'tb':'bc',[0,...bech32.toWords(h160(pub))]):type==='pkh'?b58.encode(Uint8Array.of(test?0x6f:0,...h160(pub))):b58.encode(Uint8Array.of(test?0xc4:5,...h160(Uint8Array.of(0,20,...h160(pub)))));
+    const ref=(root,path,type,test)=>enc(type,root.derive(path).publicKey,test);
+    const bip=(m,p)=>HDKey.fromMasterSeed(mnemonicToSeedSync(m,p));
+    const elRoot=(m,saltPass)=>HDKey.fromMasterSeed(nc.pbkdf2Sync(Buffer.from(m),Buffer.from('electrum'+saltPass),2048,64,'sha512'));
+    const r=load(); await r.ready(); const $=r.$, w=r.w, AB='abandon '.repeat(11)+'about';
+    const EL_STD='cycle rocket west magnet parrot shuffle foot correct salt library feed song', EL_SW='bitter grass shiver impose acquire brush forget axis eager alone wine silver';
+    const DF=async(words,pass,addr)=>{ $('phrase').value=words; $('verifyPass').value=pass; $('detAddr').value=addr; await w.detFind(); return {st:$('detStatus').textContent, cls:$('detStatus').className, out:$('detOut').textContent, shown:$('detOut').style.display!=='none'}; };
+    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.8.0','v2.8.0: the footer shows the new version');
+    ok(html.indexOf('<li><b>2.8.0</b>')>0&&html.indexOf('<li><b>2.8.0</b>')<html.indexOf('<li><b>2.7.0</b>'),'v2.8.0: the changelog lists 2.8.0 first');
+    // --- Wallet Detective ---
+    ok(!$('detBtn').disabled&&!$('detListBtn').disabled&&$('detStop').disabled&&$('detBtn').className===''&&$('detListBtn').className==='secondary small','Wallet Detective: FIND MY WALLET is the gold main button, enabled after the self-test; LIST and STOP are grey');
+    { const pos=['addrCheckStatus','detBlock'].map(id=>html.indexOf('id="'+id+'"')); ok(pos[0]>0&&pos[1]>pos[0]&&$('detBlock').closest('#tp-check'),'Wallet Detective: in CHECK A BACKUP, after the address check'); }
+    let d=await DF(AB,'',ref(bip(AB,''),"m/0'/1/7",'wpkh'));
+    ok(d.cls==='status ok'&&d.shown&&d.out.startsWith('FOUND: '+ref(bip(AB,''),"m/0'/1/7",'wpkh')+" is change address #7 (m/0'/1/7) of these words, without a passphrase.")&&/derivation path m\/0'\./.test(d.out)&&/Apps that use these settings: BRD \(Breadwallet\) after it moved to SegWit, and BlueWallet's Breadwallet type\./.test(d.out),'Wallet Detective: finds a native SegWit change address on the old m/0\' path and names BRD and BlueWallet (address from @scure)');
+    ok(/script type|Script Type to Native Segwit \(P2WPKH\)/.test(d.out)&&/Mnemonic Words \(BIP39\)/.test(d.out)&&/if it is not m\/0', change it to m\/0' and press Import Custom Derivation Keystore; if it already is, press Import Keystore\. Then press Apply\./.test(d.out)&&!/Use passphrase\?/.test(d.out),'Wallet Detective: Sparrow steps with the exact labels, the custom derivation button, and no passphrase step without one');
+    d=await DF(AB,'',ref(bip(AB,''),"m/44'/0'/0'/0/3",'wpkh'));
+    ok(/receive address #3 \(m\/44'\/0'\/0'\/0\/3\)/.test(d.out)&&/Apps that use these settings: BitPay and Copay, which keep native SegWit wallets on the BIP44 path\./.test(d.out)&&!/unusual mix/.test(d.out),'Wallet Detective: a native SegWit address on the BIP44 path is BitPay/Copay (address from @scure)');
+    d=await DF(AB,'',ref(bip(AB,''),"m/84'/0'/0'/0/2",'sh-wpkh'));
+    ok(/receive address #2 \(m\/84'\/0'\/0'\/0\/2\)/.test(d.out)&&/This is an unusual mix: a nested SegWit \(3\.\.\.\) address on the BIP84 path\./.test(d.out)&&!/Apps that use these settings/.test(d.out)&&/Script Type to Nested Segwit \(P2SH-P2WPKH\)/.test(d.out),'Wallet Detective: an address type on a path no listed app uses is found and called an unusual mix');
+    d=await DF(AB,'Secret',ref(bip(AB,'Secret'),"m/49'/0'/0'/0/0",'sh-wpkh'));
+    ok(/receive address #0 \(m\/49'\/0'\/0'\/0\/0\) of these words, with the passphrase\./.test(d.out)&&/BIP39 seed words with the passphrase/.test(d.out)&&/tick Use passphrase\? and type the passphrase/.test(d.out)&&/Apps that use these settings: Sparrow, BlueWallet, Trezor Suite/.test(d.out),'Wallet Detective: with the passphrase, BIP49, and the Sparrow passphrase step');
+    d=await DF(AB,'Secret',ref(bip(AB,''),"m/44'/0'/0'/1/4",'pkh'));
+    ok(/change address #4 \(m\/44'\/0'\/0'\/1\/4\) of these words, without a passphrase\./.test(d.out)&&/It was found WITHOUT the passphrase you typed\. Leave the passphrase out in the wallet app\./.test(d.out),'Wallet Detective: tries without the typed passphrase too, and says so when that is the match');
+    d=await DF(AB,'',ref(bip(AB,''),"m/84'/0'/2147483646'/0/1",'wpkh'));
+    ok(/\(m\/84'\/0'\/2147483646'\/0\/1\)/.test(d.out)&&/Samourai Wallet and Ashigaru \(Whirlpool post-mix\), Sparrow \(Whirlpool\) and Passport \(post-mix\)/.test(d.out),'Wallet Detective: finds a Whirlpool post-mix address (address from @scure)');
+    d=await DF(AB,'',ref(bip(AB,''),"m/0/5",'pkh'));
+    ok(/\(m\/0\/5\)/.test(d.out)&&/Edge, for old Airbitz wallets/.test(d.out),'Wallet Detective: finds the root m/0/i path of old Airbitz wallets');
+    d=await DF(AB,'',ref(bip(AB,''),"m/84'/0'/0'/0/31",'wpkh'));
+    ok(/receive address #31 /.test(d.out)&&/It is address #31\. Many apps stop looking after 20 unused addresses in a row, so raise the app's gap limit \(in Sparrow: the Settings tab, Advanced\.\.\., Gap limit\)/.test(d.out),'Wallet Detective: address #31 is found and the gap limit is explained');
+    d=await DF(AB,'',ref(bip(AB,''),"m/84'/0'/2'/0/0",'wpkh'));
+    ok(/\(m\/84'\/0'\/2'\/0\/0\)/.test(d.out)&&/It is in account 2, not account 0\./.test(d.out),'Wallet Detective: finds account 2');
+    // Electrum seeds, with Electrum's own test wallets and a passphrase (Electrum lower-cases it; some apps use it as typed)
+    d=await DF(EL_STD,'','1KSezYMhAJMWqFbVFB2JshYg69UpmEXR4D');
+    ok(/change address #0 \(m\/1\/0\)/.test(d.out)&&/an Electrum seed \(not BIP39\), address type legacy \(1\.\.\.\), Electrum's own derivation/.test(d.out)&&/To open it in Electrum \(Sparrow and most other apps cannot open Electrum seeds\): File, New\/Restore, type a wallet name, Next, Standard wallet, I already have a seed, and type the words\.$/m.test(d.out),'Wallet Detective: an Electrum standard seed (Electrum test wallet) and the Electrum steps');
+    { const want=ref(elRoot(EL_SW,'my pass'),"m/0'/0/9",'wpkh'); d=await DF(EL_SW,'My  Pass ',want);
+      ok(/receive address #9 \(m\/0'\/0\/9\) of these words, with the passphrase\./.test(d.out)&&/press Options, tick “Extend this seed with custom words” and press OK; type the passphrase on the Seed Extension page \(Electrum ignores capital letters in it\)/.test(d.out)&&!/exactly as typed/.test(d.out),'Wallet Detective: an Electrum SegWit seed with a passphrase normalized as Electrum does (lower case, spaces collapsed; node PBKDF2 + @scure)'); }
+    { const want=ref(elRoot(EL_SW,'My Pass'),"m/0'/0/1",'wpkh'); d=await DF(EL_SW,'My Pass',want);
+      ok(/receive address #1 /.test(d.out)&&/It matched with the passphrase used exactly as typed/.test(d.out),'Wallet Detective: an Electrum seed whose passphrase was used as typed (as Sparrow imports it) is found and explained'); }
+    // refusals
+    d=await DF('','',ref(bip(AB,''),"m/84'/0'/0'/0/0",'wpkh')); ok(d.cls==='status bad'&&/^First type the seed words in the box at the top of CHECK A BACKUP\./.test(d.st)&&!d.shown,'Wallet Detective: asks for the words first');
+    d=await DF(AB,'',''); ok(d.cls==='status bad'&&/^Type one address this wallet received to, or press LIST FIRST ADDRESSES/.test(d.st),'Wallet Detective: asks for an address');
+    d=await DF(AB,'','bc1q'+'q'.repeat(58)); ok(/script address \(P2WSH\)/.test(d.st),'Wallet Detective: a multisig script address is refused with the reason');
+    { const a=ref(bip(AB,''),"m/84'/0'/0'/0/0",'wpkh'); d=await DF(AB,'',a.slice(0,-1)+(a.endsWith('q')?'p':'q')); ok(/typo/.test(d.st)&&d.cls==='status bad','Wallet Detective: an address with a typo is refused'); }
+    d=await DF(AB,'','73c5da0a'); ok(/not a key or a fingerprint/.test(d.st),'Wallet Detective: a fingerprint is not an address');
+    d=await DF('zoo '.repeat(19)+'zoo','',ref(bip(AB,''),"m/84'/0'/0'/0/0",'wpkh')); ok(/SLIP39 \(Shamir\) share of 20 words/.test(d.st),'Wallet Detective: 20 words are named as a SLIP39 share');
+    { const tf='ketchup cost faint boil dwarf occur clean category solve extend garlic miss';   // HMAC-SHA512('Seed version', words) starts with 101: a 2FA seed
+      d=await DF(tf,'',ref(bip(AB,''),"m/84'/0'/0'/0/0",'wpkh')); ok(/two-factor \(2FA\) seed/.test(d.st)&&/Restore 2FA wallet, Disable opens it without the TrustedCoin service/.test(d.st),'Wallet Detective: an Electrum two-factor seed is sent to Electrum'); }
+    // NOT FOUND, and the STOP button
+    d=await DF(AB,'',ref(bip(AB,''),"m/84'/0'/0'/0/150",'wpkh'));
+    ok(d.cls==='status bad'&&/^NOT FOUND in the settings of the well-known wallet apps \(accounts 0 to 9, the first 100 addresses of account 0, without a passphrase\)/.test(d.st)&&/Muun, Bitkey/.test(d.st)&&!d.shown,'Wallet Detective: NOT FOUND says what was searched and what else to check');
+    { $('detAddr').value=ref(bip(AB,''),"m/84'/0'/0'/0/150",'wpkh'); const p=w.detFind(); await sleep(300); ok($('detStop').disabled===false&&$('detBtn').disabled,'Wallet Detective: STOP is on and FIND is off while it searches'); w.detStop(); await p;
+      ok($('detStatus').textContent==='Stopped. Nothing was found before you stopped it.'&&!$('detBtn').disabled&&$('detStop').disabled,'Wallet Detective: STOP ends the search'); }
+    { $('detAddr').value=ref(bip(AB,''),"m/84'/0'/0'/0/150",'wpkh'); const p=w.detFind(); await sleep(300); $('phrase').value=AB+' '; $('phrase').dispatchEvent(new w.Event('input')); await p;
+      ok($('detStatus').textContent===''&&!$('detOut').textContent&&$('detAddr').value!==''&&!$('detBtn').disabled,'Wallet Detective: editing the words during a search stops it and leaves no old result'); }
+    // practice mode
+    w.practiceMode(true); d=await DF(AB,'',ref(bip(AB,''),"m/84'/0'/0'/0/0",'wpkh')); ok(/^Practice mode is on, so the Detective searches only test-network addresses/.test(d.st),'Wallet Detective: practice mode refuses a real address');
+    d=await DF(AB,'',ref(bip(AB,''),"m/84'/1'/0'/0/4",'wpkh',true)); ok(/receive address #4 \(m\/84'\/1'\/0'\/0\/4\)/.test(d.out),'Wallet Detective: practice mode finds a test-network address on coin type 1 (address from @scure)');
+    $('detAddr').value=''; await w.detList(); ok(/on the test network \(practice mode\)/.test($('detStatus').textContent)&&$('detOut').textContent.includes(ref(bip(AB,''),"m/84'/1'/0'/0/0",'wpkh',true))&&!/\bbc1|\n  [13]/.test($('detOut').textContent),'Wallet Detective: LIST in practice mode shows only test-network addresses');
+    w.practiceMode(false); ok($('detStatus').textContent===''&&!$('detOut').textContent,'Wallet Detective: turning practice mode off clears the result');
+    // LIST FIRST ADDRESSES
+    $('phrase').value=AB; $('verifyPass').value=''; $('detAddr').value=''; await w.detList();
+    { const o=$('detOut').textContent, R=bip(AB,'');
+      const want=[["m/84'/0'/0'/0/0",'wpkh'],["m/49'/0'/0'/0/0",'sh-wpkh'],["m/44'/0'/0'/0/0",'pkh'],["m/44'/0'/0'/0/0",'wpkh'],["m/0'/0/0",'pkh'],["m/0'/0/0",'wpkh'],["m/0/0",'pkh']].map(([p,t])=>ref(R,p,t));
+      ok(want.every(a=>o.includes('\n  '+a+'\n'))&&o.includes('bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr')&&!/Electrum seed/.test(o)&&/A watch-only wallet in Sparrow connected to your own node is more private\.$/.test(o)&&/^The first receive address of each common setting, without a passphrase\./.test($('detStatus').textContent),'Wallet Detective: LIST FIRST ADDRESSES gives the first address of each setting (from @scure; BIP86 from its test vector), no Electrum rows for a BIP39 phrase'); }
+    $('phrase').value=EL_SW; await w.detList(); ok($('detOut').textContent.includes("Electrum seed, SegWit, native SegWit (bc1q...), m/0'/0/0\n  bc1q3g5tmkmlvxryhh843v4dz026avatc0zzr6h3af")&&!/BIP84/.test($('detOut').textContent),'Wallet Detective: LIST for an Electrum seed shows the Electrum address (Electrum test wallet)');
+    // wipes
+    $('detAddr').value='x'; w.clearAll(); await sleep(20); ok(!$('detAddr').value&&!$('detOut').textContent&&!$('detStatus').textContent,'CLEAR ALL wipes the Wallet Detective');
+    // --- Is anything watching this page? ---
+    ok(!html.includes('<script id=')&&(html.match(/<script>/g)||[]).length===2&&(html.match(/<style>/g)||[]).length===1,'watch check: the page has exactly two scripts and one style sheet, which it knows as its own');
+    { const own=w.eval('VF_OWN_DATA'), names=w.eval('WATCH_NAMES'), found=new Set();
+      for(const m of html.matchAll(/data-([a-z0-9][a-z0-9-]*)/g)) if(!names.some(([re])=>re.test('data-'+m[1]))) found.add(m[1]);
+      for(const m of html.matchAll(/dataset\.([a-zA-Z]+)/g)) found.add(m[1].replace(/[A-Z]/g,c=>'-'+c.toLowerCase()));
+      const miss=[...found].filter(x=>!own.includes(x)); ok(miss.length===0,'watch check: VF_OWN_DATA lists every data- attribute the page uses'+(miss.length?' (missing: '+miss.join(', ')+')':'')); }
+    { const signs=w.watchSigns(); ok(signs.length===0&&$('watchWarn').style.display!=='block','watch check: after using the Detective, the wallet view and the lists, the page itself leaves no sign'+(signs.length?' (got: '+signs.join(' | ')+')':'')); }
+    w.watchCheck(); ok($('watchStatus').textContent==='NO SIGN FOUND of extensions, translators or other scripts on this page right now.'&&/^That does not make it safe\. This check can only find signs\./.test($('watchOut').textContent)&&!/\bis safe\b|\bsafe\./i.test($('watchStatus').textContent),'watch check: with no sign it says NO SIGN FOUND and that this does not make it safe');
+    $('menuBox').open=true; $('watchMenuBtn').click(); ok(!$('menuBox').open&&!$('tp-about').classList.contains('tab-off')&&$('watchStatus').textContent!=='','watch check: the MENU button opens ABOUT & HELP and runs the check');
+    r.w.close(); }
+  { // watch check with simulated extensions: each sign is named, the banner shows, and a removed script is still remembered
+    const sleep=ms=>new Promise(x=>setTimeout(x,ms)); const T=async(f)=>{ const t=load(); await t.ready(); f(t.w,t.d,t.$); await sleep(450); const s=t.w.watchSigns(), b=t.$('watchWarn'); const res={s:s.join('\n'), banner:b.style.display==='block', btxt:b.textContent, t}; return res; };
+    let x=await T((w,d,$)=>{ $('phrase').setAttribute('data-gramm','false'); d.body.appendChild(d.createElement('grammarly-extension')); });
+    ok(/An attribute data-gramm on the page, as Grammarly \(a writing assistant\) adds\./.test(x.s)&&/An element <grammarly-extension> that this page never makes/.test(x.s)&&x.banner&&/^Something else may be reading or changing this page\. An attribute data-gramm .* \(and 1 more sign\) Browser extensions can read everything typed here, including seed words\. WHAT TO DO$/.test(x.btxt),'watch check: a writing assistant\'s attribute and element are found and the warning shows at the top');
+    x.t.$('watchWarn').querySelector('button').click(); ok(/^2 SIGNS FOUND/.test(x.t.$('watchStatus').textContent)&&/private window with every extension turned off/.test(x.t.$('watchOut').textContent)&&/can never show that nothing is watching/.test(x.t.$('watchOut').textContent),'watch check: WHAT TO DO lists the signs, the fix and the limits'); x.t.w.close();
+    x=await T((w,d)=>{ const s=d.createElement('script'); s.src='chrome-extension://abc/inject.js'; d.head.appendChild(s); s.remove(); w.ethereum={}; });
+    ok(/A script this page does not have \(from chrome-extension:\/\/abc\/inject\.js\)\. It was added and then removed again\./.test(x.s)&&/an object named “ethereum”, which crypto wallet extensions \(such as MetaMask\) add/.test(x.s),'watch check: a script added and removed at once, and a wallet extension object, are found'); x.t.w.close();
+    x=await T((w,d)=>{ d.documentElement.classList.add('translated-ltr'); d.documentElement.lang='de'; const f=d.createElement('font'); f.textContent='Hallo'; d.body.appendChild(f); });
+    ok(/The page was translated \(its language is now “de”\)/.test(x.s)&&/Text wrapped in <font> tags, as page translators do\./.test(x.s),'watch check: translation is found'); x.t.w.close();
+    x=await T((w,d)=>{ d.body.appendChild(d.createElement('iframe')); const st=d.createElement('style'); st.className='darkreader'; d.head.appendChild(st); const l=d.createElement('link'); l.rel='stylesheet'; l.href='https://x.example/a.css'; d.head.appendChild(l); d.body.appendChild(d.createElement('div')).attachShadow({mode:'open'}); d.body.setAttribute('data-darkreader-mode','dynamic'); });
+    ok(/A frame or embedded object \(<iframe>\)/.test(x.s)&&/A style sheet this page does not have \(class darkreader\)/.test(x.s)&&/A link to a file outside this page \(https:\/\/x\.example\/a\.css\)/.test(x.s)&&/An element with its own hidden content \(<div>\)/.test(x.s)&&/data-darkreader-mode on the page, as Dark Reader/.test(x.s),'watch check: frames, style sheets, outside links, hidden content and a restyler are found'); x.t.w.close();
+    x=await T((w,d,$)=>{ $('verifyPass').setAttribute('data-unknown-helper','1'); Object.defineProperty(w.navigator,'webdriver',{configurable:true,get:()=>true}); });
+    ok(/An attribute data-unknown-helper that this page never sets, probably added by a browser extension\./.test(x.s)&&/controlled by automation software/.test(x.s),'watch check: an unknown attribute and automation are found'); x.t.w.close();
+    x=await T((w)=>{ for(let i=0;i<500;i++) w.document.body.appendChild(w.document.createElement('x-y')); });
+    ok(x.t.w.vfWatchSeen.length<=200,'watch check: the early notes are capped at 200'); x.t.w.close(); }
+  { // Heir mode
+    const t=load(); await t.ready(); const $=t.$, w=t.w;
+    ok($('heirCard').style.display==='none'&&$('heirBtn').getAttribute('aria-expanded')==='false'&&$('heirBtn').className==='small'&&$('heirNew').closest('header'),'Heir mode: a gold I FOUND A BITCOIN BACKUP button under the title; the help is closed at first');
+    $('heirBtn').click(); ok($('heirCard').style.display===''&&$('heirBtn').getAttribute('aria-expanded')==='true','Heir mode: the button opens the help');
+    const tx=$('heirCard').textContent.replace(/\s+/g,' ');
+    ok(/You found a Bitcoin backup\. Take your time\./.test(tx)&&/Nothing here is urgent\./.test(tx)&&/Never give them to anyone/.test(tx)&&/12 or 24 words/.test(tx)&&/multisig/.test(tx)&&/xpub, ypub or zpub/.test(tx)&&/VOIDFORGE BACKUP PLAN sheet/.test(tx)&&/Recovery services/.test(tx)&&/Nobody genuine will ever ask for the words/.test(tx)&&/An estate lawyer needs to know the wallet exists, never the words\./.test(tx),'Heir mode: what each backup is, the steps, and the scam warnings');
+    ok(/#heirCard \{ font-size: 18px; line-height: 1\.6; \}/.test(html),'Heir mode: large text');
+    [...$('heirCard').querySelectorAll('button')].find(b=>b.textContent==='OPEN THE WALLET DETECTIVE').click(); ok(!$('tp-check').classList.contains('tab-off'),'Heir mode: OPEN THE WALLET DETECTIVE goes to CHECK A BACKUP');
+    [...$('heirCard').querySelectorAll('button')].find(b=>b.textContent==='CHECK THE WORDS').click(); ok(!$('tp-check').classList.contains('tab-off'),'Heir mode: CHECK THE WORDS goes to CHECK A BACKUP');
+    [...$('heirCard').querySelectorAll('button')].find(b=>b.textContent==='CLOSE').click(); ok($('heirCard').style.display==='none'&&$('heirBtn').getAttribute('aria-expanded')==='false','Heir mode: CLOSE hides it');
+    ok(/Family: open voidforge\.html, press I FOUND A BITCOIN BACKUP\./.test(html),'Heir mode: the printed backup plan points family to it');
+    { const names=w.eval('DICT').map(e=>e[0]); ok(['Browser extension','Heir mode','Wallet Detective'].every(n=>names.includes(n)),'dictionary: Browser extension, Heir mode and Wallet Detective'); }
+    w.close(); }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
 

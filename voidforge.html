@@ -6,12 +6,12 @@
 <meta name="referrer" content="no-referrer">
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script id="vfBoot">
+<script>
 // v2.8.0 "Is anything watching this page?": from the very start, note elements this page never makes itself (other scripts, frames,
 // style sheets, custom elements, <font> from translators) and data- attributes it never sets, even ones removed again at once.
 // watchSigns() in the main script reads them. VF_OWN_DATA: every data- attribute name the page itself uses (checked by the tests).
 var VF_OWN_DATA = ["1p-ignore", "addr", "bwignore", "c", "form-type", "g", "gs", "lpignore", "m", "meta", "method", "n", "net", "s", "seed", "tab", "text", "tip", "v", "w"];
-window.vfWatchSeen = [];
+window.vfWatchSeen = []; window.vfOwnEls = [document.currentScript];
 try {
   new MutationObserver(function(rs){
     var seen = window.vfWatchSeen, hit = false;
@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20x%3D%222%22%20y%3D%222%22%20width%3D%2260%22%20height%3D%2260%22%20rx%3D%2214%22%20fill%3D%22%23E3B83F%22%2F%3E%3Ccircle%20cx%3D%2218%22%20cy%3D%2218%22%20r%3D%225.6%22%20fill%3D%22%231E2124%22%2F%3E%3Ccircle%20cx%3D%2246%22%20cy%3D%2218%22%20r%3D%225.6%22%20fill%3D%22%231E2124%22%2F%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2232%22%20r%3D%225.6%22%20fill%3D%22%231E2124%22%2F%3E%3Ccircle%20cx%3D%2218%22%20cy%3D%2246%22%20r%3D%225.6%22%20fill%3D%22%231E2124%22%2F%3E%3Ccircle%20cx%3D%2246%22%20cy%3D%2246%22%20r%3D%225.6%22%20fill%3D%22%231E2124%22%2F%3E%3C%2Fsvg%3E">
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACfklEQVR4AcSWQWsTQRTH31uDVotgFCotbP0Agh5EUHBTpWiS3jx5Uyl+jrTNp/BQ1KOeRBCTqMWmOYkIInjXLggpSANa2152uu9tJ8zuzqS7kzZdeMzMm/f+/18S3hIHjvlJAWx+un3Ob3pL641Sy2+Wun5zRgwXpW6k5S2RdvLzxgD81kz1727wA8CpIeI9AJyAoR+ciLScGmmThyrZB1hveGUQ8A4Bp9SCw9yzduihQjDAr7e3ioD4/DDNBmkJIZb95s3zVMMAJwr4KKSbpMQoIvSaQig8JC8GCABv0EGNkBJan7egtvyH48OX/+q1cZ+1T3oyAIo0wKuVLai/6MHK1x2OxWeb8PLjP6OxvMjaJz0ZABAuSQG5dr5vy21/1eX6l/sbXY0uJz0jgP3mg5aTBTyoRHs/qM8I4F05nRLzro6lcslE3j4jwIPZcVicL8LstTEO2t8vjSf9Uue8fUaA8O0Fd6+fgfqTCxy0p1zKMZGgGqrN2mcESOjGjllHLdZkOFgBZB01g2csbQWgGytdLuZkOFgB6LQGjZquXuasAPKOmjTTrVYAeUdNZyxzVgB5R02a6VYjgO2o5e0zAtiOWt4+I4BurHS55Neqq9HlZJ8RQBaoq+2oDepjAAHQVY1obztqWfukJwOgEN/IVA3bUcvaJz0ZIPx3kgKwHbXMfQjsyQAF4TwVAD0Y0UNe5El2DDBZXf2JAuYpMZoIHpMneTEAbdxq+3X4U8wJEL/pfBTB2ghz05XOG6nfB6CEW243zp5yLgME9fCN9h5AbFB+uBAbkVZQJ23yUPViAHRRvLPacyudhenqWtmtrF10K20cJkgj0uoskDZ5qLEHAAD//yDMfCUAAAAGSURBVAMAsot8UASYfhAAAAAASUVORK5CYII=">
 
-<style id="vfStyle">
+<style>
   :root {
     --bg: #07070b;
     --surface: #12121a;
@@ -440,6 +440,18 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   #guidePanel { display: none; margin: 10px 0 14px; background: var(--surface2); border: 1px solid var(--accent); border-radius: 12px; padding: 12px 14px; }
   body.guided #guidePanel { display: block; }
   body.guided #guideNew { display: none; }
+  /* v2.8.0 Heir mode: a calm front door in large text for someone who found a Bitcoin backup */
+  #heirNew { text-align: center; font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+  #heirNew button { margin-left: 6px; }
+  body.guided #heirNew { display: none; }
+  #heirCard { font-size: 18px; line-height: 1.6; }
+  #heirCard h2 { font-size: 24px; line-height: 1.3; }
+  #heirCard ol.heir-steps { margin: 12px 0 0 1.4em; }
+  #heirCard ol.heir-steps > li { margin: 0 0 14px; }
+  #heirCard ul { margin: 6px 0 0 1.2em; }
+  #heirCard ul li { margin: 0 0 6px; }
+  #heirCard .btn-row { margin-top: 8px; }
+  #heirCard .heir-scam { border: 1px solid var(--bad-text); border-left-width: 4px; border-radius: 8px; padding: 10px 14px; margin-top: 8px; }
   #guidePanel .gtop { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
   #guidePanel .gtitle { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
   #guidePanel h3 { font-size: 17px; margin: 4px 0 6px; }
@@ -877,8 +889,8 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
 <button class="size-btn" id="sizeBtn" onclick="toggleSize()" aria-pressed="false">TEXT A+</button>
 <button class="print-btn" onclick="printSeed()">PRINT SEED</button>
 <button class="print-btn" id="stampBtn" onclick="printStamp()">PRINT STAMP SHEET</button>
-<button class="theme-toggle" onclick="toggleTheme()">DARK</button>
 <button class="secondary small" id="watchMenuBtn" onclick="document.getElementById('menuBox').open = false; watchCheck(true)">IS ANYTHING WATCHING?</button>
+<button class="theme-toggle" onclick="toggleTheme()">DARK</button>
 <button class="btn-clear" id="endSessionBtn" onclick="endSession()">END SESSION</button>
 </div></details>
 </div>
@@ -898,10 +910,47 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   </div>
   <header>
     <div id="guideNew">New here? Open MENU at the top and press GUIDE ME to be walked through making a seed one screen at a time.</div>
+    <div id="heirNew">Found someone&rsquo;s Bitcoin backup? <button type="button" id="heirBtn" class="small" onclick="heirOpen()" aria-expanded="false" aria-controls="heirCard">I FOUND A BITCOIN BACKUP</button></div>
   </header>
 
   
   <div class="strip" id="strip"><b>Educational, not independently audited.</b> <span>Use an offline computer, write seeds on paper, start with a small amount.</span> <button type="button" class="linklike" onclick="showTab('about','beforeCard')">Read before real keys &rarr;</button></div>
+  <div class="card" id="heirCard" style="display:none;" role="region" aria-labelledby="heirTitle">
+    <h2 id="heirTitle">You found a Bitcoin backup. Take your time.</h2>
+    <p>Nothing here is urgent. Bitcoin does not expire, and nobody can take it while the backup stays private. Go slowly, one step at a time, and do not let anyone rush you. This page works offline and sends nothing anywhere.</p>
+    <ol class="heir-steps">
+      <li><b>Keep it private.</b> Do not type the words into a website, an app or a phone, and do not photograph them. Never give them to anyone: no real company, exchange, lawyer or support person ever needs them. Anyone who asks for them, or offers to recover the money for a fee, is a thief.</li>
+      <li><b>What do you have?</b>
+        <ul>
+          <li><b>12 or 24 words</b> (sometimes 15, 18 or 21): a seed phrase, also called a recovery phrase. The words are the wallet.</li>
+          <li><b>Words plus another word or sentence</b>, called a passphrase or 25th word: both are needed, exactly as written (capital letters and spaces count).</li>
+          <li><b>A metal plate or cards</b> with words or their first letters: the same words, stamped so they survive fire and water.</li>
+          <li><b>A small device</b> (Trezor, Ledger, Coldcard, BitBox, Jade and others): a hardware wallet. It needs its PIN; the words written for it open the wallet without the device.</li>
+          <li><b>Several sets of words, or a note like &ldquo;2 of 3&rdquo; or &ldquo;multisig&rdquo;</b>: a multisig wallet. It needs more than one set of words plus the wallet&rsquo;s setup file (a descriptor). Set up a multisig wallet, in EXTRA TOOLS, explains it.</li>
+          <li><b>A long code starting with xpub, ypub or zpub</b>: a watch-only key. It shows the balance but cannot spend.</li>
+          <li><b>A code starting with bc1, 1 or 3</b>: an address. It shows where money was received; it cannot spend.</li>
+          <li><b>A code that starts with 5, K or L, or with xprv</b>: a private key, as on an old paper wallet. Treat it like the words.</li>
+          <li><b>A VOIDFORGE BACKUP PLAN sheet</b>: it says where the copies are, what wallet app was used and who can help. It holds no words.</li>
+        </ul>
+      </li>
+      <li><b>Check that the words are complete and right.</b> VERIFY says whether they make a valid backup, and its fingerprint is the wallet&rsquo;s name tag. If a word is missing, wrong or hard to read, Reforge (in EXTRA TOOLS) can often find it.
+        <div class="btn-row"><button type="button" onclick="heirGo('check', 'phrase')">CHECK THE WORDS</button></div></li>
+      <li><b>Find the wallet.</b> If the right words open an empty wallet, the app may be looking in the wrong place. If you know one address the wallet used (from old emails, statements or exchange withdrawals), the Wallet Detective finds which app made it and how to open it.
+        <div class="btn-row"><button type="button" onclick="heirGo('check', 'detBlock')">OPEN THE WALLET DETECTIVE</button></div></li>
+      <li><b>See the balance without risk.</b> After VERIFY, Open this wallet shows the addresses and the watch-only key (zpub). Put that key into a watch-only wallet on another device, such as Sparrow or BlueWallet: it shows the balance, and the words never touch an online device.</li>
+      <li><b>Move the money only when you are ready</b> (and, for an inheritance, after legal advice). Install a well-known wallet app from its own website, or use a hardware wallet, restore the words there, send a small test amount first, and keep the words private until everything is moved.</li>
+    </ol>
+    <div class="heir-scam"><b>Scam warnings.</b>
+      <ul>
+        <li>Nobody genuine will ever ask for the words, the passphrase or a photo of them.</li>
+        <li>&ldquo;Recovery services&rdquo; and &ldquo;support agents&rdquo; who contact you first are thieves, however official they look.</li>
+        <li>Fake wallet apps copy real names. Install apps only from the maker&rsquo;s own website, never from a link someone sent you.</li>
+        <li>Never type the words into a website, even one that says it checks them.</li>
+        <li>Ask people you already trust for help, not people who found you. An estate lawyer needs to know the wallet exists, never the words.</li>
+      </ul>
+    </div>
+    <div class="btn-row" style="margin-top:12px;"><button type="button" class="secondary small" onclick="heirClose()">CLOSE</button></div>
+  </div>
   <div class="tabs" id="tabs" role="tablist" aria-label="Sections">
     <button type="button" role="tab" id="tab-make" aria-controls="tp-make" aria-selected="true" data-tab="make" aria-label="MAKE A SEED"><span class="lg">MAKE A SEED</span><span class="sh">MAKE</span><small>new wallet words from dice or coins</small></button>
     <button type="button" role="tab" id="tab-check" aria-controls="tp-check" aria-selected="false" tabindex="-1" data-tab="check" aria-label="CHECK A BACKUP"><span class="lg">CHECK A BACKUP</span><span class="sh">CHECK</span><small>words, address or key you already have</small></button>
@@ -1733,6 +1782,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details>
       <summary>Changelog</summary>
       <ul>
+        <li><b>2.8.0</b> &mdash; <b>Find a wallet, spot a watcher, help an heir.</b> (1) <b>Wallet Detective</b> (CHECK A BACKUP, My wallet shows zero): when the right words open an empty wallet, type one address the wallet received to and FIND MY WALLET tries the settings of well-known wallet apps (BIP84, BIP86, BIP49 and BIP44 with accounts 0 to 9, older m/0&#39; and m/ paths, Samourai&rsquo;s Whirlpool and Ricochet accounts, mixed address types some apps use, Electrum&rsquo;s own seeds, with and without the passphrase) until it matches, then names the apps that use those settings and the steps to open it in Sparrow or Electrum. LIST FIRST ADDRESSES shows the first address of each setting, to look up on another device. It never looks up a balance. (2) <b>Is anything watching this page?</b> (ABOUT &amp; HELP and MENU): looks for the signs browser extensions, translators and other scripts leave on the page, from the moment it opens, and shows a warning at the top when it finds one. It says &ldquo;no sign found&rdquo;, never &ldquo;safe&rdquo;. (3) <b>Heir mode</b> (I FOUND A BITCOIN BACKUP, under the title): calm, step-by-step help in large text for someone who found a Bitcoin backup: what each kind of backup is, checking the words, finding the wallet, seeing the balance without risk, moving it later, and the scams that target heirs. The printed backup plan points family to it. New dictionary entries: Browser extension, Heir mode and Wallet Detective. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.7.0</b> &mdash; <b>Dice and passphrase.</b> (1) <b>Check your device&rsquo;s dice</b> (EXTRA TOOLS): type throwaway test rolls and see the words a SeedSigner, Coldcard or Keystone must show for them, by each device&rsquo;s own dice rules, and its first receive address. If the device shows other words although the rolls and its dice rules are the same, its dice seeds cannot be trusted. BitBox02 takes no dice, so you restore the test words on it and compare the address. PRINT TEST CARD prints public test rolls with the words each device must make. Test rolls and their words are not secret: reset the device before making your real wallet. (2) <b>Make a passphrase from dice</b> (Passphrase and note): new rolls, never the seed&rsquo;s own, become a passphrase of 6 or 8 BIP39 words (66 or 88 bits), hashed with SHA-256 as for the seed, and the rolls make it again, so they are kept with it, never with the seed rolls; USE AS PASSPHRASE puts it in both passphrase boxes. (3) <b>Two wallets side by side</b> (Open this wallet): with a passphrase, the wallet without it and the wallet with it, each with its fingerprint and first address, and a plain word on decoy wallets. (4) <b>Roll together</b> (Make a seed): how two people, or two dice, make one seed, and why each die should roll the full count. New dictionary entries: Device dice check, Dice passphrase and Roll together. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.6.0</b> &mdash; <b>Animated QR codes, older wallets, and checks before you pay.</b> (1) <b>Animated QR for a multisig wallet</b> (Multisig wallet): no one format reaches every device, so pick yours: UR crypto-output for Sparrow, SeedSigner and Nunchuk; BBQr for Coldcard Q; or UR bytes carrying the Coldcard-style setup file for Keystone and Passport. Three frame sizes, and PAUSE. Public keys only. (2) The <b>Transaction inspector</b> also reads the text of an animated QR code pasted as parts (UR crypto-psbt or BBQr), one part per line. (3) <b>Open this wallet</b> takes a <b>custom account path</b> (such as m/0&#39; for some older apps), and <b>Or open a private key, read only</b> opens an xprv, yprv or zprv (or tprv, uprv, vprv), a WIF key or a Casascius mini key to show which addresses it controls. It never signs; the key is wiped by CLEAR ALL, auto-clear and END SESSION, and in practice mode only test-network keys open. (4) <b>Check an address before you pay</b> (CHECK A BACKUP, under Explain an address): compares the address you are about to pay with the one you were given, character by character, and warns when only the start and the end match, as in address poisoning and clipboard-swap scams. (5) <b>What will spending cost later?</b> (EXTRA TOOLS): the size and the fee of spending many small deposits, by address type. (6) <b>Fixes</b>: CLEAR ALL now also wipes the Reforge boxes, the words or passphrase Reforge found, and the practice words box. In practice mode COPY ADDRESS copies the test-network address, and VERIFY checks a recorded first address on its own network (a bc1q address against the real one, a tb1q address against the test-network one). A seed file saved from Word draw says the words were drawn by hand and gives the coin flips, not what was in the rolls box. CHECK ADDRESS and Try accounts 0 to 20 say when an address is a multisig script address (P2WSH) instead of searching for it. The passphrase and private key boxes ask password-manager extensions not to save them. New dictionary entries: Address poisoning, Animated QR, BBQr, Custom derivation path and UR. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.5.0</b> &mdash; <b>Plan your backup, practise safely, and take a wallet to another app.</b> (1) <b>Backup plan and stress test</b> (CHECK A BACKUP): list where each copy of the words is kept, how the passphrase is kept and who can help. VOIDFORGE then walks through a fire, a burglary, a death, a forgotten passphrase and a lost device, says for each whether the money stays safe, is lost or is open to a thief, and how to fix it. PRINT BACKUP PLAN adds the next yearly check-up date and a 5-minute check-up routine, and refuses to print anything that looks like seed words or a key. PLAN WHERE THE COPIES GO in the backup checklist opens it. (2) <b>Wallet birthday</b>: the date a seed is made is printed on the summary sheet, and can be added to the recovery sheet and the plan. (3) <b>Practice mode</b> (Practise making a backup): every address and key on the page moves to the test network, the network menus stay on Testnet, a banner says so, printed address sheets say TESTNET (seed backups print as usual), and OPEN A PRACTICE WALLET opens a public practice phrase for trying out test coins. VERIFY says when words are one of these public practice phrases. (4) <b>SAVE WATCH-ONLY FILE</b> (Watch-only wallet): a text file with the public descriptors that Sparrow opens directly, plus the separate descriptors for Bitcoin Core, the account key for Electrum, the first addresses and the birthday. (5) A warning under the passphrase boxes in Make a seed and Check a backup when the passphrase starts or ends with a space, or has two spaces in a row, an invisible character, a tab or a line break: a passphrase is used exactly as typed. (6) Seed words and other secrets on the screen can no longer be highlighted, so they are not copied by accident. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
@@ -1800,7 +1850,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   </div>
 
   <footer>
-    <div class="ft-name">VOIDFORGE <span>v2.7.0</span></div>
+    <div class="ft-name">VOIDFORGE <span>v2.8.0</span></div>
     <div class="ft-line"><span>SHA-256 of your rolls &rarr; BIP39</span><span>Same method as SeedSigner and Coldcard</span><span>gitlab.com/random21m/voidforge</span></div>
   </footer>
 </div>
@@ -1816,8 +1866,10 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
 <button type="button" class="sg-go" id="sgGo" onclick="startGateClose()">I understand, let's go</button>
 <p class="sg-foot">Practising with a test seed? Nothing here applies. For real money, start with a small amount. Offline, this shows once in each browser tab; online, every time the page opens. END SESSION in the MENU wipes the page and shows it again.</p></div></div>
 
-<script id="vfMain">
+<script>
 let guideOn = false, guideN = 1, ms = null;
+// v2.8.0: this page's own script and style sheet, so "Is anything watching this page?" does not count them (see watchElSign).
+if(window.vfOwnEls){ window.vfOwnEls.push(document.currentScript); const st0 = document.head.querySelector("style"); if(st0 && /--bg: #07070b/.test(st0.textContent)) window.vfOwnEls.push(st0); }
 const WORDLIST = ["abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident","account","accuse","achieve","acid","acoustic","acquire","across","act","action","actor","actress","actual","adapt","add","addict","address","adjust","admit","adult","advance","advice","aerobic","affair","afford","afraid","again","age","agent","agree","ahead","aim","air","airport","aisle","alarm","album","alcohol","alert","alien","all","alley","allow","almost","alone","alpha","already","also","alter","always","amateur","amazing","among","amount","amused","analyst","anchor","ancient","anger","angle","angry","animal","ankle","announce","annual","another","answer","antenna","antique","anxiety","any","apart","apology","appear","apple","approve","april","arch","arctic","area","arena","argue","arm","armed","armor","army","around","arrange","arrest","arrive","arrow","art","artefact","artist","artwork","ask","aspect","assault","asset","assist","assume","asthma","athlete","atom","attack","attend","attitude","attract","auction","audit","august","aunt","author","auto","autumn","average","avocado","avoid","awake","aware","away","awesome","awful","awkward","axis","baby","bachelor","bacon","badge","bag","balance","balcony","ball","bamboo","banana","banner","bar","barely","bargain","barrel","base","basic","basket","battle","beach","bean","beauty","because","become","beef","before","begin","behave","behind","believe","below","belt","bench","benefit","best","betray","better","between","beyond","bicycle","bid","bike","bind","biology","bird","birth","bitter","black","blade","blame","blanket","blast","bleak","bless","blind","blood","blossom","blouse","blue","blur","blush","board","boat","body","boil","bomb","bone","bonus","book","boost","border","boring","borrow","boss","bottom","bounce","box","boy","bracket","brain","brand","brass","brave","bread","breeze","brick","bridge","brief","bright","bring","brisk","broccoli","broken","bronze","broom","brother","brown","brush","bubble","buddy","budget","buffalo","build","bulb","bulk","bullet","bundle","bunker","burden","burger","burst","bus","business","busy","butter","buyer","buzz","cabbage","cabin","cable","cactus","cage","cake","call","calm","camera","camp","can","canal","cancel","candy","cannon","canoe","canvas","canyon","capable","capital","captain","car","carbon","card","cargo","carpet","carry","cart","case","cash","casino","castle","casual","cat","catalog","catch","category","cattle","caught","cause","caution","cave","ceiling","celery","cement","census","century","cereal","certain","chair","chalk","champion","change","chaos","chapter","charge","chase","chat","cheap","check","cheese","chef","cherry","chest","chicken","chief","child","chimney","choice","choose","chronic","chuckle","chunk","churn","cigar","cinnamon","circle","citizen","city","civil","claim","clap","clarify","claw","clay","clean","clerk","clever","click","client","cliff","climb","clinic","clip","clock","clog","close","cloth","cloud","clown","club","clump","cluster","clutch","coach","coast","coconut","code","coffee","coil","coin","collect","color","column","combine","come","comfort","comic","common","company","concert","conduct","confirm","congress","connect","consider","control","convince","cook","cool","copper","copy","coral","core","corn","correct","cost","cotton","couch","country","couple","course","cousin","cover","coyote","crack","cradle","craft","cram","crane","crash","crater","crawl","crazy","cream","credit","creek","crew","cricket","crime","crisp","critic","crop","cross","crouch","crowd","crucial","cruel","cruise","crumble","crunch","crush","cry","crystal","cube","culture","cup","cupboard","curious","current","curtain","curve","cushion","custom","cute","cycle","dad","damage","damp","dance","danger","daring","dash","daughter","dawn","day","deal","debate","debris","decade","december","decide","decline","decorate","decrease","deer","defense","define","defy","degree","delay","deliver","demand","demise","denial","dentist","deny","depart","depend","deposit","depth","deputy","derive","describe","desert","design","desk","despair","destroy","detail","detect","develop","device","devote","diagram","dial","diamond","diary","dice","diesel","diet","differ","digital","dignity","dilemma","dinner","dinosaur","direct","dirt","disagree","discover","disease","dish","dismiss","disorder","display","distance","divert","divide","divorce","dizzy","doctor","document","dog","doll","dolphin","domain","donate","donkey","donor","door","dose","double","dove","draft","dragon","drama","drastic","draw","dream","dress","drift","drill","drink","drip","drive","drop","drum","dry","duck","dumb","dune","during","dust","dutch","duty","dwarf","dynamic","eager","eagle","early","earn","earth","easily","east","easy","echo","ecology","economy","edge","edit","educate","effort","egg","eight","either","elbow","elder","electric","elegant","element","elephant","elevator","elite","else","embark","embody","embrace","emerge","emotion","employ","empower","empty","enable","enact","end","endless","endorse","enemy","energy","enforce","engage","engine","enhance","enjoy","enlist","enough","enrich","enroll","ensure","enter","entire","entry","envelope","episode","equal","equip","era","erase","erode","erosion","error","erupt","escape","essay","essence","estate","eternal","ethics","evidence","evil","evoke","evolve","exact","example","excess","exchange","excite","exclude","excuse","execute","exercise","exhaust","exhibit","exile","exist","exit","exotic","expand","expect","expire","explain","expose","express","extend","extra","eye","eyebrow","fabric","face","faculty","fade","faint","faith","fall","false","fame","family","famous","fan","fancy","fantasy","farm","fashion","fat","fatal","father","fatigue","fault","favorite","feature","february","federal","fee","feed","feel","female","fence","festival","fetch","fever","few","fiber","fiction","field","figure","file","film","filter","final","find","fine","finger","finish","fire","firm","first","fiscal","fish","fit","fitness","fix","flag","flame","flash","flat","flavor","flee","flight","flip","float","flock","floor","flower","fluid","flush","fly","foam","focus","fog","foil","fold","follow","food","foot","force","forest","forget","fork","fortune","forum","forward","fossil","foster","found","fox","fragile","frame","frequent","fresh","friend","fringe","frog","front","frost","frown","frozen","fruit","fuel","fun","funny","furnace","fury","future","gadget","gain","galaxy","gallery","game","gap","garage","garbage","garden","garlic","garment","gas","gasp","gate","gather","gauge","gaze","general","genius","genre","gentle","genuine","gesture","ghost","giant","gift","giggle","ginger","giraffe","girl","give","glad","glance","glare","glass","glide","glimpse","globe","gloom","glory","glove","glow","glue","goat","goddess","gold","good","goose","gorilla","gospel","gossip","govern","gown","grab","grace","grain","grant","grape","grass","gravity","great","green","grid","grief","grit","grocery","group","grow","grunt","guard","guess","guide","guilt","guitar","gun","gym","habit","hair","half","hammer","hamster","hand","happy","harbor","hard","harsh","harvest","hat","have","hawk","hazard","head","health","heart","heavy","hedgehog","height","hello","helmet","help","hen","hero","hidden","high","hill","hint","hip","hire","history","hobby","hockey","hold","hole","holiday","hollow","home","honey","hood","hope","horn","horror","horse","hospital","host","hotel","hour","hover","hub","huge","human","humble","humor","hundred","hungry","hunt","hurdle","hurry","hurt","husband","hybrid","ice","icon","idea","identify","idle","ignore","ill","illegal","illness","image","imitate","immense","immune","impact","impose","improve","impulse","inch","include","income","increase","index","indicate","indoor","industry","infant","inflict","inform","inhale","inherit","initial","inject","injury","inmate","inner","innocent","input","inquiry","insane","insect","inside","inspire","install","intact","interest","into","invest","invite","involve","iron","island","isolate","issue","item","ivory","jacket","jaguar","jar","jazz","jealous","jeans","jelly","jewel","job","join","joke","journey","joy","judge","juice","jump","jungle","junior","junk","just","kangaroo","keen","keep","ketchup","key","kick","kid","kidney","kind","kingdom","kiss","kit","kitchen","kite","kitten","kiwi","knee","knife","knock","know","lab","label","labor","ladder","lady","lake","lamp","language","laptop","large","later","latin","laugh","laundry","lava","law","lawn","lawsuit","layer","lazy","leader","leaf","learn","leave","lecture","left","leg","legal","legend","leisure","lemon","lend","length","lens","leopard","lesson","letter","level","liar","liberty","library","license","life","lift","light","like","limb","limit","link","lion","liquid","list","little","live","lizard","load","loan","lobster","local","lock","logic","lonely","long","loop","lottery","loud","lounge","love","loyal","lucky","luggage","lumber","lunar","lunch","luxury","lyrics","machine","mad","magic","magnet","maid","mail","main","major","make","mammal","man","manage","mandate","mango","mansion","manual","maple","marble","march","margin","marine","market","marriage","mask","mass","master","match","material","math","matrix","matter","maximum","maze","meadow","mean","measure","meat","mechanic","medal","media","melody","melt","member","memory","mention","menu","mercy","merge","merit","merry","mesh","message","metal","method","middle","midnight","milk","million","mimic","mind","minimum","minor","minute","miracle","mirror","misery","miss","mistake","mix","mixed","mixture","mobile","model","modify","mom","moment","monitor","monkey","monster","month","moon","moral","more","morning","mosquito","mother","motion","motor","mountain","mouse","move","movie","much","muffin","mule","multiply","muscle","museum","mushroom","music","must","mutual","myself","mystery","myth","naive","name","napkin","narrow","nasty","nation","nature","near","neck","need","negative","neglect","neither","nephew","nerve","nest","net","network","neutral","never","news","next","nice","night","noble","noise","nominee","noodle","normal","north","nose","notable","note","nothing","notice","novel","now","nuclear","number","nurse","nut","oak","obey","object","oblige","obscure","observe","obtain","obvious","occur","ocean","october","odor","off","offer","office","often","oil","okay","old","olive","olympic","omit","once","one","onion","online","only","open","opera","opinion","oppose","option","orange","orbit","orchard","order","ordinary","organ","orient","original","orphan","ostrich","other","outdoor","outer","output","outside","oval","oven","over","own","owner","oxygen","oyster","ozone","pact","paddle","page","pair","palace","palm","panda","panel","panic","panther","paper","parade","parent","park","parrot","party","pass","patch","path","patient","patrol","pattern","pause","pave","payment","peace","peanut","pear","peasant","pelican","pen","penalty","pencil","people","pepper","perfect","permit","person","pet","phone","photo","phrase","physical","piano","picnic","picture","piece","pig","pigeon","pill","pilot","pink","pioneer","pipe","pistol","pitch","pizza","place","planet","plastic","plate","play","please","pledge","pluck","plug","plunge","poem","poet","point","polar","pole","police","pond","pony","pool","popular","portion","position","possible","post","potato","pottery","poverty","powder","power","practice","praise","predict","prefer","prepare","present","pretty","prevent","price","pride","primary","print","priority","prison","private","prize","problem","process","produce","profit","program","project","promote","proof","property","prosper","protect","proud","provide","public","pudding","pull","pulp","pulse","pumpkin","punch","pupil","puppy","purchase","purity","purpose","purse","push","put","puzzle","pyramid","quality","quantum","quarter","question","quick","quit","quiz","quote","rabbit","raccoon","race","rack","radar","radio","rail","rain","raise","rally","ramp","ranch","random","range","rapid","rare","rate","rather","raven","raw","razor","ready","real","reason","rebel","rebuild","recall","receive","recipe","record","recycle","reduce","reflect","reform","refuse","region","regret","regular","reject","relax","release","relief","rely","remain","remember","remind","remove","render","renew","rent","reopen","repair","repeat","replace","report","require","rescue","resemble","resist","resource","response","result","retire","retreat","return","reunion","reveal","review","reward","rhythm","rib","ribbon","rice","rich","ride","ridge","rifle","right","rigid","ring","riot","ripple","risk","ritual","rival","river","road","roast","robot","robust","rocket","romance","roof","rookie","room","rose","rotate","rough","round","route","royal","rubber","rude","rug","rule","run","runway","rural","sad","saddle","sadness","safe","sail","salad","salmon","salon","salt","salute","same","sample","sand","satisfy","satoshi","sauce","sausage","save","say","scale","scan","scare","scatter","scene","scheme","school","science","scissors","scorpion","scout","scrap","screen","script","scrub","sea","search","season","seat","second","secret","section","security","seed","seek","segment","select","sell","seminar","senior","sense","sentence","series","service","session","settle","setup","seven","shadow","shaft","shallow","share","shed","shell","sheriff","shield","shift","shine","ship","shiver","shock","shoe","shoot","shop","short","shoulder","shove","shrimp","shrug","shuffle","shy","sibling","sick","side","siege","sight","sign","silent","silk","silly","silver","similar","simple","since","sing","siren","sister","situate","six","size","skate","sketch","ski","skill","skin","skirt","skull","slab","slam","sleep","slender","slice","slide","slight","slim","slogan","slot","slow","slush","small","smart","smile","smoke","smooth","snack","snake","snap","sniff","snow","soap","soccer","social","sock","soda","soft","solar","soldier","solid","solution","solve","someone","song","soon","sorry","sort","soul","sound","soup","source","south","space","spare","spatial","spawn","speak","special","speed","spell","spend","sphere","spice","spider","spike","spin","spirit","split","spoil","sponsor","spoon","sport","spot","spray","spread","spring","spy","square","squeeze","squirrel","stable","stadium","staff","stage","stairs","stamp","stand","start","state","stay","steak","steel","stem","step","stereo","stick","still","sting","stock","stomach","stone","stool","story","stove","strategy","street","strike","strong","struggle","student","stuff","stumble","style","subject","submit","subway","success","such","sudden","suffer","sugar","suggest","suit","summer","sun","sunny","sunset","super","supply","supreme","sure","surface","surge","surprise","surround","survey","suspect","sustain","swallow","swamp","swap","swarm","swear","sweet","swift","swim","swing","switch","sword","symbol","symptom","syrup","system","table","tackle","tag","tail","talent","talk","tank","tape","target","task","taste","tattoo","taxi","teach","team","tell","ten","tenant","tennis","tent","term","test","text","thank","that","theme","then","theory","there","they","thing","this","thought","three","thrive","throw","thumb","thunder","ticket","tide","tiger","tilt","timber","time","tiny","tip","tired","tissue","title","toast","tobacco","today","toddler","toe","together","toilet","token","tomato","tomorrow","tone","tongue","tonight","tool","tooth","top","topic","topple","torch","tornado","tortoise","toss","total","tourist","toward","tower","town","toy","track","trade","traffic","tragic","train","transfer","trap","trash","travel","tray","treat","tree","trend","trial","tribe","trick","trigger","trim","trip","trophy","trouble","truck","true","truly","trumpet","trust","truth","try","tube","tuition","tumble","tuna","tunnel","turkey","turn","turtle","twelve","twenty","twice","twin","twist","two","type","typical","ugly","umbrella","unable","unaware","uncle","uncover","under","undo","unfair","unfold","unhappy","uniform","unique","unit","universe","unknown","unlock","until","unusual","unveil","update","upgrade","uphold","upon","upper","upset","urban","urge","usage","use","used","useful","useless","usual","utility","vacant","vacuum","vague","valid","valley","valve","van","vanish","vapor","various","vast","vault","vehicle","velvet","vendor","venture","venue","verb","verify","version","very","vessel","veteran","viable","vibrant","vicious","victory","video","view","village","vintage","violin","virtual","virus","visa","visit","visual","vital","vivid","vocal","voice","void","volcano","volume","vote","voyage","wage","wagon","wait","walk","wall","walnut","want","warfare","warm","warrior","wash","wasp","waste","water","wave","way","wealth","weapon","wear","weasel","weather","web","wedding","weekend","weird","welcome","west","wet","whale","what","wheat","wheel","when","where","whip","whisper","wide","width","wife","wild","will","win","window","wine","wing","wink","winner","winter","wire","wisdom","wise","wish","witness","wolf","woman","wonder","wood","wool","word","work","world","worry","worth","wrap","wreck","wrestle","wrist","write","wrong","yard","year","yellow","you","young","youth","zebra","zero","zone","zoo"];
 const WORD_MAP = Object.fromEntries(WORDLIST.map((w,i)=>[w,i]));
 function getNeeded(wc){
@@ -2951,6 +3003,8 @@ const DICT = [
   ["BIP174", "The standard for PSBT, the file format for passing partly signed transactions.", "", "Standards (BIPs)"],
   ["Animated QR", "A QR code that changes several times a second. Each frame carries one part of something too big for a single code, such as a multisig wallet or a PSBT, and the scanning device joins the parts. The two common formats are UR and BBQr.", "Multisig wallet, Animated QR for a signing device or wallet app. The Transaction inspector reads pasted UR and BBQr parts.", "Wallets & backups"],
   ["BBQr", "Coinkite's format for animated QR codes, used by Coldcard Q. Each frame starts with B$, then says how the data is packed (hex, Base32 or compressed), what kind of file it is, and which part of how many this is.", "Multisig wallet, Animated QR: COLDCARD Q. The Transaction inspector reads pasted BBQr parts.", "Standards (BIPs)"],
+  ["Browser extension", "A small program added to a web browser. Many can read every page you open and everything typed into it, including seed words. For seeds, use a private window with every extension turned off, or better, a clean offline computer.", "ABOUT & HELP: Is anything watching this page? looks for the signs extensions leave.", "Privacy & security"],
+  ["Heir mode", "VOIDFORGE's calm, step-by-step help for someone who found a Bitcoin backup: what each kind of backup is, checking the words, finding the wallet, seeing the balance without risk, moving it later, and the scams that target heirs.", "I FOUND A BITCOIN BACKUP, under the title.", "VOIDFORGE"],
   ["UR (Uniform Resources)", "Blockchain Commons' format for QR codes, often animated: text such as ur:crypto-psbt/1-3/... in Bytewords (two letters per byte) with a checksum. Sparrow, SeedSigner, Nunchuk, Keystone and Passport read it.", "Multisig wallet, Animated QR: SPARROW, SEEDSIGNER, NUNCHUK and KEYSTONE, PASSPORT. The Transaction inspector reads pasted UR parts.", "Standards (BIPs)"],
   ["BIP322", "A newer standard for signed messages that works for any address, including bc1q and Taproot (bc1p). The signature is what would spend a made-up transaction that commits to the message, so it can never move real coins. Its simple form starts with smp.", "Extra tools: Verify a signed message (simple form, single-key addresses).", "Standards (BIPs)"],
   ["BIP340 and BIP341", "BIP340 defines Schnorr signatures; BIP341 defines Taproot, the rules for spending bc1p outputs.", "", "Standards (BIPs)"],
@@ -3025,7 +3079,7 @@ const DICT = [
   ["Dust", "A coin so small that the fee to spend it would cost more than it is worth.", "", "Transactions"],
   ["Dust attack", "Sending tiny amounts to many addresses, hoping the owner spends them together and so reveals which addresses belong to one wallet.", "", "Privacy & security"],
   ["ECDSA", "The original Bitcoin signature scheme, on the secp256k1 curve.", "", "Keys & seeds"],
-  ["Electrum seed", "The seed phrase format of the Electrum wallet. It uses the same English words as BIP39 but a different checksum and a version number hidden in a hash, so a BIP39 wallet rejects it or opens an empty wallet. Restore it in Electrum as an Electrum seed.", "CHECK A BACKUP names it when a phrase fails the BIP39 check.", "Keys & seeds"],
+  ["Electrum seed", "The seed phrase format of the Electrum wallet. It uses the same English words as BIP39 but a different checksum and a version number hidden in a hash, so a BIP39 wallet rejects it or opens an empty wallet. Restore it in Electrum as an Electrum seed.", "CHECK A BACKUP names it when a phrase fails the BIP39 check, and the Wallet Detective searches Electrum seeds too.", "Keys & seeds"],
   ["Elliptic curve (secp256k1)", "The maths curve that Bitcoin's keys and signatures are built on. Its name is secp256k1.", "", "Keys & seeds"],
   ["Endianness", "The order bytes are written in. Bitcoin often uses little-endian, so some numbers look backwards.", "", "Units & math"],
   ["Entropy", "Unpredictability, counted in bits. A seed is only as safe as the randomness it was made from.", "Entropy check, Roll chart.", "Keys & seeds"],
@@ -3062,7 +3116,7 @@ const DICT = [
   ["Hot wallet", "A wallet on a device that is online, such as a phone app. Handy for small amounts, riskier for large ones.", "", "Wallets & backups"],
   ["HTLC", "Hashed timelock contract: the lock that makes a Lightning payment safe across several hops. It either completes everywhere or nowhere.", "", "Lightning & layers"],
   ["Index", "The number of one address or child inside a path or a BIP85 child seed.", "BIP85 index, address numbers.", "Keys & seeds"],
-  ["Inheritance planning", "Making sure the people you trust can find and restore your wallet if something happens to you, without exposing it today.", "", "Wallets & backups"],
+  ["Inheritance planning", "Making sure the people you trust can find and restore your wallet if something happens to you, without exposing it today.", "Backup plan and stress test; Heir mode (I FOUND A BITCOIN BACKUP) for the family.", "Wallets & backups"],
   ["Input and output", "The two sides of a transaction: inputs are the coins being spent, outputs are the new coins being made (the payment and the change).", "Transaction inspector.", "Transactions"],
   ["Key pair", "A private key and the public key worked out from it.", "", "Keys & seeds"],
   ["Key reuse (multisig)", "Using the same public key, or keys from the same seed, more than once in a wallet setup. In a multisig it quietly lowers the protection: one seed then counts as two signers.", "EXTRA TOOLS, Check descriptors for a reused key.", "Wallets & backups"],
@@ -3173,7 +3227,7 @@ const DICT = [
   ["Signet", "A test network with predictable behaviour, run by a few trusted signers, used for testing software. Its coins have no value.", "", "Network & mining"],
   ["Signing", "Using a private key to prove a transaction is authorised. VOIDFORGE never signs anything.", "", "Transactions"],
   ["Single point of failure", "One thing whose loss or theft ruins everything, such as a single paper copy of a seed.", "", "Privacy & security"],
-  ["SLIP-0039", "A Trezor standard for backing up a seed as several Shamir shares of words. Not interchangeable with BIP39 words.", "", "Standards (BIPs)"],
+  ["SLIP-0039", "A Trezor standard for backing up a seed as several Shamir shares of words. Not interchangeable with BIP39 words. Newer Trezor devices make a single 20-word share by default.", "The Wallet Detective names 20- and 33-word shares; restore them with a Trezor.", "Standards (BIPs)"],
   ["SLIP-0132", "The scheme that gives extended keys different starting letters (xpub, ypub, zpub) to hint at the address type.", "", "Standards (BIPs)"],
   ["Social engineering", "Tricking a person, not a computer, into handing over a secret or doing something unsafe.", "", "Privacy & security"],
   ["Soft fork", "A rule change that tightens the rules, so old nodes still accept the new blocks. SegWit and Taproot were soft forks.", "", "Network & mining"],
@@ -3199,6 +3253,7 @@ const DICT = [
   ["Volatility", "How much and how fast a price moves up and down. Bitcoin's price is volatile.", "", "Culture & markets"],
   ["Wallet", "Software or a device that manages your keys and builds transactions. Your coins live on the blockchain; the wallet holds the keys to them.", "", "Wallets & backups"],
   ["Wallet birthday", "The date or block when a wallet was first used. A restore can skip older blocks, which makes it faster.", "Printed on the summary sheet, the recovery sheet and the backup plan, and written in the watch-only file.", "Wallets & backups"],
+  ["Wallet Detective", "Finds which wallet app made a wallet when the right words open an empty one: it tries the paths, address types, accounts and seed formats of well-known apps until one address you know the wallet used matches. Offline; it never sees a balance.", "CHECK A BACKUP: My wallet shows zero.", "VOIDFORGE"],
   ["Wallet file", "A file a wallet program keeps on disk, holding its keys or key information. It must be backed up.", "", "Wallets & backups"],
   ["Watch-only wallet", "A wallet that has only public keys. It shows addresses and balances but cannot spend, so it is safe on a phone.", "Watch-only box; CHECK A BACKUP, Or open a watch-only wallet.", "Wallets & backups"],
   ["Whale", "A person or company holding a very large amount of bitcoin.", "", "Culture & markets"],
@@ -4373,8 +4428,8 @@ function practiceMode(on){
     else document.getElementById("wvNet").disabled = on;
   }
   if(wvCtx && wvCtx.mnemonic && wvCtx.pass){ wvDecoyHide(); wvDecoyShow(wvCtx.mnemonic, wvCtx.pass); }   // v2.7.0: the side-by-side view follows the network
-  if(!on) practiceWalletClose();
   detClear(true);   // v2.8.0: a Detective search or list belongs to the old network
+  if(!on) practiceWalletClose();
   reshowSeed();
 }
 // Shows a made seed's fingerprint, addresses and watch-only box again (used when practice mode changes the network).
@@ -4853,7 +4908,7 @@ async function printPlan(){
     add("ps-info ps-small", "Stress test (what happens if...):\n" + R.map(r => PLAN_V[r.v].print + r.event + ". " + r.text + (r.fix ? " Fix: " + r.fix : "")).join("\n"));
     add("ps-rule", "");
     add("ps-fields ps-small", "Next check-up due: " + plusYearISO(todayISO()) + "\n" + PLAN_ROUTINE + "\n\nChecked on:  ____________   ____________   ____________   ____________");
-    add("ps-warn", "Nobody genuine will ever ask for the words or the passphrase: not a bank, not support staff, not a lawyer.");
+    add("ps-warn", "Nobody genuine will ever ask for the words or the passphrase. Family: open voidforge.html, press I FOUND A BITCOIN BACKUP.");
   });
   say("ok", "Sent to the printer. Keep the plan private: it says where your copies are.");
 }
@@ -5410,21 +5465,26 @@ async function checkAllAccounts(maxAcct, depth){
 // accents removed, spaces collapsed), salt "electrum" + passphrase. Standard seeds use legacy addresses at m/0/i (change m/1/i);
 // SegWit seeds use native SegWit at m/0'/0/i (change m/0'/1/i). Checked against Electrum's own test wallets in the self-test.
 function electrumNorm(t){ return String(t || "").normalize("NFKD").toLowerCase().replace(/[̀-ͯ]/g, "").trim().split(/\s+/).filter(Boolean).join(" "); }
-async function electrumToSeed(text, pass){
+// asTyped: the passphrase only NFKD-normalized, as some other apps that import Electrum seeds use it (see detRoots).
+async function electrumToSeed(text, pass, asTyped){
   const enc = new TextEncoder(), key = await crypto.subtle.importKey("raw", enc.encode(electrumNorm(text)), "PBKDF2", false, ["deriveBits"]);
-  return new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2", hash:"SHA-512", iterations:2048, salt:enc.encode("electrum" + electrumNorm(pass))}, key, 512));
+  return new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2", hash:"SHA-512", iterations:2048, salt:enc.encode("electrum" + (asTyped ? String(pass || "").normalize("NFKD") : electrumNorm(pass)))}, key, 512));
 }
 // The places wallet apps keep their addresses. seed: which kind of seed; steps(coin, account): the account path; types: the address
 // types apps use there; accts: whether apps use more than account 0 there.
 const DET_PATHS = [
-  {id:"bip84", seed:"bip39", steps:(c, a) => [[84, true], [c, true], [a, true]], types:["wpkh"], accts:true, name:"BIP84, native SegWit"},
-  {id:"bip86", seed:"bip39", steps:(c, a) => [[86, true], [c, true], [a, true]], types:["tr"], accts:true, name:"BIP86, Taproot"},
-  {id:"bip49", seed:"bip39", steps:(c, a) => [[49, true], [c, true], [a, true]], types:["sh-wpkh"], accts:true, name:"BIP49, nested SegWit"},
-  {id:"bip44", seed:"bip39", steps:(c, a) => [[44, true], [c, true], [a, true]], types:["pkh"], accts:true, name:"BIP44, legacy"},
+  {id:"bip84", seed:"bip39", steps:(c, a) => [[84, true], [c, true], [a, true]], types:["wpkh"], accts:true, name:"BIP84"},
+  {id:"bip86", seed:"bip39", steps:(c, a) => [[86, true], [c, true], [a, true]], types:["tr"], accts:true, name:"BIP86"},
+  {id:"bip49", seed:"bip39", steps:(c, a) => [[49, true], [c, true], [a, true]], types:["sh-wpkh"], accts:true, name:"BIP49"},
+  {id:"bip44", seed:"bip39", steps:(c, a) => [[44, true], [c, true], [a, true]], types:["pkh", "wpkh", "tr", "sh-wpkh"], accts:true, name:"BIP44"},
   {id:"m0h", seed:"bip39", steps:() => [[0, true]], types:["pkh", "wpkh"], accts:false, name:"BIP32 m/0'"},
+  {id:"root", seed:"bip39", steps:() => [], types:["pkh"], accts:false, name:"BIP32 root m/"},
   {id:"wpost", seed:"bip39", steps:c => [[84, true], [c, true], [2147483646, true]], types:["wpkh"], accts:false, name:"Whirlpool post-mix"},
   {id:"wpre", seed:"bip39", steps:c => [[84, true], [c, true], [2147483645, true]], types:["wpkh"], accts:false, name:"Whirlpool pre-mix"},
   {id:"wbad", seed:"bip39", steps:c => [[84, true], [c, true], [2147483644, true]], types:["wpkh"], accts:false, name:"Whirlpool bad bank"},
+  {id:"ric84", seed:"bip39", steps:c => [[84, true], [c, true], [2147483647, true]], types:["wpkh"], accts:false, name:"Ricochet (BIP84)"},
+  {id:"ric49", seed:"bip39", steps:c => [[49, true], [c, true], [2147483647, true]], types:["sh-wpkh"], accts:false, name:"Ricochet (BIP49)"},
+  {id:"ric44", seed:"bip39", steps:c => [[44, true], [c, true], [2147483647, true]], types:["pkh"], accts:false, name:"Ricochet (BIP44)"},
   {id:"el-standard", seed:"electrum-standard", steps:() => [], types:["pkh"], accts:false, name:"Electrum seed, standard"},
   {id:"el-segwit", seed:"electrum-segwit", steps:() => [[0, true]], types:["wpkh"], accts:false, name:"Electrum seed, SegWit"}
 ];
@@ -5436,7 +5496,11 @@ async function detSource(text, vp){
   const r = await checkPhrase(text);
   let el = null; try { el = await electrumSeedType(text); } catch(e) { el = null; }
   if(el && el !== "standard" && el !== "SegWit") return {error:"This is an Electrum two-factor (2FA) seed. Only Electrum can open it: File, New/Restore, a wallet name, Wallet with two-factor authentication, I already have a seed, and type the words. On the page Restore 2FA wallet, Disable opens it without the TrustedCoin service. This page cannot search it."};
-  if(!r.ok && !el) return {error:"First type the seed words in the box at the top of CHECK A BACKUP. " + r.msg};
+  if(!r.ok && !el){
+    const n = String(text || "").trim().split(/\s+/).filter(Boolean).length;
+    if(n === 20 || n === 33) return {error:"These look like a SLIP39 (Shamir) share of " + n + " words, as newer Trezor devices make. Restore them with a Trezor (or another app that reads SLIP39). This page cannot open them."};
+    return {error:"First type the seed words in the box at the top of CHECK A BACKUP. " + r.msg + (n ? " (Other word formats this page cannot open: SLIP39 shares of 20 or 33 words, and the 24-word aezeed phrases of LND wallets such as older Zeus.)" : "")};
+  }
   return {mnemonic:r.ok ? r.mnemonic : null, electrum:el === "standard" ? "standard" : el === "SegWit" ? "segwit" : null, text,
     passes:vp ? [["with the passphrase", vp], ["without a passphrase", ""]] : [["without a passphrase", ""]]};
 }
@@ -5449,6 +5513,19 @@ async function detTarget(raw){
   let T = null; try { T = await reforgeTarget(s); } catch(e) { throw new Error(/typo/.test(e.message) ? e.message : "That is not a Bitcoin address. Type one address the wallet received to: bc1q..., bc1p..., 3... or 1... (tb1..., 2..., m... or n... on testnet)."); }
   if(!T || T.kind !== "addr") throw new Error("Type one address the wallet received to (bc1q..., bc1p..., 3... or 1...), not a key or a fingerprint.");
   return T;
+}
+// The root keys for one passphrase. Electrum lower-cases the passphrase of its own seeds and removes accents; some other apps that
+// import Electrum seeds (Sparrow, for one) use it as typed. When the two differ, both are tried.
+function detRawDiffers(pw){ return !!pw && electrumNorm(pw) !== pw.normalize("NFKD"); }
+async function detRoots(src, pw){
+  const roots = {};
+  if(src.mnemonic) roots.bip39 = [{root: await masterFromSeed(await mnemonicToSeed(src.mnemonic, pw)), asTyped: false}];
+  if(src.electrum){
+    const list = [{root: await masterFromSeed(await electrumToSeed(src.text, pw)), asTyped: false}];
+    if(detRawDiffers(pw)) list.push({root: await masterFromSeed(await electrumToSeed(src.text, pw, true)), asTyped: true});
+    roots["electrum-" + src.electrum] = list;
+  }
+  return roots;
 }
 // What to search, most likely first: the paths where apps use this address type (account 0, the first 20 receive and change addresses),
 // then the other paths with this address type (some older apps mixed them), then further along (to #99), then accounts 1 to 9.
@@ -5464,22 +5541,20 @@ function detPlan(src, T){
 // The search. hooks: {progress(done, total, label), stop()}. Returns {found, done, total, stopped}.
 async function detSearch(src, T, hooks){
   const jobs = detPlan(src, T), coin = NETS[T.net].coin;
-  const total = jobs.reduce((s, j) => s + 2 * j.n, 0) * src.passes.length;
+  const total = jobs.reduce((s, j) => s + 2 * j.n * (j.P.seed === "bip39" ? 1 : src.passes.some(p => detRawDiffers(p[1])) ? 2 : 1), 0) * src.passes.length;
   let done = 0;
   for(const [label, pw] of src.passes){
-    const roots = {};
-    if(src.mnemonic) roots.bip39 = await masterFromSeed(await mnemonicToSeed(src.mnemonic, pw));
-    if(src.electrum) roots["electrum-" + src.electrum] = await masterFromSeed(await electrumToSeed(src.text, pw));
-    for(const j of jobs){
+    const roots = await detRoots(src, pw);
+    for(const j of jobs) for(const R of roots[j.P.seed] || []){
       const steps = j.P.steps(coin, j.acct);
-      let [k, c] = roots[j.P.seed];
+      let [k, c] = R.root;
       for(const [i, h] of steps) [k, c] = await ckdPriv(k, c, i, h);
       for(const chain of [0, 1]){
         const [ck, cc] = await ckdPriv(k, c, chain, false), cpub = pubkeyBytes(ck);
         for(let i = j.from; i < j.from + j.n; i++){
           if(hooks.stop()) return {found:null, done, total, stopped:true};
           const [kk] = await ckdPriv(ck, cc, i, false, cpub);
-          if(await addressFromKey(T.type, kk, T.net) === T.addr) return {found:{P:j.P, acct:j.acct, chain, index:i, pass:label, usual:j.P.types.includes(T.type), account:detPathStr(steps), path:detPathStr(steps) + "/" + chain + "/" + i, type:T.type}, done, total};
+          if(await addressFromKey(T.type, kk, T.net) === T.addr) return {found:{P:j.P, acct:j.acct, chain, index:i, pass:label, asTyped:R.asTyped, usual:j.P.types.includes(T.type), account:detPathStr(steps), path:detPathStr(steps) + "/" + chain + "/" + i, type:T.type}, done, total};
           done++;
           const y = reforgeYield(); if(y){ hooks.progress(done, total, label); await y; }
         }
@@ -5488,20 +5563,28 @@ async function detSearch(src, T, hooks){
   }
   return {found:null, done, total};
 }
-// Which apps keep a wallet in each place, and how to open it there. From each app's own documentation and code (sources in REVIEW.md).
+// Which apps keep a wallet in each place. Checked in each app's own source code where it is public, otherwise in its help pages or
+// the walletsrecovery.org table; sources are listed in REVIEW.md. "Most" lists are the apps checked, not every app there is.
 const DET_APPS = {
-  bip84: "__BIP84__",
-  bip86: "__BIP86__",
-  bip49: "__BIP49__",
-  bip44: "__BIP44__",
-  "m0h-pkh": "__M0H_PKH__",
-  "m0h-wpkh": "__M0H_WPKH__",
-  wpost: "__WHIRL__", wpre: "__WHIRL__", wbad: "__WHIRL__",
-  "el-standard": "Electrum (a standard Electrum seed).",
-  "el-segwit": "Electrum (a SegWit Electrum seed); also BlueWallet, which can import Electrum SegWit seeds."
+  "bip84-wpkh": "Sparrow, BlueWallet, Electrum (its BIP39 option), Trezor Suite, Ledger Live, Coldcard, BitBox02, Blockstream Green and Jade, Keystone, Passport, SeedSigner, Specter, Nunchuk, Wasabi, Samourai and Ashigaru (deposit), Exodus, Trust Wallet, Mycelium, Edge, Blockchain.com, KeepKey, and the on-chain wallet of Phoenix.",
+  "bip86-tr": "Sparrow, BlueWallet, Trezor Suite, Ledger Live, BitBox02, Blockstream Green, Keystone, Passport, SeedSigner, Nunchuk, Wasabi 2, Exodus, Trust Wallet, Mycelium (Android), and Coldcard with its EDGE firmware.",
+  "bip49-sh-wpkh": "Sparrow, BlueWallet, Trezor Suite, Ledger Live, Coldcard, BitBox02, Blockstream Green and Jade, Keystone, Passport, SeedSigner, Specter, Nunchuk, Samourai and Ashigaru (deposit), Mycelium, Edge, KeepKey and Coinomi.",
+  "bip44-pkh": "Sparrow, BlueWallet, Trezor Suite, Ledger Live, Coldcard, Blockstream Green, Keystone, Passport, SeedSigner (when turned on), Nunchuk, Samourai and Ashigaru (deposit), Exodus, Trust Wallet, Atomic, Coinomi, Mycelium, Edge (older wallets), Blockchain.com, BitPay and Copay, KeepKey and Jaxx.",
+  "bip44-wpkh": "BitPay and Copay, which keep native SegWit wallets on the BIP44 path.",
+  "bip44-tr": "BitPay and Copay, which keep Taproot wallets on the BIP44 path.",
+  "bip44-sh-wpkh": "CoolWallet S (as listed in Electrum's own account search).",
+  "m0h-pkh": "BRD (Breadwallet), MultiBit HD, and BlueWallet's HD Legacy Breadwallet type.",
+  "m0h-wpkh": "BRD (Breadwallet) after it moved to SegWit, and BlueWallet's Breadwallet type.",
+  "root-pkh": "Edge, for old Airbitz wallets (receive addresses only).",
+  "wpost-wpkh": "Samourai Wallet and Ashigaru (Whirlpool post-mix), Sparrow (Whirlpool) and Passport (post-mix).",
+  "wpre-wpkh": "Samourai Wallet and Ashigaru (Whirlpool pre-mix) and Sparrow (Whirlpool).",
+  "wbad-wpkh": "Samourai Wallet and Ashigaru (Whirlpool bad bank) and Sparrow (Whirlpool).",
+  "ric84-wpkh": "Samourai Wallet and Ashigaru (Ricochet).", "ric49-sh-wpkh": "Samourai Wallet and Ashigaru (Ricochet).", "ric44-pkh": "Samourai Wallet and Ashigaru (Ricochet).",
+  "el-standard-pkh": "Electrum (a standard Electrum seed); BlueWallet can also import it.",
+  "el-segwit-wpkh": "Electrum (a SegWit Electrum seed); BlueWallet can also import it, and SeedSigner (12 words, with its Electrum setting on)."
 };
 const DET_SPARROW_TYPE = {wpkh:"Native Segwit (P2WPKH)", tr:"Taproot (P2TR)", "sh-wpkh":"Nested Segwit (P2SH-P2WPKH)", pkh:"Legacy (P2PKH)"};
-function detApps(P, type){ return DET_APPS[P.id + "-" + type] || DET_APPS[P.id] || ""; }
+function detApps(P, type){ return DET_APPS[P.id + "-" + type] || ""; }
 // How to open what was found, in plain steps.
 function detHowTo(f, withPass){
   if(f.P.seed !== "bip39") return "To open it in Electrum (Sparrow and most other apps cannot open Electrum seeds): File, New/Restore, type a wallet name, Next, Standard wallet, I already have a seed, and type the words." + (withPass ? " Before Next, press Options, tick \u201cExtend this seed with custom words\u201d and press OK; type the passphrase on the Seed Extension page (Electrum ignores capital letters in it)." : "");
@@ -5515,6 +5598,7 @@ function detReport(f, T){
   const apps = detApps(f.P, f.type);
   if(f.usual && apps) lines.push("Apps that use these settings: " + apps);
   if(!f.usual) lines.push("This is an unusual mix: a " + DET_TYPE_NAME[f.type] + " address on the " + f.P.name + " path. Few apps do this, so most apps will not find it unless you set the path yourself.");
+  if(f.asTyped) lines.push("It matched with the passphrase used exactly as typed, as some apps that import Electrum seeds use it. Electrum itself ignores capital letters and accents in the passphrase, so it would open a different wallet: open this one in the app that made it.");
   if(f.acct > 0) lines.push("It is in account " + f.acct + ", not account 0. Many apps show only account 0 unless you add the account.");
   if(f.index >= 20) lines.push("It is address #" + f.index + ". Many apps stop looking after 20 unused addresses in a row, so raise the app's gap limit (in Sparrow: the Settings tab, Advanced..., Gap limit) to see it.");
   if(f.pass === "without a passphrase") { const vp = document.getElementById("verifyPass").value; if(vp) lines.push("It was found WITHOUT the passphrase you typed. Leave the passphrase out in the wallet app."); }
@@ -5555,12 +5639,12 @@ async function detFind(){
     if(my !== detSeq) return;
     if(r.stopped) return detSay("", "Stopped. Nothing was found before you stopped it.");
     if(r.found){ detSay("ok", "FOUND: the app and settings are below."); detShow(detReport(r.found, T)); return; }
-    detSay("bad", "NOT FOUND in the settings of the well-known wallet apps (accounts 0 to " + DET_ACCTS + ", the first 100 addresses of account 0, " + src.passes.map(p => p[0]).join(" and ") + "). Things to check: the address (one wrong character changes everything; is it from this wallet, not an exchange or another wallet?), the words and their order, the passphrase (case, spaces and spelling count), and whether this wallet was a multisig wallet (then no one seed opens it) or came from an app this page does not know. A 3... address can also be a multisig address.");
+    detSay("bad", "NOT FOUND in the settings of the well-known wallet apps (accounts 0 to " + DET_ACCTS + ", the first 100 addresses of account 0, " + src.passes.map(p => p[0]).join(" and ") + "). Things to check: the address (one wrong character changes everything; is it from this wallet, not an exchange or another wallet?), the words and their order, the passphrase (case, spaces and spelling count), and whether this wallet was a multisig wallet (then no one seed opens it) or came from an app this page does not know. A 3... address can also be a multisig address. Some wallets cannot be opened from their words with standard settings at all: Muun, Bitkey, Blockstream Green's two-factor (multisig) accounts, and Lightning wallets such as Phoenix, Zeus and Breez (only an on-chain part follows these settings). Use that app's own recovery.");
   } catch(e) { if(my === detSeq) detSay("bad", "Could not search: " + e.message); }
   finally { detStopFlag = false; detBusyUi(false); }
 }
 // No address known: the first receive address of each common setting, to look up somewhere else (this page is offline).
-const DET_LIST = [["bip84", "wpkh"], ["bip86", "tr"], ["bip49", "sh-wpkh"], ["bip44", "pkh"], ["m0h", "pkh"], ["m0h", "wpkh"], ["el-standard", "pkh"], ["el-segwit", "wpkh"]];
+const DET_LIST = [["bip84", "wpkh"], ["bip86", "tr"], ["bip49", "sh-wpkh"], ["bip44", "pkh"], ["bip44", "wpkh"], ["m0h", "pkh"], ["m0h", "wpkh"], ["root", "pkh"], ["el-standard", "pkh"], ["el-segwit", "wpkh"]];
 async function detList(){
   if(!gateOk() || detBusy) return;
   const my = ++detSeq; detShow("");
@@ -5571,15 +5655,13 @@ async function detList(){
   const net = practiceOn ? "test" : "main", coin = NETS[net].coin, pass = src.passes[0], lines = [];
   detBusyUi(true);
   try {
-    const roots = {};
-    if(src.mnemonic) roots.bip39 = await masterFromSeed(await mnemonicToSeed(src.mnemonic, pass[1]));
-    if(src.electrum) roots["electrum-" + src.electrum] = await masterFromSeed(await electrumToSeed(src.text, pass[1]));
+    const roots = await detRoots(src, pass[1]);
     for(const [id, type] of DET_LIST){
       const P = DET_PATHS.find(p => p.id === id);
       if(!roots[P.seed]) continue;
-      const steps = P.steps(coin, 0), a = (await walletAddressesFrom(roots[P.seed], steps, type, net, 0, 0, 1))[0];
+      const steps = P.steps(coin, 0), a = (await walletAddressesFrom(roots[P.seed][0].root, steps, type, net, 0, 0, 1))[0];
       if(my !== detSeq) return;
-      lines.push(P.name + (P.types.length > 1 ? " (" + DET_TYPE_NAME[type] + ")" : "") + ", " + a.path + "\n  " + a.address + "\n  Used by: " + detApps(P, type));
+      lines.push(P.name + ", " + DET_TYPE_NAME[type] + ", " + a.path + "\n  " + a.address + "\n  Used by: " + detApps(P, type));
     }
     detSay("ok", "The first receive address of each common setting, " + pass[0] + (net === "test" ? ", on the test network (practice mode)" : "") + ". Look them up on another device, for example in a block explorer. The one that shows a history is your wallet's setting; then type it above and press FIND MY WALLET for the steps to open it.");
     detShow(lines.join("\n\n") + "\n\nLooking an address up on a website tells that website you are interested in it. A watch-only wallet in Sparrow connected to your own node is more private.");
@@ -5596,8 +5678,9 @@ const WATCH_GLOBALS = [["ethereum", "crypto wallet extensions (such as MetaMask)
 const WATCH_NAMES = [[/^data-(gramm|gr-|new-gr-|enable-grammarly)/, "Grammarly (a writing assistant)"], [/^data-lt-/, "LanguageTool (a writing assistant)"], [/^data-lastpass/, "LastPass (a password manager)"], [/^data-com-onepassword/, "1Password (a password manager)"], [/^data-dashlane/, "Dashlane (a password manager)"], [/^data-bitwarden/, "Bitwarden (a password manager)"], [/^data-keeper/, "Keeper (a password manager)"], [/^data-np-/, "NordPass (a password manager)"], [/^data-protonpass/, "Proton Pass (a password manager)"], [/^data-darkreader/, "Dark Reader (a page restyler)"], [/^data-ms-editor/, "Microsoft Editor (a writing assistant)"]];
 function watchElSign(el){
   const t = el.tagName || "", src = el.getAttribute ? String(el.getAttribute(t === "LINK" ? "href" : "src") || "") : "";
-  if(t === "SCRIPT" && el.id !== "vfBoot" && el.id !== "vfMain") return "A script this page does not have" + (src ? " (from " + src.slice(0, 80) + ")" : "") + ".";
-  if(t === "STYLE" && el.id !== "vfStyle") return "A style sheet this page does not have" + (el.className ? " (class " + String(el.className).slice(0, 40) + ")" : "") + ".";
+  const own = (window.vfOwnEls || []).includes(el);
+  if(t === "SCRIPT" && !own) return "A script this page does not have" + (src ? " (from " + src.slice(0, 80) + ")" : "") + ".";
+  if(t === "STYLE" && !own) return "A style sheet this page does not have" + (el.className ? " (class " + String(el.className).slice(0, 40) + ")" : "") + ".";
   if(t === "LINK" && !/^data:/.test(src)) return "A link to a file outside this page (" + src.slice(0, 80) + ").";
   if(/^(IFRAME|FRAME|OBJECT|EMBED)$/.test(t)) return "A frame or embedded object (<" + t.toLowerCase() + ">) this page does not have" + (src ? " (from " + src.slice(0, 80) + ")" : "") + ".";
   if(t === "FONT") return "Text wrapped in <font> tags, as page translators do.";
@@ -5658,6 +5741,22 @@ function watchCheck(go){
   }
   o.style.display = "";
   return signs;
+}
+// Heir mode (v2.8.0): "I found a Bitcoin backup". A calm, large-text front door: what the person has, checking the words, finding
+// the wallet (Wallet Detective), seeing the balance watch-only, moving it later, and the scams that target heirs. Static text and
+// links to the tools; it reads and stores nothing.
+function heirOpen(){
+  const c = document.getElementById("heirCard");
+  c.style.display = ""; document.getElementById("heirBtn").setAttribute("aria-expanded", "true");
+  try { c.scrollIntoView({behavior: "smooth", block: "start"}); } catch(e) {}
+}
+function heirClose(){
+  document.getElementById("heirCard").style.display = "none"; document.getElementById("heirBtn").setAttribute("aria-expanded", "false");
+  try { document.getElementById("heirBtn").focus(); } catch(e) {}
+}
+function heirGo(tab, id){
+  showTab(tab, id);
+  if(id === "phrase") try { document.getElementById("phrase").focus({preventScroll: true}); } catch(e) {}
 }
 // "Child seed (BIP85)": derives a new seed phrase from the typed parent words (and passphrase). Shown on screen only; nothing is copied or saved.
 // Check your download (v1.27.3). Reads the chosen file, hashes it with the browser's SHA-256 and compares with what you paste. Nothing is stored or sent.

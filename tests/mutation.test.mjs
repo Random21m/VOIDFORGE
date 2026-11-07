@@ -2240,6 +2240,60 @@ async function probe(w, mutated) {
     $('phrase').value = ''; $('verifyPass').value = '';
     w.alert = oa; w.confirm = oc;
   } catch (e) { fails.push('v2.7.0 probe crashed: ' + e.message); }
+  try { // v2.8.0 (expected values from @scure and Node's PBKDF2): Wallet Detective, Is anything watching this page?, Heir mode
+    const oa = w.alert, oc = w.confirm; w.alert = () => {}; w.confirm = () => true;
+    const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), AB = 'abandon '.repeat(11) + 'about';
+    const b58 = createBase58check(nsha), h160 = (b) => ripemd160(nsha(b));
+    const enc = (type, pub, test) => type === 'wpkh' ? bech32.encode(test ? 'tb' : 'bc', [0, ...bech32.toWords(h160(pub))]) : type === 'pkh' ? b58.encode(Uint8Array.of(test ? 0x6f : 0, ...h160(pub))) : b58.encode(Uint8Array.of(test ? 0xc4 : 5, ...h160(Uint8Array.of(0, 20, ...h160(pub)))));
+    const R0 = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, '')), ref = (root, p, type, test) => enc(type, root.derive(p).publicKey, test);
+    const elRoot = (m, salt) => HDKey.fromMasterSeed(nc.pbkdf2Sync(Buffer.from(m), Buffer.from('electrum' + salt), 2048, 64, 'sha512'));
+    const EL_STD = 'cycle rocket west magnet parrot shuffle foot correct salt library feed song', EL_SW = 'bitter grass shiver impose acquire brush forget axis eager alone wine silver';
+    const DF = async (words, pass, a) => { $('phrase').value = words; $('verifyPass').value = pass; $('detAddr').value = a; await w.detFind(); return { st: $('detStatus').textContent, out: $('detOut').textContent }; };
+    w.clearAll(); await sleep(20);
+    let d = await DF(AB, '', ref(R0, "m/0'/1/2", 'wpkh'));
+    if (!d.out.startsWith('FOUND: ' + ref(R0, "m/0'/1/2", 'wpkh') + " is change address #2 (m/0'/1/2) of these words, without a passphrase.") || !/BRD \(Breadwallet\) after it moved to SegWit/.test(d.out)) fails.push("wallet detective: a change address on the m/0' path");
+    d = await DF(AB, '', ref(R0, "m/44'/0'/0'/0/1", 'wpkh'));
+    if (!/receive address #1 \(m\/44'\/0'\/0'\/0\/1\)/.test(d.out) || !/BitPay and Copay, which keep native SegWit wallets on the BIP44 path/.test(d.out) || /unusual mix/.test(d.out)) fails.push('wallet detective: BitPay/Copay SegWit on the BIP44 path');
+    d = await DF(AB, '', ref(R0, "m/84'/0'/0'/0/0", 'sh-wpkh'));
+    if (!/\(m\/84'\/0'\/0'\/0\/0\)/.test(d.out) || !/This is an unusual mix: a nested SegWit \(3\.\.\.\) address on the BIP84 path\./.test(d.out)) fails.push('wallet detective: an unusual mix is found and named');
+    { const R1 = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, 'Secret')); d = await DF(AB, 'Secret', ref(R1, "m/49'/0'/0'/0/0", 'sh-wpkh'));
+      if (!/of these words, with the passphrase\./.test(d.out) || !/tick Use passphrase\? and type the passphrase/.test(d.out)) fails.push('wallet detective: with the passphrase'); }
+    { const s = await w.detSource(AB, 'x'); if (!s.passes || s.passes.length !== 2 || s.passes[1][1] !== '' || s.passes[0][1] !== 'x') fails.push('wallet detective: tries without the typed passphrase too'); }
+    { const T = await w.detTarget(ref(R0, "m/84'/0'/0'/0/0", 'wpkh')), jobs = w.detPlan(await w.detSource(AB, ''), T);
+      if (!jobs.some((j) => j.P.id === 'bip84' && j.acct === 9) || !jobs.some((j) => j.P.id === 'bip84' && j.acct === 0 && j.from === 20 && j.n === 80) || jobs[0].P.id !== 'bip84' || jobs[0].from !== 0 || jobs[0].n !== 20) fails.push('wallet detective: the search plan (accounts 1 to 9, addresses to #99)'); }
+    d = await DF(EL_STD, '', '1KSezYMhAJMWqFbVFB2JshYg69UpmEXR4D');
+    if (!/change address #0 \(m\/1\/0\)/.test(d.out) || !/To open it in Electrum/.test(d.out)) fails.push('wallet detective: Electrum standard seed');
+    d = await DF(EL_SW, 'My  Pass ', ref(elRoot(EL_SW, 'my pass'), "m/0'/0/3", 'wpkh'));
+    if (!/receive address #3 \(m\/0'\/0\/3\) of these words, with the passphrase\./.test(d.out) || /exactly as typed/.test(d.out)) fails.push('wallet detective: Electrum SegWit seed, passphrase normalized as Electrum does');
+    d = await DF(EL_SW, 'My Pass', ref(elRoot(EL_SW, 'My Pass'), "m/0'/0/0", 'wpkh'));
+    if (!/It matched with the passphrase used exactly as typed/.test(d.out)) fails.push('wallet detective: Electrum passphrase as typed');
+    d = await DF('ketchup cost faint boil dwarf occur clean category solve extend garlic miss', '', ref(R0, "m/84'/0'/0'/0/0", 'wpkh'));
+    if (!/two-factor \(2FA\) seed/.test(d.st)) fails.push('wallet detective: an Electrum two-factor seed is sent to Electrum');
+    w.practiceMode(true); d = await DF(AB, '', ref(R0, "m/84'/0'/0'/0/0", 'wpkh'));
+    if (!/^Practice mode is on, so the Detective searches only test-network addresses/.test(d.st)) fails.push('wallet detective: practice mode refuses a real address');
+    $('detAddr').value = ''; await w.detList(); if (!$('detOut').textContent.includes(ref(R0, "m/84'/1'/0'/0/0", 'wpkh', true)) || /\bbc1/.test($('detOut').textContent)) fails.push('wallet detective: LIST in practice mode is on the test network');
+    w.practiceMode(false);
+    $('phrase').value = AB; $('verifyPass').value = ''; await w.detList();
+    if (!["m/84'/0'/0'/0/0", "m/0'/0/0", "m/0/0"].every((p, i) => $('detOut').textContent.includes('\n  ' + ref(R0, p, ['wpkh', 'pkh', 'pkh'][i]) + '\n'))) fails.push('wallet detective: LIST FIRST ADDRESSES');
+    $('phrase').value = AB + ' '; $('phrase').dispatchEvent(new w.Event('input')); if ($('detOut').textContent) fails.push('wallet detective: editing the words clears the result');
+    $('detAddr').value = 'x'; $('detOut').textContent = 'x'; w.clearAll(); await sleep(20); if ($('detAddr').value || $('detOut').textContent) fails.push('CLEAR ALL wipes the Wallet Detective');
+    // Heir mode
+    $('heirBtn').click(); if ($('heirCard').style.display !== '' || $('heirBtn').getAttribute('aria-expanded') !== 'true') fails.push('heir mode: the button opens the help');
+    [...$('heirCard').querySelectorAll('button')].find((b) => b.textContent === 'OPEN THE WALLET DETECTIVE').click(); if ($('tp-check').classList.contains('tab-off')) fails.push('heir mode: OPEN THE WALLET DETECTIVE goes to CHECK A BACKUP');
+    w.heirClose(); if ($('heirCard').style.display !== 'none') fails.push('heir mode: CLOSE');
+    // Is anything watching this page? (last: it adds things to the page)
+    if (w.watchSigns().length || $('watchWarn').style.display === 'block') fails.push('watch check: the page itself leaves no sign [' + w.watchSigns().join(' | ') + ']');
+    w.watchCheck(); if ($('watchStatus').textContent !== 'NO SIGN FOUND of extensions, translators or other scripts on this page right now.' || !/^That does not make it safe\./.test($('watchOut').textContent)) fails.push('watch check: no sign found, never safe');
+    { const s = w.document.createElement('script'); s.src = 'chrome-extension://x/i.js'; w.document.head.appendChild(s); s.remove();
+      $('phrase').setAttribute('data-unknown-helper', '1'); w.document.body.appendChild(w.document.createElement('grammarly-extension')); w.ethereum = {}; await sleep(450);
+      const sg = w.watchSigns().join('\n');
+      if (!/A script this page does not have \(from chrome-extension:\/\/x\/i\.js\)\. It was added and then removed again\./.test(sg)) fails.push('watch check: a script added and removed at once');
+      if (!/An attribute data-unknown-helper that this page never sets/.test(sg)) fails.push('watch check: an unknown attribute');
+      if (!/An element <grammarly-extension>/.test(sg)) fails.push('watch check: an extension element');
+      if (!/an object named “ethereum”/.test(sg)) fails.push('watch check: a wallet extension object');
+      if ($('watchWarn').style.display !== 'block' || !/^Something else may be reading or changing this page\./.test($('watchWarn').textContent)) fails.push('watch check: the warning shows at the top by itself'); }
+    w.alert = oa; w.confirm = oc;
+  } catch (e) { fails.push('v2.8.0 probe crashed: ' + e.message); }
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
   return fails;
@@ -2263,7 +2317,7 @@ const M = [
   ['entropy truncation 32 -> 31 bytes',     'async function rollsToMnemonic(rolls, wc){\n  const entLen = {12:16,24:32}[wc];', 'async function rollsToMnemonic(rolls, wc){\n  const entLen = {12:16,24:31}[wc];'],
   ['checksum length wrong',                 'const cbits = bits/32;', 'const cbits = bits/16;'],
   ['rolls hashed with extra byte',          'const digest = await sha256(rolls);\n  return entropyToMnemonic', 'const digest = await sha256(rolls+"0");\n  return entropyToMnemonic'],
-  ['PBKDF2 iterations 2048 -> 2047',        'iterations:2048', 'iterations:2047'],
+  ['PBKDF2 iterations 2048 -> 2047',        'hash:"SHA-512",iterations:2048,', 'hash:"SHA-512",iterations:2047,'],
   ['PBKDF2 salt prefix case',               '"mnemonic"+(passphrase||"")', '"Mnemonic"+(passphrase||"")'],
   ['passphrase NFKD normalisation removed', '(passphrase||"").normalize("NFKD")', '(passphrase||"")'],
   ['HMAC key altered',                      'encode("Bitcoin seed")', 'encode("Bitcoin seeD")'],
@@ -4017,7 +4071,34 @@ const M = [
   ["dice passphrase: stays on screen after USE", "e.value = t; e.dispatchEvent(new Event(\"input\")); }\n  dpClear();", "e.value = t; e.dispatchEvent(new Event(\"input\")); }"],
   ["drill: dice passphrase box shown", "  body.drill-on #dpBox { display: none !important; }", ""],
   ["two wallets: do not follow practice mode", "if(wvCtx && wvCtx.mnemonic && wvCtx.pass){ wvDecoyHide(); wvDecoyShow(", "if(false){ wvDecoyHide(); wvDecoyShow("],
-  ["two wallets: kept after CLEAR ALL", "hideAddrQr(\"wvq\"); wvSeedQrHide(); wvDecoyHide();", "hideAddrQr(\"wvq\"); wvSeedQrHide();"],
+  ["two wallets: kept after CLEAR ALL", "hideAddrQr(\"wvq\"); wvSeedQrHide(); wvDecoyHide();", "hideAddrQr(\"wvq\"); wvSeedQrHide();"],  // ---- v2.8.0 ----
+  ["wallet detective: Electrum salt", "salt:enc.encode(\"electrum\" + (asTyped", "salt:enc.encode(\"mnemonic\" + (asTyped"],
+  ["wallet detective: Electrum passphrase not lower-cased", "function electrumNorm(t){ return String(t || \"\").normalize(\"NFKD\").toLowerCase()", "function electrumNorm(t){ return String(t || \"\").normalize(\"NFKD\")"],
+  ["wallet detective: SegWit Electrum seeds at the root", "{id:\"el-segwit\", seed:\"electrum-segwit\", steps:() => [[0, true]]", "{id:\"el-segwit\", seed:\"electrum-segwit\", steps:() => []"],
+  ["wallet detective: no BitPay/Copay SegWit on BIP44", "types:[\"pkh\", \"wpkh\", \"tr\", \"sh-wpkh\"], accts:true, name:\"BIP44\"", "types:[\"pkh\"], accts:true, name:\"BIP44\""],
+  ["wallet detective: m/0' path dropped", "{id:\"m0h\", seed:\"bip39\"", "{id:\"m0h\", seed:\"none\""],
+  ["wallet detective: change addresses not searched", "for(const chain of [0, 1]){\n        const [ck, cc] = await ckdPriv(k, c, chain, false), cpub = pubkeyBytes(ck);", "for(const chain of [0]){\n        const [ck, cc] = await ckdPriv(k, c, chain, false), cpub = pubkeyBytes(ck);"],
+  ["wallet detective: wrong address type compared", "if(await addressFromKey(T.type, kk, T.net) === T.addr) return {found:", "if(await addressFromKey(\"wpkh\", kk, T.net) === T.addr) return {found:"],
+  ["wallet detective: no try without the passphrase", "passes:vp ? [[\"with the passphrase\", vp], [\"without a passphrase\", \"\"]]", "passes:vp ? [[\"with the passphrase\", vp]]"],
+  ["wallet detective: accounts 1 to 9 skipped", "for(let a = 1; a <= DET_ACCTS; a++) jobs.push", "for(let a = 1; a < 1; a++) jobs.push"],
+  ["wallet detective: only 20 addresses", "  for(const P of mine.filter(fits)) jobs.push({P, acct:0, from:20, n:80});\n", ""],
+  ["wallet detective: practice mode searches real addresses", "if(practiceOn && T.net !== \"test\") return detSay", "if(false && T.net !== \"test\") return detSay"],
+  ["wallet detective: LIST ignores practice mode", "const net = practiceOn ? \"test\" : \"main\", coin = NETS[net].coin, pass = src.passes[0], lines = [];", "const net = \"main\", coin = NETS[net].coin, pass = src.passes[0], lines = [];"],
+  ["wallet detective: two-factor seeds not sent to Electrum", "if(el && el !== \"standard\" && el !== \"SegWit\") return {error:", "if(false) return {error:"],
+  ["wallet detective: Electrum passphrase as typed not tried", "    if(detRawDiffers(pw)) list.push(", "    if(false) list.push("],
+  ["wipe: Wallet Detective kept", "  detClear();   // v2.8.0: the Wallet Detective\n", ""],
+  ["wallet detective: result kept when the words change", "for(const id of [\"phrase\", \"verifyPass\"]) document.getElementById(id).addEventListener(\"input\", () => detClear(true));", ""],
+  ["wallet detective: unusual mix not named", "if(!f.usual) lines.push(", "if(false) lines.push("],
+  ["watch check: extension elements ignored", "  if(t.includes(\"-\")) return", "  if(false) return"],
+  ["watch check: removed scripts forgotten", "/^(SCRIPT|IFRAME|FRAME|OBJECT|EMBED|LINK|STYLE|FONT)$|-/.test(n.tagName)", "/^(IFRAME|FRAME|OBJECT|EMBED|LINK|STYLE|FONT)$|-/.test(n.tagName)"],
+  ["watch check: the page's own data-tab flagged", "\"seed\", \"tab\", \"text\"", "\"seed\", \"text\""],
+  ["watch check: unknown attributes ignored", "  return \"An attribute \" + a + \" that this page never sets, probably added by a browser extension.\";", "  return null;"],
+  ["watch check: warning never shown at the top", "b.append(t, m, l); b.style.display = \"block\";", "b.append(t, m, l);"],
+  ["watch check: says safe", "st.className = \"status\"; st.textContent = \"NO SIGN FOUND of extensions, translators or other scripts on this page right now.\";", "st.className = \"status ok\"; st.textContent = \"SAFE: nothing is watching this page.\";"],
+  ["watch check: not checked again after load", "if(hit && window.vfWatchPing) window.vfWatchPing();", "if(false) window.vfWatchPing();"],
+  ["watch check: wallet extension objects ignored", "for(const [g, n] of WATCH_GLOBALS) if(g in window) add(", "for(const [g, n] of WATCH_GLOBALS) if(false) add("],
+  ["heir mode: does not open", "  c.style.display = \"\"; document.getElementById(\"heirBtn\").setAttribute(\"aria-expanded\", \"true\");", "  document.getElementById(\"heirBtn\").setAttribute(\"aria-expanded\", \"true\");"],
+  ["heir mode: the Detective button goes nowhere", "onclick=\"heirGo('check', 'detBlock')\"", "onclick=\"heirGo('tools', 'detBlock')\""],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
