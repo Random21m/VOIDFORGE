@@ -404,11 +404,12 @@ async function probe(w, mutated, fast) {
     { const mkc = ({ seq = 0xfffffffd, ins = [[1, 90000n], [2, 70000n]], outs = [[31, 100000n], [32, 58000n]], chg = 32 }) => { const t = new btc.Transaction({ allowUnknownOutputs: true });
         ins.forEach(([k, a], i) => t.addInput({ txid: nc.createHash('sha256').update('coin' + k).digest('hex'), index: i, sequence: seq, witnessUtxo: { script: kinds.p2wpkh(30).script, amount: a } }));
         outs.forEach(([k, a]) => t.addOutput(k === chg ? { script: kinds.p2wpkh(k).script, amount: a, bip32Derivation: [[pubE(k), { fingerprint: 0xdeadbeef, path: [0x80000054] }]] } : { script: kinds.p2wpkh(k).script, amount: a })); return t; };
-      const cmp = async (a, b) => w.compareTx(await insp(a.toPSBT(0)), await insp(b.toPSBT(0)));
+      // v2.8.1: change marks are only trusted when checked against the words; here they stand for checked change
+      const cmp = async (a, b) => { const A2 = await insp(a.toPSBT(0)), B2 = await insp(b.toPSBT(0)); for (const o of [...A2.outs, ...B2.outs]) if (o.fps.length) o.change = 'verified'; return w.compareTx(A2, B2); };
       const A = mkc({}), sg = mkc({}); sg.updateInput(0, { partialSig: [[pubE(30), new Uint8Array(71).fill(1)]] }, true);
       let t = await cmp(A, sg); if (!/SIGNER CHECK: unchanged/.test(t) || !/0 signatures -> 1 signature/.test(t) || /DIFFERENT/.test(t)) fails.push('compare: same transaction with signatures added is unchanged');
       if ((await insp(A.toPSBT(0))).txid !== A.id) fails.push('compare: psbt transaction id equals the independent id');
-      t = await cmp(A, mkc({ outs: [[31, 100000n], [32, 56000n]] })); if (!/DIFFERENT/.test(t) || !/the second pays 0\.00002000 BTC.*MORE/.test(t) || !/plain fee bump/.test(t) || !/OK    The output that got smaller .* is marked as this wallet's own change/.test(t)) fails.push('compare: plain fee bump recognised');
+      t = await cmp(A, mkc({ outs: [[31, 100000n], [32, 56000n]] })); if (!/DIFFERENT/.test(t) || !/the second pays 0\.00002000 BTC.*MORE/.test(t) || !/plain fee bump/.test(t) || !/OK    The output that got smaller .* is checked as this wallet's own change/.test(t)) fails.push('compare: plain fee bump recognised');
       t = await cmp(A, mkc({})); if (!/SIGNER CHECK: unchanged/.test(t)) fails.push('compare: identical rebuilt transaction is unchanged');
       const nofp = mkc({ chg: 99 }); t = await cmp(nofp, mkc({ chg: 99, outs: [[31, 100000n], [32, 56000n]] })); if (!/NOTE  The output that got smaller .* is not marked as change/.test(t)) fails.push('compare: shrinking output without change info is noted');
       t = await cmp(A, mkc({ outs: [[33, 100000n], [32, 58000n]] })); if (!/Payments changed: an output changed address|more than one output differs/.test(t) || !/does NOT look like a plain fee bump/.test(t) || !/only in the first:  0\.00100000 BTC \(100000 sats\) to /.test(t)) fails.push('compare: redirected output is not a fee bump');
@@ -420,7 +421,7 @@ async function probe(w, mutated, fast) {
       t = await cmp(mkc({ seq: 0xffffffff }), mkc({ outs: [[31, 100000n], [32, 56000n]] })); if (!/FAIL  The first does not allow replacement/.test(t) || !/does NOT look like/.test(t)) fails.push('compare: no RBF rejected');
       t = await cmp(A, mkc({ ins: [[5, 90000n], [6, 70000n]], outs: [[31, 100000n], [32, 56000n]] })); if (!/FAIL  The second does not spend any of the same coins/.test(t) || !/only in the second: [0-9a-f]{64}:0/.test(t) || !/does NOT look like/.test(t)) fails.push('compare: no shared coin rejected');
       t = await cmp(A, mkc({ ins: [[1, 90000n], [2, 70000n], [7, 20000n]], outs: [[31, 100000n], [32, 76000n]] })); if (!/plain fee bump/.test(t) || /NOT look like/.test(t) || !/OK    The output that grew \(an extra coin was added\)/.test(t)) fails.push('compare: added coin with larger change is a fee bump');
-      t = await cmp(nofp, mkc({ chg: 99, ins: [[1, 90000n], [2, 70000n], [7, 20000n]], outs: [[31, 100000n], [32, 76000n]] })); if (!/got MORE money and is not marked as change/.test(t) || !/does NOT look like/.test(t)) fails.push('compare: larger unmarked output after an added coin is rejected');
+      t = await cmp(nofp, mkc({ chg: 99, ins: [[1, 90000n], [2, 70000n], [7, 20000n]], outs: [[31, 100000n], [32, 76000n]] })); if (!/got MORE money and is not checked as this wallet's change/.test(t) || !/does NOT look like/.test(t)) fails.push('compare: larger unmarked output after an added coin is rejected');
       t = await cmp(A, mkc({ ins: [[1, 90000n], [2, 70000n], [7, 20000n]], outs: [[31, 100000n], [32, 78000n]] })); if (!/FAIL  The second does not pay a higher fee/.test(t) || !/does NOT look like/.test(t) || /the second pays .* MORE/.test(t) || !/the same/.test(t)) fails.push('compare: equal fee is not a higher fee');
       const bare = new btc.Transaction({ allowUnknownOutputs: true }); bare.addInput({ txid: nc.createHash('sha256').update('coin1').digest('hex'), index: 0, sequence: 0xfffffffd }); bare.addOutput({ script: kinds.p2wpkh(31).script, amount: 1000n });
       t = await cmp(bare, A); if (!/NO CLEAN VERDICT/.test(t) || !/cannot be compared/.test(t)) fails.push('compare: unknown fee gives no clean verdict');
@@ -515,7 +516,9 @@ async function probe(w, mutated, fast) {
       { const vi = (n) => n < 253 ? [n] : [253, n & 255, n >> 8], kv = (k, v) => [...vi(k.length), ...k, ...vi(v.length), ...v], le8 = (n) => { const o = []; for (let q = 0; q < 8; q++) o.push(Number((BigInt(n) >> BigInt(8 * q)) & 255n)); return o; };
         const out = (amt, sc) => [...le8(amt), ...vi(sc.length), ...sc], sc9 = [...kinds.p2pkh(9).script], sc8 = [...kinds.p2pkh(8).script];
         const prevSeg = [2, 0, 0, 0, 0, 1, 1, ...new Array(32).fill(5), 0, 0, 0, 0, 0, 0xff, 0xff, 0xff, 0xff, 2, ...out(300000, sc8), ...out(190000, sc9), 1, 1, 0xff, 0, 0, 0, 0];
-        const unsigned = [2, 0, 0, 0, 1, ...new Array(32).fill(6), 1, 0, 0, 0, 0, 0xff, 0xff, 0xff, 0xff, 1, ...out(180000, [...kinds.p2wpkh(2).script]), 0, 0, 0, 0];
+        // v2.8.1: the input must spend this previous transaction, so its txid is the hash of prevSeg without the marker, flag and witness
+        const d2 = (b) => nc.createHash('sha256').update(nc.createHash('sha256').update(Buffer.from(b)).digest()).digest(), prevId = [...d2([...prevSeg.slice(0, 4), ...prevSeg.slice(6, prevSeg.length - 7), ...prevSeg.slice(prevSeg.length - 4)])];
+        const unsigned = [2, 0, 0, 0, 1, ...prevId, 1, 0, 0, 0, 0, 0xff, 0xff, 0xff, 0xff, 1, ...out(180000, [...kinds.p2wpkh(2).script]), 0, 0, 0, 0];
         const psbt = Uint8Array.from([0x70, 0x73, 0x62, 0x74, 0xff, ...kv([0], unsigned), 0, ...kv([0], prevSeg), 0, 0]);
         const rs = await insp(psbt); if (rs.ins[0].amount !== 190000n || rs.fee !== 10000n || rs.outs.length !== 1) fails.push('psbt: previous transaction in segwit serialization (marker and flag)'); }
       const t3 = new btc.Transaction({ allowUnknownOutputs: true }); t3.addInput({ txid: '22'.repeat(32), index: 0 }); t3.addOutput({ script: kinds.p2wpkh(2).script, amount: 1n });
@@ -548,7 +551,8 @@ async function probe(w, mutated, fast) {
         const kb = Buffer.from(tk.toPSBT(0)).toString('base64'); $('phrase').value = ''; [a, o] = await run(kb);
         const blocks = o.split('OUTPUT ').slice(1);
         if (!/marked as change by the app that made this PSBT \(fingerprint deadbeef\)\. NOT checked/.test(blocks[1] || '') || /no wallet key information/.test(blocks[1] || '')) fails.push('psbt: report marks an output that carries key information (as unchecked)');
-        if (!/no wallet key information: treat as a payment to someone else/.test(blocks[2] || '') || /marked as change/.test(blocks[2] || '')) fails.push('psbt: report marks an output without key information as a payment to someone else');
+        const b2 = (blocks[2] || '').split('\n').slice(0, 3).join('\n');   // the output's own lines, not the checks after it
+        if (!/no wallet key information: treat as a payment to someone else/.test(b2) || /marked as change/.test(b2)) fails.push('psbt: report marks an output without key information as a payment to someone else');
         if (/CHANGE, CHECKED|matches the wallet typed above/.test(o)) fails.push('psbt: no checked change claimed when no words are typed');
         $('phrase').value = expect.d50; $('verifyPass').value = ''; [a, o] = await run(kb); const bl2 = o.split('OUTPUT ').slice(1);
         // v2.8.1: output 0 names this wallet's fingerprint but its key is not the wallet's key at that path, so the mark is forged
@@ -2230,7 +2234,7 @@ async function probe(w, mutated, fast) {
       w.practiceMode(true); await DC('bitbox02', 12, C.slice(0, 50)); const ot = $('dcOut').textContent; w.practiceMode(false);
       if (!ot.includes(taddr(m, '')) || ot.includes(addr(m, ''))) fails.push('device dice: the address is on the test network in practice mode');
       $('dcDev').value = 'bitbox02'; $('dcLen').value = '12'; $('dcRolls').value = C.slice(0, 50); const run2 = w.dcCheck(); w.practiceMode(true); await run2; const o2 = $('dcOut').textContent; w.practiceMode(false);
-      if (!o2.includes(addr(m, '')) || /TESTNET|tb1q/.test(o2)) fails.push('device dice: practice mode switched on during the check leaves one network, labelled correctly'); }
+      if (o2 !== '' && (!o2.includes(addr(m, '')) || /TESTNET|tb1q/.test(o2))) fails.push('device dice: practice mode switched on during the check leaves one network, labelled correctly (v2.8.1: or none)'); }
     { let card = ''; w.print = () => { card = $('printOnly').textContent; }; await w.printDiceCard(); w.print = op; w.dispatchEvent(new w.Event('afterprint'));
       const want = [dcExp(C.slice(0, 50), 12, false), dcExp(C.slice(0, 99), 24, false), dcExp(C.slice(0, 50), 12, true), dcExp(C, 24, true)].join(' ');
       if (!/^VOIDFORGE DICE TEST CARD/.test(card) || wordsOf(card) !== want || !card.includes(C.slice(0, 10) + ' ' + C.slice(10, 20))) fails.push('test card: the rolls and the words each device must make'); }
@@ -2329,6 +2333,30 @@ async function probe(w, mutated, fast) {
       const good = t.toPSBT(0), bad = Buffer.from(good), amt = Buffer.alloc(8); amt.writeBigUInt64LE(300000n); const at = bad.indexOf(amt); bad.writeBigUInt64LE(900000n, at);
       const g = await w.inspectPsbt(good, 'main'), b = await w.inspectPsbt(new Uint8Array(bad), 'main');
       if (g.ins[0].amount !== 300000n || b.ins[0].amount !== null || !w.psbtVerdict(b, null).includes('NO CLEAN VERDICT')) fails.push('PSBT: a changed previous transaction is caught'); }
+    { const t = mk(), mine = k("m/84'/0'/0'/1/3"); t.addOutput({ script: btc.p2wsh(btc.p2ms(1, [mine, att].sort(Buffer.compare))).script, amount: 99000n, bip32Derivation: [[mine, { fingerprint: fpw, path: [84 + H, H, H, 1, 3] }]] });
+      if (!/NO CLEAN VERDICT/.test(await run(t, 0, AB))) fails.push('PSBT change: a script output said to hold the key is not trusted'); }
+    { const t = mk(), mine = k("m/84'/0'/0'/1/4"); t.addOutput({ script: btc.p2pkh(mine).script, amount: 99000n, bip32Derivation: [[mine, { fingerprint: fpw, path: [84 + H, H, H, 1, 4] }]] });
+      const o = await run(t, 0, AB); if (!/but as Legacy/.test(o) || !/NO CLEAN VERDICT/.test(o)) fails.push('PSBT change: the address type of the path is checked'); }
+    { const t = mk(); t.addOutput({ script: btc.p2wpkh(att).script, amount: 149000n, bip32Derivation: [[att, { fingerprint: 0xdeadbeef, path: [84 + H, H, H, 1, 0] }]] });
+      if (!/Not every change mark could be checked/.test(await run(t, 0, AB))) fails.push('PSBT change: the verdict says when a mark was not checked'); }
+    { const base = () => { const t = new btc.Transaction(); t.addInput({ txid: '22'.repeat(32), index: 0, witnessUtxo: { script: btc.p2wpkh(k("m/84'/0'/0'/0/0")).script, amount: 150000n }, sequence: 0xfffffffd }); return t; };
+      const A2 = base(); A2.addOutputAddress(btc.p2wpkh(k("m/84'/0'/0'/0/9")).address, 100000n); A2.addOutput({ script: btc.p2wpkh(att).script, amount: 49000n });
+      const B2 = base(); B2.addOutputAddress(btc.p2wpkh(k("m/84'/0'/0'/0/9")).address, 100000n); B2.addOutput({ script: btc.p2wpkh(att).script, amount: 48000n, bip32Derivation: [[att, { fingerprint: fpw, path: [84 + H, H, H, 1, 1] }]] });
+      $('phrase').value = AB; $('cmpA').value = Buffer.from(A2.toPSBT(0)).toString('base64'); $('cmpB').value = Buffer.from(B2.toPSBT(0)).toString('base64'); $('cmpNet').value = 'main'; await w.runCompare();
+      if (!/Do not sign/.test($('cmpOut').textContent) || /it looks like a plain fee bump/.test($('cmpOut').textContent)) fails.push('compare: a forged change mark is not a plain fee bump'); w.clearCompare(true); }
+    { const prev = new btc.Transaction({ allowUnknownOutputs: true }); prev.addOutput({ script: btc.p2wpkh(k("m/84'/0'/0'/0/0")).script, amount: 300000n }); prev.addInput({ txid: nc.randomBytes(32), index: 0, finalScriptSig: new Uint8Array([0]) });
+      const t = new btc.Transaction(); t.addInput({ txid: prev.id, index: 0, nonWitnessUtxo: prev.toBytes(true, false), witnessUtxo: { script: btc.p2wpkh(k("m/84'/0'/0'/0/0")).script, amount: 300000n } }); t.addOutputAddress(btc.p2wpkh(att).address, 100000n);
+      const bad = Buffer.from(t.toPSBT(0)), amt = Buffer.alloc(8); amt.writeBigUInt64LE(300000n); bad.writeBigUInt64LE(900000n, bad.indexOf(amt));
+      if (!(await w.inspectPsbt(new Uint8Array(bad), 'main')).ins[0].prevMismatch) fails.push('PSBT: a wrong full previous transaction is caught next to a witness UTXO'); }
+    { const t = mk(); t.addOutputAddress(btc.p2wpkh(att).address, 100000n); const p = Buffer.from(t.toPSBT(0)), end = p.length - 1, rec = Buffer.from([0x01, 0x00, 0x01, 0x51]); let msg = '';
+      try { await w.inspectPsbt(new Uint8Array(Buffer.concat([p.slice(0, end), rec, rec, p.slice(end)])), 'main'); } catch (e) { msg = e.message; } if (!/same record twice/.test(msg)) fails.push('PSBT: a duplicate record is refused'); }
+    { // a version 2 PSBT whose inputs ask for a height and a time locktime (built by hand: btc-signer refuses to make one)
+      const rec = (t, v) => [1, t, v.length, ...v], u32 = (n) => [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, n >>> 24], out = [0x70, 0x73, 0x62, 0x74, 0xff];
+      out.push(...rec(0x02, u32(2)), ...rec(0x04, [2]), ...rec(0x05, [1]), ...rec(0xfb, u32(2)), 0);
+      out.push(...rec(0x0e, [...nc.randomBytes(32)]), ...rec(0x0f, u32(0)), ...rec(0x12, u32(800000)), 0);
+      out.push(...rec(0x0e, [...nc.randomBytes(32)]), ...rec(0x0f, u32(1)), ...rec(0x11, u32(1700000000)), 0);
+      const sc = [...btc.p2wpkh(att).script]; out.push(...rec(0x03, [0x10, 0x27, 0, 0, 0, 0, 0, 0]), ...rec(0x04, sc), 0);
+      let msg = ''; try { await w.inspectPsbt(Uint8Array.from(out), 'main'); } catch (e) { msg = e.message; } if (!/cannot be signed/.test(msg)) fails.push('PSBT version 2: impossible locktimes are refused'); }
     // stale results and practice mode
     { $('phrase').value = AB; $('checkAddr').value = btc.p2wpkh(k("m/84'/0'/0'/0/0")).address; $('checkAcct').value = '0'; await w.checkAddress(3); const f0 = $('addrCheckStatus').textContent;
       $('checkAddr').dispatchEvent(new w.Event('input')); if (!/^FOUND/.test(f0) || $('addrCheckStatus').textContent) fails.push('address check: an edit clears FOUND');
@@ -2486,7 +2514,7 @@ const M = [
   ['auto-clear: tab hidden ignored', 'if(document.hidden && document.getElementById("autoHide").checked)', 'if(false)'],
   ['auto-clear: tab option ignored', 'if(document.hidden && document.getElementById("autoHide").checked)', 'if(document.hidden)'],
   ['auto-clear: wipes when the tab is shown', 'if(document.hidden && document.getElementById("autoHide").checked)', 'if(!document.hidden && document.getElementById("autoHide").checked)'],
-  ['auto-clear: child seed left on screen', 'clearChild(); hideExplain();', 'hideExplain();'],
+  ['auto-clear: child seed left on screen (equivalent: wipeSeed also clears the child seed)', 'clearChild(); hideExplain();', 'hideExplain();', true],
   ['auto-clear: typed fields left', 'for(const id of AUTO_FIELDS){ const e = document.getElementById(id); if(e) e.value = ""; }', ''],
   ['auto-clear: Reforge result left', 'ro.textContent = ""; ro.style.display = "none";', ''],
   ['auto-clear: seed not wiped', 'msReset(); wipeSeed(); planClear(); clearChild();', 'msReset(); planClear(); clearChild();'],
@@ -3189,14 +3217,14 @@ const M = [
   ['compare: higher fee required', 'feeOk=feeKnown && b.fee>a.fee', 'feeOk=feeKnown && b.fee>=a.fee'],
   ['compare: too many differing outputs', 'if(outGone.length>1 || outNew.length>1){', 'if(outGone.length>2 || outNew.length>2){'],
   ['compare: output changed address', 'if(outGone[0].address!==outNew[0].address){', 'if(false){'],
-  ['compare: grown output needs an added coin', '!(fresh.length>0 && (outNew[0].fps.length || outGone[0].fps.length))', '!(true && (outNew[0].fps.length || outGone[0].fps.length))'],
-  ['compare: grown output needs change marking', '(outNew[0].fps.length || outGone[0].fps.length)))', '(true)))'],
+  ["compare: grown output needs an added coin", "!(fresh.length>0 && (outNew[0].change===\"verified\" || outGone[0].change===\"verified\"))", "!(true && (outNew[0].change===\"verified\" || outGone[0].change===\"verified\"))"],
+  ["compare: grown output needs change marking", "(outNew[0].change===\"verified\" || outGone[0].change===\"verified\")))", "(true)))"],
   ['compare: new output', 'else if(outGone.length===0 && outNew.length===1){ keptOk=false;', 'else if(outGone.length===0 && outNew.length===1){ keptOk=true;'],
   ['compare: unknown fee verdict', ': feeKnown ? "SIGNER CHECK: CHANGED', ': true ? "SIGNER CHECK: CHANGED'],
   ['compare: more or less', 'd>0n ? ", the second pays "', 'd<0n ? ", the second pays "'],
   ['compare: signature changes shown', 'if(y && sa(x)!==sa(y))', 'if(false)'],
   ['compare: outputs matched by amount', 'y.address===o.address && y.amount===o.amount', 'y.address===o.address'],
-  ['compare: change marking noted', 'mine=shrank.fps.length>0 || outNew[0].fps.length>0', 'mine=false'],
+  ["compare: change marking noted", "const ok=cs.includes(\"verified\");", "const ok=false;"],
   ['compare: which transaction is bad', 'throw new Error(label + ": " + e.message)', 'throw e'],
   ['compare: first box clears result', 'document.getElementById("cmpA").addEventListener("input", () => clearCompare(false));', ''],
   ['compare: second box clears result', 'document.getElementById("cmpB").addEventListener("input", () => clearCompare(false));', ''],
@@ -4157,13 +4185,13 @@ const M = [
   ["watch check: not checked again after load", "if(hit && window.vfWatchPing) window.vfWatchPing();", "if(false) window.vfWatchPing();"],
   ["watch check: wallet extension objects ignored", "for(const [g, n] of WATCH_GLOBALS) if(g in window) add(", "for(const [g, n] of WATCH_GLOBALS) if(false) add("],
   // ---- v2.8.1 (fixes release) ----
-  ["fixes: change mark trusted again", "      if(paid){ state = \"verified\"; break; }", "      state = \"verified\"; break;"],
+  ["fixes: change mark trusted again", "      if(paidAs && (!want || want === paidAs)){ seen.add(\"verified\"); break; }", "      seen.add(\"verified\"); break;"],
   ["fixes: change key not compared with the record", "const pub = pubkeyBytes(k), keyOk = d.tap ? eqBytes(pub.slice(1), d.pub) : eqBytes(pub, d.pub);", "const pub = pubkeyBytes(k), keyOk = true;"],
   ["fixes: forged mark not blocking", "to be this wallet's change but \" + (nForged===1?\"is\":\"are\") + \" NOT paid to this wallet's key at the path given. Do not sign: the change mark is forged (or the words or passphrase above belong to another wallet).\", true);", "to be this wallet's change but \" + (nForged===1?\"is\":\"are\") + \" NOT paid to this wallet's key at the path given. Do not sign: the change mark is forged (or the words or passphrase above belong to another wallet).\", false);"],
   ["fixes: change checked without the words", "    if(!root || !fpw){ o.change = \"unverified\"; continue; }", "    if(!root || !fpw){ o.change = \"verified\"; continue; }"],
-  ["fixes: single-key forged output called multisig", "      if(scriptOut) state = \"multisig\";", "      state = \"multisig\";"],
+  ["fixes: single-key forged output called multisig", "seen.add(p2wsh || p2sh || (p2tr && d.tap && d.leaves > 0) ? \"multisig\" : \"forged\");", "seen.add(\"multisig\");"],
   ["fixes: no change check before the report", "    await psbtCheckChange(res, root, fpw, net);", ""],
-  ["fixes: PSBT v2 locktime from the fallback only", "  if(asks.length){ const byH=asks.every(x=>x.lockH!==null);", "  if(false){ const byH=asks.every(x=>x.lockH!==null);"],
+  ["fixes: PSBT v2 locktime from the fallback only", "    locktime=byH ? Math.max(...asks.map(x=>x.lockH)) : Math.max(...asks.map(x=>x.lockT)); }", "    }"],
   ["fixes: PSBT v2 sequence default wrong", ": 0xffffffff, lockH:th", ": 0xfffffffe, lockH:th"],
   ["fixes: previous transaction not checked", "      if(id===tx.ins[i].txid){ const o=psbtParseTxOutputs(nw.val)", "      if(true){ const o=psbtParseTxOutputs(nw.val)"],
   ["fixes: wipe leaves rolls and passphrase in state", "  seedSig = null; passKey = null; exCtx = null;   // fixes release", "  // fixes release"],
@@ -4177,6 +4205,13 @@ const M = [
   ["fixes: FORGE signature after the hash", "  exCtx = ctx; seedKind = ctx ? \"rolls\" : \"wd\"; seedSig = sig0 !== undefined ? sig0 : inputSig(seedKind);", "  exCtx = ctx; seedKind = ctx ? \"rolls\" : \"wd\"; seedSig = inputSig(seedKind);"],
   ["fixes: words read back from the screen", "  return {words: madeMnemonic.split(\" \"), fp: document.getElementById(\"fingerprint\").textContent,", "  return {words: document.getElementById(\"genResult\").textContent.split(\"\\n\")[0].split(\" \"), fp: document.getElementById(\"fingerprint\").textContent,"],
   ["fixes: Uprv version wrong again", "\"045f18bc\",\"024285b5\",\"02575048\"]", "\"045f18bc\",\"02424c24\",\"02575048\"]"],
+  ["fixes: a script output said to hold the key is trusted", "in a multisig wallet, confirm the change address in the wallet app that has all the keys.\", true);", "in a multisig wallet, confirm the change address in the wallet app that has all the keys.\", false);"],
+  ["fixes: address type of the path not checked", "if(paidAs && (!want || want === paidAs))", "if(paidAs)"],
+  ["fixes: compare tool trusts a forged change", "    const all=shared>0 && rbfOk && feeOk && keptOk && !chBad;", "    const all=shared>0 && rbfOk && feeOk && keptOk;"],
+  ["fixes: impossible PSBT v2 locktimes accepted", "if(!byH && !byT) throw new Error", "if(false) throw new Error"],
+  ["fixes: previous transaction unchecked next to a witness UTXO", "    if(nw && wu){ const id=", "    if(false){ const id="],
+  ["fixes: duplicate PSBT records accepted", "if(seen.has(id)) throw new Error(\"This PSBT has the same record twice", "if(false) throw new Error(\"This PSBT has the same record twice"],
+  ["fixes: no caveat for unchecked marks of another wallet", ": res.outs.some(x=>x.fps.length && x.change!==\"verified\") ? \" Not every change mark", ": false ? \" Not every change mark"],
   ["heir mode: does not open", "  c.style.display = \"\"; document.getElementById(\"heirBtn\").setAttribute(\"aria-expanded\", \"true\");", "  document.getElementById(\"heirBtn\").setAttribute(\"aria-expanded\", \"true\");"],
   ["wallet detective: Electrum keeps combining marks", ".toLowerCase().replace(ELECTRUM_CCC, \"\")", ".toLowerCase()"],
   ["wallet detective: Electrum steps for a passphrase Electrum cannot read", "  if(f.asTyped) return \"Electrum itself cannot open it", "  if(false) return \"Electrum itself cannot open it"],

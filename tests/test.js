@@ -1910,8 +1910,34 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const x=await PSBT(t,0,AB); ok(/CHANGE, CHECKED: paid to this wallet's own key at m\/86'\/0'\/0'\/1\/0/.test(x.out),'PSBT change: Taproot change (tap key record) is checked against the tweaked key'); }
     { const t=mk(), other=HDKey.fromMasterSeed(nc.randomBytes(32)).derive("m/48'/0'/0'/2'/0/0").publicKey, mine=k("m/48'/0'/0'/2'/0/0");
       t.addOutput({script:btc.p2wsh(btc.p2ms(1,[mine,other].sort(Buffer.compare))).script, amount:70000n, bip32Derivation:[[mine,{fingerprint:fp, path:[48+H,H,H,2+H,0,0]}]]});
-      const x=await PSBT(t,0,AB); ok(/has this wallet's key at m\/48'\/0'\/0'\/2'\/0\/0 among its keys \(a multisig output\)/.test(x.out)&&!/Do not sign/.test(x.out),'PSBT change: a multisig output with this wallet\'s key among others is noted, not called checked or forged'); }
-    // 2. PSBT version 2 (BIP370): the same report as version 0, and the same transaction ID
+      const x=await PSBT(t,0,AB); ok(/said to hold this wallet's key at m\/48'\/0'\/0'\/2'\/0\/0 among several keys/.test(x.out)&&/NO CLEAN VERDICT/.test(x.out)&&!/CHANGE, CHECKED/.test(x.out),'PSBT change: a multisig output said to hold this wallet\'s key is not trusted (review of the fixes: a forger can use a script address too)'); }
+    // 1b. review of the fixes: script outputs, address types, the compare tool, caveats
+    { const t=mk(), mine=k("m/84'/0'/0'/1/3"); t.addOutput({script:btc.p2tr(att.slice(1)).script, amount:99000n, bip32Derivation:[[mine,{fingerprint:fp, path:[84+H,H,H,1,3]}]]});
+      const x=await PSBT(t,0,AB); ok(/WARNING/.test(x.out)&&/NO CLEAN VERDICT/.test(x.out)&&!/CHANGE, CHECKED/.test(x.out),'PSBT change: the wallet\'s real key record on someone else\'s Taproot address fails the verdict'); }
+    { const t=mk(), mine=k("m/84'/0'/0'/1/3"); t.addOutput({script:btc.p2wsh(btc.p2ms(1,[mine,att].sort(Buffer.compare))).script, amount:99000n, bip32Derivation:[[mine,{fingerprint:fp, path:[84+H,H,H,1,3]}]]});
+      const x=await PSBT(t,0,AB); ok(/said to hold this wallet's key at m\/84'\/0'\/0'\/1\/3 among several keys/.test(x.out)&&/FAIL  1 output claims to hold this wallet's key among several keys/.test(x.out)&&/NO CLEAN VERDICT/.test(x.out),'PSBT change: a script (multisig) output said to hold this wallet\'s key is not trusted and fails the verdict'); }
+    { const t=mk(), mine=k("m/84'/0'/0'/1/4"); t.addOutput({script:btc.p2pkh(mine).script, amount:99000n, bip32Derivation:[[mine,{fingerprint:fp, path:[84+H,H,H,1,4]}]]});
+      const x=await PSBT(t,0,AB); ok(/paid to this wallet's key at m\/84'\/0'\/0'\/1\/4, but as Legacy/.test(x.out)&&/NO CLEAN VERDICT/.test(x.out)&&!/CHANGE, CHECKED/.test(x.out),'PSBT change: the wallet\'s key paid as an address type its path does not watch (BIP84 key, legacy address) fails'); }
+    { const t=mk(); t.addOutput({script:btc.p2wpkh(att).script, amount:149000n, bip32Derivation:[[att,{fingerprint:0xdeadbeef, path:[84+H,H,H,1,0]}]]});
+      const x=await PSBT(t,0,AB); ok(/VERDICT: no problems found/.test(x.out)&&/Not every change mark could be checked/.test(x.out),'PSBT change: a clean verdict says when a mark of another wallet was not checked'); }
+    { const base=()=>{ const t=new btc.Transaction(); t.addInput({txid:'22'.repeat(32), index:0, witnessUtxo:{script:btc.p2wpkh(k("m/84'/0'/0'/0/0")).script, amount:150000n}, sequence:0xfffffffd}); return t; };
+      const A=base(); A.addOutputAddress(btc.p2wpkh(k("m/84'/0'/0'/0/9")).address,100000n); A.addOutput({script:btc.p2wpkh(att).script, amount:49000n});
+      const B=base(); B.addOutputAddress(btc.p2wpkh(k("m/84'/0'/0'/0/9")).address,100000n); B.addOutput({script:btc.p2wpkh(att).script, amount:48000n, bip32Derivation:[[att,{fingerprint:fp, path:[84+H,H,H,1,1]}]]});
+      $('phrase').value=AB; $('verifyPass').value=''; $('cmpA').value=Buffer.from(A.toPSBT(0)).toString('base64'); $('cmpB').value=Buffer.from(B.toPSBT(0)).toString('base64'); $('cmpNet').value='main'; await w.runCompare();
+      const o=$('cmpOut').textContent; ok(/FAIL  The output that got smaller .* is marked as this wallet's change, but it is NOT paid to this wallet's key\. Do not sign\./.test(o)&&!/it looks like a plain fee bump/.test(o)&&/does NOT look like a plain fee bump/.test(o),'compare: a forged change mark on the output that shrank fails, and it is not called a plain fee bump'); }
+    // the full previous transaction is checked even when a witness UTXO is there too; duplicate records and impossible locktimes are refused
+    { const prev=new btc.Transaction({allowUnknownOutputs:true}); prev.addOutput({script:btc.p2wpkh(k("m/84'/0'/0'/0/0")).script, amount:300000n}); prev.addInput({txid:nc.randomBytes(32), index:0, finalScriptSig:new Uint8Array([0])});
+      const t=new btc.Transaction(); t.addInput({txid:prev.id, index:0, nonWitnessUtxo:prev.toBytes(true,false), witnessUtxo:{script:btc.p2wpkh(k("m/84'/0'/0'/0/0")).script, amount:300000n}}); t.addOutputAddress(btc.p2wpkh(att).address,100000n);
+      const bad=Buffer.from(t.toPSBT(0)), amt=Buffer.alloc(8); amt.writeBigUInt64LE(300000n); bad.writeBigUInt64LE(900000n, bad.indexOf(amt));
+      const res=await w.inspectPsbt(new Uint8Array(bad),'main'); ok(res.ins[0].prevMismatch===true&&res.ins[0].amount===null,'PSBT: a wrong full previous transaction is caught even when a witness UTXO is also given'); }
+    { const t=mk(); t.addOutputAddress(btc.p2wpkh(att).address,100000n); const p=Buffer.from(t.toPSBT(0)), end=p.length-1, rec=Buffer.from([0x01,0x00,0x01,0x51]);   // the same record twice in the last output's map
+      let msg=''; try { await w.inspectPsbt(new Uint8Array(Buffer.concat([p.slice(0,end), rec, rec, p.slice(end)])),'main'); } catch(e) { msg=e.message; }
+      let once=''; try { await w.inspectPsbt(new Uint8Array(Buffer.concat([p.slice(0,end), rec, p.slice(end)])),'main'); } catch(e) { once=e.message; }
+      ok(/same record twice/.test(msg)&&once==='','PSBT: a record that appears twice is refused, as wallets refuse it'); }
+    { let t; try { t=new btc.Transaction({PSBTVersion:2}); t.addInput({txid:nc.randomBytes(32), index:0, witnessUtxo:{script:btc.p2wpkh(att).script, amount:150000n}, requiredHeightLocktime:800000}); t.addInput({txid:nc.randomBytes(32), index:1, witnessUtxo:{script:btc.p2wpkh(att).script, amount:150000n}, requiredTimeLocktime:1700000000});
+      t.addOutputAddress(btc.p2wpkh(att).address,100000n); } catch(e) { t=null; } let bytes=null, msg=''; try { bytes=t&&t.toPSBT(2); } catch(e) { bytes=null; }
+      if(bytes){ try { await w.inspectPsbt(bytes,'main'); } catch(e) { msg=e.message; } ok(/cannot be signed: one input needs a block-height locktime and another a time locktime/.test(msg),'PSBT version 2: inputs that need a height and a time locktime are refused (no transaction can meet both)'); }
+      else ok(true,'PSBT version 2: btc-signer itself refuses mixed locktime requirements'); }
     { const t=mk(); t.addOutputAddress(btc.p2wpkh(att).address, 100000n);
       const v0=await w.inspectPsbt(t.toPSBT(0),'main'), v2=await w.inspectPsbt(t.toPSBT(2),'main');
       ok(v2.psbtVersion===2&&v2.txid===v0.txid&&v2.fee===v0.fee&&v2.outs[0].address===v0.outs[0].address&&v2.ins[0].txid===v0.ins[0].txid,'PSBT version 2: read like version 0 (outputs, fee, inputs, transaction ID; built with btc-signer)');

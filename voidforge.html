@@ -4113,11 +4113,12 @@ function psbtReader(b){
   return r;
 }
 function psbtReadMap(r){
-  const m=[];
+  const m=[], seen=new Set();
   for(;;){
     const kl=r.varint(); if(kl===0) return m;
-    const key=r.bytes(kl), vl=r.varint(), val=r.bytes(vl);
-    m.push({type:key[0], key:key.slice(1), val});
+    const key=r.bytes(kl), vl=r.varint(), val=r.bytes(vl), id=hex(key);
+    if(seen.has(id)) throw new Error("This PSBT has the same record twice (type 0x" + key[0].toString(16) + "). Wallets refuse that, so this tool does too.");   // fixes release (review)
+    seen.add(id); m.push({type:key[0], key:key.slice(1), val});
   }
 }
 function psbtParseTx(bytes){
@@ -4227,14 +4228,17 @@ async function inspectRawTx(bytes, net){
 // worked out from the inputs' required locktimes or the fallback one. Returns the transaction plus the per-input and per-output maps.
 function psbtV2Tx(glob, r){
   const g=(t)=>glob.find(x=>x.type===t && x.key.length===0), u32=(v)=>(v[0]|(v[1]<<8)|(v[2]<<16)|(v[3]<<24))>>>0;
-  const need=(rec, what)=>{ if(!rec) throw new Error("This PSBT (version 2) is missing its " + what + "."); return rec.val; };
-  const version=u32(need(g(0x02), "transaction version")), nIn=psbtReader(need(g(0x04), "input count")).varint(), nOut=psbtReader(need(g(0x05), "output count")).varint();
+  const need=(rec, what, len)=>{ if(!rec) throw new Error("This PSBT (version 2) is missing its " + what + "."); if(len && rec.val.length!==len) throw new Error("This PSBT (version 2) has a damaged " + what + "."); return rec.val; };
+  if(g(0x00)) throw new Error("This PSBT says it is version 2 but also carries a version 0 unsigned transaction. Wallets refuse that, so this tool does too.");
+  for(const t of [0x03]){ const x=g(t); if(x && x.val.length!==4) throw new Error("This PSBT (version 2) has a damaged fallback locktime."); }
+  const version=u32(need(g(0x02), "transaction version", 4)), nIn=psbtReader(need(g(0x04), "input count")).varint(), nOut=psbtReader(need(g(0x05), "output count")).varint();
   if(nIn>10000 || nOut>10000) throw new Error("This PSBT (version 2) has too many inputs or outputs.");
   const inMaps=[], outMaps=[], ins=[], outs=[];
   for(let i=0;i<nIn;i++){ const m=psbtReadMap(r), f=(t)=>m.find(x=>x.type===t && x.key.length===0); inMaps.push(m);
     const id=need(f(0x0e), "previous transaction ID of input " + i), ix=need(f(0x0f), "output index of input " + i);
     if(id.length!==32 || ix.length!==4) throw new Error("Input " + i + " of this PSBT (version 2) is damaged.");
     const sq=f(0x10), th=f(0x12), tt=f(0x11);
+    for(const x of [sq, th, tt]) if(x && x.val.length!==4) throw new Error("Input " + i + " of this PSBT (version 2) has a damaged sequence or locktime.");
     ins.push({txid:hex(Uint8Array.from(id).reverse()), vout:u32(ix), seq:sq && sq.val.length===4 ? u32(sq.val) : 0xffffffff, lockH:th && th.val.length===4 ? u32(th.val) : null, lockT:tt && tt.val.length===4 ? u32(tt.val) : null}); }
   for(let i=0;i<nOut;i++){ const m=psbtReadMap(r), f=(t)=>m.find(x=>x.type===t && x.key.length===0); outMaps.push(m);
     const a=need(f(0x03), "amount of output " + i), sc=need(f(0x04), "script of output " + i); if(a.length!==8) throw new Error("Output " + i + " of this PSBT (version 2) is damaged.");
@@ -4242,7 +4246,9 @@ function psbtV2Tx(glob, r){
   // BIP370 locktime: no input asks for one -> the fallback (or 0); else the largest height if every asking input can take a height, otherwise the largest time.
   const asks=ins.filter(x=>x.lockH!==null || x.lockT!==null), fb=g(0x03);
   let locktime=fb && fb.val.length===4 ? u32(fb.val) : 0;
-  if(asks.length){ const byH=asks.every(x=>x.lockH!==null); locktime=byH ? Math.max(...asks.map(x=>x.lockH)) : Math.max(...asks.map(x=>x.lockT!==null ? x.lockT : 0)); }
+  if(asks.length){ const byH=asks.every(x=>x.lockH!==null), byT=asks.every(x=>x.lockT!==null);
+    if(!byH && !byT) throw new Error("This PSBT (version 2) cannot be signed: one input needs a block-height locktime and another a time locktime, which no transaction can meet.");
+    locktime=byH ? Math.max(...asks.map(x=>x.lockH)) : Math.max(...asks.map(x=>x.lockT)); }
   return {version, locktime, ins, outs, inMaps, outMaps};
 }
 function psbtV2Serialize(tx){ // the unsigned transaction a version 2 PSBT describes (for its transaction ID)
@@ -4284,8 +4290,9 @@ async function inspectPsbt(bytes, net){
       else if(x.type===8) res.sigs.push(...sigsFromFinalWitness(x.val, i));
       else if(x.type===3 && x.val.length===4) inp.sighashReq=x.val[0]|(x.val[1]<<8)|(x.val[2]<<16)|(x.val[3]<<24);
     }
-    if(wu){ const q=psbtReader(wu.val); inp.amount=q.i64(); inp.script=q.bytes(q.varint()); }
-    else if(nw){ // fixes release: the full previous transaction must hash to the txid this input spends, or its amount is not trusted
+    if(nw && wu){ const id=hex((await sha256bytes(await sha256bytes(psbtStripWitness(nw.val)))).reverse()); if(id!==tx.ins[i].txid) inp.prevMismatch=true; }   // checked whenever present (review)
+    if(wu && !inp.prevMismatch){ const q=psbtReader(wu.val); inp.amount=q.i64(); inp.script=q.bytes(q.varint()); }
+    else if(nw && !wu){ // fixes release: the full previous transaction must hash to the txid this input spends, or its amount is not trusted
       const id=hex((await sha256bytes(await sha256bytes(psbtStripWitness(nw.val)))).reverse());
       if(id===tx.ins[i].txid){ const o=psbtParseTxOutputs(nw.val)[tx.ins[i].vout]; if(o){ inp.amount=o.value; inp.script=o.script; } } else inp.prevMismatch=true; }
     if(inp.script) inp.address=await psbtAddress(inp.script, net);
@@ -4297,7 +4304,7 @@ async function inspectPsbt(bytes, net){
     const pathOf=(b)=>{ const p=[]; for(let j=0;j+4<=b.length;j+=4) p.push((b[j]|(b[j+1]<<8)|(b[j+2]<<16)|(b[j+3]<<24))>>>0); return p; };
     for(const x of m){
       if(x.type===2 && x.val.length>=4){ out.fps.push(hex(x.val.slice(0,4))); out.derivs.push({fp:hex(x.val.slice(0,4)), path:pathOf(x.val.slice(4)), pub:x.key, tap:false}); }
-      if(x.type===7 && x.val.length>=5){ const q=psbtReader(x.val), nh=q.varint(); q.bytes(32*nh); const fp=hex(q.bytes(4)); out.fps.push(fp); out.derivs.push({fp, path:pathOf(x.val.slice(q.pos)), pub:x.key, tap:true}); }
+      if(x.type===7 && x.val.length>=5){ const q=psbtReader(x.val), nh=q.varint(); q.bytes(32*nh); const fp=hex(q.bytes(4)); out.fps.push(fp); out.derivs.push({fp, path:pathOf(x.val.slice(q.pos)), pub:x.key, tap:true, leaves:nh}); }
     }
     res.outs.push(out);
   }
@@ -4322,32 +4329,37 @@ function opReturnText(script){ // the data pushed after OP_RETURN, as hex and (w
 // fixes release: a change mark (an output's key record) is written by whoever made the PSBT, and a fingerprint is public, so a
 // mark alone proves nothing. With the words of the wallet typed in CHECK A BACKUP, each record that names this wallet's
 // fingerprint is checked: the key at its path is made from the words and must be the recorded key, and the output must pay
-// that key (any of the four single-key address types). Each output gets out.change:
-//   "verified": paid to this wallet's own key at that path;      "forged": names this wallet but is not paid to its key;
-//   "multisig": this wallet's key is one of its keys (the rest of a multisig script cannot be checked here);
-//   "other": the records name other wallets only;                 "unverified": no words typed, so nothing could be checked.
+// that key with the address type its path stands for (84' native SegWit, 86' Taproot, 49' nested SegWit, 44' legacy; any of
+// the four for other paths). Each output gets out.change:
+//   "verified":  paid to this wallet's own key at that path, as the address type of that path;
+//   "forged":    names this wallet, but the key is another, or the output does not pay this wallet's key;
+//   "wrongtype": paid to this wallet's key, but as an address type a wallet on that path does not watch;
+//   "multisig":  a P2WSH or P2SH output, or a Taproot output whose record names script leaves, said to hold this wallet's key
+//                among others. This page cannot check that, so it is not trusted either (review of the fixes release);
+//   "other":     the records name other wallets only;   "unverified": no words typed;   "unchecked": the record could not be read.
+const PURPOSE_TYPE = {44: "pkh", 49: "sh-wpkh", 84: "wpkh", 86: "tr"};
 async function psbtCheckChange(res, root, fpw, net){
   for(const o of res.outs){
     if(!o.derivs || !o.derivs.length){ o.change = null; continue; }
     if(!root || !fpw){ o.change = "unverified"; continue; }
     const mine = o.derivs.filter(d => d.fp === fpw);
     if(!mine.length){ o.change = "other"; continue; }
-    let state = "forged";
+    const sc = o.script || new Uint8Array(0), p2wsh = sc.length === 34 && sc[0] === 0x00 && sc[1] === 0x20, p2sh = sc.length === 23 && sc[0] === 0xa9, p2tr = sc.length === 34 && sc[0] === 0x51 && sc[1] === 0x20;
+    const seen = new Set();
     for(const d of mine){
       if(d.path.length > 12) continue;
       let k, c; try { [k, c] = root; for(const i of d.path) [k, c] = await ckdPriv(k, c, i & 0x7fffffff, i >= 0x80000000); } catch(e) { continue; }
       const pub = pubkeyBytes(k), keyOk = d.tap ? eqBytes(pub.slice(1), d.pub) : eqBytes(pub, d.pub);
-      if(!keyOk) continue;
+      if(!keyOk){ seen.add("forged"); continue; }
       o.changePath = "m" + d.path.map(i => "/" + (i & 0x7fffffff) + (i >= 0x80000000 ? "'" : "")).join("");
-      let paid = false;
-      for(const t of ["wpkh", "tr", "sh-wpkh", "pkh"]) if((await addressFromKey(t, k, net)) === o.address) paid = true;
-      if(paid){ state = "verified"; break; }
-      // Only a script output (P2WSH, P2SH, or Taproot with a script tree) can hold this key among others; a single-key
-      // output (P2WPKH, P2PKH) that is not paid to it is not this wallet's.
-      const sc = o.script || new Uint8Array(0), scriptOut = (sc.length === 34 && sc[0] === 0x00 && sc[1] === 0x20) || (sc.length === 23 && sc[0] === 0xa9) || (sc.length === 34 && sc[0] === 0x51 && sc[1] === 0x20);
-      if(scriptOut) state = "multisig";
+      let paidAs = null;
+      for(const t of ["wpkh", "tr", "sh-wpkh", "pkh"]) if((await addressFromKey(t, k, net)) === o.address) paidAs = t;
+      const want = d.path.length && d.path[0] >= 0x80000000 ? PURPOSE_TYPE[d.path[0] & 0x7fffffff] : undefined;
+      if(paidAs && (!want || want === paidAs)){ seen.add("verified"); break; }
+      if(paidAs){ o.changeType = paidAs; o.changeWant = want; seen.add("wrongtype"); continue; }
+      seen.add(p2wsh || p2sh || (p2tr && d.tap && d.leaves > 0) ? "multisig" : "forged");
     }
-    o.change = state;
+    o.change = ["verified", "forged", "wrongtype", "multisig"].find(x => seen.has(x)) || "unchecked";
   }
   return res;
 }
@@ -4372,7 +4384,10 @@ function psbtChecks(res, fpWallet){
   const chg=(s)=>res.outs.filter(x=>x.fps.length && (x.change||"unverified")===s).length, nForged=chg("forged"), nVer=chg("verified"), nUnv=chg("unverified"), nOther=chg("other"), nMs=chg("multisig");
   if(nForged) add(false, nForged + " output" + (nForged===1?" claims":"s claim") + " to be this wallet's change but " + (nForged===1?"is":"are") + " NOT paid to this wallet's key at the path given. Do not sign: the change mark is forged (or the words or passphrase above belong to another wallet).", true);
   if(nVer) add(true, nVer + " output" + (nVer===1?" is":"s are") + " checked as this wallet's own change: paid to its key at the path given, made from the words above.");
-  if(nMs) add(false, nMs + " output" + (nMs===1?" has":"s have") + " this wallet's key among several keys (a multisig output). The other keys cannot be checked here: confirm it is your multisig wallet's change address in that wallet.", false);
+  const nWrong=chg("wrongtype"), nUnch=chg("unchecked");
+  if(nWrong) add(false, nWrong + " output" + (nWrong===1?" is":"s are") + " paid to this wallet's key, but as an address type that a wallet on that path does not watch, so the coins would not show in your wallet. Do not sign unless you meant that.", true);
+  if(nMs) add(false, nMs + " output" + (nMs===1?" claims":"s claim") + " to hold this wallet's key among several keys (a multisig or script output). This page cannot check that. If this is not a multisig wallet, do not sign; in a multisig wallet, confirm the change address in the wallet app that has all the keys.", true);
+  if(nUnch) add(false, nUnch + " output" + (nUnch===1?" names":"s name") + " this wallet but its key record could not be checked (an unusual path). Confirm the address in your wallet.", false);
   if(nUnv) add(false, nUnv + " output" + (nUnv===1?" is":"s are") + " marked as change by the app that made the PSBT. That mark can be forged, and this page cannot check it without the wallet's words: type them in CHECK A BACKUP to check it, or confirm the address in your wallet.", false);
   if(nOther) add(false, nOther + " output" + (nOther===1?" carries":"s carry") + " key information of another wallet (a different fingerprint than the words above).", false);
   const withKeys=res.outs.filter(x=>x.fps.length).length;
@@ -4383,7 +4398,7 @@ function psbtVerdict(res, fpWallet){
   const C=psbtChecks(res, fpWallet), bad=C.filter(x=>!x.ok&&x.blocking);
   const L=["CHECKS"]; C.forEach(x=>L.push((x.ok?"  OK    ":(x.blocking?"  FAIL  ":"  NOTE  ")) + x.text));
   L.push(bad.length ? "VERDICT: NO CLEAN VERDICT. This tool could not fully check the transaction (see FAIL above). Do not treat it as safe because nothing else looked wrong."
-    : "VERDICT: no problems found by these checks. This does not prove the payment is what you meant: compare every address and amount with your wallet." + (res.outs.some(x=>x.fps.length && (x.change||"unverified")==="unverified") ? " The change marks were NOT checked (no wallet words typed above): confirm that every change address belongs to your wallet." : ""));
+    : "VERDICT: no problems found by these checks. This does not prove the payment is what you meant: compare every address and amount with your wallet." + (res.outs.some(x=>x.fps.length && (x.change||"unverified")==="unverified") ? " The change marks were NOT checked (no wallet words typed above): confirm that every change address belongs to your wallet." : res.outs.some(x=>x.fps.length && x.change!=="verified") ? " Not every change mark could be checked against the words typed above: confirm that every change address belongs to your wallet." : ""));
   return L.join("\n");
 }
 function psbtChangeLine(x){
@@ -4391,7 +4406,9 @@ function psbtChangeLine(x){
   switch(x.change || "unverified"){
     case "verified": return "\n   CHANGE, CHECKED: paid to this wallet's own key at " + x.changePath + ", made from the words above";
     case "forged": return "\n   WARNING: marked as this wallet's change" + f + ", but it is NOT paid to this wallet's key. Do not sign.";
-    case "multisig": return "\n   has this wallet's key at " + x.changePath + " among its keys (a multisig output); the other keys cannot be checked here";
+    case "multisig": return "\n   WARNING: said to hold this wallet's key at " + x.changePath + " among several keys (a multisig or script output). NOT checked. If this is not a multisig wallet, do not sign.";
+    case "wrongtype": return "\n   WARNING: paid to this wallet's key at " + x.changePath + ", but as " + SCRIPT_TYPES[x.changeType].label + ", not the " + SCRIPT_TYPES[x.changeWant].label + " address a wallet on that path watches: the coins would not show in your wallet.";
+    case "unchecked": return "\n   names this wallet" + f + ", but its key record could not be checked (an unusual path). Confirm the address in your wallet.";
     case "other": return "\n   marked with another wallet's key information" + f + ", not the wallet whose words are typed above";
     default: return "\n   marked as change by the app that made this PSBT" + f + ". NOT checked: such a mark can be forged. Type the wallet's words in CHECK A BACKUP to check it.";
   }
@@ -4451,7 +4468,7 @@ function compareTx(a, b){
     const shared=a.ins.length-gone.length, rbfOk=!!a.rbf, feeKnown=a.fee!==null && b.fee!==null, feeOk=feeKnown && b.fee>a.fee;
     let keptOk=true, why="";
     if(outGone.length>1 || outNew.length>1){ keptOk=false; why="more than one output differs"; }
-    else if(outGone.length===1 && outNew.length===1){ if(outGone[0].address!==outNew[0].address){ keptOk=false; why="an output changed address"; } else if(outNew[0].amount>=outGone[0].amount && !(fresh.length>0 && (outNew[0].fps.length || outGone[0].fps.length))){ keptOk=false; why="an output to " + outGone[0].address + " got MORE money" + (fresh.length>0 ? " and is not marked as change" : " and no coin was added to pay for it"); } }
+    else if(outGone.length===1 && outNew.length===1){ if(outGone[0].address!==outNew[0].address){ keptOk=false; why="an output changed address"; } else if(outNew[0].amount>=outGone[0].amount && !(fresh.length>0 && (outNew[0].change==="verified" || outGone[0].change==="verified"))){ keptOk=false; why="an output to " + outGone[0].address + " got MORE money" + (fresh.length>0 ? " and is not checked as this wallet's change" : " and no coin was added to pay for it"); } }
     else if(outGone.length===0 && outNew.length===1){ keptOk=false; why="a new output appeared"; }
     L.push("FEE-BUMP (REPLACEMENT) CHECK");
     L.push((shared>0?"  OK    ":"  FAIL  ") + (shared>0 ? "The second spends at least one of the same coins." : "The second does not spend any of the same coins, so it is not a replacement."));
@@ -4459,10 +4476,14 @@ function compareTx(a, b){
     L.push((feeKnown ? (feeOk?"  OK    ":"  FAIL  ") : "  FAIL  ") + (!feeKnown ? "The fees cannot be compared." : feeOk ? "The second pays a higher fee." : "The second does not pay a higher fee."));
     L.push((keptOk?"  OK    ":"  FAIL  ") + (keptOk ? "Everyone who was paid is still paid the same, except at most the change output (smaller, or larger if a coin was added)." : "Payments changed: " + why + "."));
     const shrank = outGone.length===1 && outNew.length===1 && keptOk ? outGone[0] : null;
-    if(shrank){ const grew=outNew[0].amount>=shrank.amount, word=grew ? "grew (an extra coin was added)" : "got smaller", mine=shrank.fps.length>0 || outNew[0].fps.length>0;
-      L.push((mine ? "  OK    " : "  NOTE  ") + (mine ? "The output that " + word + " (" + shrank.address + ") is marked as this wallet's own change." : "The output that " + word + " (" + shrank.address + ") is not marked as change. Make sure it is YOUR change and not a payment.")); }
+    let chBad=false;
+    if(shrank){ const grew=outNew[0].amount>=shrank.amount, word=grew ? "grew (an extra coin was added)" : "got smaller", cs=[shrank.change, outNew[0].change], marked=shrank.fps.length>0 || outNew[0].fps.length>0;
+      const ok=cs.includes("verified"); chBad=!ok && cs.some(c=>c==="forged"||c==="wrongtype"||c==="multisig");
+      L.push(ok ? "  OK    The output that " + word + " (" + shrank.address + ") is checked as this wallet's own change (made from the words in CHECK A BACKUP)."
+        : chBad ? "  FAIL  The output that " + word + " (" + shrank.address + ") is marked as this wallet's change, but it is NOT paid to this wallet's key. Do not sign."
+        : "  NOTE  The output that " + word + " (" + shrank.address + ") is " + (marked ? "marked as change, but the mark is not checked (type the wallet's words in CHECK A BACKUP to check it)" : "not marked as change") + ". Make sure it is YOUR change and not a payment."); }
     L.push("  NOT CHECKED  the fee rate against the original (needs the transaction size) and the network's minimum increase.");
-    const all=shared>0 && rbfOk && feeOk && keptOk;
+    const all=shared>0 && rbfOk && feeOk && keptOk && !chBad;
     verdict = all ? "SIGNER CHECK: changed, but it looks like a plain fee bump: same payments, more fee. Check the new fee is what you chose."
       : feeKnown ? "SIGNER CHECK: CHANGED, and it does NOT look like a plain fee bump. If this came back from a signer you did not ask to change anything, do not sign or broadcast it."
       : "NO CLEAN VERDICT: the transaction changed and the fees cannot be compared, so it cannot be called a plain fee bump. Do not sign or broadcast it until you know why.";
@@ -4486,6 +4507,10 @@ async function runCompare(){
   const st=document.getElementById("cmpStatus"), o=document.getElementById("cmpOut"), net=document.getElementById("cmpNet").value;
   const one=async(id,label)=>{ try { return await inspectPsbt(psbtFromText(document.getElementById(id).value), net); } catch(e){ throw new Error(label + ": " + e.message); } };
   try { const a=await one("cmpA","First transaction"), b=await one("cmpB","Second transaction");
+    // fixes release (review): change marks are checked against the wallet typed in CHECK A BACKUP, as in the inspector, never trusted
+    let fpw=null, root=null; const r=await checkPhrase(document.getElementById("phrase").value);
+    if(r.ok){ const sd=await mnemonicToSeed(r.mnemonic, document.getElementById("verifyPass").value); fpw=await fingerprintFromSeed(sd); root=await masterFromSeed(sd); }
+    await psbtCheckChange(a, root, fpw, net); await psbtCheckChange(b, root, fpw, net);
     st.className="status ok"; st.textContent="Compared. Read the result below."; o.textContent=compareTx(a,b); o.style.display="block"; }
   catch(e){ st.className="status bad"; st.textContent=e.message; }
 }
@@ -7843,6 +7868,7 @@ async function wdGenerate(){
   const sig0 = inputSig("wd");   // fixes release
   const st = await wdSteps(pr.idx, flips, wc);
   await finishSeed(st.mnemonic, null, sig0);
+  if(!hasSeed()) return;   // fixes release (review): the boxes changed while it worked, so show no steps of the old words
   document.getElementById("explainBox").style.display = "none";
   wdShow(st, wc);
   if(guideOn){ guideN = 3; guideRender(); }
