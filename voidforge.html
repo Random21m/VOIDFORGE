@@ -4544,7 +4544,7 @@ function practiceMode(on){
 // Shows a made seed's fingerprint, addresses and watch-only box again (used when practice mode changes the network).
 function reshowSeed(){
   if(!hasSeed()) return null;
-  const mnemonic = document.getElementById("genResult").textContent.split("\n")[0];
+  const mnemonic = madeMnemonic;
   passWork = deriveShown(mnemonic, document.getElementById("passphrase").value, document.getElementById("passphrase2").value, ++forgeRun);
   return passWork;
 }
@@ -5063,7 +5063,7 @@ async function rePass(){
   const p1 = document.getElementById("passphrase").value, p2 = document.getElementById("passphrase2").value, key = JSON.stringify([p1, p2]);
   if(key === passKey) return passWork;  // the boxes still hold what the screen was worked out from
   passKey = key; const run = ++forgeRun;
-  const mnemonic = document.getElementById("genResult").textContent.split("\n")[0], line = passPhraseLine(p1, p2);
+  const mnemonic = madeMnemonic, line = passPhraseLine(p1, p2);
   drillEnd(); for(const id of ["bk2","bk4"]) document.getElementById(id).checked = false; bkUpdate();
   document.getElementById("genResult").textContent = mnemonic + "\n\n" + line;
   document.getElementById("passNote").textContent = line;
@@ -5099,7 +5099,7 @@ let sqKind = null, sqRows = null, sqBlock = 0;
 function seedQrName(kind){ return kind==="compact" ? "CompactSeedQR" : "SeedQR"; }
 function showSeedQr(kind){
   if(!hasSeed()) return alert("Generate a seed first");
-  const words = document.getElementById("genResult").textContent.split("\n")[0].split(" ");
+  const words = madeMnemonic.split(" ");
   let q; try { q = seedQrMatrix(words, kind); } catch(e) { return alert("SeedQR unavailable: " + e.message); }
   sqKind = kind; sqRows = q.rows; closeSqGuide();
   document.getElementById("sqImg").innerHTML = qrSvg(q.rows);
@@ -5401,7 +5401,7 @@ function safeCopy(text){
 // Moves the generated words into the VERIFY box inside the page (no clipboard involved) and checks them.
 async function sendToVerify(){
   if(!hasSeed()) return alert("Generate a seed first");
-  const words = document.getElementById("genResult").textContent.split("\n")[0].trim();
+  const words = madeMnemonic;
   const box = document.getElementById("phrase");
   box.value = words; clearChild(); resetAddrScan();   // v2.4.0: as typing does: a child seed belongs to the old parent words
   detClear(true);   // v2.8.0: a Detective result belongs to the old words
@@ -6049,7 +6049,11 @@ function toggleAbbr(){
 function updateAbbrNote(){
   document.getElementById("abbrNote").textContent = (abbrOn && hasSeed()) ? "Showing only the first 4 letters of each word. The full words are still your backup; write down full words unless your backup method uses 4-letter abbreviations. PRINT STAMP SHEET in the MENU prints them large, for stamping a metal plate." : "";
 }
+// fixes release: the words of the seed made here are kept in madeMnemonic and read from there, never back from the screen,
+// where a translator or an extension could have changed the text.
+let madeMnemonic = "";
 function setResult(text, words){
+  madeMnemonic = words ? words.join(" ") : "";
   sumCtx = null;
   wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body.classList.toggle("has-seed", !!words);
   const g = document.getElementById("genResult"), grid = document.getElementById("wordGrid");
@@ -6311,7 +6315,7 @@ function printSrc(from){
   }
   if(!hasSeed()){ alert("Generate a seed first"); return null; }
   if(passMismatch()) return null;
-  return {words: document.getElementById("genResult").textContent.split("\n")[0].split(" "), fp: document.getElementById("fingerprint").textContent,
+  return {words: madeMnemonic.split(" "), fp: document.getElementById("fingerprint").textContent,
     addr: document.getElementById("address").textContent, pass: passLine("printed"), check: false};
 }
 function printSeed(from){
@@ -6939,7 +6943,7 @@ async function wvRefresh(){
 function printRecoverySheet(){
   if(!wvCtx || !wvCtx.shown || !wvCtx.mnemonic) return alert("Check a seed phrase first, then open the wallet.");
   const sh = wvCtx.shown, n = wvCtx.mnemonic.split(" ").length, T = SCRIPT_TYPES[sh.type];
-  if(hasSeed() && wvCtx.mnemonic === document.getElementById("genResult").textContent.split("\n")[0] && wvCtx.pass === document.getElementById("passphrase").value && !passMismatchQuiet()) bkTick("bk4");
+  if(hasSeed() && wvCtx.mnemonic === madeMnemonic && wvCtx.pass === document.getElementById("passphrase").value && !passMismatchQuiet()) bkTick("bk4");
   const po = document.getElementById("printOnly"); po.textContent = "";
   const add = (cls, text) => { const d = document.createElement("div"); if(cls) d.className = cls; d.textContent = text; po.appendChild(d); return d; };
   add("ps-title", "VOIDFORGE RECOVERY SHEET");
@@ -7343,7 +7347,7 @@ function clearReuse(){ document.getElementById("reuseIn").value = ""; const st =
 async function openWalletView(mnemonic, pass){
   clearWalletView();
   wvCtx = {mnemonic, pass}; const mine = wvSeq;
-  if(sumCtx && sumCtx.date && hasSeed() && mnemonic === document.getElementById("genResult").textContent.split("\n")[0] && pass === document.getElementById("passphrase").value) document.getElementById("wvBorn").value = sumCtx.date;
+  if(sumCtx && sumCtx.date && hasSeed() && mnemonic === madeMnemonic && pass === document.getElementById("passphrase").value) document.getElementById("wvBorn").value = sumCtx.date;
   const n = mnemonic.split(" ").length, sq = document.getElementById("wvSqNote"), btns = document.getElementById("wvSqBtns");
   if(n === 12 || n === 24){ sq.textContent = "A SeedQR holds these " + n + " words for a SeedSigner or similar offline device. Anyone who scans it controls the funds."; btns.style.display = ""; }
   else { sq.textContent = "No SeedQR exists for " + n + " words: the SeedQR formats cover only 12 and 24 words. Keep these words on paper."; btns.style.display = "none"; }
@@ -7469,7 +7473,7 @@ function downloadTool() {
 function downloadSeed() {
   if (!hasSeed()) return alert("Generate a seed first");
   if (passMismatch()) return;
-  const text = document.getElementById("genResult").textContent;
+  const shown = document.getElementById("genResult").textContent, text = madeMnemonic + shown.slice(shown.indexOf("\n"));   // fixes release: the words from state
   if (!confirm("This saves your seed and rolls to a PLAIN-TEXT file. Only do this on a trusted offline computer. The passphrase is not saved. Continue?")) return;
   const rolls = (exCtx && exCtx.rolls) || document.getElementById("rolls").value; // the rolls that made these words, not whatever is typed now
   // v2.6.0: a Word draw seed was not made from rolls, so never write whatever is in the rolls box as its input
