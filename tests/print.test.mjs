@@ -241,6 +241,17 @@ ok(await p.evaluate(() => {
   const lines = new Set(s.split('\n').map((x) => x.trim()));
   return hasSeed() && words.length >= 12 && words.every((w) => /^[a-z]{3,8}$/.test(w)) && getComputedStyle(document.getElementById('wordGrid')).display !== 'none' && s.length > 1000 && words.filter((w) => lines.has(w)).length === 0;
 }), 'secrets: select-all in Chromium leaves out every seed word in the word grid');
+// 8c. v2.6.0: the recovery sheet of a wallet opened along a custom path, and no recovery sheet for a private key.
+await p.click('#tab-check');
+await p.fill('#phrase', 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'); await p.fill('#verifyPass', '');
+await p.click('#verifyBtn');
+await p.waitForFunction(() => document.getElementById('wvList').children.length === 10);
+await p.evaluate(async () => { const e = document.getElementById('wvPathIn'); e.value = "m/0'"; e.dispatchEvent(new Event('input')); await wvRefresh(); });
+await sheet('custom path: recovery sheet', () => printRecoverySheet());
+ok(await p.evaluate(() => { printRecoverySheet(); const t = document.getElementById('printOnly').textContent; window.dispatchEvent(new Event('afterprint')); return /Derivation path: m\/0'\/0\/index \(a custom path\)/.test(t); }), 'custom path: the recovery sheet names the custom path');
+ok(await p.evaluate(async () => { clearWalletView(); document.getElementById('pkIn').value = 'KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617'; await openPrivateKey(); return getComputedStyle(document.getElementById('wvSheetBtn')).display === 'none' && /SECRET, read only/.test(document.getElementById('wvBanner').textContent); }), 'private key: no recovery sheet is offered for an open private key');
+await p.evaluate(() => { clearWalletView(); document.getElementById('pkIn').value = ''; document.getElementById('phrase').value = ''; });
+await p.click('#tab-make');
 
 // 9. First paint (v2.4.0): while the main script is still loading (a slow phone takes a second or two), nothing red may
 // flash: the script-not-running notice and the half-built page stay hidden, and the start notice is already in the page.
