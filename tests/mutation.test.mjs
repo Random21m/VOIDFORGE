@@ -1803,6 +1803,7 @@ async function probe(w, mutated) {
     const NETS5 = ['wNet', 'wvNet', 'psbtNet', 'cmpNet', 'msNet'], locked = () => NETS5.every((id) => $(id).value === 'test' && $(id).disabled);
     const ZPUB = 'zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs';
     $('wpIn').value = ZPUB; await w.openWatchOnly(); const zOpen = !!(w.eval('wvCtx') && w.eval('wvCtx.kind') === 'pub');
+    for (const id of ['wNet', 'wvNet', 'psbtNet', 'msNet']) $(id).value = 'main';   // earlier probes may leave a menu on Testnet
     $('cmpNet').value = 'test';
     w.practiceMode(true); await until(() => $('address').textContent.endsWith(tbExp) && $('wFirst').textContent.split('\n')[0] === tbExp);
     if (!zOpen || w.eval('wvCtx')) fails.push('practice: a mainnet watch-only wallet is closed when it turns on');
@@ -1826,7 +1827,7 @@ async function probe(w, mutated) {
     w.clearWalletView(); if (!locked()) fails.push('practice: closing a wallet view keeps the menu locked');
     { const al = []; w.alert = (m) => al.push(m); w.eval('ms = {keys: [], done: false}'); w.practiceMode(false); if (!w.eval('practiceOn') || !/multisig wallet/.test(al[0] || '')) fails.push('practice: cannot change during a multisig wallet'); w.eval('ms = null'); w.alert = () => {}; }
     w.practiceMode(false); await until(() => /bc1q/.test($('address').textContent) && /^zpub/.test($('wZpub').textContent));
-    if (w.document.body.classList.contains('practice') || !['wNet', 'wvNet', 'psbtNet', 'msNet'].every((id) => $(id).value === 'main' && !$(id).disabled)) fails.push('practice: off restores Mainnet');
+    if (w.document.body.classList.contains('practice') || !['wNet', 'wvNet', 'psbtNet', 'msNet'].every((id) => $(id).value === 'main' && !$(id).disabled)) fails.push('practice: off restores Mainnet: ' + ['wNet', 'wvNet', 'psbtNet', 'msNet'].map((id) => id + '=' + $(id).value + ($(id).disabled ? ' locked' : '')).join(', '));
     if ($('cmpNet').value !== 'test' || $('cmpNet').disabled) fails.push('practice: off restores what each menu had'); $('cmpNet').value = 'main';
     if (!/^First receive address \(BIP84, m\/84'\/0'\/0'\/0\/0\): bc1q/.test($('address').textContent) || !/^bc1q/.test(($('addrList').firstChild || {}).textContent) || !/^zpub/.test($('wZpub').textContent)) fails.push('practice: off shows the real addresses again');
     await w.practiceWallet(); await until(() => /tb1q/.test($('wvList').textContent));
