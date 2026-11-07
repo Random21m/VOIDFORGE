@@ -2271,7 +2271,7 @@ async function probe(w, mutated) {
     if (!/two-factor \(2FA\) seed/.test(d.st)) fails.push('wallet detective: an Electrum two-factor seed is sent to Electrum');
     w.practiceMode(true); d = await DF(AB, '', ref(R0, "m/84'/0'/0'/0/0", 'wpkh'));
     if (!/^Practice mode is on, so the Detective searches only test-network addresses/.test(d.st)) fails.push('wallet detective: practice mode refuses a real address');
-    $('detAddr').value = ''; await w.detList(); if (!$('detOut').textContent.includes(ref(R0, "m/84'/1'/0'/0/0", 'wpkh', true)) || /\bbc1/.test($('detOut').textContent)) fails.push('wallet detective: LIST in practice mode is on the test network');
+    $('detAddr').value = ''; await w.detList(); if (!$('detOut').textContent.includes(ref(R0, "m/84'/1'/0'/0/0", 'wpkh', true)) || ![...$('detOut').textContent.matchAll(/^  ([0-9a-zA-Z]{26,})$/gm)].every((m2) => /^(tb1|[2mn])/.test(m2[1]))) fails.push('wallet detective: LIST in practice mode is on the test network');
     w.practiceMode(false);
     $('phrase').value = AB; $('verifyPass').value = ''; await w.detList();
     if (!["m/84'/0'/0'/0/0", "m/0'/0/0", "m/0/0"].every((p, i) => $('detOut').textContent.includes('\n  ' + ref(R0, p, ['wpkh', 'pkh', 'pkh'][i]) + '\n'))) fails.push('wallet detective: LIST FIRST ADDRESSES');
