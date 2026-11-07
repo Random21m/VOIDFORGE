@@ -1,38 +1,37 @@
 # Releasing and verifying VOIDFORGE
 
-## Do not host it as a live web page
-VOIDFORGE must run offline. Do **not** enable GitHub Pages or any hosting for this repo, and do not add an `index.html` or any page that points people at an online copy. Distribute only a downloaded release file.
+## The online practice copy
+For real funds VOIDFORGE runs offline, from a downloaded file. The only online copy is the practice demo at https://random21m.gitlab.io/voidforge/, which GitLab Pages builds from `main` (the `pages` job in `.gitlab-ci.yml`): it serves the released `voidforge.html` byte for byte inside the thin wrapper in `demo/` (amber banner, icons, offline copy), and only after `SHA256SUMS` and `CID.txt` check out. Do not host the file anywhere else.
 
 ## For maintainers: cutting a release
 1. Edit `voidforge.html`; bump the version in the footer and the changelog card.
-2. `npm ci && npm test` must pass (unit tests, oracle tests against `@scure`, mutation tests). CI runs the mutation tests in 20 parallel shards (`MUT_SHARD=i/20`), balanced by the measured time of each mutation (`tests/fixtures/mut-times.json`; refresh it from a full run's logs when many mutations change), because GitHub stops any single job after 6 hours; all shards must pass.
-3. `sha256sum voidforge.html > SHA256SUMS` and write the file's content ID to `CID.txt` (CIDv1, raw, sha2-256: `python3 -c "import hashlib,base64; h=hashlib.sha256(open('voidforge.html','rb').read()).digest(); print('b'+base64.b32encode(bytes([1,0x55,0x12,0x20])+h).decode().lower().rstrip('='))" > CID.txt`), commit, push, and wait for the green check on the `test` workflow. (Work-in-progress commits can carry `[skip ci]` in the message so they do not start a run; the final candidate commit must not. Pushes to `main` and to tags do not start `test` runs; only the branch push does.)
-4. On GitHub: Releases, Create a new release, create the tag (for example `v1.2.3`), and paste the SHA256 into the description. Publish.
-5. The `release` workflow then runs by itself: it first looks for a green `test` run on the exact tagged commit and reuses it (if there is none, it re-runs every test), checks `SHA256SUMS`, records a signed build-provenance attestation, and attaches `voidforge.html`, `SHA256SUMS` and `CID.txt` to the release (from v1.19.1; for older tags that have no `CID.txt` the workflow cannot be re-run). Check the Actions tab for a green run.
-   - If it fails, or for an older release, run it by hand: Actions, `release`, Run workflow, enter the tag.
-6. Optional: sign the tag with GPG (`git tag -s`) if you have a key you use regularly. Do not let it block a release.
-
-Workflow actions are pinned to full commit hashes (version in the trailing comment), so a moved tag cannot change what runs. To update one, look up the new tag's commit with `git ls-remote --tags https://github.com/actions/<name>` and change the hash and comment together. The release workflow has run successfully on GitHub for v1.3.0.
+2. Run every test on your own machine: `npm ci --ignore-scripts && npm test` (unit tests, oracle tests against `@scure` and the other independent libraries, the print test in a real Chromium, and the mutation tests). The mutation suite can be split into parts that run side by side: `MUT_SHARD=i/N node tests/mutation.test.mjs` for i = 0 to N-1, balanced by the measured time of each mutation (`tests/fixtures/mut-times.json`); every part must pass. (Up to v2.3.0 this ran on GitHub Actions in 20 shards. GitLab's free plan has far too few CI minutes for the mutation suite, so GitLab's `test` job runs only the unit, oracle and print tests, and is started by hand.)
+3. `sha256sum voidforge.html > SHA256SUMS` and write the file's content ID to `CID.txt` (CIDv1, raw, sha2-256: `python3 -c "import hashlib,base64; h=hashlib.sha256(open('voidforge.html','rb').read()).digest(); print('b'+base64.b32encode(bytes([1,0x55,0x12,0x20])+h).decode().lower().rstrip('='))" > CID.txt`), update **Current build** below, and commit.
+4. Push the release branch, fast-forward `main` to the tested commit, push `main`, and tag that commit `vX.Y.Z`.
+5. On GitLab: **Deploy > Releases > New release**, pick the tag, paste the SHA256 and the content ID into the description, and add three release links to the tagged files: `https://gitlab.com/random21m/voidforge/-/raw/vX.Y.Z/voidforge.html`, `.../SHA256SUMS` and `.../CID.txt`. Mark the previous release "Superseded by vX.Y.Z".
+6. The `pages` job refreshes the online copy from `main`. Bump `CACHE` in `demo/sw.js` with every release, so saved copies pick up the new file.
+7. Signed checksums: from the first signed release on, `SHA256SUMS` comes with a detached GPG signature (`SHA256SUMS.asc`) made on the maintainer's own computer. The private key never leaves it.
 
 ## For users: verifying a download
 Do this on a machine you trust, then move the file by USB.
 ```
 sha256sum -c SHA256SUMS
-gh attestation verify voidforge.html --repo Random21m/voidforge     # needs the GitHub CLI
 ```
 `CID.txt` holds the same check as a content ID (CIDv1, raw, sha2-256), the format IPFS-style tools use. It is a second, independent way to confirm the file: compute it yourself with the one-line command in step 3 above and compare it with `CID.txt`.
-The attestation proves the file came from this repository's release workflow at a specific commit. It does not prove the code is safe; that depends on review. Verify the file you downloaded, not the copy saved by the in-page "DOWNLOAD FOR USB" button (the browser re-serializes the page, so its hash differs).
+Verify the file you downloaded, not the copy saved by the in-page "DOWNLOAD FOR USB" button (the browser re-serializes the page, so its hash differs). A matching hash proves you have the published file; it does not prove the code is safe, which depends on review.
+
+Releases up to v2.3.0 were built on GitHub and also carry a GitHub build-provenance attestation (`gh attestation verify voidforge.html --repo Random21m/voidforge`, while that project is reachable). From v2.4.0 on, releases are published on GitLab and are checked with `SHA256SUMS` and `CID.txt` (and, once signed releases start, the GPG signature).
 
 ## README refresh (every release)
-The README has no screenshots or video for now; they will be redone once the project is feature-complete. Before the final candidate commit, re-read the README text so it describes what the page does now: new or changed features are described, retired wording is removed, and the online practice copy (https://random21m.github.io/VOIDFORGE/) is still the right link and still serves the latest release.
+The README has no screenshots or video for now; they will be redone once the project is feature-complete. Before the final candidate commit, re-read the README text so it describes what the page does now: new or changed features are described, retired wording is removed, and the online practice copy (https://random21m.gitlab.io/voidforge/) is still the right link and still serves the latest release.
 
 ## Bitcoin dictionary (every release)
 The in-page Bitcoin dictionary (ABOUT & HELP) is general, not only about VOIDFORGE. With every release add entries for any new feature, standard or term (a new BIP or SLIP must have an entry: the tests fail if the page names one that the dictionary lacks), check new definitions against a trustworthy source, add a fact check for any number or prefix in a new entry, and add mutation targets that change those facts. Also use the release to add a few missing general terms.
 
 ## Clean-up (after every release)
-Delete red and cancelled workflow runs (`gh api -X DELETE repos/Random21m/VOIDFORGE/actions/runs/<id>`), mark the previous release "Superseded by vX", check that the README, REVIEW.md, RELEASING.md and the in-page changelog all name the new version, and leave no stray files in the repo (`git ls-files`). A run that failed only because of a flaky test is re-run after the test is fixed, and the fix is recorded in the notes.
+Mark the previous release "Superseded by vX", check that the README, REVIEW.md, RELEASING.md and the in-page changelog all name the new version, check that the online copy serves the new file (its SHA-256 matches `SHA256SUMS`), and leave no stray files in the repo (`git ls-files`).
 
 ## Current build
-`voidforge.html` v2.4.0, SHA256: `a59832bd273a021a20ef2fa5ad08f2941cd0eaa4095d6a836968b00dfd903eb2`
-Content ID (CIDv1): `bafkreifftazl2jz2aincb3zpuwwqr4uudtiovjajlvvig2liwag73eb6wi`
+`voidforge.html` v2.4.0, SHA256: `15dc919bd75901a8c376ff11f4f83fcec9dddb8add98586aa54662a9d30376e1`
+Content ID (CIDv1): `bafkreiav3sizxv2zagumg5x7ch2pqp6ozho5xcw5tbmgvjkgmku5ga3w4e`
 (Recompute after any edit.)

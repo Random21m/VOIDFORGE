@@ -298,8 +298,8 @@ async function probe(w, mutated) {
     if ((svgText.match(/<circle/g) || []).length !== 5 || !/^<svg[^>]*viewBox="0 0 64 64"/.test(svgText)) fails.push('page icon: the SVG is the five-pip die');
     if (pb.subarray(1, 4).toString() !== 'PNG' || pb.readUInt32BE(16) !== 32 || pb.readUInt32BE(20) !== 32) fails.push('page icon: the PNG is 32 by 32');
     if (w.document.querySelector('link[rel~="apple-touch-icon"], link[rel="manifest"]')) fails.push('page icon: no other linked files');
-    { const as = [...w.document.querySelectorAll('a')]; if (as.length !== 1 || as[0].getAttribute('href') !== 'https://random21m.github.io/VOIDFORGE/' || as[0].getAttribute('target') !== '_blank' || as[0].getAttribute('rel') !== 'noopener noreferrer') fails.push('page icon: the one link goes to the online copy, in a new tab, with noopener noreferrer'); }
-    if (!/never from a website\. Check the file.s SHA256 first \(see the README\)\. The online copy on the project page is for practice only\. Its address is random21m\.github\.io\/VOIDFORGE, the only link on this page/.test(w.document.body.textContent)) fails.push('page icon: About page says the online copy is practice-only'); }
+    { const as = [...w.document.querySelectorAll('a')]; if (as.length !== 1 || as[0].getAttribute('href') !== 'https://random21m.gitlab.io/voidforge/' || as[0].getAttribute('target') !== '_blank' || as[0].getAttribute('rel') !== 'noopener noreferrer') fails.push('page icon: the one link goes to the online copy, in a new tab, with noopener noreferrer'); }
+    if (!/never from a website\. Check the file.s SHA256 first \(see the README\)\. The online copy on the project page is for practice only\. Its address is random21m\.gitlab\.io\/voidforge, the only link on this page/.test(w.document.body.textContent)) fails.push('page icon: About page says the online copy is practice-only'); }
   { // Reforge (v1.28.0): kept to a few seconds, because it runs for every mutation
     const RF = async (x, chk, pw) => { $('reforgeWordsInput').value = x; $('reforgeWordsCheck').value = chk || ''; $('reforgeWordsPass').value = pw || ''; await w.reforgeWords(); return [$('reforgeStatus').textContent, $('reforgeOut').textContent]; };
     const ZP = 'zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs', A11 = 'abandon '.repeat(11), A0 = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu';
@@ -2341,10 +2341,10 @@ const M = [
   ['passphrase: hardware wallet limit note dropped', ' Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div>', '</div>'],
   ['page icon: SVG link removed', '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,', '<link rel="x" type="image/svg+xml" href="data:image/svg+xml,'],
   ['page icon: PNG link removed', '<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,', '<link rel="x" type="image/png" sizes="32x32" href="data:image/png;base64,'],
-  ['page icon: About page loses the online address', 'Its address is <a href="https://random21m.github.io/VOIDFORGE/" target="_blank" rel="noopener noreferrer">random21m.github.io/VOIDFORGE</a>, the only link', 'Its address is on the project page, the only link'],
-  ['page icon: the link loses noopener noreferrer', 'target="_blank" rel="noopener noreferrer">random21m.github.io/VOIDFORGE</a>', 'target="_blank">random21m.github.io/VOIDFORGE</a>'],
-  ['page icon: the link opens in the same tab', 'target="_blank" rel="noopener noreferrer">random21m.github.io/VOIDFORGE</a>', 'rel="noopener noreferrer">random21m.github.io/VOIDFORGE</a>'],
-  ['page icon: the link goes elsewhere', '<a href="https://random21m.github.io/VOIDFORGE/" target="_blank"', '<a href="https://random21m.github.io/voidforge/" target="_blank"'],
+  ['page icon: About page loses the online address', 'Its address is <a href="https://random21m.gitlab.io/voidforge/" target="_blank" rel="noopener noreferrer">random21m.gitlab.io/voidforge</a>, the only link', 'Its address is on the project page, the only link'],
+  ['page icon: the link loses noopener noreferrer', 'target="_blank" rel="noopener noreferrer">random21m.gitlab.io/voidforge</a>', 'target="_blank">random21m.gitlab.io/voidforge</a>'],
+  ['page icon: the link opens in the same tab', 'target="_blank" rel="noopener noreferrer">random21m.gitlab.io/voidforge</a>', 'rel="noopener noreferrer">random21m.gitlab.io/voidforge</a>'],
+  ['page icon: the link goes elsewhere', '<a href="https://random21m.gitlab.io/voidforge/" target="_blank"', '<a href="https://random21m.gitlab.io/v0idforge/" target="_blank"'],
   ['page icon: About page no longer says practice-only', 'The online copy on the project page is for practice only.', 'The online copy on the project page is fine for real keys.'],
   ['reforge: object property names read as words', 'if(reforgeHas(t)){ idx.push(WORD_MAP[t]); return; }', 'if(t in WORD_MAP){ idx.push(WORD_MAP[t]); return; }'],
   ['reforge: 4-letter words not read', 'if(m.length === 1){ idx.push(WORD_MAP[m[0]]);', 'if(m.length === 0){ idx.push(WORD_MAP[m[0]]);'],

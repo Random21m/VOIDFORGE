@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; worker-src 'self'; frame-src 'self'; img-src 'self'; manifest-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#1E2124">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="VOIDFORGE">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=3">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=3">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3">
+<link rel="manifest" href="manifest.webmanifest?v=3">
+<title>VOIDFORGE online demo</title>
+<style>
+  html, body { height: 100%; margin: 0; background: #1E2124; color: #e6edf3; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  .bar { background: #3a2a00; border-bottom: 2px solid #ffb000; padding: 8px 14px; padding-top: max(8px, env(safe-area-inset-top)); font-size: 13px; line-height: 1.35; }
+  .bar b { color: #ffcc4d; }
+  .bar a { color: #E3B83F; }
+  details { margin-top: 4px; } summary { cursor: pointer; color: #E3B83F; } .bar ul { margin: 6px 0 2px; padding-left: 18px; } .bar li { margin: 3px 0; }
+  iframe { flex: 1 1 auto; width: 100%; border: 0; background: #1E2124; }
+  noscript { padding: 16px; }
+</style>
+</head>
+<body>
+<div class="bar" role="note"><b>ONLINE VERSION &mdash; best for trying it out.</b> It works fully here, but for real money use the downloaded file on an offline computer (<a href="https://gitlab.com/random21m/voidforge/-/releases" rel="noopener">official releases page</a>; check its SHA-256).
+  <details><summary>Online or downloaded? What is the difference</summary>
+  <ul>
+    <li><b>Online (this page):</b> good for learning, practice and seeing if you like it. The page sends nothing, but your browser, its extensions and this connected device could see or keep what you type.</li>
+    <li><b>Downloaded and offline:</b> the way to use it for real money. Check the file&rsquo;s SHA-256 against the release page (the tool in the app&rsquo;s TOOLS tab does this), then open it on a computer that is not on the internet.</li>
+    <li><b>Home Screen copy:</b> after one visit online, a saved copy opens without a connection. When you are online it always loads the current version first, so a saved copy can be older. A saved page is not proof that your device is offline.</li>
+    <li>Only trust this address: <b>random21m.gitlab.io/voidforge</b>. A copy on any other site could be altered.</li>
+  </ul></details></div>
+<iframe src="voidforge.html" title="VOIDFORGE" referrerpolicy="no-referrer"></iframe>
+<script src="register.js"></script>
+<noscript>This demo needs JavaScript.</noscript>
+</body>
+</html>

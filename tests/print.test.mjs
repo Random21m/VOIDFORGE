@@ -3,7 +3,7 @@
 // pages of the PDF the browser's own print engine makes, which is what a printer would get.
 //
 // Run: node tests/print.test.mjs           (uses Playwright's own Chromium, or set PW_CHANNEL=chrome to use an installed
-//                                           Google Chrome, as the GitHub runner does)
+//                                           Google Chrome)
 import { createRequire } from 'module';
 import { randomBytes } from 'crypto';
 import { fileURLToPath } from 'url';
@@ -20,7 +20,7 @@ const pages = (buf) => (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || 
 let pass = 0; const fails = [];
 const ok = (c, m) => { if (c) pass++; else { fails.push(m); console.log('FAIL ' + m); } };
 
-// GitHub sets PW_CHANNEL=chrome, so there a missing browser is a failure. PW_EXECUTABLE can name a Chromium or Chrome binary.
+// With PW_CHANNEL=chrome set, a missing browser is a failure. PW_EXECUTABLE can name a Chromium or Chrome binary.
 // Otherwise the test uses Playwright's Chromium or an installed Chrome, and if there is neither it says so and is skipped
 // (install one with: npx playwright-core install chromium).
 let browser;
