@@ -4239,10 +4239,12 @@ async function inspectPsbt(bytes, net){
     res.ins.push(inp);
   }
   for(let i=0;i<tx.outs.length;i++){
-    const m=psbtReadMap(r), out={amount:tx.outs[i].value, script:tx.outs[i].script, address:await psbtAddress(tx.outs[i].script, net), fps:[]};
+    const m=psbtReadMap(r), out={amount:tx.outs[i].value, script:tx.outs[i].script, address:await psbtAddress(tx.outs[i].script, net), fps:[], derivs:[]};
+    // fixes release: keep each key record whole (fingerprint, path and key), so a change mark can be checked against the wallet's own key
+    const pathOf=(b)=>{ const p=[]; for(let j=0;j+4<=b.length;j+=4) p.push((b[j]|(b[j+1]<<8)|(b[j+2]<<16)|(b[j+3]<<24))>>>0); return p; };
     for(const x of m){
-      if(x.type===2 && x.val.length>=4) out.fps.push(hex(x.val.slice(0,4)));
-      if(x.type===7 && x.val.length>=5){ const q=psbtReader(x.val), nh=q.varint(); q.bytes(32*nh); out.fps.push(hex(q.bytes(4))); }
+      if(x.type===2 && x.val.length>=4){ out.fps.push(hex(x.val.slice(0,4))); out.derivs.push({fp:hex(x.val.slice(0,4)), path:pathOf(x.val.slice(4)), pub:x.key, tap:false}); }
+      if(x.type===7 && x.val.length>=5){ const q=psbtReader(x.val), nh=q.varint(); q.bytes(32*nh); const fp=hex(q.bytes(4)); out.fps.push(fp); out.derivs.push({fp, path:pathOf(x.val.slice(q.pos)), pub:x.key, tap:true}); }
     }
     res.outs.push(out);
   }
@@ -4264,6 +4266,38 @@ function opReturnText(script){ // the data pushed after OP_RETURN, as hex and (w
   if(!parts.length) return "(empty)";
   return parts.map(b=>{ const t=[...b].every(c=>c>=32&&c<127) ? ' = "' + String.fromCharCode(...b) + '"' : ""; return b.length + " bytes: " + hex(b) + t; }).join("; ");
 }
+// fixes release: a change mark (an output's key record) is written by whoever made the PSBT, and a fingerprint is public, so a
+// mark alone proves nothing. With the words of the wallet typed in CHECK A BACKUP, each record that names this wallet's
+// fingerprint is checked: the key at its path is made from the words and must be the recorded key, and the output must pay
+// that key (any of the four single-key address types). Each output gets out.change:
+//   "verified": paid to this wallet's own key at that path;      "forged": names this wallet but is not paid to its key;
+//   "multisig": this wallet's key is one of its keys (the rest of a multisig script cannot be checked here);
+//   "other": the records name other wallets only;                 "unverified": no words typed, so nothing could be checked.
+async function psbtCheckChange(res, root, fpw, net){
+  for(const o of res.outs){
+    if(!o.derivs || !o.derivs.length){ o.change = null; continue; }
+    if(!root || !fpw){ o.change = "unverified"; continue; }
+    const mine = o.derivs.filter(d => d.fp === fpw);
+    if(!mine.length){ o.change = "other"; continue; }
+    let state = "forged";
+    for(const d of mine){
+      if(d.path.length > 12) continue;
+      let k, c; try { [k, c] = root; for(const i of d.path) [k, c] = await ckdPriv(k, c, i & 0x7fffffff, i >= 0x80000000); } catch(e) { continue; }
+      const pub = pubkeyBytes(k), keyOk = d.tap ? eqBytes(pub.slice(1), d.pub) : eqBytes(pub, d.pub);
+      if(!keyOk) continue;
+      o.changePath = "m" + d.path.map(i => "/" + (i & 0x7fffffff) + (i >= 0x80000000 ? "'" : "")).join("");
+      let paid = false;
+      for(const t of ["wpkh", "tr", "sh-wpkh", "pkh"]) if((await addressFromKey(t, k, net)) === o.address) paid = true;
+      if(paid){ state = "verified"; break; }
+      // Only a script output (P2WSH, P2SH, or Taproot with a script tree) can hold this key among others; a single-key
+      // output (P2WPKH, P2PKH) that is not paid to it is not this wallet's.
+      const sc = o.script || new Uint8Array(0), scriptOut = (sc.length === 34 && sc[0] === 0x00 && sc[1] === 0x20) || (sc.length === 23 && sc[0] === 0xa9) || (sc.length === 34 && sc[0] === 0x51 && sc[1] === 0x20);
+      if(scriptOut) state = "multisig";
+    }
+    o.change = state;
+  }
+  return res;
+}
 // The checks this tool can do. "Blocking" ones decide between a clean result and NO CLEAN VERDICT.
 function psbtChecks(res, fpWallet){
   const C=[], add=(ok,text,blocking)=>C.push({ok,text,blocking:!!blocking});
@@ -4281,16 +4315,32 @@ function psbtChecks(res, fpWallet){
   const oddSig=sg.filter(x=>sighashOdd(x.kind,x.sighash)), oddReq=res.ins.map((x,i)=>({x,i})).filter(o=>o.x.sighashReq!==undefined && o.x.sighashReq!==1 && o.x.sighashReq!==0);
   if(sg.length || oddReq.length){ const bad=oddSig.length+oddReq.length;
     add(bad===0, bad===0 ? "Every signature covers the whole transaction (sighash ALL)." : bad + " signature" + (bad===1?"":"s") + " or signing request" + (bad===1?"":"s") + " use a sighash type other than ALL (" + [...new Set(oddSig.map(x=>"input " + x.input + ": " + sighashName(x.kind,x.sighash)).concat(oddReq.map(o=>"input " + o.i + " asks for " + sighashName("ECDSA",o.x.sighashReq))))].join("; ") + "). That lets other people change parts of the transaction after it is signed. Continue only if you set this up on purpose.", true); }
+  const chg=(s)=>res.outs.filter(x=>x.fps.length && (x.change||"unverified")===s).length, nForged=chg("forged"), nVer=chg("verified"), nUnv=chg("unverified"), nOther=chg("other"), nMs=chg("multisig");
+  if(nForged) add(false, nForged + " output" + (nForged===1?" claims":"s claim") + " to be this wallet's change but " + (nForged===1?"is":"are") + " NOT paid to this wallet's key at the path given. Do not sign: the change mark is forged (or the words or passphrase above belong to another wallet).", true);
+  if(nVer) add(true, nVer + " output" + (nVer===1?" is":"s are") + " checked as this wallet's own change: paid to its key at the path given, made from the words above.");
+  if(nMs) add(false, nMs + " output" + (nMs===1?" has":"s have") + " this wallet's key among several keys (a multisig output). The other keys cannot be checked here: confirm it is your multisig wallet's change address in that wallet.", false);
+  if(nUnv) add(false, nUnv + " output" + (nUnv===1?" is":"s are") + " marked as change by the app that made the PSBT. That mark can be forged, and this page cannot check it without the wallet's words: type them in CHECK A BACKUP to check it, or confirm the address in your wallet.", false);
+  if(nOther) add(false, nOther + " output" + (nOther===1?" carries":"s carry") + " key information of another wallet (a different fingerprint than the words above).", false);
   const withKeys=res.outs.filter(x=>x.fps.length).length;
-  if(!res.raw) add(withKeys>0, withKeys>0 ? withKeys + " output" + (withKeys===1?" is":"s are") + " marked as this wallet's own change." : "No output is marked as change. Everything not sent to someone goes to the fee, so check that you meant to send all of it.", false);
+  if(!res.raw && !withKeys) add(withKeys>0, withKeys>0 ? withKeys + " output" + (withKeys===1?" is":"s are") + " marked as this wallet's own change." : "No output is marked as change. Everything not sent to someone goes to the fee, so check that you meant to send all of it.", false);
   return C;
 }
 function psbtVerdict(res, fpWallet){
   const C=psbtChecks(res, fpWallet), bad=C.filter(x=>!x.ok&&x.blocking);
   const L=["CHECKS"]; C.forEach(x=>L.push((x.ok?"  OK    ":(x.blocking?"  FAIL  ":"  NOTE  ")) + x.text));
   L.push(bad.length ? "VERDICT: NO CLEAN VERDICT. This tool could not fully check the transaction (see FAIL above). Do not treat it as safe because nothing else looked wrong."
-    : "VERDICT: no problems found by these checks. This does not prove the payment is what you meant: compare every address and amount with your wallet.");
+    : "VERDICT: no problems found by these checks. This does not prove the payment is what you meant: compare every address and amount with your wallet." + (res.outs.some(x=>x.fps.length && (x.change||"unverified")==="unverified") ? " The change marks were NOT checked (no wallet words typed above): confirm that every change address belongs to your wallet." : ""));
   return L.join("\n");
+}
+function psbtChangeLine(x){
+  const f = " (fingerprint " + [...new Set(x.fps)].join(", ") + ")";
+  switch(x.change || "unverified"){
+    case "verified": return "\n   CHANGE, CHECKED: paid to this wallet's own key at " + x.changePath + ", made from the words above";
+    case "forged": return "\n   WARNING: marked as this wallet's change" + f + ", but it is NOT paid to this wallet's key. Do not sign.";
+    case "multisig": return "\n   has this wallet's key at " + x.changePath + " among its keys (a multisig output); the other keys cannot be checked here";
+    case "other": return "\n   marked with another wallet's key information" + f + ", not the wallet whose words are typed above";
+    default: return "\n   marked as change by the app that made this PSBT" + f + ". NOT checked: such a mark can be forged. Type the wallet's words in CHECK A BACKUP to check it.";
+  }
 }
 function psbtReport(res, fpWallet){
   const L=[];
@@ -4298,7 +4348,7 @@ function psbtReport(res, fpWallet){
   L.push("");
   res.ins.forEach((x,i)=>{ L.push("INPUT " + i + ": " + (x.amount===null ? "amount unknown (the PSBT does not include the coin being spent)" : btcText(x.amount)) + (x.address ? "\n   from " + x.address : "") + "\n   coin " + x.txid + ":" + x.vout + "\n   " + (x.final ? "finalized" : x.sigs + " signature" + (x.sigs===1?"":"s") + " so far")); });
   L.push("");
-  res.outs.forEach((x,i)=>{ L.push("OUTPUT " + i + ": " + btcText(x.amount) + "\n   to " + x.address + (x.script && x.script[0]===0x6a ? "\n   data note: " + opReturnText(x.script) + "\n   (this output carries data, not money, and cannot be spent)" : "") + (x.fps.length ? "\n   has wallet key information (fingerprint " + [...new Set(x.fps)].join(", ") + "): usually this wallet's own change" + (fpWallet && x.fps.includes(fpWallet) ? ", and it matches the wallet typed above" : "") : (x.script && x.script[0]===0x6a ? "" : "\n   no wallet key information: treat as a payment to someone else"))); });
+  res.outs.forEach((x,i)=>{ L.push("OUTPUT " + i + ": " + btcText(x.amount) + "\n   to " + x.address + (x.script && x.script[0]===0x6a ? "\n   data note: " + opReturnText(x.script) + "\n   (this output carries data, not money, and cannot be spent)" : "") + (x.fps.length ? psbtChangeLine(x) : (x.script && x.script[0]===0x6a ? "" : "\n   no wallet key information: treat as a payment to someone else"))); });
   L.push("");
   L.push(res.fee===null ? "FEE: cannot be worked out because some inputs have no amount." : "FEE: " + btcText(res.fee) + (res.totalOut>0n ? " (" + (Number(res.fee*10000n/res.totalOut)/100).toFixed(2) + "% of the total of all outputs)" : ""));
   L.push(res.rbf ? "REPLACEABLE (RBF): yes. While it is unconfirmed it can be replaced by a version that pays a higher fee." : "REPLACEABLE (RBF): no. It cannot be replaced by a higher-fee version, so a low fee cannot be bumped.");
@@ -4500,8 +4550,9 @@ async function showPsbt(bytes){
   clearPsbt(false);
   try {
     const net=document.getElementById("psbtNet").value, res=await inspectPsbt(bytes, net);
-    let fpw=null; const r=await checkPhrase(document.getElementById("phrase").value);
-    if(r.ok) fpw=await fingerprintFromSeed(await mnemonicToSeed(r.mnemonic, document.getElementById("verifyPass").value));
+    let fpw=null, root=null; const r=await checkPhrase(document.getElementById("phrase").value);
+    if(r.ok){ const sd=await mnemonicToSeed(r.mnemonic, document.getElementById("verifyPass").value); fpw=await fingerprintFromSeed(sd); root=await masterFromSeed(sd); }
+    await psbtCheckChange(res, root, fpw, net);   // fixes release: a change mark is checked against the wallet's own key, never trusted
     st.className="status ok"; st.textContent="Read OK. Check every address and amount below against what you expect.";
     o.textContent=psbtReport(res, fpw); o.style.display="block";
   } catch(e){ st.className="status bad"; st.textContent=e.message; }
