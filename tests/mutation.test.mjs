@@ -4101,7 +4101,7 @@ const M = [
   ["heir mode: does not open", "  c.style.display = \"\"; document.getElementById(\"heirBtn\").setAttribute(\"aria-expanded\", \"true\");", "  document.getElementById(\"heirBtn\").setAttribute(\"aria-expanded\", \"true\");"],
   ["wallet detective: Electrum keeps combining marks", ".toLowerCase().replace(ELECTRUM_CCC, \"\")", ".toLowerCase()"],
   ["wallet detective: Electrum steps for a passphrase Electrum cannot read", "  if(f.asTyped) return \"Electrum itself cannot open it", "  if(false) return \"Electrum itself cannot open it"],
-  ["watch check: elements added under body ignored", "else if(n.nodeType === 1 && window.vfReady && (r.target === document.body", "else if(false && window.vfReady && (r.target === document.body"],
+  ["watch check: elements added under body ignored", "else if(n.nodeType === 1 && window.vfReady && !window.vfOwnTop.has(n)", "else if(false && window.vfReady && !window.vfOwnTop.has(n)"],
   ["heir mode: the Detective button goes nowhere", "onclick=\"heirGo('check', 'detBlock')\"", "onclick=\"heirGo('tools', 'detBlock')\""],
 ];
 

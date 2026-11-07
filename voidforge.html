@@ -10,8 +10,8 @@
 // v2.8.0 "Is anything watching this page?": from early on, while the page loads, note elements this page never makes itself (other scripts, frames,
 // style sheets, custom elements, <font> from translators) and data- attributes it never sets, even ones removed again at once.
 // watchSigns() in the main script reads them. VF_OWN_DATA: every data- attribute name the page itself uses (tests/test.js checks that the
-// list is complete). After the main script has run (vfReady), any element added straight under <body> or <html> is noted too: the page
-// never does that once it is open, and extensions often add one there to hold hidden content.
+// list is complete). Once the page has loaded (vfReady), any element added straight under <body> or <html> that is not one of the page's
+// own (vfOwnTop) is noted too: the page never adds one, and extensions often add one there to hold hidden content.
 var VF_OWN_DATA = ["1p-ignore", "addr", "bwignore", "c", "form-type", "g", "gs", "lpignore", "m", "meta", "method", "n", "net", "s", "seed", "tab", "text", "tip", "v", "w"];
 window.vfWatchSeen = []; window.vfOwnEls = [document.currentScript];
 try {
@@ -23,7 +23,7 @@ try {
       for(var j = 0; j < r.addedNodes.length; j++){
         var n = r.addedNodes[j];
         if(n.nodeType === 1 && /^(SCRIPT|IFRAME|FRAME|OBJECT|EMBED|LINK|STYLE|FONT)$|-/.test(n.tagName) && seen.length < 200){ seen.push({el: n}); hit = true; }
-        else if(n.nodeType === 1 && window.vfReady && (r.target === document.body || r.target === document.documentElement) && seen.length < 200){ seen.push({el: n, top: true}); hit = true; }
+        else if(n.nodeType === 1 && window.vfReady && !window.vfOwnTop.has(n) && (r.target === document.body || r.target === document.documentElement) && seen.length < 200){ seen.push({el: n, top: true}); hit = true; }
       }
     }
     if(hit && window.vfWatchPing) window.vfWatchPing();
@@ -7726,7 +7726,9 @@ document.body.classList.add("js-ok");
 // Offline and already read in this browser session: keep the notice hidden from the first paint (it is removed when the page has loaded).
 if(startGateSkip()) document.body.classList.add("sg-skip");
 // v2.8.0: look for signs that something else reads this page now, and again whenever the early script notes something new.
-window.vfReady = true;
+// The page's own elements straight under <body> and <html> are taken once it has loaded; the browser can report them to the early
+// script only afterwards, so they are recognised by name, not by when they arrive.
+document.addEventListener("DOMContentLoaded", () => { window.vfOwnTop = new Set([document.body, document.head, ...document.body.children, ...document.documentElement.children]); window.vfReady = true; });
 watchAuto();
 
 </script>
