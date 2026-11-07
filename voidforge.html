@@ -6,7 +6,26 @@
 <meta name="referrer" content="no-referrer">
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script>
+<script id="vfBoot">
+// v2.8.0 "Is anything watching this page?": from the very start, note elements this page never makes itself (other scripts, frames,
+// style sheets, custom elements, <font> from translators) and data- attributes it never sets, even ones removed again at once.
+// watchSigns() in the main script reads them. VF_OWN_DATA: every data- attribute name the page itself uses (checked by the tests).
+var VF_OWN_DATA = ["1p-ignore", "addr", "bwignore", "c", "form-type", "g", "gs", "lpignore", "m", "meta", "method", "n", "net", "s", "seed", "tab", "text", "tip", "v", "w"];
+window.vfWatchSeen = [];
+try {
+  new MutationObserver(function(rs){
+    var seen = window.vfWatchSeen, hit = false;
+    for(var i = 0; i < rs.length; i++){
+      var r = rs[i];
+      if(r.type === "attributes"){ if(/^data-/.test(r.attributeName) && VF_OWN_DATA.indexOf(r.attributeName.slice(5)) < 0 && seen.length < 200){ seen.push({attr: r.attributeName}); hit = true; } continue; }
+      for(var j = 0; j < r.addedNodes.length; j++){
+        var n = r.addedNodes[j];
+        if(n.nodeType === 1 && /^(SCRIPT|IFRAME|FRAME|OBJECT|EMBED|LINK|STYLE|FONT)$|-/.test(n.tagName) && seen.length < 200){ seen.push({el: n}); hit = true; }
+      }
+    }
+    if(hit && window.vfWatchPing) window.vfWatchPing();
+  }).observe(document.documentElement, {childList: true, subtree: true, attributes: true});
+} catch(e) {}
 // v2.4.0: scripts can run, so keep the "script is NOT running" notice and the half-built page hidden while the main script loads
 // (on a slow phone they used to flash before the start notice). If the main script then fails to run, both come back.
 document.documentElement.classList.add("js");
@@ -16,7 +35,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20x%3D%222%22%20y%3D%222%22%20width%3D%2260%22%20height%3D%2260%22%20rx%3D%2214%22%20fill%3D%22%23E3B83F%22%2F%3E%3Ccircle%20cx%3D%2218%22%20cy%3D%2218%22%20r%3D%225.6%22%20fill%3D%22%231E2124%22%2F%3E%3Ccircle%20cx%3D%2246%22%20cy%3D%2218%22%20r%3D%225.6%22%20fill%3D%22%231E2124%22%2F%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2232%22%20r%3D%225.6%22%20fill%3D%22%231E2124%22%2F%3E%3Ccircle%20cx%3D%2218%22%20cy%3D%2246%22%20r%3D%225.6%22%20fill%3D%22%231E2124%22%2F%3E%3Ccircle%20cx%3D%2246%22%20cy%3D%2246%22%20r%3D%225.6%22%20fill%3D%22%231E2124%22%2F%3E%3C%2Fsvg%3E">
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACfklEQVR4AcSWQWsTQRTH31uDVotgFCotbP0Agh5EUHBTpWiS3jx5Uyl+jrTNp/BQ1KOeRBCTqMWmOYkIInjXLggpSANa2152uu9tJ8zuzqS7kzZdeMzMm/f+/18S3hIHjvlJAWx+un3Ob3pL641Sy2+Wun5zRgwXpW6k5S2RdvLzxgD81kz1727wA8CpIeI9AJyAoR+ciLScGmmThyrZB1hveGUQ8A4Bp9SCw9yzduihQjDAr7e3ioD4/DDNBmkJIZb95s3zVMMAJwr4KKSbpMQoIvSaQig8JC8GCABv0EGNkBJan7egtvyH48OX/+q1cZ+1T3oyAIo0wKuVLai/6MHK1x2OxWeb8PLjP6OxvMjaJz0ZABAuSQG5dr5vy21/1eX6l/sbXY0uJz0jgP3mg5aTBTyoRHs/qM8I4F05nRLzro6lcslE3j4jwIPZcVicL8LstTEO2t8vjSf9Uue8fUaA8O0Fd6+fgfqTCxy0p1zKMZGgGqrN2mcESOjGjllHLdZkOFgBZB01g2csbQWgGytdLuZkOFgB6LQGjZquXuasAPKOmjTTrVYAeUdNZyxzVgB5R02a6VYjgO2o5e0zAtiOWt4+I4BurHS55Neqq9HlZJ8RQBaoq+2oDepjAAHQVY1obztqWfukJwOgEN/IVA3bUcvaJz0ZIPx3kgKwHbXMfQjsyQAF4TwVAD0Y0UNe5El2DDBZXf2JAuYpMZoIHpMneTEAbdxq+3X4U8wJEL/pfBTB2ghz05XOG6nfB6CEW243zp5yLgME9fCN9h5AbFB+uBAbkVZQJ23yUPViAHRRvLPacyudhenqWtmtrF10K20cJkgj0uoskDZ5qLEHAAD//yDMfCUAAAAGSURBVAMAsot8UASYfhAAAAAASUVORK5CYII=">
 
-<style>
+<style id="vfStyle">
   :root {
     --bg: #07070b;
     --surface: #12121a;
@@ -455,6 +474,8 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .pass-warn { color: var(--warn-text); font-weight: 600; font-size: 13px; margin: 6px 0 0; }
   .pass-warn:empty { display: none; }
   #practiceBan { display: none; }
+  #watchWarn { display: none; color: var(--text); border: 1px solid var(--bad-text); border-left-width: 4px; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 13px; }   /* v2.8.0 */
+  #watchWarn .linklike { margin: 0 0 0 6px; padding: 0; background: none; border: none; color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: 0; text-decoration: underline; text-underline-offset: 3px; box-shadow: none; min-height: 0; }
   body.practice #practiceBan { display: block; color: var(--text); border: 1px solid var(--warn-text); border-left-width: 4px; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 13px; }
   .pr-mode { display: flex; gap: 8px; align-items: center; font-weight: 600; margin-top: 6px; }
   .pay-diff { font-family: monospace; font-size: 14px; word-break: break-all; line-height: 1.7; margin-top: 6px; }
@@ -857,6 +878,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
 <button class="print-btn" onclick="printSeed()">PRINT SEED</button>
 <button class="print-btn" id="stampBtn" onclick="printStamp()">PRINT STAMP SHEET</button>
 <button class="theme-toggle" onclick="toggleTheme()">DARK</button>
+<button class="secondary small" id="watchMenuBtn" onclick="document.getElementById('menuBox').open = false; watchCheck(true)">IS ANYTHING WATCHING?</button>
 <button class="btn-clear" id="endSessionBtn" onclick="endSession()">END SESSION</button>
 </div></details>
 </div>
@@ -865,6 +887,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
 <div class="container">
   <div id="onlineWarn" role="alert"></div>
   <div id="fatalWarn" role="alert"></div>
+  <div id="watchWarn" role="alert"></div>
   <div id="practiceBan" role="status"><b>PRACTICE MODE.</b> Every address on this page is on the test network (tb1..., worthless test coins). Never send real bitcoin to them. <button type="button" class="linklike" onclick="practiceMode(false)">Turn practice mode off</button></div>
   <div id="noJs" role="alert">
     This page&rsquo;s script is NOT running, so nothing below works. Open voidforge.html itself in a current desktop browser (Safari 14+, Chrome, Firefox) with JavaScript on. File previews (Quick Look, email, phone Files) and old browsers block it. Do not use it for real funds until the green SELF-TEST PASSED badge appears. This tool is meant for an offline computer, not a phone.
@@ -1578,6 +1601,14 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
 <div class="sg-item"><div class="sg-ico">2</div><div><b>Copying can leak.</b> Clipboard history can keep what you copy or paste, and may sync it to your other devices.<span class="sg-fix"><b>What to do:</b> write seeds on paper; avoid copy and paste for anything secret, and turn clipboard history off.</span></div></div>
 <div class="sg-item"><div class="sg-ico">3</div><div><b>Keys can stay in memory after you finish.</b> Wiping the page is a precaution, not a guarantee.<span class="sg-fix"><b>What to do:</b> when you are done, close the browser and restart the computer.</span></div></div></div></div>
 
+  <div class="card" id="watchCard">
+    <h2>IS ANYTHING WATCHING THIS PAGE?</h2>
+    <p class="sub">Browser extensions (password managers, writing assistants, translators, wallet extensions) and other software can read a page and everything typed into it, including seed words. This looks for the signs they leave on this page: scripts, frames and elements it never makes, attributes it never sets, translation, objects that wallet extensions add, a frame around the page, and automation. It checks by itself as the page runs and shows a warning at the top when it finds one. It can only find signs, so it never says the page is safe.</p>
+    <div class="btn-row"><button type="button" id="watchBtn" onclick="watchCheck()">CHECK THIS PAGE</button></div>
+    <div class="status" id="watchStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+    <pre id="watchOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:inherit; font-size:14px; margin:8px 0 0;"></pre>
+  </div>
+
   <div class="card" id="about">
     <h2>ABOUT &amp; DOCS</h2>
     <p class="sub">VOIDFORGE is an <b>educational tool</b>. It is open source, works fully offline and is meant to be read, but it has <b>not been independently audited</b>. Use it to learn and to make keys you understand, practise first, and start real money with a small amount.</p>
@@ -1785,7 +1816,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
 <button type="button" class="sg-go" id="sgGo" onclick="startGateClose()">I understand, let's go</button>
 <p class="sg-foot">Practising with a test seed? Nothing here applies. For real money, start with a small amount. Offline, this shows once in each browser tab; online, every time the page opens. END SESSION in the MENU wipes the page and shows it again.</p></div></div>
 
-<script>
+<script id="vfMain">
 let guideOn = false, guideN = 1, ms = null;
 const WORDLIST = ["abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident","account","accuse","achieve","acid","acoustic","acquire","across","act","action","actor","actress","actual","adapt","add","addict","address","adjust","admit","adult","advance","advice","aerobic","affair","afford","afraid","again","age","agent","agree","ahead","aim","air","airport","aisle","alarm","album","alcohol","alert","alien","all","alley","allow","almost","alone","alpha","already","also","alter","always","amateur","amazing","among","amount","amused","analyst","anchor","ancient","anger","angle","angry","animal","ankle","announce","annual","another","answer","antenna","antique","anxiety","any","apart","apology","appear","apple","approve","april","arch","arctic","area","arena","argue","arm","armed","armor","army","around","arrange","arrest","arrive","arrow","art","artefact","artist","artwork","ask","aspect","assault","asset","assist","assume","asthma","athlete","atom","attack","attend","attitude","attract","auction","audit","august","aunt","author","auto","autumn","average","avocado","avoid","awake","aware","away","awesome","awful","awkward","axis","baby","bachelor","bacon","badge","bag","balance","balcony","ball","bamboo","banana","banner","bar","barely","bargain","barrel","base","basic","basket","battle","beach","bean","beauty","because","become","beef","before","begin","behave","behind","believe","below","belt","bench","benefit","best","betray","better","between","beyond","bicycle","bid","bike","bind","biology","bird","birth","bitter","black","blade","blame","blanket","blast","bleak","bless","blind","blood","blossom","blouse","blue","blur","blush","board","boat","body","boil","bomb","bone","bonus","book","boost","border","boring","borrow","boss","bottom","bounce","box","boy","bracket","brain","brand","brass","brave","bread","breeze","brick","bridge","brief","bright","bring","brisk","broccoli","broken","bronze","broom","brother","brown","brush","bubble","buddy","budget","buffalo","build","bulb","bulk","bullet","bundle","bunker","burden","burger","burst","bus","business","busy","butter","buyer","buzz","cabbage","cabin","cable","cactus","cage","cake","call","calm","camera","camp","can","canal","cancel","candy","cannon","canoe","canvas","canyon","capable","capital","captain","car","carbon","card","cargo","carpet","carry","cart","case","cash","casino","castle","casual","cat","catalog","catch","category","cattle","caught","cause","caution","cave","ceiling","celery","cement","census","century","cereal","certain","chair","chalk","champion","change","chaos","chapter","charge","chase","chat","cheap","check","cheese","chef","cherry","chest","chicken","chief","child","chimney","choice","choose","chronic","chuckle","chunk","churn","cigar","cinnamon","circle","citizen","city","civil","claim","clap","clarify","claw","clay","clean","clerk","clever","click","client","cliff","climb","clinic","clip","clock","clog","close","cloth","cloud","clown","club","clump","cluster","clutch","coach","coast","coconut","code","coffee","coil","coin","collect","color","column","combine","come","comfort","comic","common","company","concert","conduct","confirm","congress","connect","consider","control","convince","cook","cool","copper","copy","coral","core","corn","correct","cost","cotton","couch","country","couple","course","cousin","cover","coyote","crack","cradle","craft","cram","crane","crash","crater","crawl","crazy","cream","credit","creek","crew","cricket","crime","crisp","critic","crop","cross","crouch","crowd","crucial","cruel","cruise","crumble","crunch","crush","cry","crystal","cube","culture","cup","cupboard","curious","current","curtain","curve","cushion","custom","cute","cycle","dad","damage","damp","dance","danger","daring","dash","daughter","dawn","day","deal","debate","debris","decade","december","decide","decline","decorate","decrease","deer","defense","define","defy","degree","delay","deliver","demand","demise","denial","dentist","deny","depart","depend","deposit","depth","deputy","derive","describe","desert","design","desk","despair","destroy","detail","detect","develop","device","devote","diagram","dial","diamond","diary","dice","diesel","diet","differ","digital","dignity","dilemma","dinner","dinosaur","direct","dirt","disagree","discover","disease","dish","dismiss","disorder","display","distance","divert","divide","divorce","dizzy","doctor","document","dog","doll","dolphin","domain","donate","donkey","donor","door","dose","double","dove","draft","dragon","drama","drastic","draw","dream","dress","drift","drill","drink","drip","drive","drop","drum","dry","duck","dumb","dune","during","dust","dutch","duty","dwarf","dynamic","eager","eagle","early","earn","earth","easily","east","easy","echo","ecology","economy","edge","edit","educate","effort","egg","eight","either","elbow","elder","electric","elegant","element","elephant","elevator","elite","else","embark","embody","embrace","emerge","emotion","employ","empower","empty","enable","enact","end","endless","endorse","enemy","energy","enforce","engage","engine","enhance","enjoy","enlist","enough","enrich","enroll","ensure","enter","entire","entry","envelope","episode","equal","equip","era","erase","erode","erosion","error","erupt","escape","essay","essence","estate","eternal","ethics","evidence","evil","evoke","evolve","exact","example","excess","exchange","excite","exclude","excuse","execute","exercise","exhaust","exhibit","exile","exist","exit","exotic","expand","expect","expire","explain","expose","express","extend","extra","eye","eyebrow","fabric","face","faculty","fade","faint","faith","fall","false","fame","family","famous","fan","fancy","fantasy","farm","fashion","fat","fatal","father","fatigue","fault","favorite","feature","february","federal","fee","feed","feel","female","fence","festival","fetch","fever","few","fiber","fiction","field","figure","file","film","filter","final","find","fine","finger","finish","fire","firm","first","fiscal","fish","fit","fitness","fix","flag","flame","flash","flat","flavor","flee","flight","flip","float","flock","floor","flower","fluid","flush","fly","foam","focus","fog","foil","fold","follow","food","foot","force","forest","forget","fork","fortune","forum","forward","fossil","foster","found","fox","fragile","frame","frequent","fresh","friend","fringe","frog","front","frost","frown","frozen","fruit","fuel","fun","funny","furnace","fury","future","gadget","gain","galaxy","gallery","game","gap","garage","garbage","garden","garlic","garment","gas","gasp","gate","gather","gauge","gaze","general","genius","genre","gentle","genuine","gesture","ghost","giant","gift","giggle","ginger","giraffe","girl","give","glad","glance","glare","glass","glide","glimpse","globe","gloom","glory","glove","glow","glue","goat","goddess","gold","good","goose","gorilla","gospel","gossip","govern","gown","grab","grace","grain","grant","grape","grass","gravity","great","green","grid","grief","grit","grocery","group","grow","grunt","guard","guess","guide","guilt","guitar","gun","gym","habit","hair","half","hammer","hamster","hand","happy","harbor","hard","harsh","harvest","hat","have","hawk","hazard","head","health","heart","heavy","hedgehog","height","hello","helmet","help","hen","hero","hidden","high","hill","hint","hip","hire","history","hobby","hockey","hold","hole","holiday","hollow","home","honey","hood","hope","horn","horror","horse","hospital","host","hotel","hour","hover","hub","huge","human","humble","humor","hundred","hungry","hunt","hurdle","hurry","hurt","husband","hybrid","ice","icon","idea","identify","idle","ignore","ill","illegal","illness","image","imitate","immense","immune","impact","impose","improve","impulse","inch","include","income","increase","index","indicate","indoor","industry","infant","inflict","inform","inhale","inherit","initial","inject","injury","inmate","inner","innocent","input","inquiry","insane","insect","inside","inspire","install","intact","interest","into","invest","invite","involve","iron","island","isolate","issue","item","ivory","jacket","jaguar","jar","jazz","jealous","jeans","jelly","jewel","job","join","joke","journey","joy","judge","juice","jump","jungle","junior","junk","just","kangaroo","keen","keep","ketchup","key","kick","kid","kidney","kind","kingdom","kiss","kit","kitchen","kite","kitten","kiwi","knee","knife","knock","know","lab","label","labor","ladder","lady","lake","lamp","language","laptop","large","later","latin","laugh","laundry","lava","law","lawn","lawsuit","layer","lazy","leader","leaf","learn","leave","lecture","left","leg","legal","legend","leisure","lemon","lend","length","lens","leopard","lesson","letter","level","liar","liberty","library","license","life","lift","light","like","limb","limit","link","lion","liquid","list","little","live","lizard","load","loan","lobster","local","lock","logic","lonely","long","loop","lottery","loud","lounge","love","loyal","lucky","luggage","lumber","lunar","lunch","luxury","lyrics","machine","mad","magic","magnet","maid","mail","main","major","make","mammal","man","manage","mandate","mango","mansion","manual","maple","marble","march","margin","marine","market","marriage","mask","mass","master","match","material","math","matrix","matter","maximum","maze","meadow","mean","measure","meat","mechanic","medal","media","melody","melt","member","memory","mention","menu","mercy","merge","merit","merry","mesh","message","metal","method","middle","midnight","milk","million","mimic","mind","minimum","minor","minute","miracle","mirror","misery","miss","mistake","mix","mixed","mixture","mobile","model","modify","mom","moment","monitor","monkey","monster","month","moon","moral","more","morning","mosquito","mother","motion","motor","mountain","mouse","move","movie","much","muffin","mule","multiply","muscle","museum","mushroom","music","must","mutual","myself","mystery","myth","naive","name","napkin","narrow","nasty","nation","nature","near","neck","need","negative","neglect","neither","nephew","nerve","nest","net","network","neutral","never","news","next","nice","night","noble","noise","nominee","noodle","normal","north","nose","notable","note","nothing","notice","novel","now","nuclear","number","nurse","nut","oak","obey","object","oblige","obscure","observe","obtain","obvious","occur","ocean","october","odor","off","offer","office","often","oil","okay","old","olive","olympic","omit","once","one","onion","online","only","open","opera","opinion","oppose","option","orange","orbit","orchard","order","ordinary","organ","orient","original","orphan","ostrich","other","outdoor","outer","output","outside","oval","oven","over","own","owner","oxygen","oyster","ozone","pact","paddle","page","pair","palace","palm","panda","panel","panic","panther","paper","parade","parent","park","parrot","party","pass","patch","path","patient","patrol","pattern","pause","pave","payment","peace","peanut","pear","peasant","pelican","pen","penalty","pencil","people","pepper","perfect","permit","person","pet","phone","photo","phrase","physical","piano","picnic","picture","piece","pig","pigeon","pill","pilot","pink","pioneer","pipe","pistol","pitch","pizza","place","planet","plastic","plate","play","please","pledge","pluck","plug","plunge","poem","poet","point","polar","pole","police","pond","pony","pool","popular","portion","position","possible","post","potato","pottery","poverty","powder","power","practice","praise","predict","prefer","prepare","present","pretty","prevent","price","pride","primary","print","priority","prison","private","prize","problem","process","produce","profit","program","project","promote","proof","property","prosper","protect","proud","provide","public","pudding","pull","pulp","pulse","pumpkin","punch","pupil","puppy","purchase","purity","purpose","purse","push","put","puzzle","pyramid","quality","quantum","quarter","question","quick","quit","quiz","quote","rabbit","raccoon","race","rack","radar","radio","rail","rain","raise","rally","ramp","ranch","random","range","rapid","rare","rate","rather","raven","raw","razor","ready","real","reason","rebel","rebuild","recall","receive","recipe","record","recycle","reduce","reflect","reform","refuse","region","regret","regular","reject","relax","release","relief","rely","remain","remember","remind","remove","render","renew","rent","reopen","repair","repeat","replace","report","require","rescue","resemble","resist","resource","response","result","retire","retreat","return","reunion","reveal","review","reward","rhythm","rib","ribbon","rice","rich","ride","ridge","rifle","right","rigid","ring","riot","ripple","risk","ritual","rival","river","road","roast","robot","robust","rocket","romance","roof","rookie","room","rose","rotate","rough","round","route","royal","rubber","rude","rug","rule","run","runway","rural","sad","saddle","sadness","safe","sail","salad","salmon","salon","salt","salute","same","sample","sand","satisfy","satoshi","sauce","sausage","save","say","scale","scan","scare","scatter","scene","scheme","school","science","scissors","scorpion","scout","scrap","screen","script","scrub","sea","search","season","seat","second","secret","section","security","seed","seek","segment","select","sell","seminar","senior","sense","sentence","series","service","session","settle","setup","seven","shadow","shaft","shallow","share","shed","shell","sheriff","shield","shift","shine","ship","shiver","shock","shoe","shoot","shop","short","shoulder","shove","shrimp","shrug","shuffle","shy","sibling","sick","side","siege","sight","sign","silent","silk","silly","silver","similar","simple","since","sing","siren","sister","situate","six","size","skate","sketch","ski","skill","skin","skirt","skull","slab","slam","sleep","slender","slice","slide","slight","slim","slogan","slot","slow","slush","small","smart","smile","smoke","smooth","snack","snake","snap","sniff","snow","soap","soccer","social","sock","soda","soft","solar","soldier","solid","solution","solve","someone","song","soon","sorry","sort","soul","sound","soup","source","south","space","spare","spatial","spawn","speak","special","speed","spell","spend","sphere","spice","spider","spike","spin","spirit","split","spoil","sponsor","spoon","sport","spot","spray","spread","spring","spy","square","squeeze","squirrel","stable","stadium","staff","stage","stairs","stamp","stand","start","state","stay","steak","steel","stem","step","stereo","stick","still","sting","stock","stomach","stone","stool","story","stove","strategy","street","strike","strong","struggle","student","stuff","stumble","style","subject","submit","subway","success","such","sudden","suffer","sugar","suggest","suit","summer","sun","sunny","sunset","super","supply","supreme","sure","surface","surge","surprise","surround","survey","suspect","sustain","swallow","swamp","swap","swarm","swear","sweet","swift","swim","swing","switch","sword","symbol","symptom","syrup","system","table","tackle","tag","tail","talent","talk","tank","tape","target","task","taste","tattoo","taxi","teach","team","tell","ten","tenant","tennis","tent","term","test","text","thank","that","theme","then","theory","there","they","thing","this","thought","three","thrive","throw","thumb","thunder","ticket","tide","tiger","tilt","timber","time","tiny","tip","tired","tissue","title","toast","tobacco","today","toddler","toe","together","toilet","token","tomato","tomorrow","tone","tongue","tonight","tool","tooth","top","topic","topple","torch","tornado","tortoise","toss","total","tourist","toward","tower","town","toy","track","trade","traffic","tragic","train","transfer","trap","trash","travel","tray","treat","tree","trend","trial","tribe","trick","trigger","trim","trip","trophy","trouble","truck","true","truly","trumpet","trust","truth","try","tube","tuition","tumble","tuna","tunnel","turkey","turn","turtle","twelve","twenty","twice","twin","twist","two","type","typical","ugly","umbrella","unable","unaware","uncle","uncover","under","undo","unfair","unfold","unhappy","uniform","unique","unit","universe","unknown","unlock","until","unusual","unveil","update","upgrade","uphold","upon","upper","upset","urban","urge","usage","use","used","useful","useless","usual","utility","vacant","vacuum","vague","valid","valley","valve","van","vanish","vapor","various","vast","vault","vehicle","velvet","vendor","venture","venue","verb","verify","version","very","vessel","veteran","viable","vibrant","vicious","victory","video","view","village","vintage","violin","virtual","virus","visa","visit","visual","vital","vivid","vocal","voice","void","volcano","volume","vote","voyage","wage","wagon","wait","walk","wall","walnut","want","warfare","warm","warrior","wash","wasp","waste","water","wave","way","wealth","weapon","wear","weasel","weather","web","wedding","weekend","weird","welcome","west","wet","whale","what","wheat","wheel","when","where","whip","whisper","wide","width","wife","wild","will","win","window","wine","wing","wink","winner","winter","wire","wisdom","wise","wish","witness","wolf","woman","wonder","wood","wool","word","work","world","worry","worth","wrap","wreck","wrestle","wrist","write","wrong","yard","year","yellow","you","young","youth","zebra","zero","zone","zoo"];
 const WORD_MAP = Object.fromEntries(WORDLIST.map((w,i)=>[w,i]));
@@ -5555,6 +5586,79 @@ async function detList(){
   } catch(e) { if(my === detSeq) detSay("bad", "Could not list: " + e.message); }
   finally { detBusyUi(false); }
 }
+// ===== Is anything watching this page? (v2.8.0) =====
+// Browser extensions, page translators and other software can read and change a page, including what is typed into it. This looks
+// for the signs they leave: scripts, frames, style sheets and elements this page never makes, attributes it never sets, translation,
+// objects that wallet extensions add, a frame around the page, and automation. The early script in <head> notes such elements and
+// attributes from the start, even ones removed again at once. It can only find signs; it can never show that nothing is watching,
+// so it never says "safe". The page's own data- attribute names are in VF_OWN_DATA (the early script); tests check that list.
+const WATCH_GLOBALS = [["ethereum", "crypto wallet extensions (such as MetaMask)"], ["phantom", "the Phantom wallet extension"], ["solana", "Solana wallet extensions"], ["unisat", "the UniSat wallet extension"], ["okxwallet", "the OKX wallet extension"], ["XverseProviders", "the Xverse wallet extension"], ["BitcoinProvider", "Bitcoin wallet extensions (such as Xverse)"], ["LeatherProvider", "the Leather wallet extension"], ["HiroWalletProvider", "the Leather (Hiro) wallet extension"], ["nostr", "Nostr signing extensions (such as Alby)"], ["webln", "Lightning extensions (such as Alby)"], ["trustwallet", "the Trust Wallet extension"], ["coinbaseWalletExtension", "the Coinbase Wallet extension"], ["__REACT_DEVTOOLS_GLOBAL_HOOK__", "the React Developer Tools extension"], ["__VUE_DEVTOOLS_GLOBAL_HOOK__", "the Vue.js devtools extension"]];
+const WATCH_NAMES = [[/^data-(gramm|gr-|new-gr-|enable-grammarly)/, "Grammarly (a writing assistant)"], [/^data-lt-/, "LanguageTool (a writing assistant)"], [/^data-lastpass/, "LastPass (a password manager)"], [/^data-com-onepassword/, "1Password (a password manager)"], [/^data-dashlane/, "Dashlane (a password manager)"], [/^data-bitwarden/, "Bitwarden (a password manager)"], [/^data-keeper/, "Keeper (a password manager)"], [/^data-np-/, "NordPass (a password manager)"], [/^data-protonpass/, "Proton Pass (a password manager)"], [/^data-darkreader/, "Dark Reader (a page restyler)"], [/^data-ms-editor/, "Microsoft Editor (a writing assistant)"]];
+function watchElSign(el){
+  const t = el.tagName || "", src = el.getAttribute ? String(el.getAttribute(t === "LINK" ? "href" : "src") || "") : "";
+  if(t === "SCRIPT" && el.id !== "vfBoot" && el.id !== "vfMain") return "A script this page does not have" + (src ? " (from " + src.slice(0, 80) + ")" : "") + ".";
+  if(t === "STYLE" && el.id !== "vfStyle") return "A style sheet this page does not have" + (el.className ? " (class " + String(el.className).slice(0, 40) + ")" : "") + ".";
+  if(t === "LINK" && !/^data:/.test(src)) return "A link to a file outside this page (" + src.slice(0, 80) + ").";
+  if(/^(IFRAME|FRAME|OBJECT|EMBED)$/.test(t)) return "A frame or embedded object (<" + t.toLowerCase() + ">) this page does not have" + (src ? " (from " + src.slice(0, 80) + ")" : "") + ".";
+  if(t === "FONT") return "Text wrapped in <font> tags, as page translators do.";
+  if(t.includes("-")) return "An element <" + t.toLowerCase() + "> that this page never makes, as browser extensions add.";
+  return null;
+}
+function watchAttrSign(a){
+  if(!/^data-/.test(a) || VF_OWN_DATA.includes(a.slice(5))) return null;
+  for(const [re, n] of WATCH_NAMES) if(re.test(a)) return "An attribute " + a + " on the page, as " + n + " adds.";
+  return "An attribute " + a + " that this page never sets, probably added by a browser extension.";
+}
+function watchSigns(){
+  const signs = [], add = m => { if(m && !signs.includes(m)) signs.push(m); };
+  for(const r of (window.vfWatchSeen || [])){
+    if(r.attr) add(watchAttrSign(r.attr));
+    else { const m = watchElSign(r.el); if(m) add(r.el.isConnected ? m : m + " It was added and then removed again."); }
+  }
+  for(const el of document.querySelectorAll("*")){
+    add(watchElSign(el));
+    for(const a of el.getAttributeNames()) add(watchAttrSign(a));
+    if(el.shadowRoot) add("An element with its own hidden content (<" + el.tagName.toLowerCase() + ">), which this page never makes.");
+  }
+  const h = document.documentElement;
+  if(/translated-(ltr|rtl)/.test(h.className) || h.lang !== "en") add("The page was translated (its language is now “" + (h.lang || "none") + "”). Translation can send the page's text, including words typed into it, to a translation service.");
+  for(const [g, n] of WATCH_GLOBALS) if(g in window) add("The page has an object named “" + g + "”, which " + n + " add to every page.");
+  let framed = false; try { framed = window.top !== window.self; } catch(e) { framed = true; }
+  if(framed) add("This page is shown inside another page (a frame). Open voidforge.html directly, not inside another page.");
+  if(navigator.webdriver) add("The browser says it is being controlled by automation software.");
+  return signs;
+}
+const WATCH_FIX = "What to do: before typing real words, close this page and open voidforge.html in a private window with every extension turned off (check that extensions are not allowed in private windows), or better, on a clean offline computer such as a live USB system. Never type seed words into a page another program can read.";
+const WATCH_LIMITS = "This check can only find signs. An extension, malware, a screen recorder or a hidden camera can leave none, so it can never show that nothing is watching.";
+let watchShown = "";
+function watchAuto(){
+  const signs = watchSigns(), b = document.getElementById("watchWarn"), key = signs.join("\n");
+  if(key === watchShown) return signs;
+  watchShown = key;
+  b.textContent = "";
+  if(!signs.length){ b.style.display = "none"; return signs; }
+  const t = document.createElement("b"); t.textContent = "Something else may be reading or changing this page. ";
+  const m = document.createElement("span"); m.textContent = signs[0] + (signs.length > 1 ? " (and " + (signs.length - 1) + " more sign" + (signs.length > 2 ? "s" : "") + ") " : " ") + "Browser extensions can read everything typed here, including seed words. ";
+  const l = document.createElement("button"); l.type = "button"; l.className = "linklike"; l.textContent = "WHAT TO DO"; l.onclick = () => watchCheck(true);
+  b.append(t, m, l); b.style.display = "block";
+  return signs;
+}
+let watchTimer = null;
+window.vfWatchPing = function(){ if(!watchTimer) watchTimer = setTimeout(() => { watchTimer = null; watchAuto(); }, 300); };
+// The button: shows every sign found, or that no sign was found (never "safe").
+function watchCheck(go){
+  if(go) showTab("about", "watchCard");
+  const signs = watchAuto(), st = document.getElementById("watchStatus"), o = document.getElementById("watchOut");
+  if(signs.length){
+    st.className = "status bad"; st.textContent = signs.length + " SIGN" + (signs.length > 1 ? "S" : "") + " FOUND that something else is reading or changing this page.";
+    o.textContent = signs.map(s => "- " + s).join("\n") + "\n\n" + WATCH_FIX + "\n\n" + WATCH_LIMITS;
+  } else {
+    st.className = "status"; st.textContent = "NO SIGN FOUND of extensions, translators or other scripts on this page right now.";
+    o.textContent = "That does not make it safe. " + WATCH_LIMITS + " The best protection is still a clean offline computer, used only for this.";
+  }
+  o.style.display = "";
+  return signs;
+}
 // "Child seed (BIP85)": derives a new seed phrase from the typed parent words (and passphrase). Shown on screen only; nothing is copied or saved.
 // Check your download (v1.27.3). Reads the chosen file, hashes it with the browser's SHA-256 and compares with what you paste. Nothing is stored or sent.
 const DL_MAX = 64 * 1024 * 1024;
@@ -7504,6 +7608,8 @@ document.getElementById("noJs").style.display = "none";
 document.body.classList.add("js-ok");
 // Offline and already read in this browser session: keep the notice hidden from the first paint (it is removed when the page has loaded).
 if(startGateSkip()) document.body.classList.add("sg-skip");
+// v2.8.0: look for signs that something else reads this page now, and again whenever the early script notes something new.
+watchAuto();
 
 </script>
 </body>
