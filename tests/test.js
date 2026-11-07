@@ -1519,6 +1519,105 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     $('wNet').value='test'; await w.refreshWatch(); ok(/Network: Testnet/.test(w.watchFileText())&&/tpub/.test(w.watchFileText()),'watch-only file: testnet keys say so');
     $('wNet').value='main';
   }
+  // ===== v2.6.0: animated QR (UR + BBQr), UR/BBQr paste, custom paths, read-only private keys, check an address before you pay, future spending cost =====
+  { const t6=load({confirm:true}); await t6.ready(); const $=t6.$, w=t6.w; w.startGateClose();
+    const {HDKey}=require('@scure/bip32'); const {mnemonicToSeedSync}=require('@scure/bip39'); const btc=require('@scure/btc-signer'); const zlib=require('zlib'), nc=require('crypto');
+    const until=async(f)=>{ for(let k=0;k<120&&!f();k++) await new Promise(r=>setTimeout(r,50)); };
+    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.6.0','v2.6.0: the footer shows the new version');
+    ok(html.indexOf('<li><b>2.6.0</b>')>0&&html.indexOf('<li><b>2.6.0</b>')<html.indexOf('<li><b>2.5.0</b>'),'v2.6.0: the changelog lists 2.6.0 first');
+    // --- check an address before you pay ---
+    const PAY=async(a,b)=>{ $('payA').value=a; $('payB').value=b; await w.payCompare(); return {st:$('payOut').textContent, cls:$('payOut').className, x:[...$('payDiff').children].map(r=>r.querySelectorAll('.pd-x').length)}; };
+    const A='bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
+    let r=await PAY(A,A.toUpperCase()); ok(/^SAME ADDRESS: all 42 characters match\.$/.test(r.st)&&r.cls==='status ok'&&r.x.length===0,'pay check: a bech32 address matches its capital-letter form (bech32 ignores case)');
+    r=await PAY('bitcoin:'+A+'?amount=0.1&label=Jo',' '+A.slice(0,20)+' '+A.slice(20)+' '); ok(/^SAME ADDRESS/.test(r.st),'pay check: a bitcoin: link and spaces inside a pasted address are read');
+    const B=A.slice(0,8)+'qqqq'+A.slice(12); r=await PAY(B,A);
+    ok(/^DIFFERENT ADDRESSES: 4 characters differ\. Do not pay/.test(r.st)&&/the first 8 and the last 30 characters match but the middle does not\. That is exactly how address poisoning/.test(r.st)&&/The address you are about to pay is not valid/.test(r.st)&&r.cls==='status bad'&&r.x.join()==='4,4','pay check: a look-alike in the middle is called out, with the 4 different characters marked on both lines');
+    r=await PAY(A.slice(0,41)+'x',A); ok(/^DIFFERENT ADDRESSES: 1 character differs\./.test(r.st)&&!/address poisoning/.test(r.st),'pay check: one character (singular), and no look-alike warning when only the end differs');
+    r=await PAY('1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2','1bvbmseystwetqtfn5au4m4gfg7xjanvn2'); ok(/^DIFFERENT ADDRESSES/.test(r.st),'pay check: a Base58 address is case-sensitive');
+    r=await PAY('1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2','1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2'); ok(/^SAME ADDRESS: all 34 characters match/.test(r.st),'pay check: the same legacy address');
+    r=await PAY('bc1qnotanaddress','bc1qnotanaddress'); ok(r.cls==='status bad'&&/^The two match, but this is not a valid address you can pay/.test(r.st),'pay check: two copies of a broken address match but are not called payable');
+    r=await PAY(A,''); ok(r.st===''&&r.x.length===0,'pay check: nothing is said until both boxes have an address');
+    // --- what will spending cost later? (standard sizes: 1 input, 2 outputs) ---
+    eq(['pkh','sh-wpkh','wpkh','tr'].map(t=>w.costEstimate(t,1,2).vb).join(),'226,166,141,154','spending cost: 1 input and 2 outputs is 226 vB (legacy), 166 (nested), 141 (native SegWit), 154 (Taproot)');
+    eq(w.costEstimate('wpkh',100,1).vb,Math.ceil(10.5+100*68+31),'spending cost: 100 deposits use a 1-byte input count until 253 (then 3 bytes)');
+    eq(w.costEstimate('wpkh',300,1).vb,Math.ceil(12.5+300*68+31),'spending cost: 300 deposits use the 3-byte input count');
+    eq(w.costEstimate('wpkh',1,2).fees.map(f=>f.sats).join(),'141,705,2820,14100','spending cost: the fee at 1, 5, 20 and 100 sat/vB');
+    $('costType').value='wpkh'; $('costOut').value='2'; $('costN').value='50'; $('costN').dispatchEvent(new w.Event('input'));
+    ok(/^Spending 50 deposits in one payment costs about 25\.1 times as much as spending one/.test($('costStatus').textContent)&&/Size: about 3,472 vB \(each deposit adds about 68 vB\)/.test($('costOut2').textContent)&&/A deposit smaller than 1,360 sats costs more to spend than it is worth at 20 sat\/vB/.test($('costOut2').textContent),'spending cost: the box gives the size, the fees and when a small deposit is not worth spending');
+    $('costN').value='0'; $('costN').dispatchEvent(new w.Event('input')); ok(/whole number of deposits from 1 to 5000/.test($('costStatus').textContent)&&$('costOut2').style.display==='none','spending cost: 0 deposits is refused');
+    $('costN').value=''; $('costN').dispatchEvent(new w.Event('input'));
+    // --- custom account paths ---
+    eq(JSON.stringify(w.parsePath("m/0'")),'[[0,true]]','custom path: m/0\'');
+    eq(JSON.stringify(w.parsePath('m/44h/0H/1h/7')),'[[44,true],[0,true],[1,true],[7,false]]','custom path: h or H also means hardened');
+    ok(w.parsePath('m/x')===null&&w.parsePath('m/1//2')===null&&w.parsePath('m'+'/1'.repeat(11))===null&&w.parsePath('m/2147483648')===null&&JSON.stringify(w.parsePath('m'))==='[]','custom path: anything that is not a path of at most 10 steps below 2^31 is refused');
+    const M12='abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+    const ref=(m,pp,path,type,net)=>{ const k=HDKey.fromMasterSeed(mnemonicToSeedSync(m,'')).derive(pp+'/'+path), N=net==='test'?btc.TEST_NETWORK:btc.NETWORK; return type==='wpkh'?btc.p2wpkh(k.publicKey,N).address:type==='pkh'?btc.p2pkh(k.publicKey,N).address:btc.p2tr(k.publicKey.slice(1),undefined,N).address; };
+    $('phrase').value=M12; $('verifyPass').value=''; await w.openWalletView(M12,''); await until(()=>$('wvList').children.length===10);
+    const def=[...$('wvList').children].map(li=>li.firstChild.textContent);
+    $('wvPathIn').value="m/84'/0'/0'"; $('wvPathIn').dispatchEvent(new w.Event('input')); await w.wvRefresh(); eq([...$('wvList').children].map(li=>li.firstChild.textContent).join(),def.join(),'custom path: m/84\'/0\'/0\' gives the same addresses as the default');
+    ok(def[0]==='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu','custom path: the default is the BIP84 test vector address');
+    $('wvPathIn').value="m/0'"; $('wvPathIn').dispatchEvent(new w.Event('input')); await w.wvRefresh();
+    eq([...$('wvList').children].map(li=>li.firstChild.textContent).slice(0,3).join(),[0,1,2].map(i=>ref(M12,"m/0'",'0/'+i,'wpkh')).join(),'custom path: m/0\' (as some older apps used) gives the addresses @scure derives');
+    ok(/m\/0'\/0\/index/.test($('wvPath').textContent)&&$('wvAcct').disabled,'custom path: the path is shown, and the account box is not used');
+    $('wvType').value='pkh'; await w.wvRefresh(); eq([...$('wvList').children][1].firstChild.textContent,ref(M12,"m/0'",'0/1','pkh'),'custom path: any address type along the path');
+    $('wvChain').value='1'; await w.wvRefresh(); eq([...$('wvList').children][0].firstChild.textContent,ref(M12,"m/0'",'1/0','pkh'),'custom path: change addresses along the path');
+    $('wvChain').value='0'; $('wvType').value='wpkh';
+    $('wvPathIn').value="m/84'/0'/x"; $('wvPathIn').dispatchEvent(new w.Event('input')); await w.wvRefresh(); ok(/The path must look like/.test($('wvErr').textContent)&&$('wvList').children.length===0,'custom path: a bad path shows no addresses and says how to write one');
+    $('wvPathIn').value=''; $('wvPathIn').dispatchEvent(new w.Event('input')); await w.wvRefresh(); ok(!$('wvAcct').disabled&&$('wvErr').textContent==='','custom path: empty box goes back to the account number');
+    w.clearWalletView(); eq($('wvPathIn').value,'','custom path: cleared with the wallet view');
+    // --- open a private key, read only ---
+    const PK=async(v)=>{ $('pkIn').value=v; $('pkIn').dispatchEvent(new w.Event('input')); await w.openPrivateKey(); await until(()=>!w.eval('wvCtx')||$('wvList').children.length>0); return {st:$('pkStatus').textContent, cls:$('pkStatus').className, list:[...$('wvList').children].map(li=>li.firstChild.textContent), fp:$('wvFp').textContent}; };
+    const root=HDKey.fromMasterSeed(mnemonicToSeedSync(M12,''));
+    r=await PK('zprvAWgYBBk7JR8Gjrh4UJQ2uJdG1r3WNRRfURiABBE3RvMXYSrRJL62XuezvGdPvG6GFBZduosCc1YP5wixPox7zhZLfiUm8aunE96BBa4Kei5');
+    ok(r.cls==='status ok'&&/master private key/.test(r.st)&&r.list[0]==='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'&&r.fp==='Master fingerprint: 73c5da0a'&&$('wvType').value==='wpkh'&&$('walletView').classList.contains('wv-secret'),'private key: the BIP84 zprv opens as a master key (fingerprint 73c5da0a, first address from the BIP84 test vector)');
+    ok(/^SECRET, read only/.test($('wvBanner').textContent)&&$('wvSheetBtn').style.display==='none'&&$('wvNet').disabled,'private key: a SECRET banner, no recovery sheet, and the network is the key\'s own');
+    const acctX=root.derive("m/44'/0'/0'").privateExtendedKey; r=await PK(acctX); $('wvType').value='pkh'; await w.wvRefresh();
+    ok(/at depth 3/.test(r.st)&&/does not say its address type/.test(r.st)&&[...$('wvList').children][0].firstChild.textContent===ref(M12,"m/44'/0'/0'",'0/0','pkh')&&/Master fingerprint: not known/.test($('wvFp').textContent),'private key: an account xprv (depth 3) lists its addresses (checked with @scure)');
+    const wif=btc.WIF().encode(root.derive("m/84'/0'/0'/0/0").privateKey); r=await PK(wif);
+    eq(r.list.join(),[btc.p2wpkh(root.derive("m/84'/0'/0'/0/0").publicKey).address,btc.p2tr(root.derive("m/84'/0'/0'/0/0").publicKey.slice(1)).address,btc.p2sh(btc.p2wpkh(root.derive("m/84'/0'/0'/0/0").publicKey)).address,btc.p2pkh(root.derive("m/84'/0'/0'/0/0").publicKey).address].join(),'private key: a compressed WIF gives its 4 addresses: native SegWit, Taproot, nested, legacy (checked with @scure)');
+    r=await PK('5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ'); ok(r.list.length===1&&r.list[0]==='1GAehh7TsJAHuUAeKZcXf5CnwuGuGgyX2S'&&/uncompressed/.test(r.st),'private key: the uncompressed WIF example has only its legacy address (1GAehh7T...)');
+    r=await PK('S6c56bnXQiBjk9mqSYE7ykVQ7NzrRy'); ok(/Casascius mini key/.test(r.st)&&r.list.length===1&&r.list[0]==='1CciesT23BNionJeXrbxmjc7ywfiyM4oLW','private key: the Casascius mini key example gives its one legacy address (1CciesT2...)');
+    r=await PK('S6c56bnXQiBjk9mqSYE7ykVQ7NzrRz'); ok(r.cls==='status bad'&&/built-in check fails/.test(r.st)&&!w.eval('wvCtx'),'private key: a mini key with a wrong character is refused');
+    r=await PK('xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8'); ok(r.cls==='status bad'&&/public key/.test(r.st),'private key: an xpub is sent to the watch-only box instead');
+    r=await PK('hello'); ok(r.cls==='status bad'&&!w.eval('wvCtx'),'private key: other text is refused');
+    r=await PK(wif); $('pkIn').value=wif+'x'; $('pkIn').dispatchEvent(new w.Event('input')); ok(!w.eval('wvCtx')&&$('walletView').style.display==='none','private key: editing the box closes the open key');
+    r=await PK(wif); { const oc=w.confirm; w.confirm=()=>true; w.clearAll(); w.confirm=oc; } ok($('pkIn').value===''&&!w.eval('wvCtx')&&$('pkIn').type==='password','private key: CLEAR ALL wipes the key and hides the box again');
+    ok(/"pkIn"/.test(html.match(/const AUTO_FIELDS = \[[^\]]*\]/)[0]),'private key: auto-clear wipes the key box too');
+    // --- UR and BBQr text ---
+    const msg=Array.from(nc.randomBytes(700)), cb=w.eval('CB').bytes(msg), parts=w.urEncode('bytes',cb,200);
+    ok(parts.length===4&&parts.every((p,i)=>p.startsWith('ur:bytes/'+(i+1)+'-4/')),'UR: a 700-byte message becomes 4 parts, numbered 1-4');
+    { const sh=[parts[2],parts[0],parts[3],parts[1],parts[0]]; const d=w.urDecodeFrames(sh); ok(d.type==='bytes'&&JSON.stringify(Array.from(d.msg))===JSON.stringify(cb),'UR: parts in any order, repeated, join back to the message'); }
+    { let e=''; try { w.urDecodeFrames([parts[0],parts[2]]); } catch(x){ e=x.message; } ok(/UR parts missing: 2, 4 of 4/.test(e),'UR: says which parts are missing'); }
+    { const bad=parts[1].slice(0,-6)+(parts[1].slice(-6,-4)==='ae'?'ad':'ae')+parts[1].slice(-4); let e=''; try { w.urDecodeFrames([parts[0],bad,parts[2],parts[3]]); } catch(x){ e=x.message; } ok(/checksum does not match|not Bytewords|different QR codes|damaged/.test(e),'UR: a part copied wrongly is caught by its checksum'); }
+    { let e=''; try { w.urDecodeFrames([parts[0],w.urEncode('crypto-psbt',cb,200)[1]]); } catch(x){ e=x.message; } ok(/different types/.test(e),'UR: parts of different types are not mixed'); }
+    ok(w.urEncode('bytes',w.eval('CB').bytes([1,2,3]),200).length===1&&/^ur:bytes\/[a-z]+$/.test(w.urEncode('bytes',w.eval('CB').bytes([1,2,3]),200)[0]),'UR: a short message is one part with no numbers');
+    const bb=w.bbqrEncode('P',Uint8Array.from(msg),480); ok(bb.length===3&&bb.every((p,i)=>p.startsWith('B$2P03'+String(i).padStart(2,'0')))&&bb.slice(0,-1).every(p=>p.length===bb[0].length),'BBQr: Base32 parts with the header B$2P, the count and the part number, split evenly');
+    { const d=w.bbqrDecodeFrames([bb[2],bb[0],bb[1]]); ok(d.fileType==='P'&&Buffer.from(d.bytes).equals(Buffer.from(msg)),'BBQr: parts in any order join back'); }
+    { const z=zlib.deflateRawSync(Buffer.from('wsh(sortedmulti(2,'.repeat(40)),{windowBits:10}), b32=w.base32Encode(z), p1='B$ZU0100'+b32; eq(new TextDecoder().decode(w.bbqrDecodeFrames([p1]).bytes),'wsh(sortedmulti(2,'.repeat(40),'BBQr: Z parts (compressed, as Coldcard writes them) are read'); }
+    { const h='B$HT0100'+Buffer.from('0200').toString('hex').toUpperCase(); eq(Buffer.from(w.bbqrDecodeFrames([h]).bytes).toString(),'0200','BBQr: H parts (hex) are read'); }
+    { let e=''; try { w.bbqrDecodeFrames([bb[0],bb[2]]); } catch(x){ e=x.message; } ok(/BBQr parts missing: 2 of 3/.test(e),'BBQr: says which parts are missing'); }
+    { let e=''; try { w.qrTextDecode(parts[0]+'\nhello'); } catch(x){ e=x.message; } ok(/mixes QR parts with other text/.test(e)&&w.qrTextDecode('cHNidP8B')===null,'QR text: parts mixed with other text are refused; ordinary text is left alone'); }
+    // --- PSBT pasted as UR or BBQr parts ---
+    { const known=html.match(/inspectPsbt\(psbtFromText\("(cHNidP8B[A-Za-z0-9+/=]+)"\)/)[1], raw=Buffer.from(known,'base64');
+      const urP=w.urEncode('crypto-psbt',w.eval('CB').bytes(Array.from(raw)),40); ok(urP.length>1&&Buffer.from(w.psbtFromText(urP.join('\n'))).equals(raw),'PSBT paste: animated UR crypto-psbt parts (one per line) give the PSBT');
+      ok(Buffer.from(w.psbtFromText(w.bbqrEncode('P',raw,160).join(' '))).equals(raw),'PSBT paste: BBQr P parts give the PSBT');
+      { let e=''; try { w.psbtFromText(w.urEncode('crypto-output',w.eval('CB').bytes([1,2]),200)[0]); } catch(x){ e=x.message; } ok(/not a PSBT \(crypto-psbt\)/.test(e),'PSBT paste: a UR that is not a PSBT says so'); }
+      { let e=''; try { w.psbtFromText(w.bbqrEncode('J',raw,160).join(' ')); } catch(x){ e=x.message; } ok(/file type J, not a PSBT/.test(e),'PSBT paste: a BBQr of another file type says so'); }
+    }
+    // --- animated QR for a multisig wallet ---
+    const cos=Array.from({length:3},()=>{ const m=HDKey.fromMasterSeed(nc.randomBytes(32)); return {fp:m.fingerprint.toString(16).padStart(8,'0'), xpub:m.derive("m/48'/0'/0'/2'").publicExtendedKey}; });
+    await w.eval(`(async (cos) => { ms = { m: 2, n: 3, type: 'ms-wsh', net: 'main', account: 0, keys: [], mode: 'paste', busy: false, done: false }; for (const c of cos) ms.keys.push({ fp: c.fp, path: '48h/0h/0h/2h', key: await parseExtendedKey(c.xpub), xpub: c.xpub, src: 'pasted' }); await msFinish(); })`)(cos);
+    ok(w.eval('ms && ms.done')&&$('msAnimBox').style.display==='none','animated QR: hidden until a format is picked');
+    await w.msAnim('ur'); const urParts=w.eval('animCtx.parts');
+    { const d=w.urDecodeFrames(urParts.map(p=>p.toLowerCase())); ok($('msAnimBox').style.display===''&&d.type==='crypto-output'&&JSON.stringify(Array.from(d.msg))===JSON.stringify(w.eval('cryptoOutputMultisig')('ms-wsh',2,w.eval('ms.keys').map(k=>({fp:k.fp,path:k.path,key:k.key})),'main'))&&/^Part 1 of \d+$/.test($('msAnimCount').textContent)&&/Sparrow, SeedSigner and Nunchuk/.test($('msAnimCap').textContent),'animated QR (Sparrow, SeedSigner, Nunchuk): the frames join to the wallet\'s crypto-output'); }
+    ok(urParts.every(p=>p===p.toUpperCase())&&$('msAnimImg').querySelector('svg')!==null,'animated QR: frames are capital letters (the compact QR mode) and one is drawn');
+    await w.msAnim('bbqr'); { const d=w.bbqrDecodeFrames(w.eval('animCtx.parts')), txt=new TextDecoder().decode(d.bytes); ok(d.fileType==='U'&&/^wsh\(sortedmulti\(2,\[/.test(txt)&&txt.includes('/<0;1>/*')&&/#[a-z0-9]{8}$/.test(txt)&&cos.every(c=>txt.includes(c.xpub)),'animated QR (Coldcard Q): BBQr text of the receive-and-change descriptor, with its checksum'); }
+    await w.msAnim('cc'); { const d=w.urDecodeFrames(w.eval('animCtx.parts').map(p=>p.toLowerCase())), b=w.cborRead(d.msg,0).v, txt=new TextDecoder().decode(b);
+      ok(d.type==='bytes'&&/^# Coldcard Multisig setup file/.test(txt)&&/\nPolicy: 2 of 3\n/.test(txt)&&/\nDerivation: m\/48'\/0'\/0'\/2'\n/.test(txt)&&/\nFormat: P2WSH\n/.test(txt)&&cos.every(c=>txt.includes(c.fp.toUpperCase()+': '+c.xpub)),'animated QR (Keystone, Passport): UR bytes of the Coldcard setup file'); }
+    { const i0=w.eval('animCtx.i'); await new Promise(r=>setTimeout(r,500)); const moved=w.eval('animCtx.i')!==i0||w.eval('animCtx.frames.length')===1; $('msAnimPause').click(); const i1=w.eval('animCtx.i'); await new Promise(r=>setTimeout(r,500)); ok(moved&&w.eval('animCtx.paused')&&w.eval('animCtx.i')===i1&&/\(paused\)/.test($('msAnimCount').textContent),'animated QR: it moves on by itself, and PAUSE holds it'); $('msAnimPause').click(); }
+    w.msReset(); ok($('msAnimBox').style.display==='none'&&$('msAnimImg').textContent===''&&w.eval('animTimer')===null&&w.eval('animCtx')===null,'animated QR: START OVER stops it and removes the frames');
+    t6.w.close();
+  }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
 

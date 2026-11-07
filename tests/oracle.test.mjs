@@ -1027,7 +1027,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
       cos.push({ fp: root.fingerprint.toString(16).padStart(8, '0'), path: `48h/${coin}h/0h/${script}h`, key: await w.parseExtendedKey(xpub), xpub });
     }
     const cbor = w.cryptoOutputMultisig(type, M, cos, net), out = CryptoOutput.fromCBOR(Buffer.from(cbor)); n++;
-    const exps = out.getScriptExpressions().map(e => e.getExpression()), mk = out.getMultiKey(), keys = mk.getHDKeys();
+    const exps = out.getScriptExpressions().map(e => e.getExpression()), mk = out.getMultiKey(), keys = mk.getKeys();
     const ok = JSON.stringify(exps) === JSON.stringify(type === 'ms-wsh' ? ['wsh', 'sortedmulti'] : ['sh', 'wsh', 'sortedmulti']) && mk.getThreshold() === M && keys.length === N &&
       keys.every((k, i) => k.getBip32Key() === cos[i].xpub && k.getOrigin().getSourceFingerprint().toString('hex') === cos[i].fp && k.getOrigin().getPath() === `48'/${coin}'/0'/${script}'`);
     if (!ok) { bad++; console.log('CRYPTO-OUTPUT DIFFERS', type, M, N, net, exps); }
