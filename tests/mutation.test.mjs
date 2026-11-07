@@ -547,12 +547,13 @@ async function probe(w, mutated, fast) {
         tk.addOutput({ script: kinds.p2wpkh(4).script, amount: 20000n });
         const kb = Buffer.from(tk.toPSBT(0)).toString('base64'); $('phrase').value = ''; [a, o] = await run(kb);
         const blocks = o.split('OUTPUT ').slice(1);
-        if (!/has wallet key information \(fingerprint deadbeef\): usually this wallet's own change/.test(blocks[1] || '') || /no wallet key information/.test(blocks[1] || '')) fails.push('psbt: report marks an output that carries key information');
-        if (!/no wallet key information: treat as a payment to someone else/.test(blocks[2] || '') || /has wallet key information/.test(blocks[2] || '')) fails.push('psbt: report marks an output without key information as a payment to someone else');
-        if (/matches the wallet typed above/.test(o)) fails.push('psbt: no wallet match claimed when no words are typed');
+        if (!/marked as change by the app that made this PSBT \(fingerprint deadbeef\)\. NOT checked/.test(blocks[1] || '') || /no wallet key information/.test(blocks[1] || '')) fails.push('psbt: report marks an output that carries key information (as unchecked)');
+        if (!/no wallet key information: treat as a payment to someone else/.test(blocks[2] || '') || /marked as change/.test(blocks[2] || '')) fails.push('psbt: report marks an output without key information as a payment to someone else');
+        if (/CHANGE, CHECKED|matches the wallet typed above/.test(o)) fails.push('psbt: no checked change claimed when no words are typed');
         $('phrase').value = expect.d50; $('verifyPass').value = ''; [a, o] = await run(kb); const bl2 = o.split('OUTPUT ').slice(1);
-        if (!/matches the wallet typed above/.test(bl2[0] || '')) fails.push('psbt: output made by the typed words is marked as matching');
-        if (/matches the wallet typed above/.test((bl2[1] || '') + (bl2[2] || ''))) fails.push('psbt: other outputs not marked as matching');
+        // v2.8.1: output 0 names this wallet's fingerprint but its key is not the wallet's key at that path, so the mark is forged
+        if (!/WARNING: marked as this wallet's change/.test(bl2[0] || '') || /CHANGE, CHECKED/.test(o)) fails.push('psbt: a mark with this wallet\'s fingerprint but another key is called forged');
+        if (!/another wallet's key information \(fingerprint deadbeef\)/.test(bl2[1] || '')) fails.push('psbt: a mark of another wallet is called so');
         $('phrase').value = ''; }
       await w.onPsbtFile(new w.File([b], 'a.psbt')); if (!/^Read OK/.test($('psbtStatus').textContent)) fails.push('psbt: binary file read');
       await w.onPsbtFile(new w.File([b64], 'a.txt')); if (!/^Read OK/.test($('psbtStatus').textContent)) fails.push('psbt: text file read');
@@ -2304,6 +2305,51 @@ async function probe(w, mutated, fast) {
       if ($('watchWarn').style.display !== 'block' || !/^Something else may be reading or changing this page\./.test($('watchWarn').textContent)) fails.push('watch check: the warning shows at the top by itself'); }
     w.alert = oa; w.confirm = oc;
   } catch (e) { fails.push('v2.8.0 probe crashed: ' + e.message); }
+  try { // v2.8.1 fixes (expected values from @scure and btc-signer): change marks, PSBT v2, previous transaction, wipes, gate, stale results
+    const oa = w.alert, oc = w.confirm; w.alert = () => {}; w.confirm = () => true;
+    const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), AB = 'abandon '.repeat(11) + 'about', H = 0x80000000;
+    const root = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, '')), fpw = root.fingerprint, k = (p) => root.derive(p).publicKey, att = HDKey.fromMasterSeed(nc.randomBytes(32)).derive('m/0/0').publicKey;
+    const mk = () => { const t = new btc.Transaction(); t.addInput({ txid: nc.randomBytes(32), index: 0, witnessUtxo: { script: btc.p2wpkh(k("m/84'/0'/0'/0/0")).script, amount: 150000n } }); return t; };
+    const run = async (t, ver, words) => { $('phrase').value = words || ''; $('verifyPass').value = ''; $('psbtInput').value = Buffer.from(t.toPSBT(ver || 0)).toString('base64'); $('psbtNet').value = 'main'; await w.runPsbt(); return $('psbtOut').textContent; };
+    w.clearAll(); await sleep(20);
+    { const t = mk(); t.addOutput({ script: btc.p2wpkh(k("m/84'/0'/0'/1/0")).script, amount: 50000n, bip32Derivation: [[k("m/84'/0'/0'/1/0"), { fingerprint: fpw, path: [84 + H, H, H, 1, 0] }]] });
+      t.addOutput({ script: btc.p2wpkh(att).script, amount: 99000n, bip32Derivation: [[att, { fingerprint: fpw, path: [84 + H, H, H, 1, 1] }]] });
+      let o = await run(t); if (!/NOT checked: such a mark can be forged/.test(o) || /CHANGE, CHECKED|matches the wallet typed above/.test(o)) fails.push('PSBT change: without the words a mark is unchecked');
+      o = await run(t, 0, AB); if (!/CHANGE, CHECKED: paid to this wallet's own key at m\/84'\/0'\/0'\/1\/0/.test(o)) fails.push('PSBT change: real change is checked');
+      if (!/OUTPUT 1[\s\S]*Do not sign/.test(o) || !/NO CLEAN VERDICT/.test(o)) fails.push('PSBT change: a forged mark fails'); }
+    { const t = mk(); t.addOutput({ script: btc.p2wpkh(att).script, amount: 99000n, bip32Derivation: [[k("m/84'/0'/0'/1/2"), { fingerprint: fpw, path: [84 + H, H, H, 1, 2] }]] });
+      if (!/Do not sign/.test(await run(t, 0, AB))) fails.push('PSBT change: the wallet key record on an output paid elsewhere is forged'); }
+    { const t = mk(), xo = root.derive("m/86'/0'/0'/1/0").publicKey.slice(1); t.addOutput({ script: btc.p2tr(xo).script, amount: 60000n, tapBip32Derivation: [[xo, { hashes: [], der: { fingerprint: fpw, path: [86 + H, H, H, 1, 0] } }]] });
+      if (!/CHANGE, CHECKED: paid to this wallet's own key at m\/86'/.test(await run(t, 0, AB))) fails.push('PSBT change: Taproot change is checked'); }
+    { const t = mk(); t.addOutputAddress(btc.p2wpkh(att).address, 100000n);
+      const v0 = await w.inspectPsbt(t.toPSBT(0), 'main'), v2 = await w.inspectPsbt(t.toPSBT(2), 'main');
+      if (v2.txid !== v0.txid || v2.fee !== v0.fee || v2.outs[0].address !== v0.outs[0].address || v2.locktime !== v0.locktime || v2.ins[0].seq !== v0.ins[0].seq) fails.push('PSBT version 2: read like version 0'); }
+    { const prev = new btc.Transaction({ allowUnknownOutputs: true }); prev.addOutputAddress('1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2', 300000n); prev.addInput({ txid: nc.randomBytes(32), index: 0, finalScriptSig: new Uint8Array([0]) });
+      const t = new btc.Transaction(); t.addInput({ txid: prev.id, index: 0, nonWitnessUtxo: prev.toBytes(true, false) }); t.addOutputAddress(btc.p2wpkh(att).address, 100000n);
+      const good = t.toPSBT(0), bad = Buffer.from(good), amt = Buffer.alloc(8); amt.writeBigUInt64LE(300000n); const at = bad.indexOf(amt); bad.writeBigUInt64LE(900000n, at);
+      const g = await w.inspectPsbt(good, 'main'), b = await w.inspectPsbt(new Uint8Array(bad), 'main');
+      if (g.ins[0].amount !== 300000n || b.ins[0].amount !== null || !w.psbtVerdict(b, null).includes('NO CLEAN VERDICT')) fails.push('PSBT: a changed previous transaction is caught'); }
+    // stale results and practice mode
+    { $('phrase').value = AB; $('checkAddr').value = btc.p2wpkh(k("m/84'/0'/0'/0/0")).address; $('checkAcct').value = '0'; await w.checkAddress(3); const f0 = $('addrCheckStatus').textContent;
+      $('checkAddr').dispatchEvent(new w.Event('input')); if (!/^FOUND/.test(f0) || $('addrCheckStatus').textContent) fails.push('address check: an edit clears FOUND');
+      $('verifyRecorded').value = '73c5da0a'; await w.verify(); const m0 = $('verifyMatch').textContent; $('verifyRecorded').dispatchEvent(new w.Event('input')); if (!/^MATCH/.test(m0) || $('verifyMatch').textContent) fails.push('VERIFY: an edit clears MATCH');
+      $('verifyRecorded').value = ''; await w.verify(); w.practiceMode(true); await sleep(30); if (/bc1q/.test($('verifyStatus').textContent)) fails.push('practice mode: VERIFY lines of the old network are cleared'); w.practiceMode(false);
+      $('verifyRecorded').value = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, ''), { private: 0x04358394, public: 0x043587cf }).derive("m/84'/1'/0'").publicExtendedKey; await w.verify();
+      if (!/^MATCH/.test($('verifyMatch').textContent)) fails.push('VERIFY: a tpub is matched on the test network'); $('verifyRecorded').value = ''; }
+    { $('dcDev').value = 'coldcard'; $('dcLen').value = '12'; $('dcRolls').value = '1'.repeat(20) + '23456'.repeat(6); await w.dcCheck();
+      if (!/^Coldcard refuses these rolls/.test($('dcStatus').textContent)) fails.push('device dice: Coldcard refuses one face over 30%'); w.dcClear(); }
+    // FORGE race, words from memory, wipes
+    { w.showTab('make'); const e = w.document.querySelector('input[name=words][value="12"]'); e.checked = true; e.onchange();
+      $('rolls').value = '3'.repeat(25) + '4'.repeat(25); $('rolls').oninput(); const g = w.generate(); $('rolls').value += '5'; await g;
+      if (w.hasSeed()) fails.push('FORGE: a roll typed while it works clears the words');
+      $('rolls').value = '3'.repeat(25) + '4'.repeat(25); $('rolls').oninput(); $('passphrase').value = $('passphrase2').value = 'Pp1'; await w.generate(); const words = $('genResult').textContent.split('\n')[0];
+      $('genResult').firstChild.textContent = 'zoo zoo'; if (w.printSrc('make').words.join(' ') !== words) fails.push('seed words: taken from memory, not the screen');
+      for (const id of ['psbtInput', 'sigMsg', 'reuseIn', 'wpIn', 'payA']) $(id).value = 'x';
+      w.clearAll(); await sleep(20);
+      if (w.eval('seedSig') !== null || w.eval('passKey') !== null || w.eval('exCtx') !== null || w.eval('madeMnemonic') !== '') fails.push('CLEAR ALL: no rolls, passphrase or words left in the page state');
+      if (['psbtInput', 'sigMsg', 'reuseIn', 'wpIn', 'payA'].some((id) => $(id).value)) fails.push('CLEAR ALL: the public boxes are emptied'); }
+    $('phrase').value = ''; w.alert = oa; w.confirm = oc;
+  } catch (e) { fails.push('v2.8.1 probe crashed: ' + e.message); }
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
   return fails;
@@ -2511,7 +2557,7 @@ const M = [
   ['psbt: txid not reversed', 'hex(Uint8Array.from(r.bytes(32)).reverse()), vout=r.u32(), sl=r.varint(); r.bytes(sl); tx.ins.push', 'hex(Uint8Array.from(r.bytes(32))), vout=r.u32(), sl=r.varint(); r.bytes(sl); tx.ins.push'],
   ['raw: input txid not reversed', 'hex(Uint8Array.from(r.bytes(32)).reverse()), vout=r.u32(), sl=r.varint(), ss=r.bytes(sl); res.ins.push', 'hex(Uint8Array.from(r.bytes(32))), vout=r.u32(), sl=r.varint(), ss=r.bytes(sl); res.ins.push'],
   ['psbt: output amount skipped (always 0)', 'const value=r.i64(), sl=r.varint(); tx.outs.push({value, script:r.bytes(sl)});', 'const value=(r.i64(),0n), sl=r.varint(); tx.outs.push({value, script:r.bytes(sl)});'],
-  ['psbt: segwit marker of previous tx not handled', 'if(n===0){ r.byte(); seg=true; n=r.varint(); }', 'if(false){ r.byte(); seg=true; n=r.varint(); }'],
+  ["psbt: segwit marker of previous tx not handled", "const r=psbtReader(bytes); r.u32(); let n=r.varint(), seg=false;\n  if(n===0){ r.byte(); seg=true; n=r.varint(); }\n  for(let i=0;i<n;i++){ r.bytes(32); r.u32(); r.bytes(r.varint()); r.u32(); }\n  n=r.varint(); const outs=[];", "const r=psbtReader(bytes); r.u32(); let n=r.varint(), seg=false;\n  if(false){ r.byte(); seg=true; n=r.varint(); }\n  for(let i=0;i<n;i++){ r.bytes(32); r.u32(); r.bytes(r.varint()); r.u32(); }\n  n=r.varint(); const outs=[];"],
   ['psbt: previous transaction output chosen by the wrong index', 'psbtParseTxOutputs(nw.val)[tx.ins[i].vout]', 'psbtParseTxOutputs(nw.val)[0]'],
   ['psbt: witness utxo amount and script swapped', 'inp.amount=q.i64(); inp.script=q.bytes(q.varint());', 'inp.script=q.bytes(q.varint()); inp.amount=q.i64();'],
   ['psbt: legacy address pattern broken', 'script[23]===0x88 && script[24]===0xac', 'script[23]===0x88 && script[24]===0xad'],
@@ -2523,13 +2569,12 @@ const M = [
   ['psbt: network ignored for addresses', 'const N=NETS[net||"main"];\n  if(script.length===25', 'const N=NETS.main;\n  if(script.length===25'],
   ['psbt: hex input not recognized', 'if(/^70736274ff/i.test(t) && /^[0-9a-f]+$/i.test(t) && t.length%2===0) return fromHex(t.toLowerCase());', 'if(false) return fromHex(t.toLowerCase());'],
   ['psbt: marker not checked', 'if(bytes.length<5 || !magic.every((x,i)=>bytes[i]===x)){', 'if(false){'],
-  ['psbt: version 2 not refused', 'if(glob.some(x=>x.type===0xfb &&', 'if(false && glob.some(x=>x.type===0xfb &&'],
   ['psbt: missing unsigned transaction not reported', 'if(!txRec) throw new Error("No unsigned transaction found in this PSBT.");', 'if(!txRec) txRec={val:new Uint8Array(0)};'],
   ['psbt: signatures not counted', 'sigs:m.filter(x=>x.type===2).length', 'sigs:0'],
   ['psbt: finalized inputs not noticed', 'final:m.some(x=>x.type===7||x.type===8)', 'final:false'],
-  ['psbt: ordinary key information ignored', 'if(x.type===2 && x.val.length>=4) out.fps.push(hex(x.val.slice(0,4)));', 'if(false) out.fps.push(hex(x.val.slice(0,4)));'],
+  ["psbt: ordinary key information ignored", "if(x.type===2 && x.val.length>=4){ out.fps.push(", "if(false){ out.fps.push("],
   ['psbt: taproot key information ignored', 'if(x.type===7 && x.val.length>=5){', 'if(false && x.val.length>=5){'],
-  ['psbt: taproot leaf hashes not skipped', 'q.bytes(32*nh); out.fps.push(hex(q.bytes(4)));', 'out.fps.push(hex(q.bytes(4)));'],
+  ["psbt: taproot leaf hashes not skipped", "q.bytes(32*nh); const fp=hex(q.bytes(4));", "const fp=hex(q.bytes(4));"],
   ['psbt: trailing data not noticed', 'if(!r.done) res.trailing=true;', ''],
   ['psbt: output total wrong', 'res.totalOut=res.outs.reduce((a,o)=>a+o.amount,0n);\n  res.fee=res.ins.every', 'res.totalOut=res.outs.reduce((a,o)=>a+o.amount,1n);\n  res.fee=res.ins.every'],
   ['psbt: fee wrong when some inputs are unknown', 'res.fee=res.ins.every(x=>x.amount!==null) ?', 'res.fee=res.ins.some(x=>x.amount!==null) ?'],
@@ -2537,12 +2582,12 @@ const M = [
   ['psbt: BTC text not padded to 8 decimals', '(v%100000000n).toString().padStart(8,"0")', '(v%100000000n).toString()'],
   ['psbt: negative amounts shown positive', 'return (neg?"-":"")+w+', 'return w+'],
   ['psbt: fee percentage wrong', 'Number(res.fee*10000n/res.totalOut)/100', 'Number(res.fee*1000n/res.totalOut)/100'],
-  ['psbt: change hint shown without key information', '(x.fps.length ? "\\n   has wallet key information', '(true ? "\\n   has wallet key information'],
+  ["psbt: change hint shown without key information", "(x.fps.length ? psbtChangeLine(x)", "(true ? psbtChangeLine(x)"],
   ['psbt: file size limit removed', 'if(file.size>2000000){', 'if(false){'],
   ['psbt: text file fallback removed', 'try{ bytes=psbtFromText(new TextDecoder().decode(u)); }catch(e){ bytes=u; }', 'bytes=u;'],
   ['psbt: report not cleared when the text changes', 'document.getElementById("psbtInput").addEventListener("input", () => clearPsbt(false));', ''],
   ['psbt: CLEAR keeps the pasted text', 'if(all){ document.getElementById("psbtInput").value=""; document.getElementById("psbtFile").value=""; }', ''],
-  ['psbt: wallet fingerprint match never shown', 'fpWallet && x.fps.includes(fpWallet)', 'false && x.fps.includes(fpWallet)'],
+  ["psbt: wallet fingerprint match never shown", "const mine = o.derivs.filter(d => d.fp === fpw);", "const mine = o.derivs.filter(d => false);"],
   ['watch: depth byte wrong', 'b[4]=depth;', 'b[4]=depth+1;'],
   ['watch: parent fingerprint dropped', 'b.set(parentFp,5);', 'b.set([0,0,0,0],5);'],
   ['watch: child index not hardened', '(cn>>>24)&255', '(cn>>>24)&127'],
@@ -2613,8 +2658,8 @@ const M = [
   ['match: NO MATCH without passphrase shown as success', 'return {ok:false, text:"NO MATCH without a passphrase.', 'return {ok:true, text:"NO MATCH without a passphrase.'],
   ['match: NO MATCH with passphrase shown as success', 'if(hasPass) return {ok:false, text:"NO MATCH:', 'if(hasPass) return {ok:true, text:"NO MATCH:'],
   ['match: hasPass guard dropped (a1/fp1 are undefined without a passphrase)', 'if(hasPass && test(fp1, a1, ids1))', 'if(test(fp1, a1, ids1))', true],
-  ['compare: zpub compared against the xpub', '(q.charAt(0) === "x" ? c.xpub : c.key) === q', 'c.xpub === q'],
-  ['compare: key check always passes', 'ids.cands.find(c => (q.charAt(0) === "x" ? c.xpub : c.key) === q)', 'ids.cands.find(c => true)'],
+  ["compare: zpub compared against the xpub", "(\"xt\".includes(q.charAt(0)) ? c.xpub : c.key) === q); if(c) hit", "c.xpub === q); if(c) hit"],
+  ["compare: key check always passes", "ids.cands.find(c => (\"xt\".includes(q.charAt(0)) ? c.xpub : c.key) === q)", "ids.cands.find(c => true)"],
   ['compare: descriptor fingerprint ignored', 'ids.fp === d.fp && ids.cands.find(c => c.xpub === d.key)', 'ids.cands.find(c => c.xpub === d.key)'],
   ['compare: descriptor key ignored', 'ids.fp === d.fp && ids.cands.find(c => c.xpub === d.key)', 'ids.fp === d.fp && ids.cands.find(c => true)'],
   ['compare: descriptor checksum not enforced', 'if(!d.sumOk) return', 'if(false) return'],
@@ -2646,7 +2691,7 @@ const M = [
   ['find: FOUND shown as failure', 'addrScanFrom = 0; return say("ok", "FOUND: this "', 'addrScanFrom = 0; return say("bad", "FOUND: this "'],
   ['find: invalid phrase not rejected', 'if(!r.ok) return say("bad", "Type a valid seed phrase in the box above first. " + r.msg);', ''],
   ['find: address format not validated', '  if(!kind) return say("bad", "Enter a bc1q', '  if(false) return say("bad", "Enter a bc1q'],
-  ['find: scan position not reset when the address changes', 'for(const id of ["checkAddr","checkAcct","phrase","verifyPass"]) document.getElementById(id).addEventListener("input", resetAddrScan);', ''],
+  ["find: scan position not reset when the address changes", "() => { resetAddrScan(); const st = document.getElementById(\"addrCheckStatus\");", "() => { const st = document.getElementById(\"addrCheckStatus\");"],
   ['bip85: wrong application number', '[39, 0, words, index]', '[38, 0, words, index]'],
   ['bip85: wrong language', '[39, 0, words, index]', '[39, 1, words, index]'],
   ['bip85: wrong root', 'for(const i of [83696968].concat(path)){', 'for(const i of [83696969].concat(path)){'],
@@ -2948,7 +2993,7 @@ const M = [
   ['step help: never updated', '  document.getElementById("stepWhy").textContent = WHY[cur];\n', ''],
   ['preview: too-few-rolls FORGE wipes the grey words', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote(); previewRefresh();', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote();'],
   ["preview: grey note stays after FORGE", "wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body", "wdWipe(); drillEnd(); bkReset(!!words); document.body"],
-  ["word draw: dice FORGE leaves old steps", "function setResult(text, words){\n  sumCtx = null;\n  wdWipe(); drillEnd();", "function setResult(text, words){\n  sumCtx = null;\n  drillEnd();"],
+  ["word draw: dice FORGE leaves old steps", "  madeMnemonic = words ? words.join(\" \") : \"\";\n  sumCtx = null;\n  wdWipe(); drillEnd();", "  madeMnemonic = words ? words.join(\" \") : \"\";\n  sumCtx = null;\n  drillEnd();"],
   ['word draw: CLEAR leaves the boxes', '  wdClear();\n', ''],
   ['word draw: CLEAR button leaves the words', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();'],
   ['word draw: CLEAR button leaves the flips', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdWords").value = "";\n  wdWipe(); wdUpdate();'],
@@ -3155,7 +3200,7 @@ const M = [
   ['compare: which transaction is bad', 'throw new Error(label + ": " + e.message)', 'throw e'],
   ['compare: first box clears result', 'document.getElementById("cmpA").addEventListener("input", () => clearCompare(false));', ''],
   ['compare: second box clears result', 'document.getElementById("cmpB").addEventListener("input", () => clearCompare(false));', ''],
-  ['compare: psbt transaction id', 'res.txid=hex((await sha256bytes(await sha256bytes(txRec.val))).reverse());', 'res.txid=hex((await sha256bytes(await sha256bytes(txRec.val))));'],
+  ["compare: psbt transaction id", "res.txid=hex((await sha256bytes(await sha256bytes(txBytes))).reverse());", "res.txid=hex((await sha256bytes(await sha256bytes(txBytes))));"],
   ['multisig slider: N cap', 'const MS_MAX = 15;', 'const MS_MAX = 99;'],
   ['multisig slider: M pushes N up', 'if(m > parseInt(msEl("msN").value, 10)) msEl("msN").value = String(m);', ''],
   ['multisig slider: M clamped to N', 'm = msClamp(msEl("msM").value, 1, n);', 'm = msClamp(msEl("msM").value, 1, MS_MAX);'],
@@ -3437,7 +3482,7 @@ const M = [
   ["run counter: old address list written back", "    if(run !== forgeRun) return;\n    showAddrs(segwit, taproot, test ? \"test\" : \"main\");", "    showAddrs(segwit, taproot, test ? \"test\" : \"main\");"],
   ["run counter: CLEAR ALL does not stop a running FORGE", "function wipeSeed(){\n  forgeRun++;\n", "function wipeSeed(){\n"],
   ["stale: guard never fires", "  if(seedSig === null || !hasSeed() || inputSig(seedKind) === seedSig) return;", "  return;"],
-  ["stale: never recorded", "seedSig = inputSig(seedKind);", "seedSig = null;"],
+  ["stale: never recorded", "seedSig = sig0 !== undefined ? sig0 : inputSig(seedKind);", "seedSig = null;"],
   ["stale: updateCount does not check", "function updateCount(){\n  staleCheck();", "function updateCount(){"],
   ["stale: rolls missing from signature", "clean(v(\"rolls\"))", "\"\""],
   ["stale: word count missing from signature", "\"|\" + document.querySelector('input[name=\"words\"]:checked').value + \"|\" + clean(v(\"rolls\"))", "\"|\" + clean(v(\"rolls\"))"],
@@ -3639,7 +3684,7 @@ const M = [
   ['signed message: cannot check shown red', 'r.state === "cannot" ? "" : " bad");', 'r.state === "cannot" ? " bad" : " bad");'],
   ['signed message: editing keeps the old result', '["sigAddr", "sigMsg", "sigSig"].forEach(id => document.getElementById(id).addEventListener("input",', '[].forEach(id => document.getElementById(id).addEventListener("input",'],
   ['signed message: CLEAR leaves the boxes', 'for(const id of ["sigAddr", "sigMsg", "sigSig"]) document.getElementById(id).value = "";', ''],
-  ['signed message: button grey', '<button type="button" id="sigBtn" onclick="verifyMessageUi()">', '<button type="button" class="secondary" id="sigBtn" onclick="verifyMessageUi()">'],
+  ["signed message: button grey", "<button type=\"button\" id=\"sigBtn\" onclick=\"verifyMessageUi()\" disabled>", "<button type=\"button\" class=\"secondary\" id=\"sigBtn\" onclick=\"verifyMessageUi()\" disabled>"],
   ['signed message: self-test vector', '"valid valid invalid"', '"valid invalid invalid"'],
   // ---- v2.3.0 review fixes ----
   ['Word draw: seed not cleared when its inputs change', 'function wdUpdate(){\n  staleCheck();\n', 'function wdUpdate(){\n'],
@@ -3813,7 +3858,7 @@ const M = [
   ["address QR: old request kept when too long", "    delete box.dataset.text; document.getElementById(pfx + \"Img\").textContent = \"\";", "    document.getElementById(pfx + \"Img\").textContent = \"\";"],
   ["CLEAR ALL: child result kept", "clearWalletView(); clearChild();\n  document.getElementById(\"checkAddr\").value=\"\";", "clearWalletView();\n  document.getElementById(\"checkAddr\").value=\"\";"],
   ["CLEAR ALL: address and explanation kept", "  document.getElementById(\"checkAddr\").value=\"\"; explainSeq++; document.getElementById(\"addrExplain\").textContent=\"\"; document.getElementById(\"addrExplain\").className=\"status\";\n", ""],
-  ["summary: older seed kept in the line", "function setResult(text, words){\n  sumCtx = null;\n", "function setResult(text, words){\n"],
+  ["summary: older seed kept in the line", "  madeMnemonic = words ? words.join(\" \") : \"\";\n  sumCtx = null;\n", "  madeMnemonic = words ? words.join(\" \") : \"\";\n"],
   ["summary: mismatch not explained", "  if(!hasSeed()) return alert(\"Generate a seed first\");\n  if(passMismatch()) return;\n  const S = seedSummary(); if(!S) return;", "  if(!hasSeed()) return alert(\"Generate a seed first\");\n  const S = seedSummary(); if(!S) return;"],
   ["child: words shown after HIDE", "parent = await mnemonicFingerprint(r.mnemonic, vp);\n    if(my !== childSeq) return;", "parent = await mnemonicFingerprint(r.mnemonic, vp);"],
   ["child: key shown after HIDE", "o = document.getElementById(\"childOut\");\n    if(my !== childSeq) return;", "o = document.getElementById(\"childOut\");"],
@@ -3870,7 +3915,7 @@ const M = [
   ["backup plan: stress test does not follow the boxes", "for(const id of PLAN_IDS){ const e = document.getElementById(id); e.addEventListener(\"input\", planRender); e.addEventListener(\"change\", planRender); }\n", ""],
   ["birthday: a seed made here is not dated", "  sumCtx.date = todayISO();", ""],
   ["birthday: not on the summary sheet", "c.date ? \"Wallet made on: \" + c.date + \" (its birthday, by this computer's clock: a restore can start a day earlier to be safe)\" : \"\", ", "\"\", "],
-  ["birthday: not filled in Open this wallet", "  if(sumCtx && sumCtx.date && hasSeed() && mnemonic === document.getElementById(\"genResult\").textContent.split(\"\\n\")[0] && pass === document.getElementById(\"passphrase\").value) document.getElementById(\"wvBorn\").value = sumCtx.date;\n", ""],
+  ["birthday: not filled in Open this wallet", "  if(sumCtx && sumCtx.date && hasSeed() && mnemonic === madeMnemonic && pass === document.getElementById(\"passphrase\").value) document.getElementById(\"wvBorn\").value = sumCtx.date;\n", ""],
   ["birthday: kept after the wallet view is cleared", " document.getElementById(\"wvBorn\").value = \"\";\n", "\n"],
   ["birthday: not on the recovery sheet", "\"\\nWallet made on: \" + (document.getElementById(\"wvBorn\").value || \"____________\") + ", ""],
   ["practice: menus not locked", "if(on){ practiceSaved[id] = e.value; e.value = \"test\"; e.disabled = true; }", "if(on){ practiceSaved[id] = e.value; e.value = \"test\"; }"],
@@ -4111,6 +4156,27 @@ const M = [
   ["watch check: says safe", "st.className = \"status\"; st.textContent = \"NO SIGN FOUND of extensions, translators or other scripts on this page right now.\";", "st.className = \"status ok\"; st.textContent = \"SAFE: nothing is watching this page.\";"],
   ["watch check: not checked again after load", "if(hit && window.vfWatchPing) window.vfWatchPing();", "if(false) window.vfWatchPing();"],
   ["watch check: wallet extension objects ignored", "for(const [g, n] of WATCH_GLOBALS) if(g in window) add(", "for(const [g, n] of WATCH_GLOBALS) if(false) add("],
+  // ---- v2.8.1 (fixes release) ----
+  ["fixes: change mark trusted again", "      if(paid){ state = \"verified\"; break; }", "      state = \"verified\"; break;"],
+  ["fixes: change key not compared with the record", "const pub = pubkeyBytes(k), keyOk = d.tap ? eqBytes(pub.slice(1), d.pub) : eqBytes(pub, d.pub);", "const pub = pubkeyBytes(k), keyOk = true;"],
+  ["fixes: forged mark not blocking", "to be this wallet's change but \" + (nForged===1?\"is\":\"are\") + \" NOT paid to this wallet's key at the path given. Do not sign: the change mark is forged (or the words or passphrase above belong to another wallet).\", true);", "to be this wallet's change but \" + (nForged===1?\"is\":\"are\") + \" NOT paid to this wallet's key at the path given. Do not sign: the change mark is forged (or the words or passphrase above belong to another wallet).\", false);"],
+  ["fixes: change checked without the words", "    if(!root || !fpw){ o.change = \"unverified\"; continue; }", "    if(!root || !fpw){ o.change = \"verified\"; continue; }"],
+  ["fixes: single-key forged output called multisig", "      if(scriptOut) state = \"multisig\";", "      state = \"multisig\";"],
+  ["fixes: no change check before the report", "    await psbtCheckChange(res, root, fpw, net);", ""],
+  ["fixes: PSBT v2 locktime from the fallback only", "  if(asks.length){ const byH=asks.every(x=>x.lockH!==null);", "  if(false){ const byH=asks.every(x=>x.lockH!==null);"],
+  ["fixes: PSBT v2 sequence default wrong", ": 0xffffffff, lockH:th", ": 0xfffffffe, lockH:th"],
+  ["fixes: previous transaction not checked", "      if(id===tx.ins[i].txid){ const o=psbtParseTxOutputs(nw.val)", "      if(true){ const o=psbtParseTxOutputs(nw.val)"],
+  ["fixes: wipe leaves rolls and passphrase in state", "  seedSig = null; passKey = null; exCtx = null;   // fixes release", "  // fixes release"],
+  ["fixes: wipe leaves the public boxes", "  clearPsbt(true); clearCompare(true); clearSig(); clearReuse();   // fixes release", "  // fixes release"],
+  ["fixes: signed messages skip the gate", "async function verifyMessageUi(){\n  if(!gateOk()) return;", "async function verifyMessageUi(){"],
+  ["fixes: old FOUND stays after an edit", "() => { resetAddrScan(); const st = document.getElementById(\"addrCheckStatus\"); st.textContent = \"\"; st.className = \"status\"; }", "resetAddrScan"],
+  ["fixes: old MATCH stays after an edit", "document.getElementById(\"verifyRecorded\").addEventListener(\"input\", () => { const m = document.getElementById(\"verifyMatch\"); m.textContent = \"\"; m.className = \"status\"; });", ""],
+  ["fixes: practice mode keeps VERIFY lines", "  verifySeq++; { const v = document.getElementById(\"verifyStatus\"); if(v.textContent){", "  { const v = document.getElementById(\"verifyStatus\"); if(false){"],
+  ["fixes: tpub not compared on the test network", "    return {pairs, net: \"tuv\".includes(c) ? \"test\" : \"main\"};", "    return {pairs, net: \"main\"};"],
+  ["fixes: Coldcard 30% rule gone", "  if(skewed && dev === \"coldcard\") return say(\"bad\"", "  if(false) return say(\"bad\""],
+  ["fixes: FORGE signature after the hash", "  exCtx = ctx; seedKind = ctx ? \"rolls\" : \"wd\"; seedSig = sig0 !== undefined ? sig0 : inputSig(seedKind);", "  exCtx = ctx; seedKind = ctx ? \"rolls\" : \"wd\"; seedSig = inputSig(seedKind);"],
+  ["fixes: words read back from the screen", "  return {words: madeMnemonic.split(\" \"), fp: document.getElementById(\"fingerprint\").textContent,", "  return {words: document.getElementById(\"genResult\").textContent.split(\"\\n\")[0].split(\" \"), fp: document.getElementById(\"fingerprint\").textContent,"],
+  ["fixes: Uprv version wrong again", "\"045f18bc\",\"024285b5\",\"02575048\"]", "\"045f18bc\",\"02424c24\",\"02575048\"]"],
   ["heir mode: does not open", "  c.style.display = \"\"; document.getElementById(\"heirBtn\").setAttribute(\"aria-expanded\", \"true\");", "  document.getElementById(\"heirBtn\").setAttribute(\"aria-expanded\", \"true\");"],
   ["wallet detective: Electrum keeps combining marks", ".toLowerCase().replace(ELECTRUM_CCC, \"\")", ".toLowerCase()"],
   ["wallet detective: Electrum steps for a passphrase Electrum cannot read", "  if(f.asTyped) return \"Electrum itself cannot open it", "  if(false) return \"Electrum itself cannot open it"],
