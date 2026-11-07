@@ -1325,6 +1325,14 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div class="hint" style="margin:6px 0 0;">Not sure of the account? TRY ACCOUNTS 0 TO 20 looks at the first 20 receive and change addresses of each account (the account box is ignored), with and without the passphrase above. It takes a while; STOP ends it.</div>
       <div class="status" id="addrCheckStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
     </div>
+    <div class="sec-block" id="detBlock">
+      <h3 class="sec">My wallet shows zero: Wallet Detective<span class="tag tag-secret">USES THE WORDS ABOVE</span></h3>
+      <p class="hint" style="margin:0 0 6px;">When the right words open an empty wallet, the app is often looking in a different place: another address type, account or path, a passphrase, or an Electrum seed. Type the words (and the passphrase, if any) in the boxes at the top of this tab, then one address you know this wallet received to (from an old message, invoice or exchange withdrawal). FIND MY WALLET tries the settings of well-known wallet apps until that address matches, then names the apps that use them and how to open it. It never looks up a balance. No address? LIST FIRST ADDRESSES shows the first address of each common setting, to look up on another device.</p>
+      <input type="text" id="detAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="An address this wallet received to" placeholder="An address this wallet received to (bc1q, bc1p, 3 or 1)" oninput="detClear(true)">
+      <div class="btn-row" style="margin-top:8px;"><button type="button" id="detBtn" onclick="detFind()" disabled>FIND MY WALLET</button><button type="button" class="secondary small" id="detListBtn" onclick="detList()" disabled>LIST FIRST ADDRESSES</button><button type="button" class="secondary small" id="detStop" onclick="detStop()" disabled>STOP</button><button type="button" class="secondary small" onclick="detClear()">CLEAR</button></div>
+      <div class="status" id="detStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+      <pre id="detOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+    </div>
   </div>
   </div>
 
@@ -3406,7 +3414,7 @@ async function phraseFromCode(raw){
 // Electrum seeds (v2.2.0): Electrum's own phrases use the same English words but are not BIP39. Electrum marks them with the first hex digits of
 // HMAC-SHA512(key "Seed version", phrase): "01" standard, "100" SegWit, "101" two-factor, "102" two-factor SegWit. Checked only when BIP39 says no.
 async function electrumSeedType(phrase){
-  const t = String(phrase || "").normalize("NFKD").toLowerCase().replace(/[\u0300-\u036f]/g, "").trim().split(/\s+/).filter(Boolean).join(" ");
+  const t = electrumNorm(phrase);
   if(!t) return null;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode("Seed version"), {name:"HMAC", hash:"SHA-512"}, false, ["sign"]);
   const h = hex(new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(t))));
@@ -4335,6 +4343,7 @@ function practiceMode(on){
   }
   if(wvCtx && wvCtx.mnemonic && wvCtx.pass){ wvDecoyHide(); wvDecoyShow(wvCtx.mnemonic, wvCtx.pass); }   // v2.7.0: the side-by-side view follows the network
   if(!on) practiceWalletClose();
+  detClear(true);   // v2.8.0: a Detective search or list belongs to the old network
   reshowSeed();
 }
 // Shows a made seed's fingerprint, addresses and watch-only box again (used when practice mode changes the network).
@@ -4462,6 +4471,9 @@ async function runSelfTests(auto){
   eq("Keystone 100 dice rolls (6 counts as 0) -> 24 words", ()=>rollsToMnemonic((R99+"6").replace(/6/g,"0"),24),"army used collect bulb speak west observe swap rotate insect involve noise plug very impulse throw reason decrease helmet strong hair hamster leopard jacket");
   // Dice passphrase (v2.7.0): SHA-256 of the rolls, 11 bits a word, no checksum. Expected words from Node's and Python's SHA-256 with the official list.
   eq("Dice passphrase: 26 rolls -> 6 words", async()=>(await dpWordsFrom("25163452616341525364152634",6)).join(" "),"broom beyond perfect dwarf learn fruit");
+  // v2.8.0 Wallet Detective: Electrum's own test wallets (electrum/tests/test_wallet_vertical.py), first receive address of each seed type
+  eq("Electrum seed (standard): m/0/0", async()=>(await walletAddressesFrom(await masterFromSeed(await electrumToSeed("cycle rocket west magnet parrot shuffle foot correct salt library feed song","")),[],"pkh","main",0,0,1))[0].address,"1NNkttn1YvVGdqBW4PR6zvc3Zx3H5owKRf");
+  eq("Electrum seed (SegWit): m/0'/0/0", async()=>(await walletAddressesFrom(await masterFromSeed(await electrumToSeed("bitter grass shiver impose acquire brush forget axis eager alone wine silver","")),[[0,true]],"wpkh","main",0,0,1))[0].address,"bc1q3g5tmkmlvxryhh843v4dz026avatc0zzr6h3af");
   eq("coin flips 128 (1/0) -> 12 words", ()=>rollsToMnemonic(C128,12),"trigger soccer priority image feature romance whisper jar crush sleep super potato");
   eq("coin flips 256 (1/0) -> 24 words", ()=>rollsToMnemonic(C256,24),"supply kitten pigeon wealth myth execute add huge mention during defense universe fresh absurd possible hen social glad capital early narrow erode december fall");
   eq("explainer steps, 50 dice rolls: same 12 words as FORGE", async()=>(await explainSteps(R50,12)).words.join(" "),"hole luggage safe present express tragic orbit shed switch metal identify path");
@@ -5183,6 +5195,7 @@ async function sendToVerify(){
   const words = document.getElementById("genResult").textContent.split("\n")[0].trim();
   const box = document.getElementById("phrase");
   box.value = words; clearChild(); resetAddrScan();   // v2.4.0: as typing does: a child seed belongs to the old parent words
+  detClear(true);   // v2.8.0: a Detective result belongs to the old words
   await verify();
   reveal(box, {behavior:"smooth", block:"center"});
 }
@@ -5356,6 +5369,191 @@ async function checkAllAccounts(maxAcct, depth){
     say("bad", "NOT FOUND in accounts 0 to " + MAXA + " (first " + DEPTH + " receive and change addresses of each, " + variants.map(v => v[0]).join(" and ") + "). Things to check: the address itself (one wrong character gives a different result), the words and their order, a passphrase" + (vp ? " (you typed one; try another spelling)" : " (type it in the box above and search again)") + ", an account above " + MAXA + ", or an address further along than #" + (DEPTH - 1) + " (use CHECK ADDRESS, which goes 50 at a time).");
   } catch(e) { say("bad", "Could not check: " + e.message); }
   finally { acctScanBusy = false; acctScanStop = false; stop.disabled = true; const on = selfTestState === "pass"; btns.forEach(b => b.disabled = !on); }
+}
+// ===== Wallet Detective (v2.8.0) =====
+// "My wallet shows zero": the words can be right while the wallet app looks in a different place. This tries the settings well-known
+// wallet apps use until one address the person knows was used matches, then names the apps that use those settings. It only makes
+// addresses here and compares them; it never looks up a balance (the page is offline). Without an address, it lists each setting's
+// first receive address, to look up somewhere else.
+// Electrum's own seeds: PBKDF2-HMAC-SHA512, 2048 rounds, the phrase and the passphrase normalized as Electrum does (NFKD, lower case,
+// accents removed, spaces collapsed), salt "electrum" + passphrase. Standard seeds use legacy addresses at m/0/i (change m/1/i);
+// SegWit seeds use native SegWit at m/0'/0/i (change m/0'/1/i). Checked against Electrum's own test wallets in the self-test.
+function electrumNorm(t){ return String(t || "").normalize("NFKD").toLowerCase().replace(/[̀-ͯ]/g, "").trim().split(/\s+/).filter(Boolean).join(" "); }
+async function electrumToSeed(text, pass){
+  const enc = new TextEncoder(), key = await crypto.subtle.importKey("raw", enc.encode(electrumNorm(text)), "PBKDF2", false, ["deriveBits"]);
+  return new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2", hash:"SHA-512", iterations:2048, salt:enc.encode("electrum" + electrumNorm(pass))}, key, 512));
+}
+// The places wallet apps keep their addresses. seed: which kind of seed; steps(coin, account): the account path; types: the address
+// types apps use there; accts: whether apps use more than account 0 there.
+const DET_PATHS = [
+  {id:"bip84", seed:"bip39", steps:(c, a) => [[84, true], [c, true], [a, true]], types:["wpkh"], accts:true, name:"BIP84, native SegWit"},
+  {id:"bip86", seed:"bip39", steps:(c, a) => [[86, true], [c, true], [a, true]], types:["tr"], accts:true, name:"BIP86, Taproot"},
+  {id:"bip49", seed:"bip39", steps:(c, a) => [[49, true], [c, true], [a, true]], types:["sh-wpkh"], accts:true, name:"BIP49, nested SegWit"},
+  {id:"bip44", seed:"bip39", steps:(c, a) => [[44, true], [c, true], [a, true]], types:["pkh"], accts:true, name:"BIP44, legacy"},
+  {id:"m0h", seed:"bip39", steps:() => [[0, true]], types:["pkh", "wpkh"], accts:false, name:"BIP32 m/0'"},
+  {id:"wpost", seed:"bip39", steps:c => [[84, true], [c, true], [2147483646, true]], types:["wpkh"], accts:false, name:"Whirlpool post-mix"},
+  {id:"wpre", seed:"bip39", steps:c => [[84, true], [c, true], [2147483645, true]], types:["wpkh"], accts:false, name:"Whirlpool pre-mix"},
+  {id:"wbad", seed:"bip39", steps:c => [[84, true], [c, true], [2147483644, true]], types:["wpkh"], accts:false, name:"Whirlpool bad bank"},
+  {id:"el-standard", seed:"electrum-standard", steps:() => [], types:["pkh"], accts:false, name:"Electrum seed, standard"},
+  {id:"el-segwit", seed:"electrum-segwit", steps:() => [[0, true]], types:["wpkh"], accts:false, name:"Electrum seed, SegWit"}
+];
+const DET_ACCTS = 9, DET_TYPE_NAME = {wpkh:"native SegWit (bc1q...)", tr:"Taproot (bc1p...)", "sh-wpkh":"nested SegWit (3...)", pkh:"legacy (1...)"};
+function detPathStr(steps){ return "m" + steps.map(([i, h]) => "/" + i + (h ? "'" : "")).join(""); }
+// The words and passphrase from the CHECK A BACKUP boxes: a BIP39 phrase, an Electrum seed, or both (rare). passes: with the typed
+// passphrase first, then without one, as a forgotten or mistaken passphrase is a common reason for an empty wallet.
+async function detSource(text, vp){
+  const r = await checkPhrase(text);
+  let el = null; try { el = await electrumSeedType(text); } catch(e) { el = null; }
+  if(el && el !== "standard" && el !== "SegWit") return {error:"This is an Electrum two-factor (2FA) seed. Only Electrum can open it: File, New/Restore, a wallet name, Wallet with two-factor authentication, I already have a seed, and type the words. On the page Restore 2FA wallet, Disable opens it without the TrustedCoin service. This page cannot search it."};
+  if(!r.ok && !el) return {error:"First type the seed words in the box at the top of CHECK A BACKUP. " + r.msg};
+  return {mnemonic:r.ok ? r.mnemonic : null, electrum:el === "standard" ? "standard" : el === "SegWit" ? "segwit" : null, text,
+    passes:vp ? [["with the passphrase", vp], ["without a passphrase", ""]] : [["without a passphrase", ""]]};
+}
+// The address the person knows was used. Throws with a plain reason when it cannot be searched for.
+async function detTarget(raw){
+  let s = String(raw || "").replace(/\s+/g, "");
+  if(/^(bc1|tb1)/i.test(s)) s = s.toLowerCase();
+  if(!s) return null;
+  const sn = scriptAddrNote(s); if(sn) throw new Error(sn);
+  let T = null; try { T = await reforgeTarget(s); } catch(e) { throw new Error(/typo/.test(e.message) ? e.message : "That is not a Bitcoin address. Type one address the wallet received to: bc1q..., bc1p..., 3... or 1... (tb1..., 2..., m... or n... on testnet)."); }
+  if(!T || T.kind !== "addr") throw new Error("Type one address the wallet received to (bc1q..., bc1p..., 3... or 1...), not a key or a fingerprint.");
+  return T;
+}
+// What to search, most likely first: the paths where apps use this address type (account 0, the first 20 receive and change addresses),
+// then the other paths with this address type (some older apps mixed them), then further along (to #99), then accounts 1 to 9.
+function detPlan(src, T){
+  const mine = DET_PATHS.filter(P => P.seed === "bip39" ? !!src.mnemonic : P.seed === "electrum-" + src.electrum);
+  const fits = P => P.types.includes(T.type), jobs = [];
+  for(const P of mine.filter(fits)) jobs.push({P, acct:0, from:0, n:20});
+  for(const P of mine.filter(P => !fits(P))) jobs.push({P, acct:0, from:0, n:20});
+  for(const P of mine.filter(fits)) jobs.push({P, acct:0, from:20, n:80});
+  for(const P of mine.filter(P => fits(P) && P.accts)) for(let a = 1; a <= DET_ACCTS; a++) jobs.push({P, acct:a, from:0, n:20});
+  return jobs;
+}
+// The search. hooks: {progress(done, total, label), stop()}. Returns {found, done, total, stopped}.
+async function detSearch(src, T, hooks){
+  const jobs = detPlan(src, T), coin = NETS[T.net].coin;
+  const total = jobs.reduce((s, j) => s + 2 * j.n, 0) * src.passes.length;
+  let done = 0;
+  for(const [label, pw] of src.passes){
+    const roots = {};
+    if(src.mnemonic) roots.bip39 = await masterFromSeed(await mnemonicToSeed(src.mnemonic, pw));
+    if(src.electrum) roots["electrum-" + src.electrum] = await masterFromSeed(await electrumToSeed(src.text, pw));
+    for(const j of jobs){
+      const steps = j.P.steps(coin, j.acct);
+      let [k, c] = roots[j.P.seed];
+      for(const [i, h] of steps) [k, c] = await ckdPriv(k, c, i, h);
+      for(const chain of [0, 1]){
+        const [ck, cc] = await ckdPriv(k, c, chain, false), cpub = pubkeyBytes(ck);
+        for(let i = j.from; i < j.from + j.n; i++){
+          if(hooks.stop()) return {found:null, done, total, stopped:true};
+          const [kk] = await ckdPriv(ck, cc, i, false, cpub);
+          if(await addressFromKey(T.type, kk, T.net) === T.addr) return {found:{P:j.P, acct:j.acct, chain, index:i, pass:label, usual:j.P.types.includes(T.type), account:detPathStr(steps), path:detPathStr(steps) + "/" + chain + "/" + i, type:T.type}, done, total};
+          done++;
+          const y = reforgeYield(); if(y){ hooks.progress(done, total, label); await y; }
+        }
+      }
+    }
+  }
+  return {found:null, done, total};
+}
+// Which apps keep a wallet in each place, and how to open it there. From each app's own documentation and code (sources in REVIEW.md).
+const DET_APPS = {
+  bip84: "__BIP84__",
+  bip86: "__BIP86__",
+  bip49: "__BIP49__",
+  bip44: "__BIP44__",
+  "m0h-pkh": "__M0H_PKH__",
+  "m0h-wpkh": "__M0H_WPKH__",
+  wpost: "__WHIRL__", wpre: "__WHIRL__", wbad: "__WHIRL__",
+  "el-standard": "Electrum (a standard Electrum seed).",
+  "el-segwit": "Electrum (a SegWit Electrum seed); also BlueWallet, which can import Electrum SegWit seeds."
+};
+const DET_SPARROW_TYPE = {wpkh:"Native Segwit (P2WPKH)", tr:"Taproot (P2TR)", "sh-wpkh":"Nested Segwit (P2SH-P2WPKH)", pkh:"Legacy (P2PKH)"};
+function detApps(P, type){ return DET_APPS[P.id + "-" + type] || DET_APPS[P.id] || ""; }
+// How to open what was found, in plain steps.
+function detHowTo(f, withPass){
+  if(f.P.seed !== "bip39") return "To open it in Electrum (Sparrow and most other apps cannot open Electrum seeds): File, New/Restore, type a wallet name, Next, Standard wallet, I already have a seed, and type the words." + (withPass ? " Before Next, press Options, tick \u201cExtend this seed with custom words\u201d and press OK; type the passphrase on the Seed Extension page (Electrum ignores capital letters in it)." : "");
+  return "To open it in Sparrow (it can use any of these settings): File, New Wallet, type a name, Create Wallet. Set Script Type to " + DET_SPARROW_TYPE[f.type] + ". Press New or Imported Software Wallet, then Mnemonic Words (BIP39); pick the number of words, type them" + (withPass ? ", tick Use passphrase? and type the passphrase" : "") + ", and press Create Keystore. Check the Derivation path: if it is not " + f.account + ", change it to " + f.account + " and press Import Custom Derivation Keystore; if it already is, press Import Keystore. Then press Apply.";
+}
+function detReport(f, T){
+  const withPass = f.pass === "with the passphrase", lines = [];
+  lines.push("FOUND: " + T.addr + " is " + (f.chain ? "change" : "receive") + " address #" + f.index + " (" + f.path + ") of these words, " + f.pass + ".");
+  lines.push("");
+  lines.push("Settings: " + (f.P.seed === "bip39" ? "BIP39 seed words" : "an Electrum seed (not BIP39)") + (withPass ? " with the passphrase" : "") + ", address type " + DET_TYPE_NAME[f.type] + ", " + (f.P.seed === "bip39" ? "derivation path " + f.account : "Electrum's own derivation") + ".");
+  const apps = detApps(f.P, f.type);
+  if(f.usual && apps) lines.push("Apps that use these settings: " + apps);
+  if(!f.usual) lines.push("This is an unusual mix: a " + DET_TYPE_NAME[f.type] + " address on the " + f.P.name + " path. Few apps do this, so most apps will not find it unless you set the path yourself.");
+  if(f.acct > 0) lines.push("It is in account " + f.acct + ", not account 0. Many apps show only account 0 unless you add the account.");
+  if(f.index >= 20) lines.push("It is address #" + f.index + ". Many apps stop looking after 20 unused addresses in a row, so raise the app's gap limit (in Sparrow: the Settings tab, Advanced..., Gap limit) to see it.");
+  if(f.pass === "without a passphrase") { const vp = document.getElementById("verifyPass").value; if(vp) lines.push("It was found WITHOUT the passphrase you typed. Leave the passphrase out in the wallet app."); }
+  lines.push("");
+  lines.push(detHowTo(f, withPass));
+  lines.push("");
+  lines.push("This page cannot see the balance. After opening it, the app shows what is there.");
+  return lines.join("\n");
+}
+let detSeq = 0, detBusy = false, detStopFlag = false;
+function detSay(cls, t){ const st = document.getElementById("detStatus"); st.className = "status " + cls; st.textContent = t; }
+function detShow(t){ const o = document.getElementById("detOut"); o.textContent = t; o.style.display = t ? "" : "none"; }
+function detStop(){ if(detBusy) detStopFlag = true; }
+function detClear(keepAddr){
+  detSeq++; if(detBusy) detStopFlag = true;
+  detSay("", ""); detShow("");
+  if(!keepAddr) document.getElementById("detAddr").value = "";
+}
+function detBusyUi(on){
+  detBusy = on;
+  for(const id of ["detBtn", "detListBtn"]) document.getElementById(id).disabled = on || selfTestState !== "pass";
+  document.getElementById("detStop").disabled = !on;
+}
+async function detFind(){
+  if(!gateOk() || detBusy) return;
+  const my = ++detSeq; detShow("");
+  const src = await detSource(document.getElementById("phrase").value, document.getElementById("verifyPass").value);
+  if(my !== detSeq) return;
+  if(src.error) return detSay("bad", src.error);
+  let T;
+  try { T = await detTarget(document.getElementById("detAddr").value); } catch(e) { return detSay("bad", e.message); }
+  if(my !== detSeq) return;
+  if(!T) return detSay("bad", "Type one address this wallet received to, or press LIST FIRST ADDRESSES to see the first address of each common setting.");
+  if(practiceOn && T.net !== "test") return detSay("bad", "Practice mode is on, so the Detective searches only test-network addresses (tb1..., 2..., m... or n...). Turn practice mode off to search a real address.");
+  detStopFlag = false; detBusyUi(true);
+  try {
+    const r = await detSearch(src, T, {progress:(d, t, l) => { if(my === detSeq) detSay("", "Searching " + l + ": " + Math.floor(100 * d / t) + "% done..."); }, stop:() => detStopFlag || my !== detSeq});
+    if(my !== detSeq) return;
+    if(r.stopped) return detSay("", "Stopped. Nothing was found before you stopped it.");
+    if(r.found){ detSay("ok", "FOUND: the app and settings are below."); detShow(detReport(r.found, T)); return; }
+    detSay("bad", "NOT FOUND in the settings of the well-known wallet apps (accounts 0 to " + DET_ACCTS + ", the first 100 addresses of account 0, " + src.passes.map(p => p[0]).join(" and ") + "). Things to check: the address (one wrong character changes everything; is it from this wallet, not an exchange or another wallet?), the words and their order, the passphrase (case, spaces and spelling count), and whether this wallet was a multisig wallet (then no one seed opens it) or came from an app this page does not know. A 3... address can also be a multisig address.");
+  } catch(e) { if(my === detSeq) detSay("bad", "Could not search: " + e.message); }
+  finally { detStopFlag = false; detBusyUi(false); }
+}
+// No address known: the first receive address of each common setting, to look up somewhere else (this page is offline).
+const DET_LIST = [["bip84", "wpkh"], ["bip86", "tr"], ["bip49", "sh-wpkh"], ["bip44", "pkh"], ["m0h", "pkh"], ["m0h", "wpkh"], ["el-standard", "pkh"], ["el-segwit", "wpkh"]];
+async function detList(){
+  if(!gateOk() || detBusy) return;
+  const my = ++detSeq; detShow("");
+  const vp = document.getElementById("verifyPass").value;
+  const src = await detSource(document.getElementById("phrase").value, vp);
+  if(my !== detSeq) return;
+  if(src.error) return detSay("bad", src.error);
+  const net = practiceOn ? "test" : "main", coin = NETS[net].coin, pass = src.passes[0], lines = [];
+  detBusyUi(true);
+  try {
+    const roots = {};
+    if(src.mnemonic) roots.bip39 = await masterFromSeed(await mnemonicToSeed(src.mnemonic, pass[1]));
+    if(src.electrum) roots["electrum-" + src.electrum] = await masterFromSeed(await electrumToSeed(src.text, pass[1]));
+    for(const [id, type] of DET_LIST){
+      const P = DET_PATHS.find(p => p.id === id);
+      if(!roots[P.seed]) continue;
+      const steps = P.steps(coin, 0), a = (await walletAddressesFrom(roots[P.seed], steps, type, net, 0, 0, 1))[0];
+      if(my !== detSeq) return;
+      lines.push(P.name + (P.types.length > 1 ? " (" + DET_TYPE_NAME[type] + ")" : "") + ", " + a.path + "\n  " + a.address + "\n  Used by: " + detApps(P, type));
+    }
+    detSay("ok", "The first receive address of each common setting, " + pass[0] + (net === "test" ? ", on the test network (practice mode)" : "") + ". Look them up on another device, for example in a block explorer. The one that shows a history is your wallet's setting; then type it above and press FIND MY WALLET for the steps to open it.");
+    detShow(lines.join("\n\n") + "\n\nLooking an address up on a website tells that website you are interested in it. A watch-only wallet in Sparrow connected to your own node is more private.");
+  } catch(e) { if(my === detSeq) detSay("bad", "Could not list: " + e.message); }
+  finally { detBusyUi(false); }
 }
 // "Child seed (BIP85)": derives a new seed phrase from the typed parent words (and passphrase). Shown on screen only; nothing is copied or saved.
 // Check your download (v1.27.3). Reads the chosen file, hashes it with the browser's SHA-256 and compares with what you paste. Nothing is stored or sent.
@@ -6022,6 +6220,7 @@ function wipeSeed(){
   setResult("\u2014"); updateAdvSummary(); if(guideOn){ guideN = 1; guideRender(); }
   wdClear();
   dpClear(); dcClear();   // v2.7.0: the dice passphrase and the device dice check
+  detClear();   // v2.8.0: the Wallet Detective
   document.getElementById("fingerprint").textContent="";
   document.getElementById("address").textContent="";
   clearWatch(); clearFpIcons();
@@ -6881,6 +7080,7 @@ for(const id of ["checkAddr","checkAcct","phrase","verifyPass"]) document.getEle
 for(const id of ["phrase","verifyPass","childWords","childIndex","childLen","childSides","childRolls"]) document.getElementById(id).addEventListener("input", clearChild);
 for(const id of ["phrase","verifyPass"]) document.getElementById(id).addEventListener("input", () => { verifySeq++; if(wvCtx && wvCtx.mnemonic) clearWalletView(); if(childCtx || document.getElementById("childOut").textContent) clearChild(); });
 document.getElementById("verifyPass").addEventListener("input", passWarnUpdate);
+for(const id of ["phrase", "verifyPass"]) document.getElementById(id).addEventListener("input", () => detClear(true));   // v2.8.0: the Detective result belongs to the old words
 document.getElementById("reuseIn").addEventListener("input", () => { const st = document.getElementById("reuseStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wpIn").addEventListener("input", () => { if(wvCtx && wvCtx.kind === "pub" && !wvCtx.secret) clearWalletView(); const st = document.getElementById("wpStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wType").addEventListener("change", refreshWatch);
@@ -6946,6 +7146,7 @@ function setGate(state, text, cls){
   document.getElementById("verifyBtn").disabled = !on;
   document.getElementById("checkAddrBtn").disabled = !on;
   document.getElementById("checkAcctsBtn").disabled = !on;
+  if(!detBusy) for(const id of ["detBtn", "detListBtn"]) document.getElementById(id).disabled = !on;   // v2.8.0: Wallet Detective
   document.getElementById("wpBtn").disabled = !on;
   document.getElementById("reuseBtn").disabled = !on;
   document.getElementById("childBtn").disabled = !on;
