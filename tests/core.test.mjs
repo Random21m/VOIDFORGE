@@ -96,9 +96,24 @@ try {
     const sats = (v) => '(' + Math.round(v * 1e8) + ' sats)';
     R.ok(outs.every((o) => out.includes(sats(o.v))), 'PSBT: every output amount is shown, to the satoshi');
     R.ok(out.includes(sats(dec.fee)) || st.includes(sats(dec.fee)), 'PSBT: the fee is the one Core worked out ' + sats(dec.fee));
-    const p2 = await rpc('walletcreatefundedpsbt', [[], [{ [to]: 0.1 }], 0, { includeWatching: true }], 'watch-wpkh-0');   // Core's default: version 2
-    $('psbtInput').value = p2.psbt; await w.runPsbt();
-    R.ok(/version 2/i.test($('psbtStatus').textContent) || $('psbtOut').textContent.includes(tbOf(to)), 'PSBT version 2 (Core 32\'s default): the page reads it or says plainly that it does not'); }
+    // PSBT version 2 (BIP370), Core 32's default: the same outputs, fee and counts as Core gives
+    const p2 = await rpc('walletcreatefundedpsbt', [[], [{ [to]: 0.1 }], 0, { includeWatching: true }], 'watch-wpkh-0'), d2 = await rpc('decodepsbt', [p2.psbt]);
+    R.ok(d2.psbt_version === 2, 'PSBT version 2: Core made a version 2 PSBT');
+    $('psbtInput').value = p2.psbt; await w.runPsbt(); const o2 = $('psbtOut').textContent;
+    R.ok(/^PSBT version 2\./.test(o2) && d2.outputs.every((o, i) => o2.includes(tbOf(o.script.address)) && o2.includes(sats(o.amount))) && o2.includes(sats(d2.fee)), 'PSBT version 2: the page reads it, with every output and the fee Core gives' + (/^PSBT version 2\./.test(o2) ? '' : ' [' + $('psbtStatus').textContent + ']'));
+    const v2res = await w.inspectPsbt(w.psbtFromText(p2.psbt), 'test');
+    R.ok(v2res.ins.length === d2.input_count && v2res.outs.length === d2.output_count && v2res.version === d2.tx_version, 'PSBT version 2: inputs, outputs and transaction version as Core counts them');
+    // the transaction ID the page works out for an unsigned version 2 PSBT is the ID of the transaction once Core signs it (SegWit inputs)
+    const sw = (await rpc('listunspent', [1], 'miner')).find((u) => /^bcrt1q/.test(u.address) && u.amount > 0.5);   // a SegWit coin: signing it leaves the transaction ID unchanged
+    const pm = await rpc('walletcreatefundedpsbt', [[{ txid: sw.txid, vout: sw.vout }], [{ [to]: 0.2 }], 0, { add_inputs: false, change_type: 'bech32' }], 'miner'), signed = await rpc('walletprocesspsbt', [pm.psbt], 'miner'), fin = await rpc('finalizepsbt', [signed.psbt]);
+    const coreTxid = (await rpc('decoderawtransaction', [fin.hex])).txid, pageTxid = (await w.inspectPsbt(w.psbtFromText(pm.psbt), 'test')).txid;
+    R.ok(coreTxid === pageTxid, 'PSBT version 2: the page works out the same transaction ID as the transaction Core signs (' + coreTxid.slice(0, 16) + '...)');
+    // Core's real change output, checked against the wallet's own key once its words are typed in CHECK A BACKUP
+    $('phrase').value = words; $('verifyPass').value = pass; $('psbtInput').value = p.psbt; await w.runPsbt(); const oc = $('psbtOut').textContent;
+    R.ok(/CHANGE, CHECKED: paid to this wallet's own key at m\/84'\/1'\/0'\/1\/\d+/.test(oc) && !/Do not sign/.test(oc), 'PSBT: Core\'s change output is checked as this wallet\'s own change once the words are typed');
+    $('verifyPass').value = pass + 'x'; await w.runPsbt();
+    R.ok(/another wallet's key information/.test($('psbtOut').textContent) && !/CHANGE, CHECKED/.test($('psbtOut').textContent), 'PSBT: with a wrong passphrase the change is not called this wallet\'s');
+    $('phrase').value = ''; $('verifyPass').value = ''; }
 
   // ---- 3. a multisig descriptor (2 of 3, native and nested SegWit) ----
   { const cos = [];

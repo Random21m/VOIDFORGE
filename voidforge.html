@@ -3020,7 +3020,7 @@ const DICT = [
   ["Practice mode", "A switch that puts every address and key on the test network, with worthless test coins, so the whole job can be rehearsed without risk. The seed words themselves are the same on every network.", "Practise making a backup, in CHECK A BACKUP.", "VOIDFORGE"],
   ["Stamp sheet", "A printed page with each seed word cut to its first 4 letters in large capitals, as a guide for stamping a metal plate. It is as secret as the words.", "PRINT STAMP SHEET, after FORGE and in CHECK A BACKUP.", "VOIDFORGE"],
   ["BIP352 (Silent Payments)", "A way to receive payments to one reusable code while each payment still lands on a fresh address on the blockchain. Your wallet has to scan for them.", "Silent Payment address in the watch-only box.", "Standards (BIPs)"],
-  ["BIP370", "PSBT version 2: an updated format for partly signed transactions.", "", "Standards (BIPs)"],
+  ["BIP370", "PSBT version 2: an updated format for partly signed transactions. Instead of one unsigned transaction it keeps the inputs and outputs as separate records. Bitcoin Core makes it by default from version 32.", "Inspect a transaction (PSBT) reads it.", "Standards (BIPs)"],
   ["BIP380 and the descriptor BIPs", "The standards that define output descriptors: the text that says how a wallet's keys and addresses are made.", "", "Standards (BIPs)"],
   ["BIP388 (wallet policies)", "A standard for describing a wallet's spending rules in a compact way that hardware wallets can show and check.", "", "Standards (BIPs)"],
   ["Bit", "One binary digit, 0 or 1. Randomness is counted in bits: a 12-word seed holds 128 bits and a 24-word seed 256.", "", "Units & math"],
@@ -4096,7 +4096,7 @@ async function reforgePassphrase(){
   } catch(e) { say("bad", "Could not search: " + e.message); }
   finally { reforgeBusy(false); }
 }
-// ================= Read-only PSBT inspector (BIP174 version 0). Only parses and displays: never signs, never uses a key. =================
+// ================= Read-only PSBT inspector (BIP174 version 0, and BIP370 version 2 since the fixes release). Only parses and displays: never signs, never uses a key. =================
 function psbtReader(b){
   let o=0;
   const need=(n)=>{ if(n<0 || o+n>b.length) throw new Error("The PSBT is cut short or damaged."); };
@@ -4221,6 +4221,38 @@ async function inspectRawTx(bytes, net){
   res.rbf=res.ins.some(x=>x.seq<0xfffffffe);
   return res;
 }
+// fixes release: PSBT version 2 (BIP370), as Bitcoin Core 32 makes by default. There is no unsigned transaction in it: the version,
+// the inputs (previous txid, output index, sequence) and the outputs (amount, script) are separate records, and the locktime is
+// worked out from the inputs' required locktimes or the fallback one. Returns the transaction plus the per-input and per-output maps.
+function psbtV2Tx(glob, r){
+  const g=(t)=>glob.find(x=>x.type===t && x.key.length===0), u32=(v)=>(v[0]|(v[1]<<8)|(v[2]<<16)|(v[3]<<24))>>>0;
+  const need=(rec, what)=>{ if(!rec) throw new Error("This PSBT (version 2) is missing its " + what + "."); return rec.val; };
+  const version=u32(need(g(0x02), "transaction version")), nIn=psbtReader(need(g(0x04), "input count")).varint(), nOut=psbtReader(need(g(0x05), "output count")).varint();
+  if(nIn>10000 || nOut>10000) throw new Error("This PSBT (version 2) has too many inputs or outputs.");
+  const inMaps=[], outMaps=[], ins=[], outs=[];
+  for(let i=0;i<nIn;i++){ const m=psbtReadMap(r), f=(t)=>m.find(x=>x.type===t && x.key.length===0); inMaps.push(m);
+    const id=need(f(0x0e), "previous transaction ID of input " + i), ix=need(f(0x0f), "output index of input " + i);
+    if(id.length!==32 || ix.length!==4) throw new Error("Input " + i + " of this PSBT (version 2) is damaged.");
+    const sq=f(0x10), th=f(0x12), tt=f(0x11);
+    ins.push({txid:hex(Uint8Array.from(id).reverse()), vout:u32(ix), seq:sq && sq.val.length===4 ? u32(sq.val) : 0xffffffff, lockH:th && th.val.length===4 ? u32(th.val) : null, lockT:tt && tt.val.length===4 ? u32(tt.val) : null}); }
+  for(let i=0;i<nOut;i++){ const m=psbtReadMap(r), f=(t)=>m.find(x=>x.type===t && x.key.length===0); outMaps.push(m);
+    const a=need(f(0x03), "amount of output " + i), sc=need(f(0x04), "script of output " + i); if(a.length!==8) throw new Error("Output " + i + " of this PSBT (version 2) is damaged.");
+    outs.push({value:psbtReader(a).i64(), script:sc}); }
+  // BIP370 locktime: no input asks for one -> the fallback (or 0); else the largest height if every asking input can take a height, otherwise the largest time.
+  const asks=ins.filter(x=>x.lockH!==null || x.lockT!==null), fb=g(0x03);
+  let locktime=fb && fb.val.length===4 ? u32(fb.val) : 0;
+  if(asks.length){ const byH=asks.every(x=>x.lockH!==null); locktime=byH ? Math.max(...asks.map(x=>x.lockH)) : Math.max(...asks.map(x=>x.lockT!==null ? x.lockT : 0)); }
+  return {version, locktime, ins, outs, inMaps, outMaps};
+}
+function psbtV2Serialize(tx){ // the unsigned transaction a version 2 PSBT describes (for its transaction ID)
+  const b=[], u32=(v)=>b.push(v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255), vi=(n)=>{ if(n<0xfd) b.push(n); else if(n<=0xffff) b.push(0xfd,n&255,n>>>8); else { b.push(0xfe); u32(n); } };
+  u32(tx.version); vi(tx.ins.length);
+  for(const x of tx.ins){ b.push(...fromHex(x.txid).reverse()); u32(x.vout); b.push(0); u32(x.seq); }
+  vi(tx.outs.length);
+  for(const o of tx.outs){ let v=BigInt.asUintN(64, o.value); for(let i=0;i<8;i++){ b.push(Number(v&255n)); v>>=8n; } vi(o.script.length); b.push(...o.script); }
+  u32(tx.locktime);
+  return Uint8Array.from(b);
+}
 async function inspectPsbt(bytes, net){
   const magic=[0x70,0x73,0x62,0x74,0xff];
   if(bytes.length<5 || !magic.every((x,i)=>bytes[i]===x)){
@@ -4229,13 +4261,20 @@ async function inspectPsbt(bytes, net){
     throw new Error("This is not a PSBT (it does not start with the PSBT marker).");
   }
   const r=psbtReader(bytes); r.bytes(5);
-  const glob=psbtReadMap(r), txRec=glob.find(x=>x.type===0 && x.key.length===0);
-  if(glob.some(x=>x.type===0xfb && x.key.length===0 && x.val.length===4 && (x.val[0]|x.val[1]|x.val[2]|x.val[3])!==0)) throw new Error("PSBT version 2 is not supported by this inspector; export version 0.");
-  if(!txRec) throw new Error("No unsigned transaction found in this PSBT.");
-  const tx=psbtParseTx(txRec.val), res={version:tx.version, locktime:tx.locktime, ins:[], outs:[], sigs:[]};
-  res.txid=hex((await sha256bytes(await sha256bytes(txRec.val))).reverse());
+  const glob=psbtReadMap(r), g=(t)=>glob.find(x=>x.type===t && x.key.length===0), u32=(v)=>(v[0]|(v[1]<<8)|(v[2]<<16)|(v[3]<<24))>>>0;
+  const verRec=g(0xfb), pver=verRec && verRec.val.length===4 ? u32(verRec.val) : 0;
+  let tx, txBytes, inMaps, outMaps;
+  if(pver===0){
+    const txRec=g(0);
+    if(!txRec) throw new Error("No unsigned transaction found in this PSBT.");
+    tx=psbtParseTx(txRec.val); txBytes=txRec.val;
+    inMaps=tx.ins.map(()=>psbtReadMap(r)); outMaps=tx.outs.map(()=>psbtReadMap(r));
+  } else if(pver===2){ tx=psbtV2Tx(glob, r); inMaps=tx.inMaps; outMaps=tx.outMaps; txBytes=psbtV2Serialize(tx); }   // fixes release: BIP370
+  else throw new Error("PSBT version " + pver + " is not supported by this inspector.");
+  const res={version:tx.version, locktime:tx.locktime, psbtVersion:pver, ins:[], outs:[], sigs:[]};
+  res.txid=hex((await sha256bytes(await sha256bytes(txBytes))).reverse());
   for(let i=0;i<tx.ins.length;i++){
-    const m=psbtReadMap(r), inp={txid:tx.ins[i].txid, vout:tx.ins[i].vout, seq:tx.ins[i].seq, amount:null, sigs:m.filter(x=>x.type===2).length, final:m.some(x=>x.type===7||x.type===8)};
+    const m=inMaps[i], inp={txid:tx.ins[i].txid, vout:tx.ins[i].vout, seq:tx.ins[i].seq, amount:null, sigs:m.filter(x=>x.type===2).length, final:m.some(x=>x.type===7||x.type===8)};
     const wu=m.find(x=>x.type===1), nw=m.find(x=>x.type===0);
     for(const x of m){
       if(x.type===2){ const g=sigDer(x.val); if(g) res.sigs.push(Object.assign(g,{input:i})); }
@@ -4252,7 +4291,7 @@ async function inspectPsbt(bytes, net){
     res.ins.push(inp);
   }
   for(let i=0;i<tx.outs.length;i++){
-    const m=psbtReadMap(r), out={amount:tx.outs[i].value, script:tx.outs[i].script, address:await psbtAddress(tx.outs[i].script, net), fps:[], derivs:[]};
+    const m=outMaps[i], out={amount:tx.outs[i].value, script:tx.outs[i].script, address:await psbtAddress(tx.outs[i].script, net), fps:[], derivs:[]};
     // fixes release: keep each key record whole (fingerprint, path and key), so a change mark can be checked against the wallet's own key
     const pathOf=(b)=>{ const p=[]; for(let j=0;j+4<=b.length;j+=4) p.push((b[j]|(b[j+1]<<8)|(b[j+2]<<16)|(b[j+3]<<24))>>>0); return p; };
     for(const x of m){
@@ -4358,7 +4397,7 @@ function psbtChangeLine(x){
 }
 function psbtReport(res, fpWallet){
   const L=[];
-  L.push("Transaction version " + res.version + ", locktime " + res.locktime + ", " + res.ins.length + " input" + (res.ins.length===1?"":"s") + ", " + res.outs.length + " output" + (res.outs.length===1?"":"s") + ".");
+  L.push((res.psbtVersion===2 ? "PSBT version 2. " : "") + "Transaction version " + res.version + ", locktime " + res.locktime + ", " + res.ins.length + " input" + (res.ins.length===1?"":"s") + ", " + res.outs.length + " output" + (res.outs.length===1?"":"s") + ".");
   L.push("");
   res.ins.forEach((x,i)=>{ L.push("INPUT " + i + ": " + (x.amount===null ? (x.prevMismatch ? "amount NOT trusted (the previous transaction included is not the one this input spends)" : "amount unknown (the PSBT does not include the coin being spent)") : btcText(x.amount)) + (x.address ? "\n   from " + x.address : "") + "\n   coin " + x.txid + ":" + x.vout + "\n   " + (x.final ? "finalized" : x.sigs + " signature" + (x.sigs===1?"":"s") + " so far")); });
   L.push("");
@@ -6211,6 +6250,9 @@ async function dcCheck(){
   if(rolls.length < need) return say("bad", (r.exact ? r.name + " takes exactly " : r.name + " asks for at least ") + need + " rolls for " + wc + " words (" + rolls.length + " typed). Type throwaway rolls, or press USE THE TEST CARD ROLLS.");
   if(r.exact && rolls.length > need) return say("bad", "SeedSigner takes exactly " + need + " rolls for " + wc + " words: remove " + (rolls.length - need) + ".");
   if(r.max && rolls.length > r.max) return say("bad", "Keystone takes at most " + r.max + " rolls: remove " + (rolls.length - r.max) + ".");
+  // fixes release: Coldcard refuses rolls where one face is more than 30% of them (shared/seed.py, add_dice_rolls); Keystone only warns.
+  const top = [..."123456"].map(f => [f, rolls.split(f).length - 1]).sort((a, b) => b[1] - a[1])[0], skewed = top[1] / rolls.length > 0.3;
+  if(skewed && dev === "coldcard") return say("bad", "Coldcard refuses these rolls: " + top[0] + " is " + top[1] + " of the " + rolls.length + " rolls, more than 30%, so it would say the rolls are not random and stop. Type other throwaway rolls, or press USE THE TEST CARD ROLLS.");
   const net = practiceOn ? "test" : "main";
   const m = await dcWords(dev, wc, rolls), a0 = await firstAddressOn(net, m, "");
   if(my !== dcSeq) return;
@@ -6219,7 +6261,7 @@ async function dcCheck(){
   const how = {
     seedsigner: "On the SeedSigner, make a new " + wc + "-word seed from dice rolls and type these " + need + " rolls in order. It must show exactly these words.",
     coldcard: "On the Coldcard (New Seed Words, Advanced, " + wc + " Word Dice Roll), type all " + rolls.length + " rolls in order. It must show exactly these words.",
-    keystone: "On the Keystone, create a " + wc + "-word wallet from dice rolls and type the " + rolls.length + " rolls as rolled, 1 to 6 (Keystone counts each 6 as 0 itself). It must show exactly these words.",
+    keystone: "On the Keystone, create a " + wc + "-word wallet from dice rolls and type the " + rolls.length + " rolls as rolled, 1 to 6 (Keystone counts each 6 as 0 itself). It must show exactly these words." + (skewed ? " (One face is more than 30% of these rolls, so the Keystone will warn that they look uneven; it still makes the words.)" : ""),
     bitbox02: "BitBox02 takes no dice rolls. To check that it uses the words you give it, restore these " + wc + " test words on it with the BitBoxApp, then compare the first receive address of its Bitcoin account (native SegWit) with the address above. It must be the same."
   }[dev];
   say("ok", how + (r.bitbox ? " If it differs" : " If any word differs") + ", first check that you typed the same rolls in the same order and chose the same number of words. These are the dice rules of the device's published code when this page was made, and a firmware update can change them, so also check the device's own manual. If it still differs, do not trust the device with your money. Afterwards reset the device before making your real wallet: test rolls and their words are not secret." + (rolls === DC_CARD_ROLLS.slice(0, rolls.length) ? " These are the public test card rolls: test once with your own throwaway rolls too." : ""));
