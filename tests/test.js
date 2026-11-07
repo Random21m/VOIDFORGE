@@ -1746,7 +1746,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(await DC('keystone',24,C.slice(0,99))===''&&/^Keystone asks for at least 100 rolls for 24 words/.test($('dcStatus').textContent),'device dice: Keystone needs 100 rolls for 24 words, not 99');
     { await DC('seedsigner',12,C.slice(0,50)); ok(/first check that you typed the same rolls in the same order/.test($('dcStatus').textContent)&&/a firmware update can change them/.test($('dcStatus').textContent)&&/If it still differs, do not trust the device with your money/.test($('dcStatus').textContent),'device dice: before "do not trust", the result says to check the rolls and that firmware updates can change the rules'); }
     { $('dcDev').value='bitbox02'; $('dcLen').value='12'; $('dcRolls').value=C.slice(0,50); const run=w.dcCheck(); w.practiceMode(true); await run; const o=$('dcOut').textContent; w.practiceMode(false);
-      ok(/m\/84'\/0'\/0'\/0\/0/.test(o)&&/bc1q/.test(o)&&!/TESTNET|tb1q/.test(o),'device dice: practice mode switched on during the check: the result is still one network, labelled correctly'); }
+      ok(o===''||(/m\/84'\/0'\/0'\/0\/0/.test(o)&&/bc1q/.test(o)&&!/TESTNET|tb1q/.test(o)),'device dice: practice mode switched on during the check: no result of the old network stays on screen (fixes release: it is cleared), and never a mixed one'); }
     ok(await DC('keystone',12,C+C+C.slice(0,57))===''&&/^Keystone takes at most 256 rolls: remove 1\.$/.test($('dcStatus').textContent),'device dice: Keystone takes at most 256 rolls');
     { const m=dcExp(C.slice(0,50),12,false); await DC('bitbox02',12,C.slice(0,50)); const o=$('dcOut').textContent;
       ok(/^TEST ONLY: these words are not secret\. Never send money to this wallet\./.test(o)&&o.includes(adS(m,'',0,'bc'))&&/BitBox02 takes no dice rolls\. To check that it uses the words you give it, restore these 12 test words/.test($('dcStatus').textContent)&&/test once with your own throwaway rolls too/.test($('dcStatus').textContent),'device dice: BitBox02 restores the test words and compares the first receive address; the public card rolls are flagged');
@@ -1889,6 +1889,78 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(/Family: open voidforge\.html, press I FOUND A BITCOIN BACKUP\./.test(html),'Heir mode: the printed backup plan points family to it');
     { const names=w.eval('DICT').map(e=>e[0]); ok(['Browser extension','Heir mode','Wallet Detective'].every(n=>names.includes(n)),'dictionary: Browser extension, Heir mode and Wallet Detective'); }
     w.close(); }
+  { // fixes release (v2.8.1): the full review's findings and the Test upgrade's. Expected values from @scure and btc-signer.
+    const {mnemonicToSeedSync}=require('@scure/bip39'); const {HDKey}=require('@scure/bip32'); const btc=require('@scure/btc-signer');
+    const sleep=ms=>new Promise(x=>setTimeout(x,ms)), r=load(); await r.ready(); const $=r.$, w=r.w, AB='abandon '.repeat(11)+'about';
+    const root=HDKey.fromMasterSeed(mnemonicToSeedSync(AB,'')), fp=root.fingerprint, H=0x80000000, k=(p)=>root.derive(p).publicKey, att=HDKey.fromMasterSeed(nc.randomBytes(32)).derive('m/0/0').publicKey;
+    const PSBT=async(tx,ver=0,words='',net='main')=>{ $('phrase').value=words; $('verifyPass').value=''; $('psbtInput').value=Buffer.from(tx.toPSBT(ver)).toString('base64'); $('psbtNet').value=net; await w.runPsbt(); return {out:$('psbtOut').textContent, st:$('psbtStatus').textContent}; };
+    const mk=()=>{ const t=new btc.Transaction(); t.addInput({txid:nc.randomBytes(32), index:0, witnessUtxo:{script:btc.p2wpkh(k("m/84'/0'/0'/0/0")).script, amount:150000n}}); return t; };
+    // 1. PSBT change marks (review H1)
+    { const t=mk(), path=(c,i)=>[84+H,H,H,c,i];
+      t.addOutput({script:btc.p2wpkh(k("m/84'/0'/0'/1/0")).script, amount:50000n, bip32Derivation:[[k("m/84'/0'/0'/1/0"),{fingerprint:fp, path:path(1,0)}]]});
+      t.addOutput({script:btc.p2wpkh(att).script, amount:99000n, bip32Derivation:[[att,{fingerprint:fp, path:path(1,1)}]]});
+      let x=await PSBT(t);
+      ok(!/matches the wallet typed above/.test(x.out)&&(x.out.match(/NOT checked: such a mark can be forged/g)||[]).length===2&&/The change marks were NOT checked/.test(x.out),'PSBT change: without the words, a change mark is called unchecked and forgeable, never "matches the wallet"');
+      x=await PSBT(t,0,AB);
+      ok(/OUTPUT 0[\s\S]*CHANGE, CHECKED: paid to this wallet's own key at m\/84'\/0'\/0'\/1\/0/.test(x.out)&&/OUTPUT 1[\s\S]*WARNING: marked as this wallet's change \(fingerprint 73c5da0a\), but it is NOT paid to this wallet's key\. Do not sign\./.test(x.out)&&/FAIL  1 output claims to be this wallet's change but is NOT paid/.test(x.out)&&/VERDICT: NO CLEAN VERDICT/.test(x.out),'PSBT change: with the words typed, real change is checked and a forged mark (attacker key, victim fingerprint) fails the verdict'); }
+    { const t=mk(); t.addOutput({script:btc.p2wpkh(att).script, amount:99000n, bip32Derivation:[[k("m/84'/0'/0'/1/2"),{fingerprint:fp, path:[84+H,H,H,1,2]}]]});
+      const x=await PSBT(t,0,AB); ok(/Do not sign/.test(x.out)&&/NO CLEAN VERDICT/.test(x.out),'PSBT change: the wallet\'s real key record on a single-key output paid elsewhere is a forged mark'); }
+    { const t=mk(), kt=root.derive("m/86'/0'/0'/1/0"), xo=kt.publicKey.slice(1);
+      t.addOutput({script:btc.p2tr(xo).script, amount:60000n, tapBip32Derivation:[[xo,{hashes:[], der:{fingerprint:fp, path:[86+H,H,H,1,0]}}]]});
+      const x=await PSBT(t,0,AB); ok(/CHANGE, CHECKED: paid to this wallet's own key at m\/86'\/0'\/0'\/1\/0/.test(x.out),'PSBT change: Taproot change (tap key record) is checked against the tweaked key'); }
+    { const t=mk(), other=HDKey.fromMasterSeed(nc.randomBytes(32)).derive("m/48'/0'/0'/2'/0/0").publicKey, mine=k("m/48'/0'/0'/2'/0/0");
+      t.addOutput({script:btc.p2wsh(btc.p2ms(1,[mine,other].sort(Buffer.compare))).script, amount:70000n, bip32Derivation:[[mine,{fingerprint:fp, path:[48+H,H,H,2+H,0,0]}]]});
+      const x=await PSBT(t,0,AB); ok(/has this wallet's key at m\/48'\/0'\/0'\/2'\/0\/0 among its keys \(a multisig output\)/.test(x.out)&&!/Do not sign/.test(x.out),'PSBT change: a multisig output with this wallet\'s key among others is noted, not called checked or forged'); }
+    // 2. PSBT version 2 (BIP370): the same report as version 0, and the same transaction ID
+    { const t=mk(); t.addOutputAddress(btc.p2wpkh(att).address, 100000n);
+      const v0=await w.inspectPsbt(t.toPSBT(0),'main'), v2=await w.inspectPsbt(t.toPSBT(2),'main');
+      ok(v2.psbtVersion===2&&v2.txid===v0.txid&&v2.fee===v0.fee&&v2.outs[0].address===v0.outs[0].address&&v2.ins[0].txid===v0.ins[0].txid,'PSBT version 2: read like version 0 (outputs, fee, inputs, transaction ID; built with btc-signer)');
+      const x=await PSBT(t,2); ok(/^PSBT version 2\. Transaction version 2/.test(x.out)&&/FEE: 0\.00050000 BTC \(50000 sats\)/.test(x.out),'PSBT version 2: the report says so and shows the fee'); }
+    // 3. the previous transaction must be the one the input spends (review L3)
+    { const prev=new btc.Transaction({allowUnknownOutputs:true}); prev.addOutputAddress('1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2',300000n); prev.addInput({txid:nc.randomBytes(32), index:0, finalScriptSig:new Uint8Array([0])});
+      const t=new btc.Transaction(); t.addInput({txid:prev.id, index:0, nonWitnessUtxo:prev.toBytes(true,false)}); t.addOutputAddress(btc.p2wpkh(att).address, 100000n);
+      const good=t.toPSBT(0), bad=Buffer.from(good), amt=Buffer.alloc(8); amt.writeBigUInt64LE(300000n); const at=bad.indexOf(amt); Buffer.alloc(8).fill(0).copy(bad,at); bad.writeBigUInt64LE(900000n,at);   // the attacker raises the previous amount
+      const okRes=await w.inspectPsbt(good,'main'), res=await w.inspectPsbt(new Uint8Array(bad),'main');
+      $('phrase').value=''; $('psbtInput').value=bad.toString('base64'); $('psbtNet').value='main'; await w.runPsbt(); const out=$('psbtOut').textContent;
+      ok(at>0&&okRes.ins[0].amount===300000n&&res.ins[0].amount===null&&res.ins[0].prevMismatch===true&&/NOT the one being spent/.test(out)&&/NO CLEAN VERDICT/.test(out),'PSBT: a previous transaction changed after the fact gives no amount and fails the verdict (the honest one is read)'); }
+    // 4. the self-test gate covers signed messages and multisig (review M1)
+    { const t2=load(); ok(t2.$('sigBtn').disabled&&t2.$('msStartBtn').disabled,'gate: VERIFY SIGNATURE and START MULTISIG SETUP are off until the self-test passes'); await t2.ready();
+      ok(!t2.$('sigBtn').disabled&&!t2.$('msStartBtn').disabled,'gate: they are on once it passes');
+      t2.w.eval('selfTestState = "fail"'); t2.st.alerts.length=0; await t2.w.verifyMessageUi(); t2.w.msStart();
+      ok(t2.st.alerts.length===2&&!t2.$('sigStatus').textContent,'gate: with a failed self-test, signed-message checking and multisig setup refuse'); t2.w.close(); }
+    // 5. no old result after an edit (review M2, M3)
+    { $('phrase').value=AB; $('verifyPass').value=''; $('checkAddr').value=k("m/84'/0'/0'/0/0")&&btc.p2wpkh(k("m/84'/0'/0'/0/0")).address; $('checkAcct').value='0'; await w.checkAddress(5);
+      const was=$('addrCheckStatus').textContent; $('checkAddr').value='bc1qxyz'; $('checkAddr').dispatchEvent(new w.Event('input'));
+      ok(/^FOUND/.test(was)&&$('addrCheckStatus').textContent==='','Is this address mine: editing the address clears the old FOUND');
+      $('verifyRecorded').value='73c5da0a'; await w.verify(); const m=$('verifyMatch').textContent; $('verifyRecorded').value='deadbeef'; $('verifyRecorded').dispatchEvent(new w.Event('input'));
+      ok(/^MATCH/.test(m)&&$('verifyMatch').textContent==='','VERIFY: editing the recorded value clears the old MATCH'); }
+    // 6. practice mode leaves no address of the old network (review M4)
+    { $('verifyRecorded').value=''; await w.verify(); $('childApp').value='words'; await w.deriveChild(); $('dcDev').value='seedsigner'; $('dcLen').value='12'; $('dcRolls').value=w.eval('DC_CARD_ROLLS').slice(0,50); await w.dcCheck();
+      const before=[$('verifyStatus').textContent,$('childOut').textContent,$('dcOut').textContent].map(s=>/bc1q/.test(s));
+      w.practiceMode(true); await sleep(50);
+      ok(before.every(Boolean)&&!/bc1q/.test($('verifyStatus').textContent)&&/press VERIFY again/.test($('verifyStatus').textContent)&&!$('childOut').textContent&&!$('dcOut').textContent,'practice mode: VERIFY\'s lines, the child seed and the device dice check of the old network are cleared');
+      w.practiceMode(false); }
+    // 7. testnet values in VERIFY's recorded box (review L4)
+    { const tpub=HDKey.fromMasterSeed(mnemonicToSeedSync(AB,''),{private:0x04358394,public:0x043587cf}).derive("m/44'/1'/0'").publicExtendedKey, tb=btc.p2tr(root.derive("m/86'/1'/0'/0/2").publicKey.slice(1),undefined,btc.TEST_NETWORK).address;
+      $('verifyRecorded').value=tpub; await w.verify(); const a=$('verifyMatch').textContent; $('verifyRecorded').value=tb; await w.verify(); const b=$('verifyMatch').textContent;
+      ok(/^MATCH \(without passphrase\)/.test(a)&&/account key at m\/44'\/1'\/0'/.test(a)&&/^MATCH \(without passphrase\)/.test(b),'VERIFY: a tpub and a tb1p address from the wallet app are recognized and matched on the test network'); $('verifyRecorded').value=''; }
+    // 8. Uprv is a private key (review L2), and Coldcard refuses lopsided rolls (Test upgrade, vendor source)
+    { const uprv=await w.base58check(Uint8Array.from([0x02,0x42,0x85,0xb5,...new Uint8Array(74)])); ok(/^Uprv/.test(uprv)&&(await w.descriptorHasSecret('wsh(sortedmulti(2,'+uprv+'))'))===true,'keys: Uprv (SLIP-132) is known as a private key'); }
+    { const sk='1'.repeat(20)+'23456'.repeat(6); $('dcDev').value='coldcard'; $('dcLen').value='12'; $('dcRolls').value=sk; await w.dcCheck();
+      ok(/^Coldcard refuses these rolls: 1 is 20 of the 50 rolls, more than 30%/.test($('dcStatus').textContent)&&!$('dcOut').textContent,'device dice: Coldcard refuses rolls where one face is over 30%, as its code does');
+      $('dcDev').value='keystone'; await w.dcCheck(); ok(/Keystone will warn that they look uneven; it still makes the words/.test($('dcStatus').textContent)&&!!$('dcOut').textContent,'device dice: Keystone warns about such rolls but still makes the words'); }
+    // 9. FORGE: a roll typed while the words are worked out clears them (review L1); the words come from memory, not the screen (L6)
+    { w.clearAll(); w.showTab('make'); const e=w.document.querySelector('input[name=words][value="12"]'); e.checked=true; e.onchange();
+      $('rolls').value='3'.repeat(25)+'4'.repeat(25); $('rolls').oninput(); const g=w.generate(); $('rolls').value+='5'; await g;
+      ok(!w.hasSeed()&&/You changed the rolls/.test($('genResult').textContent),'FORGE: a roll typed while the words are worked out clears them at once');
+      $('rolls').value='3'.repeat(25)+'4'.repeat(25); $('rolls').oninput(); await w.generate(); const words=$('genResult').textContent.split('\n')[0];
+      $('genResult').firstChild.textContent='zoo '.repeat(11)+'wrong'; ok(w.printSrc('make').words.join(' ')===words,'seed words: printing uses the words in memory, not text changed on the screen'); }
+    // 10. CLEAR ALL also empties the public boxes (review L5), and the wipe leaves no rolls or passphrase in memory (Test upgrade, memory test)
+    { for(const id of ['psbtInput','cmpA','cmpB','sigAddr','sigMsg','sigSig','reuseIn','wpIn','payA','payB','dlPaste']) $(id).value='x';
+      $('passphrase').value=$('passphrase2').value='Secret1'; await w.generate(); w.clearAll(); await sleep(20);
+      ok(['psbtInput','cmpA','cmpB','sigAddr','sigMsg','sigSig','reuseIn','wpIn','payA','payB','dlPaste'].every(id=>$(id).value===''),'CLEAR ALL empties the transaction, signature, descriptor, pay-check and download-check boxes');
+      ok(w.eval('seedSig')===null&&w.eval('passKey')===null&&w.eval('exCtx')===null&&w.eval('madeMnemonic')==='','CLEAR ALL leaves no rolls, passphrase or words in the page\'s state'); }
+    r.w.close(); }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
 

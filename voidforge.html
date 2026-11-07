@@ -15,7 +15,7 @@
 var VF_OWN_DATA = ["1p-ignore", "addr", "bwignore", "c", "form-type", "g", "gs", "lpignore", "m", "meta", "method", "n", "net", "s", "seed", "tab", "text", "tip", "v", "w"];
 window.vfWatchSeen = []; window.vfOwnEls = [document.currentScript];
 try {
-  new MutationObserver(function(rs){
+  new MutationObserver(function(rs){ try {   // fixes release: never throw, also while the page is closing
     var seen = window.vfWatchSeen, hit = false;
     for(var i = 0; i < rs.length; i++){
       var r = rs[i];
@@ -27,7 +27,7 @@ try {
       }
     }
     if(hit && window.vfWatchPing) window.vfWatchPing();
-  }).observe(document.documentElement, {childList: true, subtree: true, attributes: true});
+  } catch(e) {} }).observe(document.documentElement, {childList: true, subtree: true, attributes: true});
 } catch(e) {}
 // v2.4.0: scripts can run, so keep the "script is NOT running" notice and the half-built page hidden while the main script loads
 // (on a slow phone they used to flash before the start notice). If the main script then fails to run, both come back.
