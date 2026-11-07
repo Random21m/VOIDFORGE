@@ -180,6 +180,7 @@ for (const [m, n] of [[2, 2], [2, 3], [3, 5], [5, 7], [6, 9], [7, 10], [15, 15]]
   }, [m, n, cos]);
   await sheet('multisig ' + m + '-of-' + n, () => msPrint());
 }
+await p.evaluate(() => msReset());   // practice mode (8b) can only change with no multisig wallet open
 
 // 7. Light theme, and the CHECK A BACKUP sheets with a passphrase.
 await p.evaluate(() => toggleTheme());
@@ -221,15 +222,25 @@ await sheet('backup plan, short (one copy, worst case)', () => printPlan());
 ok(await p.evaluate(() => /backup plan/i.test(document.getElementById('planBox').textContent) && document.getElementById('plTest').children.length >= 5), 'backup plan: the stress test is on the page');
 await p.click('#tab-make');
 await p.evaluate(() => practiceMode(true));
-await p.waitForFunction(() => /tb1q/.test(document.getElementById('practiceAddr').textContent));
-for (const [label, fn] of [['backup sheet', () => printSeed()], ['summary sheet', () => printSummary()], ['stamp sheet', () => printStamp()], ['roll sheet 24 +50', () => printRollSheet()]])
+await p.waitForFunction(() => /TEST NETWORK for practice/.test(document.getElementById('address').textContent) && /^tb1q/.test(document.getElementById('wFirst').textContent) && /^tb1q/.test(document.getElementById('addrList').textContent));
+for (const [label, fn] of [['summary sheet (test-network first address)', () => printSummary()], ['backup sheet (prints as usual)', () => printSeed()]])
   await sheet('practice mode: ' + label, fn);
-await p.evaluate(() => refreshWatch()); await p.evaluate(() => showQr('wDescR', 'receive descriptor'));
+ok(await p.evaluate(() => { printSummary(); const t = document.getElementById('printOnly').textContent; window.dispatchEvent(new Event('afterprint')); return /First receive address, TEST NETWORK for practice \(BIP84, m\/84'\/1'\/0'\/0\/0\): tb1q/.test(t); }), 'practice mode: the summary sheet gives the test-network first address, and says so');
+await p.evaluate(() => document.querySelector('#addrList button.qr-mini').click());
+await sheet('practice mode: address QR', () => printAddrQr('aq'));
+ok(await p.evaluate(() => { printAddrQr('aq'); const t = document.getElementById('printQr').textContent; window.dispatchEvent(new Event('afterprint')); hideAddrQr('aq'); return /^VOIDFORGE RECEIVE ADDRESS \(TESTNET\)/.test(t) && /Path: m\/84'\/1'\/0'\/0\/0/.test(t); }), 'practice mode: a printed address sheet says TESTNET');
+await p.evaluate(() => showQr('wDescR', 'receive descriptor'));
 await sheet('practice mode: descriptor QR', () => printShownQr());
-await p.emulateMedia({ media: 'print' });
-ok(await p.evaluate(() => { printSummary(); const v = getComputedStyle(document.getElementById('printOnly'), '::before').content; return /PRACTICE MODE: TEST NETWORK/.test(v); }), 'practice mode: the printed sheet starts with the PRACTICE line');
-await p.emulateMedia({ media: null });
-await p.evaluate(() => { window.dispatchEvent(new Event('afterprint')); practiceMode(false); });
+await p.evaluate(() => { window.dispatchEvent(new Event('afterprint')); hideQr(); practiceMode(false); });
+await p.waitForFunction(() => /^bc1q/.test(document.getElementById('addrList').textContent));
+// Secrets not selectable (v2.5.0): in a real browser, select-all and copy leave out the seed words and the 4-letter grid.
+ok(await p.evaluate(() => {
+  // (checked by hand: with the user-select rule removed, all 12 words of the grid are in the selection)
+  const words = [...document.querySelectorAll('#wordGrid .wcell span')].map((e) => e.textContent.trim()), sel = getSelection();
+  sel.selectAllChildren(document.body); const s = String(sel); sel.removeAllRanges();
+  const lines = new Set(s.split('\n').map((x) => x.trim()));
+  return hasSeed() && words.length >= 12 && words.every((w) => /^[a-z]{3,8}$/.test(w)) && getComputedStyle(document.getElementById('wordGrid')).display !== 'none' && s.length > 1000 && words.filter((w) => lines.has(w)).length === 0;
+}), 'secrets: select-all in Chromium leaves out every seed word in the word grid');
 
 // 9. First paint (v2.4.0): while the main script is still loading (a slow phone takes a second or two), nothing red may
 // flash: the script-not-running notice and the half-built page stay hidden, and the start notice is already in the page.
