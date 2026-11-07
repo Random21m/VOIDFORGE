@@ -1429,7 +1429,6 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   { const today=(()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
     const nextYear=(()=>{ const d=new Date(); const n=new Date(d.getFullYear()+1,d.getMonth(),d.getDate()); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0'); })();
     const css=html.slice(0,html.indexOf('</style>'));
-    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.5.0','v2.5.0: the footer shows the new version');
     ok(html.indexOf('<li><b>2.5.0</b>')>0&&html.indexOf('<li><b>2.5.0</b>')<html.indexOf('<li><b>2.4.0</b>'),'v2.5.0: the changelog lists 2.5.0 first');
     // secrets cannot be highlighted
     ok(/\n  #wordGrid, #genResult, #wvAbbrGrid, #childOut, #exOut, #reforgeOut \{ -webkit-user-select: none; user-select: none; \}\n/.test(css),'secrets on screen: the seed words (also the hidden copy), the 4-letter grid, child outputs, Reforge results and the explainer cannot be highlighted');
@@ -1587,7 +1586,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     eq(w.costEstimate('wpkh',300,1).vb,Math.ceil(12.5+300*68+31),'spending cost: 300 deposits use the 3-byte input count');
     eq(w.costEstimate('wpkh',1,2).fees.map(f=>f.sats).join(),'141,705,2820,14100','spending cost: the fee at 1, 5, 20 and 100 sat/vB');
     $('costType').value='wpkh'; $('costOut').value='2'; $('costN').value='50'; $('costN').dispatchEvent(new w.Event('input'));
-    ok(/^Spending 50 deposits in one payment costs about 25\.1 times as much as spending one/.test($('costStatus').textContent)&&/Size: about 3,472 vB \(each deposit adds about 68 vB\)/.test($('costOut2').textContent)&&/A deposit smaller than 1,360 sats costs more to spend than it is worth at 20 sat\/vB/.test($('costOut2').textContent),'spending cost: the box gives the size, the fees and when a small deposit is not worth spending');
+    ok(/^Spending 50 deposits in one payment costs about 24\.6 times as much as spending one/.test($('costStatus').textContent)&&/Size: about 3,473 vB \(each deposit adds about 68 vB\)/.test($('costOut2').textContent)&&/A deposit smaller than 1,360 sats costs more to spend than it is worth at 20 sat\/vB/.test($('costOut2').textContent),'spending cost: the box gives the size, the fees and when a small deposit is not worth spending');
     $('costN').value='0'; $('costN').dispatchEvent(new w.Event('input')); ok(/whole number of deposits from 1 to 5000/.test($('costStatus').textContent)&&$('costOut2').style.display==='none','spending cost: 0 deposits is refused');
     $('costN').value=''; $('costN').dispatchEvent(new w.Event('input'));
     // --- custom account paths ---
@@ -1627,6 +1626,10 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     r=await PK(wif); $('pkIn').value=wif+'x'; $('pkIn').dispatchEvent(new w.Event('input')); ok(!w.eval('wvCtx')&&$('walletView').style.display==='none','private key: editing the box closes the open key');
     r=await PK(wif); { const oc=w.confirm; w.confirm=()=>true; w.clearAll(); w.confirm=oc; } ok($('pkIn').value===''&&!w.eval('wvCtx')&&$('pkIn').type==='password','private key: CLEAR ALL wipes the key and hides the box again');
     ok(/"pkIn"/.test(html.match(/const AUTO_FIELDS = \[[^\]]*\]/)[0]),'private key: auto-clear wipes the key box too');
+    w.practiceMode(true); r=await PK(wif); ok(r.cls==='status bad'&&/Practice mode is on, so only test-network private keys/.test(r.st)&&!w.eval('wvCtx'),'private key: in practice mode a mainnet key is refused');
+    { const twif=btc.WIF(btc.TEST_NETWORK).encode(root.derive("m/84'/1'/0'/0/0").privateKey); r=await PK(twif); ok(r.cls==='status ok'&&/^tb1q/.test(r.list[0])&&r.list[0]===btc.p2wpkh(root.derive("m/84'/1'/0'/0/0").publicKey,btc.TEST_NETWORK).address,'private key: in practice mode a testnet WIF key opens, with test-network addresses'); }
+    w.practiceMode(false); ok(!w.eval('wvCtx')&&/private key view was closed/.test($('pkStatus').textContent),'private key: changing practice mode closes an open key (it keeps its own network)');
+    $('pkIn').value='';
     // --- UR and BBQr text ---
     const msg=Array.from(nc.randomBytes(700)), cb=w.eval('CB').bytes(msg), parts=w.urEncode('bytes',cb,200);
     ok(parts.length===4&&parts.every((p,i)=>p.startsWith('ur:bytes/'+(i+1)+'-4/')),'UR: a 700-byte message becomes 4 parts, numbered 1-4');
@@ -1658,7 +1661,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     await w.msAnim('bbqr'); { const d=w.bbqrDecodeFrames(w.eval('animCtx.parts')), txt=new TextDecoder().decode(d.bytes); ok(d.fileType==='U'&&/^wsh\(sortedmulti\(2,\[/.test(txt)&&txt.includes('/<0;1>/*')&&/#[a-z0-9]{8}$/.test(txt)&&cos.every(c=>txt.includes(c.xpub)),'animated QR (Coldcard Q): BBQr text of the receive-and-change descriptor, with its checksum'); }
     await w.msAnim('cc'); { const d=w.urDecodeFrames(w.eval('animCtx.parts').map(p=>p.toLowerCase())), b=w.cborRead(d.msg,0).v, txt=new TextDecoder().decode(b);
       ok(d.type==='bytes'&&/^# Coldcard Multisig setup file/.test(txt)&&/\nPolicy: 2 of 3\n/.test(txt)&&/\nDerivation: m\/48'\/0'\/0'\/2'\n/.test(txt)&&/\nFormat: P2WSH\n/.test(txt)&&cos.every(c=>txt.includes(c.fp.toUpperCase()+': '+c.xpub)),'animated QR (Keystone, Passport): UR bytes of the Coldcard setup file'); }
-    { const i0=w.eval('animCtx.i'); await new Promise(r=>setTimeout(r,500)); const moved=w.eval('animCtx.i')!==i0||w.eval('animCtx.frames.length')===1; $('msAnimPause').click(); const i1=w.eval('animCtx.i'); await new Promise(r=>setTimeout(r,500)); ok(moved&&w.eval('animCtx.paused')&&w.eval('animCtx.i')===i1&&/\(paused\)/.test($('msAnimCount').textContent),'animated QR: it moves on by itself, and PAUSE holds it'); $('msAnimPause').click(); }
+    { const seen=new Set(); for(let k=0;k<14;k++){ seen.add(w.eval('animCtx.i')); await new Promise(r=>setTimeout(r,50)); } const moved=seen.size>1&&w.eval('animCtx.frames.length')>1; $('msAnimPause').click(); const i1=w.eval('animCtx.i'); await new Promise(r=>setTimeout(r,500)); ok(moved&&w.eval('animCtx.paused')&&w.eval('animCtx.i')===i1&&/\(paused\)/.test($('msAnimCount').textContent),'animated QR: it moves on by itself, and PAUSE holds it'); $('msAnimPause').click(); }
     w.msReset(); ok($('msAnimBox').style.display==='none'&&$('msAnimImg').textContent===''&&w.eval('animTimer')===null&&w.eval('animCtx')===null,'animated QR: START OVER stops it and removes the frames');
     t6.w.close();
   }

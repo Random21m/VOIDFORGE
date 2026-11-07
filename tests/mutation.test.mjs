@@ -19,6 +19,11 @@ import { LifeHash } from 'lifehash';
 import * as btc from '@scure/btc-signer';
 import { hex as bhex } from '@scure/base';
 import { loadPage, ready, readHtml, makeReporter } from './harness.mjs';
+import { createRequire } from 'node:module';
+import zlib from 'node:zlib';
+const requireC = createRequire(import.meta.url);
+const { UR, UREncoder } = requireC('@ngraveio/bc-ur');
+const { CryptoOutput } = requireC('@keystonehq/bc-ur-registry');
 
 const R = makeReporter();
 const html = readHtml();
@@ -1854,6 +1859,122 @@ async function probe(w, mutated) {
     $('wNet').value = 'main'; await w.refreshWatch();
     w.print = op; w.alert = oa; w.planClear(); $('verifyPass').value = ''; $('passphrase').value = ''; $('passphrase2').value = ''; w.updateAdvSummary();
   } catch (e) { fails.push('v2.5.0 probe crashed: ' + e.message); }
+  try { // v2.6.0: animated QR (UR + BBQr), UR/BBQr paste, custom paths, private keys read only, check an address before you pay, spending cost
+    const oa = w.alert, oc = w.confirm; w.alert = () => {}; w.confirm = () => true;
+    const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), until = async (f) => { for (let k = 0; k < 100 && !f(); k++) await sleep(50); };
+    const CBx = w.eval('CB'), hx = (b) => Buffer.from(b).toString('hex');
+    const err = (f) => { try { f(); return ''; } catch (e) { return e.message; } };
+    // check an address before you pay
+    const PAY = async (a, b) => { $('payA').value = a; $('payB').value = b; await w.payCompare(); return { st: $('payOut').textContent, cls: $('payOut').className, x: [...$('payDiff').children].map((r2) => r2.querySelectorAll('.pd-x').length).join() }; };
+    const A = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
+    let q = await PAY(A, A.toUpperCase()); if (!/^SAME ADDRESS: all 42 characters match\.$/.test(q.st) || q.cls !== 'status ok') fails.push('pay: a bech32 address in capitals matches');
+    q = await PAY('bitcoin:' + A + '?amount=1', A.slice(0, 10) + ' ' + A.slice(10)); if (!/^SAME ADDRESS/.test(q.st)) fails.push('pay: bitcoin: link and spaces read');
+    q = await PAY(A.slice(0, 8) + 'qqqq' + A.slice(12), A);
+    if (!/^DIFFERENT ADDRESSES: 4 characters differ\./.test(q.st) || !/the first 8 and the last 30 characters match/.test(q.st) || !/The address you are about to pay is not valid/.test(q.st) || q.x !== '4,4' || q.cls !== 'status bad') fails.push('pay: look-alike called out and marked: ' + q.st.slice(0, 80) + ' ' + q.x);
+    q = await PAY(A.slice(0, 41) + 'x', A); if (!/^DIFFERENT ADDRESSES: 1 character differs\./.test(q.st) || /poisoning/.test(q.st)) fails.push('pay: one character, no look-alike warning');
+    q = await PAY('1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2', '1bvbmseystwetqtfn5au4m4gfg7xjanvn2'); if (!/^DIFFERENT/.test(q.st)) fails.push('pay: Base58 is case-sensitive');
+    q = await PAY('bc1qnotanaddress', 'bc1qnotanaddress'); if (!/^The two match, but this is not a valid address you can pay/.test(q.st)) fails.push('pay: a broken address is not payable');
+    q = await PAY(A, ''); if (q.st !== '' || q.x !== '') fails.push('pay: quiet until both boxes are filled');
+    $('payA').value = A; $('payB').value = A; $('payOut').textContent = ''; $('payB').dispatchEvent(new w.Event('input')); await sleep(100); if (!/^SAME/.test($('payOut').textContent)) fails.push('pay: checked while typing');
+    $('payA').value = ''; $('payB').value = ''; await w.payCompare();
+    // what will spending cost later?
+    if (['pkh', 'sh-wpkh', 'wpkh', 'tr'].map((t) => w.costEstimate(t, 1, 2).vb).join() !== '226,166,141,154') fails.push('cost: 1-in 2-out sizes');
+    if (w.costEstimate('wpkh', 300, 1).vb !== Math.ceil(12.5 + 300 * 68 + 31) || w.costEstimate('wpkh', 252, 1).vb !== Math.ceil(10.5 + 252 * 68 + 31)) fails.push('cost: input count bytes');
+    if (w.costEstimate('pkh', 2, 1).vb !== 340) fails.push('cost: legacy has no SegWit marker');
+    if (w.costEstimate('ms23', 1, 2).vb !== 201) fails.push('cost: 2-of-3 multisig (P2WSH) size');
+    if (w.costEstimate('wpkh', 1, 2).fees.map((f) => f.sats).join() !== '141,705,2820,14100') fails.push('cost: fees');
+    $('costType').value = 'wpkh'; $('costOut').value = '2'; $('costN').value = '50'; $('costN').dispatchEvent(new w.Event('input'));
+    if (!/^Spending 50 deposits in one payment costs about 24\.6 times as much as spending one/.test($('costStatus').textContent) || !/Size: about 3,473 vB \(each deposit adds about 68 vB\)/.test($('costOut2').textContent) || !/smaller than 1,360 sats costs more to spend than it is worth at 20 sat\/vB, and smaller than 6,800 sats at 100/.test($('costOut2').textContent) || $('costOut2').style.display !== '') fails.push('cost: the box');
+    $('costN').value = '1'; $('costN').dispatchEvent(new w.Event('input')); if ($('costStatus').textContent !== 'Spending one deposit.') fails.push('cost: one deposit');
+    $('costType').value = 'tr'; $('costType').dispatchEvent(new w.Event('change')); if (!/each deposit adds about 57\.5 vB/.test($('costOut2').textContent)) fails.push('cost: follows the address type');
+    $('costN').value = '5001'; $('costN').dispatchEvent(new w.Event('input')); if (!/from 1 to 5000/.test($('costStatus').textContent) || $('costOut2').style.display !== 'none') fails.push('cost: more than 5000 refused');
+    $('costN').value = ''; $('costN').dispatchEvent(new w.Event('input')); $('costType').value = 'wpkh';
+    // custom account path
+    if (JSON.stringify(w.parsePath("m/0'")) !== '[[0,true]]' || JSON.stringify(w.parsePath('m/44h/0H/1h/7')) !== '[[44,true],[0,true],[1,true],[7,false]]' || w.parsePath('m/x') !== null || w.parsePath('m' + '/1'.repeat(11)) !== null || w.parsePath('m/2147483648') !== null || JSON.stringify(w.parsePath('m' + '/1'.repeat(10))) !== JSON.stringify(Array(10).fill([1, false]))) fails.push('custom path: parsing');
+    const M12 = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+    const refA = (pp, path, type, net) => { const k = HDKey.fromMasterSeed(mnemonicToSeedSync(M12, '')).derive(pp + '/' + path), N = net === 'test' ? btc.TEST_NETWORK : btc.NETWORK; return type === 'pkh' ? btc.p2pkh(k.publicKey, N).address : btc.p2wpkh(k.publicKey, N).address; };
+    const L = () => [...$('wvList').children].map((li) => li.firstChild.textContent);
+    $('phrase').value = M12; await w.openWalletView(M12, ''); await until(() => $('wvList').children.length === 10);
+    $('wvPathIn').value = "m/0'"; $('wvPathIn').dispatchEvent(new w.Event('input')); await w.wvRefresh();
+    if (L()[2] !== refA("m/0'", '0/2', 'wpkh') || !$('wvAcct').disabled || !/m\/0'\/0\/index/.test($('wvPath').textContent)) fails.push('custom path: addresses along it');
+    $('wvChain').value = '1'; await w.wvRefresh(); if (L()[0] !== refA("m/0'", '1/0', 'wpkh')) fails.push('custom path: change addresses'); $('wvChain').value = '0';
+    $('wvPathIn').value = 'm/x'; $('wvPathIn').dispatchEvent(new w.Event('input')); await w.wvRefresh(); if (!/The path must look like/.test($('wvErr').textContent) || L().length) fails.push('custom path: a bad path');
+    $('wvPathIn').value = ''; $('wvPathIn').dispatchEvent(new w.Event('input')); await w.wvRefresh(); if ($('wvAcct').disabled || L()[0] !== 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu') fails.push('custom path: empty goes back to the account');
+    $('wvPathIn').value = "m/0'"; w.clearWalletView(); if ($('wvPathIn').value !== '') fails.push('custom path: cleared with the view');
+    // private keys, read only
+    const PK = async (v) => { $('pkIn').value = v; $('pkIn').dispatchEvent(new w.Event('input')); await w.openPrivateKey(); await until(() => !w.eval('wvCtx') || $('wvList').children.length > 0); return { st: $('pkStatus').textContent, cls: $('pkStatus').className, list: L() }; };
+    const root = HDKey.fromMasterSeed(mnemonicToSeedSync(M12, '')), k0 = root.derive("m/84'/0'/0'/0/0");
+    $('wvType').value = 'tr';
+    q = await PK('zprvAWgYBBk7JR8Gjrh4UJQ2uJdG1r3WNRRfURiABBE3RvMXYSrRJL62XuezvGdPvG6GFBZduosCc1YP5wixPox7zhZLfiUm8aunE96BBa4Kei5');
+    if (q.cls !== 'status ok' || q.list[0] !== 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu' || $('wvFp').textContent !== 'Master fingerprint: 73c5da0a' || $('wvType').value !== 'wpkh') fails.push('private key: zprv as a master key');
+    if (!/^SECRET, read only/.test($('wvBanner').textContent) || $('wvSheetBtn').style.display !== 'none' || !$('wvNet').disabled || !$('walletView').classList.contains('wv-secret')) fails.push('private key: SECRET banner, no sheet, network locked');
+    q = await PK(root.derive("m/44'/0'/0'").privateExtendedKey); $('wvType').value = 'pkh'; await w.wvRefresh();
+    if (!/at depth 3/.test(q.st) || L()[0] !== refA("m/44'/0'/0'", '0/0', 'pkh')) fails.push('private key: an account xprv');
+    q = await PK(btc.WIF().encode(k0.privateKey));
+    if (q.list.join() !== [btc.p2wpkh(k0.publicKey).address, btc.p2tr(k0.publicKey.slice(1)).address, btc.p2sh(btc.p2wpkh(k0.publicKey)).address, btc.p2pkh(k0.publicKey).address].join()) fails.push('private key: a compressed WIF gives 4 addresses');
+    q = await PK('5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ'); if (q.list.join() !== '1GAehh7TsJAHuUAeKZcXf5CnwuGuGgyX2S') fails.push('private key: the uncompressed WIF example');
+    q = await PK('S6c56bnXQiBjk9mqSYE7ykVQ7NzrRy'); if (q.list.join() !== '1CciesT23BNionJeXrbxmjc7ywfiyM4oLW') fails.push('private key: the mini key example');
+    q = await PK('S6c56bnXQiBjk9mqSYE7ykVQ7NzrRz'); if (q.cls !== 'status bad' || !/built-in check fails/.test(q.st) || w.eval('wvCtx')) fails.push('private key: a mini key with a typo refused');
+    q = await PK('xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8'); if (q.cls !== 'status bad' || !/public key/.test(q.st)) fails.push('private key: an xpub refused');
+    const WIF0 = btc.WIF().encode(k0.privateKey);
+    await PK(WIF0); $('pkIn').value = WIF0 + 'x'; $('pkIn').dispatchEvent(new w.Event('input')); if (w.eval('wvCtx')) fails.push('private key: editing the box closes it');
+    await PK(WIF0); w.clearAll(); if ($('pkIn').value !== '' || $('pkIn').type !== 'password' || w.eval('wvCtx')) fails.push('private key: CLEAR ALL wipes it');
+    await run('dice', 12, D50); await PK(WIF0); w.autoWipe('test'); if ($('pkIn').value !== '') fails.push('private key: auto-clear wipes it');
+    w.practiceMode(true); q = await PK(WIF0); if (q.cls !== 'status bad' || !/only test-network private keys/.test(q.st) || w.eval('wvCtx')) fails.push('private key: mainnet refused in practice mode');
+    { const t0 = root.derive("m/84'/1'/0'/0/0"); q = await PK(btc.WIF(btc.TEST_NETWORK).encode(t0.privateKey)); if (q.list[0] !== btc.p2wpkh(t0.publicKey, btc.TEST_NETWORK).address) fails.push('private key: a testnet WIF in practice mode'); }
+    w.practiceMode(false); if (w.eval('wvCtx') || !/private key view was closed/.test($('pkStatus').textContent)) fails.push('private key: closed when practice mode changes');
+    $('pkIn').value = ''; w.clearWalletView();
+    // UR
+    const msg = Array.from(nc.randomBytes(700)), cb = CBx.bytes(msg), parts = w.urEncode('bytes', cb, 200);
+    { const ref = new UREncoder(UR.fromBuffer(Buffer.from(msg)), 200, 0, 10), rp = []; for (let i = 0; i < ref.fragmentsLength; i++) rp.push(ref.nextPart()); if (JSON.stringify(rp) !== JSON.stringify(parts)) fails.push('UR: parts equal @ngraveio/bc-ur'); }
+    { const ref = new UREncoder(UR.fromBuffer(Buffer.from([1, 2, 3])), 200, 0, 10); if (ref.nextPart() !== w.urEncode('bytes', CBx.bytes([1, 2, 3]), 200)[0]) fails.push('UR: a single part equals @ngraveio/bc-ur'); }
+    if (hx(w.urDecodeFrames([parts[2], parts[0], parts[3].toUpperCase(), parts[1], parts[0]]).msg) !== hx(cb)) fails.push('UR: parts in any order, repeated, any case');
+    if (!/UR parts missing: 2, 4 of 4/.test(err(() => w.urDecodeFrames([parts[0], parts[2]])))) fails.push('UR: missing parts named');
+    if (!/different types/.test(err(() => w.urDecodeFrames([parts[0], w.urEncode('crypto-psbt', cb, 200)[1]])))) fails.push('UR: types not mixed');
+    { const seg = parts[1].split('/'), body = w.bytewordsMinDecode(seg[2]), mid = 20; const bad1 = seg.slice(0, 2).join('/') + '/' + seg[2].slice(0, mid * 2) + (seg[2].slice(mid * 2, mid * 2 + 2) === 'ae' ? 'ad' : 'ae') + seg[2].slice(mid * 2 + 2);
+      if (!/a part's checksum does not match/.test(err(() => w.urDecodeFrames([parts[0], bad1, parts[2], parts[3]])))) fails.push('UR: a part copied wrongly is caught by its own checksum');
+      const r2 = w.cborRead(body, 0).v; r2[4][5] ^= 1; const reb = CBx.arr([CBx.uint(r2[0]), CBx.uint(r2[1]), CBx.uint(r2[2]), CBx.uint(r2[3]), CBx.bytes(Array.from(r2[4]))]), bad2 = seg.slice(0, 2).join('/') + '/' + w.bytewordsMin(reb);
+      if (!/the joined UR parts do not check out/.test(err(() => w.urDecodeFrames([parts[0], bad2, parts[2], parts[3]])))) fails.push('UR: the joined message is checked');
+      if (!/part 2 appears twice with different contents/.test(err(() => w.urDecodeFrames([parts[0], parts[1], bad2, parts[2], parts[3]])))) fails.push('UR: a part that changes is caught'); }
+    // BBQr and raw deflate
+    const bb = w.bbqrEncode('P', Uint8Array.from(msg), 480);
+    if (bb.length !== 3 || !bb.every((p, i) => p.startsWith('B$2P03' + String(i).padStart(2, '0'))) || !bb.slice(0, -1).every((p) => p.length === bb[0].length)) fails.push('BBQr: header and even parts');
+    if (hx(w.bbqrDecodeFrames([bb[2], bb[0], bb[1]]).bytes) !== hx(msg)) fails.push('BBQr: parts in any order');
+    { const big = Uint8Array.from(nc.randomBytes(2000)), many = w.bbqrEncode('U', big, 160); if (many.length < 11 || !many[10].startsWith('B$2U' + many.length.toString(36).toUpperCase().padStart(2, '0') + '0A') || hx(w.bbqrDecodeFrames(many).bytes) !== hx(big)) fails.push('BBQr: part numbers in base 36'); }
+    if (!/BBQr parts missing: 2 of 3/.test(err(() => w.bbqrDecodeFrames([bb[0], bb[2]])))) fails.push('BBQr: missing parts named');
+    if (!/different QR codes/.test(err(() => w.bbqrDecodeFrames([bb[0], w.bbqrEncode('T', Uint8Array.from(msg), 480)[1]])))) fails.push('BBQr: parts of two codes not mixed');
+    for (const [lvl, data] of [[0, 'stored block test '.repeat(30)], [1, 'abcabcabcabc'], [6, 'wsh(sortedmulti(2,'.repeat(60) + 'x'.repeat(300)], [9, Array.from({ length: 3000 }, (_, i) => String.fromCharCode(97 + (i * i) % 23)).join('')]]) {
+      const z = zlib.deflateRawSync(Buffer.from(data), { windowBits: 10, level: lvl }), got = new TextDecoder().decode(w.bbqrDecodeFrames(['B$ZU0100' + w.base32Encode(z)]).bytes);
+      if (got !== data) fails.push('BBQr: Z parts (deflate level ' + lvl + ')'); }
+    if (Buffer.from(w.bbqrDecodeFrames(['B$HT0100' + Buffer.from('0200').toString('hex').toUpperCase()]).bytes).toString() !== '0200') fails.push('BBQr: H parts');
+    if (!/mixes QR parts with other text/.test(err(() => w.qrTextDecode(parts[0] + '\nhello'))) || w.qrTextDecode('cHNidP8B') !== null) fails.push('QR text: mixed text refused, other text left alone');
+    // PSBT pasted as QR parts
+    { const known = mutated.match(/inspectPsbt\(psbtFromText\("(cHNidP8B[A-Za-z0-9+/=]+)"\)/)[1], raw = Buffer.from(known, 'base64');
+      if (hx(w.psbtFromText(w.urEncode('crypto-psbt', CBx.bytes(Array.from(raw)), 40).join('\n'))) !== hx(raw)) fails.push('PSBT paste: UR crypto-psbt parts');
+      if (hx(w.psbtFromText(w.bbqrEncode('P', raw, 160).join(' '))) !== hx(raw)) fails.push('PSBT paste: BBQr P parts');
+      if (!/not a PSBT \(crypto-psbt\)/.test(err(() => w.psbtFromText(w.urEncode('crypto-output', CBx.bytes([1, 2]), 200)[0])))) fails.push('PSBT paste: other UR types refused');
+      if (!/file type J, not a PSBT/.test(err(() => w.psbtFromText(w.bbqrEncode('J', raw, 160).join(' '))))) fails.push('PSBT paste: other BBQr types refused');
+      if (!/mixes QR parts/.test(err(() => w.psbtFromText(w.bbqrEncode('P', raw, 160)[0] + ' ' + known)))) fails.push('PSBT paste: mixed text refused'); }
+    // animated QR for a multisig wallet, and crypto-output read back with @keystonehq/bc-ur-registry
+    const cosR = Array.from({ length: 3 }, () => { const m = HDKey.fromMasterSeed(nc.randomBytes(32)), a = m.derive("m/48'/0'/0'/2'"); return { fp: m.fingerprint.toString(16).padStart(8, '0'), xpub: a.publicExtendedKey, pfp: a.parentFingerprint.toString(16).padStart(8, '0') }; });
+    await w.eval(`(async (cos) => { ms = { m: 2, n: 3, type: 'ms-wsh', net: 'main', account: 0, keys: [], mode: 'paste', busy: false, done: false }; for (const c of cos) ms.keys.push({ fp: c.fp, path: '48h/0h/0h/2h', key: await parseExtendedKey(c.xpub), xpub: c.xpub, src: 'pasted' }); await msFinish(); })`)(cosR);
+    const KEYS = w.eval('ms.keys').map((k) => ({ fp: k.fp, path: k.path, key: k.key }));
+    { const out = CryptoOutput.fromCBOR(Buffer.from(w.cryptoOutputMultisig('ms-wsh', 2, KEYS, 'main'))), ks = out.getMultiKey().getKeys();
+      if (JSON.stringify(out.getScriptExpressions().map((e) => e.getExpression())) !== '["wsh","sortedmulti"]' || out.getMultiKey().getThreshold() !== 2 || !ks.every((k, i) => k.getBip32Key() === cosR[i].xpub && k.getOrigin().getSourceFingerprint().toString('hex') === cosR[i].fp && k.getParentFingerprint().toString('hex') === cosR[i].pfp)) fails.push('crypto-output: read back by bc-ur-registry');
+      const sh = CryptoOutput.fromCBOR(Buffer.from(w.cryptoOutputMultisig('ms-sh-wsh', 2, KEYS, 'main'))); if (JSON.stringify(sh.getScriptExpressions().map((e) => e.getExpression())) !== '["sh","wsh","sortedmulti"]') fails.push('crypto-output: sh(wsh()) wrapped');
+      const tk = CryptoOutput.fromCBOR(Buffer.from(w.cryptoOutputMultisig('ms-wsh', 2, KEYS, 'test'))).getMultiKey().getKeys()[0]; if (tk.getUseInfo().getNetwork() !== 1) fails.push('crypto-output: testnet coin info'); }
+    if (!/Format: P2SH-P2WSH/.test(await w.coldcardMultisigText('ms-sh-wsh', 2, KEYS)) || !/\nPolicy: 2 of 3\n/.test(await w.coldcardMultisigText('ms-wsh', 2, KEYS))) fails.push('Coldcard file: format and policy');
+    await w.msAnim('ur');
+    { const P = w.eval('animCtx.parts'), d = w.urDecodeFrames(P.map((p) => p.toLowerCase())), F = w.eval('animCtx.frames');
+      if ($('msAnimBox').style.display !== '' || d.type !== 'crypto-output' || hx(d.msg) !== hx(w.cryptoOutputMultisig('ms-wsh', 2, KEYS, 'main'))) fails.push('animated QR: UR crypto-output');
+      if (!P.every((p) => p === p.toUpperCase()) || !F.every((f) => f.length === F[0].length) || F.length < 2) fails.push('animated QR: capital letters, every frame the same size'); }
+    await w.msAnim('bbqr'); { const d = w.bbqrDecodeFrames(w.eval('animCtx.parts')), t = new TextDecoder().decode(d.bytes); if (d.fileType !== 'U' || !t.includes('/<0;1>/*') || !/#[a-z0-9]{8}$/.test(t)) fails.push('animated QR: BBQr descriptor'); }
+    await w.msAnim('cc'); { const d = w.urDecodeFrames(w.eval('animCtx.parts').map((p) => p.toLowerCase())), t = new TextDecoder().decode(w.cborRead(d.msg, 0).v); if (d.type !== 'bytes' || t !== await w.coldcardMultisigText('ms-wsh', 2, KEYS)) fails.push('animated QR: Coldcard file in UR bytes'); }
+    { const seen = new Set(); for (let k = 0; k < 14; k++) { seen.add(w.eval('animCtx.i')); await sleep(50); } const moved = seen.size > 1; w.animPause($('msAnimPause')); const i1 = w.eval('animCtx.i'); await sleep(600);
+      if (!moved || w.eval('animCtx.i') !== i1 || !/\(paused\)/.test($('msAnimCount').textContent)) fails.push('animated QR: moves by itself, PAUSE holds it'); w.animPause($('msAnimPause')); }
+    w.msReset(); if ($('msAnimBox').style.display !== 'none' || $('msAnimImg').textContent !== '' || w.eval('animTimer') !== null) fails.push('animated QR: START OVER stops it');
+    w.alert = oa; w.confirm = oc;
+  } catch (e) { fails.push('v2.6.0 probe crashed: ' + e.message); }
   try { // v2.3.0 Keystone dice rules (expected words from @scure and Node's SHA-256 of the rolls with every 6 as 0)
     const rules = (v) => { $('diceRules').value = v; $('diceRules').dispatchEvent(new w.Event('change')); };
     const mk = (r, wc) => entropyToMnemonic(sha(r.replace(/6/g, '0')).slice(0, wc === 24 ? 32 : 16), wordlist);
@@ -2290,7 +2411,7 @@ const M = [
   ['qr: column 6 not skipped', 'if(right===6) right=5;', ''],
   ['qr: error codewords not interleaved', 'for(let i=0;i<ecLen;i++) for(const b of blocks) words.push(b[1][i]);', 'for(const b of blocks) for(let i=0;i<ecLen;i++) words.push(b[1][i]);'],
   ['qr: data codewords not interleaved', 'for(let i=0;i<maxLen;i++) for(const b of blocks) if(i<b[0].length) words.push(b[0][i]);', 'for(const b of blocks) for(let i=0;i<b[0].length;i++) words.push(b[0][i]);'],
-  ['qr: character count width for versions 10+', 'put(bytes.length,ver<10?8:16)', 'put(bytes.length,ver<10?8:8)'],
+  ['qr: character count width for versions 10+', ':(v<10?8:16);', ':(v<10?8:8);'],
   ['qr: alignment pattern ring wrong', 'Math.max(Math.abs(dx),Math.abs(dy))!==1)', 'Math.max(Math.abs(dx),Math.abs(dy))!==2)'],
   ['qr: timing pattern phase wrong', 'set(6,i,i%2===0); set(i,6,i%2===0);', 'set(6,i,i%2===1); set(i,6,i%2===0);'],
   ['qr: finder pattern ring wrong', 'dist!==2&&dist!==4', 'dist!==2&&dist!==3'],
@@ -2552,24 +2673,24 @@ const M = [
   ['dictionary: topic filter never resets', 'b.onclick = () => { dictCat = c;', 'b.onclick = () => { dictCat = dictCat;'],
   ['dictionary: pressed state not shown', 'x.setAttribute("aria-pressed", x === b ? "true" : "false"));', 'x.setAttribute("aria-pressed", "false"));'],
   ['dictionary: no-match line loses the topic', '(dictCat === "All" ? "" : " in " + dictCat)', '""'],
-  ["wallet view: coin type ignored", "[[purpose,true],[coin,true],[account,true],[chain,false]]", "[[purpose,true],[0,true],[account,true],[chain,false]]"],
-  ["wallet view: account ignored", "[[purpose,true],[coin,true],[account,true],[chain,false]]", "[[purpose,true],[coin,true],[0,true],[chain,false]]"],
-  ["wallet view: chain ignored", "[[purpose,true],[coin,true],[account,true],[chain,false]]", "[[purpose,true],[coin,true],[account,true],[0,false]]"],
-  ["wallet view: second page shows the first", "chain, wvFrom, WV_PAGE);", "chain, 0, WV_PAGE);"],
+  ["wallet view: coin type ignored", "[NETS[net].coin, true], [acct, true]]", "[0, true], [acct, true]]"],
+  ["wallet view: account ignored", "[NETS[net].coin, true], [acct, true]]", "[NETS[net].coin, true], [0, true]]"],
+  ["wallet view: chain ignored", "for(const [i,h] of steps.concat([[chain, false]]))", "for(const [i,h] of steps.concat([[0, false]]))"],
+  ["wallet view: second page shows the first", "[acct, true]], type, net, chain, wvFrom, WV_PAGE);", "[acct, true]], type, net, chain, 0, WV_PAGE);"],
   ["wallet view: no QR button on a row", "  li.appendChild(b); return li;", "  return li;"],
   ["wallet view: QR shows another address", "let q; try { q = qrMatrix(text); } catch(e) {\n", "let q; try { q = qrMatrix(text + \"x\"); } catch(e) {\n"],
   ["wallet view: not called imported", "textContent = \"Imported: these words were typed or scanned here, not made by this page.", "textContent = \"These words were typed or scanned here."],
   ["wallet view: passphrase not noted", "\"Master fingerprint: \" + fp + (pass ? \" (with passphrase)\" : \"\");\n    showFpIcon(\"wvIcon\", fp);", "\"Master fingerprint: \" + fp;\n    showFpIcon(\"wvIcon\", fp);"],
-  ["wallet view: edit keeps the view", "verifySeq++; if(wvCtx && wvCtx.kind !== \"pub\") clearWalletView(); if(childCtx", "verifySeq++; if(childCtx"],
+  ["wallet view: edit keeps the view", "verifySeq++; if(wvCtx && wvCtx.mnemonic) clearWalletView(); if(childCtx", "verifySeq++; if(childCtx"],
   ["wallet view: SeedQR offered for 15 words", "if(n === 12 || n === 24){ sq.textContent", "if(n >= 12){ sq.textContent"],
   ["recovery sheet: prints the passphrase", "(wvCtx.pass ? \"YES (kept separately; it is not written here)\" : \"NO\")", "(wvCtx.pass ? \"YES \" + wvCtx.pass : \"NO\")"],
-  ["wallet view: bad account accepted", "const badAcct = wvCtx.kind !== \"pub\" && (!/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647);", "const badAcct = false;"],
+  ["wallet view: bad account accepted", "const badAcct = wvCtx.kind !== \"pub\" && !custom && (!/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647);", "const badAcct = false;"],
   ["wallet view: SeedQR not marked secret", "SECRET: anyone who scans it controls the funds. It holds the words only", "Anyone who scans it controls the funds. It holds the words only"],
   ["wallet view: CLEAR ALL leaves it", "document.getElementById(\"verifyStatus\").textContent=\"\"; verifySeq++; clearWalletView(); clearChild();", "document.getElementById(\"verifyStatus\").textContent=\"\"; verifySeq++; clearChild();"],
   ["address QR: no button under the seed", "list.forEach((a, i) => ol.appendChild(addrLi(a, \"receive address \" + (i + 1))));", "list.forEach((a, i) => { const li = document.createElement(\"li\"); li.textContent = a; ol.appendChild(li); });"],
   ["wallet view: PREVIOUS never off", "document.getElementById(\"wvPrev\").disabled = wvFrom === 0;", "document.getElementById(\"wvPrev\").disabled = false;"],
-  ["wallet view: testnet note dropped", "(net === \"test\" ? \"TESTNET (practice coins only). \" : \"\")", "\"\""],
-  ["recovery sheet: nothing printed", "if(!wvCtx || !wvCtx.shown || wvCtx.kind === \"pub\") return alert(\"Check a seed phrase first, then open the wallet.\");", "if(true) return;"],
+  ["wallet view: testnet note dropped", "(net === \"test\" ? \"TESTNET (practice coins only). \" : \"\") + (chain ? \"Change\" : \"Receive\")", "(chain ? \"Change\" : \"Receive\")"],
+  ["recovery sheet: nothing printed", "if(!wvCtx || !wvCtx.shown || !wvCtx.mnemonic) return alert(\"Check a seed phrase first, then open the wallet.\");", "if(true) return;"],
   ["watch-only: change ending ignored", "    chain = m[5] === \"/1/*\" ? 1 : 0;", "    chain = 0;"],
   ["watch-only: chain not set on open", "  cSel.value = String(w.chain || 0);", "  "],
   ["watch-only: type not locked", "if(w.type){ tSel.value = w.type; } tSel.disabled = w.fixedType;", "if(w.type){ tSel.value = w.type; } tSel.disabled = false;"],
@@ -2578,7 +2699,7 @@ const M = [
   ["watch-only: key and descriptor type may differ", "if(type && keyType && type !== keyType) throw", "if(false) throw"],
   ["watch-only: SeedQR offered", "document.getElementById(\"wvSqBlock\").style.display = \"none\"; document.getElementById(\"wvSheetBtn\")", "document.getElementById(\"wvSqBlock\").style.display = \"\"; document.getElementById(\"wvSheetBtn\")"],
   ["watch-only: no fingerprint from the descriptor", "  if(w.origin){ document.getElementById(\"wvFp\").textContent = \"Master fingerprint (from the descriptor): \" + w.origin.fp; showFpIcon(\"wvIcon\", w.origin.fp); }", "  if(false){ }"],
-  ["watch-only: edit keeps the view", "document.getElementById(\"wpIn\").addEventListener(\"input\", () => { if(wvCtx && wvCtx.kind === \"pub\") clearWalletView();", "document.getElementById(\"wpIn\").addEventListener(\"input\", () => {"],
+  ["watch-only: edit keeps the view", "document.getElementById(\"wpIn\").addEventListener(\"input\", () => { if(wvCtx && wvCtx.kind === \"pub\" && !wvCtx.secret) clearWalletView();", "document.getElementById(\"wpIn\").addEventListener(\"input\", () => {"],
   ["watch-only: controls stay locked after", "  for(const id of [\"wvType\",\"wvNet\",\"wvAcct\"]) document.getElementById(id).disabled = false;\n", "\n"],
   ["watch-only: taproot ignores the point", "  if(type === \"tr\") return taprootAddressFromPoint(pointFromPub(pub), N.hrp);", "  if(type === \"tr\") return taprootAddressFromPoint(pointFromPub(pub), \"bc\").then(a => a + \"\");\n  if(false) return;"],
   ["Electrum: SegWit prefix wrong", "  if(h.startsWith(\"100\")) return \"SegWit\";", "  if(h.startsWith(\"10\")) return \"SegWit\";"],
@@ -2695,9 +2816,9 @@ const M = [
   ["seedqr: numeric bits per 3 digits wrong", "Math.floor(digits.length/3)*10+", "Math.floor(digits.length/3)*8+"],
   ["seedqr: numeric bits for a leftover pair wrong", "[0,4,7][digits.length%3]", "[0,4,8][digits.length%3]", true],
   ["seedqr: numeric bits for a leftover digit wrong", "[0,4,7][digits.length%3]", "[0,3,7][digits.length%3]", true],
-  ["seedqr: numeric count field too short", "(numeric?(v<10?10:12)", "(numeric?(v<10?9:12)", true],
+  ["seedqr: numeric count field too short", "const cb=(v)=>numeric?(v<10?10:v<27?12:14)", "const cb=(v)=>numeric?(v<10?9:v<27?12:14)"],
   ["seedqr: numeric mode indicator wrong", "put(1,4); put(digits.length", "put(2,4); put(digits.length"],
-  ["seedqr: numeric count written short", "put(digits.length,ver<10?10:12)", "put(digits.length,ver<10?9:12)"],
+  ["seedqr: numeric count written short", "put(1,4); put(digits.length,cb(ver));", "put(1,4); put(digits.length,cb(ver)-1);"],
   ["seedqr: three digits written in the wrong width", "g.length===3?10:g.length===2?7:4", "g.length===3?11:g.length===2?7:4"],
   ["seedqr: two digits written in the wrong width", "g.length===3?10:g.length===2?7:4", "g.length===3?10:g.length===2?8:4", true],
   ["seedqr: one digit written in the wrong width", "g.length===3?10:g.length===2?7:4", "g.length===3?10:g.length===2?7:5", true],
@@ -2802,7 +2923,7 @@ const M = [
   ['multisig: key prefix 03 not accepted', 'pub[0]!==2 && pub[0]!==3', 'pub[0]!==2'],
   ['multisig: key prefix not checked', '(pub.length!==33 || (pub[0]!==2 && pub[0]!==3))', '(pub.length!==33)'],
   ['multisig: key length not exact', 'if(raw.length!==78) throw', 'if(raw.length<78) throw'],
-  ['multisig: private keys not recognised', 'if(EXT_PRIVATE.includes(ver)) throw', 'if(false) throw'],
+  ['multisig: private keys not recognised', 'if(EXT_PRIVATE.includes(ver)) throw new Error("this is a PRIVATE key.', 'if(false) throw new Error("this is a PRIVATE key.'],
   ['multisig: unknown version accepted', 'if(!known) throw new Error("unknown key type', 'if(false) throw new Error("unknown key type'],
   ['multisig: key point not validated', 'const pub=raw.slice(45,78); pointFromPub(pub);', 'const pub=raw.slice(45,78);'],
   ['multisig: network read from the wrong place', 'return {str, net:known.net,', 'return {str, net:"main",'],
@@ -2832,7 +2953,7 @@ const M = [
   ['multisig: descriptor wrong function', '"sortedmulti(" + m + ","', '"multi(" + m + ","'],
   ['multisig: descriptor branch dropped', '"]" + xp + "/" + branch + "/*");', '"]" + xp + "/0/*");'],
   ['multisig: descriptor nested wrapper missing', 'type==="ms-sh-wsh" ? "sh(wsh(" + inner + "))" : "wsh(" + inner + ")"', '"wsh(" + inner + ")"'],
-  ['multisig: descriptor key version wrong', '...NETS[c.key.net].ver.other, ...raw.slice(4)', '...NETS.main.ver.other, ...raw.slice(4)'],
+  ['multisig: descriptor key version wrong', 'const raw=await base58decode(c.key.str), xp=await base58check(Uint8Array.from([...NETS[c.key.net].ver.other, ...raw.slice(4)]));', 'const raw=await base58decode(c.key.str), xp=await base58check(Uint8Array.from([...NETS.main.ver.other, ...raw.slice(4)]));'],
   ['multisig: M default wrong', 'Math.max(2, Math.ceil((n + 1) / 2))', 'Math.max(2, Math.ceil(n / 2))'],
   ['multisig: M above N offered', 'msEl("msM").max = String(n);', 'msEl("msM").max = String(n + 1);'],
   ['multisig: 1-of-N allowed to start', 'if(m < 2){ err.textContent', 'if(m < 1){ err.textContent'],
@@ -3542,7 +3663,7 @@ const M = [
   ["child: words shown after HIDE", "parent = await mnemonicFingerprint(r.mnemonic, vp);\n    if(my !== childSeq) return;", "parent = await mnemonicFingerprint(r.mnemonic, vp);"],
   ["child: key shown after HIDE", "o = document.getElementById(\"childOut\");\n    if(my !== childSeq) return;", "o = document.getElementById(\"childOut\");"],
   // both listeners clear a child seed when the parent words change, so the mutant removes both (removing one alone is equivalent)
-  ["child: kept after the parent words change", "for(const id of [\"phrase\",\"verifyPass\",\"childWords\",\"childIndex\",\"childLen\",\"childSides\",\"childRolls\"]) document.getElementById(id).addEventListener(\"input\", clearChild);\nfor(const id of [\"phrase\",\"verifyPass\"]) document.getElementById(id).addEventListener(\"input\", () => { verifySeq++; if(wvCtx && wvCtx.kind !== \"pub\") clearWalletView(); if(childCtx || document.getElementById(\"childOut\").textContent) clearChild(); });", "for(const id of [\"childWords\",\"childIndex\",\"childLen\",\"childSides\",\"childRolls\"]) document.getElementById(id).addEventListener(\"input\", clearChild);\nfor(const id of [\"phrase\",\"verifyPass\"]) document.getElementById(id).addEventListener(\"input\", () => { verifySeq++; if(wvCtx && wvCtx.kind !== \"pub\") clearWalletView(); });"],
+  ["child: kept after the parent words change", "for(const id of [\"phrase\",\"verifyPass\",\"childWords\",\"childIndex\",\"childLen\",\"childSides\",\"childRolls\"]) document.getElementById(id).addEventListener(\"input\", clearChild);\nfor(const id of [\"phrase\",\"verifyPass\"]) document.getElementById(id).addEventListener(\"input\", () => { verifySeq++; if(wvCtx && wvCtx.mnemonic) clearWalletView(); if(childCtx || document.getElementById(\"childOut\").textContent) clearChild(); });", "for(const id of [\"childWords\",\"childIndex\",\"childLen\",\"childSides\",\"childRolls\"]) document.getElementById(id).addEventListener(\"input\", clearChild);\nfor(const id of [\"phrase\",\"verifyPass\"]) document.getElementById(id).addEventListener(\"input\", () => { verifySeq++; if(wvCtx && wvCtx.mnemonic) clearWalletView(); });"],
   ["passphrase warning: leading space not named", "  if(/^\\s/.test(s)) out.push(\"starts with a space\");\n", ""],
   ["passphrase warning: trailing space not named", "  if(/\\s$/.test(s)) out.push(\"ends with a space\");\n", ""],
   ["passphrase warning: double space not named", "  if(/ {2}/.test(s)) out.push(\"has two spaces in a row\");\n", ""],
@@ -3678,6 +3799,102 @@ const M = [
   ["child print: dice rolls named a key", "{words: \"seed\", pwd64: \"password\", pwd85: \"password\", hex: \"hex\", dice: \"dice rolls\", wif: \"key\", xprv: \"key\"}[c.app] || \"key\"", "{words: \"seed\", pwd64: \"password\", pwd85: \"password\"}[c.app] || \"key\""],
   ["blank grid: check names COPY BY HAND", "(from === \"check\" ? \"the printed hand-copy guide (PRINT HAND-COPY GUIDE)\" : \"VOIDFORGE (COPY BY HAND)\")", "\"VOIDFORGE (COPY BY HAND)\""],
   ["dictionary: BIP38 prefix wrong", "The locked key starts with 6P;", "The locked key starts with 5K;"],
+  // ---- v2.6.0 ----
+  ["pay: Base58 case ignored", "return /^(bc|tb|bcrt)1/i.test(s) ? s.toLowerCase() : s;", "return s.toLowerCase();"],
+  ["pay: bech32 case not ignored", "return /^(bc|tb|bcrt)1/i.test(s) ? s.toLowerCase() : s;", "return s;"],
+  ["pay: bitcoin: link not read", "  if(/^bitcoin:/i.test(s)) s = s.slice(8).split(\"?\")[0];\n", ""],
+  ["pay: spaces kept", "  s = s.replace(/\\s+/g, \"\");\n  return /^(bc|tb|bcrt)1/i", "  return /^(bc|tb|bcrt)1/i"],
+  ["pay: quiet check removed", "  if(!a || !b) return;\n  const ea = await explainAddress(a)", "  const ea = await explainAddress(a)"],
+  ["pay: a broken address called payable", "if(ea && ea.level === \"bad\") return say(\"bad\", \"The two match", "if(false) return say(\"bad\", \"The two match"],
+  ["pay: look-alike never warned", "const lookAlike = head >= 3 && tail >= 3;", "const lookAlike = false;"],
+  ["pay: look-alike always warned", "const lookAlike = head >= 3 && tail >= 3;", "const lookAlike = head >= 3;"],
+  ["pay: end counted wrong", "a[a.length - 1 - tail] === b[b.length - 1 - tail]) tail++;", "a[a.length - 1 - tail] === b[b.length - 2 - tail]) tail++;"],
+  ["pay: difference count off by one", ".filter(i => a[i] !== b[i]).length;", ".filter(i => a[i] !== b[i]).length + 1;"],
+  ["pay: always plural", "\" character\" + (n === 1 ? \"\" : \"s\")", "\" characters\""],
+  ["pay: invalid address to pay not said", "(ea && ea.level === \"bad\" ? \" The address you are about to pay is not valid: \"", "(false ? \" The address you are about to pay is not valid: \""],
+  ["pay: differences not marked", "x.className = \"pd-x\"; x.textContent = s[i];", "x.className = \"pd-same\"; x.textContent = s[i];"],
+  ["pay: not checked while typing", "for(const id of [\"payA\", \"payB\"]) document.getElementById(id).addEventListener(\"input\", payCompare);\n", ""],
+  ["cost: legacy input size", "const COST_IN = {pkh: 148,", "const COST_IN = {pkh: 149,"],
+  ["cost: nested input size", "\"sh-wpkh\": 91, wpkh: 68,", "\"sh-wpkh\": 90, wpkh: 68,"],
+  ["cost: native SegWit input size", "wpkh: 68, tr: 57.5,", "wpkh: 69, tr: 57.5,"],
+  ["cost: Taproot input size", "tr: 57.5, ms23: 104.5", "tr: 58, ms23: 104.5"],
+  ["cost: multisig input size", "ms23: 104.5};", "ms23: 105.5};"],
+  ["cost: legacy output size", "const COST_OUT = {pkh: 34,", "const COST_OUT = {pkh: 35,"],
+  ["cost: native SegWit output size", "\"sh-wpkh\": 32, wpkh: 31,", "\"sh-wpkh\": 32, wpkh: 32,"],
+  ["cost: Taproot output size", "wpkh: 31, tr: 43,", "wpkh: 31, tr: 44,"],
+  ["cost: SegWit marker on legacy", "(witness ? 0.5 : 0)", "0.5"],
+  ["cost: input count always one byte", "(n < 253 ? 1 : 3)", "1"],
+  ["cost: input count changes one too early", "(n < 253 ? 1 : 3)", "(n < 252 ? 1 : 3)"],
+  ["cost: fee rates", "const COST_RATES = [1, 5, 20, 100];", "const COST_RATES = [1, 5, 25, 100];"],
+  ["cost: not-worth-it line", "Math.ceil(e.perInput * 20).toLocaleString", "Math.ceil(e.perInput * 10).toLocaleString"],
+  ["cost: more than 5000 accepted", "+raw < 1 || +raw > 5000)", "+raw < 1 || +raw > 9999)"],
+  ["cost: ratio wrong", "(e.vb / one.vb).toFixed(1)", "(e.vb / one.vb / 2).toFixed(1)"],
+  ["cost: menus ignored", "for(const id of [\"costType\", \"costOut\"]) document.getElementById(id).addEventListener(\"change\", costUpdate);\n", ""],
+  ["cost: typing ignored", "document.getElementById(\"costN\").addEventListener(\"input\", costUpdate);\n", ""],
+  ["custom path: capital H not hardened", "const s = String(t || \"\").trim().replace(/[hH]/g, \"'\");", "const s = String(t || \"\").trim().replace(/h/g, \"'\");"],
+  ["custom path: 11 steps allowed", "if(!/^m(\\/[0-9]{1,10}'?){0,10}$/.test(s)) return null;", "if(!/^m(\\/[0-9]{1,10}'?){0,11}$/.test(s)) return null;"],
+  ["custom path: 2^31 allowed", "return steps.every(([i]) => i <= 2147483647) ? steps : null;", "return steps;"],
+  ["custom path: ignored", "rows = await walletAddressesFrom(root, steps || [[", "rows = await walletAddressesFrom(root, null || [["],
+  ["custom path: a bad path still lists", "if(custom && !steps){ err.textContent", "if(false){ err.textContent"],
+  ["custom path: account box still used", "document.getElementById(\"wvAcct\").disabled = wvCtx.kind === \"pub\" || !!custom;", "document.getElementById(\"wvAcct\").disabled = wvCtx.kind === \"pub\";"],
+  ["custom path: hardened mark missing in the label", "steps.map(([i,h]) => \"/\" + i + (h ? \"'\" : \"\")).join(\"\")", "steps.map(([i,h]) => \"/\" + i).join(\"\")"],
+  ["custom path: kept after the view closes", "  document.getElementById(\"wvPathIn\").value = \"\";\n", ""],
+  ["private key: mini key check skipped", "if((await sha256bytes(new TextEncoder().encode(q + \"?\")))[0] !== 0) throw", "if(false) throw"],
+  ["private key: mini key compressed", "return {kind: \"single\", k, compressed: false, net: \"main\", label: \"Casascius", "return {kind: \"single\", k, compressed: true, net: \"main\", label: \"Casascius"],
+  ["private key: WIF always compressed", "compressed: b.length === 34, net:", "compressed: true, net:"],
+  ["private key: testnet WIF as mainnet", "net: b[0] === 0x80 ? \"main\" : \"test\", label: \"WIF", "net: \"main\", label: \"WIF"],
+  ["private key: zprv type not used", "    if(p.type) tSel.value = p.type;\n", "\n"],
+  ["private key: depth ignored", "kind: b[4] === 0 ? \"root\" : \"xprv\"", "kind: \"root\""],
+  ["private key: fingerprint from an uncompressed key", "hex((await hash160(pubOfPriv(p.k, true))).slice(0, 4))", "hex((await hash160(pubOfPriv(p.k, false))).slice(0, 4))"],
+  ["private key: uncompressed point wrong", "...fromHex(P[1].toString(16).padStart(64, \"0\"))]);", "...fromHex(P[0].toString(16).padStart(64, \"0\"))]);"],
+  ["private key: uncompressed key gets SegWit addresses", "types = wvCtx.compressed ? [\"wpkh\", \"tr\", \"sh-wpkh\", \"pkh\"] : [\"pkh\"]", "types = [\"wpkh\", \"tr\", \"sh-wpkh\", \"pkh\"]"],
+  ["private key: editing the box keeps it open", "addEventListener(\"input\", () => { if(wvCtx && wvCtx.secret) clearWalletView();", "addEventListener(\"input\", () => {"],
+  ["private key: CLEAR ALL keeps the key", "document.getElementById(\"pkIn\").value=\"\"; document.getElementById(\"pkIn\").type=\"password\";", "document.getElementById(\"pkIn\").type=\"password\";"],
+  ["private key: CLEAR ALL leaves it shown", "document.getElementById(\"pkIn\").value=\"\"; document.getElementById(\"pkIn\").type=\"password\";", "document.getElementById(\"pkIn\").value=\"\";"],
+  ["private key: auto-clear keeps the key", "const AUTO_FIELDS = [\"pkIn\", \"rolls\",", "const AUTO_FIELDS = [\"rolls\","],
+  ["private key: mainnet key in practice mode", "if(practiceOn && p.net !== \"test\"){ st.className", "if(false){ st.className"],
+  ["private key: practice change keeps it open", "    if(wvCtx.secret){ clearWalletView();", "    if(false){ clearWalletView();"],
+  ["private key: no SECRET banner", "\"SECRET, read only: a private key is open.", "\"Read only: a private key is open."],
+  ["private key: recovery sheet offered", "for(const id of [\"wvSqBlock\", \"wvSheetBtn\", \"wvSheetHint\"]) document.getElementById(id).style.display = \"none\";\n", ""],
+  ["private key: network menu not locked", "nSel.value = p.net; nSel.disabled = true;", "nSel.value = p.net;"],
+  ["UR: CRC polynomial", "c & 1 ? 0xEDB88320 ^ (c >>> 1)", "c & 1 ? 0xEDB88321 ^ (c >>> 1)"],
+  ["UR: Bytewords minimal letters", "BYTEWORDS[i * 4] + BYTEWORDS[i * 4 + 3]", "BYTEWORDS[i * 4] + BYTEWORDS[i * 4 + 1]"],
+  ["UR: part checksum not checked", "if(c.some((x, i) => x !== out[out.length - 4 + i])) throw", "if(false) throw"],
+  ["UR: joined checksum not checked", "if(crc32(msg) !== info.ck) throw", "if(false) throw"],
+  ["UR: missing parts not named", "if(missing.length) throw new Error(\"UR parts missing: \"", "if(false) throw new Error(\"UR parts missing: \""],
+  ["UR: types mixed", "if(type && segs[0] !== type) throw", "if(false) throw"],
+  ["UR: a changed part accepted", "if(slots[sn - 1] && slots[sn - 1].some((x, i) => x !== data[i])) throw", "if(false) throw"],
+  ["UR: fragment length", "const fl = urFragLen(msg.length, 10, maxFrag);", "const fl = urFragLen(msg.length, 10, maxFrag - 1);"],
+  ["UR: last part not padded", "while(frag.length < fl) frag.push(0);", ""],
+  ["UR: message length", "CB.uint(seqLen), CB.uint(msg.length), CB.uint(crc)", "CB.uint(seqLen), CB.uint(msg.length + 1), CB.uint(crc)"],
+  ["UR: case not ignored", "const f = f0.toLowerCase(), segs", "const f = f0, segs"],
+  ["BBQr: parts not even", "const chunk = Math.ceil(Math.ceil(enc.length / count0) / 8) * 8", "const chunk = maxChars"],
+  ["BBQr: part numbers in base 10", "const b36 = (n) => n.toString(36).toUpperCase().padStart(2, \"0\");", "const b36 = (n) => n.toString(10).padStart(2, \"0\");"],
+  ["BBQr: missing parts not named", "if(missing.length) throw new Error(\"BBQr parts missing: \"", "if(false) throw new Error(\"BBQr parts missing: \""],
+  ["BBQr: parts of two codes mixed", "if(head && f.slice(0, 6) !== head) throw", "if(false) throw"],
+  ["BBQr: Z parts not inflated", "  if(encC === \"Z\") bytes = inflateRaw(Uint8Array.from(bytes));\n", ""],
+  ["BBQr: H parts read as Base32", "if(encC === \"H\"){ if(body.length % 2", "if(false){ if(body.length % 2"],
+  ["inflate: stored blocks", "    if(type === 0){\n      if(bit){ bit = 0; pos++; }", "    if(false){\n      if(bit){ bit = 0; pos++; }"],
+  ["inflate: fixed Huffman lengths", "l.push(i < 144 ? 8 : i < 256 ? 9 : i < 280 ? 7 : 8)", "l.push(i < 144 ? 8 : i < 256 ? 9 : i < 280 ? 8 : 8)"],
+  ["inflate: distance off by one", "const d = DB[di] + bits(DE[di]);", "const d = DB[di] + bits(DE[di]) + 1;"],
+  ["inflate: code length order", "ORD = [16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15]", "ORD = [16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,15,1]"],
+  ["QR text: mixed text accepted", "if(ur.length || bb.length) throw new Error(\"the pasted text mixes", "if(false) throw new Error(\"the pasted text mixes"],
+  ["PSBT paste: QR parts not read", "  const q=qrTextDecode(text);\n  if(q){", "  const q=null;\n  if(q){"],
+  ["PSBT paste: BBQr P not read", "if(q.type===\"P\" || q.type===\"T\") return q.bytes;", "if(q.type===\"T\") return q.bytes;"],
+  ["PSBT paste: other UR types accepted", "if(![\"crypto-psbt\",\"psbt\",\"bytes\"].includes(q.type)) throw", "if(false) throw"],
+  ["PSBT paste: other BBQr types accepted", "    throw new Error(\"This BBQr holds file type \"+q.type", "    return q.bytes; throw new Error(\"This BBQr holds file type \"+q.type"],
+  ["crypto-output: sh(wsh()) not wrapped", "  if(type === \"ms-sh-wsh\") out = CB.tag(400, out);\n", ""],
+  ["crypto-output: parent fingerprint", "[CB.uint(8), CB.uint(parseInt(c.key.parentFp, 16))]", "[CB.uint(8), CB.uint(0)]"],
+  ["crypto-output: testnet coin", "CB.uint(net === \"test\" ? 1 : 0)", "CB.uint(0)"],
+  ["Coldcard file: policy", "\"Policy: \" + m + \" of \" + cos.length", "\"Policy: \" + m + \" of \" + m"],
+  ["Coldcard file: format", "(type === \"ms-sh-wsh\" ? \"P2SH-P2WSH\" : \"P2WSH\")", "\"P2WSH\""],
+  ["animated QR: wrong UR type", "urEncode(\"crypto-output\", cryptoOutputMultisig(", "urEncode(\"crypto-account\", cryptoOutputMultisig("],
+  ["animated QR: BBQr not multipath", ".split(\"/0/*\").join(\"/<0;1>/*\"));", ".split(\"/0/*\").join(\"/0/*\"));"],
+  ["animated QR: frames not capitals", "const up = parts.map(p => p.toUpperCase())", "const up = parts.map(p => p)"],
+  ["animated QR: frames of different sizes", "level: \"M\", minVer: ver}).rows", "level: \"M\"}).rows"],
+  ["animated QR: does not move", "animCtx.i = (animCtx.i + 1) % animCtx.frames.length; animRender();", "animRender();"],
+  ["animated QR: PAUSE ignored", "if(animCtx && !animCtx.paused){ animCtx.i", "if(animCtx){ animCtx.i"],
+  ["animated QR: START OVER leaves it running", "  ms = null; msHideQr(); animHide(\"msAnim\");", "  ms = null; msHideQr();"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
