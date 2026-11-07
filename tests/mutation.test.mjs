@@ -2188,6 +2188,50 @@ async function probe(w, mutated) {
     if (!['passphrase', 'passphrase2', 'verifyPass', 'reforgeWordsPass', 'drillPass', 'pkIn'].every((id) => { const e = $(id); return e.getAttribute('data-lpignore') === 'true' && e.getAttribute('data-1p-ignore') === 'true' && e.getAttribute('data-bwignore') === 'true' && e.getAttribute('data-form-type') === 'other'; })) fails.push('password managers: every secret box tells them to ignore it');
     w.alert = oa; w.confirm = oc; w.URL.createObjectURL = ocu; w.URL.revokeObjectURL = orv;
   } catch (e) { fails.push('v2.6.0 review-fix probe crashed: ' + e.message); }
+  try { // v2.7.0 (expected values from @scure and Node's SHA-256): dice passphrase, device dice check and test card, two wallets side by side
+    const oa = w.alert, oc = w.confirm, op = w.print; w.alert = () => {}; w.confirm = () => true;
+    const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), until = async (f) => { for (let k = 0; k < 200 && !f(); k++) await sleep(50); };
+    const AB = 'abandon '.repeat(11) + 'about', shaB = (s) => nc.createHash('sha256').update(s).digest();
+    const taddr = (mn, pw) => { const k = HDKey.fromMasterSeed(mnemonicToSeedSync(mn, pw)).derive("m/84'/1'/0'/0/0"); return bech32.encode('tb', [0, ...bech32.toWords(ripemd160(nsha(k.publicKey)))]); };
+    const dpExp = (r, n) => { const b = [...shaB(r)].map((x) => x.toString(2).padStart(8, '0')).join(''); return Array.from({ length: n }, (_, i) => wordlist[parseInt(b.slice(i * 11, i * 11 + 11), 2)]).join(' '); };
+    const dcExp = (r, wc, six) => entropyToMnemonic(shaB(six ? r.replace(/6/g, '0') : r).subarray(0, wc === 12 ? 16 : 32), wordlist);
+    const wordsOf = (t) => [...t.matchAll(/\d+\. ([a-z]+)/g)].map((m) => m[1]).join(' ');
+    w.clearAll(); await sleep(20);
+    // dice passphrase
+    const P1 = '25163452616341525364152634';
+    if (w.dpNeed(4) !== 18 || w.dpNeed(6) !== 26 || w.dpNeed(8) !== 35) fails.push('dice passphrase: 18, 26 or 35 rolls for 4, 6 or 8 words');
+    $('dpWords').value = '6'; $('dpRolls').value = P1; await w.dpMake(); if ($('dpOut').textContent !== dpExp(P1, 6)) fails.push('dice passphrase: 6 words, 11 bits each from the SHA-256 of the rolls');
+    $('dpRolls').value = P1.slice(0, 25); await w.dpMake(); if ($('dpOut').textContent !== '') fails.push('dice passphrase: too few rolls make nothing');
+    await run('dice', 12, D50); $('dpRolls').value = D50.slice(10, 36); await w.dpMake(); if ($('dpOut').textContent !== '') fails.push('dice passphrase: rolls from the seed box are refused');
+    $('dpRolls').value = P1; await w.dpMake(); w.dpUse(); const pp = dpExp(P1, 6); await until(() => fpOf() === fp(expect.d50, pp));
+    if ($('passphrase').value !== pp || $('passphrase2').value !== pp || fpOf() !== fp(expect.d50, pp)) fails.push('dice passphrase: USE AS PASSPHRASE fills both boxes and the fingerprint follows');
+    w.clearAll(); await sleep(20);
+    // check your device's dice
+    const C = w.eval('DC_CARD_ROLLS');
+    const DC = async (dev, wc, rolls) => { $('dcDev').value = dev; $('dcLen').value = String(wc); $('dcRolls').value = rolls; await w.dcCheck(); return wordsOf($('dcOut').textContent); };
+    if (await DC('seedsigner', 12, C.slice(0, 50)) !== dcExp(C.slice(0, 50), 12, false)) fails.push('device dice: SeedSigner 12 words from 50 rolls');
+    if (await DC('keystone', 24, C) !== dcExp(C, 24, true)) fails.push('device dice: Keystone counts each 6 as 0 (24 words, 100 rolls)');
+    if (await DC('keystone', 24, C.slice(0, 99)) !== '') fails.push('device dice: Keystone needs 100 rolls for 24 words');
+    if (await DC('seedsigner', 12, C.slice(0, 51)) !== '') fails.push('device dice: SeedSigner takes exactly 50');
+    { const m = dcExp(C.slice(0, 50), 12, false); await DC('bitbox02', 12, C.slice(0, 50)); if (!$('dcOut').textContent.includes(addr(m, ''))) fails.push('device dice: the first receive address');
+      w.practiceMode(true); await DC('bitbox02', 12, C.slice(0, 50)); const ot = $('dcOut').textContent; w.practiceMode(false);
+      if (!ot.includes(taddr(m, '')) || ot.includes(addr(m, ''))) fails.push('device dice: the address is on the test network in practice mode'); }
+    { let card = ''; w.print = () => { card = $('printOnly').textContent; }; await w.printDiceCard(); w.print = op; w.dispatchEvent(new w.Event('afterprint'));
+      const want = [dcExp(C.slice(0, 50), 12, false), dcExp(C.slice(0, 99), 24, false), dcExp(C.slice(0, 50), 12, true), dcExp(C, 24, true)].join(' ');
+      if (!/^VOIDFORGE DICE TEST CARD/.test(card) || wordsOf(card) !== want || !card.includes(C.slice(0, 10) + ' ' + C.slice(10, 20))) fails.push('test card: the rolls and the words each device must make'); }
+    // two wallets side by side
+    $('phrase').value = AB; $('verifyPass').value = 'TREZOR'; await w.verify(); await until(() => $('wvDecoy').style.display === '' && $('wvD1a').textContent !== '');
+    if ($('wvD0').textContent !== 'Fingerprint ' + fp(AB, '') || $('wvD0a').textContent !== 'First address: ' + addr(AB, '') || $('wvD1').textContent !== 'Fingerprint ' + fp(AB, 'TREZOR') || $('wvD1a').textContent !== 'First address: ' + addr(AB, 'TREZOR')) fails.push('two wallets side by side: fingerprint and first address without and with the passphrase');
+    w.practiceMode(true); await until(() => /test network/.test($('wvD1a').textContent)); const pt = $('wvD0a').textContent + '|' + $('wvD1a').textContent; w.practiceMode(false);
+    if (pt !== 'First address (test network): ' + taddr(AB, '') + '|First address (test network): ' + taddr(AB, 'TREZOR')) fails.push('two wallets side by side: they follow practice mode');
+    await until(() => /^First address: bc1/.test($('wvD1a').textContent));
+    w.clearAll(); await sleep(20); if ($('wvDecoy').style.display !== 'none' || $('wvD1').textContent !== '') fails.push('two wallets side by side: CLEAR ALL hides them');
+    // every wipe
+    $('dpRolls').value = P1; await w.dpMake(); $('dcRolls').value = C.slice(0, 50); $('dcDev').value = 'seedsigner'; $('dcLen').value = '12'; await w.dcCheck(); w.clearAll(); await sleep(20);
+    if ($('dpRolls').value || $('dpOut').textContent || $('dcRolls').value || $('dcOut').textContent) fails.push('CLEAR ALL wipes the dice passphrase and the device check');
+    $('phrase').value = ''; $('verifyPass').value = '';
+    w.alert = oa; w.confirm = oc;
+  } catch (e) { fails.push('v2.7.0 probe crashed: ' + e.message); }
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
   return fails;
@@ -3708,7 +3752,7 @@ const M = [
   ["passphrase warning: tab not named", "  if(/[\\t\\n\\r\\v\\f]/.test(s)) out.push(\"has a tab or a line break\");\n", ""],
   ["passphrase warning: not under the CHECK passphrase", "document.getElementById(\"verifyPass\").addEventListener(\"input\", passWarnUpdate);\n", ""],
   ["passphrase warning: not refreshed with the Make passphrase", "  passWarnUpdate();\n}\n// v2.5.0: BIP39 uses", "}\n// v2.5.0: BIP39 uses"],
-  ["secrets: seed words can be highlighted again", "  #wordGrid, #genResult, #wvAbbrGrid, #childOut, #exOut, #reforgeOut { -webkit-user-select: none; user-select: none; }\n", ""],
+  ["secrets: seed words can be highlighted again", "  #wordGrid, #genResult, #wvAbbrGrid, #childOut, #exOut, #reforgeOut, #dpOut { -webkit-user-select: none; user-select: none; }\n", ""],
   ["secrets: the hidden copy of the words can be highlighted", "  #wordGrid, #genResult, #wvAbbrGrid,", "  #wordGrid, #wvAbbrGrid,"],
   ["stress test: metal does not survive a fire", "else if(!c.some(x => !x.home || x.m === \"metal\"))", "else if(!c.some(x => !x.home))"],
   ["stress test: passphrase note at home survives a fire", "  else if(P === \"home\") add(\"A fire or flood at home\", \"lost\"", "  else if(false) add(\"A fire or flood at home\", \"lost\""],
@@ -3945,6 +3989,22 @@ const M = [
   ["P2WSH: 20-byte program taken as script", "s.version === 0 && s.prog.length === 32 ?", "s.version === 0 && s.prog.length === 20 ?"],
   ["password managers: passphrase box not marked", "id=\"passphrase\" data-lpignore=\"true\" data-1p-ignore=\"true\" data-bwignore=\"true\" data-form-type=\"other\"", "id=\"passphrase\""],
   ["password managers: private key box not marked", "id=\"pkIn\" data-lpignore=\"true\" data-1p-ignore=\"true\" data-bwignore=\"true\" data-form-type=\"other\"", "id=\"pkIn\""],
+  // ---- v2.7.0 ----
+  ["dice passphrase: 10 bits a word", "out.push(WORDLIST[parseInt(bits.slice(i * 11, i * 11 + 11), 2)]);", "out.push(WORDLIST[parseInt(bits.slice(i * 10, i * 10 + 11), 2)]);"],
+  ["dice passphrase: a roll left out of the hash", "const bits = bytesToBits(await sha256(rolls)), out = [];", "const bits = bytesToBits(await sha256(rolls.slice(1))), out = [];"],
+  ["dice passphrase: fewer rolls needed", "return Math.ceil(n * 11 / DP_BITS_PER_ROLL);", "return Math.ceil(n * 10 / DP_BITS_PER_ROLL);"],
+  ["dice passphrase: seed rolls accepted", "if(seedRolls && (seedRolls.includes(rolls) || rolls.includes(seedRolls)))", "if(false)"],
+  ["dice passphrase: only one box filled", "for(const id of [\"passphrase\", \"passphrase2\"]){ const e = document.getElementById(id); e.value = t;", "for(const id of [\"passphrase\"]){ const e = document.getElementById(id); e.value = t;"],
+  ["wipe: dice passphrase and device check kept", "dpClear(); dcClear();   // v2.7.0", "// v2.7.0"],
+  ["device dice: Keystone 6s not made 0", "return rollsToMnemonic(DC_RULES[dev].six ? rolls.replace(/6/g, \"0\") : rolls, wc);", "return rollsToMnemonic(rolls, wc);"],
+  ["device dice: SeedSigner takes more than exactly", "if(r.exact && rolls.length > need)", "if(false && rolls.length > need)"],
+  ["device dice: Keystone 24 words from 99", "keystone: {name: \"Keystone\", need: {12: 50, 24: 100}", "keystone: {name: \"Keystone\", need: {12: 50, 24: 99}"],
+  ["device dice: mainnet address in practice mode", "a0 = await shownFirstAddress(m, \"\");\n  if(my !== dcSeq) return;", "a0 = await mnemonicFirstAddress(m, \"\");\n  if(my !== dcSeq) return;"],
+  ["test card: rolls shifted", "const m = await dcWords(dev, wc, DC_CARD_ROLLS.slice(0, k));", "const m = await dcWords(dev, wc, DC_CARD_ROLLS.slice(1, k + 1));"],
+  ["two wallets: never shown", "if(pass && mine === wvSeq) await wvDecoyShow(mnemonic, pass, mine);", ""],
+  ["two wallets: left address made with the passphrase", "await mnemonicFingerprint(mnemonic, \"\"), await shownFirstAddress(mnemonic, \"\"), await mnemonicFingerprint(mnemonic, pass)", "await mnemonicFingerprint(mnemonic, \"\"), await shownFirstAddress(mnemonic, pass), await mnemonicFingerprint(mnemonic, pass)"],
+  ["two wallets: do not follow practice mode", "if(wvCtx && wvCtx.mnemonic && wvCtx.pass){ wvDecoyHide(); wvDecoyShow(", "if(false){ wvDecoyHide(); wvDecoyShow("],
+  ["two wallets: kept after CLEAR ALL", "hideAddrQr(\"wvq\"); wvSeedQrHide(); wvDecoyHide();", "hideAddrQr(\"wvq\"); wvSeedQrHide();"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

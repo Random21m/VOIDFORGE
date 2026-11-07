@@ -17,6 +17,8 @@ Never store the words as a photo, text, email, cloud note or password-manager en
 
 **Wallet birthday (v2.5.0).** The date a seed was made is printed on the summary sheet. A wallet app restoring it does not need to look at older blocks. For a wallet made elsewhere, type the date (if you know it) into *Open this wallet* and it is printed on the recovery sheet.
 
+**A passphrase made from dice (v2.7.0).** It is a list of BIP39 words, used exactly as written: small letters, one space between words, no space at either end. Type it like that in any wallet app. Keep it apart from the seed words, and make sure the person who will restore the wallet knows that a passphrase exists. *Open this wallet* shows the wallet without the passphrase and the wallet with it side by side, so you can see which one holds the money.
+
 **Check-up once a year.** Find each copy, type the words into *Check a backup* on an offline computer (or do the Restore drill), and check that the master fingerprint (with the passphrase, if you use one) still matches. Then press END SESSION.
 
 **Another copy of words you already have (v2.4.0).** In *Check a backup*, type the words, press VERIFY and open *Open this wallet*. *Paper, metal and SeedQR backups* has SHOW FIRST 4 LETTERS (for stamping a metal plate), PRINT WORDS, PRINT STAMP SHEET and the SeedQR prints. VERIFY also reads 4-letter forms, so you can check a metal plate by typing what is stamped on it. Print only on a trusted offline computer with a directly connected printer.

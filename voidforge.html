@@ -450,7 +450,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   html.js #noJs { display: none; }
   html.js body:not(.js-ok) .container { visibility: hidden; }
   /* v2.5.0: secrets on the screen cannot be highlighted, so they are never copied to the clipboard by accident (there is no copy button for them either) */
-  #wordGrid, #genResult, #wvAbbrGrid, #childOut, #exOut, #reforgeOut { -webkit-user-select: none; user-select: none; }
+  #wordGrid, #genResult, #wvAbbrGrid, #childOut, #exOut, #reforgeOut, #dpOut { -webkit-user-select: none; user-select: none; }
   .pass-warn { color: var(--warn-text); font-weight: 600; font-size: 13px; margin: 6px 0 0; }
   .pass-warn:empty { display: none; }
   #practiceBan { display: none; }
@@ -828,6 +828,13 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .wv-ctl input { width:64px; flex:none; }
   #wvBanner { border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:8px; padding:8px 12px; margin:8px 0; font-size:13px; color:var(--muted); }
   #wvFpRow { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:8px 0 0; }
+  /* v2.7.0: the wallet without and with the passphrase, side by side (one column on a phone) */
+  .wv-decoy { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:10px; margin:10px 0 0; }
+  .wv-dcol { border:1px solid var(--border); border-radius:6px; padding:8px 10px; min-width:0; }
+  .wv-dh { font-size:12px; font-weight:700; letter-spacing:.5px; color:var(--muted); text-transform:uppercase; }
+  .wv-da { font-size:13px; color:var(--muted); word-break:break-all; margin-top:4px; }
+  .wv-dwhy { grid-column: 1 / -1; margin:0 !important; }
+  @media (max-width: 559px) { .wv-decoy { grid-template-columns: minmax(0, 1fr); } }
   #wvList { margin-top:6px; }
   .qrbox .bip21 { text-align:left; margin:8px 0; }
   .b21-row { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 6px; }
@@ -968,6 +975,9 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <div id="diceVisual" data-g="2" style="font-size:30px; letter-spacing:4px; margin-top:4px; min-height:28px;"></div>
     <div id="rollChart" data-g="2" class="rc" role="img" aria-label="Chart of how many times each face came up" style="display:none;"></div>
     </details>
+    <details class="wd-how" id="rollTogether" data-g="2"><summary>Roll together (two people or two dice)</summary>
+      <div style="font-size: 13px; color:var(--muted); margin-top:6px;">Two or more people, or two or more dice, can make one seed together. Take turns: each rolls some of the rolls with their own die, and all the rolls go into the roll box, in turn. Every roll is hashed together, so the words are random as long as one die is fair and rolled honestly: a loaded die, or someone who picks numbers instead of rolling, cannot make the seed predictable. Mixing dice from two different shops also protects you from one bad die. Everyone who sees all the rolls can make the seed again, so roll together only with people you would trust with the seed itself, and keep the rolls as secret as the words.</div>
+    </details>
    </div>
    <div class="gen-right" id="genRight">
     <div class="seed-head"><div class="seed-title">YOUR SEED</div><div id="bigCount" class="big-count short" aria-live="polite"></div><div id="bigSub" class="big-sub short"></div></div>
@@ -999,6 +1009,21 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <input type="password" id="passphrase2" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Confirm passphrase (must match)" style="margin-top:6px;" oninput="updateAdvSummary()">
       <div class="pass-warn" id="passWarn" role="status" aria-live="polite"></div>
       <details class="wd-how"><summary>About passphrases</summary><div style="font-size: 13px; color:var(--muted); margin-top:6px;">A <span class="term" tabindex="0" data-tip="An extra secret you choose. The same twelve words with a different passphrase give a completely different wallet. If you forget it, the money cannot be recovered.">passphrase</span> makes a different wallet from the same words. Write it down separately: without it the funds cannot be recovered. Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div></details>
+      <details class="wd-how" id="dpBox"><summary>Make a passphrase from dice</summary>
+        <div style="font-size: 13px; color:var(--muted); margin-top:6px;">Roll a die again, separately from the rolls for your seed, and these new rolls become a passphrase of BIP39 words. They are hashed with SHA-256, as for the seed, and each word takes the next 11 bits. Keep the passphrase apart from the seed words: anyone with both can spend, and the words alone open a different wallet.</div>
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:6px;">
+          <select id="dpWords" aria-label="Number of passphrase words" onchange="dpClear(true)"><option value="4">4 words (44 bits)</option><option value="6" selected>6 words (66 bits)</option><option value="8">8 words (88 bits)</option></select>
+          <span id="dpCount" aria-live="polite" style="font-size: 13px; color:var(--muted); font-weight:600;">0 / 26 rolls</span>
+        </div>
+        <textarea id="dpRolls" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="New dice rolls for the passphrase" placeholder="New dice rolls 1-6, not the rolls for your seed" oninput="dpClear(true)" style="margin-top:6px;"></textarea>
+        <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
+          <button type="button" id="dpBtn" onclick="dpMake()">MAKE PASSPHRASE</button>
+          <button type="button" class="secondary small" onclick="dpClear()">CLEAR</button>
+        </div>
+        <div class="status" id="dpStatus" aria-live="polite" style="margin-top:6px;"></div>
+        <pre id="dpOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:16px; font-weight:700; margin:6px 0 0;"></pre>
+        <div id="dpUseRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" onclick="dpUse()">USE AS PASSPHRASE</button></div>
+      </details>
       <input type="text" id="note" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Optional note (not used in the seed)" style="margin-top:6px;">
     </details>
     <div data-g="3 4 5" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;"><div class="fp" id="fingerprint"></div><div id="fpIcon" class="lh" title="Fingerprint picture (LifeHash): the same picture Sparrow Wallet shows for this fingerprint"></div></div>
@@ -1252,6 +1277,11 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <p class="hint" id="wvWhy" style="margin:8px 0 0;">This lists the addresses your wallet app would show for these words, so you can compare them in the app. Pick the same address type and account number the app uses. The words are the same for every type.</p>
       <div id="wvBanner">Imported: these words were typed or scanned here, not made by this page. The same words and passphrase give the same wallet in any app.</div>
       <div id="wvFpRow"><div class="fp" id="wvFp"></div><div id="wvIcon" class="lh" title="Fingerprint picture (LifeHash) of this wallet"></div></div>
+      <div id="wvDecoy" class="wv-decoy" style="display:none;">
+        <div class="wv-dcol"><div class="wv-dh">Without the passphrase</div><div class="fp" id="wvD0"></div><div class="wv-da" id="wvD0a"></div></div>
+        <div class="wv-dcol"><div class="wv-dh">With the passphrase</div><div class="fp" id="wvD1"></div><div class="wv-da" id="wvD1a"></div></div>
+        <p class="hint wv-dwhy">Two wallets, one set of words. The passphrase makes a completely different wallet: another fingerprint, other addresses. Someone who finds only the words opens the wallet on the left, never the one on the right. Some people keep a small amount on the left as a decoy wallet, to hand over if they are forced to. Then store the passphrase well away from the words, and make sure your family knows that both wallets exist (see the Backup plan).</p>
+      </div>
       <div class="wv-ctl">
         <select id="wvType" aria-label="Address type"><option value="wpkh">Native SegWit (bc1q...)</option><option value="tr">Taproot (bc1p...)</option><option value="sh-wpkh">Nested SegWit (3...)</option><option value="pkh">Legacy (1...)</option></select>
         <select id="wvChain" aria-label="Receive or change"><option value="0">Receive</option><option value="1">Change</option></select>
@@ -1333,6 +1363,24 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       </div>
       <div class="status" id="reforgeStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <pre id="reforgeOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+    </details>
+    <details id="dcBox">
+      <summary>Check your device's dice<span class="tag tag-ro">TEST ONLY</span><small>Does your hardware wallet really make its words from your dice? Check it with throwaway rolls.</small></summary>
+      <p class="hint" style="margin:8px 0;">A hardware wallet that takes dice rolls should make its words from them alone. If its software ignored your rolls, the words would still look normal. So check it once: type the same throwaway rolls here and on the device, and the words must be the same. Then reset the device before making your real wallet, because test rolls and their words are not secret.</p>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <select id="dcDev" aria-label="Device" onchange="dcClear(true)" style="flex:1; min-width:0;"><option value="seedsigner">SeedSigner</option><option value="coldcard">Coldcard</option><option value="keystone">Keystone</option><option value="bitbox02">BitBox02 (no dice: compare an address)</option></select>
+        <select id="dcLen" aria-label="Seed length" onchange="dcClear(true)" style="flex:none; width:auto;"><option value="12">12 words</option><option value="24">24 words</option></select>
+      </div>
+      <textarea id="dcRolls" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Throwaway test rolls" placeholder="Throwaway test rolls 1-6 (never the rolls for a real seed)" oninput="dcClear(true)" style="margin-top:6px;"></textarea>
+      <div id="dcCount" aria-live="polite" style="font-size: 13px; color:var(--muted); font-weight:600; margin-top:4px;">0 / 50 rolls (exactly 50 for SeedSigner)</div>
+      <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+        <button type="button" id="dcBtn" onclick="dcCheck()">SHOW EXPECTED WORDS</button>
+        <button type="button" class="secondary small" onclick="dcFill()">USE THE TEST CARD ROLLS</button>
+        <button type="button" class="secondary small" onclick="printDiceCard()">PRINT TEST CARD</button>
+        <button type="button" class="secondary small" onclick="dcClear()">CLEAR</button>
+      </div>
+      <div class="status" id="dcStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+      <pre id="dcOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
     </details>
     <details id="psbtBox">
       <summary>Inspect a transaction (PSBT)<span class="tag tag-ro">READ ONLY</span><small>See where the money goes and the fee before signing.</small></summary>
@@ -1645,6 +1693,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details>
       <summary>Changelog</summary>
       <ul>
+        <li><b>2.7.0</b> &mdash; <b>Dice and passphrase.</b> (1) <b>Check your device&rsquo;s dice</b> (EXTRA TOOLS): type throwaway test rolls and see the words a SeedSigner, Coldcard or Keystone must show for them, by each device&rsquo;s own dice rules, and its first receive address. If the device shows other words, its dice seeds cannot be trusted. BitBox02 takes no dice, so you restore the test words on it and compare the address. PRINT TEST CARD prints public test rolls with the words each device must make. Test rolls and their words are not secret: reset the device before making your real wallet. (2) <b>Make a passphrase from dice</b> (Passphrase and note): new rolls, never the seed&rsquo;s own, become a passphrase of 4, 6 or 8 BIP39 words (44, 66 or 88 bits), hashed with SHA-256 as for the seed; USE AS PASSPHRASE puts it in both passphrase boxes. (3) <b>Two wallets side by side</b> (Open this wallet): with a passphrase, the wallet without it and the wallet with it, each with its fingerprint and first address, and a plain word on decoy wallets. (4) <b>Roll together</b> (Make a seed): how two people, or two dice, make one seed, and why one fair die is enough. New dictionary entries: Device dice check, Dice passphrase and Roll together. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.6.0</b> &mdash; <b>Animated QR codes, older wallets, and checks before you pay.</b> (1) <b>Animated QR for a multisig wallet</b> (Multisig wallet): no one format reaches every device, so pick yours: UR crypto-output for Sparrow, SeedSigner and Nunchuk; BBQr for Coldcard Q; or UR bytes carrying the Coldcard-style setup file for Keystone and Passport. Three frame sizes, and PAUSE. Public keys only. (2) The <b>Transaction inspector</b> also reads the text of an animated QR code pasted as parts (UR crypto-psbt or BBQr), one part per line. (3) <b>Open this wallet</b> takes a <b>custom account path</b> (such as m/0&#39; for some older apps), and <b>Or open a private key, read only</b> opens an xprv, yprv or zprv (or tprv, uprv, vprv), a WIF key or a Casascius mini key to show which addresses it controls. It never signs; the key is wiped by CLEAR ALL, auto-clear and END SESSION, and in practice mode only test-network keys open. (4) <b>Check an address before you pay</b> (CHECK A BACKUP, under Explain an address): compares the address you are about to pay with the one you were given, character by character, and warns when only the start and the end match, as in address poisoning and clipboard-swap scams. (5) <b>What will spending cost later?</b> (EXTRA TOOLS): the size and the fee of spending many small deposits, by address type. (6) <b>Fixes</b>: CLEAR ALL now also wipes the Reforge boxes, the words or passphrase Reforge found, and the practice words box. In practice mode COPY ADDRESS copies the test-network address, and VERIFY checks a recorded first address on its own network (a bc1q address against the real one, a tb1q address against the test-network one). A seed file saved from Word draw says the words were drawn by hand and gives the coin flips, not what was in the rolls box. CHECK ADDRESS and Try accounts 0 to 20 say when an address is a multisig script address (P2WSH) instead of searching for it. The passphrase and private key boxes ask password-manager extensions not to save them. New dictionary entries: Address poisoning, Animated QR, BBQr, Custom derivation path and UR. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.5.0</b> &mdash; <b>Plan your backup, practise safely, and take a wallet to another app.</b> (1) <b>Backup plan and stress test</b> (CHECK A BACKUP): list where each copy of the words is kept, how the passphrase is kept and who can help. VOIDFORGE then walks through a fire, a burglary, a death, a forgotten passphrase and a lost device, says for each whether the money stays safe, is lost or is open to a thief, and how to fix it. PRINT BACKUP PLAN adds the next yearly check-up date and a 5-minute check-up routine, and refuses to print anything that looks like seed words or a key. PLAN WHERE THE COPIES GO in the backup checklist opens it. (2) <b>Wallet birthday</b>: the date a seed is made is printed on the summary sheet, and can be added to the recovery sheet and the plan. (3) <b>Practice mode</b> (Practise making a backup): every address and key on the page moves to the test network, the network menus stay on Testnet, a banner says so, printed address sheets say TESTNET (seed backups print as usual), and OPEN A PRACTICE WALLET opens a public practice phrase for trying out test coins. VERIFY says when words are one of these public practice phrases. (4) <b>SAVE WATCH-ONLY FILE</b> (Watch-only wallet): a text file with the public descriptors that Sparrow opens directly, plus the separate descriptors for Bitcoin Core, the account key for Electrum, the first addresses and the birthday. (5) A warning under the passphrase boxes in Make a seed and Check a backup when the passphrase starts or ends with a space, or has two spaces in a row, an invisible character, a tab or a line break: a passphrase is used exactly as typed. (6) Seed words and other secrets on the screen can no longer be highlighted, so they are not copied by accident. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.4.0</b> &mdash; <b>A print for everything, one page each, and plain-language helpers.</b> (1) <b>One page, no blank pages.</b> Every printed sheet now comes out on exactly one page, on US Letter and on A4; before, most sheets also printed one or more blank pages. A test prints every sheet in a real browser to check this. (2) <b>Roll sheet extras</b>: a menu next to PRINT ROLL SHEET chooses no extra boxes, 10, 25 or 50 (with Keystone dice rules, up to Keystone&rsquo;s maximum of 256). (3) <b>CHECK A BACKUP</b>: once VERIFY accepts your words, <i>Open this wallet</i> has SHOW FIRST 4 LETTERS, PRINT WORDS and PRINT STAMP SHEET for any length from 12 to 24 words, and the three SeedQR prints for 12 and 24 words. VERIFY also reads 4-letter forms (as on a metal plate) and writes them out in full once the phrase checks out; for a word it does not know, it names the closest BIP39 words and changes nothing. (4) <b>New prints</b>: PRINT THIS QR for the watch-only key and descriptors, the Silent Payment address, and address and payment-request QR codes; PRINT CHILD SEED (or the key or password) for BIP85; a blank Word draw sheet; and a <b>seed summary sheet</b> with no words (how the seed was made, the fingerprint with its picture, the first address), also shown as one line on the backup checklist. (5) <b>Test only, no seed</b>: a switch in &ldquo;Your rolls&rdquo; turns FORGE off so you can roll a die many times just to see whether it is fair. Turning it on or off clears the rolls (and, after asking, a seed made from them), so test rolls never become a seed. (6) With a tap button focused, the number keys add rolls and Backspace undoes. (7) <b>Explain an address</b> (CHECK A BACKUP): paste any address to see its type, network and whether it has a typo, with links to the dictionary; private keys and private descriptors, xpubs, seed words, SeedQR digits, raw hex and Lightning invoices pasted by mistake are called out. (8) <b>What can someone do with this?</b>, a quick guide in the dictionary. (9) CLEAR ALL now also clears a child seed and the address box; SEND TO CHECK clears a child seed made from the old words; a child seed still being made is dropped when you press HIDE or change its parent words; a VERIFY overtaken by CLEAR ALL or an edit writes nothing; and the Dice rules menu is wide enough for its longest choice. (10) On a slow phone the page no longer flashes a red &ldquo;script is NOT running&rdquo; box before the start notice: the page appears once its script has run, and that box (now styled like the other warnings) shows only if the script cannot run. (11) <b>VOIDFORGE moved to GitLab</b>: releases are at gitlab.com/random21m/voidforge and the online practice copy is at random21m.gitlab.io/voidforge. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
@@ -1711,7 +1760,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   </div>
 
   <footer>
-    <div class="ft-name">VOIDFORGE <span>v2.6.0</span></div>
+    <div class="ft-name">VOIDFORGE <span>v2.7.0</span></div>
     <div class="ft-line"><span>SHA-256 of your rolls &rarr; BIP39</span><span>Same method as SeedSigner and Coldcard</span><span>gitlab.com/random21m/voidforge</span></div>
   </footer>
 </div>
@@ -2921,10 +2970,12 @@ const DICT = [
   ["Custody", "Who holds the keys. Self-custody means you do; with a bank or exchange they do.", "", "Wallets & backups"],
   ["Cypherpunk", "Someone who uses cryptography to protect privacy and freedom. Many of Bitcoin's ideas come from the cypherpunk community.", "", "Basics"],
   ["Decentralized", "Not controlled by any single person, company or government. Bitcoin's rules are enforced by many independent computers.", "", "Basics"],
-  ["Decoy wallet", "A second wallet made with a different passphrase and holding a small amount, to hand over if you are forced to. Plan it carefully.", "", "Wallets & backups"],
+  ["Decoy wallet", "A second wallet holding a small amount, to hand over if you are forced to. Often it is the wallet the words open with no passphrase, while the savings need the passphrase (or another passphrase). Plan it carefully: your family must know that both wallets exist.", "Open this wallet: the two wallets side by side, when a passphrase is typed.", "Wallets & backups"],
+  ["Device dice check", "Typing the same throwaway rolls into this page and into a hardware wallet, to see that the device makes its words from your dice as its rules say. Different words mean its dice seeds cannot be trusted. Test rolls are not secret, so reset the device afterwards.", "Check your device's dice, in EXTRA TOOLS, and PRINT TEST CARD.", "Wallets & backups"],
   ["Derivation path", "The route from the master key to one key, written like m/84'/0'/0'/0/0. Each number is a step down the tree.", "Watch-only export, Explain an address, or check that it is yours.", "Keys & seeds"],
   ["Descriptor", "A line of text that says exactly which keys and script type make a wallet's addresses. Wallet apps use it to rebuild the same addresses.", "Watch-only export, Compare a key or descriptor.", "Addresses & scripts"],
   ["Dice entropy", "Randomness taken from real dice rolls. Each roll adds about 2.58 bits, so 50 rolls give about 129 bits (12 words) and 99 rolls about 256 bits (24 words). More rolls are fine: every roll is hashed, as Coldcard does.", "Dice mode and the roll counter.", "Keys & seeds"],
+  ["Dice passphrase", "A passphrase made from new dice rolls instead of being made up: here, BIP39 words taken from the SHA-256 of the rolls, 11 bits per word, so 6 words hold about 66 bits. It must come from other rolls than the seed, and is kept apart from the seed words.", "Make a passphrase from dice, in Passphrase and note.", "Keys & seeds"],
   ["Dice rules (Keystone)", "Keystone wallets hash dice rolls like SeedSigner and Coldcard, but write each 6 as 0 first, and ask for at least 50 rolls (12 words) or 100 (24 words), at most 256. The same rolls give different words unless the same rules are used.", "Make a seed: the Dice rules menu.", "Keys & seeds"],
   ["Diceware", "Picking words with dice and a printed table instead of a computer. BitBox02's table uses four dice for the row, then a fifth die and a coin for the column, every die re-rolled until it shows 1 to 4.", "Word draw: the word finder reads BitBox02 codes such as 2143 2 T.", "Keys & seeds"],
   ["Difficulty", "How hard it currently is to find a valid block. It adjusts every 2016 blocks (about two weeks) to keep blocks coming roughly every ten minutes.", "", "Network & mining"],
@@ -3052,6 +3103,7 @@ const DICT = [
   ["Rescan", "Making a wallet look back through old blocks to find its transactions again.", "", "Wallets & backups"],
   ["Restore drill", "VOIDFORGE's test that hides the words on screen and has you type them back from your paper, to prove the paper backup is correct.", "Restore drill card.", "VOIDFORGE"],
   ["RIPEMD-160", "A hash function that makes 20-byte fingerprints. Bitcoin uses it after SHA-256 for old-style addresses.", "", "Keys & seeds"],
+  ["Roll together", "Two or more people, or two or more dice, each rolling part of the rolls for one seed. Every roll is hashed together, so one fair die rolled honestly is enough for random words. Everyone who sees all the rolls can make the seed again.", "Roll together, in Make a seed.", "Keys & seeds"],
   ["Root key (m)", "The top of the key tree, written m in a path. Everything is derived from it.", "", "Keys & seeds"],
   ["Routing", "Finding a path of channels across the Lightning Network to reach the person you want to pay.", "", "Lightning & layers"],
   ["Satoshi (sat)", "The smallest bitcoin unit: one hundred-millionth of a bitcoin.", "", "Units & math"],
@@ -4280,6 +4332,7 @@ function practiceMode(on){
     else if(wvCtx.kind === "pub") document.getElementById("wvNet").disabled = true;
     else document.getElementById("wvNet").disabled = on;
   }
+  if(wvCtx && wvCtx.mnemonic && wvCtx.pass){ wvDecoyHide(); wvDecoyShow(wvCtx.mnemonic, wvCtx.pass, wvSeq); }   // v2.7.0: the side-by-side view follows the network
   if(!on) practiceWalletClose();
   reshowSeed();
 }
@@ -4406,6 +4459,8 @@ async function runSelfTests(auto){
   // Keystone dice rules (v2.3.0): every 6 becomes 0 before SHA-256. Expected words from an independent Python BIP39 implementation.
   eq("Keystone 50 dice rolls (6 counts as 0) -> 12 words", ()=>rollsToMnemonic(R50.replace(/6/g,"0"),12),"tip toward alcohol rule pave weird quarter guilt orange vacuum blast maple");
   eq("Keystone 100 dice rolls (6 counts as 0) -> 24 words", ()=>rollsToMnemonic((R99+"6").replace(/6/g,"0"),24),"army used collect bulb speak west observe swap rotate insect involve noise plug very impulse throw reason decrease helmet strong hair hamster leopard jacket");
+  // Dice passphrase (v2.7.0): SHA-256 of the rolls, 11 bits a word, no checksum. Expected words from Node's and Python's SHA-256 with the official list.
+  eq("Dice passphrase: 26 rolls -> 6 words", async()=>(await dpWordsFrom("25163452616341525364152634",6)).join(" "),"broom beyond perfect dwarf learn fruit");
   eq("coin flips 128 (1/0) -> 12 words", ()=>rollsToMnemonic(C128,12),"trigger soccer priority image feature romance whisper jar crush sleep super potato");
   eq("coin flips 256 (1/0) -> 24 words", ()=>rollsToMnemonic(C256,24),"supply kitten pigeon wealth myth execute add huge mention during defense universe fresh absurd possible hen social glad capital early narrow erode december fall");
   eq("explainer steps, 50 dice rolls: same 12 words as FORGE", async()=>(await explainSteps(R50,12)).words.join(" "),"hole luggage safe present express tragic orbit shed switch metal identify path");
@@ -5564,6 +5619,133 @@ function updateSeedPanel(){
   document.querySelectorAll("#stepBar li").forEach(li => { const k = +li.getAttribute("data-s"); li.className = k < cur ? "done" : k === cur ? "cur" : ""; if(k === cur) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current"); });
 }
 
+// ================= Dice-made passphrase (v2.7.0) =================
+// A passphrase of BIP39 words made from NEW dice rolls (never the seed's rolls): the roll digits are hashed with SHA-256, as for the seed,
+// and each word takes the next 11 bits of the hash. There is no checksum: a passphrase is used exactly as typed. Each roll gives
+// log2(6) = about 2.58 bits, so 4, 6 or 8 words need 18, 26 or 35 rolls (44, 66 or 88 bits). More rolls are fine: every one is hashed.
+const DP_BITS_PER_ROLL = Math.log2(6);
+function dpNeed(n){ return Math.ceil(n * 11 / DP_BITS_PER_ROLL); }
+function dpClean(s){ return String(s || "").replace(/[^1-6]/g, ""); }
+async function dpWordsFrom(rolls, n){
+  const bits = bytesToBits(await sha256(rolls)), out = [];
+  for(let i = 0; i < n; i++) out.push(WORDLIST[parseInt(bits.slice(i * 11, i * 11 + 11), 2)]);
+  return out;
+}
+let dpSeq = 0;
+function dpCountUpdate(){
+  const need = dpNeed(+document.getElementById("dpWords").value), k = dpClean(document.getElementById("dpRolls").value).length;
+  document.getElementById("dpCount").textContent = k + " / " + need + " rolls" + (k >= need ? " ✓" : "");
+}
+// keepRolls: an edit of the rolls or the word count only drops the old result; CLEAR (and every wipe) also empties the rolls.
+function dpClear(keepRolls){
+  dpSeq++;
+  if(!keepRolls) document.getElementById("dpRolls").value = "";
+  const o = document.getElementById("dpOut"); o.textContent = ""; o.style.display = "none";
+  document.getElementById("dpUseRow").style.display = "none";
+  const st = document.getElementById("dpStatus"); st.className = "status"; st.textContent = "";
+  dpCountUpdate();
+}
+async function dpMake(){
+  if(!gateOk()) return;
+  const my = ++dpSeq, n = +document.getElementById("dpWords").value, need = dpNeed(n), rolls = dpClean(document.getElementById("dpRolls").value);
+  const st = document.getElementById("dpStatus"), say = (cls, t) => { st.className = "status " + cls; st.textContent = t; };
+  const o = document.getElementById("dpOut"); o.textContent = ""; o.style.display = "none"; document.getElementById("dpUseRow").style.display = "none";
+  if(rolls.length < need) return say("bad", "Roll " + (need - rolls.length) + " more (" + rolls.length + " of " + need + ") for " + n + " words.");
+  const seedRolls = clean(document.getElementById("rolls").value);
+  if(seedRolls && (seedRolls.includes(rolls) || rolls.includes(seedRolls))) return say("bad", "These rolls are in the seed box above. A passphrase must come from new rolls: anyone who has your roll sheet would have both.");
+  const an = analyzeRolls(rolls, false);
+  if(an.level === "bad" && !confirm("These rolls look non-random (" + an.problems.join("; ") + "). A passphrase made from them may be weak. Make it anyway?")) return say("", "");
+  const words = await dpWordsFrom(rolls, n);
+  if(my !== dpSeq) return;
+  const bits = Math.floor(Math.min(rolls.length * DP_BITS_PER_ROLL, n * 11));
+  o.textContent = words.join(" "); o.style.display = "";
+  document.getElementById("dpUseRow").style.display = "";
+  say("ok", n + " words, about " + bits + " bits, from " + rolls.length + " rolls. Write the passphrase down exactly (small letters, one space between words) and keep it apart from the seed words: anyone with both can spend.");
+}
+// Puts the dice passphrase into both passphrase boxes; their input events re-work the fingerprint and addresses as typing would.
+function dpUse(){
+  const t = document.getElementById("dpOut").textContent;
+  if(!t) return;
+  for(const id of ["passphrase", "passphrase2"]){ const e = document.getElementById(id); e.value = t; e.dispatchEvent(new Event("input")); }
+  const st = document.getElementById("dpStatus"); st.className = "status ok";
+  st.textContent = "It is now in both passphrase boxes. " + (hasSeed() ? "The fingerprint and addresses below are for the words with this passphrase." : "FORGE SEED will use it.") + " Type it exactly like this in any wallet app.";
+}
+
+// ================= Check your device's dice (v2.7.0) =================
+// The words a hardware wallet should show for throwaway test rolls, by each device's own dice rules (the rules FORGE uses):
+// SeedSigner hashes exactly 50 rolls (12 words) or 99 (24 words); Coldcard hashes every roll, at least 50 or 99; Keystone writes each 6
+// as 0 first and takes 50 (12 words) or 100 (24 words) up to 256 rolls. All three take SHA-256 of the digit string, then its first 16 or
+// 32 bytes. BitBox02 takes no dice: restore the test words on it and compare its first receive address with the one shown here.
+// The test card's rolls are public, so firmware could in theory recognise them: the page also says to test with your own throwaway rolls.
+const DC_CARD_ROLLS = "6256616132356536125545561315414356641555323633416436164425346422126663422466424554124321655223542352";
+const DC_RULES = {
+  seedsigner: {name: "SeedSigner", need: {12: 50, 24: 99}, exact: true},
+  coldcard: {name: "Coldcard", need: {12: 50, 24: 99}},
+  keystone: {name: "Keystone", need: {12: 50, 24: 100}, max: KEYSTONE_MAX, six: true},
+  bitbox02: {name: "BitBox02", need: {12: 50, 24: 99}, bitbox: true}
+};
+async function dcWords(dev, wc, rolls){ return rollsToMnemonic(DC_RULES[dev].six ? rolls.replace(/6/g, "0") : rolls, wc); }
+function dcRows(words, per){ const rows = []; for(let i = 0; i < words.length; i += per) rows.push(words.slice(i, i + per).map((w, j) => (String(i + j + 1).padStart(2, " ") + ". " + w).padEnd(16, " ")).join("").trimEnd()); return rows.join("\n"); }
+function dcAddrLabel(){ return "First receive address (BIP84, " + (practiceOn ? "TESTNET, m/84'/1'/0'/0/0" : "m/84'/0'/0'/0/0") + ", no passphrase)"; }
+let dcSeq = 0;
+function dcCountUpdate(){
+  const r = DC_RULES[document.getElementById("dcDev").value], wc = +document.getElementById("dcLen").value, need = r.need[wc];
+  const k = dpClean(document.getElementById("dcRolls").value).length;
+  document.getElementById("dcCount").textContent = k + " / " + need + " rolls (" + (r.exact ? "exactly " + need : r.max ? need + " to " + r.max : "at least " + need) + " for " + r.name + ")";
+}
+function dcClear(keepRolls){
+  dcSeq++;
+  if(!keepRolls) document.getElementById("dcRolls").value = "";
+  const o = document.getElementById("dcOut"); o.textContent = ""; o.style.display = "none";
+  const st = document.getElementById("dcStatus"); st.className = "status"; st.textContent = "";
+  dcCountUpdate();
+}
+function dcFill(){
+  const wc = +document.getElementById("dcLen").value, need = DC_RULES[document.getElementById("dcDev").value].need[wc];
+  document.getElementById("dcRolls").value = DC_CARD_ROLLS.slice(0, need);
+  dcClear(true);
+}
+async function dcCheck(){
+  if(!gateOk()) return;
+  const my = ++dcSeq, dev = document.getElementById("dcDev").value, r = DC_RULES[dev], wc = +document.getElementById("dcLen").value, need = r.need[wc];
+  const rolls = dpClean(document.getElementById("dcRolls").value);
+  const st = document.getElementById("dcStatus"), say = (cls, t) => { st.className = "status " + cls; st.textContent = t; };
+  const o = document.getElementById("dcOut"); o.textContent = ""; o.style.display = "none";
+  if(rolls.length < need) return say("bad", r.name + " needs " + (r.exact ? "exactly " : "at least ") + need + " rolls for " + wc + " words (" + rolls.length + " typed). Type throwaway rolls, or press USE THE TEST CARD ROLLS.");
+  if(r.exact && rolls.length > need) return say("bad", "SeedSigner takes exactly " + need + " rolls for " + wc + " words: remove " + (rolls.length - need) + ".");
+  if(r.max && rolls.length > r.max) return say("bad", "Keystone takes at most " + r.max + " rolls: remove " + (rolls.length - r.max) + ".");
+  const m = await dcWords(dev, wc, rolls), a0 = await shownFirstAddress(m, "");
+  if(my !== dcSeq) return;
+  o.textContent = "TEST ONLY: these words are not secret. Never send money to this wallet.\n\n" + r.name + ", " + wc + " words, from " + rolls.length + " rolls" + (r.six ? " (each 6 counted as 0)" : "") + ":\n" + dcRows(m.split(" "), 4) + "\n\n" + dcAddrLabel() + ":\n" + a0;
+  o.style.display = "";
+  const how = {
+    seedsigner: "On the SeedSigner, make a new " + wc + "-word seed from dice rolls and type these " + need + " rolls in order. It must show exactly these words.",
+    coldcard: "On the Coldcard (New Seed Words, Advanced, " + wc + " Word Dice Roll), type all " + rolls.length + " rolls in order. It must show exactly these words.",
+    keystone: "On the Keystone, create a " + wc + "-word wallet from dice rolls and type the " + rolls.length + " rolls as rolled, 1 to 6 (Keystone counts each 6 as 0 itself). It must show exactly these words.",
+    bitbox02: "BitBox02 takes no dice rolls. To check that it uses the words you give it, restore these " + wc + " test words on it with the BitBoxApp, then compare the first receive address of its Bitcoin account (native SegWit) with the address above. It must be the same."
+  }[dev];
+  say("ok", how + (r.bitbox ? " If it differs" : " If any word differs") + " and you typed everything correctly, do not trust the device with your money. Afterwards reset the device before making your real wallet: test rolls and their words are not secret." + (rolls === DC_CARD_ROLLS.slice(0, rolls.length) ? " These are the public test card rolls: test once with your own throwaway rolls too." : ""));
+}
+// PRINT TEST CARD: the public test rolls and, for each device's rules, the words and first receive address they must give.
+async function printDiceCard(){
+  if(!gateOk()) return;
+  const sets = [["SeedSigner and Coldcard", 12, 50, "seedsigner"], ["SeedSigner and Coldcard", 24, 99, "seedsigner"], ["Keystone (each 6 counts as 0)", 12, 50, "keystone"], ["Keystone (each 6 counts as 0)", 24, 100, "keystone"]], parts = [];
+  for(const [who, wc, k, dev] of sets){
+    const m = await dcWords(dev, wc, DC_CARD_ROLLS.slice(0, k));
+    parts.push(who + ", " + wc + " words, the first " + k + " rolls:\n" + dcRows(m.split(" "), 6) + "\n" + dcAddrLabel() + ": " + await shownFirstAddress(m, ""));
+  }
+  const groups = DC_CARD_ROLLS.match(/.{10}/g);
+  printSheet(add => {
+    add("ps-title", "VOIDFORGE DICE TEST CARD" + (practiceOn ? " (TESTNET)" : ""));
+    add("ps-sub", "TEST ONLY. These rolls and words are printed for anyone to see: never send money to these wallets. Use them to check that a hardware wallet makes its words from your dice, then reset the device before making your real wallet.");
+    add("ps-info", "Test rolls, in this order:\n 1-50:   " + groups.slice(0, 5).join(" ") + "\n51-100:  " + groups.slice(5).join(" "));
+    add("ps-rule", "");
+    for(const p of parts) add("ps-info ps-small", p);
+    add("ps-rule", "");
+    add("ps-warn", "BitBox02 takes no dice: restore one of these word sets on it and compare its first receive address.\nThese rolls are public, so a device could recognise them. Test once with your own throwaway rolls too: Check your device's dice, in EXTRA TOOLS.");
+  });
+}
+
 function togglePassphrase(btn){
   const el = document.getElementById("passphrase"), el2 = document.getElementById("passphrase2");
   const show = el.type === "password";
@@ -5832,6 +6014,7 @@ function wipeSeed(){
   document.getElementById("testResults").textContent="";
   setResult("\u2014"); updateAdvSummary(); if(guideOn){ guideN = 1; guideRender(); }
   wdClear();
+  dpClear(); dcClear();   // v2.7.0: the dice passphrase and the device dice check
   document.getElementById("fingerprint").textContent="";
   document.getElementById("address").textContent="";
   clearWatch(); clearFpIcons();
@@ -5842,7 +6025,7 @@ function wipeSeed(){
 }
 
 // Auto-clear (v1.34.0): optional, off at every page load, nothing stored. Wipes the secrets without asking after idle time or when the tab is hidden.
-const AUTO_FIELDS = ["pkIn", "rolls", "passphrase", "passphrase2", "note", "phrase", "verifyPass", "verifyRecorded", "checkAddr", "drillWords", "drillPass", "prInput", "reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "wdWords", "wdFlips", "wdFind"];
+const AUTO_FIELDS = ["pkIn", "rolls", "passphrase", "passphrase2", "note", "phrase", "verifyPass", "verifyRecorded", "checkAddr", "drillWords", "drillPass", "prInput", "reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "wdWords", "wdFlips", "wdFind", "dpRolls", "dcRolls"];
 let autoLast = Date.now(), autoTimer = null;
 function autoTouch(){ autoLast = Date.now(); }
 ["keydown", "pointerdown", "input", "touchstart", "wheel"].forEach(e => document.addEventListener(e, autoTouch, {capture: true, passive: true}));
@@ -6159,7 +6342,7 @@ function clearWalletView(){
   wvCtx = null; wvFrom = 0; wvSeq++; document.getElementById("wvBorn").value = "";
   document.getElementById("wvList").textContent = ""; document.getElementById("wvFp").textContent = ""; document.getElementById("wvIcon").textContent = "";
   document.getElementById("wvErr").textContent = ""; document.getElementById("wvPath").textContent = "";
-  hideAddrQr("wvq"); wvSeedQrHide();
+  hideAddrQr("wvq"); wvSeedQrHide(); wvDecoyHide();
   for(const id of ["wvType","wvNet","wvAcct"]) document.getElementById(id).disabled = false;
   if(practiceOn){ document.getElementById("wvNet").value = "test"; document.getElementById("wvNet").disabled = true; }
   if(document.getElementById("wvAcct").value === "-") document.getElementById("wvAcct").value = "0";
@@ -6614,8 +6797,21 @@ async function openWalletView(mnemonic, pass){
     document.getElementById("wvFp").textContent = "Master fingerprint: " + fp + (pass ? " (with passphrase)" : "");
     showFpIcon("wvIcon", fp);
   } catch(e) { if(mine === wvSeq) document.getElementById("wvFp").textContent = "Master fingerprint unavailable: " + e.message; }
+  if(pass && mine === wvSeq) await wvDecoyShow(mnemonic, pass, mine);
   if(mine === wvSeq) await wvRefresh();
 }
+// v2.7.0: with a passphrase, the wallet without it and the wallet with it side by side (fingerprint and first receive address each).
+async function wvDecoyShow(mnemonic, pass, mine){
+  try {
+    const [f0, a0, f1, a1] = [await mnemonicFingerprint(mnemonic, ""), await shownFirstAddress(mnemonic, ""), await mnemonicFingerprint(mnemonic, pass), await shownFirstAddress(mnemonic, pass)];
+    if(mine !== wvSeq) return;
+    const net = practiceOn ? " (test network)" : "";
+    document.getElementById("wvD0").textContent = "Fingerprint " + f0; document.getElementById("wvD0a").textContent = "First address" + net + ": " + a0;
+    document.getElementById("wvD1").textContent = "Fingerprint " + f1; document.getElementById("wvD1a").textContent = "First address" + net + ": " + a1;
+    document.getElementById("wvDecoy").style.display = "";
+  } catch(e) { if(mine === wvSeq) wvDecoyHide(); }
+}
+function wvDecoyHide(){ for(const id of ["wvD0", "wvD0a", "wvD1", "wvD1a"]) document.getElementById(id).textContent = ""; document.getElementById("wvDecoy").style.display = "none"; }
 for(const id of ["wvType","wvChain","wvNet"]) document.getElementById(id).addEventListener("change", wvReset);
 document.getElementById("wvAcct").addEventListener("input", wvReset);
 document.getElementById("wvPathIn").addEventListener("input", wvReset);

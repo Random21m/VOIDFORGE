@@ -233,6 +233,13 @@ await p.evaluate(() => showQr('wDescR', 'receive descriptor'));
 await sheet('practice mode: descriptor QR', () => printShownQr());
 await p.evaluate(() => { window.dispatchEvent(new Event('afterprint')); hideQr(); practiceMode(false); });
 await p.waitForFunction(() => /^bc1q/.test(document.getElementById('addrList').textContent));
+// 8c. v2.7.0: the dice test card (test rolls, four word sets and their first addresses), also in practice mode and with TEXT A+.
+await sheet('dice test card', () => printDiceCard());
+await p.evaluate(() => practiceMode(true));
+await sheet('practice mode: dice test card', () => printDiceCard());
+ok(await p.evaluate(async () => { await printDiceCard(); const t = document.getElementById('printOnly').textContent; window.dispatchEvent(new Event('afterprint')); return /^VOIDFORGE DICE TEST CARD \(TESTNET\)/.test(t) && (t.match(/tb1q/g) || []).length === 4 && !/bc1q/.test(t); }), 'practice mode: the dice test card says TESTNET and shows only test-network addresses');
+await p.evaluate(() => practiceMode(false));
+await p.evaluate(() => toggleSize()); await sheet('TEXT A+: dice test card', () => printDiceCard()); await p.evaluate(() => toggleSize());
 // Secrets not selectable (v2.5.0): in a real browser, select-all and copy leave out the seed words and the 4-letter grid.
 ok(await p.evaluate(() => {
   // (checked by hand: with the user-select rule removed, all 12 words of the grid are in the selection)
