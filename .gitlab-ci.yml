@@ -23,6 +23,7 @@ test:
     - npm ci --ignore-scripts
     - node tests/test.js
     - node tests/oracle.test.mjs
+    - node tests/fuzz.test.mjs
     - node tests/print.test.mjs
 
 pages:
