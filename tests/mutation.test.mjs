@@ -1636,7 +1636,7 @@ async function probe(w, mutated, fast, only, hooks) {
       const made = $('genResult').textContent.split('\n')[0];
       if (!w.hasSeed() || made.split(' ')[23] !== 'regular' || $('wdOut').style.display === 'none') fails.push('Word draw: 23 x violin and flips 101 make the 24th word regular');
       $('wdFlips').value = '111'; w.wdUpdate();
-      if (w.hasSeed() || !/^You changed the words, the coin flips or the word count after MAKE SEED FROM WORDS/.test($('genResult').textContent) || $('wdOut').textContent !== '') fails.push('Word draw: changing the flips clears the seed and the last-word steps');
+      if (w.hasSeed() || !/^You changed the words, the coin flips or the word count after FORGE SEED FROM WORDS/.test($('genResult').textContent) || $('wdOut').textContent !== '') fails.push('Word draw: changing the flips clears the seed and the last-word steps');
       $('wdFlips').value = '101'; w.wdUpdate(); await w.wdGenerate(); if (!w.hasSeed() || $('genResult').textContent.split('\n')[0] !== made) fails.push('Word draw: the same inputs make the same seed again');
       $('wdWords').value = Array(22).fill('violin').join(' ') + ' zoo'; w.wdUpdate(); if (w.hasSeed()) fails.push('Word draw: changing a word clears the seed');
       $('wdWords').value = Array(23).fill('violin').join(' '); w.wdUpdate(); await w.wdGenerate(); words(12); if (w.hasSeed()) fails.push('Word draw: changing the word count clears the seed');
@@ -2733,7 +2733,7 @@ async function probe(w, mutated, fast, only, hooks) {
     $('cdCards').value = C24; w.cdUpdate(); const off24 = $('cdBtn').disabled; await w.cdGenerate();
     if (!off24 || w.hasSeed()) fails.push('cards: 24 cards (127 bits) are not enough for 12 words');
     w.eval('selfTestState = "fail"'); $('cdCards').value = C25; w.cdUpdate(); const offGate = $('cdBtn').disabled; w.eval('selfTestState = "pass"'); w.cdUpdate();
-    if (!offGate || $('cdBtn').disabled || !/^25 cards, about 132 of the 128 bits/.test($('cdCount').textContent)) fails.push('cards: MAKE SEED FROM CARDS waits for the self-test, then 25 cards are enough');
+    if (!offGate || $('cdBtn').disabled || !/^Enough cards: 25\. Press FORGE SEED FROM CARDS\./.test($('cdCount').textContent)) fails.push('cards: FORGE SEED FROM CARDS waits for the self-test, then 25 cards are enough');
     await w.cdGenerate(); const wc = first();
     if (wc !== expC(C25, 12) || fpOf() !== fp(expC(C25, 12), '')) fails.push('cards: 25 cards give the words of SHA-256 of the card list');
     { const S = w.seedSummary(); if (!S || !/^Made from: 25 playing cards \(SHA-256 of the card list/.test(S.lines[1]) || !/about 132 bits went in, if the deck was well shuffled/.test(S.lines[2])) fails.push('cards: the summary says 25 playing cards and about 132 bits'); }
@@ -4934,7 +4934,8 @@ R.ok(base.by === null, "control: the unmodified file passes the self-test and ev
 // the map for step A, used only if it was made for this exact page and probe
 let PLAN = null;
 if (!process.env.MUT_NOPLAN) { try { const P = JSON.parse(fs.readFileSync(new URL('./fixtures/mut-plan.json', import.meta.url), 'utf8'));
-  if (P.html === HTML_HASH && P.probe === PROBE_HASH) { PLAN = P.plan; console.log('step A map: ' + Object.keys(PLAN).length + ' targets'); } else console.log('tests/fixtures/mut-plan.json was made for another page or probe: every mutation runs the full probe (make a new map with MUT_MAP)'); } catch (e) { console.log('no step A map (tests/fixtures/mut-plan.json): every mutation runs the full probe'); } }
+  if (P.html === HTML_HASH && P.probe === PROBE_HASH && P.secFail && Object.keys(P.secFail).length) console.log('tests/fixtures/mut-plan.json lists sections that fail alone (' + Object.keys(P.secFail).join(' ') + '): fix them and make the map again; every mutation runs the full probe');
+  else if (P.html === HTML_HASH && P.probe === PROBE_HASH) { PLAN = P.plan; console.log('step A map: ' + Object.keys(PLAN).length + ' targets'); } else console.log('tests/fixtures/mut-plan.json was made for another page or probe: every mutation runs the full probe (make a new map with MUT_MAP)'); } catch (e) { console.log('no step A map (tests/fixtures/mut-plan.json): every mutation runs the full probe'); } }
 
 // Hints for step A1 (only with a valid map, which proves every section passes alone): the check that caught each mutation in
 // the last full run, as its message; the section is found by where that message is written in the probe.

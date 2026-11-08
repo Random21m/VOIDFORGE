@@ -1083,13 +1083,13 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       tb.w.setMethod('words'); tb.$('wdLen').value='24'; tb.$('wordSel').value='24'; tb.$('wordSel').dispatchEvent(new tb.w.Event('change')); tb.$('wdWords').value=''; const codes=[], idx=[];
       for(let k=0;k<23;k++){ const c=Array.from({length:5},()=>1+nc.randomInt(4)).join('')+(nc.randomInt(2)?'T':'H'); codes.push(c); idx.push(bbIdx(c)); tb.$('wdFind').value=c.slice(0,4)+' '+c[4]+' '+c[5]; tb.w.wdAddFound(); }
       const flipsHT=['H','T','T'].map(()=>nc.randomInt(2)?'T':'H').join(''), i=parseInt(flipsHT.replace(/T/g,'1').replace(/H/g,'0'),2);
-      tb.$('wdFlips').value=flipsHT.replace(/T/g,'1').replace(/H/g,'0'); tb.w.wdUpdate(); ok(!tb.$('wdBtn').disabled,'BitBox02: 23 table words and 3 flips unlock MAKE SEED FROM WORDS');
+      tb.$('wdFlips').value=flipsHT.replace(/T/g,'1').replace(/H/g,'0'); tb.w.wdUpdate(); ok(!tb.$('wdBtn').disabled,'BitBox02: 23 table words and 3 flips unlock FORGE SEED FROM WORDS');
       await tb.w.wdGenerate(); const got=tb.$('genResult').textContent.split('\n')[0].split(' ');
       ok(got.length===24&&got.slice(0,23).join(' ')===idx.map(n=>WL[n]).join(' ')&&got[23]===cand(idx,i),'BitBox02: the 24th word is the candidate BitBox shows for '+flipsHT+' (T = 1, H = 0)'); }
     { // v2.3.0 review fix: a Word draw seed is cleared when its words, flips or length change afterwards
       const made=tb.$('genResult').textContent.split('\n')[0]; ok(tb.w.hasSeed()&&made.split(' ').length===24,'Word draw: the BitBox02 seed is made');
       const fl=tb.$('wdFlips').value; tb.$('wdFlips').value=fl==='111'?'000':'111'; tb.$('wdFlips').oninput&&tb.$('wdFlips').oninput(); tb.w.wdUpdate();
-      ok(!tb.w.hasSeed()&&/You changed the words, the coin flips or the word count after MAKE SEED FROM WORDS/.test(tb.$('genResult').textContent)&&tb.$('wdOut').textContent===''&&tb.$('wdOut').style.display==='none','Word draw: changing the flips after the seed was made clears it and the last-word steps');
+      ok(!tb.w.hasSeed()&&/You changed the words, the coin flips or the word count after FORGE SEED FROM WORDS/.test(tb.$('genResult').textContent)&&tb.$('wdOut').textContent===''&&tb.$('wdOut').style.display==='none','Word draw: changing the flips after the seed was made clears it and the last-word steps');
       tb.$('wdFlips').value=fl; tb.w.wdUpdate(); await tb.w.wdGenerate(); ok(tb.w.hasSeed()&&tb.$('genResult').textContent.split('\n')[0]===made,'Word draw: the same words and flips make the same seed again');
       tb.$('wdFind').value='1111 1 H'; tb.w.wdAddFound(); ok(!tb.w.hasSeed(),'Word draw: adding a word after the seed was made clears it');
       tb.$('wdWords').value=made.split(' ').slice(0,23).join(' '); tb.w.wdUpdate(); await tb.w.wdGenerate(); tb.words(12); ok(!tb.w.hasSeed(),'Word draw: changing the word count clears the seed'); }
@@ -1999,9 +1999,9 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const C25='KS 3D 9H AC TC 5S JD 2H 8C QS 4D 7H 6C AH TS 9D 3C KH 5D JS 2S 8H QC 4H 7S', first=()=>$('genResult').textContent.split('\n')[0];
     eq(expC('AS 2C TD',12),'embody only exact pride episode winter estate perfect security often scout tiger','cards: the research vector (A♠ 2♣ T♦, 12 words) agrees with @scure');
     w.setMethod('cards'); ok(w.document.body.classList.contains('m-cards')&&$('cdBox').open,'cards: the Cards & hex tab opens its box');
-    $('cdCards').value=C25.split(' ').slice(0,24).join(' '); w.cdUpdate(); ok($('cdBtn').disabled&&/^24 cards, about 127 of the 128 bits/.test($('cdCount').textContent),'cards: 24 cards are not enough for 12 words (127 bits)');
+    $('cdCards').value=C25.split(' ').slice(0,24).join(' '); w.cdUpdate(); ok($('cdBtn').disabled&&/^24 cards so far\. 1 more to go\./.test($('cdCount').textContent),'cards: 24 cards are not enough for 12 words (127 bits)');
     $('cdCards').value=C25.toLowerCase().replace(/t/g,'10'); w.cdUpdate(); ok(!$('cdBtn').disabled,'cards: 25 cards, lower case and 10 for T, are enough');
-    await w.cdGenerate(); eq(first(),expC(C25,12),'cards: MAKE SEED FROM CARDS gives the words of SHA-256 of A♠ 2♣ ... text');
+    await w.cdGenerate(); eq(first(),expC(C25,12),'cards: FORGE SEED FROM CARDS gives the words of SHA-256 of A♠ 2♣ ... text');
     w.downloadSeed(); const dl=r.st.blob?await blobText(w,r.st.blob):''; ok(/Input: Playing cards: K♠ 3♦ 9♥ A♣ T♣/.test(dl),'cards: DOWNLOAD names the cards as the input');
     ok(/^Made from: 25 playing cards/.test(w.seedSummary().lines[1]),'cards: the summary sheet says 25 playing cards');
     $('cdCards').value='KS QH XZ'; w.cdUpdate(); ok(/“XZ” is not a card/.test($('cdMsg').textContent)&&!w.hasSeed(),'cards: a word that is not a card is named, and the old seed is cleared');
