@@ -21,6 +21,8 @@ Every release passes all of these before it is published (RELEASING.md says how 
 - **Mutation tests** (`tests/mutation.test.mjs`): about 1,800 deliberate small bugs; each one must be caught by the self-test or an end-to-end check.
 - **A fresh AI code review** before every release, by a model that did not write the code, and a full review of the whole file before the first signed release. These reviews do not mean VOIDFORGE has been independently audited.
 
+THREAT_MODEL.md says what VOIDFORGE protects, against whom, and what it cannot do.
+
 ## Reporting a vulnerability
 
 Please report privately, not in a public issue:
@@ -48,11 +50,11 @@ Please include the version (shown at the bottom of the page), the browser, and s
 
 ## Release signing key
 
-Releases will be signed with this OpenPGP key (ed25519, created 2026-11-06, expires 2028-11-05 unless extended):
+Releases from v2.8.1 on are signed with this OpenPGP key (ed25519, created 2026-11-06, expires 2028-11-05 unless extended):
 
 `2509 D115 03B7 2CBF BCB5  408F 4B72 9F05 6A52 9340`
 
-The public key is [`voidforge-signing-key.asc`](voidforge-signing-key.asc) in this repository. It carries no email address. **Releases up to v2.8.0 are not signed**; check them with `SHA256SUMS` and `CID.txt` (see RELEASING.md). From the first signed release on, each release also has `SHA256SUMS.asc`. To check it:
+The public key is [`voidforge-signing-key.asc`](voidforge-signing-key.asc) in this repository. It carries no email address. **Releases up to v2.8.0 are not signed**; check them with `SHA256SUMS` and `CID.txt` (see RELEASING.md). From v2.8.1, the first signed release, each release also has `SHA256SUMS.asc`. To check it:
 
 ```
 gpg --import voidforge-signing-key.asc
