@@ -755,6 +755,11 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .wd-how { margin: 0 0 8px; }
   .wd-how > summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--muted); }
   body.m-words #forgeBtn, body.m-words #bigCount, body.m-words #bigSub { display: none; }
+  #cdBox > summary { display: none; }
+  body:not(.m-cards) #cdBox { display: none; }
+  body.m-cards .gen-left > [data-g="2"] { display: none !important; }
+  #cdBox { background: none !important; border: 0 !important; padding: 0 !important; margin-top: 0 !important; }
+  body.m-cards #forgeBtn, body.m-cards #bigCount, body.m-cards #bigSub { display: none; }
   #wordGrid, #cardGen .gen-right #wordGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   @media (max-width: 559px) { #wordGrid, #cardGen .gen-right #wordGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .wcell { animation: none; box-shadow: none; font-size: 18px; font-weight: 700; padding: 10px 12px; min-width: 0; }
@@ -999,6 +1004,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <button type="button" role="tab" id="mt-dice" data-method="dice" aria-selected="true">Dice</button>
       <button type="button" role="tab" id="mt-coin" data-method="coin" aria-selected="false">Coin</button>
       <button type="button" role="tab" id="mt-words" data-method="words" aria-selected="false">Word draw</button>
+      <button type="button" role="tab" id="mt-cards" data-method="cards" aria-selected="false">Cards &amp; hex</button>
     </div>
     <div class="mk-len" id="lenRow" data-g="1"><label for="wordSel">Seed length</label><select id="wordSel" aria-label="Seed length"><option value="12">12 words</option><option value="24">24 words</option></select><span id="lenNote" aria-live="polite"></span></div>
     <div class="mk-len" id="rulesRow" data-g="1"><label for="diceRules">Dice rules</label><select id="diceRules" aria-label="Dice rules"><option value="std">SeedSigner and Coldcard</option><option value="keystone">Keystone</option></select><span id="rulesNote" aria-live="polite"></span></div>
@@ -1026,6 +1032,22 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <button type="button" class="secondary small" onclick="wdClear()">CLEAR</button>
       </div>
       <div id="wdOut" style="display:none;"></div>
+    </details>
+    <details id="cdBox" data-g="1">
+      <summary>Cards and hex<span class="tag tag-secret">SECRET</span></summary>
+      <details class="wd-how"><summary>How cards work</summary><p class="hint" style="margin:6px 0 0;">Use a full deck of 52 cards with the jokers taken out. Shuffle it well (at least seven riffle shuffles), lay the cards out face up and type them in order, such as <b>AS 10H QD 2C</b>: the rank (A, 2 to 10, J, Q, K) and then the suit (C, D, H or S; &spades; &hearts; &diams; &clubs; work too). A 12-word seed needs <b>25 cards</b>. A 24-word seed needs <b>the whole deck and then 6 more</b> from a new shuffle. VOIDFORGE writes the cards as A&spades; 2&clubs; T&diams; and so on and hashes that text with SHA-256, as Ian Coleman&rsquo;s BIP39 tool does (choose Cards and the number of words there, not raw entropy) and EntropyLab&rsquo;s Coleman symbols option, so you can check the words with either.</p></details>
+      <textarea id="cdCards" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Your cards in order" placeholder="Your cards in order, such as AS 10H QD 2C" oninput="cdUpdate()"></textarea>
+      <div id="cdCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
+      <div class="btn-row" style="margin-top:8px;"><button type="button" id="cdBtn" onclick="cdGenerate()" disabled>MAKE SEED FROM CARDS</button></div>
+      <details class="wd-how" id="cdHexBox" style="margin-top:12px;"><summary>Or hex: a 16-sided die, or checking another tool</summary>
+        <p class="hint" style="margin:6px 0 0;">Type exactly <b>32</b> hex digits (0 to 9 and a to f) for 12 words, or <b>64</b> for 24 words. They are used <b>directly</b> as the seed&rsquo;s randomness, with no hashing, as in Ian Coleman&rsquo;s tool with Hexadecimal and raw entropy chosen. For a real seed, roll a 16-sided die yourself (one digit per roll). Never use hex that a website or a program made for you.</p>
+        <input type="text" id="cdHex" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Hex digits" placeholder="32 or 64 hex digits" oninput="cdUpdate()" style="margin-top:6px;">
+        <div id="cdHexCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
+        <div class="btn-row" style="margin-top:8px;"><button type="button" id="cdHexBtn" onclick="cdHexGenerate()" disabled>MAKE SEED FROM HEX</button></div>
+      </details>
+      <div id="cdMsg" class="hint" aria-live="polite" style="margin:4px 0 0; color:var(--danger);"></div>
+      <div class="hint" style="margin:4px 0 0;">The passphrase (if any) is added after the words are made, in the box under them.</div>
+      <div class="btn-row" style="margin-top:8px;"><button type="button" class="secondary small" onclick="cdClear()">CLEAR</button></div>
     </details>
     <div class="radio-group legacy-radios" id="wordRadios" data-g="1">
       <label><input type="radio" name="words" value="12" checked onchange="updateLabels()"><span id="lbl12">12 (50)</span></label>
@@ -1985,19 +2007,21 @@ let lastMode = "dice", method = "dice";
 // The three ways to make a seed (v2.1.0): Dice, Coin, Word draw. The dice/coin radio buttons and the 12/24 radio buttons are kept (hidden) as the single source of truth; the tabs and the length menu drive them.
 function syncMethodUi(){
   const wc = +document.querySelector('input[name="words"]:checked').value, coin = getMode() === "coin";
-  if(method !== "words") method = getMode();
-  document.body.classList.toggle("m-words", method === "words");
-  ["dice", "coin", "words"].forEach(k => { const b = document.getElementById("mt-" + k); b.setAttribute("aria-selected", k === method ? "true" : "false"); b.tabIndex = k === method ? 0 : -1; });
+  if(method !== "words" && method !== "cards") method = getMode();
+  document.body.classList.toggle("m-words", method === "words"); document.body.classList.toggle("m-cards", method === "cards");
+  ["dice", "coin", "words", "cards"].forEach(k => { const b = document.getElementById("mt-" + k); b.setAttribute("aria-selected", k === method ? "true" : "false"); b.tabIndex = k === method ? 0 : -1; });
   document.getElementById("wordSel").value = String(wc); document.getElementById("wdLen").value = String(wc);
   const n = wdNeeds(wc);
-  document.getElementById("lenNote").textContent = method === "words" ? n.words + " words from your tiles, then " + n.flips + " coin flips" : (keystoneOn() ? getNeeded(wc) + " to " + KEYSTONE_MAX + " dice rolls" : getNeeded(wc) + (coin ? " coin flips" : " dice rolls") + " or more");
+  document.getElementById("lenNote").textContent = method === "words" ? n.words + " words from your tiles, then " + n.flips + " coin flips" : method === "cards" ? (wc === 24 ? "a whole shuffled deck, then 6 more cards; or 64 hex digits" : "25 cards from a shuffled deck; or 32 hex digits") : (keystoneOn() ? getNeeded(wc) + " to " + KEYSTONE_MAX + " dice rolls" : getNeeded(wc) + (coin ? " coin flips" : " dice rolls") + " or more");
   if(method === "words") document.getElementById("wdBox").open = true;
+  if(method === "cards"){ document.getElementById("cdBox").open = true; cdUpdate(); }
   document.getElementById("rulesRow").style.display = method === "dice" ? "" : "none";
   document.getElementById("rulesNote").textContent = keystoneOn() ? "each 6 counts as 0; " + getNeeded(wc) + " to " + KEYSTONE_MAX + " rolls" : "";
 }
 function setMethod(m){
   if(m === "words"){ method = "words"; syncMethodUi(); wdUpdate(); return; }
-  const wasWords = method === "words"; method = m;
+  if(m === "cards"){ method = "cards"; syncMethodUi(); return; }
+  const wasWords = method === "words" || method === "cards"; method = m;
   const r = document.querySelector('input[name="mode"][value="' + m + '"]');
   if(!r.checked){ r.checked = true; onModeChange(); }
   if(wasWords) method = getMode();
@@ -2014,7 +2038,7 @@ function onModeChange(){
   }
   box.value = "";
   lastMode = m;
-  if(method !== "words") method = m;
+  if(method !== "words" && method !== "cards") method = m;
   updateLabels();
 }
 
@@ -2136,13 +2160,16 @@ function inputSig(kind){
   const v = id => document.getElementById(id).value;
   // The passphrase is not part of the words (v2.1.0): changing it after FORGE re-works the fingerprint and addresses (rePass) instead of clearing the words.
   // A seed from the Word draw box depends on its words, flips and length, never on the rolls box (v2.3.0: editing them clears the seed).
+  if(kind === "cd") return "cd|" + document.querySelector('input[name="words"]:checked').value + "|" + cdParse(v("cdCards")).cards.join(" ");
+  if(kind === "hex") return "hex|" + document.querySelector('input[name="words"]:checked').value + "|" + hexClean(v("cdHex"));
   if(kind === "wd") return "wd|" + document.querySelector('input[name="words"]:checked').value + "|" + wdParse(v("wdWords")).idx.join(",") + "|" + v("wdFlips").replace(/[^01]/g, "");
   return "rolls|" + getMode() + "|" + (keystoneOn() ? "keystone" : "std") + "|" + document.querySelector('input[name="words"]:checked').value + "|" + clean(v("rolls"));
 }
 function staleCheck(){
   if(seedSig === null || !hasSeed() || inputSig(seedKind) === seedSig) return;
   seedSig = null; forgeRun++;
-  if(seedKind === "wd"){ setResult("You changed the words, the coin flips or the word count after MAKE SEED FROM WORDS. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press MAKE SEED FROM WORDS again."); }
+  if(seedKind === "cd" || seedKind === "hex"){ setResult("You changed the cards, the hex digits or the word count after MAKE SEED FROM " + (seedKind === "cd" ? "CARDS" : "HEX") + ". The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press MAKE SEED FROM " + (seedKind === "cd" ? "CARDS" : "HEX") + " again."); }
+  else if(seedKind === "wd"){ setResult("You changed the words, the coin flips or the word count after MAKE SEED FROM WORDS. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press MAKE SEED FROM WORDS again."); }
   else setResult("You changed the rolls, the word count, the dice/coin choice or the dice rules after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.");
   document.getElementById("fingerprint").textContent = ""; document.getElementById("address").textContent = "";
 }
@@ -3313,7 +3340,7 @@ const DICT = [
   ["Signature", "The proof, made with a private key, that lets a coin be spent. Bitcoin uses ECDSA and, for Taproot, Schnorr signatures.", "", "Transactions"],
   ["Signed message", "Text signed with the key of an address, to show that whoever holds that key agrees with it, for example to prove an address is yours. Anyone can check it with the address alone. It does not show who holds the key, or that any coins are still there.", "EXTRA TOOLS: Verify a signed message.", "Keys & seeds"],
   ["Signer", "A device or program that holds the keys and signs transactions, such as a hardware wallet.", "", "Wallets & backups"],
-  ["Signet", "A test network with predictable behavior, run by a few trusted signers, used for testing software. Its coins have no value.", "", "Network & mining"],
+  ["Signet", "A test network with predictable behavior, run by a few trusted signers, used for testing software. Its coins have no value. Its addresses and keys have exactly the same form as testnet's (tb1..., tpub), so everything VOIDFORGE shows for TESTNET (practice coins only) works on signet too.", "The network menus: choose TESTNET (practice coins only).", "Network & mining"],
   ["Signing", "Using a private key to prove a transaction is authorized. VOIDFORGE never signs anything.", "", "Transactions"],
   ["Single point of failure", "One thing whose loss or theft ruins everything, such as a single paper copy of a seed.", "", "Privacy & security"],
   ["SLIP-0039", "A Trezor standard for backing up a seed as several Shamir shares of words. Not interchangeable with BIP39 words. Newer Trezor devices make a single 20-word share by default.", "The Wallet Detective names 20- and 33-word shares; restore them with a Trezor.", "Standards (BIPs)"],
@@ -3327,7 +3354,7 @@ const DICT = [
   ["Supply chain attack", "Tampering with software or hardware on its way to you, so it is already unsafe when you start using it.", "", "Privacy & security"],
   ["Taproot", "The 2021 Bitcoin upgrade behind bc1p addresses. It gives more privacy and flexibility.", "Taproot addresses.", "Addresses & scripts"],
   ["Tapscript", "The script rules used inside Taproot's hidden branches.", "", "Addresses & scripts"],
-  ["Testnet", "A practice copy of Bitcoin whose coins are worthless, for learning without risk. Its SegWit addresses start with tb1.", "The network menus; Practice mode in CHECK A BACKUP.", "Network & mining"],
+  ["Testnet", "A practice copy of Bitcoin whose coins are worthless, for learning without risk. Its SegWit addresses start with tb1. Testnet3, testnet4 and signet all use the same address and key forms, so the same TESTNET (practice coins only) setting works for each.", "The network menus; Practice mode in CHECK A BACKUP.", "Network & mining"],
   ["Threat model", "A plain list of who might attack you, how, and what you are protecting. It tells you how much protection is enough.", "", "Privacy & security"],
   ["Timelock", "A rule that stops a coin or transaction being spent until a chosen time or block. Locktime and the opcodes CLTV and CSV are timelocks. In a descriptor, older() waits a number of blocks after each deposit (BIP-68) and after() waits for a fixed block or date (BIP-65).", "EXTRA TOOLS: Explain an inheritance or timelock wallet.", "Transactions"],
   ["Tor", "A network that hides where a connection comes from. Some wallets and nodes use it for privacy.", "", "Privacy & security"],
@@ -4959,12 +4986,12 @@ function passPhraseLine(p1, p2){
 let passKey = null, passWork = Promise.resolve();
 // sig0: the input signature taken before the words were worked out. A roll typed while they were worked out makes the boxes
 // differ from it, and staleCheck then clears the new words at once (fixes release; before, the signature was taken afterwards).
-async function finishSeed(mnemonic, ctx, sig0){
+async function finishSeed(mnemonic, ctx, sig0, kind, info){
   const p1 = document.getElementById("passphrase").value, p2 = document.getElementById("passphrase2").value, run = ++forgeRun;
   seedSig = null; passKey = JSON.stringify([p1, p2]);
   setResult(mnemonic + "\n\n" + passPhraseLine(p1, p2), mnemonic.split(" "));
-  exCtx = ctx; seedKind = ctx ? "rolls" : "wd"; seedSig = sig0 !== undefined ? sig0 : inputSig(seedKind);
-  sumCtx = ctx ? {count: ctx.rolls.length, coin: ctx.coin, keystone: ctx.keystone, words: ctx.words.length} : {wd: true, words: mnemonic.split(" ").length};
+  exCtx = ctx; seedKind = kind || (ctx ? "rolls" : "wd"); seedSig = sig0 !== undefined ? sig0 : inputSig(seedKind);
+  sumCtx = ctx ? {count: ctx.rolls.length, coin: ctx.coin, keystone: ctx.keystone, words: ctx.words.length} : kind === "cd" ? {cd: info.cards, bits: info.bits, words: mnemonic.split(" ").length} : kind === "hex" ? {hex: true, words: mnemonic.split(" ").length} : {wd: true, words: mnemonic.split(" ").length};
   sumCtx.date = todayISO();   // v2.5.0: the wallet's birthday (a wallet app restoring it need not look at older blocks)
   staleCheck(); if(seedSig === null) return;   // fixes release: the boxes changed while the words were worked out
   await deriveShown(mnemonic, p1, p2, run);
@@ -5034,12 +5061,13 @@ function seedSummary(){
   if(!hasSeed() || !sumCtx || passMismatchQuiet()) return null;
   const c = sumCtx, n = c.words, bits = n === 24 ? 256 : 128;
   const made = c.wd ? "Word draw (" + (n === 24 ? "23 drawn words and 3" : "11 drawn words and 7") + " coin flips)"
+    : c.cd ? c.cd + " playing cards (SHA-256 of the card list, as in Ian Coleman's BIP39 tool)" : c.hex ? (n === 24 ? 64 : 32) + " hex digits, used directly as the randomness"
     : c.coin ? c.count + " coin flips" : c.count + " dice rolls, " + (c.keystone ? "Keystone dice rules (each 6 counts as 0)" : "SeedSigner and Coldcard dice rules");
-  const typed = c.wd ? 0 : Math.floor(c.coin ? c.count : c.count * Math.log2(6));
+  const typed = c.wd || c.hex ? 0 : Math.floor(c.cd ? c.bits : c.coin ? c.count : c.count * Math.log2(6));
   const used = /Passphrase: used/.test(document.getElementById("genResult").textContent);
   const fpT = document.getElementById("fingerprint").textContent, m = fpT.match(/^Master fingerprint: ([0-9a-f]{8})/);
   return {fp: m ? m[1] : "", used, short: n + " words from " + made + ", passphrase " + (used ? "used" : "none") + (m ? ", fingerprint " + m[1] : "") + ".",
-    lines: ["Seed length: " + n + " words", "Made from: " + made, "Strength: the words hold " + bits + " bits of randomness" + (typed ? " (about " + typed + " bits went in, if every " + (c.coin ? "flip" : "roll") + " was fair)" : ""),
+    lines: ["Seed length: " + n + " words", "Made from: " + made, "Strength: the words hold " + bits + " bits of randomness" + (typed ? " (about " + typed + " bits went in, " + (c.cd ? "if the deck was well shuffled" : "if every " + (c.coin ? "flip" : "roll") + " was fair") + ")" : ""),
       "Passphrase used: " + (used ? "YES (kept separately; it is not written here)" : "NO"), fpT, document.getElementById("address").textContent, c.date ? "Wallet made on: " + c.date + " (its birthday, by this computer's clock: a restore can start a day earlier to be safe)" : "", "Made with VOIDFORGE " + (document.querySelector("footer .ft-name span")?.textContent || "")]};
 }
 function sumUpdate(){ const S = seedSummary(), el = document.getElementById("sumLine"); if(el) el.textContent = S ? "This seed: " + S.short : ""; }
@@ -6759,7 +6787,7 @@ function previewClear(){
 async function previewRefresh(){
   const my = ++pvSeq, note = document.getElementById("pvNote");
   const rolls = clean(document.getElementById("rolls").value), wc = +document.querySelector('input[name="words"]:checked').value;
-  if(hasSeed() || method === "words" || !rolls || diceTestOn() || (keystoneOn() && rolls.length > KEYSTONE_MAX)){ previewClear(); return; }
+  if(hasSeed() || method === "words" || method === "cards" || !rolls || diceTestOn() || (keystoneOn() && rolls.length > KEYSTONE_MAX)){ previewClear(); return; }
   renderSlots();
   const grid = document.getElementById("wordGrid");
   if(!grid.classList.contains("slots")) return;
@@ -6791,7 +6819,7 @@ function updateSeedPanel(){
   bs.className = "big-sub " + (met ? "met" : "short"); rc.className = met ? "met" : "short";
   const cur = seed ? 4 : met ? 3 : 2;
   const WHY = {
-    2: method === "words" ? "Pick each word yourself from a bag of word tiles. The page only checks them and builds the seed." : "Your dice or coin are the randomness. VOIDFORGE only runs them through SHA-256, so nothing hidden is mixed in.",
+    2: method === "words" ? "Pick each word yourself from a bag of word tiles. The page only checks them and builds the seed." : method === "cards" ? "Your shuffled cards (or a 16-sided die) are the randomness. VOIDFORGE only runs the cards through SHA-256 and uses hex as it is, so nothing hidden is mixed in." : "Your dice or coin are the randomness. VOIDFORGE only runs them through SHA-256, so nothing hidden is mixed in.",
     3: "Press FORGE SEED to turn your rolls into the BIP39 words that are your wallet\u2019s backup.",
     4: "Write the words on paper, in order. A passphrase is optional and makes a completely different wallet."
   };
@@ -7202,7 +7230,7 @@ function wipeSeed(){
   document.getElementById("checkAddr").value=""; explainSeq++; document.getElementById("addrExplain").textContent=""; document.getElementById("addrExplain").className="status";
   document.getElementById("testResults").textContent="";
   setResult("\u2014"); updateAdvSummary(); if(guideOn){ guideN = 1; guideRender(); }
-  wdClear();
+  wdClear(); cdClear();
   dpClear(); dcClear();   // v2.7.0: the dice passphrase and the device dice check
   detClear();   // v2.8.0: the Wallet Detective
   kcClear();   // v2.9.0: the wallet file check
@@ -7223,7 +7251,7 @@ function wipeSeed(){
 }
 
 // Auto-clear (v1.34.0): optional, off at every page load, nothing stored. Wipes the secrets without asking after idle time or when the tab is hidden.
-const AUTO_FIELDS = ["pkIn", "rolls", "passphrase", "passphrase2", "note", "phrase", "verifyPass", "verifyRecorded", "checkAddr", "drillWords", "drillPass", "prInput", "reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "wdWords", "wdFlips", "wdFind", "dpRolls", "dcRolls"];
+const AUTO_FIELDS = ["pkIn", "rolls", "passphrase", "passphrase2", "note", "phrase", "verifyPass", "verifyRecorded", "checkAddr", "drillWords", "drillPass", "prInput", "reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "wdWords", "wdFlips", "wdFind", "cdCards", "cdHex", "dpRolls", "dcRolls"];
 let autoLast = Date.now(), autoTimer = null;
 function autoTouch(){ autoLast = Date.now(); }
 ["keydown", "pointerdown", "input", "touchstart", "wheel"].forEach(e => document.addEventListener(e, autoTouch, {capture: true, passive: true}));
@@ -8350,7 +8378,7 @@ function downloadSeed() {
   const rolls = (exCtx && exCtx.rolls) || document.getElementById("rolls").value; // the rolls that made these words, not whatever is typed now
   // v2.6.0: a Word draw seed was not made from rolls, so never write whatever is in the rolls box as its input
   const wdFl = document.getElementById("wdFlips").value.replace(/[^01]/g, "");   // as wdGenerate reads them
-  const input = seedKind === "wd" ? "Word draw (the words above were drawn by hand, not made from rolls)" + (wdFl ? "; coin flips for the last word: " + wdFl : "") : rolls;
+  const input = seedKind === "wd" ? "Word draw (the words above were drawn by hand, not made from rolls)" + (wdFl ? "; coin flips for the last word: " + wdFl : "") : seedKind === "cd" ? "Playing cards: " + cdParse(document.getElementById("cdCards").value).cards.join(" ") : seedKind === "hex" ? "Hex entropy: " + hexClean(document.getElementById("cdHex").value) : rolls;
   const full = text + "\n\n" + document.getElementById("fingerprint").textContent + "\n" + document.getElementById("address").textContent + "\n" + passLine("saved") + "\n\nInput: " + input + (exCtx && exCtx.keystone ? "\nDice rules: Keystone (each 6 counts as 0 before hashing)" : "");
   const blob = new Blob([full], {type: "text/plain"});
   const a = document.createElement("a");
@@ -8384,7 +8412,7 @@ function setGate(state, text, cls){
   document.getElementById("wpBtn").disabled = !on;
   document.getElementById("reuseBtn").disabled = !on;
   document.getElementById("childBtn").disabled = !on;
-  wdUpdate();
+  wdUpdate(); cdUpdate();
 }
 window.selfTestDone = (async function(){
   if(!CRYPTO_OK){
@@ -8494,8 +8522,8 @@ document.getElementById("diceTest").checked = false;
 updateLabels(); msInitSlider();
 document.getElementById("methodTabs").addEventListener("click", e => { const b = e.target.closest ? e.target.closest("button[data-method]") : null; if(b) setMethod(b.getAttribute("data-method")); });
 document.getElementById("methodTabs").addEventListener("keydown", e => {
-  const order = ["dice", "coin", "words"]; if(e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-  const i = (order.indexOf(method) + (e.key === "ArrowRight" ? 1 : 2)) % 3; e.preventDefault(); setMethod(order[i]); document.getElementById("mt-" + order[i]).focus();
+  const order = ["dice", "coin", "words", "cards"]; if(e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  const i = (order.indexOf(method) + (e.key === "ArrowRight" ? 1 : 3)) % 4; e.preventDefault(); setMethod(order[i]); document.getElementById("mt-" + order[i]).focus();
 });
 document.getElementById("diceRules").addEventListener("change", updateLabels);
 document.getElementById("wordSel").addEventListener("change", () => {
@@ -8547,7 +8575,7 @@ async function drillCheck(){
 const GUIDE_STEPS = 5;
 function guideHidden(el, n){ const g = (el.getAttribute("data-g") || "").split(/\s+/); return g.indexOf(String(n)) < 0; }
 function guideCanNext(n){
-  if(n === 2 && method === "words") return true;
+  if(n === 2 && (method === "words" || method === "cards")) return true;
   if(n === 2 && diceTestOn()) return false;
   if(n === 2){ const k = clean(document.getElementById("rolls").value).length; return k >= getNeeded(document.querySelector('input[name="words"]:checked').value) && !(keystoneOn() && k > KEYSTONE_MAX); }
   if(n === 3) return hasSeed();
@@ -8658,6 +8686,62 @@ function wdWipe(){ const o = document.getElementById("wdOut"); o.textContent = "
 function wdClear(){
   document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";
   wdWipe(); wdUpdate();
+}
+// Cards and hex (v2.9.0). Cards: the cards written as rank and suit symbol (A23456789TJQK, then the suits as symbols), one space
+// between cards, are hashed with SHA-256 (as UTF-8) like the rolls: the same text and method as Ian Coleman's BIP39 tool (Cards,
+// with a number of words) and EntropyLab's Coleman symbols option. Strength is counted for cards dealt from a shuffled deck
+// without putting them back: card k of a run adds log2(52 - k) bits, and a card that comes up again starts a new run (a new
+// shuffle). Hex: exactly 32 or 64 hex digits are the entropy itself, with no hashing, as in Ian Coleman's tool (Hexadecimal, raw).
+const CD_RANKS = "A23456789TJQK", CD_SUITS = "\u2663\u2666\u2665\u2660";
+const CD_SUIT_OF = {C: "\u2663", D: "\u2666", H: "\u2665", S: "\u2660", "\u2663": "\u2663", "\u2666": "\u2666", "\u2665": "\u2665", "\u2660": "\u2660", "\u2667": "\u2663", "\u2662": "\u2666", "\u2661": "\u2665", "\u2664": "\u2660"};
+function cdParse(text){
+  const cards = [], bad = [], t = String(text).toUpperCase().replace(/\uFE0F/g, "").replace(/[,;]/g, " "), re = /(10|[A2-9TJQK])\s*([CDHS\u2660-\u2667])|(\S+)/g;
+  let m; while((m = re.exec(t))){ if(m[3] !== undefined || !CD_SUIT_OF[m[2]]){ bad.push(m[0]); continue; } cards.push((m[1] === "10" ? "T" : m[1]) + CD_SUIT_OF[m[2]]); }
+  return {cards, bad};
+}
+function cdBits(cards){
+  let bits = 0, again = false, run = new Set();
+  for(const c of cards){ if(run.has(c)){ if(run.size < 52) again = true; run = new Set(); } bits += Math.log2(52 - run.size); run.add(c); }
+  return {bits, again};
+}
+function hexClean(s){ return String(s).trim().replace(/^0x/i, "").replace(/[\s:_-]/g, "").toLowerCase(); }
+function cdWc(){ return +document.querySelector('input[name="words"]:checked').value; }
+function cdUpdate(){
+  const wc = cdWc(), need = wc === 24 ? 256 : 128, pr = cdParse(document.getElementById("cdCards").value), b = cdBits(pr.cards);
+  const hx = hexClean(document.getElementById("cdHex").value), hxNeed = need / 4;
+  document.getElementById("cdCount").textContent = pr.cards.length ? pr.cards.length + " card" + (pr.cards.length === 1 ? "" : "s") + ", about " + Math.floor(b.bits) + " of the " + need + " bits needed" + (b.again ? " (a card came up again before the deck ran out, so the count starts again there, as for a new shuffle)" : "") : "";
+  document.getElementById("cdHexCount").textContent = hx ? hx.length + " of " + hxNeed + " hex digits" : "";
+  let msg = "";
+  if(pr.bad.length) msg = "\u201c" + pr.bad[0].trim() + "\u201d is not a card. Write each card as its rank (A, 2 to 10, J, Q, K) and then its suit (C, D, H or S), such as 10H.";
+  else if(/[^0-9a-f]/.test(hx)) msg = "Hex uses only the digits 0 to 9 and the letters a to f.";
+  else if(hx.length > hxNeed) msg = hx.length === 64 && wc === 12 ? "64 hex digits make a 24-word seed: choose 24 words above." : "Too many hex digits: a " + wc + "-word seed takes exactly " + hxNeed + ".";
+  document.getElementById("cdMsg").textContent = msg;
+  document.getElementById("cdBtn").disabled = !(selfTestState === "pass" && !pr.bad.length && b.bits >= need);
+  document.getElementById("cdHexBtn").disabled = !(selfTestState === "pass" && /^[0-9a-f]+$/.test(hx) && hx.length === hxNeed);
+  staleCheck();
+}
+async function cdGenerate(){
+  if(!gateOk()) return;
+  const wc = cdWc(), need = wc === 24 ? 256 : 128, pr = cdParse(document.getElementById("cdCards").value), b = cdBits(pr.cards);
+  if(pr.bad.length || b.bits < need){ cdUpdate(); return; }
+  const ix = pr.cards.map(c => CD_SUITS.indexOf(c[1]) * 13 + CD_RANKS.indexOf(c[0])), step = (d) => ix.every((v, i) => i === 0 || v - ix[i - 1] === d);
+  if((step(1) || step(-1)) && !confirm("Your cards are in the order of a new, unshuffled deck. A seed made from them is weak. Make it anyway?")) return;
+  const sig0 = inputSig("cd"), mnemonic = await rollsToMnemonic(pr.cards.join(" "), wc);
+  await finishSeed(mnemonic, null, sig0, "cd", {cards: pr.cards.length, bits: b.bits});
+  if(hasSeed()) document.getElementById("explainBox").style.display = "none";   // the dice explainer does not apply
+}
+async function cdHexGenerate(){
+  if(!gateOk()) return;
+  const wc = cdWc(), hx = hexClean(document.getElementById("cdHex").value);
+  if(!/^[0-9a-f]+$/.test(hx) || hx.length !== (wc === 24 ? 64 : 32)){ cdUpdate(); return; }
+  const kinds = new Set(hx).size;
+  if(kinds < 6 && !confirm("Your hex digits look non-random (only " + kinds + " different digit" + (kinds === 1 ? "" : "s") + "). A seed made from them may be weak. Make it anyway?")) return;
+  const sig0 = inputSig("hex"), mnemonic = await entropyToMnemonic(Uint8Array.from(hx.match(/../g).map(x => parseInt(x, 16))));
+  await finishSeed(mnemonic, null, sig0, "hex", {});
+  if(hasSeed()) document.getElementById("explainBox").style.display = "none";   // the dice explainer does not apply
+}
+function cdClear(){
+  document.getElementById("cdCards").value = ""; document.getElementById("cdHex").value = ""; cdUpdate();
 }
 // Word finder (v1.25.1): a word number 1-2048, or a D8 roll plus two hex digits, gives the BIP39 word. Display only; it does not touch the seed.
 function wdFindWord(raw){
