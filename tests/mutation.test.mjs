@@ -4578,8 +4578,12 @@ if (SHARD) {
 const DONE = new Map();
 if (process.env.MUT_RESULTS && fs.existsSync(process.env.MUT_RESULTS)) for (const l of fs.readFileSync(process.env.MUT_RESULTS, 'utf8').split('\n')) { try { const d = JSON.parse(l); DONE.set(d.name, d); } catch (e) { /* a line cut off by an interruption */ } }
 let mutIndex = -1;
-for (const [name, find, rep, equivalent] of M) {
-  mutIndex++;
+// MUT_REVERSE=1 walks the list from the end, so a second machine can work on the same shard from the other side.
+let ORDER = M.map((m, i) => i); if (process.env.MUT_REVERSE) ORDER.reverse();
+// MUT_ORDER=midfwd / midrev: start in the middle of this shard's list and walk forward / backward, so four machines can share a shard.
+if (SHARD && process.env.MUT_ORDER) { const mine = M.map((m, i) => i).filter((i) => shardOf[i] === SHARD[0]), h = Math.floor(mine.length / 2); ORDER = process.env.MUT_ORDER === 'midfwd' ? mine.slice(h) : mine.slice(0, h).reverse(); }
+for (const mi of ORDER) {
+  const [name, find, rep, equivalent] = M[mi]; mutIndex = mi;
   if (SHARD && shardOf[mutIndex] !== SHARD[0]) continue;
   if (ONLY && !ONLY.test(name)) continue;
   const count = html.split(find).length - 1;
