@@ -1423,6 +1423,14 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div class="status" id="detStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <pre id="detOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
     </div>
+    <div class="sec-block" id="kcBlock">
+      <h3 class="sec">Is this seed in my wallet file?<span class="tag tag-secret">USES THE WORDS ABOVE</span></h3>
+      <p class="hint" style="margin:0 0 6px;">For a multisig wallet (or any wallet with a descriptor): paste its setup file, the output descriptor, the Coldcard multisig setup file or the BSMS record (or choose the file), with the seed words (and passphrase, if any) typed in the boxes above. VOIDFORGE checks every key in the file: is it made by this seed, with the fingerprint, path and key all matching? So you know which key of the wallet this backup is, before you rely on it. The file holds only public keys.</p>
+      <textarea id="kcIn" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Wallet file: descriptor, Coldcard multisig setup file or BSMS record" placeholder="wsh(sortedmulti(2,[fp/48h/0h/0h/2h]xpub.../0/*,...))#checksum&#10;or a Coldcard multisig setup file, or a BSMS record" oninput="kcClear(true)"></textarea>
+      <input type="file" id="kcFileIn" accept=".txt,.bsms,.json,text/plain" aria-label="Choose the wallet file" onchange="kcFile()" style="width:100%; margin-top:6px;">
+      <div class="btn-row" style="margin-top:8px;"><button type="button" id="kcBtn" onclick="kcUi()" disabled>CHECK THIS SEED</button><button type="button" class="secondary small" onclick="kcClear()">CLEAR</button></div>
+      <div class="status" id="kcStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+    </div>
   </div>
   </div>
 
@@ -5497,7 +5505,7 @@ async function sendToVerify(){
   const words = madeMnemonic;
   const box = document.getElementById("phrase");
   box.value = words; clearChild(); resetAddrScan();   // v2.4.0: as typing does: a child seed belongs to the old parent words
-  detClear(true);   // v2.8.0: a Detective result belongs to the old words
+  detClear(true); kcClear(true);   // v2.8.0 / v2.9.0: a Detective or wallet file result belongs to the old words
   await verify();
   reveal(box, {behavior:"smooth", block:"center"});
 }
@@ -5844,6 +5852,92 @@ let detSeq = 0, detBusy = false, detStopFlag = false;
 function detSay(cls, t){ const st = document.getElementById("detStatus"); st.className = "status " + cls; st.textContent = t; }
 function detShow(t){ const o = document.getElementById("detOut"); o.textContent = t; o.style.display = t ? "" : "none"; }
 function detStop(){ if(detBusy) detStopFlag = true; }
+// ===== Is this seed in my wallet file? (v2.9.0). Uses the words and passphrase typed at the top of CHECK A BACKUP. =====
+// Reads an output descriptor, a Coldcard multisig setup file or a BSMS record (BIP-129) and, for every key in it, checks whether
+// this seed makes that key: the master fingerprint, then the extended public key at the file's path. Nothing is stored or sent.
+const KC_XPUB = "[xyzYZtuvUV]pub[1-9A-HJ-NP-Za-km-z]{100,112}";
+function kcParse(text){
+  const t = String(text || "").replace(/\r/g, "");
+  if(!t.trim()) return {error: "Paste the wallet file first (a descriptor, a Coldcard multisig setup file, or a BSMS record), or choose the file."};
+  if(new RegExp("[xyzYZtuvUV]prv[1-9A-HJ-NP-Za-km-z]{20,}").test(t)) return {error: "This file holds a PRIVATE key (xprv...). Never paste private keys here. Use the wallet's public (watch-only) file."};
+  const keys = []; let kind = "", m = null, n = null, format = "", firstAddr = "", desc = "";
+  if(/^\s*(Policy|Derivation|Format)\s*:/mi.test(t) && new RegExp("^\\s*[0-9A-Fa-f]{8}\\s*:\\s*" + KC_XPUB, "m").test(t)){
+    kind = "Coldcard multisig setup file"; let path = null;
+    for(const line of t.split("\n")){
+      const l = line.trim(); if(!l || l[0] === "#") continue; let mm;
+      if((mm = /^Policy\s*:\s*(\d+)\s*of\s*(\d+)\s*$/i.exec(l))){ m = +mm[1]; n = +mm[2]; continue; }
+      if((mm = /^Derivation\s*:\s*(m(?:\/\d+['hH]?)+)\s*$/i.exec(l))){ path = mm[1].replace(/[hH]/g, "'"); continue; }
+      if((mm = /^Format\s*:\s*(\S+)\s*$/i.exec(l))){ format = mm[1].toUpperCase(); continue; }
+      if((mm = new RegExp("^([0-9A-Fa-f]{8})\\s*:\\s*(" + KC_XPUB + ")$").exec(l))) keys.push({fp: mm[1].toLowerCase(), path, key: mm[2]});
+    }
+  } else {
+    const lines = t.split("\n").map(x => x.trim()).filter(Boolean);
+    if(lines[0] === "BSMS 1.0"){ kind = "BSMS wallet record (BIP-129)"; firstAddr = lines[3] || ""; }
+    desc = (lines.find(l => /^(wsh|sh|wpkh|pkh|tr)\(/.test(l)) || "").replace(/\s+/g, "");
+    if(!desc) return {error: "No wallet description found. Paste an output descriptor (it starts with wsh(, sh(, wpkh(, pkh( or tr(), a Coldcard multisig setup file, or a BSMS record."};
+    if(!kind) kind = "descriptor";
+    const hashAt = desc.lastIndexOf("#");
+    if(hashAt >= 0 && descriptorChecksum(desc.slice(0, hashAt)) !== desc) return {error: "The descriptor's checksum (after #) does not match, so it was changed or mistyped. Use Find a typo in a descriptor (EXTRA TOOLS) first."};
+    const re = new RegExp("(\\[([0-9a-fA-F]{8})((?:/[0-9]+['hH]?)*)\\])?(" + KC_XPUB + ")", "g"); let mm;
+    while((mm = re.exec(desc))) keys.push({fp: mm[2] ? mm[2].toLowerCase() : null, path: mm[2] ? "m" + (mm[3] || "").replace(/[hH]/g, "'") : null, key: mm[4]});
+    const mt = /^(?:sh\()?wsh\((sorted)?multi\((\d+),/.exec(desc); if(mt){ m = +mt[2]; n = keys.length; }
+    format = /^sh\(wsh\(/.test(desc) ? "P2SH-P2WSH" : /^wsh\(/.test(desc) ? "P2WSH" : /^sh\(wpkh\(/.test(desc) ? "P2SH-P2WPKH" : /^wpkh\(/.test(desc) ? "P2WPKH" : /^pkh\(/.test(desc) ? "P2PKH" : /^tr\(/.test(desc) ? "P2TR" : "";
+  }
+  if(!keys.length) return {error: "No extended public keys (xpub, Zpub...) were found in it."};
+  if(m !== null && (m < 1 || m > keys.length || (n !== null && n !== keys.length))) return {error: "The file says " + m + " of " + n + ", but it lists " + keys.length + " keys. It is damaged or incomplete."};
+  return {kind, keys, m, n: m !== null ? keys.length : null, format, firstAddr, desc};
+}
+async function kcCheck(text, phrase, vp){
+  const f = kcParse(text); if(f.error) return {state: "bad", text: f.error};
+  const src = await detSource(phrase, vp);
+  if(src.error) return {state: "bad", text: src.error};
+  if(!src.mnemonic) return {state: "bad", text: "These are Electrum seed words. This check reads BIP39 words, which multisig wallets use."};
+  const lines = ["Wallet file: " + f.kind + (f.m !== null ? ", " + f.m + " of " + f.n + " multisig" : ", single key") + (f.format ? ", " + f.format : "") + "."];
+  const seeds = [];
+  for(const [label, pass] of src.passes){ const seed = await mnemonicToSeed(src.mnemonic, pass); seeds.push({label, root: await masterFromSeed(seed), fp: await fingerprintFromSeed(seed)}); }
+  const mine = [];
+  for(let i = 0; i < f.keys.length; i++){
+    const k = f.keys[i], head = (f.keys.length > 1 ? "Key " + (i + 1) + " of " + f.keys.length : "The key") + (k.fp ? ", fingerprint " + k.fp : "") + (k.path ? ", " + k.path : "") + ": ";
+    let parsed; try { parsed = await parseExtendedKey(k.key); } catch(e) { lines.push(head + "NOT A VALID KEY (" + e.message + ")."); continue; }
+    if(!k.fp || !k.path){ lines.push(head + "the file does not say which seed and path made it, so it cannot be checked."); continue; }
+    const s = seeds.find(x => x.fp === k.fp);
+    if(!s){ lines.push(head + "another seed."); continue; }
+    const steps = parsePath(k.path); if(!steps){ lines.push(head + "the path cannot be read."); continue; }
+    let [kk, cc] = s.root; for(const [ix, h] of steps) [kk, cc] = await ckdPriv(kk, cc, ix, h);
+    if(hex(pubkeyBytes(kk)) === hex(parsed.pub) && hex(cc) === hex(parsed.chain)){ mine.push({i, label: s.label}); lines.push(head + "THIS SEED, " + s.label + " (fingerprint, path and key all match)."); }
+    else lines.push(head + "the fingerprint is this seed's (" + s.label + "), but the key at " + k.path + " is not the one this seed makes there. The file may have been edited, or the key comes from another account or path.");
+  }
+  if(f.firstAddr && f.m !== null && /^(sh\()?wsh\(sortedmulti\(/.test(f.desc)){
+    try { const type = /^sh\(/.test(f.desc) ? "ms-sh-wsh" : "ms-wsh", cos = [];
+      for(const k of f.keys){ const p = await parseExtendedKey(k.key); if(!/\/0\/\*/.test(f.desc) && !/<0;1>\/\*/.test(f.desc)) throw new Error("path"); cos.push({fp: k.fp, path: k.path, key: p}); }
+      const net = cos[0].key.net, a = await multisigAddress(type, f.m, cos, 0, 0, net);
+      lines.push("The record's first address " + (a === f.firstAddr ? "matches" : "does NOT match") + " its descriptor (" + a + ").");
+    } catch(e) { /* the address check is only for the common sortedmulti form */ }
+  }
+  if(mine.length){
+    const one = mine.length === 1, need = f.m !== null ? f.m - mine.length : 0;
+    return {state: "ok", text: (f.m !== null ? "THIS SEED IS IN THIS WALLET: it is key " + mine.map(x => x.i + 1).join(" and ") + " of " + f.n + (one ? "" : " (the same seed twice is risky: losing it loses both keys)") + ". " + (need > 0 ? "Spending needs " + need + " more of the other keys." : "It can spend on its own.") : "THIS SEED MAKES THIS WALLET'S KEY.") + "\n\n" + lines.join("\n")};
+  }
+  return {state: "bad", text: "NOT IN THIS WALLET: this seed " + (src.passes.length > 1 ? "(with or without the passphrase) " : "") + "makes none of its keys. Check the words and the passphrase, or this seed belongs to another wallet.\n\n" + lines.join("\n")};
+}
+let kcBusy = false;
+async function kcUi(){
+  const st = document.getElementById("kcStatus"); if(kcBusy) return;
+  if(!gateOk()) return;
+  kcBusy = true; document.getElementById("kcBtn").disabled = true; st.className = "status"; st.textContent = "Checking...";
+  try { const r = await kcCheck(document.getElementById("kcIn").value, document.getElementById("phrase").value, document.getElementById("verifyPass").value); st.className = "status " + r.state; st.textContent = r.text; }
+  catch(e) { st.className = "status bad"; st.textContent = "Could not check it: " + e.message; }
+  finally { kcBusy = false; document.getElementById("kcBtn").disabled = selfTestState !== "pass"; }
+}
+function kcFile(){
+  const f = document.getElementById("kcFileIn").files && document.getElementById("kcFileIn").files[0]; if(!f) return;
+  if(f.size > 1024 * 1024) return alert("That file is larger than 1 MB, so it is not a wallet setup file.");
+  const r = new FileReader(); r.onload = () => { document.getElementById("kcIn").value = String(r.result || ""); kcClear(true); }; r.readAsText(f);
+}
+function kcClear(keepText){
+  if(!keepText){ document.getElementById("kcIn").value = ""; document.getElementById("kcFileIn").value = ""; }
+  const st = document.getElementById("kcStatus"); st.textContent = ""; st.className = "status";
+}
 function detClear(keepAddr){
   detSeq++; if(detBusy) detStopFlag = true;
   detSay("", ""); detShow("");
@@ -6848,6 +6942,7 @@ function wipeSeed(){
   wdClear();
   dpClear(); dcClear();   // v2.7.0: the dice passphrase and the device dice check
   detClear();   // v2.8.0: the Wallet Detective
+  kcClear();   // v2.9.0: the wallet file check
   seedSig = null; passKey = null; exCtx = null;   // fixes release: these held the rolls and the passphrases after a wipe (found by tests/memory.test.mjs)
   clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo();   // fixes release: public but private data (xpubs, descriptors, addresses, amounts)
   for(const id of ["wpIn", "payA", "payB", "dlPaste"]){ const e = document.getElementById(id); if(e) e.value = ""; }
@@ -7839,7 +7934,7 @@ document.getElementById("verifyRecorded").addEventListener("input", () => { cons
 for(const id of ["phrase","verifyPass","childWords","childIndex","childLen","childSides","childRolls"]) document.getElementById(id).addEventListener("input", clearChild);
 for(const id of ["phrase","verifyPass"]) document.getElementById(id).addEventListener("input", () => { verifySeq++; if(wvCtx && wvCtx.mnemonic) clearWalletView(); if(childCtx || document.getElementById("childOut").textContent) clearChild(); });
 document.getElementById("verifyPass").addEventListener("input", passWarnUpdate);
-for(const id of ["phrase", "verifyPass"]) document.getElementById(id).addEventListener("input", () => detClear(true));   // v2.8.0: the Detective result belongs to the old words
+for(const id of ["phrase", "verifyPass"]) document.getElementById(id).addEventListener("input", () => { detClear(true); kcClear(true); });   // v2.8.0: the Detective result belongs to the old words
 document.getElementById("reuseIn").addEventListener("input", () => { const st = document.getElementById("reuseStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wpIn").addEventListener("input", () => { if(wvCtx && wvCtx.kind === "pub" && !wvCtx.secret) clearWalletView(); const st = document.getElementById("wpStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wType").addEventListener("change", refreshWatch);
@@ -7909,6 +8004,7 @@ function setGate(state, text, cls){
   document.getElementById("sigBtn").disabled = !on;   // fixes release
   document.getElementById("msStartBtn").disabled = !on;
   if(!detBusy) for(const id of ["detBtn", "detListBtn"]) document.getElementById(id).disabled = !on;   // v2.8.0: Wallet Detective
+  if(!kcBusy) document.getElementById("kcBtn").disabled = !on;   // v2.9.0: Is this seed in my wallet file?
   document.getElementById("wpBtn").disabled = !on;
   document.getElementById("reuseBtn").disabled = !on;
   document.getElementById("childBtn").disabled = !on;

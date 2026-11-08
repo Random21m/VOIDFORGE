@@ -2378,6 +2378,30 @@ async function probe(w, mutated, fast) {
       r = await F(D.replace('d34db33f', 'd34db3ff') + '#gw2sk4e2'); if (!/^(FOUND|Several)/.test(r.text) || !/character 15/.test(r.text)) fails.push('typo finder: a typo in the fingerprint is found');
       r = await F(full.replace('LkBUHQ', 'LkBUhq')); if (r.state !== 'bad' || !/^NOT FOUND/.test(r.text)) fails.push('typo finder: two typos are not "fixed" by a guess');
       $('typoIn').value = full; $('typoStatus').textContent = 'x'; w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('typoIn').value !== '' || $('typoStatus').textContent !== '') fails.push('typo finder: CLEAR ALL empties it'); }
+    { // v2.9.0: Is this seed in my wallet file? (BIP39 test phrases; keys and addresses from @scure)
+      const AB = 'abandon '.repeat(11) + 'about', LW = 'legal winner thank year wave sausage worth useful legal winner thank yellow', LA = 'letter advice cage absurd amount doctor acoustic avoid letter advice cage above';
+      const cos = []; for (const mn of [LW, AB, LA]) { const r0 = HDKey.fromMasterSeed(mnemonicToSeedSync(mn, '')); cos.push({ fp: r0.fingerprint.toString(16).padStart(8, '0'), path: '48h/0h/0h/2h', key: await w.parseExtendedKey(r0.derive("m/48'/0'/0'/2'").publicExtendedKey) }); }
+      const desc = await w.multisigDescriptor('ms-wsh', 2, cos, 0), cc = await w.coldcardMultisigText('ms-wsh', 2, cos), a0 = await w.multisigAddress('ms-wsh', 2, cos, 0, 0, 'main');
+      const bsms = 'BSMS 1.0\n' + desc.replace(/#.*/, '').replace('/0/*', '/<0;1>/*') + '\n/0/*,/1/*\n' + a0 + '\n';
+      const C = async (t, ph = AB, vp = '') => w.kcCheck(t, ph, vp), keyNo = (r) => (/it is key (\d+) of 3/.exec(r.text) || [])[1];
+      const order = (await C(desc)).text; const abAt = [...order.matchAll(/Key (\d) of 3, fingerprint ([0-9a-f]{8})/g)].find((x) => x[2] === '73c5da0a');
+      let r = await C(desc); if (r.state !== 'ok' || !abAt || keyNo(r) !== abAt[1] || !/Spending needs 1 more of the other keys/.test(r.text) || !/THIS SEED, without a passphrase \(fingerprint, path and key all match\)/.test(r.text)) fails.push('wallet file: a descriptor: this seed is found as its key [' + r.text.slice(0, 120) + ']');
+      if ((r.text.match(/another seed\./g) || []).length !== 2) fails.push('wallet file: the other two keys are another seed');
+      r = await C(cc); if (r.state !== 'ok' || keyNo(r) !== '2' || !/Coldcard multisig setup file, 2 of 3 multisig, P2WSH/.test(r.text)) fails.push('wallet file: a Coldcard multisig setup file is read');
+      r = await C(bsms); if (r.state !== 'ok' || !/BSMS wallet record/.test(r.text) || !/first address matches its descriptor/.test(r.text)) fails.push('wallet file: a BSMS record is read and its first address checked');
+      r = await C(bsms.replace(a0, await w.multisigAddress('ms-wsh', 2, cos, 0, 1, 'main'))); if (!/does NOT match/.test(r.text)) fails.push('wallet file: a BSMS record with another first address is caught');
+      r = await C(desc, 'zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong'); if (r.state !== 'bad' || !/^NOT IN THIS WALLET/.test(r.text) || (r.text.match(/another seed\./g) || []).length !== 3) fails.push('wallet file: another seed is not in the wallet');
+      r = await C(desc, AB, 'TREZOR'); if (r.state !== 'ok' || !/THIS SEED, without a passphrase/.test(r.text)) fails.push('wallet file: with a passphrase typed, the key is still found without it, and says so');
+      { const rt = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, 'TREZOR')), fpT = rt.fingerprint.toString(16).padStart(8, '0'), d1 = 'wpkh([' + fpT + '/84h/0h/0h]' + rt.derive("m/84'/0'/0'").publicExtendedKey + '/0/*)';
+        r = await C(d1, AB, 'TREZOR'); if (r.state !== 'ok' || !/THIS SEED, with the passphrase/.test(r.text) || !/^THIS SEED MAKES THIS WALLET'S KEY/.test(r.text)) fails.push('wallet file: a single-key wallet of the passphrase is found with it');
+        r = await C(d1, AB, ''); if (r.state !== 'bad') fails.push('wallet file: without the passphrase it is not found');
+        const wrongPath = d1.replace('/84h/0h/0h]', '/84h/0h/1h]'); r = await C(wrongPath, AB, 'TREZOR'); if (r.state !== 'bad' || !/the fingerprint is this seed's \(with the passphrase\), but the key at m\/84'\/0'\/1' is not the one/.test(r.text)) fails.push('wallet file: a right fingerprint with a wrong path or key is named'); }
+      r = await C(desc.slice(0, -1) + (desc.endsWith('q') ? 'p' : 'q')); if (r.state !== 'bad' || !/checksum/.test(r.text)) fails.push('wallet file: a wrong descriptor checksum is refused');
+      r = await C(cc.replace(/^Policy: 2 of 3$/m, 'Policy: 2 of 4')); if (r.state !== 'bad' || !/lists 3 keys/.test(r.text)) fails.push('wallet file: a policy that does not fit the keys is refused');
+      r = await C('wpkh(xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi/0/*)'); if (r.state !== 'bad' || !/PRIVATE key/.test(r.text)) fails.push('wallet file: a private key is refused');
+      r = await C('hello'); if (r.state !== 'bad' || !/No wallet description found/.test(r.text)) fails.push('wallet file: plain text is refused');
+      $('kcIn').value = desc; $('kcStatus').textContent = 'x'; $('phrase').value = AB; $('phrase').dispatchEvent(new w.Event('input')); if ($('kcStatus').textContent !== '' || $('kcIn').value !== desc) fails.push('wallet file: changing the words clears the old result, not the file');
+      $('kcStatus').textContent = 'x'; w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('kcIn').value !== '' || $('kcStatus').textContent !== '') fails.push('wallet file: CLEAR ALL empties it'); }
     w.watchCheck(); if ($('watchStatus').textContent !== 'NO SIGN FOUND of extensions, translators or other scripts on this page right now.' || !/^That does not make it safe\./.test($('watchOut').textContent)) fails.push('watch check: no sign found, never safe');
     { const s = w.document.createElement('script'); s.src = 'chrome-extension://x/i.js'; w.document.head.appendChild(s); s.remove();
       $('phrase').setAttribute('data-unknown-helper', '1'); w.document.body.appendChild(w.document.createElement('grammarly-extension')); w.document.body.appendChild(w.document.createElement('div')); w.ethereum = {}; await sleep(450);
@@ -4255,7 +4279,7 @@ const M = [
   ["wallet detective: two-factor seeds not sent to Electrum", "if(el && el !== \"standard\" && el !== \"SegWit\") return {error:", "if(false) return {error:"],
   ["wallet detective: Electrum passphrase as typed not tried", "    if(detRawDiffers(pw)) list.push(", "    if(false) list.push("],
   ["wipe: Wallet Detective kept", "  detClear();   // v2.8.0: the Wallet Detective\n", ""],
-  ["wallet detective: result kept when the words change", "for(const id of [\"phrase\", \"verifyPass\"]) document.getElementById(id).addEventListener(\"input\", () => detClear(true));", ""],
+  ["wallet detective: result kept when the words change", "() => { detClear(true); kcClear(true); });", "() => { kcClear(true); });"],
   ["wallet detective: unusual mix not named", "if(!f.usual) lines.push(", "if(false) lines.push("],
   ["watch check: extension elements ignored", "  if(t.includes(\"-\")) return", "  if(false) return"],
   ["watch check: removed scripts forgotten", "/^(SCRIPT|IFRAME|FRAME|OBJECT|EMBED|LINK|STYLE|FONT)$|-/.test(n.tagName)", "/^(IFRAME|FRAME|OBJECT|EMBED|LINK|STYLE|FONT)$|-/.test(n.tagName)"],
@@ -4364,6 +4388,19 @@ const M = [
   ["typo finder: the bad character not named", "for(let i = 0; i < body.length; i++) if(DESC_IN.indexOf(body[i]) < 0) return", "for(let i = 0; i < body.length; i++) if(false) return"],
   ["typo finder: a bad key without a checksum gets no fix", "if(await descKeyOk(k2)) found.push(", "if(false) found.push("],
   ["typo finder: CLEAR ALL leaves it", "clearReuse(); clearTypo();   // fixes release", "clearReuse();   // fixes release"],
+  ["wallet file: the key at the path not compared", "if(hex(pubkeyBytes(kk)) === hex(parsed.pub) && hex(cc) === hex(parsed.chain)){", "if(true){"],
+  ["wallet file: the chain code not compared", "if(hex(pubkeyBytes(kk)) === hex(parsed.pub) && hex(cc) === hex(parsed.chain)){", "if(hex(pubkeyBytes(kk)) === hex(parsed.pub)){", true],
+  ["wallet file: the passphrase wallet never tried", "for(const [label, pass] of src.passes){ const seed", "for(const [label, pass] of src.passes.slice(-1)){ const seed"],
+  ["wallet file: Coldcard paths ignored", "if((mm = /^Derivation\\s*:\\s*(m(?:\\/\\d+['hH]?)+)\\s*$/i.exec(l))){ path = mm[1].replace(/[hH]/g, \"'\"); continue; }", ""],
+  ["wallet file: Coldcard keys not read", "if((mm = new RegExp(\"^([0-9A-Fa-f]{8})\\\\s*:\\\\s*(\" + KC_XPUB + \")$\").exec(l))) keys.push(", "if(false) keys.push("],
+  ["wallet file: the descriptor checksum not checked", "if(hashAt >= 0 && descriptorChecksum(desc.slice(0, hashAt)) !== desc) return", "if(false) return"],
+  ["wallet file: the policy not checked against the keys", "if(m !== null && (m < 1 || m > keys.length || (n !== null && n !== keys.length))) return", "if(false) return"],
+  ["wallet file: private keys accepted", "if(new RegExp(\"[xyzYZtuvUV]prv[1-9A-HJ-NP-Za-km-z]{20,}\").test(t)) return", "if(false) return"],
+  ["wallet file: the BSMS first address not checked", "lines.push(\"The record's first address \" + (a === f.firstAddr ? \"matches\" : \"does NOT match\")", "lines.push(\"The record's first address \" + (true ? \"matches\" : \"does NOT match\")"],
+  ["wallet file: the number of keys still needed wrong", "need = f.m !== null ? f.m - mine.length : 0;", "need = f.m !== null ? f.m : 0;"],
+  ["wallet file: a new phrase keeps the old result", "detClear(true); kcClear(true); });", "detClear(true); });"],
+  ["wallet file: CLEAR ALL leaves it", "  kcClear();   // v2.9.0: the wallet file check\n", ""],
+  ["wallet file: the button never enabled", "  if(!kcBusy) document.getElementById(\"kcBtn\").disabled = !on;", "  if(!kcBusy) document.getElementById(\"kcBtn\").disabled = true;"],
   ["heir mode: the Detective button goes nowhere", "onclick=\"heirGo('check', 'detBlock')\"", "onclick=\"heirGo('tools', 'detBlock')\""],
 ];
 
