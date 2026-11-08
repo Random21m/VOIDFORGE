@@ -94,6 +94,9 @@ async function probe(w, mutated, fast, only, hooks) {
   const run = async (m, n, input, pw = '') => { mode(m); words(n); $('rolls').value = input; $('rolls').oninput(); $('passphrase').value = pw; $('passphrase2').value = pw; await w.generate(); return $('genResult').textContent.split('\n')[0]; };
   const adOf = () => (($('address').textContent.match(/: (bc1[0-9a-z]+)/) || [])[1]);
   const fpOf = () => (($('fingerprint').textContent.match(/: ([0-9a-f]{8})/) || [])[1]);
+  // waits until f() is true (pictures are drawn a moment after the result; a busy computer can take longer than a fixed wait)
+  const until = async (f, ms = 5000) => { for (let t = 0; t < ms && !f(); t += 20) await new Promise((r2) => setTimeout(r2, 20)); };
+  const drawn = (id, d = w.document) => /<rect/.test((d.getElementById(id) || {}).innerHTML || '');
 
   if (SEC(0, "r = await run('dice', 12, D50); if (r !== expect.d50 || fpOf")) {
   r = await run('dice', 12, D50); if (r !== expect.d50 || fpOf() !== fp(expect.d50, '')) fails.push('dice 12 words / fingerprint');
@@ -661,7 +664,7 @@ async function probe(w, mutated, fast, only, hooks) {
   { let bl = 0;
     for (const f of LH_FPS) { const rows = await w.lifeHash(f), mine = rows.flat(2), ref = LH_EXPECT[f]; if (mine.length !== ref.length || mine.some((v, i) => v !== ref[i])) bl++; }
     if (bl) fails.push('fingerprint pictures match the independent lifehash package');
-    await run('dice', 12, D50); await new Promise((r) => setTimeout(r, 40)); const px = svgPixels($('fpIcon').innerHTML), fpNow = fpOf(), refPx = fpNow ? Array.from(LifeHash.makeFrom(hexb4(fpNow), 2, 1, false).colors) : null;
+    await run('dice', 12, D50); await until(() => drawn('fpIcon')); const px = svgPixels($('fpIcon').innerHTML), fpNow = fpOf(), refPx = fpNow ? Array.from(LifeHash.makeFrom(hexb4(fpNow), 2, 1, false).colors) : null;
     if (!refPx || px.some((v, i) => v !== refPx[i])) fails.push('fingerprint picture shown next to the fingerprint'); }
   }
   if (SEC(18, "{ const li = [...w.document.querySelectorAll('#addrList li')")) {
@@ -1279,7 +1282,7 @@ async function probe(w, mutated, fast, only, hooks) {
   } catch (e) { fails.push('multisig: the probe crashed: ' + e.message); }
   }
   if (SEC(28, "{ await run('dice', 12, D50, ''); await new Promise((r) => s")) {
-  { await run('dice', 12, D50, ''); await new Promise((r) => setTimeout(r, 60)); const had = !!$('fpIcon').querySelector('svg');
+  { await run('dice', 12, D50, ''); await until(() => drawn('fpIcon')); const had = !!$('fpIcon').querySelector('svg');
     $('rolls').value = D50.slice(0, 10); $('rolls').oninput(); await new Promise((r) => setTimeout(r, 20));
     if (!had || $('fpIcon').innerHTML !== '' || w.hasSeed()) fails.push('fingerprint picture cleared when changed rolls clear the words'); }
   }
@@ -1311,7 +1314,7 @@ async function probe(w, mutated, fast, only, hooks) {
     if (!/With passphrase \(6 characters, not shown\): fingerprint b4e3f5ed \| first address bc1qv5rmq0kt9yz3pm36wvzct7p3x6mtgehjul0feu/.test(vs)) fails.push('VERIFY with-passphrase line'); }
   }
   if (SEC(31, "VERIFY pictures (needs the VERIFY run before)")) {
-  { await new Promise((r) => setTimeout(r, 30)); const i0 = svgPixels($('vIcon0').innerHTML), i1 = svgPixels($('vIcon1').innerHTML);
+  { await until(() => drawn('vIcon0') && drawn('vIcon1')); const i0 = svgPixels($('vIcon0').innerHTML), i1 = svgPixels($('vIcon1').innerHTML);
     if (!LH_EXPECT['73c5da0a'] || i0.some((v, i) => v !== LH_EXPECT['73c5da0a'][i]) || $('vFig0').style.display === 'none') fails.push('VERIFY shows the picture without passphrase');
     if (i1.some((v, i) => v !== LH_EXPECT['b4e3f5ed'][i]) || $('vFig1').style.display === 'none') fails.push('VERIFY shows the picture with passphrase'); }
   }
@@ -1480,7 +1483,7 @@ async function probe(w, mutated, fast, only, hooks) {
     const tq = loadPage(mutated, () => {}); await ready(tq); const seen = []; for (const id of ['qrBox', 'sqBox']) { const el = tq.document.getElementById(id); el.scrollIntoView = (o) => seen.push([id, o && o.block]); }
     tq.document.getElementById('wDescR').textContent = 'wpkh(x)'; tq.showQr('wDescR', 'receive descriptor'); if (seen.length !== 1 || seen[0][0] !== 'qrBox' || seen[0][1] !== 'nearest') fails.push('qr: watch-only QR scrolls fully into view');
     tq.document.getElementById('rolls').value = D50; tq.document.getElementById('rolls').oninput(); await tq.generate(); tq.showSeedQr('seedqr'); if (seen.length !== 2 || seen[1][0] !== 'sqBox' || seen[1][1] !== 'nearest') fails.push('qr: SeedQR scrolls fully into view');
-    { await new Promise((r) => setTimeout(r, 50)); const before = tq.document.getElementById('fpIcon').innerHTML; tq.document.getElementById('sqBox').scrollIntoView = () => {}; await tq.sendToVerify(); await new Promise((r) => setTimeout(r, 80)); if (before.length < 100 || tq.document.getElementById('fpIcon').innerHTML !== before) fails.push('verify: the master fingerprint picture survives SEND TO CHECK'); if (!tq.document.getElementById('vIcon0').querySelector('svg')) fails.push('verify: draws its own fingerprint picture'); tq.document.getElementById('phrase').value = 'abandon abandon'; await tq.verify(); await new Promise((r) => setTimeout(r, 50)); if (tq.document.getElementById('vIcon0').innerHTML !== '' || tq.document.getElementById('vFig0').style.display !== 'none') fails.push('verify: old fingerprint pictures are cleared before a new check'); } }
+    { await until(() => drawn('fpIcon', tq.document)); const before = tq.document.getElementById('fpIcon').innerHTML; tq.document.getElementById('sqBox').scrollIntoView = () => {}; await tq.sendToVerify(); await new Promise((r) => setTimeout(r, 80)); if (before.length < 100 || tq.document.getElementById('fpIcon').innerHTML !== before) fails.push('verify: the master fingerprint picture survives SEND TO CHECK'); if (!tq.document.getElementById('vIcon0').querySelector('svg')) fails.push('verify: draws its own fingerprint picture'); tq.document.getElementById('phrase').value = 'abandon abandon'; await tq.verify(); await new Promise((r) => setTimeout(r, 50)); if (tq.document.getElementById('vIcon0').innerHTML !== '' || tq.document.getElementById('vFig0').style.display !== 'none') fails.push('verify: old fingerprint pictures are cleared before a new check'); } }
   }
   if (SEC(36, "v1.25.1 word finder (reference words from the python-mnemonic English ")) {
   // v1.25.1 word finder (reference words from the python-mnemonic English list)
