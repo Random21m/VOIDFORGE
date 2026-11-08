@@ -2369,8 +2369,11 @@ async function probe(w, mutated, fast) {
       const good = t.toPSBT(0), bad = Buffer.from(good), amt = Buffer.alloc(8); amt.writeBigUInt64LE(300000n); const at = bad.indexOf(amt); bad.writeBigUInt64LE(900000n, at);
       const g = await w.inspectPsbt(good, 'main'), b = await w.inspectPsbt(new Uint8Array(bad), 'main');
       if (g.ins[0].amount !== 300000n || b.ins[0].amount !== null || !w.psbtVerdict(b, null).includes('NO CLEAN VERDICT')) fails.push('PSBT: a changed previous transaction is caught'); }
-    { const t = mk(), mine = k("m/84'/0'/0'/1/3"); t.addOutput({ script: btc.p2wsh(btc.p2ms(1, [mine, att].sort(Buffer.compare))).script, amount: 99000n, bip32Derivation: [[mine, { fingerprint: fpw, path: [84 + H, H, H, 1, 3] }]] });
-      if (!/NO CLEAN VERDICT/.test(await run(t, 0, AB))) fails.push('PSBT change: a script output said to hold the key is not trusted'); }
+    { const t = mk(), mine = k("m/84'/0'/0'/1/3"); t.addOutput({ script: btc.p2wsh(btc.p2ms(1, [mine, att].sort(Buffer.compare))).script, amount: 149000n, bip32Derivation: [[mine, { fingerprint: fpw, path: [84 + H, H, H, 1, 3] }]] });
+      const o = await run(t, 0, AB); if (!/NO CLEAN VERDICT/.test(o) || !/FAIL  1 output claims to hold this wallet's key among several keys/.test(o)) fails.push('PSBT change: a script output said to hold the key is not trusted (and is the only failing check)'); }
+    { // the key record names this wallet's path, the output pays this wallet's real key there, but the record's key is another one
+      const t = mk(), real = k("m/84'/0'/0'/1/5"); t.addOutput({ script: btc.p2wpkh(real).script, amount: 149000n, bip32Derivation: [[att, { fingerprint: fpw, path: [84 + H, H, H, 1, 5] }]] });
+      const o = await run(t, 0, AB); if (/CHANGE, CHECKED/.test(o) || !/Do not sign/.test(o)) fails.push('PSBT change: a record whose key is not the wallet key at its path is forged, even when the address is the wallet\'s'); }
     { const t = mk(), mine = k("m/84'/0'/0'/1/4"); t.addOutput({ script: btc.p2pkh(mine).script, amount: 99000n, bip32Derivation: [[mine, { fingerprint: fpw, path: [84 + H, H, H, 1, 4] }]] });
       const o = await run(t, 0, AB); if (!/but as Legacy/.test(o) || !/NO CLEAN VERDICT/.test(o)) fails.push('PSBT change: the address type of the path is checked'); }
     { const t = mk(); t.addOutput({ script: btc.p2wpkh(att).script, amount: 149000n, bip32Derivation: [[att, { fingerprint: 0xdeadbeef, path: [84 + H, H, H, 1, 0] }]] });
@@ -2386,6 +2389,12 @@ async function probe(w, mutated, fast) {
       if (!(await w.inspectPsbt(new Uint8Array(bad), 'main')).ins[0].prevMismatch) fails.push('PSBT: a wrong full previous transaction is caught next to a witness UTXO'); }
     { const t = mk(); t.addOutputAddress(btc.p2wpkh(att).address, 100000n); const p = Buffer.from(t.toPSBT(0)), end = p.length - 1, rec = Buffer.from([0x01, 0x00, 0x01, 0x51]); let msg = '';
       try { await w.inspectPsbt(new Uint8Array(Buffer.concat([p.slice(0, end), rec, rec, p.slice(end)])), 'main'); } catch (e) { msg = e.message; } if (!/same record twice/.test(msg)) fails.push('PSBT: a duplicate record is refused'); }
+    { // version 2 by hand: no sequence record (default 0xffffffff, not replaceable), and an input that asks for a height locktime above the fallback
+      const rec = (t, v) => [1, t, v.length, ...v], u32 = (n) => [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, n >>> 24], sc = [...btc.p2wpkh(att).script];
+      const mkv2 = (inExtra) => { const o = [0x70, 0x73, 0x62, 0x74, 0xff]; o.push(...rec(0x02, u32(2)), ...rec(0x03, u32(0)), ...rec(0x04, [1]), ...rec(0x05, [1]), ...rec(0xfb, u32(2)), 0);
+        o.push(...rec(0x0e, [...nc.randomBytes(32)]), ...rec(0x0f, u32(0)), ...inExtra, 0); o.push(...rec(0x03, [0x10, 0x27, 0, 0, 0, 0, 0, 0]), ...rec(0x04, sc), 0); return Uint8Array.from(o); };
+      const r0 = await w.inspectPsbt(mkv2([]), 'main'); if (r0.ins[0].seq !== 0xffffffff || r0.rbf || r0.locktime !== 0) fails.push('PSBT version 2: an input without a sequence has 0xffffffff (not replaceable)');
+      const r1 = await w.inspectPsbt(mkv2([...rec(0x12, u32(800000))]), 'main'); if (r1.locktime !== 800000) fails.push('PSBT version 2: the locktime an input asks for is used, not the fallback'); }
     { // a version 2 PSBT whose inputs ask for a height and a time locktime (built by hand: btc-signer refuses to make one)
       const rec = (t, v) => [1, t, v.length, ...v], u32 = (n) => [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, n >>> 24], out = [0x70, 0x73, 0x62, 0x74, 0xff];
       out.push(...rec(0x02, u32(2)), ...rec(0x04, [2]), ...rec(0x05, [1]), ...rec(0xfb, u32(2)), 0);
@@ -2412,6 +2421,12 @@ async function probe(w, mutated, fast) {
       w.clearAll(); await sleep(20);
       if (w.eval('seedSig') !== null || w.eval('passKey') !== null || w.eval('exCtx') !== null || w.eval('madeMnemonic') !== '') fails.push('CLEAR ALL: no rolls, passphrase or words left in the page state');
       if (['psbtInput', 'sigMsg', 'reuseIn', 'wpIn', 'payA'].some((id) => $(id).value)) fails.push('CLEAR ALL: the public boxes are emptied'); }
+    { $('sigAddr').value = 'mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB'; $('sigMsg').value = 'x'; $('sigSig').value = 'x'; $('sigStatus').textContent = ''; w.eval('selfTestState = "fail"');
+      await w.verifyMessageUi(); w.eval('selfTestState = "pass"'); if ($('sigStatus').textContent !== '') fails.push('signed message: nothing is checked while the self-test has not passed');
+      for (const id of ['sigAddr', 'sigMsg', 'sigSig']) $(id).value = ''; }
+    { const tA = btc.p2wpkh(root.derive("m/84'/1'/0'/0/0").publicKey, btc.TEST_NETWORK).address; if (w.eval('practiceOn')) w.practiceMode(false);
+      $('phrase').value = AB; $('verifyPass').value = ''; $('verifyRecorded').value = tA; await w.verify();
+      if (!/^MATCH \(without passphrase\): your first address/.test($('verifyMatch').textContent)) fails.push('VERIFY: a testnet first address is named the first address, also on mainnet'); $('verifyRecorded').value = ''; }
     $('phrase').value = ''; w.alert = oa; w.confirm = oc;
   } catch (e) { fails.push('v2.8.1 probe crashed: ' + e.message); }
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
@@ -4113,7 +4128,7 @@ const M = [
   ["private key: uncompressed point wrong", "...fromHex(P[1].toString(16).padStart(64, \"0\"))]);", "...fromHex(P[0].toString(16).padStart(64, \"0\"))]);"],
   ["private key: uncompressed key gets SegWit addresses", "types = wvCtx.compressed ? [\"wpkh\", \"tr\", \"sh-wpkh\", \"pkh\"] : [\"pkh\"]", "types = [\"wpkh\", \"tr\", \"sh-wpkh\", \"pkh\"]"],
   ["private key: editing the box keeps it open", "addEventListener(\"input\", () => { if(wvCtx && wvCtx.secret) clearWalletView();", "addEventListener(\"input\", () => {"],
-  ["private key: CLEAR ALL keeps the key", "document.getElementById(\"pkIn\").value=\"\"; document.getElementById(\"pkIn\").type=\"password\";", "document.getElementById(\"pkIn\").type=\"password\";"],
+  ["private key: CLEAR ALL keeps the key", "document.getElementById(\"pkIn\").value=\"\"; document.getElementById(\"pkIn\").type=\"password\";", "document.getElementById(\"pkIn\").type=\"password\";", true],  // equivalent since v2.6.0: the same wipe empties every AUTO_FIELDS box, pkIn included
   ["private key: CLEAR ALL leaves it shown", "document.getElementById(\"pkIn\").value=\"\"; document.getElementById(\"pkIn\").type=\"password\";", "document.getElementById(\"pkIn\").value=\"\";"],
   ["private key: a key alone does not count for auto-clear", "const AUTO_FIELDS = [\"pkIn\", \"rolls\",", "const AUTO_FIELDS = [\"rolls\","],
   ["private key: mainnet key in practice mode", "if(practiceOn && p.net !== \"test\"){ st.className", "if(false){ st.className"],
@@ -4185,7 +4200,7 @@ const M = [
   ["device dice: SeedSigner takes more than exactly", "if(r.exact && rolls.length > need)", "if(false && rolls.length > need)"],
   ["device dice: Keystone 24 words from 99", "keystone: {name: \"Keystone\", need: {12: 50, 24: 100}", "keystone: {name: \"Keystone\", need: {12: 50, 24: 99}"],
   ["device dice: mainnet address in practice mode", "const net = practiceOn ? \"test\" : \"main\";\n  const m = await dcWords(dev, wc, rolls)", "const net = \"main\";\n  const m = await dcWords(dev, wc, rolls)"],
-  ["device dice: practice mode read after the work", "const m = await dcWords(dev, wc, rolls), a0 = await firstAddressOn(net, m, \"\");", "const m = await dcWords(dev, wc, rolls), a0 = await shownFirstAddress(m, \"\");"],
+  ["device dice: practice mode read after the work", "const m = await dcWords(dev, wc, rolls), a0 = await firstAddressOn(net, m, \"\");", "const m = await dcWords(dev, wc, rolls), a0 = await shownFirstAddress(m, \"\");", true],  // equivalent since v2.8.1: switching practice mode clears the check (dcClear bumps dcSeq), so a result made across the switch is never shown
   ["test card: rolls shifted", "const m = await dcWords(dev, wc, DC_CARD_ROLLS.slice(0, k));", "const m = await dcWords(dev, wc, DC_CARD_ROLLS.slice(1, k + 1));"],
   ["two wallets: never shown", "if(pass) wvDecoyShow(mnemonic, pass);   // v2.7.0", "// v2.7.0"],
   ["two wallets: left address made with the passphrase", "await mnemonicFingerprint(mnemonic, \"\"), await firstAddressOn(n, mnemonic, \"\"), await mnemonicFingerprint(mnemonic, pass)", "await mnemonicFingerprint(mnemonic, \"\"), await firstAddressOn(n, mnemonic, pass), await mnemonicFingerprint(mnemonic, pass)"],
