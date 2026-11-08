@@ -1559,11 +1559,12 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <label><input type="radio" name="xorMode" value="combine" onchange="xorModeChange()"><span>Combine parts</span></label>
       </div>
       <div id="xorSplitPanel">
-        <p class="hint" style="margin:6px 0;">Splits the words typed at the top of CHECK A BACKUP. The parts are random unless you tick the box: then they are the same parts a Coldcard makes for this seed, so anyone holding the seed can make them again (and can tell the parts came from it).</p>
+        <p class="hint" style="margin:6px 0;">Splits the words typed at the top of CHECK A BACKUP. As with the seed, the randomness comes from your dice: roll again (at least 50 times for 12 words, 75 for 18, 99 for 24) and type the results. Or choose the same parts a Coldcard makes for this seed: no rolls needed, but anyone who holds the seed can make those parts again (and can tell the parts came from it).</p>
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <select id="xorN" aria-label="Number of parts" style="width:auto; flex:none;"><option value="2">2 parts</option><option value="3" selected>3 parts</option><option value="4">4 parts</option></select>
-          <label style="font-size:13px;"><input type="checkbox" id="xorSame"> The same parts a Coldcard makes (not random)</label>
+          <select id="xorFrom" aria-label="Where the parts come from" style="width:auto; flex:none;" onchange="document.getElementById('xorRolls').style.display = this.value === 'dice' ? '' : 'none'"><option value="dice" selected>From new dice rolls</option><option value="coldcard">The same parts a Coldcard makes</option></select>
         </div>
+        <textarea id="xorRolls" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="New dice rolls for the parts" placeholder="New dice rolls, 1 to 6, not the rolls of the seed" style="margin-top:6px;"></textarea>
         <div class="btn-row" style="margin-top:8px;"><button type="button" id="xorSplitBtn" onclick="seedXorUi('split')" disabled>SPLIT THE WORDS</button><button type="button" class="secondary small" onclick="clearXor()">CLEAR</button></div>
       </div>
       <div id="xorCombinePanel" style="display:none;">
@@ -1712,6 +1713,14 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <textarea id="typoIn" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Descriptor with its checksum" placeholder="wpkh([fp/84h/0h/0h]xpub.../0/*)#checksum"></textarea>
       <div class="btn-row" style="margin-top:6px;"><button type="button" id="typoBtn" onclick="descTypoUi()">FIND THE TYPO</button><button type="button" class="secondary small" onclick="clearTypo()">CLEAR</button></div>
       <div class="status" id="typoStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+    </details>
+    <details style="margin-top:8px;">
+      <summary>Explain an inheritance or timelock wallet<span class="tag tag-public">PUBLIC KEYS ONLY</span><small>Who can spend, and from when: Liana, Nunchuk and other miniscript wallets in plain words.</small></summary>
+      <p class="hint" style="margin:8px 0 6px;">Inheritance and recovery wallets (Liana, Nunchuk&rsquo;s timelocked wallets, Bitcoin Core) are described by a descriptor with conditions such as <code>older(52560)</code>. Paste it here: VOIDFORGE lists every way the coins can be spent, which keys must sign, and how long each one has to wait. With the seed words typed in CHECK A BACKUP, it also says which key those words are. Type the current block height (any block explorer, or your wallet app, shows it) to turn a fixed block into a rough date. It only reads public keys; it cannot spend.</p>
+      <textarea id="msxIn" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Descriptor with miniscript" placeholder="wsh(or_d(pk([fp/48h/0h/0h/2h]xpub.../<0;1>/*),and_v(v:pkh([fp2/...]xpub.../<0;1>/*),older(52560))))#checksum"></textarea>
+      <input type="text" id="msxHeight" inputmode="numeric" autocomplete="off" aria-label="Current block height (optional)" placeholder="Current block height (optional), such as 925000" style="margin-top:6px;">
+      <div class="btn-row" style="margin-top:6px;"><button type="button" onclick="msExplainUi()">EXPLAIN</button><button type="button" class="secondary small" onclick="clearMsx()">CLEAR</button></div>
+      <div class="status" id="msxStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
     </details>
   </div>
   </div>
@@ -3182,7 +3191,7 @@ const DICT = [
   ["Full node", "A node that downloads every block and checks every rule itself, trusting no one. Running one is the strongest way to use Bitcoin.", "", "Network & mining"],
   ["Gap limit", "How many unused addresses in a row a wallet checks before it stops looking (usually 20). Funds on addresses beyond the gap can look missing after a restore.", "", "Wallets & backups"],
   ["Genesis block", "The very first Bitcoin block, mined on 3 January 2009.", "", "Basics"],
-  ["GPG (PGP) signature", "A signature made with a person's key to show a file came from them and was not changed.", "", "Privacy & security"],
+  ["GPG (PGP) signature", "A signature made with a person's key to show a file came from them and was not changed. VOIDFORGE releases from v2.8.1 on come with one on their SHA256SUMS file.", "EXTRA TOOLS: Check your download, Check a signed release.", "Privacy & security"],
   ["Halving", "The event, about every four years (every 210,000 blocks), when the block reward is cut in half. It is why no more than 21 million bitcoin will ever exist.", "", "Network & mining"],
   ["Hard fork", "A rule change that old nodes would reject, so everyone must upgrade or the chain splits in two.", "", "Network & mining"],
   ["Hardened path (the ' mark)", "A step in a derivation path written with an apostrophe, such as 84'. Hardened steps add a safety wall, so leaking one key lower in the tree cannot expose the keys above it.", "", "Keys & seeds"],
@@ -3226,7 +3235,7 @@ const DICT = [
   ["Mini private key", "A very short private key (22 or 30 characters starting with S) once used on physical coins, such as Casascius coins.", "Or open a private key, read only, in CHECK A BACKUP.", "Keys & seeds"],
   ["Mining", "Competing to add the next block to the blockchain by doing a lot of hashing. The winner collects the block reward and fees.", "", "Network & mining"],
   ["Mining pool", "A group of miners who share the work and split the rewards, so small miners get steadier payouts.", "", "Network & mining"],
-  ["Miniscript", "A structured way to write Bitcoin scripts so software can check them and work out the spending conditions.", "", "Addresses & scripts"],
+  ["Miniscript", "A structured way to write Bitcoin scripts so software can check them and work out the spending conditions. Inheritance and recovery wallets such as Liana use it.", "EXTRA TOOLS: Explain an inheritance or timelock wallet.", "Addresses & scripts"],
   ["Mt. Gox", "An early exchange that collapsed in 2014 after losing a huge amount of customers' bitcoin. A famous lesson in leaving coins with a company.", "", "Culture & markets"],
   ["Multisig", "A wallet that needs several keys to spend, such as 2 of 3, so one lost or stolen key is not enough to lose or steal the coins.", "Multisig wallet card.", "Wallets & backups"],
   ["MuSig2", "A way for several people to make one combined key and one ordinary-looking signature, so a multi-party wallet can look like a single-key one.", "", "Addresses & scripts"],
@@ -3320,7 +3329,7 @@ const DICT = [
   ["Tapscript", "The script rules used inside Taproot's hidden branches.", "", "Addresses & scripts"],
   ["Testnet", "A practice copy of Bitcoin whose coins are worthless, for learning without risk. Its SegWit addresses start with tb1.", "The network menus; Practice mode in CHECK A BACKUP.", "Network & mining"],
   ["Threat model", "A plain list of who might attack you, how, and what you are protecting. It tells you how much protection is enough.", "", "Privacy & security"],
-  ["Timelock", "A rule that stops a coin or transaction being spent until a chosen time or block. Locktime and the opcodes CLTV and CSV are timelocks.", "", "Transactions"],
+  ["Timelock", "A rule that stops a coin or transaction being spent until a chosen time or block. Locktime and the opcodes CLTV and CSV are timelocks. In a descriptor, older() waits a number of blocks after each deposit (BIP-68) and after() waits for a fixed block or date (BIP-65).", "EXTRA TOOLS: Explain an inheritance or timelock wallet.", "Transactions"],
   ["Tor", "A network that hides where a connection comes from. Some wallets and nodes use it for privacy.", "", "Privacy & security"],
   ["Transaction (tx)", "A message that moves coins: it spends some outputs and makes new ones.", "", "Transactions"],
   ["TXID (transaction ID)", "The unique fingerprint (a hash) of a transaction, used to look it up on the blockchain.", "", "Transactions"],
@@ -3334,6 +3343,9 @@ const DICT = [
   ["Wallet", "Software or a device that manages your keys and builds transactions. Your coins live on the blockchain; the wallet holds the keys to them.", "", "Wallets & backups"],
   ["Wallet birthday", "The date or block when a wallet was first used. A restore can skip older blocks, which makes it faster.", "Printed on the summary sheet, the recovery sheet and the backup plan, and written in the watch-only file.", "Wallets & backups"],
   ["Wallet Detective", "Finds which wallet app made a wallet when the right words open an empty one: it tries the paths, address types, accounts and seed formats of well-known apps until one address you know the wallet used matches. Offline; it never sees a balance.", "CHECK A BACKUP: My wallet shows zero.", "VOIDFORGE"],
+  ["Wallet labels (BIP-329)", "A standard file of the names a wallet app gives to its addresses, transactions and coins, one record per line, so the labels can move to another app. Labels are private: they link coins to a person.", "CHECK A BACKUP: Read a label file (BIP-329).", "Wallets & backups"],
+  ["BSMS (BIP-129)", "Bitcoin Secure Multisig Setup: a standard way for the devices of a multisig wallet to share their keys and agree on one wallet record, a descriptor and its first address.", "CHECK A BACKUP: Is this seed in my wallet file?", "Wallets & backups"],
+  ["Seed XOR", "A way, made by Coldcard, to split one seed into 2 or more seed phrases that are all needed: the secret is the XOR of their entropy. Each part alone looks like, and opens, an ordinary empty wallet. Losing any part loses the seed.", "EXTRA TOOLS: Seed XOR: split or combine.", "Wallets & backups"],
   ["Wallet file", "A file a wallet program keeps on disk, holding its keys or key information. It must be backed up.", "", "Wallets & backups"],
   ["Watch-only wallet", "A wallet that has only public keys. It shows addresses and balances but cannot spend, so a phone can hold it without being able to lose the coins.", "Watch-only box; CHECK A BACKUP, Or open a watch-only wallet.", "Wallets & backups"],
   ["Whale", "A person or company holding a very large amount of bitcoin.", "", "Culture & markets"],
@@ -6505,14 +6517,17 @@ async function xorPart(text, label){
   if(!XOR_LENS[n]) return {error: label + " has " + n + " words. Seed XOR works with 12, 18 or 24 words."};
   return {mnemonic: r.mnemonic, words: n};
 }
-// Splits the words into n parts. Random by default; `same` makes the parts a Coldcard makes for this seed (double SHA-256 of
-// "Batshitoshi " + the secret + "i of n parts"), which anyone holding the seed can make again.
-async function seedXorSplit(mnemonic, n, same){
+// Splits the words into n parts. The extra parts come from new dice rolls (VOIDFORGE never uses the browser's random numbers), or,
+// with `rolls` null, are the parts a Coldcard makes for this seed (double SHA-256 of "Batshitoshi " + the secret + "i of n parts"),
+// which anyone holding the seed can make again.
+const XOR_ROLLS = {16: 50, 24: 75, 32: 99};   // entropy bytes -> dice rolls needed (2.58 bits each)
+async function seedXorSplit(mnemonic, n, rolls){
   if(!Number.isInteger(n) || n < 2 || n > 4) throw new Error("Seed XOR makes 2, 3 or 4 parts");
   const e = xorEntropy(mnemonic), parts = [];
+  if(rolls !== null && !(new RegExp("^[1-6]{" + XOR_ROLLS[e.length] + ",}$").test(rolls))) throw new Error("roll a die at least " + XOR_ROLLS[e.length] + " times for " + mnemonic.split(" ").length + " words and type the results (1 to 6) in the rolls box; they make the parts random");
   if(e.every(x => x === 0)) throw new Error("these words are all zeros (the public test phrase \u201cabandon ... about\u201d), so splitting them shows nothing useful. Use them only to practice combining");
   for(let i = 0; i < n - 1; i++){
-    const src = same ? concatBytes(new TextEncoder().encode("Batshitoshi "), e, new TextEncoder().encode(i + " of " + n + " parts")) : crypto.getRandomValues(new Uint8Array(e.length));
+    const src = rolls === null ? concatBytes(new TextEncoder().encode("Batshitoshi "), e, new TextEncoder().encode(i + " of " + n + " parts")) : new TextEncoder().encode("VOIDFORGE Seed XOR " + rolls + " " + i + " of " + n);
     parts.push((await sha256bytes(await sha256bytes(src))).slice(0, e.length));
   }
   parts.push(xorBytes(e, ...parts));
@@ -6552,14 +6567,14 @@ async function seedXorUi(mode){
       const r = await checkPhrase(document.getElementById("phrase").value);
       if(!r.ok) return say("bad", "First type the seed words in the box at the top of CHECK A BACKUP. " + r.msg);
       const n = r.mnemonic.split(" ").length; if(!XOR_LENS[n]) return say("bad", "Seed XOR works with 12, 18 or 24 words; these are " + n + ".");
-      const k = parseInt(document.getElementById("xorN").value, 10), same = document.getElementById("xorSame").checked;
-      const parts = await seedXorSplit(r.mnemonic, k, same); if(mine !== xorSeq) return;
+      const k = parseInt(document.getElementById("xorN").value, 10), same = document.getElementById("xorFrom").value === "coldcard";
+      const parts = await seedXorSplit(r.mnemonic, k, same ? null : document.getElementById("xorRolls").value.replace(/\s+/g, "")); if(mine !== xorSeq) return;
       const fps = []; for(const p of parts) fps.push(await fingerprintFromSeed(await mnemonicToSeed(p, "")));
       if(mine !== xorSeq) return;
       xorCtx = {parts, result: r.mnemonic, fp: await fingerprintFromSeed(await mnemonicToSeed(r.mnemonic, ""))};
       out.textContent = parts.map((p, i) => "PART " + String.fromCharCode(65 + i) + " of " + k + " (on its own it opens an empty wallet, fingerprint " + fps[i] + ")\n" + xorShowWords(p)).join("\n\n") + "\n\nCHECK BY HAND\n" + xorWorksheet(parts, r.mnemonic);
       out.style.display = ""; document.getElementById("xorPrintRow").style.display = "";
-      say("ok", k + " parts made" + (same ? " (the same parts a Coldcard makes for this seed)" : " (random)") + ". Write each part on its own paper and keep the parts in different places. You need ALL " + k + " to get the seed back: lose one and the money is lost. Check: combining them gives fingerprint " + xorCtx.fp + ".");
+      say("ok", k + " parts made" + (same ? " (the same parts a Coldcard makes for this seed)" : " (from your dice rolls)") + ". Write each part on its own paper and keep the parts in different places. You need ALL " + k + " to get the seed back: lose one and the money is lost. Check: combining them gives fingerprint " + xorCtx.fp + ".");
     } else {
       const texts = document.getElementById("xorIn").value.split(/\n\s*\n|\n/).map(t => t.trim()).filter(Boolean);
       const r = await seedXorCombine(texts); if(mine !== xorSeq) return;
@@ -6593,7 +6608,7 @@ function xorModeChange(){
   clearXor();
 }
 function clearXor(){
-  xorSeq++; xorCtx = null; document.getElementById("xorIn").value = ""; document.getElementById("xorPrintRow").style.display = "none";
+  xorSeq++; xorCtx = null; document.getElementById("xorIn").value = ""; document.getElementById("xorRolls").value = ""; document.getElementById("xorPrintRow").style.display = "none";
   const o = document.getElementById("xorOut"); o.textContent = ""; o.style.display = "none";
   const t = document.getElementById("xorStatus"); t.textContent = ""; t.className = "status";
 }
@@ -7192,7 +7207,7 @@ function wipeSeed(){
   lbClear();   // v2.9.0: the label file (private)
   clearXor();   // v2.9.0: Seed XOR parts (secret)
   seedSig = null; passKey = null; exCtx = null;   // fixes release: these held the rolls and the passphrases after a wipe (found by tests/memory.test.mjs)
-  clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo();   // fixes release: public but private data (xpubs, descriptors, addresses, amounts)
+  clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo(); clearMsx();   // fixes release: public but private data (xpubs, descriptors, addresses, amounts)
   for(const id of ["wpIn", "payA", "payB", "dlPaste"]){ const e = document.getElementById(id); if(e) e.value = ""; }
   dlSignedClear();
   payCompare();
@@ -8089,6 +8104,115 @@ async function descTypoUi(){
   finally { btn.disabled = false; }
 }
 function clearTypo(){ document.getElementById("typoIn").value = ""; const st = document.getElementById("typoStatus"); st.textContent = ""; st.className = "status"; }
+// ===== Explain an inheritance or timelock wallet (v2.9.0). Public keys only. =====
+// Reads an output descriptor with miniscript (as Liana, Nunchuk and Bitcoin Core make for inheritance and recovery wallets) and
+// lists every way the coins can be spent: which keys must sign, and from when (older = a waiting time after each deposit,
+// after = a fixed block or date). It only reads the text; it cannot sign or spend.
+const MS_NUMS = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";   // BIP341's unspendable internal key
+function msSplitArgs(s){   // "a,b(c,d),{e,f}" -> ["a", "b(c,d)", "{e,f}"]
+  const out = []; let d = 0, cur = "";
+  for(const ch of s){ if(ch === "(" || ch === "{" || ch === "[") d++; if(ch === ")" || ch === "}" || ch === "]") d--; if(ch === "," && d === 0){ out.push(cur); cur = ""; } else cur += ch; }
+  if(d !== 0) throw new Error("the brackets do not match");
+  out.push(cur); return out;
+}
+function msParse(s){
+  s = s.trim(); const m = /^([a-z0-9]+:)?([a-z_0-9]+)\((.*)\)$/s.exec(s);
+  if(s === "0" || s === "1") return {f: s};
+  if(!m){ if(/^[a-z]+:[01]$/.test(s)) return {f: s.split(":")[1]}; return {f: "key", key: s}; }
+  const wrap = (m[1] || "").replace(":", ""), name = m[2], args = name === "tr" ? [m[3]] : msSplitArgs(m[3]);
+  let node;
+  if(/^(pk|pk_k|pk_h|pkh)$/.test(name)) node = {f: "pk", key: args[0].trim()};
+  else if(/^(sorted)?multi(_a)?$/.test(name)) node = {f: "multi", k: parseInt(args[0], 10), keys: args.slice(1).map(x => x.trim())};
+  else if(name === "older" || name === "after"){ const n = Number(args[0]); if(!Number.isInteger(n) || n < 1 || n > 0xffffffff) throw new Error(name + "() needs a whole number"); node = {f: name, n}; }
+  else if(/^(sha256|hash256|ripemd160|hash160)$/.test(name)) node = {f: "hash", kind: name};
+  else node = {f: name, args: args.map(msParse)};
+  // wrappers: l: and u: add an alternative that can never be taken (0); the others do not change who can spend
+  for(const c of wrap) if(c === "l" || c === "u") node = {f: "or_i", args: [node, {f: "0"}]};
+  return node;
+}
+// Every way to satisfy a node, as a list of paths; each path is a list of conditions. Capped, because thresh() can multiply them.
+const MS_MAX_PATHS = 64;
+function msPaths(n){
+  const cross = (A, B) => { const out = []; for(const a of A) for(const b of B){ out.push(a.concat(b)); if(out.length > MS_MAX_PATHS) throw new Error("this wallet has more than " + MS_MAX_PATHS + " ways to spend; too many to list"); } return out; };
+  switch(n.f){
+    case "0": return [];
+    case "1": return [[]];
+    case "pk": case "key": return [[{t: "key", key: n.key}]];
+    case "multi": return [[{t: "multi", k: n.k, keys: n.keys}]];
+    case "older": case "after": return [[{t: n.f, n: n.n}]];
+    case "hash": return [[{t: "hash", kind: n.kind}]];
+    case "and_v": case "and_b": case "and_n": return n.f === "and_n" ? msPaths({f: "andor", args: [n.args[0], n.args[1], {f: "0"}]}) : cross(msPaths(n.args[0]), msPaths(n.args[1]));
+    case "or_b": case "or_c": case "or_d": case "or_i": return msPaths(n.args[0]).concat(msPaths(n.args[1]));
+    case "andor": return cross(msPaths(n.args[0]), msPaths(n.args[1])).concat(msPaths(n.args[2]));
+    case "thresh": {
+      const k = parseInt(n.args[0].key || n.args[0].f, 10), subs = n.args.slice(1).map(msPaths); let out = [];
+      if(!Number.isInteger(k) || k < 1 || k > subs.length) throw new Error("thresh() needs a number from 1 to the number of parts");
+      const pick = (i, left, acc) => { if(left === 0){ out = out.concat(acc); if(out.length > MS_MAX_PATHS) throw new Error("too many ways to spend to list"); return; } if(subs.length - i < left) return; pick(i + 1, left - 1, cross(acc, subs[i])); pick(i + 1, left, acc); };
+      pick(0, k, [[]]); return out;
+    }
+    default: throw new Error("“" + n.f + "” is not something this page reads");
+  }
+}
+function msTreeLeaves(t){ t = t.trim(); if(t[0] !== "{") return [t]; const inner = t.slice(1, -1); return msSplitArgs(inner).flatMap(msTreeLeaves); }
+// Waiting times in plain words. older(n): BIP68, a relative lock counted from each deposit; after(n): BIP65, a block or a date.
+function msOlderText(n){
+  if(n & (1 << 22)){ const s = (n & 0xffff) * 512; return "about " + Math.round(s / 86400) + " days (" + (n & 0xffff) + " x 512 seconds) after each deposit"; }
+  const b = n & 0xffff, d = b / 144;
+  return b + " blocks after each deposit (about " + (d >= 60 ? Math.round(d / 30.4) + " months" : Math.round(d) + " days") + ")" + (n > 0xffff ? " [the extra bits above 65535 are ignored by Bitcoin]" : "");
+}
+function msAfterText(n, height){
+  if(n >= 500000000) return "from " + new Date(n * 1000).toISOString().slice(0, 10) + " (a fixed date)";
+  if(!height) return "from block " + n + " (a fixed block height; type the current block height to see roughly when)";
+  if(n <= height) return "from block " + n + ", which is already past";
+  const days = (n - height) / 144; return "from block " + n + ", in about " + (days >= 60 ? Math.round(days / 30.4) + " months" : Math.round(days) + " days") + " (from block " + height + ")";
+}
+function msKeyId(k){ const m = /^\[([0-9a-fA-F]{8})/.exec(k); return {fp: m ? m[1].toLowerCase() : null, base: k.replace(/\/(<\d+;\d+>|\d+)\/\*$/, "").replace(/\/\*$/, "")}; }
+async function msExplain(raw, height, phrase, vp){
+  const t = String(raw || "").replace(/\s+/g, "");
+  if(!t) return {state: "", text: "Paste the wallet's descriptor first (Liana: Settings, Wallet, the descriptor; Nunchuk: export the wallet configuration)."};
+  if(/[xyzYZtuvUV]prv[1-9A-HJ-NP-Za-km-z]{20,}/.test(t)) return {state: "bad", text: "This holds a PRIVATE key (xprv...). Never paste private keys here; use the wallet's public descriptor."};
+  const hashAt = t.lastIndexOf("#"), body = hashAt < 0 ? t : t.slice(0, hashAt);
+  if(hashAt >= 0 && descriptorChecksum(body) !== t) return {state: "bad", text: "The descriptor's checksum (after #) does not match, so it was changed or mistyped. Use Find a typo in a descriptor first."};
+  let paths, kind, keyPath = null;
+  try {
+    let m;
+    if((m = /^wsh\((.*)\)$/s.exec(body))) { kind = "P2WSH (bc1q..., long)"; paths = msPaths(msParse(m[1])); }
+    else if((m = /^sh\(wsh\((.*)\)\)$/s.exec(body))) { kind = "P2SH-P2WSH (3...)"; paths = msPaths(msParse(m[1])); }
+    else if((m = /^tr\((.*)\)$/s.exec(body))) {
+      const parts = msSplitArgs(m[1]); kind = "Taproot (bc1p...)";
+      const ik = parts[0].trim(); keyPath = ik.replace(/^\[[^\]]*\]/, "").toLowerCase() === MS_NUMS ? null : ik;
+      paths = keyPath ? [[{t: "key", key: keyPath, keyPath: true}]] : [];
+      if(parts.length > 1) for(const leaf of msTreeLeaves(parts.slice(1).join(","))) paths = paths.concat(msPaths(msParse(leaf)));
+    } else return {state: "bad", text: "This explains wsh(...), sh(wsh(...)) and tr(...) descriptors, as inheritance and recovery wallets use. For a plain single-key or multisig wallet, see Is this seed in my wallet file? in CHECK A BACKUP."};
+  } catch(e) { return {state: "bad", text: "Could not read it: " + e.message + "."}; }
+  if(!paths.length) return {state: "bad", text: "No way to spend was found in this descriptor: the coins could never be moved. Check that it was copied whole."};
+  // name the keys: Key 1, Key 2... (the same key in several places gets the same name)
+  const names = new Map(); let fpMine = null;
+  const nameOf = k => { const id = msKeyId(k); if(!names.has(id.base)) names.set(id.base, {n: names.size + 1, fp: id.fp}); const x = names.get(id.base); return "Key " + x.n + (x.fp ? " (fingerprint " + x.fp + ")" : ""); };
+  if(phrase){ const r = await checkPhrase(phrase); if(r.ok) fpMine = await fingerprintFromSeed(await mnemonicToSeed(r.mnemonic, vp || "")); }
+  const lines = paths.map((p, i) => {
+    const keys = [], waits = [], hashes = [];
+    for(const c of p){
+      if(c.t === "key") keys.push(nameOf(c.key) + (c.keyPath ? " alone, through the Taproot key path" : ""));
+      else if(c.t === "multi") keys.push(c.k + " of " + c.keys.map(nameOf).join(", "));
+      else if(c.t === "older") waits.push(msOlderText(c.n));
+      else if(c.t === "after") waits.push(msAfterText(c.n, height));
+      else if(c.t === "hash") hashes.push("a secret (" + c.kind + " preimage)");
+    }
+    return (i + 1) + ". " + (keys.length ? keys.join(" and ") : "no key at all") + (hashes.length ? ", plus " + hashes.join(" and ") : "") + (waits.length ? ", but only " + waits.join(" and ") : ", at any time") + ".";
+  });
+  const keyList = [...names.entries()].map(([b, x]) => "Key " + x.n + ": " + (x.fp ? "fingerprint " + x.fp : "no fingerprint given") + (fpMine && x.fp === fpMine ? "  ← made by the words typed in CHECK A BACKUP" : ""));
+  const relative = paths.some(p => p.some(c => c.t === "older")), fixed = paths.some(p => p.some(c => c.t === "after"));
+  return {state: "ok", text: "This " + kind + " wallet can be spent in " + paths.length + " way" + (paths.length === 1 ? "" : "s") + ":\n" + lines.join("\n") + "\n\n" + keyList.join("\n") + (relative ? "\n\nA waiting time “after each deposit” starts again whenever coins are moved: sending them to a new address of the same wallet before the time is up keeps the later paths closed (Liana calls this refreshing the coins)." : "") + (fixed ? "\n\nA fixed block or date does not restart: once it has passed, that path stays open for good." : "") + (paths.some(p => p.some(c => c.t === "hash")) ? "\n\nA path that needs a secret (a hash preimage) can only be used by someone who knows that secret." : "")};
+}
+async function msExplainUi(){
+  const st = document.getElementById("msxStatus"), h = document.getElementById("msxHeight").value.trim();
+  if(h && !/^\d{1,8}$/.test(h)){ st.className = "status bad"; st.textContent = "The block height is a whole number, such as 925000."; return; }
+  st.className = "status"; st.textContent = "Reading...";
+  try { const r = await msExplain(document.getElementById("msxIn").value, h ? parseInt(h, 10) : null, document.getElementById("phrase").value, document.getElementById("verifyPass").value); st.className = "status " + r.state; st.textContent = r.text; }
+  catch(e) { st.className = "status bad"; st.textContent = "Could not read it: " + e.message; }
+}
+function clearMsx(){ document.getElementById("msxIn").value = ""; document.getElementById("msxHeight").value = ""; const st = document.getElementById("msxStatus"); st.textContent = ""; st.className = "status"; }
 function clearReuse(){ document.getElementById("reuseIn").value = ""; const st = document.getElementById("reuseStatus"); st.textContent = ""; st.className = "status"; }
 async function openWalletView(mnemonic, pass){
   clearWalletView();

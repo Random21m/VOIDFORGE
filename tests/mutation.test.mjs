@@ -2371,11 +2371,11 @@ async function probe(w, mutated, fast) {
       r = await F(full.replace('[d34d', '[dd34d')); if (r.state !== 'ok' || !/^FOUND: .*character 6 \(“d”\) should not be there/.test(r.text)) fails.push('typo finder: an extra character is found, once');
       r = await F(D + '#gw2sk4e3'); if (!/^FOUND: .*the typo is in the checksum: it should be #gw2sk4e2 \(1 character differs\)/.test(r.text)) fails.push('typo finder: a typo in the checksum is named');
       r = await F(D); if (r.state !== '' || !/no checksum/.test(r.text) || !/key is valid/.test(r.text)) fails.push('typo finder: no checksum: only the keys are checked');
-      r = await F(D.replace('LkBUHQ', 'LkBUhQ')); if (r.state !== 'bad' || !/character 41 of the key “h” should be “H”/.test(r.text)) fails.push('typo finder: no checksum: a bad key gets its one-character fix [' + r.text.slice(0, 160) + ']');
+      r = await F(D.replace('LkBUHQ', 'LkBUhQ')); if (r.state !== 'bad' || !/character 45 of the key “h” should be “H”/.test(r.text)) fails.push('typo finder: no checksum: a bad key gets its one-character fix [' + r.text.slice(0, 160) + ']');
       r = await F(full.replace('xpub', 'xpüb')); if (r.state !== 'bad' || !/Character 27/.test(r.text)) fails.push('typo finder: a character no descriptor has is named');
       r = await F(full.replace('/1/*', '/1/ *')); if (r.state !== 'bad' || !/no spaces/.test(r.text)) fails.push('typo finder: spaces are refused');
       r = await F('wpkh(xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi/0/*)'); if (r.state !== 'bad' || !/PRIVATE key/.test(r.text)) fails.push('typo finder: a private key is refused');
-      r = await F(D.replace('d34db33f', 'd34db3ff') + '#gw2sk4e2'); if (!/^(FOUND|Several)/.test(r.text) || !/character 15/.test(r.text)) fails.push('typo finder: a typo in the fingerprint is found');
+      r = await F(D.replace('d34db33f', 'd34db3ff') + '#gw2sk4e2'); if (!/^FOUND: one change makes everything match: character 12: “f” should be “3”/.test(r.text)) fails.push('typo finder: a typo in the fingerprint is found');
       r = await F(full.replace('LkBUHQ', 'LkBUhq')); if (r.state !== 'bad' || !/^NOT FOUND/.test(r.text)) fails.push('typo finder: two typos are not "fixed" by a guess');
       $('typoIn').value = full; $('typoStatus').textContent = 'x'; w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('typoIn').value !== '' || $('typoStatus').textContent !== '') fails.push('typo finder: CLEAR ALL empties it'); }
     { // v2.9.0: Is this seed in my wallet file? (BIP39 test phrases; keys and addresses from @scure)
@@ -2437,16 +2437,20 @@ async function probe(w, mutated, fast) {
         const e = Buffer.from(mnemonicToEntropy(mn, wordlist)), parts = [];
         for (let i = 0; i < n - 1; i++) parts.push(sha2(Buffer.concat([Buffer.from('Batshitoshi '), e, Buffer.from(i + ' of ' + n + ' parts')])).subarray(0, e.length));
         const last = Buffer.from(e); for (const p of parts) for (let j = 0; j < last.length; j++) last[j] ^= p[j]; parts.push(last);
-        const want = parts.map((p) => entropyToMnemonic(p, wordlist)), got = await w.seedXorSplit(mn, n, true);
+        const want = parts.map((p) => entropyToMnemonic(p, wordlist)), got = await w.seedXorSplit(mn, n, null);
         if (got.join('|') !== want.join('|')) fails.push('seed xor: the not-random split makes the parts a Coldcard makes (' + mn.split(' ').length + ' words, ' + n + ' parts)');
-        const rnd = await w.seedXorSplit(mn, n, false); if (rnd.length !== n || rnd.join('|') === want.join('|') || (await w.seedXorCombine(rnd)).mnemonic !== mn) fails.push('seed xor: a random split combines back to the seed'); }
+        const rolls = '3615244251636124535162433621456152634125361425163245362514'.repeat(2), rnd = await w.seedXorSplit(mn, n, rolls);
+        if (rnd.length !== n || rnd.join('|') === want.join('|') || (await w.seedXorCombine(rnd)).mnemonic !== mn) fails.push('seed xor: a split from dice rolls combines back to the seed');
+        const exp = []; for (let i = 0; i < n - 1; i++) exp.push(sha2(Buffer.from('VOIDFORGE Seed XOR ' + rolls + ' ' + i + ' of ' + n)).subarray(0, e.length));
+        if (rnd.slice(0, n - 1).join('|') !== exp.map((p) => entropyToMnemonic(p, wordlist)).join('|')) fails.push('seed xor: the parts are the double SHA-256 of the rolls');
+        let tooFew = ''; try { await w.seedXorSplit(mn, n, '1234'); } catch (er) { tooFew = er.message; } if (!/at least (50|75|99) times/.test(tooFew)) fails.push('seed xor: too few rolls are refused'); }
       r = await w.seedXorCombine([A]); if (!/at least two parts/.test(r.error || '')) fails.push('seed xor: one part is refused');
       r = await w.seedXorCombine([A, 'legal winner thank year wave sausage worth useful legal winner thank yellow']); if (!/same number of words/.test(r.error || '')) fails.push('seed xor: parts of different lengths are refused');
       r = await w.seedXorCombine([A, A, B]); if (!/typed twice/.test(r.error || '')) fails.push('seed xor: a part typed twice is refused');
       r = await w.seedXorCombine([A, B.replace('lion', 'lion lion')]); if (!r.error) fails.push('seed xor: a broken part is refused');
-      { let thrown = ''; try { await w.seedXorSplit('abandon '.repeat(11) + 'about', 2, false); } catch (e) { thrown = e.message; } if (!/all zeros/.test(thrown)) fails.push('seed xor: the all-zero test phrase is not split'); }
+      { let thrown = ''; try { await w.seedXorSplit('abandon '.repeat(11) + 'about', 2, null); } catch (e) { thrown = e.message; } if (!/all zeros/.test(thrown)) fails.push('seed xor: the all-zero test phrase is not split'); }
       { const z = await w.seedXorCombine(['legal winner thank year wave sausage worth useful legal winner thank yellow', 'legal winner thank year wave sausage worth useful legal winner thank yellow'.replace('yellow', 'yellow')]); if (!/typed twice/.test(z.error || '')) fails.push('seed xor: two equal parts are refused'); }
-      $('phrase').value = 'legal winner thank year wave sausage worth useful legal winner thank yellow'; $('xorN').value = '3'; $('xorSame').checked = true; await w.seedXorUi('split');
+      $('phrase').value = 'legal winner thank year wave sausage worth useful legal winner thank yellow'; $('xorN').value = '3'; $('xorFrom').value = 'coldcard'; await w.seedXorUi('split');
       if (!/^3 parts made \(the same parts a Coldcard makes/.test($('xorStatus').textContent) || !/PART C of 3/.test($('xorOut').textContent) || $('xorPrintRow').style.display === 'none') fails.push('seed xor: SPLIT shows the parts and the print button');
       { let n = 0; const op = w.print; w.print = () => { n++; }; w.printXorParts(); const t = $('printOnly'); const pages = t.querySelectorAll('.ps-part').length; const txt = t.textContent; w.dispatchEvent(new w.Event('afterprint')); w.print = op;
         if (n !== 1 || pages !== 3 || !/SEED XOR PART A OF 3/.test(txt) || !/ALL 3 parts are needed/.test(txt)) fails.push('seed xor: each part prints on its own page'); }
@@ -2474,6 +2478,30 @@ async function probe(w, mutated, fast) {
       if (/not among this wallet's first/.test(o) || /NO CHANGE COMES BACK/.test(o)) fails.push('unmarked change: without the words nothing is searched or claimed');
       o = await run(mk([{ script: btc.p2sh(btc.p2wpkh(kp("m/49'/0'/0'/1/2"))).script, amount: 100000n }, { script: btc.p2wpkh(oth).script, amount: 190000n }]));
       if (!/CHANGE, FOUND: this wallet's change address #2 \(m\/49'\/0'\/0'\/1\/2, Nested SegWit/.test(o)) fails.push('unmarked change: nested SegWit change is found'); }
+    { // v2.9.0: Explain an inheritance or timelock wallet (miniscript)
+      const AB = 'abandon '.repeat(11) + 'about', LW = 'legal winner thank year wave sausage worth useful legal winner thank yellow', LA = 'letter advice cage absurd amount doctor acoustic avoid letter advice cage above';
+      const key = (m) => { const r0 = HDKey.fromMasterSeed(mnemonicToSeedSync(m, '')); return '[' + r0.fingerprint.toString(16).padStart(8, '0') + '/48h/0h/0h/2h]' + r0.derive("m/48'/0'/0'/2'").publicExtendedKey + '/<0;1>/*'; };
+      const A = key(AB), B = key(LW), C = key(LA), X = async (d, h = null, ph = AB) => w.msExplain(w.descriptorChecksum(d), h, ph, '');
+      let r = await X(`wsh(or_d(pk(${A}),and_v(v:pkh(${B}),older(52560))))`);
+      if (r.state !== 'ok' || !/can be spent in 2 ways:\n1\. Key 1 \(fingerprint 73c5da0a\), at any time\.\n2\. Key 2 \(fingerprint b8688df1\), but only 52560 blocks after each deposit \(about 12 months\)\./.test(r.text)) fails.push('timelock: a Liana-style wallet is explained [' + r.text.slice(0, 200) + ']');
+      if (!/Key 1: fingerprint 73c5da0a  ← made by the words typed in CHECK A BACKUP/.test(r.text) || /Key 2: fingerprint b8688df1  ←/.test(r.text) || !/starts again whenever coins are moved/.test(r.text) || /A fixed block or date/.test(r.text)) fails.push('timelock: the typed words are named, and the relative lock explained');
+      r = await X(`wsh(or_d(multi(2,${A},${B}),and_v(v:pk(${C}),after(950000))))`, 925000);
+      if (!/1\. 2 of Key 1 \(fingerprint 73c5da0a\), Key 2 \(fingerprint b8688df1\), at any time\./.test(r.text) || !/Key 3 \(fingerprint 28645006\), but only from block 950000, in about 6 months \(from block 925000\)/.test(r.text) || !/A fixed block or date does not restart/.test(r.text) || /starts again whenever/.test(r.text)) fails.push('timelock: multisig with a fixed block is explained');
+      r = await X(`wsh(and_v(v:pk(${A}),after(800000)))`, 925000); if (!/from block 800000, which is already past/.test(r.text)) fails.push('timelock: a past block is said');
+      r = await X(`wsh(and_v(v:pk(${A}),after(1893456000)))`); if (!/from 2030-01-01 \(a fixed date\)/.test(r.text)) fails.push('timelock: a date lock is a date');
+      r = await X(`wsh(and_v(v:pk(${A}),older(4194448)))`); if (!/about 1 days \(144 x 512 seconds\) after each deposit/.test(r.text)) fails.push('timelock: a time-based older() is in 512-second units');
+      r = await X(`wsh(andor(pk(${A}),older(1000),thresh(2,pk(${A}),s:pk(${B}),s:pk(${C}))))`);
+      if (!/spent in 4 ways/.test(r.text) || !/1\. Key 1 \(fingerprint 73c5da0a\), but only 1000 blocks after each deposit \(about 7 days\)\./.test(r.text) || !/4\. Key 2 \(fingerprint b8688df1\) and Key 3 \(fingerprint 28645006\), at any time\./.test(r.text)) fails.push('timelock: andor and thresh are expanded');
+      r = await X(`tr(50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0,{and_v(v:pk(${A}),older(4320)),multi_a(2,${B},${C})})`);
+      if (!/Taproot \(bc1p\.\.\.\) wallet can be spent in 2 ways/.test(r.text) || /key path/.test(r.text) || !/2\. 2 of Key 2/.test(r.text)) fails.push('timelock: a Taproot tree with an unspendable key path is explained');
+      r = await X(`tr(${A},{and_v(v:pk(${B}),older(4320))})`); if (!/1\. Key 1 \(fingerprint 73c5da0a\) alone, through the Taproot key path, at any time/.test(r.text)) fails.push('timelock: a Taproot key path is listed');
+      r = await X(`wsh(and_v(v:pk(${A}),sha256(${'ab'.repeat(32)})))`); if (!/plus a secret \(sha256 preimage\)/.test(r.text)) fails.push('timelock: a hash lock is named');
+      r = await X(`wsh(and_v(v:pk(${A}),l:older(10)))`); if (!/spent in 2 ways/.test(r.text) && !/spent in 1 way/.test(r.text)) fails.push('timelock: l: wrappers are read');
+      r = await w.msExplain(w.descriptorChecksum(`wsh(or_d(pk(${A}),older(10)))`).slice(0, -1) + 'x', null, '', ''); if (r.state !== 'bad' || !/checksum/.test(r.text)) fails.push('timelock: a wrong checksum is refused');
+      r = await w.msExplain(`wpkh(${A})`, null, '', ''); if (r.state !== 'bad' || !/wsh\(\.\.\.\), sh\(wsh/.test(r.text)) fails.push('timelock: a plain wallet is pointed elsewhere');
+      r = await w.msExplain(`wsh(foo(${A}))`, null, '', ''); if (r.state !== 'bad' || !/not something this page reads/.test(r.text)) fails.push('timelock: unknown fragments are refused');
+      r = await X(`wsh(or_d(pk(${A}),and_v(v:pkh(${B}),older(52560))))`, null, ''); if (/←/.test(r.text)) fails.push('timelock: without words no key is claimed');
+      $('msxIn').value = 'x'; $('msxStatus').textContent = 'y'; w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('msxIn').value !== '' || $('msxStatus').textContent !== '') fails.push('timelock: CLEAR ALL empties it'); }
     w.watchCheck(); if ($('watchStatus').textContent !== 'NO SIGN FOUND of extensions, translators or other scripts on this page right now.' || !/^That does not make it safe\./.test($('watchOut').textContent)) fails.push('watch check: no sign found, never safe');
     { const s = w.document.createElement('script'); s.src = 'chrome-extension://x/i.js'; w.document.head.appendChild(s); s.remove();
       $('phrase').setAttribute('data-unknown-helper', '1'); w.document.body.appendChild(w.document.createElement('grammarly-extension')); w.document.body.appendChild(w.document.createElement('div')); w.ethereum = {}; await sleep(450);
@@ -4372,7 +4400,7 @@ const M = [
   ["fixes: PSBT v2 sequence default wrong", ": 0xffffffff, lockH:th", ": 0xfffffffe, lockH:th"],
   ["fixes: previous transaction not checked", "      if(id===tx.ins[i].txid){ const o=psbtParseTxOutputs(nw.val)", "      if(true){ const o=psbtParseTxOutputs(nw.val)"],
   ["fixes: wipe leaves rolls and passphrase in state", "  seedSig = null; passKey = null; exCtx = null;   // fixes release", "  // fixes release"],
-  ["fixes: wipe leaves the public boxes", "  clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo();   // fixes release", "  clearTypo();   // fixes release"],
+  ["fixes: wipe leaves the public boxes", "  clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo(); clearMsx();   // fixes release", "  clearTypo(); clearMsx();   // fixes release"],
   ["fixes: signed messages skip the gate", "async function verifyMessageUi(){\n  if(!gateOk()) return;", "async function verifyMessageUi(){"],
   ["fixes: old FOUND stays after an edit", "() => { resetAddrScan(); const st = document.getElementById(\"addrCheckStatus\"); st.textContent = \"\"; st.className = \"status\"; }", "resetAddrScan"],
   ["fixes: old MATCH stays after an edit", "document.getElementById(\"verifyRecorded\").addEventListener(\"input\", () => { const m = document.getElementById(\"verifyMatch\"); m.textContent = \"\"; m.className = \"status\"; });", ""],
@@ -4456,10 +4484,10 @@ const M = [
   ["typo finder: fixes with an invalid key kept", "if(seen.has(c.str)) continue; seen.add(c.str); if(await descKeysOk(c.str)) fixes.push(c);", "if(seen.has(c.str)) continue; seen.add(c.str); fixes.push(c);"],
   ["typo finder: the same fix listed twice", "if(seen.has(c.str)) continue; seen.add(c.str);", ""],
   ["typo finder: a checksum typo never named", "if(diff <= 2) fixes.push({where: \"checksum\"", "if(false) fixes.push({where: \"checksum\""],
-  ["typo finder: private keys accepted", "if(/[xyzYZtuvUV]prv[1-9A-HJ-NP-Za-km-z]{20,}/.test(t)) return", "if(false) return"],
+  ["typo finder: private keys accepted", "if(/[xyzYZtuvUV]prv[1-9A-HJ-NP-Za-km-z]{20,}/.test(t)) return {state: \"bad\", text: \"This descriptor holds", "if(false) return {state: \"bad\", text: \"This descriptor holds"],
   ["typo finder: the bad character not named", "for(let i = 0; i < body.length; i++) if(DESC_IN.indexOf(body[i]) < 0) return", "for(let i = 0; i < body.length; i++) if(false) return"],
   ["typo finder: a bad key without a checksum gets no fix", "if(await descKeyOk(k2)) found.push(", "if(false) found.push("],
-  ["typo finder: CLEAR ALL leaves it", "clearReuse(); clearTypo();   // fixes release", "clearReuse();   // fixes release"],
+  ["typo finder: CLEAR ALL leaves it", "clearReuse(); clearTypo(); clearMsx();   // fixes release", "clearReuse(); clearMsx();   // fixes release"],
   ["wallet file: the key at the path not compared", "if(hex(pubkeyBytes(kk)) === hex(parsed.pub) && hex(cc) === hex(parsed.chain)){", "if(true){"],
   ["wallet file: the chain code not compared", "if(hex(pubkeyBytes(kk)) === hex(parsed.pub) && hex(cc) === hex(parsed.chain)){", "if(hex(pubkeyBytes(kk)) === hex(parsed.pub)){", true],
   ["wallet file: the passphrase wallet never tried", "for(const [label, pass] of src.passes){ const seed = await mnemonicToSeed(src.mnemonic, pass); seeds.push(", "for(const [label, pass] of src.passes.slice(-1)){ const seed = await mnemonicToSeed(src.mnemonic, pass); seeds.push("],
@@ -4485,7 +4513,7 @@ const M = [
   ["labels: a new phrase keeps the old result", "kcClear(true); lbClear(true); if(xorCtx", "kcClear(true); if(xorCtx"],
   ["seed xor: the last part is not the XOR", "parts.push(xorBytes(e, ...parts));", "parts.push(xorBytes(e, ...parts.slice(1)));"],
   ["seed xor: the not-random split differs from Coldcard", "new TextEncoder().encode(i + \" of \" + n + \" parts\")", "new TextEncoder().encode(i + \" of \" + n)"],
-  ["seed xor: random parts are not random", "const src = same ? concatBytes(", "const src = true ? concatBytes("],
+  ["seed xor: random parts are not random", "const src = rolls === null ? concatBytes(", "const src = true ? concatBytes("],
   ["seed xor: the parts not double-hashed", "parts.push((await sha256bytes(await sha256bytes(src))).slice(0, e.length));", "parts.push((await sha256bytes(src)).slice(0, e.length));"],
   ["seed xor: one part is accepted", "if(parts.length < 2) return {error:", "if(parts.length < 1) return {error:"],
   ["seed xor: parts of different lengths accepted", "if(new Set(parts.map(p => p.words)).size !== 1) return", "if(false) return"],
@@ -4503,6 +4531,19 @@ const M = [
   ["unmarked change: nothing coming back not said", "if(res.searched && spendable.length>=2 && !found.length", "if(false && spendable.length>=2 && !found.length"],
   ["unmarked change: one output warned", "spendable.length>=2 && !found.length", "spendable.length>=1 && !found.length"],
   ["unmarked change: searched without the words", "res.searched = !!root; if(!root) return res;", "res.searched = true; if(!root) return res;"],
+  ["timelock: or takes only the first branch", "case \"or_b\": case \"or_c\": case \"or_d\": case \"or_i\": return msPaths(n.args[0]).concat(msPaths(n.args[1]));", "case \"or_b\": case \"or_c\": case \"or_d\": case \"or_i\": return msPaths(n.args[0]);"],
+  ["timelock: and drops its second part", "return n.f === \"and_n\" ? msPaths({f: \"andor\", args: [n.args[0], n.args[1], {f: \"0\"}]}) : cross(msPaths(n.args[0]), msPaths(n.args[1]));", "return n.f === \"and_n\" ? msPaths({f: \"andor\", args: [n.args[0], n.args[1], {f: \"0\"}]}) : msPaths(n.args[0]);"],
+  ["timelock: andor misses its else branch", "case \"andor\": return cross(msPaths(n.args[0]), msPaths(n.args[1])).concat(msPaths(n.args[2]));", "case \"andor\": return cross(msPaths(n.args[0]), msPaths(n.args[1]));"],
+  ["timelock: thresh needs one fewer", "pick(0, k, [[]]); return out;", "pick(0, k - 1, [[]]); return out;"],
+  ["timelock: time-based older read as blocks", "if(n & (1 << 22)){ const s = (n & 0xffff) * 512;", "if(false){ const s = (n & 0xffff) * 512;"],
+  ["timelock: dates read as blocks", "if(n >= 500000000) return \"from \" + new Date(n * 1000)", "if(false) return \"from \" + new Date(n * 1000)"],
+  ["timelock: a past block called future", "if(n <= height) return \"from block \" + n + \", which is already past\";", ""],
+  ["timelock: the unspendable key path listed", "keyPath = ik.replace(/^\\[[^\\]]*\\]/, \"\").toLowerCase() === MS_NUMS ? null : ik;", "keyPath = ik;"],
+  ["timelock: the typed words never named", "(fpMine && x.fp === fpMine ? \"  \u2190 made by the words typed in CHECK A BACKUP\" : \"\")", "\"\""],
+  ["timelock: the checksum not checked", "if(hashAt >= 0 && descriptorChecksum(body) !== t) return {state: \"bad\", text: \"The descriptor's checksum (after #) does not match, so it was changed or mistyped. Use Find a typo in a descriptor first.\"};", ""],
+  ["timelock: the restart note always shown", "(relative ? \"\\n\\nA waiting time", "(true ? \"\\n\\nA waiting time"],
+  ["timelock: CLEAR ALL leaves it", "clearTypo(); clearMsx();", "clearTypo();"],
+  ["seed xor: too few rolls accepted", "if(rolls !== null && !(new RegExp(\"^[1-6]{\" + XOR_ROLLS[e.length] + \",}$\").test(rolls))) throw", "if(false) throw"],
   ["heir mode: the Detective button goes nowhere", "onclick=\"heirGo('check', 'detBlock')\"", "onclick=\"heirGo('tools', 'detBlock')\""],
 ];
 
