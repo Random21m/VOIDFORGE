@@ -25,7 +25,7 @@ stages: [test, deploy]
 
 test-unit:
   <<: *test
-  script: [node tests/test.js, node tests/signed.test.mjs, node tests/slip39.test.mjs]
+  script: [node tests/test.js, node tests/signed.test.mjs, node tests/slip39.test.mjs, node tests/qrdecode.test.mjs]
 
 test-oracle:
   <<: *test
@@ -41,7 +41,7 @@ test-print:
 
 test-browsers:
   <<: *test
-  script: [node tests/browsers.test.mjs]
+  script: [node tests/browsers.test.mjs, node tests/camera.test.mjs]
 
 pages:
   stage: deploy

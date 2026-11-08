@@ -7538,6 +7538,755 @@ function printWordSheet(){
     add("ps-warn", "Once filled in, this sheet is as secret as your seed: anyone who sees it can make your wallet.\nType it in on an offline computer, then shred it (or keep it only as a locked-away backup).\nNever photograph it.");
   });
 }
+// ===== QR code reader (v2.9.0) =====
+// QR code reader for camera frames and still pictures. All our own code, no outside libraries, so the page stays offline.
+// qrDecodeGray(gray, width, height) takes luminance 0..255, one byte per pixel, row by row. qrDecodeRgba(rgba, width, height)
+// takes canvas ImageData pixels. Both return null, or {bytes, text, version, ecLevel, mask, corners} where corners holds the
+// outer corners of the code in image pixels: {topLeft, topRight, bottomRight, bottomLeft}, each {x, y}.
+// The steps: local threshold to black and white, find the three finder squares, map the module grid with a perspective
+// transform (using alignment patterns where the version has them), read format and version info with BCH correction,
+// undo the mask, fix each block with Reed-Solomon, then read the data segments. Nothing here throws on a bad picture.
+
+// GF(256) log and antilog tables for the field polynomial x^8+x^4+x^3+x^2+1 (0x11d), the same field the encoder uses.
+const qdExp=new Uint8Array(512), qdLog=new Uint8Array(256);
+(function(){ let x=1; for(let i=0;i<255;i++){ qdExp[i]=x; qdLog[x]=i; x<<=1; if(x&0x100) x^=0x11d; } for(let i=255;i<512;i++) qdExp[i]=qdExp[i-255]; })();
+function qdMul(a,b){ return a&&b ? qdExp[qdLog[a]+qdLog[b]] : 0; }
+function qdDiv(a,b){ return a ? qdExp[qdLog[a]+255-qdLog[b]] : 0; }
+
+// Error correction per version (index 0 is version 1): EC bytes in each block, and the number of blocks.
+const qdEcPerBlock={
+  L:[7,10,15,20,26,18,20,24,30,18,20,24,26,30,22,24,28,30,28,28,28,28,30,30,26,28,30,30,30,30,30,30,30,30,30,30,30,30,30,30],
+  M:[10,16,26,18,24,16,18,22,22,26,30,22,22,24,24,28,28,26,26,26,26,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28],
+  Q:[13,22,18,26,18,24,18,22,20,24,28,26,24,20,30,24,28,28,26,30,28,30,30,30,30,28,30,30,30,30,30,30,30,30,30,30,30,30,30,30],
+  H:[17,28,22,16,22,28,26,26,24,28,24,28,22,24,24,30,28,28,26,28,30,24,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30]};
+const qdNumBlocks={
+  L:[1,1,1,1,1,2,2,2,2,4,4,4,4,4,6,6,6,6,7,8,8,9,9,10,12,12,12,13,14,15,16,17,18,19,19,20,21,22,24,25],
+  M:[1,1,1,2,2,4,4,4,5,5,5,8,9,9,10,10,11,13,14,16,17,17,18,20,21,23,25,26,28,29,31,33,35,37,38,40,43,45,47,49],
+  Q:[1,1,2,2,4,4,6,6,8,8,8,10,12,16,12,17,16,18,21,20,23,23,25,27,29,34,34,35,38,40,43,45,48,51,53,56,59,62,65,68],
+  H:[1,1,2,4,4,4,5,6,8,8,11,11,16,16,18,16,19,21,25,25,25,34,30,32,35,37,40,42,45,48,51,54,57,60,63,66,70,74,77,81]};
+// The standard keeps some EC bytes of the smallest codes for spotting bad corrections ("p" in its table); we fix fewer there.
+function qdProtectBytes(ver, level){ return ver===1 ? {L:3,M:2,Q:1,H:1}[level] : ver===2&&level==="L" ? 2 : ver===3&&level==="L" ? 1 : 0; }
+// Format info holds 2 EC bits; this maps them to the level name.
+const qdLevelByBits=["M","L","H","Q"];
+
+// Valid 15-bit format words (BCH(15,5), then the fixed XOR 0x5412) and 18-bit version words (BCH(18,6)) for versions 7-40.
+const qdFormatWords=[], qdVersionWords=[];
+(function(){
+  for(let d=0;d<32;d++){ let r=d; for(let i=0;i<10;i++) r=(r<<1)^((r>>>9)*0x537); qdFormatWords.push(((d<<10)|r)^0x5412); }
+  for(let v=7;v<=40;v++){ let r=v; for(let i=0;i<12;i++) r=(r<<1)^((r>>>11)*0x1f25); qdVersionWords.push((v<<12)|r); }
+})();
+function qdBitCount(x){ let n=0; while(x){ x&=x-1; n++; } return n; }
+
+// Alignment pattern centers (row and column numbers) for a version.
+function qdAlignPositions(ver){
+  if(ver===1) return [];
+  const num=Math.floor(ver/7)+2, size=ver*4+17, step=Math.floor((ver*8+num*3+5)/(num*4-4))*2, out=[6];
+  for(let p=size-7; out.length<num; p-=step) out.splice(1,0,p);
+  return out;
+}
+
+// Marks the modules that are not data (finders, separators, timing, alignment, format and version info). Cached per version.
+const qdFnCache=[];
+function qdFunctionMask(ver){
+  if(qdFnCache[ver]) return qdFnCache[ver];
+  const n=ver*4+17, fn=new Uint8Array(n*n);
+  const mark=(x0,y0,w,h)=>{ for(let y=y0;y<y0+h;y++) for(let x=x0;x<x0+w;x++) if(x>=0&&y>=0&&x<n&&y<n) fn[y*n+x]=1; };
+  mark(0,0,9,9); mark(n-8,0,8,9); mark(0,n-8,9,8); mark(6,0,1,n); mark(0,6,n,1);
+  const ap=qdAlignPositions(ver);
+  for(let i=0;i<ap.length;i++) for(let j=0;j<ap.length;j++){
+    if((i===0&&j===0)||(i===0&&j===ap.length-1)||(i===ap.length-1&&j===0)) continue;
+    mark(ap[i]-2,ap[j]-2,5,5); }
+  if(ver>=7){ mark(n-11,0,3,6); mark(0,n-11,6,3); }
+  return qdFnCache[ver]=fn;
+}
+
+function qdMaskBit(mask,x,y){
+  switch(mask){
+    case 0: return (x+y)%2===0;
+    case 1: return y%2===0;
+    case 2: return x%3===0;
+    case 3: return (x+y)%3===0;
+    case 4: return (Math.floor(x/3)+Math.floor(y/2))%2===0;
+    case 5: return x*y%2+x*y%3===0;
+    case 6: return (x*y%2+x*y%3)%2===0;
+    default: return ((x+y)%2+x*y%3)%2===0;
+  }
+}
+
+// Reed-Solomon error correction of one block in place (data bytes then EC bytes, first byte = highest power).
+// Berlekamp-Massey finds the error locator, a Chien search finds the positions, Forney gives the values. Returns the number
+// of bytes fixed, or -1 when the block has more errors than maxErrors or cannot be made consistent.
+function qdRsCorrect(block, ecLen, maxErrors){
+  const n=block.length, syn=new Uint8Array(ecLen);
+  let bad=false;
+  for(let j=0;j<ecLen;j++){ let s=0; const a=qdExp[j]; for(let i=0;i<n;i++) s=qdMul(s,a)^block[i]; syn[j]=s; if(s) bad=true; }
+  if(!bad) return 0;
+  let C=new Uint8Array(ecLen+1), B=new Uint8Array(ecLen+1), L=0, m=1, b=1;
+  C[0]=1; B[0]=1;
+  for(let k=0;k<ecLen;k++){
+    let d=syn[k];
+    for(let i=1;i<=L;i++) d^=qdMul(C[i],syn[k-i]);
+    if(d===0){ m++; continue; }
+    const coef=qdDiv(d,b), T=C.slice();
+    for(let i=0;i+m<=ecLen;i++) C[i+m]^=qdMul(coef,B[i]);
+    if(2*L<=k){ L=k+1-L; B=T; b=d; m=1; } else m++;
+  }
+  if(L>maxErrors) return -1;
+  const pos=[];
+  for(let p=0;p<n;p++){
+    const xi=qdExp[(255-p)%255]; let v=0;
+    for(let i=L;i>=0;i--) v=qdMul(v,xi)^C[i];
+    if(v===0) pos.push(p);
+  }
+  if(pos.length!==L) return -1;
+  const om=new Uint8Array(ecLen);
+  for(let i=0;i<ecLen;i++){ let s=0; for(let j=0;j<=Math.min(i,L);j++) s^=qdMul(C[j],syn[i-j]); om[i]=s; }
+  for(const p of pos){
+    const X=qdExp[p], xi=qdExp[(255-p)%255];
+    let o=0; for(let i=ecLen-1;i>=0;i--) o=qdMul(o,xi)^om[i];
+    let dv=0, xp=1; const xi2=qdMul(xi,xi);
+    for(let i=1;i<=L;i+=2){ dv^=qdMul(C[i],xp); xp=qdMul(xp,xi2); }
+    if(dv===0) return -1;
+    block[n-1-p]^=qdMul(X,qdDiv(o,dv));
+  }
+  for(let j=0;j<ecLen;j++){ let s=0; const a=qdExp[j]; for(let i=0;i<n;i++) s=qdMul(s,a)^block[i]; if(s) return -1; }
+  return L;
+}
+
+// Format info from both copies around the finders: the nearest valid word within 3 bit errors wins.
+function qdReadFormat(mt, n){
+  const get=(x,y)=>mt[y*n+x];
+  let a=0, b=0;
+  for(let i=0;i<=5;i++) a|=get(8,i)<<i;
+  a|=get(8,7)<<6; a|=get(8,8)<<7; a|=get(7,8)<<8;
+  for(let i=9;i<15;i++) a|=get(14-i,8)<<i;
+  for(let i=0;i<8;i++) b|=get(n-1-i,8)<<i;
+  for(let i=8;i<15;i++) b|=get(8,n-15+i)<<i;
+  let best=-1, bestDist=99;
+  for(let d=0;d<32;d++){ const dist=Math.min(qdBitCount(a^qdFormatWords[d]),qdBitCount(b^qdFormatWords[d])); if(dist<bestDist){ bestDist=dist; best=d; } }
+  if(bestDist>3) return null;
+  return {level:qdLevelByBits[best>>3], mask:best&7};
+}
+
+// Version info (versions 7 and up) from both copies; null when neither is within 3 bit errors of a valid word.
+function qdReadVersion(mt, n){
+  let a=0, b=0;
+  for(let i=0;i<18;i++){ const p=n-11+i%3, q=Math.floor(i/3); a|=mt[q*n+p]<<i; b|=mt[p*n+q]<<i; }
+  let best=0, bestDist=99;
+  for(let k=0;k<qdVersionWords.length;k++){ const dist=Math.min(qdBitCount(a^qdVersionWords[k]),qdBitCount(b^qdVersionWords[k])); if(dist<bestDist){ bestDist=dist; best=k+7; } }
+  return bestDist<=3 ? best : 0;
+}
+
+// Reads a module matrix (1 = dark, row by row). Returns the decoded result, {version: v} when the version info says the
+// grid size was wrong, or null.
+function qdDecodeMatrix(mt, n){
+  const ver=(n-17)/4;
+  if(ver<1||ver>40||ver!==Math.floor(ver)) return null;
+  const fmt=qdReadFormat(mt,n);
+  if(!fmt) return null;
+  if(ver>=7){ const vv=qdReadVersion(mt,n); if(vv&&vv!==ver) return {version:vv}; }
+  const fn=qdFunctionMask(ver);
+  let dataModules=0; for(let i=0;i<n*n;i++) if(!fn[i]) dataModules++;
+  const total=dataModules>>3, raw=new Uint8Array(total);
+  let bit=0;
+  for(let right=n-1;right>=1;right-=2){
+    if(right===6) right=5;
+    const up=((right+1)&2)===0;
+    for(let vert=0;vert<n;vert++){
+      const y=up?n-1-vert:vert;
+      for(let j=0;j<2;j++){
+        const x=right-j;
+        if(fn[y*n+x]) continue;
+        if(bit<total*8){ let v=mt[y*n+x]; if(qdMaskBit(fmt.mask,x,y)) v^=1; if(v) raw[bit>>3]|=0x80>>(bit&7); }
+        bit++;
+      }
+    }
+  }
+  const ecLen=qdEcPerBlock[fmt.level][ver-1], nb=qdNumBlocks[fmt.level][ver-1];
+  const shortBlocks=nb-total%nb, shortData=Math.floor(total/nb)-ecLen, blocks=[];
+  for(let i=0;i<nb;i++){ const dl=shortData+(i<shortBlocks?0:1); blocks.push({dl, b:new Uint8Array(dl+ecLen)}); }
+  let k=0;
+  for(let i=0;i<=shortData;i++) for(const bl of blocks) if(i<bl.dl) bl.b[i]=raw[k++];
+  for(let i=0;i<ecLen;i++) for(const bl of blocks) bl.b[bl.dl+i]=raw[k++];
+  const maxErr=Math.floor((ecLen-qdProtectBytes(ver,fmt.level))/2), data=[];
+  let fixed=0;
+  for(const bl of blocks){
+    const f=qdRsCorrect(bl.b,ecLen,maxErr);
+    if(f<0) return null;
+    fixed+=f;
+    for(let i=0;i<bl.dl;i++) data.push(bl.b[i]);
+  }
+  const bytes=qdParseSegments(data,ver);
+  if(!bytes) return null;
+  return {bytes, text:qdBytesToText(bytes), version:ver, ecLevel:fmt.level, mask:fmt.mask, fixed};
+}
+
+const qdAlnum="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
+// Reads the data segments into bytes. Numeric and alphanumeric text become ASCII bytes; an ECI designator is skipped and
+// the bytes after it are kept as they are; structured-append and FNC1 headers are skipped. Kanji or anything unknown gives null.
+function qdParseSegments(data, ver){
+  const nbits=data.length*8;
+  let pos=0;
+  const read=(len)=>{ let v=0; for(let i=0;i<len;i++){ v=(v<<1)|((data[pos>>3]>>(7-(pos&7)))&1); pos++; } return v; };
+  const band=ver<10?0:ver<27?1:2, out=[];
+  while(nbits-pos>=4){
+    const mode=read(4);
+    if(mode===0) break;
+    if(mode===1){
+      const cb=[10,12,14][band]; if(nbits-pos<cb) return null;
+      let count=read(cb);
+      while(count>0){
+        const digits=count>=3?3:count, len=[0,4,7,10][digits];
+        if(nbits-pos<len) return null;
+        const v=read(len); if(v>=[1,10,100,1000][digits]) return null;
+        const s=String(v).padStart(digits,"0");
+        for(let i=0;i<digits;i++) out.push(s.charCodeAt(i));
+        count-=digits;
+      }
+    } else if(mode===2){
+      const cb=[9,11,13][band]; if(nbits-pos<cb) return null;
+      let count=read(cb);
+      while(count>0){
+        if(count>=2){ if(nbits-pos<11) return null; const v=read(11); if(v>=45*45) return null; out.push(qdAlnum.charCodeAt(Math.floor(v/45)),qdAlnum.charCodeAt(v%45)); count-=2; }
+        else { if(nbits-pos<6) return null; const v=read(6); if(v>=45) return null; out.push(qdAlnum.charCodeAt(v)); count--; }
+      }
+    } else if(mode===4){
+      const cb=band===0?8:16; if(nbits-pos<cb) return null;
+      const count=read(cb); if(nbits-pos<count*8) return null;
+      for(let i=0;i<count;i++) out.push(read(8));
+    } else if(mode===7){
+      if(nbits-pos<8) return null;
+      const first=read(8);
+      if((first&0x80)===0){ }
+      else if((first&0xc0)===0x80){ if(nbits-pos<8) return null; read(8); }
+      else if((first&0xe0)===0xc0){ if(nbits-pos<16) return null; read(16); }
+      else return null;
+    } else if(mode===3){ if(nbits-pos<16) return null; read(16); }
+    else if(mode===5){ }
+    else if(mode===9){ if(nbits-pos<8) return null; read(8); }
+    else return null;
+  }
+  return new Uint8Array(out);
+}
+
+// Strict UTF-8 to text; falls back to Latin-1 (one character per byte) when the bytes are not valid UTF-8.
+function qdBytesToText(bytes){
+  const cps=[]; let i=0, ok=true;
+  while(i<bytes.length){
+    const c=bytes[i];
+    if(c<0x80){ cps.push(c); i++; continue; }
+    let need, cp, min;
+    if(c>=0xc2&&c<=0xdf){ need=1; cp=c&0x1f; min=0x80; }
+    else if(c>=0xe0&&c<=0xef){ need=2; cp=c&0x0f; min=0x800; }
+    else if(c>=0xf0&&c<=0xf4){ need=3; cp=c&0x07; min=0x10000; }
+    else { ok=false; break; }
+    if(i+need>=bytes.length){ ok=false; break; }
+    for(let k=1;k<=need;k++){ const d=bytes[i+k]; if((d&0xc0)!==0x80){ ok=false; break; } cp=(cp<<6)|(d&0x3f); }
+    if(!ok||cp<min||cp>0x10ffff||(cp>=0xd800&&cp<=0xdfff)){ ok=false; break; }
+    cps.push(cp); i+=need+1;
+  }
+  let s="";
+  if(ok){ for(let j=0;j<cps.length;j+=4096) s+=String.fromCodePoint.apply(null,cps.slice(j,j+4096)); return s; }
+  for(let j=0;j<bytes.length;j+=4096) s+=String.fromCharCode.apply(null,Array.from(bytes.subarray(j,j+4096)));
+  return s;
+}
+
+// Local threshold to black and white (1 = dark). The picture is cut into 8x8 blocks; each block gets a black point from its
+// own brightness, and every pixel is compared with the mean black point of the 5x5 blocks around it, so uneven light works.
+// A flat block (little contrast) counts as light background (black point just under its darkest pixel), unless it is darker
+// than its neighbours' black point, which it then takes: so the inside of a large dark or light area keeps its colour.
+function qdBinarize(gray, w, h, invert){
+  const S=8, bw=Math.ceil(w/S), bh=Math.ceil(h/S), black=new Float32Array(bw*bh), out=new Uint8Array(w*h);
+  for(let by=0;by<bh;by++){
+    const y0=by*S, y1=Math.min(y0+S,h);
+    for(let bx=0;bx<bw;bx++){
+      const x0=bx*S, x1=Math.min(x0+S,w);
+      let mn=255, mx=0, sum=0;
+      for(let y=y0;y<y1;y++){ const r=y*w; for(let x=x0;x<x1;x++){ let v=gray[r+x]; if(invert) v=255-v; sum+=v; if(v<mn) mn=v; if(v>mx) mx=v; } }
+      let avg=sum/((y1-y0)*(x1-x0));
+      if(mx-mn<=24){
+        avg=mn-24;
+        if(by>0&&bx>0){ const nbp=(black[(by-1)*bw+bx]+2*black[by*bw+bx-1]+black[(by-1)*bw+bx-1])/4; if(mn<nbp) avg=nbp; }
+      }
+      black[by*bw+bx]=avg;
+    }
+  }
+  for(let by=0;by<bh;by++){
+    const cy=Math.min(Math.max(by,2),Math.max(bh-3,0)), y0=by*S, y1=Math.min(y0+S,h);
+    for(let bx=0;bx<bw;bx++){
+      const cx=Math.min(Math.max(bx,2),Math.max(bw-3,0));
+      let sum=0, cnt=0;
+      for(let dy=-2;dy<=2;dy++){ const yy=cy+dy; if(yy<0||yy>=bh) continue; for(let dx=-2;dx<=2;dx++){ const xx=cx+dx; if(xx<0||xx>=bw) continue; sum+=black[yy*bw+xx]; cnt++; } }
+      const t=sum/cnt, x0=bx*S, x1=Math.min(x0+S,w);
+      for(let y=y0;y<y1;y++){ const r=y*w; for(let x=x0;x<x1;x++){ let v=gray[r+x]; if(invert) v=255-v; out[r+x]=v<=t?1:0; } }
+    }
+  }
+  return out;
+}
+
+// True when five runs look like a finder pattern cross-section, 1:1:3:1:1, within tol modules for each 1-wide run.
+function qdFinderRatio(c, tol){
+  const total=c[0]+c[1]+c[2]+c[3]+c[4];
+  if(total<7) return false;
+  const m=total/7, v=m*tol;
+  return Math.abs(m-c[0])<v && Math.abs(m-c[1])<v && Math.abs(3*m-c[2])<3*v && Math.abs(m-c[3])<v && Math.abs(m-c[4])<v;
+}
+
+// Walks from pixel (x, y) both ways along (dx, dy) and counts the dark/light/dark/light/dark runs centred there.
+// Returns {c, cx, cy} with the centre of the middle run, or null when the runs do not close within maxCount pixels.
+function qdRunsAt(bin, w, h, x, y, dx, dy, maxCount){
+  const dark=(px,py)=>px>=0&&py>=0&&px<w&&py<h&&bin[py*w+px]===1;
+  const inside=(px,py)=>px>=0&&py>=0&&px<w&&py<h;
+  if(!dark(x,y)) return null;
+  const c=[0,0,0,0,0];
+  let px=x, py=y, back=0, fwd=0;
+  while(dark(px,py)){ back++; px-=dx; py-=dy; if(back>maxCount*2) return null; }
+  while(inside(px,py)&&!dark(px,py)&&c[1]<=maxCount){ c[1]++; px-=dx; py-=dy; }
+  if(!inside(px,py)||c[1]>maxCount) return null;
+  while(dark(px,py)&&c[0]<=maxCount){ c[0]++; px-=dx; py-=dy; }
+  if(c[0]>maxCount) return null;
+  px=x+dx; py=y+dy;
+  while(dark(px,py)){ fwd++; px+=dx; py+=dy; if(fwd>maxCount*2) return null; }
+  while(inside(px,py)&&!dark(px,py)&&c[3]<=maxCount){ c[3]++; px+=dx; py+=dy; }
+  if(!inside(px,py)||c[3]>maxCount) return null;
+  while(dark(px,py)&&c[4]<=maxCount){ c[4]++; px+=dx; py+=dy; }
+  if(c[4]>maxCount) return null;
+  c[2]=back+fwd;
+  const off=(fwd-back+1)/2;
+  return {c, cx:x+0.5+dx*off, cy:y+0.5+dy*off};
+}
+
+// Finds finder pattern candidates: 1:1:3:1:1 runs along rows, confirmed down the column, back along the row and on a diagonal.
+// Nearby hits are merged; each candidate keeps its centre, module size and how many rows confirmed it.
+function qdFindFinders(bin, w, h){
+  const found=[];
+  const sum=(c)=>c[0]+c[1]+c[2]+c[3]+c[4];
+  const tryCenter=(c, y, xEnd)=>{
+    const total=sum(c), x0=Math.floor(xEnd-c[4]-c[3]-c[2]/2);
+    const vr=qdRunsAt(bin,w,h,x0,y,0,1,c[2]);
+    if(!vr||!qdFinderRatio(vr.c,0.5)) return;
+    const vt=sum(vr.c); if(5*Math.abs(vt-total)>=2*total) return;
+    const hr=qdRunsAt(bin,w,h,x0,Math.floor(vr.cy),1,0,c[2]);
+    if(!hr||!qdFinderRatio(hr.c,0.5)) return;
+    const ht=sum(hr.c); if(5*Math.abs(ht-total)>=2*total) return;
+    const cx=hr.cx, cy=vr.cy;
+    const dr=qdRunsAt(bin,w,h,Math.floor(cx),Math.floor(cy),1,1,c[2]*2);
+    if(!dr||!qdFinderRatio(dr.c,0.75)) return;
+    const ms=(ht+vt)/14;
+    for(const f of found){
+      if(Math.abs(f.x-cx)<=f.ms*1.5&&Math.abs(f.y-cy)<=f.ms*1.5&&Math.abs(f.ms-ms)<=Math.max(1,f.ms*0.5)){
+        const k=f.count; f.x=(f.x*k+cx)/(k+1); f.y=(f.y*k+cy)/(k+1); f.ms=(f.ms*k+ms)/(k+1); f.count++; return; }
+    }
+    found.push({x:cx, y:cy, ms, count:1});
+  };
+  const c=[0,0,0,0,0];
+  for(let y=0;y<h;y++){
+    c[0]=c[1]=c[2]=c[3]=c[4]=0; let state=0;
+    const row=y*w;
+    for(let x=0;x<w;x++){
+      if(bin[row+x]){
+        if(state&1) state++;
+        c[state]++;
+      } else if(state&1){ c[state]++; }
+      else if(state===0&&c[0]===0){ }
+      else if(state===4){
+        if(qdFinderRatio(c,0.5)) tryCenter(c,y,x);
+        c[0]=c[2]; c[1]=c[3]; c[2]=c[4]; c[3]=1; c[4]=0; state=3;
+      } else { state++; c[state]++; }
+    }
+    if(state===4&&qdFinderRatio(c,0.5)) tryCenter(c,y,w);
+    if(found.length>200) break;
+  }
+  return found;
+}
+
+// Picks likely (topLeft, topRight, bottomLeft) triples: similar module sizes, two similar legs at about a right angle.
+function qdPickTriples(cands){
+  const list=cands.filter(f=>f.count>=2).sort((a,b)=>b.count-a.count).slice(0,14), out=[];
+  const d=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+  for(let i=0;i<list.length;i++) for(let j=i+1;j<list.length;j++) for(let k=j+1;k<list.length;k++){
+    const t=[list[i],list[j],list[k]], mx=Math.max(t[0].ms,t[1].ms,t[2].ms), mn=Math.min(t[0].ms,t[1].ms,t[2].ms);
+    if(mx>mn*2.3) continue;
+    const dij=d(t[0],t[1]), dik=d(t[0],t[2]), djk=d(t[1],t[2]);
+    let corner, p, q;
+    if(djk>=dij&&djk>=dik){ corner=t[0]; p=t[1]; q=t[2]; }
+    else if(dik>=dij){ corner=t[1]; p=t[0]; q=t[2]; }
+    else { corner=t[2]; p=t[0]; q=t[1]; }
+    const ax=p.x-corner.x, ay=p.y-corner.y, bx=q.x-corner.x, by=q.y-corner.y, la=Math.hypot(ax,ay), lb=Math.hypot(bx,by);
+    if(la<1||lb<1) continue;
+    const legs=Math.abs(la-lb)/Math.max(la,lb), cos=Math.abs(ax*bx+ay*by)/(la*lb), msAvg=(t[0].ms+t[1].ms+t[2].ms)/3;
+    const dim=(la+lb)/2/msAvg+7;
+    if(legs>0.45||cos>0.45||dim<10||dim>200) continue;
+    out.push(qdOrient(corner,p,q,legs+cos+(mx/mn-1)*0.5-Math.min(corner.count+p.count+q.count,30)*0.002));
+  }
+  out.sort((a,b)=>a.score-b.score);
+  return out.slice(0,6);
+}
+// Names the two finders beside the corner one. Image y points down, so for a normal (unmirrored) code the cross product
+// of (topRight - topLeft) and (bottomLeft - topLeft) is positive.
+function qdOrient(corner, p, q, score){
+  const cross=(p.x-corner.x)*(q.y-corner.y)-(p.y-corner.y)*(q.x-corner.x);
+  return cross>0 ? {tl:corner, tr:p, bl:q, score} : {tl:corner, tr:q, bl:p, score};
+}
+
+// How well a finder pattern (with its light separator) fits at (cx, cy) for module vectors (ax, ay) and (bx, by):
+// the share of the 81 points of the 9x9 template that match, or 0 once more than `allowed` points have missed.
+function qdFinderFit(bin, w, h, cx, cy, ax, ay, bx, by, allowed){
+  let miss=0, seen=0;
+  for(let j=-4;j<=4;j++) for(let i=-4;i<=4;i++){
+    const px=Math.floor(cx+i*ax+j*bx), py=Math.floor(cy+i*ay+j*by);
+    if(px<0||py<0||px>=w||py>=h) continue;
+    const ring=Math.max(Math.abs(i),Math.abs(j)), want=ring===2||ring===4 ? 0 : 1;
+    seen++;
+    if(bin[py*w+px]!==want&&++miss>allowed) return 0;
+  }
+  return seen>=60 ? 1-miss/seen : 0;
+}
+
+// When only two finders were found (noise, glare or a smudge on the third), the third can only be in six places: beside
+// either end of a side, or across the diagonal. Each place is searched with the template; hits make new triples.
+function qdRecoverTriples(bin, w, h, cands){
+  const list=cands.filter(f=>f.count>=3).sort((a,b)=>b.count-a.count).slice(0,4), out=[];
+  for(let i=0;i<list.length;i++) for(let j=i+1;j<list.length;j++){
+    const A=list[i], B=list[j], d=Math.hypot(B.x-A.x,B.y-A.y);
+    if(Math.max(A.ms,B.ms)>1.5*Math.min(A.ms,B.ms)||d<10) continue;
+    const ux=(B.x-A.x)/d, uy=(B.y-A.y)/d, raw=(A.ms+B.ms)/2;
+    const tries=[];
+    // A and B on one side: the code's axes are along AB and across it
+    for(const sg of [1,-1]){ tries.push([A,B,A.x-uy*d*sg,A.y+ux*d*sg,ux,uy,d]); tries.push([B,A,B.x-uy*d*sg,B.y+ux*d*sg,ux,uy,d]); }
+    // A and B across the diagonal: the axes are AB turned by 45 degrees, the corner sits off the midpoint
+    const r=Math.SQRT1_2, dx=(ux-uy)*r, dy=(ux+uy)*r;
+    for(const sg of [1,-1]) tries.push([null,null,(A.x+B.x)/2-uy*d/2*sg,(A.y+B.y)/2+ux*d/2*sg,dx,dy,d*r]);
+    for(const [corner,other,tx,ty,ex,ey,side] of tries){
+      const m=raw*Math.max(Math.abs(ex),Math.abs(ey)), dim=side/m+7;
+      if(dim<17||dim>190) continue;
+      const ax=ex*m, ay=ey*m, bx=-ey*m, by=ex*m, reach=(2+0.06*dim)*m, step=Math.max(1,m*0.75);
+      let best=0, bxp=0, byp=0;
+      for(let oy=-reach;oy<=reach;oy+=step) for(let ox=-reach;ox<=reach;ox+=step){
+        const sc=qdFinderFit(bin,w,h,tx+ox,ty+oy,ax,ay,bx,by,20);
+        if(sc>best){ best=sc; bxp=tx+ox; byp=ty+oy; }
+      }
+      if(best<0.8) continue;
+      let top=0, sx=0, sy=0, n=0;
+      for(let oy=-step;oy<=step;oy+=0.5) for(let ox=-step;ox<=step;ox+=0.5){
+        const sc=qdFinderFit(bin,w,h,bxp+ox,byp+oy,ax,ay,bx,by,16);
+        if(sc>top+1e-9){ top=sc; sx=0; sy=0; n=0; }
+        if(sc>=top-1e-9&&sc>0){ sx+=bxp+ox; sy+=byp+oy; n++; }
+      }
+      if(top<0.85) continue;
+      const C={x:sx/n, y:sy/n, ms:raw, count:2};
+      if(cands.some(f=>f.count>=2&&Math.hypot(f.x-C.x,f.y-C.y)<f.ms*2)) continue; // already tried as a normal triple
+      out.push(corner ? qdOrient(corner,other,C,1-top) : qdOrient(C,A,B,1-top));
+    }
+  }
+  out.sort((a,b)=>a.score-b.score);
+  return out.slice(0,4);
+}
+
+// Module size measured on the line between two finder centres: from the centre out to the far edge of the finder is
+// 3.5 modules, both ways. Returns NaN when the runs are not clean.
+function qdLineModule(bin, w, h, a, b){
+  const len=Math.hypot(b.x-a.x,b.y-a.y), ux=(b.x-a.x)/len, uy=(b.y-a.y)/len;
+  // half-pixel steps; the edge is taken halfway between the last dark and the first light sample
+  const edge=(sx,sy)=>{
+    let state=0;
+    for(let i=0;i<2*len;i++){
+      const px=Math.floor(a.x+sx*i/2), py=Math.floor(a.y+sy*i/2);
+      if(px<0||py<0||px>=w||py>=h) return NaN;
+      const dk=bin[py*w+px]===1;
+      if(state===0&&!dk) state=1; else if(state===1&&dk) state=2; else if(state===2&&!dk) return i/2-0.25;
+    }
+    return NaN;
+  };
+  return (edge(ux,uy)+edge(-ux,-uy))/7;
+}
+
+// Perspective transform from module coordinates to image pixels: X=(a x+b y+c)/(g x+h y+1), Y=(d x+e y+f)/(g x+h y+1).
+// Least-squares fit to pairs [mx, my, ix, iy] (exact for four points), with both sides normalised for a stable solve.
+function qdFitTransform(pairs){
+  let sx=0, sy=0, ix=0, iy=0, smax=1, imax=1;
+  for(const p of pairs){ sx+=p[0]; sy+=p[1]; ix+=p[2]; iy+=p[3]; }
+  sx/=pairs.length; sy/=pairs.length; ix/=pairs.length; iy/=pairs.length;
+  for(const p of pairs){ smax=Math.max(smax,Math.abs(p[0]-sx),Math.abs(p[1]-sy)); imax=Math.max(imax,Math.abs(p[2]-ix),Math.abs(p[3]-iy)); }
+  const A=[]; for(let i=0;i<8;i++) A.push(new Float64Array(9));
+  for(const p of pairs){
+    const x=(p[0]-sx)/smax, y=(p[1]-sy)/smax, X=(p[2]-ix)/imax, Y=(p[3]-iy)/imax;
+    const rows=[[x,y,1,0,0,0,-x*X,-y*X,X],[0,0,0,x,y,1,-x*Y,-y*Y,Y]];
+    for(const r of rows) for(let i=0;i<8;i++){ if(r[i]===0) continue; for(let j=0;j<9;j++) A[i][j]+=r[i]*r[j]; }
+  }
+  for(let col=0;col<8;col++){
+    let piv=col; for(let r=col+1;r<8;r++) if(Math.abs(A[r][col])>Math.abs(A[piv][col])) piv=r;
+    if(Math.abs(A[piv][col])<1e-12) return null;
+    const t=A[col]; A[col]=A[piv]; A[piv]=t;
+    for(let r=0;r<8;r++){ if(r===col) continue; const f=A[r][col]/A[col][col]; if(f) for(let j=col;j<9;j++) A[r][j]-=f*A[col][j]; }
+  }
+  const q=[]; for(let i=0;i<8;i++) q.push(A[i][8]/A[i][i]);
+  // Undo the normalisation: image = Ti^-1 * Q * Ts, with Ts mapping module coords to normalised ones.
+  const Q=[[q[0],q[1],q[2]],[q[3],q[4],q[5]],[q[6],q[7],1]];
+  const Ts=[[1/smax,0,-sx/smax],[0,1/smax,-sy/smax],[0,0,1]], Ti=[[imax,0,ix],[0,imax,iy],[0,0,1]];
+  const mul=(P,R)=>{ const o=[[0,0,0],[0,0,0],[0,0,0]]; for(let i=0;i<3;i++) for(let j=0;j<3;j++) for(let k=0;k<3;k++) o[i][j]+=P[i][k]*R[k][j]; return o; };
+  const M=mul(Ti,mul(Q,Ts)), z=M[2][2];
+  if(!z) return null;
+  return [M[0][0]/z,M[0][1]/z,M[0][2]/z,M[1][0]/z,M[1][1]/z,M[1][2]/z,M[2][0]/z,M[2][1]/z];
+}
+function qdApply(H, x, y){ const z=H[6]*x+H[7]*y+1; return {x:(H[0]*x+H[1]*y+H[2])/z, y:(H[3]*x+H[4]*y+H[5])/z}; }
+
+// Looks for an alignment pattern (dark centre, light ring, dark ring) near module position (mx, my) by matching the 5x5
+// template on the grid the transform predicts, within radius modules. Returns the image centre or null.
+function qdFindAlignment(bin, w, h, H, mx, my, radius){
+  const p=qdApply(H,mx,my), pu=qdApply(H,mx+1,my), pv=qdApply(H,mx,my+1);
+  const ux=pu.x-p.x, uy=pu.y-p.y, vx=pv.x-p.x, vy=pv.y-p.y, ms=(Math.hypot(ux,uy)+Math.hypot(vx,vy))/2;
+  if(!(ms>0.8)) return null;
+  const offs=[];
+  for(let j=-2;j<=2;j++) for(let i=-2;i<=2;i++) offs.push([i*ux+j*vx, i*uy+j*vy, Math.max(Math.abs(i),Math.abs(j))===1?0:1]);
+  const score=(cx,cy)=>{ let s=0; for(const o of offs){ const px=Math.floor(cx+o[0]), py=Math.floor(cy+o[1]); const dk=px>=0&&py>=0&&px<w&&py<h?bin[py*w+px]:0; if(dk===o[2]) s++; } return s; };
+  const R=radius*ms, step=Math.max(1,Math.floor(ms/3));
+  let best=-1, bx=0, by=0, bd=0;
+  for(let oy=-R;oy<=R;oy+=step) for(let ox=-R;ox<=R;ox+=step){
+    const s=score(p.x+ox,p.y+oy), dd=ox*ox+oy*oy;
+    if(s>best||(s===best&&dd<bd)){ best=s; bx=p.x+ox; by=p.y+oy; bd=dd; }
+  }
+  if(best<20) return null;
+  let top=-1, sx=0, sy=0, n=0;
+  for(let oy=-step;oy<=step;oy++) for(let ox=-step;ox<=step;ox++){
+    const s=score(bx+ox,by+oy);
+    if(s>top){ top=s; sx=0; sy=0; n=0; }
+    if(s===top){ sx+=bx+ox; sy+=by+oy; n++; }
+  }
+  if(top<21) return null;
+  return {x:sx/n, y:sy/n};
+}
+
+// Samples the module grid: each module is the majority of five points around its centre.
+function qdSampleGrid(bin, w, h, H, n){
+  const mt=new Uint8Array(n*n), d=0.22, offs=[[0,0],[-d,-d],[d,-d],[-d,d],[d,d]];
+  let outside=0;
+  for(let y=0;y<n;y++) for(let x=0;x<n;x++){
+    let dark=0;
+    for(const o of offs){
+      const mx=x+0.5+o[0], my=y+0.5+o[1], z=H[6]*mx+H[7]*my+1;
+      const px=Math.floor((H[0]*mx+H[1]*my+H[2])/z), py=Math.floor((H[3]*mx+H[4]*my+H[5])/z);
+      if(px<0||py<0||px>=w||py>=h){ outside++; continue; }
+      dark+=bin[py*w+px];
+    }
+    mt[y*n+x]=dark>=3?1:0;
+  }
+  return outside>n*n*0.5 ? null : mt;
+}
+
+function qdTranspose(mt, n){ const t=new Uint8Array(n*n); for(let y=0;y<n;y++) for(let x=0;x<n;x++) t[x*n+y]=mt[y*n+x]; return t; }
+
+// Tries one grid size for a finder triple. Returns a result, {version: v} when the version info points elsewhere, or null.
+// The fourth point (bottom-right finder position) comes from the other three plus how the module size shrinks or grows
+// from the top-left finder to the other two: along a line under perspective the scale at the far end is 1/w^2 of the near
+// end, and the corner is then (wx*TR + wy*BL - TL) / (wx + wy - 1); with equal sizes this is the parallelogram corner.
+function qdTryVersion(bin, w, h, tri, ver){
+  const n=ver*4+17, tl=tri.tl, tr=tri.tr, bl=tri.bl;
+  const base=[[3.5,3.5,tl.x,tl.y],[n-3.5,3.5,tr.x,tr.y],[3.5,n-3.5,bl.x,bl.y]];
+  // module sizes are measured to about one pixel in seven modules, so ratios within 3.5% of 1 are treated as no perspective
+  const ratio=(x)=>Math.abs(x-1)<0.035 ? 1 : Math.min(1.6,Math.max(0.6,x));
+  const wx=ratio(Math.sqrt(tri.mTop/tri.mRight)), wy=ratio(Math.sqrt(tri.mLeft/tri.mBottom)), den=wx+wy-1;
+  const H0=qdFitTransform(base.concat([[n-3.5,n-3.5,(wx*tr.x+wy*bl.x-tl.x)/den,(wx*tr.y+wy*bl.y-tl.y)/den]]));
+  if(!H0) return null;
+  // the plain parallelogram corner too: module sizes measured on small codes are rough, so it is the safer guess there
+  const flat=wx===1&&wy===1, Hp=flat ? null : qdFitTransform(base.concat([[n-3.5,n-3.5,tr.x+bl.x-tl.x,tr.y+bl.y-tl.y]]));
+  const maps=[];
+  if(ver>=2){
+    const ap=qdFindAlignment(bin,w,h,H0,n-6.5,n-6.5,Math.max(4,n/10))||(Hp&&qdFindAlignment(bin,w,h,Hp,n-6.5,n-6.5,Math.max(4,n/10)));
+    if(ap){
+      const H1=qdFitTransform(base.concat([[n-6.5,n-6.5,ap.x,ap.y]]));
+      if(H1){
+        if(ver>=7){ const H2=qdRefine(bin,w,h,H1,base,ver); if(H2) maps.push(H2); }
+        maps.push(H1);
+      }
+    } else if(ver>=7){ const H2=qdRefine(bin,w,h,H0,base,ver); if(H2) maps.push(H2); }
+  }
+  maps.push(H0);
+  if(Hp) maps.push(Hp);
+  // A map that decodes with no fixes is taken at once; otherwise the one needing the fewest fixes wins (all decodes that pass
+  // Reed-Solomon give the same data, but the best map is the one a caller can trust for the corners).
+  let best=null;
+  for(const H of maps){
+    const mt=qdSampleGrid(bin,w,h,H,n);
+    if(!mt) continue;
+    let r=qdDecodeMatrix(mt,n), mirrored=false;
+    if(r&&!r.bytes) return r;
+    if(!r){ r=qdDecodeMatrix(qdTranspose(mt,n),n); mirrored=true; if(r&&!r.bytes) return r; }
+    if(r&&(!best||r.fixed<best.fixed)){
+      const c=(x,y)=>{ const p=qdApply(H,x,y); return {x:p.x, y:p.y}; };
+      r.corners=mirrored ? {topLeft:c(0,0), topRight:c(0,n), bottomRight:c(n,n), bottomLeft:c(n,0)}
+                         : {topLeft:c(0,0), topRight:c(n,0), bottomRight:c(n,n), bottomLeft:c(0,n)};
+      best=r;
+      if(r.fixed===0) break;
+    }
+  }
+  if(best) delete best.fixed;
+  return best;
+}
+
+// For larger codes: finds every alignment pattern near where the current map puts it and refits the map to all of them,
+// which keeps sampling accurate across the whole code under perspective.
+// Patterns are visited nearest the top-left first and the map is refitted after each find, so the prediction for the
+// far ones keeps improving.
+function qdRefine(bin, w, h, H, base, ver){
+  const ap=qdAlignPositions(ver), pairs=base.slice(), last=ap.length-1, todo=[];
+  for(let i=0;i<ap.length;i++) for(let j=0;j<ap.length;j++){
+    if((i===0&&j===0)||(i===0&&j===last)||(i===last&&j===0)) continue;
+    todo.push([ap[i]+0.5,ap[j]+0.5]);
+  }
+  todo.sort((a,b)=>Math.max(a[0],a[1])-Math.max(b[0],b[1])||a[0]+a[1]-b[0]-b[1]);
+  let cur=H, found=0;
+  for(const [mx,my] of todo){
+    const f=qdFindAlignment(bin,w,h,cur,mx,my,2.5);
+    if(!f) continue;
+    pairs.push([mx,my,f.x,f.y]); found++;
+    if(pairs.length>=4){ const H2=qdFitTransform(pairs); if(H2) cur=H2; }
+  }
+  return found>=3 ? cur : null;
+}
+
+// Local module grid at each finder: unit vectors along the top and left edges, and the module size there.
+function qdFinderFrame(tri){
+  const lt=Math.hypot(tri.tr.x-tri.tl.x,tri.tr.y-tri.tl.y), ll=Math.hypot(tri.bl.x-tri.tl.x,tri.bl.y-tri.tl.y);
+  return {ux:(tri.tr.x-tri.tl.x)/lt, uy:(tri.tr.y-tri.tl.y)/lt, vx:(tri.bl.x-tri.tl.x)/ll, vy:(tri.bl.y-tri.tl.y)/ll};
+}
+// Dark (1) or light (0) at module offset (dx, dy) from a finder centre, by the majority of five points.
+function qdSampleNear(bin, w, h, f, c, m, dx, dy){
+  let dark=0;
+  for(const [ox,oy] of [[0,0],[-0.22,-0.22],[0.22,-0.22],[-0.22,0.22],[0.22,0.22]]){
+    const px=Math.floor(c.x+((dx+ox)*f.ux+(dy+oy)*f.vx)*m), py=Math.floor(c.y+((dx+ox)*f.uy+(dy+oy)*f.vy)*m);
+    if(px>=0&&py>=0&&px<w&&py<h) dark+=bin[py*w+px];
+  }
+  return dark>=3?1:0;
+}
+
+// Version info read straight from the 6x3 blocks beside the top-right and bottom-left finders. Their offsets from those
+// finders do not depend on the version, so a wrong size guess cannot spoil the read. Returns 0 when neither copy is clear.
+function qdVersionNearFinders(bin, w, h, tri){
+  const f=qdFinderFrame(tri);
+  let a=0, b=0;
+  for(let i=0;i<18;i++){
+    a|=qdSampleNear(bin,w,h,f,tri.tr,tri.sizeTR,i%3-7,Math.floor(i/3)-3)<<i;
+    b|=qdSampleNear(bin,w,h,f,tri.bl,tri.sizeBL,Math.floor(i/3)-3,i%3-7)<<i;
+  }
+  let best=0, bestDist=99;
+  for(let k=0;k<qdVersionWords.length;k++){ const d=Math.min(qdBitCount(a^qdVersionWords[k]),qdBitCount(b^qdVersionWords[k])); if(d<bestDist){ bestDist=d; best=k+7; } }
+  return bestDist<=3 ? best : 0;
+}
+
+// Grid size from a timing pattern: walks the line from module (6,6) to (n-7,6) (or down to (6,n-7)), whose modules
+// alternate dark and light starting and ending dark, and counts the dark runs; the size is then 2*runs+11. 0 if unclear.
+function qdTimingSize(bin, w, h, a, b, ms){
+  const len=Math.hypot(b.x-a.x,b.y-a.y), steps=Math.ceil(len/Math.min(1,ms/4));
+  if(!(steps>0)||steps>20000) return 0;
+  const runs=[];
+  let cur=-1, run=0;
+  for(let i=0;i<=steps;i++){
+    const px=Math.floor(a.x+(b.x-a.x)*i/steps), py=Math.floor(a.y+(b.y-a.y)*i/steps);
+    if(px<0||py<0||px>=w||py>=h) return 0;
+    const v=bin[py*w+px];
+    if(v===cur) run++; else { if(cur>=0) runs.push([cur,run]); cur=v; run=1; }
+  }
+  runs.push([cur,run]);
+  // runs shorter than a third of a module are noise: give them the colour before them, then join equal neighbours
+  const minRun=ms/3*steps/len, clean=[];
+  for(const r of runs){
+    const col=(r[1]<minRun&&clean.length) ? clean[clean.length-1][0] : r[0];
+    if(clean.length&&clean[clean.length-1][0]===col) clean[clean.length-1][1]+=r[1]; else clean.push([col,r[1]]);
+  }
+  let dark=0; for(const r of clean) if(r[0]===1) dark++;
+  const n=2*dark+11;
+  return n>=21&&n<=177&&(n-17)%4===0 ? n : 0;
+}
+
+// Decodes from one black-and-white picture: every promising finder triple, then triples completed from finder pairs.
+function qdDecodeBinary(bin, w, h, seen){
+  const cands=qdFindFinders(bin,w,h);
+  if(seen) seen.finders+=cands.filter(f=>f.count>=2).length;
+  for(const tri of qdPickTriples(cands)){ const r=qdDecodeTriple(bin,w,h,tri); if(r) return r; }
+  for(const tri of qdRecoverTriples(bin,w,h,cands)){ const r=qdDecodeTriple(bin,w,h,tri); if(r) return r; }
+  return null;
+}
+
+// Decodes one finder triple: measures the module size, collects likely grid sizes and tries each.
+function qdDecodeTriple(bin, w, h, tri){
+  // Module size, measured at each finder along each leg: top at TL, right end at TR, left at TL, bottom end at BL.
+  // The finder's own size (from its row and column runs, averaged over many rows) is stretched by 1/max(|cos|,|sin|) of
+  // the code's rotation; undone here, it checks the line measurements, which a few noisy pixels can throw off.
+  const f0=qdFinderFrame(tri), tilt=Math.max(Math.abs(f0.ux),Math.abs(f0.uy));
+  const legs=[[tri.tl,tri.tr],[tri.tr,tri.tl],[tri.tl,tri.bl],[tri.bl,tri.tl]], sizes=[];
+  let ms=0, cnt=0;
+  for(const [a,b] of legs){
+    const m=qdLineModule(bin,w,h,a,b), ok=m>0&&m<a.ms*tilt*1.25&&m>a.ms*tilt/1.25;
+    sizes.push(ok?m:0); if(ok){ ms+=m; cnt++; }
+  }
+  const msF=(tri.tl.ms+tri.tr.ms+tri.bl.ms)/3*tilt;
+  ms=cnt ? (ms/cnt+msF)/2 : msF;
+  const pick=(k,l)=>sizes[k]&&sizes[l] ? [sizes[k],sizes[l]] : [1,1];
+  [tri.mTop,tri.mRight]=pick(0,1); [tri.mLeft,tri.mBottom]=pick(2,3);
+  tri.sizeTL=sizes[0]&&sizes[2] ? (sizes[0]+sizes[2])/2 : sizes[0]||sizes[2]||ms;
+  tri.sizeTR=sizes[1]||ms; tri.sizeBL=sizes[3]||ms;
+  // candidate sizes: version info, the two timing patterns, then the distance between finders over the module size
+  const f=qdFinderFrame(tri), queue=[];
+  const at=(c,m,dx,dy)=>({x:c.x+(dx*f.ux+dy*f.vx)*m, y:c.y+(dx*f.uy+dy*f.vy)*m});
+  const start=at(tri.tl,tri.sizeTL,3,3);
+  const nTop=qdTimingSize(bin,w,h,start,at(tri.tr,tri.sizeTR,-3,3),ms), nLeft=qdTimingSize(bin,w,h,start,at(tri.bl,tri.sizeBL,3,-3),ms);
+  const top=Math.hypot(tri.tr.x-tri.tl.x,tri.tr.y-tri.tl.y)/ms, left=Math.hypot(tri.bl.x-tri.tl.x,tri.bl.y-tri.tl.y)/ms;
+  const guess=Math.round(((top+left)/2+7-17)/4), near=(n)=>n&&Math.abs((n-17)/4-guess)<=Math.max(2,guess*0.2);
+  // order: version info (BCH-checked), both timing patterns agreeing, the distance estimate, single timing counts, neighbours
+  if(guess>=6||(nTop>=45&&nTop===nLeft)){ const vi=qdVersionNearFinders(bin,w,h,tri); if(vi) queue.push(vi); }
+  if(nTop&&nTop===nLeft&&near(nTop)) queue.push((nTop-17)/4);
+  queue.push(guess);
+  for(const n of [nTop,nLeft]) if(near(n)) queue.push((n-17)/4);
+  queue.push(guess-1,guess+1);
+  const tried={};
+  let redirects=0;
+  while(queue.length){
+    const v=queue.shift();
+    if(v<1||v>40||tried[v]) continue;
+    tried[v]=true;
+    const r=qdTryVersion(bin,w,h,tri,v);
+    if(r&&r.bytes) return r;
+    if(r&&r.version&&!tried[r.version]&&redirects++<2) queue.unshift(r.version);
+  }
+  return null;
+}
+
+// 3x3 smoothing with weights 1-2-1 each way, for grainy pictures (sensor noise breaks up the finder runs at small
+// module sizes); it keeps edges sharper than a plain box average.
+function qdSmooth(gray, w, h){
+  const row=new Uint16Array(w*h), out=new Uint8Array(w*h);
+  for(let y=0;y<h;y++){ const r=y*w; for(let x=0;x<w;x++) row[r+x]=gray[r+(x>0?x-1:x)]+2*gray[r+x]+gray[r+(x<w-1?x+1:x)]; }
+  for(let y=0;y<h;y++){ const up=(y>0?y-1:y)*w, r=y*w, dn=(y<h-1?y+1:y)*w; for(let x=0;x<w;x++) out[r+x]=(row[up+x]+2*row[r+x]+row[dn+x]+8)>>4; }
+  return out;
+}
+
+// Entry point: gray is a Uint8Array of luminance 0..255, row by row. Tries dark-on-light, then light-on-dark, then, if
+// either pass saw at least one finder-like square, both again on a smoothed copy (grain can hide the other finders).
+function qrDecodeGray(gray, width, height){
+  try {
+    const w=width|0, h=height|0;
+    if(!gray||w<21||h<21||gray.length<w*h) return null;
+    const seen={finders:0};
+    let src=gray;
+    for(let pass=0;pass<4;pass++){
+      if(pass===2){ if(!seen.finders) break; src=qdSmooth(gray,w,h); }
+      const r=qdDecodeBinary(qdBinarize(src,w,h,pass%2===1),w,h,seen);
+      if(r) return r;
+    }
+  } catch(e){ }
+  return null;
+}
+
+// Same, for RGBA pixels (canvas ImageData.data): converts to luminance with 0.299/0.587/0.114.
+function qrDecodeRgba(rgba, width, height){
+  const w=width|0, h=height|0;
+  if(!rgba||w<1||h<1||rgba.length<w*h*4) return null;
+  const gray=new Uint8Array(w*h);
+  for(let i=0,j=0;i<w*h;i++,j+=4) gray[i]=(rgba[j]*299+rgba[j+1]*587+rgba[j+2]*114+500)/1000;
+  return qrDecodeGray(gray,w,h);
+}
+// ===== end of the QR code reader =====
 // ===== Camera QR scanning (v2.9.0) =====
 // The camera turns on only when a SCAN button is pressed, and stops as soon as a code is read, when STOP CAMERA is pressed,
 // when another tab or the page is left, on CLEAR ALL and END SESSION, and after 2 minutes. Each picture is read inside this
