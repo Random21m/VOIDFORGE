@@ -1595,6 +1595,7 @@ async function probe(w, mutated, fast) {
       if ($('rolls').value !== '' || !$('forgeBtn').disabled || $('diceTestBan').style.display !== '' || !$('rollStats').open) fails.push('dice test: on clears the rolls, FORGE off, banner, box open');
       $('rolls').value = '123456'.repeat(4); $('rolls').oninput(); if (!/^24 rolls so far\./.test($('diceTestNote').textContent)) fails.push('dice test: asks for more below 30');
       $('rolls').value = D50; $('rolls').oninput(); if ($('countNote').textContent !== '' || $('bitsNote').textContent !== '' || $('bigSub').textContent !== 'Dice test: no seed is made.' || $('rollCount').textContent !== '50 rolls tested' || w.document.querySelectorAll('#wordGrid .wcell.pv').length || !/^50 rolls tested: /.test($('diceTestNote').textContent)) fails.push('dice test: notes are about the test, no preview');
+      { await w.previewRefresh(); if (w.document.querySelectorAll('#wordGrid .wcell.pv').length) fails.push('dice test: no preview words, even after the preview has had time to run'); }
       $('rolls').value = '1'.repeat(60); $('rolls').oninput(); if (!/found a problem/.test($('diceTestNote').textContent)) fails.push('dice test: a bad run is a problem');
       al.length = 0; await w.generate(); if (w.hasSeed() || !/dice test is on/.test(al.join())) fails.push('dice test: FORGE refuses');
       w.setGate('pass', $('selfTestBadge').textContent, $('selfTestBadge').className); if (!$('forgeBtn').disabled) fails.push('dice test: the self-test gate keeps FORGE off');
@@ -1731,6 +1732,7 @@ async function probe(w, mutated, fast) {
         ['1. legal 2. winner 3. thank 4. year 5. wave 6. sausage', 'status bad', /^These look like SEED WORDS/],
         ['lega winn than year wave saus', 'status bad', /^These look like SEED WORDS/],
         ['the legal winner thank year wave sausage', 'status bad', /^These look like SEED WORDS/],
+        ['Please send the payment for the house and the car before the end of the month, thank you', 'status bad', /^Not a Bitcoin address VOIDFORGE recognizes/],   // 8 BIP39 words, but under 80% of the text: not seed words
         ['0'.repeat(48), 'status bad', /^These look like SeedQR digits/],
         ['ab'.repeat(16), 'status bad', /^This is 32 hex characters/],
         ['ab'.repeat(32), 'status bad', /^This is 64 hex characters/],
