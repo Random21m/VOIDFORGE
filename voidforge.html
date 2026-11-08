@@ -1559,6 +1559,16 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       </div>
       <div class="status" id="dlStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <pre id="dlOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
+      <div class="ms-sub" style="margin-top:14px;">
+      <p class="hint" style="margin:8px 0;"><b>Check a signed release</b> (as Sparrow Wallet checks its downloads). Pick the three files from the release page together: <b>voidforge.html</b>, <b>SHA256SUMS</b> and <b>SHA256SUMS.asc</b>. The page checks the GPG signature on SHA256SUMS with the VOIDFORGE signing key built into it, fingerprint <code>2509 D115 03B7 2CBF BCB5  408F 4B72 9F05 6A52 9340</code>, then checks that voidforge.html is the file SHA256SUMS lists. Releases from v2.8.1 on are signed. The files are only read: nothing is stored or sent.</p>
+      <p class="hint" style="margin:8px 0;"><b>Know the limit:</b> the key and the check are inside this page, so a tampered page could fake both. The first time, check the download with GnuPG (RELEASING.md shows how); after that, a copy you have checked can check new downloads. Compare the fingerprint above with the one in SECURITY.md and on the project page.</p>
+      <input type="file" id="dlSigFiles" multiple aria-label="Choose voidforge.html, SHA256SUMS and SHA256SUMS.asc together" onchange="dlSignedPick()" style="width:100%;">
+      <div style="display:flex; gap:6px; margin-top:6px;">
+        <button type="button" class="secondary small" onclick="dlSignedClear()">CLEAR</button>
+      </div>
+      <div class="status" id="dlSigStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+      <pre id="dlSigOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
+      </div>
     </details>
   </div>
 
@@ -4772,6 +4782,9 @@ async function runSelfTests(auto){
   eq("PSBT inspector: fee, amounts and output address of a known PSBT (built by an independent library)", async()=>{ const r=await inspectPsbt(psbtFromText("cHNidP8BAHECAAAAAaurq6urq6urq6urq6urq6urq6urq6urq6urq6urq6urAgAAAAD/////AqCGAQAAAAAAFgAU1L4sXWjQfnhBc67qrnReNudrsjoIRgIAAAAAABYAFKPGse5KSdnyrzs4ApdHRPupJBZKAAAAAAABAR+Q0AMAAAAAABYAFJ1pVHSjA6xtdNF5bTdS8HiVkYvSAAAiAgKYnAt2y1Y5cf3JvvMewGw1YPMknW7p5dg8V2JVluBfbxhPv3VmVAAAgAAAAIAAAACAAQAAAAMAAAAA")); return r.fee+" "+r.ins[0].amount+" "+r.outs[0].amount+" "+r.outs[0].address+" "+r.outs[1].fps.join(); }, "1000 250000 100000 bc1q6jlzchtg6pl8sstn4m42uaz7xmnkhv369ud973 4fbf7566");
   eq("Taproot BIP86 first two receive addresses 'abandon..about' (published BIP86 vectors)", async()=>(await mnemonicTaproot("abandon ".repeat(11)+"about","",2)).join(" "),"bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr bc1p4qhjn9zdvkux4e44uhx8tc55attvtyu358kutcqkudyccelu0was9fqzwh");
   eq("Taproot BIP86 first change address 'abandon..about' (published BIP86 vector)", async()=>taprootChangeFirstFromSeed(await mnemonicToSeed("abandon ".repeat(11)+"about","")),"bc1p3qkhfews2uk44qtvauqyr2ttdsw7svhkl9nkm9s9c3x4ax5h60wqwruhk7");
+  // v2.9.0: the signed-release check. Ed25519 vectors 1 to 3 of RFC 8032 (a changed message must fail), and the built-in key's fingerprint.
+  eq("Ed25519 signature check (RFC 8032 test vectors 1 to 3; a changed message fails)", async()=>{ const V=[["d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a","","e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b"],["3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c","72","92a009a9f0d4cab8720e820b5f642540a2b27b5416503f8fb3762223ebdb69da085ac1e43e15996e458f3613d0f11d8c387b2eaeb4302aeeb00d291612bb0c00"],["fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025","af82","6291d657deec24024827e69c3abe01a30ce548a284743a445e3680d7db5ac3ac18ff9b538d16f290ae67f760984dc6594a7c15e9716ed28dc027beceea1ec40a"]]; const H=h=>h?pgpHexBytes(h):new Uint8Array(0); const r=[]; for(const [k,m,g] of V) r.push(await ed25519Verify(H(g),H(m),H(k))); r.push(await ed25519Verify(H(V[2][2]),H("af83"),H(V[2][0]))); return r.join(","); },"true,true,true,false");
+  eq("VOIDFORGE signing key built in (OpenPGP v4 fingerprint 2509 D115 ... 9340)", async()=>{ const k=pgpHexBytes(VF_KEY_PACKET); return dlHex(new Uint8Array(await crypto.subtle.digest("SHA-1", concatBytes(new Uint8Array([0x99,k.length>>8,k.length&255]),k)))); },"2509d11503b72cbfbcb5408f4b729f056a529340");
   eq("bech32m BIP350 example address", ()=>bech32Encode("bc",1,fromHex("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")),"bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqzk5jj0");
   eq("first address 'abandon..about' + TREZOR (two independent libraries)", ()=>mnemonicFirstAddress("abandon ".repeat(11)+"about","TREZOR"),"bc1qv5rmq0kt9yz3pm36wvzct7p3x6mtgehjul0feu");
   eq("watch-only zpub 'abandon..about' (published BIP84 vector)", async()=>(await mnemonicWatchOnly("abandon ".repeat(11)+"about","")).zpub,"zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs");
@@ -6025,6 +6038,183 @@ async function dlPick(){
     else say("", "Computed. Paste the published SHA-256 or CID above to compare.");
   } catch(e){ say("bad", "Could not read that file: " + e.message); }
 }
+// ===== Signed releases (v2.9.0): check SHA256SUMS.asc with the VOIDFORGE signing key built into this page, as Sparrow checks its downloads =====
+// The OpenPGP v4 public key packet of the VOIDFORGE signing key (EdDSA ed25519), byte for byte as in voidforge-signing-key.asc. The self-test
+// checks that it still has the published fingerprint, so a changed key in a tampered copy shows as a failed self-test.
+const VF_KEY_PACKET = "046aed276b16092b06010401da470f010107400d9a86435d23ffeff983281578033947018f433c54b5afe96896dd387f4b32f2";
+const VF_KEY_FPR = "2509d11503b72cbfbcb5408f4b729f056a529340";
+const VF_KEY_CREATED = 1793927019, VF_KEY_EXPIRES = 1856999019;   // 2026-11-06 and 2028-11-05 (UTC), from the key's self-signature
+const VF_KEY = {packet: VF_KEY_PACKET, fpr: VF_KEY_FPR, created: VF_KEY_CREATED, expires: VF_KEY_EXPIRES};
+const pgpHexBytes = h => Uint8Array.from(h.match(/../g), x => parseInt(x, 16));
+const pgpFprText = f => f.toUpperCase().match(/..../g).join(" ").replace(/^((?:\S+ ){4}\S+) /, "$1  ");
+
+// --- Ed25519 signature check (RFC 8032), public data only: nothing secret is ever handled here ---
+const ED_P = (1n << 255n) - 19n, ED_L = (1n << 252n) + 27742317777372353535851937790883648493n;
+const edMod = (a, m = ED_P) => { const r = a % m; return r >= 0n ? r : r + m; };
+function edPow(b, e, m = ED_P){ let r = 1n; b = edMod(b, m); while(e > 0n){ if(e & 1n) r = r * b % m; b = b * b % m; e >>= 1n; } return r; }
+const ED_D = edMod(-121665n * edPow(121666n, ED_P - 2n)), ED_I = edPow(2n, (ED_P - 1n) / 4n);
+const edLe = b => { let n = 0n; for(let i = b.length - 1; i >= 0; i--) n = (n << 8n) | BigInt(b[i]); return n; };
+// Points in extended coordinates [X, Y, Z, T] with x = X/Z, y = Y/Z, xy = T/Z (RFC 8032, 5.1.4).
+function edAdd(P, Q){
+  const A = edMod((P[1] - P[0]) * (Q[1] - Q[0])), B = edMod((P[1] + P[0]) * (Q[1] + Q[0])), C = edMod(P[3] * 2n * ED_D * Q[3]), D = edMod(P[2] * 2n * Q[2]);
+  const E = B - A, F = D - C, G = D + C, H = B + A;
+  return [edMod(E * F), edMod(G * H), edMod(F * G), edMod(E * H)];
+}
+function edMul(P, n){ let R = [0n, 1n, 1n, 0n]; while(n > 0n){ if(n & 1n) R = edAdd(R, P); P = edAdd(P, P); n >>= 1n; } return R; }
+const edSame = (P, Q) => edMod(P[0] * Q[2] - Q[0] * P[2]) === 0n && edMod(P[1] * Q[2] - Q[1] * P[2]) === 0n;
+// 32 bytes -> point, or null when they are not a valid encoding (RFC 8032, 5.1.3).
+function edDecode(b){
+  if(!b || b.length !== 32) return null;
+  let y = edLe(b); const sign = y >> 255n; y &= (1n << 255n) - 1n;
+  if(y >= ED_P) return null;
+  const u = edMod(y * y - 1n), v = edMod(ED_D * y * y + 1n);
+  let x = edMod(u * edPow(v, 3n) * edPow(u * edPow(v, 7n), (ED_P - 5n) / 8n));
+  const vx2 = edMod(v * x * x);
+  if(vx2 !== u){ if(vx2 === edMod(-u)) x = edMod(x * ED_I); else return null; }
+  if(x === 0n && sign === 1n) return null;
+  if((x & 1n) !== sign) x = edMod(-x);
+  return [x, y, 1n, edMod(x * y)];
+}
+const ED_B = edDecode(pgpHexBytes("5866666666666666666666666666666666666666666666666666666666666666"));
+async function ed25519Verify(sig, msg, pub){
+  if(!sig || sig.length !== 64 || !pub || pub.length !== 32) return false;
+  const A = edDecode(pub), R = edDecode(sig.slice(0, 32)); if(!A || !R) return false;
+  const S = edLe(sig.slice(32)); if(S >= ED_L) return false;
+  const h = edMod(edLe(new Uint8Array(await crypto.subtle.digest("SHA-512", concatBytes(sig.slice(0, 32), pub, msg)))), ED_L);
+  return edSame(edMul(ED_B, S), edAdd(R, edMul(A, h)));
+}
+
+// --- OpenPGP (RFC 4880 / RFC 9580): the few parts a detached signature needs ---
+function pgpCrc24(b){ let c = 0xB704CE; for(const x of b){ c ^= x << 16; for(let i = 0; i < 8; i++){ c <<= 1; if(c & 0x1000000) c ^= 0x1864CFB; } } return c & 0xFFFFFF; }
+// Armored text ("-----BEGIN PGP SIGNATURE-----") or the raw bytes of a binary .sig -> the packet bytes. Throws with a plain message.
+function pgpUnarmor(bytes){
+  const text = new TextDecoder("utf-8", {fatal: false}).decode(bytes);
+  const m = /-----BEGIN PGP SIGNATURE-----\r?\n([\s\S]*?)\r?\n-----END PGP SIGNATURE-----/.exec(text);
+  if(!m){ if(bytes.length && (bytes[0] & 0x80)) return bytes; throw new Error("this is not an OpenPGP signature (SHA256SUMS.asc)"); }
+  const lines = m[1].split(/\r?\n/); let i = 0;
+  while(i < lines.length && /^[A-Za-z][A-Za-z0-9-]*: /.test(lines[i])) i++;   // armor headers such as "Comment: ..."
+  let b64 = "", crc = null;
+  for(; i < lines.length; i++){ const l = lines[i].trim(); if(!l) continue; if(l[0] === "=" && l.length === 5){ crc = l.slice(1); break; } b64 += l; }
+  if(!/^[A-Za-z0-9+/]*={0,2}$/.test(b64) || b64.length % 4) throw new Error("the signature text is damaged (not valid base64)");
+  const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  if(crc !== null){ const want = Uint8Array.from(atob(crc), c => c.charCodeAt(0)); if(want.length !== 3 || ((want[0] << 16) | (want[1] << 8) | want[2]) !== pgpCrc24(raw)) throw new Error("the signature text is damaged (its checksum line does not match)"); }
+  return raw;
+}
+function pgpPackets(b){
+  const out = []; let i = 0;
+  while(i < b.length){
+    const h = b[i++]; if(!(h & 0x80)) throw new Error("not an OpenPGP packet");
+    let tag, len;
+    if(h & 0x40){ tag = h & 0x3f; const l0 = b[i++];
+      if(l0 < 192) len = l0; else if(l0 < 224){ len = ((l0 - 192) << 8) + b[i++] + 192; }
+      else if(l0 === 255){ len = ((b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]) >>> 0; i += 4; }
+      else throw new Error("a signature packet never uses partial lengths");
+    } else { tag = (h >> 2) & 15; const lt = h & 3;
+      if(lt === 0) len = b[i++]; else if(lt === 1){ len = (b[i] << 8) | b[i + 1]; i += 2; }
+      else if(lt === 2){ len = ((b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]) >>> 0; i += 4; }
+      else throw new Error("a packet of unknown length");
+    }
+    if(len === undefined || i + len > b.length) throw new Error("the signature is cut off");
+    out.push({tag, body: b.slice(i, i + len)}); i += len;
+  }
+  return out;
+}
+function pgpSubpackets(b){
+  const out = []; let i = 0;
+  while(i < b.length){
+    const l0 = b[i++]; let len;
+    if(l0 < 192) len = l0; else if(l0 < 255){ len = ((l0 - 192) << 8) + b[i++] + 192; } else { len = ((b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]) >>> 0; i += 4; }
+    if(len < 1 || i + len > b.length) throw new Error("the signature's details are damaged");
+    out.push({type: b[i] & 0x7f, critical: !!(b[i] & 0x80), data: b.slice(i + 1, i + len)}); i += len;
+  }
+  return out;
+}
+const PGP_HASH = {8: "SHA-256", 9: "SHA-384", 10: "SHA-512"};
+const PGP_KNOWN_SUB = [2, 3, 16, 33, 28, 20, 26];   // created, expires, issuer key ID, issuer fingerprint, signer's user ID, notation, policy URI
+const pgpBe32 = d => ((d[0] << 24) | (d[1] << 16) | (d[2] << 8) | d[3]) >>> 0;
+// Checks a detached OpenPGP signature over `data` with an ed25519 public key packet (v4). Returns {ok, created, fpr, why}.
+async function pgpVerifyDetached(sigBytes, data, keyPacket){
+  const key = keyPacket, fprKey = dlHex(new Uint8Array(await crypto.subtle.digest("SHA-1", concatBytes(new Uint8Array([0x99, key.length >> 8, key.length & 255]), key))));
+  if(key[0] !== 4 || key[5] !== 22 || key[6] !== 9 || key[16] !== 1 || key[17] !== 7 || key[18] !== 0x40) return {ok: false, why: "the built-in key is not an ed25519 key"};
+  const pub = key.slice(19, 51);
+  const sigs = pgpPackets(pgpUnarmor(sigBytes)).filter(p => p.tag === 2);
+  if(sigs.length !== 1) return {ok: false, why: sigs.length ? "it holds more than one signature" : "it holds no signature"};
+  const s = sigs[0].body;
+  if(s[0] !== 4) return {ok: false, why: "it is a version " + s[0] + " signature; this page checks version 4 (GnuPG's)"};
+  if(s[1] !== 0x00) return {ok: false, why: s[1] === 0x01 ? "it was made in text mode; VOIDFORGE releases are signed as binary files (gpg --detach-sign)" : "it is not a signature of a file"};
+  if(s[2] !== 22 && s[2] !== 27) return {ok: false, why: "it was not made with an ed25519 key"};
+  const hashName = PGP_HASH[s[3]]; if(!hashName) return {ok: false, why: "it uses a hash this page does not check (only SHA-256, SHA-384 and SHA-512)"};
+  const hl = (s[4] << 8) | s[5], hashed = pgpSubpackets(s.slice(6, 6 + hl)), ul = (s[6 + hl] << 8) | s[7 + hl], unhashed = pgpSubpackets(s.slice(8 + hl, 8 + hl + ul));
+  for(const sp of hashed) if(sp.critical && !PGP_KNOWN_SUB.includes(sp.type)) return {ok: false, why: "it has a critical detail this page does not understand"};
+  const createdSp = hashed.find(sp => sp.type === 2); if(!createdSp || createdSp.data.length !== 4) return {ok: false, why: "it has no signing date"};
+  const created = pgpBe32(createdSp.data), expSp = hashed.find(sp => sp.type === 3);
+  const fprSp = hashed.concat(unhashed).find(sp => sp.type === 33), idSp = hashed.concat(unhashed).find(sp => sp.type === 16);
+  const fpr = fprSp && fprSp.data[0] === 4 && fprSp.data.length === 21 ? dlHex(fprSp.data.slice(1)) : "", keyId = idSp && idSp.data.length === 8 ? dlHex(idSp.data) : "";
+  if((fpr && fpr !== fprKey) || (!fpr && keyId !== fprKey.slice(24))) return {ok: false, created, fpr: fpr || keyId, why: "it was made with another key (" + (fpr ? pgpFprText(fpr) : "key ID " + keyId.toUpperCase()) + "), not the VOIDFORGE key"};
+  let i = 8 + hl + ul; const left16 = s.slice(i, i + 2); i += 2;
+  let sig;
+  if(s[2] === 27){ sig = s.slice(i, i + 64); if(sig.length !== 64 || i + 64 !== s.length) return {ok: false, why: "the signature value is damaged"}; }
+  else {
+    const mpi = () => { const bits = (s[i] << 8) | s[i + 1], n = (bits + 7) >> 3; const v = s.slice(i + 2, i + 2 + n); i += 2 + n; return v; };
+    const r = mpi(), sv = mpi();
+    if(r.length > 32 || sv.length > 32 || i !== s.length) return {ok: false, why: "the signature value is damaged"};
+    sig = new Uint8Array(64); sig.set(r, 32 - r.length); sig.set(sv, 64 - sv.length);
+  }
+  const head = s.slice(0, 6 + hl), trailer = new Uint8Array([4, 0xff, (head.length >>> 24) & 255, (head.length >>> 16) & 255, (head.length >>> 8) & 255, head.length & 255]);
+  const digest = new Uint8Array(await crypto.subtle.digest(hashName, concatBytes(data, head, trailer)));
+  if(digest[0] !== left16[0] || digest[1] !== left16[1]) return {ok: false, created, fpr: fprKey, why: "it does not belong to this SHA256SUMS: the file was changed after it was signed, or the wrong files were picked"};
+  if(!(await ed25519Verify(sig, digest, pub))) return {ok: false, created, fpr: fprKey, why: "the signature is not valid: the file was changed after it was signed, or the signature was forged"};
+  if(expSp && expSp.data.length === 4 && pgpBe32(expSp.data) > 0 && Date.now() / 1000 > created + pgpBe32(expSp.data)) return {ok: false, created, fpr: fprKey, why: "the signature itself has expired"};
+  return {ok: true, created, fpr: fprKey};
+}
+// The release check: voidforge.html, SHA256SUMS and SHA256SUMS.asc, picked together in any order. Returns {state, lines, verdict}.
+async function dlSignedCheck(files, K = VF_KEY){
+  const byKind = {}, lines = [];
+  for(const f of files){
+    const t = new TextDecoder("utf-8", {fatal: false}).decode(f.bytes.slice(0, 2000));
+    const kind = /-----BEGIN PGP SIGNATURE-----/.test(t) || /\.(asc|sig)$/i.test(f.name) ? "sig" : /^\s*<!doctype html|<html/i.test(t) ? "html" : /^[0-9a-f]{64}  \S/m.test(t) ? "sums" : "other";
+    if(kind === "other") return {state: "bad", lines, verdict: "“" + f.name + "” is none of the three files. Pick voidforge.html, SHA256SUMS and SHA256SUMS.asc from the release page."};
+    if(byKind[kind]) return {state: "bad", lines, verdict: "Two files of the same kind were picked (" + byKind[kind].name + " and " + f.name + "). Pick each of the three files once."};
+    byKind[kind] = f;
+  }
+  if(!byKind.sig || !byKind.sums) return {state: "", lines, verdict: "Pick all three files together: voidforge.html, SHA256SUMS and SHA256SUMS.asc (missing: " + ["sums", "sig", "html"].filter(k => !byKind[k]).map(k => ({sums: "SHA256SUMS", sig: "SHA256SUMS.asc", html: "voidforge.html"})[k]).join(", ") + ")."};
+  let r; try { r = await pgpVerifyDetached(byKind.sig.bytes, byKind.sums.bytes, pgpHexBytes(K.packet)); } catch(e) { r = {ok: false, why: e.message}; }
+  const day = s => new Date(s * 1000).toISOString().slice(0, 10);
+  lines.push("Signing key built into this page: VOIDFORGE, " + pgpFprText(K.fpr) + " (ed25519, valid until " + day(K.expires) + ")");
+  if(!r.ok) return {state: "bad", lines, verdict: "NOT VERIFIED: SHA256SUMS.asc does not prove this SHA256SUMS came from VOIDFORGE: " + r.why + ". Do not use these files; download them again from the release page."};
+  if(r.created < K.created || r.created > K.expires) return {state: "bad", lines, verdict: "NOT VERIFIED: the signature is dated " + day(r.created) + ", outside the time the key is valid (" + day(K.created) + " to " + day(K.expires) + "). If the key was extended, check with GnuPG and the key from the project page."};
+  if(r.fpr !== K.fpr) return {state: "bad", lines, verdict: "NOT VERIFIED: the key built into this page does not have the published VOIDFORGE fingerprint. Do not trust this copy of the page."};
+  lines.push("SHA256SUMS: signed by that key on " + day(r.created) + " (signature valid)");
+  if(!byKind.html) return {state: "", lines, verdict: "SHA256SUMS is genuine. Pick voidforge.html too, to check that the file is the one it lists."};
+  const h = dlHex(new Uint8Array(await crypto.subtle.digest("SHA-256", byKind.html.bytes)));
+  const listed = new TextDecoder().decode(byKind.sums.bytes).split(/\r?\n/).map(l => /^([0-9a-f]{64}) [ *](\S.*)$/.exec(l)).filter(Boolean);
+  lines.push("voidforge.html (" + byKind.html.name + "): SHA-256 " + h);
+  const row = listed.find(m => m[2] === "voidforge.html");
+  if(!row) return {state: "bad", lines, verdict: "NOT VERIFIED: the signed SHA256SUMS has no line for voidforge.html."};
+  if(row[1] !== h) return {state: "bad", lines, verdict: "NOT VERIFIED: this voidforge.html is not the file the signed SHA256SUMS lists. Do not use it; download it again from the release page."};
+  return {state: "ok", lines, verdict: "SIGNED AND MATCHING: SHA256SUMS is signed by the VOIDFORGE key, and this voidforge.html is exactly the file it lists."};
+}
+async function dlSignedPick(){
+  const say = (cls, m) => { const t = document.getElementById("dlSigStatus"); t.className = "status " + cls; t.textContent = m; };
+  const out = document.getElementById("dlSigOut"); out.textContent = ""; out.style.display = "none";
+  const fl = [...(document.getElementById("dlSigFiles").files || [])];
+  if(!fl.length){ say("", ""); return; }
+  if(fl.length > 3) return say("bad", "Pick only the three files: voidforge.html, SHA256SUMS and SHA256SUMS.asc.");
+  if(fl.some(f => f.size > DL_MAX)) return say("bad", "One of the files is larger than 64 MB, so it is not a VOIDFORGE release file.");
+  say("", "Checking...");
+  try {
+    const files = [];
+    for(const f of fl) files.push({name: f.name, bytes: new Uint8Array(await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(r.error); r.readAsArrayBuffer(f); }))});
+    const r = await dlSignedCheck(files);
+    if(r.lines.length){ out.textContent = r.lines.join("\n"); out.style.display = ""; }
+    say(r.state, r.verdict);
+  } catch(e) { say("bad", "Could not read those files: " + e.message); }
+}
+function dlSignedClear(){
+  document.getElementById("dlSigFiles").value = "";
+  const o = document.getElementById("dlSigOut"); o.textContent = ""; o.style.display = "none";
+  const t = document.getElementById("dlSigStatus"); t.textContent = ""; t.className = "status";
+}
 // "What to make": show the settings the chosen BIP85 application needs (lengths default to at least 128 bits).
 const CHILD_LEN_DEFAULT = {hex:32, pwd64:22, pwd85:20};
 function childAppChange(){
@@ -6654,6 +6844,7 @@ function wipeSeed(){
   seedSig = null; passKey = null; exCtx = null;   // fixes release: these held the rolls and the passphrases after a wipe (found by tests/memory.test.mjs)
   clearPsbt(true); clearCompare(true); clearSig(); clearReuse();   // fixes release: public but private data (xpubs, descriptors, addresses, amounts)
   for(const id of ["wpIn", "payA", "payB", "dlPaste"]){ const e = document.getElementById(id); if(e) e.value = ""; }
+  dlSignedClear();
   payCompare();
   document.getElementById("fingerprint").textContent="";
   document.getElementById("address").textContent="";

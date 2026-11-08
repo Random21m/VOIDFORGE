@@ -1,0 +1,18 @@
+{
+ "note": "Made once by GnuPG 2.4.4 with throwaway keys (not the VOIDFORGE key); used by the mutation probes.",
+ "keyA": {
+  "packet": "046af0506416092b06010401da470f01010740944bb2206faa393e7d56a0ffe8f9b2b275dba741fad68bfce3fcf4a45e0c709c",
+  "fpr": "8d87b470f87f2cf326d7984540b8ff6fefa97873"
+ },
+ "keyB": {
+  "packet": "046af0506516092b06010401da470f01010740266060a694411dd32f3a4bd718269fbdca18e5d1267c8a8def1f867bbedac3ae",
+  "fpr": "5d41266d5336d6d2ae19284d5a822e8609021066"
+ },
+ "html": "<!doctype html>\n<html><body>VOIDFORGE signed-release test file</body></html>\n",
+ "sums": "31ab4032057976bb54a8e0498ebceea43d3fb23d632985e72295b3073c0b9dc7  voidforge.html\n",
+ "sigArmor": "-----BEGIN PGP SIGNATURE-----\n\niHUEABYKAB0WIQSNh7Rw+H8s8ybXmEVAuP9v76l4cwUCavBQZgAKCRBAuP9v76l4\ncwX2AQCxhD88x7y+iyxc4q0mWuD6jTX/HH0EMzUfn05WYinHzwEAjtdOuS8msWiU\nBNBmxgjbXhh6ipashyWOjPOjbDBDSwU=\n=7MW1\n-----END PGP SIGNATURE-----\n",
+ "sigSha512": "-----BEGIN PGP SIGNATURE-----\n\niHUEABYKAB0WIQSNh7Rw+H8s8ybXmEVAuP9v76l4cwUCavBQZgAKCRBAuP9v76l4\ncwX2AQCxhD88x7y+iyxc4q0mWuD6jTX/HH0EMzUfn05WYinHzwEAjtdOuS8msWiU\nBNBmxgjbXhh6ipashyWOjPOjbDBDSwU=\n=7MW1\n-----END PGP SIGNATURE-----\n",
+ "sigBinary": "88750400160a001d1621048d87b470f87f2cf326d7984540b8ff6fefa9787305026af05067000a091040b8ff6fefa97873e1a50100dfd49ac22b4945a48672d85c0f1d2dfc9508c9cd101ac03d8ff2c7ab2f44e7d2010096eea6765701ccd622ac5f903a600098c59e15b7e72f05adb71711ad60b68108",
+ "sigText": "-----BEGIN PGP SIGNATURE-----\n\niHUEARYKAB0WIQSNh7Rw+H8s8ybXmEVAuP9v76l4cwUCavBQZwAKCRBAuP9v76l4\nc3+uAP0djq+am3eMKs0FVOKGLJDmRzBdV3fcawmCWSLuHC9p8gD9GlgX56vwtjIM\nIfs9X+7TnEpBhGgJje6Manzwa8ieMQ0=\n=cSV6\n-----END PGP SIGNATURE-----\n",
+ "sigByB": "-----BEGIN PGP SIGNATURE-----\n\niHUEABYKAB0WIQRdQSZtUzbW0q4ZKE1agi6GCQIQZgUCavBQZwAKCRBagi6GCQIQ\nZvzbAP9hoGUyZXr+mgJfPy6izv4WMwcuGHhDCudyr9O4q2w6VwD+Im6jp+7414lF\nfVcqiTXb3TY49m/fGSR/5/ikVN1nfgQ=\n=Sfx8\n-----END PGP SIGNATURE-----\n"
+}

@@ -2329,6 +2329,35 @@ async function probe(w, mutated, fast) {
       if (L !== 'Receive\n  0:  bc1p' + 'a'.repeat(58) + '\n  1:  bc1p' + 'c'.repeat(58) + '\nChange\n  0:  bc1p' + 'b'.repeat(58) + '\n  1:  bc1p' + 'd'.repeat(58)) fails.push('sheets: long addresses are listed one list under the other');
       const S = w.addrSheetLines(['bc1q' + 'a'.repeat(38)], ['bc1q' + 'b'.repeat(38)]);
       if (S !== '      Receive' + ' '.repeat(38) + 'Change\n  0:  bc1q' + 'a'.repeat(38) + '   bc1q' + 'b'.repeat(38)) fails.push('sheets: SegWit addresses side by side, receive then change'); }
+    { // v2.9.0: Check a signed release, against signatures GnuPG made with a throwaway key (tests/fixtures/signed.json)
+      const FX = JSON.parse(fs.readFileSync(new URL('./fixtures/signed.json', import.meta.url), 'utf8')), enc = (t) => new w.TextEncoder().encode(t), hx = (h) => Uint8Array.from(Buffer.from(h, 'hex'));
+      const KA = hx(FX.keyA.packet), V = async (sig, data = enc(FX.sums), key = KA) => { try { return await w.pgpVerifyDetached(sig, data, key); } catch (e) { return { ok: false, why: 'THREW ' + e.message }; } };
+      for (const [k, sig] of [['armored', enc(FX.sigArmor)], ['SHA-512', enc(FX.sigSha512)], ['binary', hx(FX.sigBinary)]]) { const r = await V(sig); if (!r.ok || r.fpr !== FX.keyA.fpr) fails.push('signed release: a GnuPG signature (' + k + ') is valid [' + r.why + ']'); }
+      { const ch = enc(FX.sums); ch[5] ^= 1; if ((await V(enc(FX.sigArmor), ch)).ok) fails.push('signed release: a changed SHA256SUMS is refused'); }
+      { const ch = enc(FX.sums + ' '); if ((await V(enc(FX.sigArmor), ch)).ok) fails.push('signed release: extra bytes after SHA256SUMS are refused'); }
+      { const r = await V(enc(FX.sigText)); if (r.ok || !/text mode/.test(r.why)) fails.push('signed release: a text-mode signature is refused'); }
+      { const r = await V(enc(FX.sigByB)); if (r.ok || !/another key/.test(r.why)) fails.push('signed release: a signature by another key is refused'); }
+      { const r = await V(enc(FX.sigArmor), enc(FX.sums), hx(FX.keyB.packet)); if (r.ok || !/another key/.test(r.why)) fails.push('signed release: checked with the wrong key, it is refused'); }
+      { const t = FX.sigArmor.split('\n'), i = t.findIndex((l) => /^[A-Za-z0-9+/]{20,}/.test(l)); t[i] = (t[i][7] === 'A' ? t[i].slice(0, 7) + 'B' : t[i].slice(0, 7) + 'A') + t[i].slice(8); const r = await V(enc(t.join('\n')));
+        if (r.ok || !/damaged/.test(r.why)) fails.push('signed release: armor with a changed character fails its checksum line'); }
+      { const r = await V(enc(FX.sigArmor.replace('-----BEGIN PGP SIGNATURE-----\n', '-----BEGIN PGP SIGNATURE-----\nComment: x\n\n'))); if (!r.ok) fails.push('signed release: armor headers are skipped'); }
+      { const b = hx(FX.sigBinary); b[b.length - 3] ^= 1; const r = await V(b); if (r.ok) fails.push('signed release: a changed signature value is refused'); }
+      const K = { packet: FX.keyA.packet, fpr: FX.keyA.fpr, created: 0, expires: 4102444800 }, run = (files, k = K) => w.dlSignedCheck(files.map(([name, t]) => ({ name, bytes: typeof t === 'string' ? enc(t) : t })), k);
+      let r = await run([['SHA256SUMS.asc', FX.sigArmor], ['voidforge.html', FX.html], ['SHA256SUMS', FX.sums]]);
+      if (r.state !== 'ok' || !/^SIGNED AND MATCHING/.test(r.verdict)) fails.push('signed release: the three files give SIGNED AND MATCHING [' + r.verdict + ']');
+      if (!r.lines[0].includes(FX.keyA.fpr.toUpperCase().slice(0, 4) + ' ' + FX.keyA.fpr.toUpperCase().slice(4, 8)) || !/signed by that key on \d{4}-\d\d-\d\d/.test(r.lines[1] || '')) fails.push('signed release: the report names the key and the signing date');
+      r = await run([['voidforge.html', FX.html.replace('test', 'TEST')], ['SHA256SUMS', FX.sums], ['SHA256SUMS.asc', FX.sigArmor]]); if (r.state !== 'bad' || !/not the file the signed SHA256SUMS lists/.test(r.verdict)) fails.push('signed release: a changed voidforge.html is NOT VERIFIED');
+      r = await run([['voidforge.html', FX.html], ['SHA256SUMS', FX.sums.replace('voidforge.html', 'other.html')], ['SHA256SUMS.asc', FX.sigArmor]]); if (r.state !== 'bad') fails.push('signed release: a SHA256SUMS changed after signing is NOT VERIFIED');
+      r = await run([['SHA256SUMS', FX.sums], ['SHA256SUMS.asc', FX.sigArmor]]); if (r.state !== '' || !/genuine/.test(r.verdict)) fails.push('signed release: without voidforge.html, SHA256SUMS alone is said genuine');
+      r = await run([['voidforge.html', FX.html], ['SHA256SUMS', FX.sums]]); if (r.state !== '' || !/missing: SHA256SUMS\.asc/.test(r.verdict)) fails.push('signed release: a missing signature is named');
+      r = await run([['voidforge.html', FX.html], ['voidforge2.html', FX.html]]); if (r.state !== 'bad' || !/same kind/.test(r.verdict)) fails.push('signed release: two files of one kind are refused');
+      r = await run([['notes.txt', 'hello']]); if (r.state !== 'bad') fails.push('signed release: an unrelated file is refused');
+      r = await run([['voidforge.html', FX.html], ['SHA256SUMS', FX.sums], ['SHA256SUMS.asc', FX.sigArmor]], { ...K, fpr: '0'.repeat(40) }); if (r.state !== 'bad' || !/published VOIDFORGE fingerprint/.test(r.verdict)) fails.push('signed release: a key without the published fingerprint is not trusted');
+      r = await run([['voidforge.html', FX.html], ['SHA256SUMS', FX.sums], ['SHA256SUMS.asc', FX.sigArmor]], { ...K, created: 4000000000 }); if (r.state !== 'bad' || !/outside the time the key is valid/.test(r.verdict)) fails.push('signed release: a signature dated before the key was made is refused');
+      r = await run([['voidforge.html', FX.html], ['SHA256SUMS', FX.sums], ['SHA256SUMS.asc', FX.sigArmor]], { ...K, expires: 1000 }); if (r.state !== 'bad' || !/outside the time the key is valid/.test(r.verdict)) fails.push('signed release: a signature dated after the key expired is refused');
+      r = await run([['voidforge.html', FX.html], ['SHA256SUMS', FX.sums], ['SHA256SUMS.asc', FX.sigArmor]], w.eval('VF_KEY')); if (r.state !== 'bad' || !/another key/.test(r.verdict)) fails.push('signed release: the built-in VOIDFORGE key refuses a test-key signature');
+      $('dlSigStatus').textContent = 'x'; $('dlSigOut').textContent = 'y'; $('dlSigOut').style.display = ''; w.clearAll(); await new Promise((r2) => setTimeout(r2, 20));
+      if ($('dlSigStatus').textContent !== '' || $('dlSigOut').textContent !== '' || $('dlSigOut').style.display !== 'none') fails.push('signed release: CLEAR ALL empties the result'); }
     w.watchCheck(); if ($('watchStatus').textContent !== 'NO SIGN FOUND of extensions, translators or other scripts on this page right now.' || !/^That does not make it safe\./.test($('watchOut').textContent)) fails.push('watch check: no sign found, never safe');
     { const s = w.document.createElement('script'); s.src = 'chrome-extension://x/i.js'; w.document.head.appendChild(s); s.remove();
       $('phrase').setAttribute('data-unknown-helper', '1'); w.document.body.appendChild(w.document.createElement('grammarly-extension')); w.document.body.appendChild(w.document.createElement('div')); w.ethereum = {}; await sleep(450);
@@ -4281,6 +4310,24 @@ const M = [
   ["practice: address list labels keep the mainnet path", "const c = net === \"test\" ? 1 : 0, last = ADDR_SHOWN - 1", "const c = 0, last = ADDR_SHOWN - 1"],
   ["practice: summary sheet title not marked TESTNET", "\"VOIDFORGE SEED SUMMARY\" + (document.getElementById(\"addrBox\").dataset.net === \"test\" ? \" (TESTNET)\" : \"\")", "\"VOIDFORGE SEED SUMMARY\""],
   ["compare: a bc1q address is never looked up in the lists", "if(kindRec === \"tr\" || kindRec === \"addr\" || kindRec === \"key\"", "if(kindRec === \"tr\" || kindRec === \"key\""],
+  ["signed release: S above the group order accepted", "const S = edLe(sig.slice(32)); if(S >= ED_L) return false;", "const S = edLe(sig.slice(32));"],
+  ["signed release: the hash of R, A and the message left out", "concatBytes(sig.slice(0, 32), pub, msg)", "concatBytes(sig.slice(0, 32), msg)"],
+  ["signed release: points compared by x only", "edMod(P[0] * Q[2] - Q[0] * P[2]) === 0n && edMod(P[1] * Q[2] - Q[1] * P[2]) === 0n", "edMod(P[0] * Q[2] - Q[0] * P[2]) === 0n"],
+  ["signed release: the armor checksum is not checked", "if(want.length !== 3 || ((want[0] << 16) | (want[1] << 8) | want[2]) !== pgpCrc24(raw)) throw", "if(false) throw"],
+  ["signed release: armor headers not skipped", "while(i < lines.length && /^[A-Za-z][A-Za-z0-9-]*: /.test(lines[i])) i++;", ""],
+  ["signed release: text-mode signatures accepted", "if(s[1] !== 0x00) return {ok: false", "if(false) return {ok: false"],
+  ["signed release: the signer is not checked", "if((fpr && fpr !== fprKey) || (!fpr && keyId !== fprKey.slice(24))) return", "if(false) return"],
+  ["signed release: the hashed part left out of the hash", "concatBytes(data, head, trailer)", "concatBytes(data, trailer)"],
+  ["signed release: the trailer length wrong", "(head.length >>> 8) & 255, head.length & 255]", "(head.length >>> 8) & 255, (head.length + 1) & 255]"],
+  ["signed release: the quick 16-bit check is skipped (the signature check still fails)", "if(digest[0] !== left16[0] || digest[1] !== left16[1]) return", "if(false) return", true],
+  ["signed release: the signature value is not checked", "if(!(await ed25519Verify(sig, digest, pub))) return", "if(false) return"],
+  ["signed release: the MPI is not padded on the left", "sig.set(r, 32 - r.length); sig.set(sv, 64 - sv.length);", "sig.set(r, 0); sig.set(sv, 32);"],
+  ["signed release: the key validity dates not checked", "if(r.created < K.created || r.created > K.expires) return", "if(false) return"],
+  ["signed release: the key fingerprint not checked", "if(r.fpr !== K.fpr) return", "if(false) return"],
+  ["signed release: voidforge.html not compared with the list", "if(row[1] !== h) return", "if(false) return"],
+  ["signed release: two files of one kind accepted", "if(byKind[kind]) return {state: \"bad\"", "if(false) return {state: \"bad\""],
+  ["signed release: CLEAR ALL leaves the result", "  dlSignedClear();\n", ""],
+  ["signed release: the signing date not shown", "  lines.push(\"SHA256SUMS: signed by that key on \" + day(r.created) + \" (signature valid)\");", ""],
   ["heir mode: the Detective button goes nowhere", "onclick=\"heirGo('check', 'detBlock')\"", "onclick=\"heirGo('tools', 'detBlock')\""],
 ];
 
