@@ -1192,7 +1192,9 @@ async function probe(w, mutated, fast) {
     w.msShowQr(); if ($('msQrBox').style.display !== '' || !/81 x 81/.test($('msQrCaption').textContent)) fails.push('multisig: QR');
     { const tmp = w.document.createElement('div'); tmp.innerHTML = w.qrSvg(w.qrMatrix($('msDescR').textContent).rows); if (tmp.innerHTML !== $('msQrImg').innerHTML) fails.push('multisig: QR encodes the receive descriptor'); }
     w.msHideQr(); if ($('msQrBox').style.display !== 'none' || $('msQrImg').textContent !== '') fails.push('multisig: hide QR');
-    { let pr = 0; w.print = () => { pr++; }; w.msPrint(); const pq = w.document.getElementById('printQr').textContent; if (pr !== 1 || !/NO seed words/.test(pq) || !pq.includes($('msDescR').textContent) || !/2-of-3 multisig/.test(pq) || !pq.includes(w.document.querySelector('#msAddrs li').textContent) || !pq.includes(w.document.querySelectorAll('#msAddrs li')[2].textContent) || /abandon|legal winner|\bzoo\b/.test(pq)) fails.push('multisig: recovery sheet'); }
+    { let pr = 0; w.print = () => { pr++; }; w.msPrint(); const pq = w.document.getElementById('printQr').textContent; if (pr !== 1 || !/NO seed words/.test(pq) || !pq.includes($('msDescR').textContent) || !/2-of-3 multisig/.test(pq) || !pq.includes(w.document.querySelector('#msAddrs li').textContent) || !pq.includes(w.document.querySelectorAll('#msAddrs li')[2].textContent) || /abandon|legal winner|\bzoo\b/.test(pq)) fails.push('multisig: recovery sheet');
+      const ra = [...w.document.querySelectorAll('#msAddrs li')].map((l) => l.textContent), ca = [...w.document.querySelectorAll('#msChange li')].map((l) => l.textContent), blk = w.document.querySelector('#printQr .pq-addr');
+      if (!blk || ra.length !== 10 || ca.length !== 10 || !ra.every((a, i) => blk.textContent.includes(String(i).padStart(3) + ':  ' + a + '   ' + ca[i]))) fails.push('multisig: the printed sheet lists the 10 receive and 10 change addresses side by side'); }
     // refused key check pieces of the library
     for (const [m, n, label] of [[0, 3, 'M of 0'], [4, 3, 'M above N'], [1, 1, 'one key'], [2, 16, 'sixteen keys']]) {
       const cs = []; const key = await w.parseExtendedKey(k3x); for (let i = 0; i < n; i++) cs.push({ fp: fp3, path: '48h/0h/0h/2h', key });
@@ -4264,13 +4266,16 @@ const M = [
   ["summary sheet: no address lists", "if(recv.length && chg.length){ add(\"ps-rule\", \"\");", "if(false){ add(\"ps-rule\", \"\");"],
   ["sheets: receive and change swapped", "out.push(String(i).padStart(3) + \":  \" + (recv[i] || \"\").padEnd(w + 3) + (chg[i] || \"\"));", "out.push(String(i).padStart(3) + \":  \" + (chg[i] || \"\").padEnd(w + 3) + (recv[i] || \"\"));"],
   ["sheets: long addresses lose the change heading", "out.push(\"Change\"); chg.forEach(", "chg.forEach("],
-  ["sheets: long addresses side by side", "if(w <= 44){", "if(w <= 99){"],
+  ["sheets: long addresses side by side", "if(w <= (side || 44)){", "if(w <= (side || 99)){"],
   ["demo frame: any site accepted", "return selfOrigin === \"https://random21m.gitlab.io\" && topOrigin === selfOrigin && ", "return topOrigin === selfOrigin && "],
   ["demo frame: another site framing it accepted", "&& topOrigin === selfOrigin && /^", "&& /^"],
   ["demo frame: any path accepted", "/^\\/voidforge\\/(index\\.html)?$/.test(topPath)", "true"],
   ["demo frame: every page counted as shown in a frame", "framed = window.top !== window.self && !officialDemoFrame(", "framed = true && !officialDemoFrame("],
   ["multisig: change addresses made from the receive chain", "change.push(await multisigAddress(ms.type, ms.m, cos, 1, i, ms.net))", "change.push(await multisigAddress(ms.type, ms.m, cos, 0, i, ms.net))"],
-  ["multisig: recovery sheet leaves out the change addresses", "\"FIRST 10 CHANGE ADDRESSES:\", ...ms.change, \"\",", "\"FIRST 10 CHANGE ADDRESSES:\", \"\","],
+  ["multisig: recovery sheet leaves out the change addresses", "\"FIRST 10 CHANGE ADDRESSES:\", ...ms.change, \"\"]", "\"FIRST 10 CHANGE ADDRESSES:\", \"\"]"],
+  ["multisig: printed sheet leaves out the change addresses", "addrSheetLines(ms.addrs, ms.change, 70);", "addrSheetLines(ms.addrs, [], 70);"],
+  ["multisig: printed sheet stacks the two lists", "addrSheetLines(ms.addrs, ms.change, 70);", "addrSheetLines(ms.addrs, ms.change, 44);"],
+  ["QR sheets: the address block is never printed", "  if(mono) add(\"pq-addr\", mono);", ""],
   ["multisig: change list not shown", "for(const [id, list] of [[\"msAddrs\", addrs], [\"msChange\", change]])", "for(const [id, list] of [[\"msAddrs\", addrs]])"],
   ["multisig: reset leaves the change list on screen", "for(const id of [\"msDescR\",\"msDescC\",\"msAddrs\",\"msChange\",\"msSlots\",\"msRunErr\",\"msBanErr\",\"msErr\"])", "for(const id of [\"msDescR\",\"msDescC\",\"msAddrs\",\"msSlots\",\"msRunErr\",\"msBanErr\",\"msErr\"])"],
   ["practice: address list labels keep the mainnet path", "const c = net === \"test\" ? 1 : 0, last = ADDR_SHOWN - 1", "const c = 0, last = ADDR_SHOWN - 1"],

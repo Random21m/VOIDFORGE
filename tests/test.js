@@ -1569,7 +1569,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     }
     $('wType').value='ms-wsh'; await w.refreshWatch(); ok(w.watchFileText()===''&&$('wSaveRow').style.display==='none','watch-only file: not offered for a multisig cosigner key');
     $('wType').value='wpkh'; await w.refreshWatch(); tq.st.blob=null; w.saveWatchFile(); const ft=await blobText(w,tq.st.blob); ok(ft===w.watchFileText()&&/^# VOIDFORGE watch-only wallet\. Public keys only/.test(ft)&&!ft.includes(words.split(' ')[0]+' '+words.split(' ')[1]),'watch-only file: SAVE WATCH-ONLY FILE saves it, with no seed words in it');
-    $('wNet').value='test'; await w.refreshWatch(); ok(/Network: Testnet/.test(w.watchFileText())&&/tpub/.test(w.watchFileText()),'watch-only file: testnet keys say so');
+    $('wNet').value='test'; await w.refreshWatch(); ok(/Network: TESTNET \(practice coins only\)/.test(w.watchFileText())&&/tpub/.test(w.watchFileText()),'watch-only file: testnet keys say so');
     $('wNet').value='main';
   }
   // ===== v2.6.0: animated QR (UR + BBQr), UR/BBQr paste, custom paths, read-only private keys, check an address before you pay, future spending cost =====
