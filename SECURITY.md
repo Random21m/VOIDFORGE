@@ -48,11 +48,11 @@ Please include the version (shown at the bottom of the page), the browser, and s
 
 ## Release signing key
 
-Releases will be signed with this OpenPGP key (ed25519, created 2026-11-06, expires 2028-11-05 unless extended):
+Releases from v2.8.1 on are signed with this OpenPGP key (ed25519, created 2026-11-06, expires 2028-11-05 unless extended):
 
 `2509 D115 03B7 2CBF BCB5  408F 4B72 9F05 6A52 9340`
 
-The public key is [`voidforge-signing-key.asc`](voidforge-signing-key.asc) in this repository. It carries no email address. **Releases up to v2.8.0 are not signed**; check them with `SHA256SUMS` and `CID.txt` (see RELEASING.md). From the first signed release on, each release also has `SHA256SUMS.asc`. To check it:
+The public key is [`voidforge-signing-key.asc`](voidforge-signing-key.asc) in this repository. It carries no email address. **Releases up to v2.8.0 are not signed**; check them with `SHA256SUMS` and `CID.txt` (see RELEASING.md). From v2.8.1, the first signed release, each release also has `SHA256SUMS.asc`. To check it:
 
 ```
 gpg --import voidforge-signing-key.asc
