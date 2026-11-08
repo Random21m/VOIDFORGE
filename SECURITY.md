@@ -35,7 +35,7 @@ Please include the version (shown at the bottom of the page), the browser, and s
 ## What is in scope
 
 - Wrong seed words, fingerprint or first receive address for given inputs
-- Anything that causes the page to make a network request, store data (beyond the theme and text size, and the start-notice flag kept for one tab session), or expose a seed, rolls or passphrase
+- Anything that causes the page to make a network request, store data (beyond the theme and text size, and the start-notice flag kept for one tab session), turn the camera on without a SCAN button being pressed, or expose a seed, rolls or passphrase
 - A signed message reported VALID when it is not
 - Weaknesses in the self-test gate or the release/verification process
 

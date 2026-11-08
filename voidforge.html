@@ -1371,7 +1371,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <h3 class="sec">Check your words</h3>
     <textarea id="phrase" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Type or paste your seed words to check..."></textarea>
-    <div class="hint" style="margin:4px 0 0;">Also accepts a SeedSigner SeedQR digit string (48 or 96 digits) or CompactSeedQR hex. Type it in; do not scan a real seed QR with a connected phone.</div>
+    <div class="hint" style="margin:4px 0 0;">Also accepts a SeedSigner SeedQR digit string (48 or 96 digits) or CompactSeedQR hex: type it in, or press SCAN SEEDQR on your offline computer. Never scan a real seed QR with a phone or any device that is online.</div>
     <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
       <input type="password" id="verifyPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Passphrase (if you used one)" style="flex:1; min-width:0;">
       <button type="button" class="secondary small" onclick="toggleVerifyPassphrase(this)">SHOW</button>
@@ -3190,6 +3190,7 @@ const DICT = [
   ["Child key and parent key", "In a key tree, a child key is worked out from its parent. Knowing a hardened child never reveals its parent.", "", "Keys & seeds"],
   ["Child seed", "A new seed derived from a parent seed (BIP85). The same parent, word count and index always give the same child.", "EXTRA TOOLS.", "Keys & seeds"],
   ["Clipboard", "Your computer's short-term copy memory. Some systems keep a history of it or sync it to other devices, so copying a secret can leak it.", "Browser safety checklist.", "Privacy & security"],
+  ["Camera scanning", "Reading a QR code with the computer's camera instead of typing it. In VOIDFORGE the camera turns on only when you press a SCAN button, shows a red CAMERA ON bar, and stops as soon as the code is read; the picture never leaves the page. A seed QR is scanned only while the computer is offline.", "SCAN buttons in CHECK A BACKUP (SEEDQR, watch-only key, address finder) and TOOLS (Inspect a transaction).", "VOIDFORGE"],
   ["Card entropy", "Randomness taken from a well-shuffled deck of 52 playing cards, typed in the order they lie. Card after card from one shuffle adds a little less each time (log2 of the cards left), so 25 cards give about 132 bits (12 words) and a whole deck about 226 bits; a 24-word seed needs the whole deck and 6 more from a new shuffle. The cards are hashed with SHA-256, as in Ian Coleman's BIP39 tool.", "MAKE A SEED: the Cards & hex tab.", "Keys & seeds"],
   ["Coin control", "A wallet feature that lets you pick exactly which coins to spend, mostly for privacy.", "", "Transactions"],
   ["Coin flip entropy", "Randomness taken from real coin tosses, written as 1 and 0. 128 flips give a 12-word seed and 256 give 24 words.", "MAKE A SEED: the Coin tab.", "Keys & seeds"],
@@ -3328,7 +3329,7 @@ const DICT = [
   ["PSBT (partly signed Bitcoin transaction)", "A standard file for passing a transaction between a wallet, which builds it, and a signer, which signs it. VOIDFORGE only reads these, it never signs.", "Inspect a transaction (PSBT), Compare two transactions.", "Transactions"],
   ["Public key", "The number worked out from a private key. It can be shared and cannot be used to spend.", "", "Keys & seeds"],
   ["Public key hash (HASH160)", "The short fingerprint of a public key (SHA-256 then RIPEMD-160) that old address types are made from.", "", "Addresses & scripts"],
-  ["QR code", "A square picture that holds text. VOIDFORGE draws QR codes on screen and never uses a camera.", "Watch-only QR, SeedQR, address QR, Support this project. PRINT THIS QR prints them.", "Basics"],
+  ["QR code", "A square picture that holds text. VOIDFORGE draws QR codes on screen, and reads them with the camera only when you press a SCAN button (the camera stops as soon as the code is read).", "Watch-only QR, SeedQR, address QR, Support this project. PRINT THIS QR prints them; the SCAN buttons read them.", "Basics"],
   ["Quorum", "How many keys must sign in a multisig wallet, such as 2 of a 3-key wallet.", "", "Wallets & backups"],
   ["Random number generator (RNG)", "A source of random numbers. Computer ones can be flawed, which is why VOIDFORGE uses physical dice and coins.", "", "Keys & seeds"],
   ["Raw transaction", "The transaction as bytes, usually shown in hex, exactly as it is sent to the network.", "Inspect a transaction (PSBT) reads raw transactions.", "Transactions"],
