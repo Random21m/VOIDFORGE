@@ -318,6 +318,8 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     body.print-seed #printOnly .ps-secret.ps-xxs { font-size: 6.5px; letter-spacing: 0; line-height: 1.2; padding: 6px 8px; }
     body.print-seed #printOnly .ps-info, body.print-seed #printOnly .ps-fields, body.print-seed #printOnly .ps-warn { white-space: pre-wrap; font-size: 13px; }
     body.print-seed #printOnly .ps-warn { font-weight: 700; }
+    body.print-seed #printOnly .ps-part { break-after: page; }
+    body.print-seed #printOnly .ps-part:last-child { break-after: auto; }
     body.print-seed #printOnly .ps-addr { white-space: pre; font-family: "Courier New", monospace; font-size: 10.5px; line-height: 1.3; margin-top: 4px; }
     body.print-seed #printOnly .ps-info { margin-bottom: 8px; }
     body.print-seed #printOnly .ps-small { font-size: 11px; }
@@ -1548,6 +1550,29 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <textarea id="sigSig" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Signature (base64)" placeholder="Signature (base64; a BIP-322 one may start with smp)" style="margin-top:6px;"></textarea>
       <div class="btn-row" style="margin-top:6px;"><button type="button" id="sigBtn" onclick="verifyMessageUi()" disabled>VERIFY SIGNATURE</button><button type="button" class="secondary small" onclick="clearSig()">CLEAR</button></div>
       <div class="status" id="sigStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+    </details>
+    <details id="xorBox" style="margin-top:8px;">
+      <summary>Seed XOR: split or combine<span class="tag tag-secret">SECRET</span><small>Split one seed into 2 to 4 parts that are all needed, or combine parts, as Coldcard does.</small></summary>
+      <p class="hint" style="margin:8px 0;">Seed XOR (made by Coldcard) turns one 12, 18 or 24-word seed into 2, 3 or 4 parts. Each part is itself a normal-looking seed phrase that opens an empty wallet, so a thief who finds one part learns nothing. To get the seed back you need <b>every</b> part: lose one and the money is lost. That is the opposite of multisig, where some keys may be lost; if you want to survive a lost backup, use a 2-of-3 multisig instead. The passphrase, if any, is not split: it stays with the combined seed.</p>
+      <div class="radio-group">
+        <label><input type="radio" name="xorMode" value="split" checked onchange="xorModeChange()"><span>Split the words above</span></label>
+        <label><input type="radio" name="xorMode" value="combine" onchange="xorModeChange()"><span>Combine parts</span></label>
+      </div>
+      <div id="xorSplitPanel">
+        <p class="hint" style="margin:6px 0;">Splits the words typed at the top of CHECK A BACKUP. The parts are random unless you tick the box: then they are the same parts a Coldcard makes for this seed, so anyone holding the seed can make them again (and can tell the parts came from it).</p>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <select id="xorN" aria-label="Number of parts" style="width:auto; flex:none;"><option value="2">2 parts</option><option value="3" selected>3 parts</option><option value="4">4 parts</option></select>
+          <label style="font-size:13px;"><input type="checkbox" id="xorSame"> The same parts a Coldcard makes (not random)</label>
+        </div>
+        <div class="btn-row" style="margin-top:8px;"><button type="button" id="xorSplitBtn" onclick="seedXorUi('split')" disabled>SPLIT THE WORDS</button><button type="button" class="secondary small" onclick="clearXor()">CLEAR</button></div>
+      </div>
+      <div id="xorCombinePanel" style="display:none;">
+        <textarea id="xorIn" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The parts, one per line" placeholder="Part A words&#10;Part B words&#10;Part C words"></textarea>
+        <div class="btn-row" style="margin-top:8px;"><button type="button" id="xorCombineBtn" onclick="seedXorUi('combine')" disabled>COMBINE THE PARTS</button><button type="button" class="secondary small" onclick="clearXor()">CLEAR</button></div>
+      </div>
+      <div class="status" id="xorStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+      <pre id="xorOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+      <div class="btn-row" id="xorPrintRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" onclick="printXorParts()">PRINT THE PARTS</button></div>
     </details>
     <details id="childBox">
       <summary>Child seed (BIP85)<span class="tag tag-secret">SECRET</span><small>Make a separate new seed, key or password from this one.</small></summary>
@@ -6437,6 +6462,116 @@ async function deriveChildApp(mnemonic, vp, app, index, say, my){
   } catch(e) { clearChild(); say("bad", "Could not derive: " + e.message); }
 }
 let childCtx = null, childSeq = 0;
+// ===== Seed XOR (v2.9.0): split one seed into 2 to 4 parts, or combine parts, the way Coldcard does (its docs/seed-xor.md) =====
+// Each part is itself a valid 12, 18 or 24-word BIP39 phrase. The secret entropy is the XOR of the parts' entropy, and the
+// combined phrase gets its own checksum word. ALL parts are needed: lose one and the seed is gone (unlike a 2-of-3 multisig).
+let xorCtx = null, xorSeq = 0;
+const XOR_LENS = {12: 16, 18: 24, 24: 32};   // words -> entropy bytes (Coldcard: 12, 18 or 24 words)
+function xorEntropy(mnemonic){
+  const w = mnemonic.split(" "), bits = w.map(x => WORD_MAP[x].toString(2).padStart(11, "0")).join(""), n = XOR_LENS[w.length], out = new Uint8Array(n);
+  for(let i = 0; i < n; i++) out[i] = parseInt(bits.slice(i * 8, i * 8 + 8), 2);
+  return out;
+}
+const xorBytes = (...arrs) => { const o = new Uint8Array(arrs[0].length); for(const a of arrs) for(let i = 0; i < o.length; i++) o[i] ^= a[i]; return o; };
+async function xorPart(text, label){
+  const r = await checkPhrase(text);
+  if(!r.ok) return {error: label + ": " + r.msg};
+  const n = r.mnemonic.split(" ").length;
+  if(!XOR_LENS[n]) return {error: label + " has " + n + " words. Seed XOR works with 12, 18 or 24 words."};
+  return {mnemonic: r.mnemonic, words: n};
+}
+// Splits the words into n parts. Random by default; `same` makes the parts a Coldcard makes for this seed (double SHA-256 of
+// "Batshitoshi " + the secret + "i of n parts"), which anyone holding the seed can make again.
+async function seedXorSplit(mnemonic, n, same){
+  if(!Number.isInteger(n) || n < 2 || n > 4) throw new Error("Seed XOR makes 2, 3 or 4 parts");
+  const e = xorEntropy(mnemonic), parts = [];
+  if(e.every(x => x === 0)) throw new Error("these words are all zeros (the public test phrase \u201cabandon ... about\u201d), so splitting them shows nothing useful. Use them only to practice combining");
+  for(let i = 0; i < n - 1; i++){
+    const src = same ? concatBytes(new TextEncoder().encode("Batshitoshi "), e, new TextEncoder().encode(i + " of " + n + " parts")) : crypto.getRandomValues(new Uint8Array(e.length));
+    parts.push((await sha256bytes(await sha256bytes(src))).slice(0, e.length));
+  }
+  parts.push(xorBytes(e, ...parts));
+  if(dlHex(xorBytes(...parts)) !== dlHex(e)) throw new Error("self-check failed");
+  const out = []; for(const p of parts) out.push(await entropyToMnemonic(p));
+  return out;
+}
+async function seedXorCombine(texts){
+  const parts = [];
+  for(let i = 0; i < texts.length; i++){ const p = await xorPart(texts[i], "Part " + String.fromCharCode(65 + i)); if(p.error) return {error: p.error}; parts.push(p); }
+  if(parts.length < 2) return {error: "Type at least two parts, one per line (or with a blank line between them)."};
+  if(new Set(parts.map(p => p.words)).size !== 1) return {error: "All parts must have the same number of words (" + parts.map(p => p.words).join(", ") + " were typed)."};
+  if(new Set(parts.map(p => p.mnemonic)).size !== parts.length) return {error: "The same part was typed twice. Each part must be typed once."};
+  const e = xorBytes(...parts.map(p => xorEntropy(p.mnemonic)));
+  // as Coldcard: all zeros is never a real seed (only the public test phrase "abandon ... about"), so warn, but still show it
+  const zero = e.every(x => x === 0);
+  return {mnemonic: await entropyToMnemonic(e), parts: parts.map(p => p.mnemonic), zero};
+}
+// The hand-check worksheet, as in Coldcard's docs: each word as its number in hex, then the XOR of the numbers. The last word
+// also holds checksum bits, so only its first hex digit(s) can be worked out by hand.
+function xorWorksheet(parts, result){
+  const hx = m => m.split(" ").map(w => WORD_MAP[w].toString(16).toUpperCase().padStart(3, "0"));
+  const rows = parts.map((p, i) => String.fromCharCode(65 + i) + " = " + hx(p).join(" "));
+  const n = result.split(" ").length, known = {12: 2, 18: 1, 24: 1}[n], x = hx(result);
+  const xorRow = x.map((h, i) => i < n - 1 ? h : h.slice(0, known) + "x".repeat(3 - known));
+  const last = result.split(" ")[n - 1], lo = parseInt(xorRow[n - 1].replace(/x/g, "0"), 16), hi = parseInt(xorRow[n - 1].replace(/x/g, "f"), 16);
+  return rows.join("\n") + "\nXOR = " + xorRow.join(" ") + "\n\nWord " + n + " holds checksum bits: by hand it is between " + WORDLIST[lo] + " [" + lo.toString(16).toUpperCase().padStart(3, "0") + "] and " + WORDLIST[hi] + " [" + hi.toString(16).toUpperCase().padStart(3, "0") + "]; the right one is " + last + " [" + x[n - 1] + "].";
+}
+const xorShowWords = (m) => m.split(" ").map((w, i) => String(i + 1).padStart(2, " ") + ". " + w).join("\n");
+async function seedXorUi(mode){
+  if(!gateOk()) return;
+  const mine = ++xorSeq, st = document.getElementById("xorStatus"), out = document.getElementById("xorOut");
+  const say = (cls, t) => { st.className = "status " + cls; st.textContent = t; };
+  xorCtx = null; out.textContent = ""; out.style.display = "none"; document.getElementById("xorPrintRow").style.display = "none";
+  try {
+    if(mode === "split"){
+      const r = await checkPhrase(document.getElementById("phrase").value);
+      if(!r.ok) return say("bad", "First type the seed words in the box at the top of CHECK A BACKUP. " + r.msg);
+      const n = r.mnemonic.split(" ").length; if(!XOR_LENS[n]) return say("bad", "Seed XOR works with 12, 18 or 24 words; these are " + n + ".");
+      const k = parseInt(document.getElementById("xorN").value, 10), same = document.getElementById("xorSame").checked;
+      const parts = await seedXorSplit(r.mnemonic, k, same); if(mine !== xorSeq) return;
+      const fps = []; for(const p of parts) fps.push(await fingerprintFromSeed(await mnemonicToSeed(p, "")));
+      if(mine !== xorSeq) return;
+      xorCtx = {parts, result: r.mnemonic, fp: await fingerprintFromSeed(await mnemonicToSeed(r.mnemonic, ""))};
+      out.textContent = parts.map((p, i) => "PART " + String.fromCharCode(65 + i) + " of " + k + " (on its own it opens an empty wallet, fingerprint " + fps[i] + ")\n" + xorShowWords(p)).join("\n\n") + "\n\nCHECK BY HAND\n" + xorWorksheet(parts, r.mnemonic);
+      out.style.display = ""; document.getElementById("xorPrintRow").style.display = "";
+      say("ok", k + " parts made" + (same ? " (the same parts a Coldcard makes for this seed)" : " (random)") + ". Write each part on its own paper and keep the parts in different places. You need ALL " + k + " to get the seed back: lose one and the money is lost. Check: combining them gives fingerprint " + xorCtx.fp + ".");
+    } else {
+      const texts = document.getElementById("xorIn").value.split(/\n\s*\n|\n/).map(t => t.trim()).filter(Boolean);
+      const r = await seedXorCombine(texts); if(mine !== xorSeq) return;
+      if(r.error) return say("bad", r.error);
+      const fp = await fingerprintFromSeed(await mnemonicToSeed(r.mnemonic, "")); if(mine !== xorSeq) return;
+      xorCtx = {parts: r.parts, result: r.mnemonic, fp};
+      out.textContent = "THE COMBINED SEED (" + r.mnemonic.split(" ").length + " words)\n" + xorShowWords(r.mnemonic) + "\n\nCHECK BY HAND\n" + xorWorksheet(r.parts, r.mnemonic);
+      out.style.display = "";
+      say(r.zero ? "warn" : "ok", (r.zero ? "WARNING: the parts combine to all zeros, which is the public test phrase \u201cabandon ... about\u201d and never a real seed. A part may be missing or wrong. " : "") + "Combined " + r.parts.length + " parts. Master fingerprint (no passphrase): " + fp + ". If the wallet also has a passphrase, it is added to these combined words as usual. If the fingerprint is not the one you expect, a part is wrong or missing.");
+    }
+  } catch(e) { say("bad", "Could not do it: " + e.message); }
+}
+function printXorParts(){
+  const c = xorCtx; if(!c) return alert("Split the words first.");
+  if(!confirm("Printing sends the parts to a printer and its spooler. Only print on a trusted offline computer with a directly connected printer. Each part prints on its own page; keep the pages in different places. Print now?")) return;
+  printSheet(add => {
+    c.parts.forEach((p, i) => {
+      const box = add("ps-part", "");
+      const a = (cls, t) => { const d = document.createElement("div"); d.className = cls; d.textContent = t; box.appendChild(d); return d; };
+      a("ps-title", "VOIDFORGE SEED XOR PART " + String.fromCharCode(65 + i) + " OF " + c.parts.length);
+      a("ps-sub", "One part of a seed split with Seed XOR (Coldcard-compatible). ALL " + c.parts.length + " parts are needed to get the seed back; this part alone opens an empty wallet. Keep it apart from the other parts.");
+      const g = a("ps-grid ps-" + p.split(" ").length, "");
+      p.split(" ").forEach((w, j) => { const x = document.createElement("div"); x.className = "ps-cell"; const nn = document.createElement("div"); nn.className = "ps-n"; nn.textContent = String(j + 1).padStart(2, "0"); const ww = document.createElement("div"); ww.className = "ps-w"; ww.textContent = w; x.appendChild(nn); x.appendChild(ww); g.appendChild(x); });
+      a("ps-info", "Combined seed's master fingerprint (no passphrase): " + c.fp + "\nTo combine: Coldcard (Advanced, Danger Zone, Seed XOR) or VOIDFORGE EXTRA TOOLS, Seed XOR, with every part.");
+    });
+  });
+}
+function xorModeChange(){
+  const split = document.querySelector('input[name=xorMode]:checked').value === "split";
+  document.getElementById("xorSplitPanel").style.display = split ? "" : "none"; document.getElementById("xorCombinePanel").style.display = split ? "none" : "";
+  clearXor();
+}
+function clearXor(){
+  xorSeq++; xorCtx = null; document.getElementById("xorIn").value = ""; document.getElementById("xorPrintRow").style.display = "none";
+  const o = document.getElementById("xorOut"); o.textContent = ""; o.style.display = "none";
+  const t = document.getElementById("xorStatus"); t.textContent = ""; t.className = "status";
+}
 function clearChild(){
   childSeq++; childCtx = null; document.getElementById("childPrintRow").style.display = "none";
   const o = document.getElementById("childOut"); o.textContent = ""; o.style.display = "none";
@@ -7030,6 +7165,7 @@ function wipeSeed(){
   detClear();   // v2.8.0: the Wallet Detective
   kcClear();   // v2.9.0: the wallet file check
   lbClear();   // v2.9.0: the label file (private)
+  clearXor();   // v2.9.0: Seed XOR parts (secret)
   seedSig = null; passKey = null; exCtx = null;   // fixes release: these held the rolls and the passphrases after a wipe (found by tests/memory.test.mjs)
   clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo();   // fixes release: public but private data (xpubs, descriptors, addresses, amounts)
   for(const id of ["wpIn", "payA", "payB", "dlPaste"]){ const e = document.getElementById(id); if(e) e.value = ""; }
@@ -8021,7 +8157,7 @@ document.getElementById("verifyRecorded").addEventListener("input", () => { cons
 for(const id of ["phrase","verifyPass","childWords","childIndex","childLen","childSides","childRolls"]) document.getElementById(id).addEventListener("input", clearChild);
 for(const id of ["phrase","verifyPass"]) document.getElementById(id).addEventListener("input", () => { verifySeq++; if(wvCtx && wvCtx.mnemonic) clearWalletView(); if(childCtx || document.getElementById("childOut").textContent) clearChild(); });
 document.getElementById("verifyPass").addEventListener("input", passWarnUpdate);
-for(const id of ["phrase", "verifyPass"]) document.getElementById(id).addEventListener("input", () => { detClear(true); kcClear(true); lbClear(true); });   // v2.8.0: the Detective result belongs to the old words
+for(const id of ["phrase", "verifyPass"]) document.getElementById(id).addEventListener("input", () => { detClear(true); kcClear(true); lbClear(true); if(xorCtx && document.querySelector('input[name=xorMode]:checked').value === "split") clearXor(); });   // v2.8.0: the Detective result belongs to the old words
 document.getElementById("reuseIn").addEventListener("input", () => { const st = document.getElementById("reuseStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wpIn").addEventListener("input", () => { if(wvCtx && wvCtx.kind === "pub" && !wvCtx.secret) clearWalletView(); const st = document.getElementById("wpStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wType").addEventListener("change", refreshWatch);
@@ -8093,6 +8229,7 @@ function setGate(state, text, cls){
   if(!detBusy) for(const id of ["detBtn", "detListBtn"]) document.getElementById(id).disabled = !on;   // v2.8.0: Wallet Detective
   if(!kcBusy) document.getElementById("kcBtn").disabled = !on;   // v2.9.0: Is this seed in my wallet file?
   if(!lbBusy) document.getElementById("lbBtn").disabled = !on;   // v2.9.0: Read a label file
+  for(const id of ["xorSplitBtn", "xorCombineBtn"]) document.getElementById(id).disabled = !on;   // v2.9.0: Seed XOR
   document.getElementById("wpBtn").disabled = !on;
   document.getElementById("reuseBtn").disabled = !on;
   document.getElementById("childBtn").disabled = !on;

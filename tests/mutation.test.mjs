@@ -2423,6 +2423,38 @@ async function probe(w, mutated, fast) {
         $('lbPrintText').checked = true; w.printLabels(); const t2 = $('printOnly').textContent; w.dispatchEvent(new w.Event('afterprint')); w.print = op; $('lbPrintText').checked = false;
         if (!t2.includes('label: Savings') || /left off/.test(t2)) fails.push('labels: ticked, the printed sheet has the label text'); }
       $('lbIn').value = file; $('lbStatus').textContent = 'x'; w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('lbIn').value !== '' || $('lbStatus').textContent !== '' || !$('lbPrintBtn').disabled) fails.push('labels: CLEAR ALL empties them'); }
+    { // v2.9.0: Seed XOR, against Coldcard's docs/seed-xor.md example and its split formula (firmware shared/xor_seed.py)
+      const A = 'romance wink lottery autumn shop bring dawn tongue range crater truth ability miss spice fitness easy legal release recall obey exchange recycle dragon room';
+      const B = 'lion misery divide hurry latin fluid camp advance illegal lab pyramid unaware eager fringe sick camera series noodle toy crowd jeans select depth lounge';
+      const C = 'vault nominee cradle silk own frown throw leg cactus recall talent worry gadget surface shy planet purpose coffee drip few seven term squeeze educate';
+      const WANT = 'silent toe meat possible chair blossom wait occur this worth option bag nurse find fish scene bench asthma bike wage world quit primary indoor';
+      let r = await w.seedXorCombine([A, B, C]); if (r.mnemonic !== WANT || r.zero) fails.push('seed xor: Coldcard\'s 24-word example combines to its published result');
+      r = await w.seedXorCombine([C, A, B]); if (r.mnemonic !== WANT) fails.push('seed xor: the order of the parts does not matter');
+      const ws = w.xorWorksheet([A, B, C], WANT);
+      if (!ws.includes('XOR = 643 71C 450 544 12E 0C0 7B3 4C6 706 7EF 4DD 08C 4BC 2B5 2BD 604 0A8 070 0B1 7B1 7ED 57E 555 3xx') || !ws.includes('between gas [300] and lend [3FF]; the right one is indoor [398]') || !ws.startsWith('A = 5DC 7DE 420 07D')) fails.push('seed xor: the hand-check worksheet is Coldcard\'s');
+      const sha2 = (b) => nc.createHash('sha256').update(nc.createHash('sha256').update(b).digest()).digest();
+      for (const [mn, n] of [['legal winner thank year wave sausage worth useful legal winner thank yellow', 3], ['letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic avoid letter always', 2], ['zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo vote', 4]]) {
+        const e = Buffer.from(mnemonicToEntropy(mn, wordlist)), parts = [];
+        for (let i = 0; i < n - 1; i++) parts.push(sha2(Buffer.concat([Buffer.from('Batshitoshi '), e, Buffer.from(i + ' of ' + n + ' parts')])).subarray(0, e.length));
+        const last = Buffer.from(e); for (const p of parts) for (let j = 0; j < last.length; j++) last[j] ^= p[j]; parts.push(last);
+        const want = parts.map((p) => entropyToMnemonic(p, wordlist)), got = await w.seedXorSplit(mn, n, true);
+        if (got.join('|') !== want.join('|')) fails.push('seed xor: the not-random split makes the parts a Coldcard makes (' + mn.split(' ').length + ' words, ' + n + ' parts)');
+        const rnd = await w.seedXorSplit(mn, n, false); if (rnd.length !== n || rnd.join('|') === want.join('|') || (await w.seedXorCombine(rnd)).mnemonic !== mn) fails.push('seed xor: a random split combines back to the seed'); }
+      r = await w.seedXorCombine([A]); if (!/at least two parts/.test(r.error || '')) fails.push('seed xor: one part is refused');
+      r = await w.seedXorCombine([A, 'legal winner thank year wave sausage worth useful legal winner thank yellow']); if (!/same number of words/.test(r.error || '')) fails.push('seed xor: parts of different lengths are refused');
+      r = await w.seedXorCombine([A, A, B]); if (!/typed twice/.test(r.error || '')) fails.push('seed xor: a part typed twice is refused');
+      r = await w.seedXorCombine([A, B.replace('lion', 'lion lion')]); if (!r.error) fails.push('seed xor: a broken part is refused');
+      { let thrown = ''; try { await w.seedXorSplit('abandon '.repeat(11) + 'about', 2, false); } catch (e) { thrown = e.message; } if (!/all zeros/.test(thrown)) fails.push('seed xor: the all-zero test phrase is not split'); }
+      { const z = await w.seedXorCombine(['legal winner thank year wave sausage worth useful legal winner thank yellow', 'legal winner thank year wave sausage worth useful legal winner thank yellow'.replace('yellow', 'yellow')]); if (!/typed twice/.test(z.error || '')) fails.push('seed xor: two equal parts are refused'); }
+      $('phrase').value = 'legal winner thank year wave sausage worth useful legal winner thank yellow'; $('xorN').value = '3'; $('xorSame').checked = true; await w.seedXorUi('split');
+      if (!/^3 parts made \(the same parts a Coldcard makes/.test($('xorStatus').textContent) || !/PART C of 3/.test($('xorOut').textContent) || $('xorPrintRow').style.display === 'none') fails.push('seed xor: SPLIT shows the parts and the print button');
+      { let n = 0; const op = w.print; w.print = () => { n++; }; w.printXorParts(); const t = $('printOnly'); const pages = t.querySelectorAll('.ps-part').length; const txt = t.textContent; w.dispatchEvent(new w.Event('afterprint')); w.print = op;
+        if (n !== 1 || pages !== 3 || !/SEED XOR PART A OF 3/.test(txt) || !/ALL 3 parts are needed/.test(txt)) fails.push('seed xor: each part prints on its own page'); }
+      $('phrase').value = 'legal winner thank year wave sausage worth useful legal winner thank yellow x'; $('phrase').dispatchEvent(new w.Event('input')); if ($('xorOut').textContent !== '') fails.push('seed xor: new words clear the parts made from the old ones');
+      w.document.querySelector('input[name=xorMode][value=combine]').checked = true; w.xorModeChange(); $('xorIn').value = [A, B, C].join('\n'); await w.seedXorUi('combine');
+      if (!$('xorOut').textContent.includes('silent') || !/Combined 3 parts\. Master fingerprint/.test($('xorStatus').textContent)) fails.push('seed xor: COMBINE shows the seed and its fingerprint');
+      w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('xorOut').textContent !== '' || $('xorIn').value !== '' || w.eval('xorCtx') !== null) fails.push('seed xor: CLEAR ALL forgets the parts');
+      w.document.querySelector('input[name=xorMode][value=split]').checked = true; w.xorModeChange(); }
     w.watchCheck(); if ($('watchStatus').textContent !== 'NO SIGN FOUND of extensions, translators or other scripts on this page right now.' || !/^That does not make it safe\./.test($('watchOut').textContent)) fails.push('watch check: no sign found, never safe');
     { const s = w.document.createElement('script'); s.src = 'chrome-extension://x/i.js'; w.document.head.appendChild(s); s.remove();
       $('phrase').setAttribute('data-unknown-helper', '1'); w.document.body.appendChild(w.document.createElement('grammarly-extension')); w.document.body.appendChild(w.document.createElement('div')); w.ethereum = {}; await sleep(450);
@@ -4300,7 +4332,7 @@ const M = [
   ["wallet detective: two-factor seeds not sent to Electrum", "if(el && el !== \"standard\" && el !== \"SegWit\") return {error:", "if(false) return {error:"],
   ["wallet detective: Electrum passphrase as typed not tried", "    if(detRawDiffers(pw)) list.push(", "    if(false) list.push("],
   ["wipe: Wallet Detective kept", "  detClear();   // v2.8.0: the Wallet Detective\n", ""],
-  ["wallet detective: result kept when the words change", "() => { detClear(true); kcClear(true); lbClear(true); });", "() => { kcClear(true); lbClear(true); });"],
+  ["wallet detective: result kept when the words change", "() => { detClear(true); kcClear(true);", "() => { kcClear(true);"],
   ["wallet detective: unusual mix not named", "if(!f.usual) lines.push(", "if(false) lines.push("],
   ["watch check: extension elements ignored", "  if(t.includes(\"-\")) return", "  if(false) return"],
   ["watch check: removed scripts forgotten", "/^(SCRIPT|IFRAME|FRAME|OBJECT|EMBED|LINK|STYLE|FONT)$|-/.test(n.tagName)", "/^(IFRAME|FRAME|OBJECT|EMBED|LINK|STYLE|FONT)$|-/.test(n.tagName)"],
@@ -4419,7 +4451,7 @@ const M = [
   ["wallet file: private keys accepted", "if(new RegExp(\"[xyzYZtuvUV]prv[1-9A-HJ-NP-Za-km-z]{20,}\").test(t)) return", "if(false) return"],
   ["wallet file: the BSMS first address not checked", "lines.push(\"The record's first address \" + (a === f.firstAddr ? \"matches\" : \"does NOT match\")", "lines.push(\"The record's first address \" + (true ? \"matches\" : \"does NOT match\")"],
   ["wallet file: the number of keys still needed wrong", "need = f.m !== null ? f.m - mine.length : 0;", "need = f.m !== null ? f.m : 0;"],
-  ["wallet file: a new phrase keeps the old result", "detClear(true); kcClear(true); lbClear(true); });", "detClear(true); lbClear(true); });"],
+  ["wallet file: a new phrase keeps the old result", "detClear(true); kcClear(true); lbClear(true); if(xorCtx", "detClear(true); lbClear(true); if(xorCtx"],
   ["wallet file: CLEAR ALL leaves it", "  kcClear();   // v2.9.0: the wallet file check\n", ""],
   ["wallet file: the button never enabled", "  if(!kcBusy) document.getElementById(\"kcBtn\").disabled = !on;", "  if(!kcBusy) document.getElementById(\"kcBtn\").disabled = true;"],
   ["labels: change addresses not searched", "for(const chain of [0, 1]){\n        for(const r of await walletAddresses(seed, t, net, 0, chain, 0, LB_SCAN))", "for(const chain of [0]){\n        for(const r of await walletAddresses(seed, t, net, 0, chain, 0, LB_SCAN))"],
@@ -4431,7 +4463,19 @@ const M = [
   ["labels: the label text never printed", "const withText = document.getElementById(\"lbPrintText\").checked;", "const withText = false;"],
   ["labels: unspendable outputs not marked", "(r.spendable === false ? \"\\n   marked not to be spent\" : \"\")", "\"\""],
   ["labels: CLEAR ALL leaves them", "  lbClear();   // v2.9.0: the label file (private)\n", ""],
-  ["labels: a new phrase keeps the old result", "kcClear(true); lbClear(true); });", "kcClear(true); });"],
+  ["labels: a new phrase keeps the old result", "kcClear(true); lbClear(true); if(xorCtx", "kcClear(true); if(xorCtx"],
+  ["seed xor: the last part is not the XOR", "parts.push(xorBytes(e, ...parts));", "parts.push(xorBytes(e, ...parts.slice(1)));"],
+  ["seed xor: the not-random split differs from Coldcard", "new TextEncoder().encode(i + \" of \" + n + \" parts\")", "new TextEncoder().encode(i + \" of \" + n)"],
+  ["seed xor: random parts are not random", "const src = same ? concatBytes(", "const src = true ? concatBytes("],
+  ["seed xor: the parts not double-hashed", "parts.push((await sha256bytes(await sha256bytes(src))).slice(0, e.length));", "parts.push((await sha256bytes(src)).slice(0, e.length));"],
+  ["seed xor: one part is accepted", "if(parts.length < 2) return {error:", "if(parts.length < 1) return {error:"],
+  ["seed xor: parts of different lengths accepted", "if(new Set(parts.map(p => p.words)).size !== 1) return", "if(false) return"],
+  ["seed xor: a part typed twice accepted", "if(new Set(parts.map(p => p.mnemonic)).size !== parts.length) return", "if(false) return"],
+  ["seed xor: the worksheet shows the whole last word", "const xorRow = x.map((h, i) => i < n - 1 ? h : h.slice(0, known) + \"x\".repeat(3 - known));", "const xorRow = x;"],
+  ["seed xor: the all-zero phrase is split", "if(e.every(x => x === 0)) throw new Error(\"these words are all zeros", "if(false) throw new Error(\"these words are all zeros"],
+  ["seed xor: the parts not printed on separate pages", "const box = add(\"ps-part\", \"\");", "const box = add(\"\", \"\");"],
+  ["seed xor: CLEAR ALL keeps the parts", "  clearXor();   // v2.9.0: Seed XOR parts (secret)\n", ""],
+  ["seed xor: new words keep the old parts", "if(xorCtx && document.querySelector('input[name=xorMode]:checked').value === \"split\") clearXor(); });", "});"],
   ["heir mode: the Detective button goes nowhere", "onclick=\"heirGo('check', 'detBlock')\"", "onclick=\"heirGo('tools', 'detBlock')\""],
 ];
 
