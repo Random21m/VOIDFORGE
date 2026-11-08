@@ -1663,6 +1663,13 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div class="btn-row" style="margin-top:6px;"><button type="button" id="reuseBtn" onclick="checkKeyReuse()">CHECK KEYS</button><button type="button" class="secondary small" onclick="clearReuse()">CLEAR</button></div>
       <div class="status" id="reuseStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
     </details>
+    <details style="margin-top:8px;">
+      <summary>Find a typo in a descriptor<span class="tag tag-public">PUBLIC KEYS ONLY</span><small>A descriptor that will not import, or a checksum that does not match: which character is wrong.</small></summary>
+      <p class="hint" style="margin:8px 0 6px;">Paste the descriptor exactly as it was written down or copied, with its checksum (the 8 characters after <code>#</code>). One wrong character always changes the checksum, so VOIDFORGE tries every single change (a character replaced, two neighbors swapped, one left out or added) and shows the one that makes the descriptor match its checksum again, with every key valid. It only reads public keys; it cannot spend.</p>
+      <textarea id="typoIn" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Descriptor with its checksum" placeholder="wpkh([fp/84h/0h/0h]xpub.../0/*)#checksum"></textarea>
+      <div class="btn-row" style="margin-top:6px;"><button type="button" id="typoBtn" onclick="descTypoUi()">FIND THE TYPO</button><button type="button" class="secondary small" onclick="clearTypo()">CLEAR</button></div>
+      <div class="status" id="typoStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+    </details>
   </div>
   </div>
 
@@ -5584,7 +5591,7 @@ function matchRecorded(raw, fp0, a0, fp1, a1, hasPass, ids0, ids1){
   } else {
     const d = parseDescriptor(q);
     if(!d) return {ok:false, text:"Not recognized. This tool checks wpkh, sh(wpkh), pkh and tr descriptors with a key origin like [fingerprint/84h/0h/0h] and an xpub, as VOIDFORGE and Sparrow show them."};
-    if(!d.sumOk) return {ok:false, text:"NO MATCH: the descriptor checksum after # is wrong, so it was copied or typed incorrectly. Copy it again."};
+    if(!d.sumOk) return {ok:false, text:"NO MATCH: the descriptor checksum after # is wrong, so it was copied or typed incorrectly. Copy it again, or use Find a typo in a descriptor (EXTRA TOOLS) to see which character is wrong."};
     if(d.key.charAt(0) !== "x") return {ok:false, text:"Not recognized. Use the xpub form of the descriptor (for example wpkh([fingerprint/84h/0h/0h]xpub.../0/*)), as VOIDFORGE and Sparrow show it."};
     label = "descriptor";
     test = (f, a, ids) => { const c = !!ids && ids.fp === d.fp && ids.cands.find(c => c.xpub === d.key); if(c) hit = pathOf(c); return !!c; };
@@ -6842,7 +6849,7 @@ function wipeSeed(){
   dpClear(); dcClear();   // v2.7.0: the dice passphrase and the device dice check
   detClear();   // v2.8.0: the Wallet Detective
   seedSig = null; passKey = null; exCtx = null;   // fixes release: these held the rolls and the passphrases after a wipe (found by tests/memory.test.mjs)
-  clearPsbt(true); clearCompare(true); clearSig(); clearReuse();   // fixes release: public but private data (xpubs, descriptors, addresses, amounts)
+  clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo();   // fixes release: public but private data (xpubs, descriptors, addresses, amounts)
   for(const id of ["wpIn", "payA", "payB", "dlPaste"]){ const e = document.getElementById(id); if(e) e.value = ""; }
   dlSignedClear();
   payCompare();
@@ -7620,6 +7627,125 @@ async function verifyMessageUi(){
 }
 function clearSig(){ sigRun++; for(const id of ["sigAddr", "sigMsg", "sigSig"]) document.getElementById(id).value = ""; const st = document.getElementById("sigStatus"); st.textContent = ""; st.className = "status"; }
 ["sigAddr", "sigMsg", "sigSig"].forEach(id => document.getElementById(id).addEventListener("input", () => { sigRun++; const st = document.getElementById("sigStatus"); st.textContent = ""; st.className = "status"; }));
+// ===== Find a typo in a descriptor (v2.9.0). Public keys only. =====
+// The descriptor checksum (the 8 characters after #) is a BCH code: one wrong character always changes it, so a checksum that does not
+// match tells that the text was changed. This finds which single change (one character replaced, two neighbors swapped, one character
+// left out or added) makes the text match its checksum again, and keeps only fixes whose keys are also valid (Base58Check).
+const DESC_IN = "0123456789()[],'/*abcdefgh@:$%{}IJKLMNOPQRSTUVWXYZ&+-.;<=>?!^_|~ijklmnopqrstuvwxyzABCDEFGH`#\"\\ ";
+const DESC_GEN = [[0xf5, 0xdee51989], [0xa9, 0xfdca3312], [0x1b, 0xab10e32d], [0x37, 0x06b1677a], [0x64, 0x4d626ffd]];
+// The same checksum as descriptorChecksum, fast: the 40-bit state is kept as [top 8 bits, low 32 bits].
+function descStep(s, v){
+  const top = s[0] >>> 3; let hi = ((s[0] & 7) << 5) | (s[1] >>> 27), lo = ((s[1] << 5) | v) >>> 0;
+  for(let i = 0; i < 5; i++) if((top >> i) & 1){ hi ^= DESC_GEN[i][0]; lo = (lo ^ DESC_GEN[i][1]) >>> 0; }
+  return [hi, lo];
+}
+function descSyms(str){
+  const syms = []; let g = [];
+  for(const c of str){ const v = DESC_IN.indexOf(c); if(v < 0) return null; syms.push(v & 31); g.push(v >> 5); if(g.length === 3){ syms.push(g[0] * 9 + g[1] * 3 + g[2]); g = []; } }
+  if(g.length === 1) syms.push(g[0]); else if(g.length === 2) syms.push(g[0] * 3 + g[1]);
+  return syms;
+}
+function descPoly(syms){ let s = [0, 1]; for(const v of syms) s = descStep(s, v); for(let i = 0; i < 8; i++) s = descStep(s, 0); return [s[0], (s[1] ^ 1) >>> 0]; }
+const descText = s => { const val = s[0] * 4294967296 + s[1]; let out = ""; for(let i = 0; i < 8; i++) out += B32[Math.floor(val / 2 ** (5 * (7 - i))) % 32]; return out; };
+function descSum(str){ const y = descSyms(str); return y ? descText(descPoly(y)) : null; }
+function descSumState(t){ if(!/^[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{8}$/.test(t)) return null; let v = 0; for(const c of t) v = v * 32 + B32.indexOf(c); return [Math.floor(v / 4294967296), v % 4294967296]; }
+// Every valid extended public key in a text must pass Base58Check, have 78 bytes, a known version and a point on the curve.
+const DESC_KEY_RE = /\b[xyzYZtuvUV]pub[1-9A-HJ-NP-Za-km-z]{100,112}/g;
+async function descKeyOk(k){ try { await parseExtendedKey(k); return true; } catch(e) { return false; } }
+async function descKeysOk(str){ for(const k of str.match(DESC_KEY_RE) || []) if(!(await descKeyOk(k))) return false; return true; }
+// What one single typo could be. Returns {state, text}.
+async function descTypoFind(raw){
+  const t = String(raw || "").trim();
+  if(!t) return {state: "", text: "Paste a descriptor first, with its checksum (the 8 characters after #)."};
+  if(/\s/.test(t)) return {state: "bad", text: "A descriptor has no spaces or line breaks. Paste it as one line, exactly as your wallet app shows it."};
+  if(/[xyzYZtuvUV]prv[1-9A-HJ-NP-Za-km-z]{20,}/.test(t)) return {state: "bad", text: "This descriptor holds a PRIVATE key (xprv...). Never paste private keys here; use the watch-only (public) descriptor."};
+  const hashAt = t.lastIndexOf("#"), body = hashAt < 0 ? t : t.slice(0, hashAt), given = hashAt < 0 ? "" : t.slice(hashAt + 1);
+  for(let i = 0; i < body.length; i++) if(DESC_IN.indexOf(body[i]) < 0) return {state: "bad", text: "Character " + (i + 1) + " (“" + body[i] + "”) can never be in a descriptor: that is the typo, or the text was changed when it was copied."};
+  const keys = body.match(DESC_KEY_RE) || [], bad = [];
+  for(const k of keys) if(!(await descKeyOk(k))) bad.push(k);
+  if(hashAt < 0){
+    if(!bad.length) return {state: "", text: "This descriptor has no checksum (#...), so a typo cannot be found from it. Its " + keys.length + " key" + (keys.length === 1 ? " is" : "s are") + " valid. Copy the descriptor again with its checksum to check the whole text."};
+    return {state: "bad", text: "No checksum, so only the keys can be checked: " + (await descKeyFixes(bad))};
+  }
+  const right = descSum(body);
+  if(right === given){
+    if(bad.length) return {state: "bad", text: "The checksum matches, but a key is not valid. The descriptor was probably written with this mistake in it: " + (await descKeyFixes(bad))};
+    return {state: "ok", text: "NO TYPO: the checksum matches the descriptor" + (keys.length ? " and its " + keys.length + " key" + (keys.length === 1 ? " is" : "s are") + " valid" : "") + ". (One wrong character always changes the checksum.)"};
+  }
+  const target = descSumState(given);
+  const fixes = [];
+  // 1. the checksum itself was copied wrongly: the text is fine and only a few checksum characters differ
+  if(!bad.length){ const diff = [...right].filter((c, i) => c !== given[i]).length; if(diff <= 2) fixes.push({where: "checksum", text: "the typo is in the checksum: it should be #" + right + " (" + diff + " character" + (diff === 1 ? "" : "s") + " differ" + (diff === 1 ? "s" : "") + ")"}); }
+  // 2. one change in the text that gives the written checksum
+  if(target){
+    const cands = descTypoCandidates(body, target);
+    const seen = new Set();
+    for(const c of cands){ if(fixes.length >= 8) break; if(seen.has(c.str)) continue; seen.add(c.str); if(await descKeysOk(c.str)) fixes.push(c); }
+  }
+  if(!fixes.length) return {state: "bad", text: "NOT FOUND: no single typo explains it, so more than one character is wrong, or text is missing. Copy the descriptor again from the wallet app or the backup." + (bad.length ? " " + (await descKeyFixes(bad)) : "")};
+  const one = fixes.length === 1;
+  return {state: one ? "ok" : "warn", text: (one ? "FOUND: one change makes everything match: " : "Several single changes would match; check each against your backup:\n") + fixes.map(f => (one ? "" : "- ") + f.text).join("\n") + (one && fixes[0].str ? "\n\nThe corrected descriptor:\n" + fixes[0].str + "#" + given : "")};
+}
+// The linear part of the checksum: the effect of flipping one bit of one symbol, for each symbol position (from a zero state).
+function descEffects(n){
+  const E = new Array(n);
+  for(let j = n - 1; j >= 0; j--){
+    E[j] = [];
+    for(let b = 0; b < 5; b++){
+      if(j === n - 1){ let s = descStep([0, 0], 1 << b); for(let k = 0; k < 8; k++) s = descStep(s, 0); E[j].push(s); }
+      else E[j].push(descStep(E[j + 1][b], 0));
+    }
+  }
+  return E;
+}
+function descTypoCandidates(body, target){
+  const L = body.length, syms = descSyms(body), N = syms.length, E = descEffects(N), base = descPoly(syms);
+  const need = [(base[0] ^ target[0]) >>> 0, (base[1] ^ target[1]) >>> 0], out = [];
+  const val = i => DESC_IN.indexOf(body[i]);
+  const groupPos = G => (3 * G + 3 <= L) ? 4 * G + 3 : L + Math.floor(L / 3);
+  const groupSym = (vals, G) => { const a = vals(3 * G), b = 3 * G + 1 < L ? vals(3 * G + 1) : null, c = 3 * G + 2 < L ? vals(3 * G + 2) : null;
+    return c !== null ? (a >> 5) * 9 + (b >> 5) * 3 + (c >> 5) : b !== null ? (a >> 5) * 3 + (b >> 5) : (a >> 5); };
+  const add = (acc, pos, d) => { for(let b = 0; b < 5; b++) if((d >> b) & 1){ acc[0] ^= E[pos][b][0]; acc[1] = (acc[1] ^ E[pos][b][1]) >>> 0; } };
+  const effect = changes => {   // changes: Map(char index -> new DESC_IN value)
+    const acc = [0, 0], vals = i => changes.has(i) ? changes.get(i) : val(i), groups = new Set();
+    for(const [i, v] of changes){ add(acc, i + Math.floor(i / 3), (val(i) & 31) ^ (v & 31)); groups.add(Math.floor(i / 3)); }
+    for(const G of groups) add(acc, groupPos(G), groupSym(val, G) ^ groupSym(vals, G));
+    return acc;
+  };
+  const hit = a => a[0] === need[0] && a[1] === need[1];
+  const show = c => c === " " ? "a space" : "“" + c + "”";
+  for(let i = 0; i < L; i++) for(let v = 0; v < DESC_IN.length; v++){
+    if(v === val(i)) continue;
+    if(hit(effect(new Map([[i, v]])))){ const str = body.slice(0, i) + DESC_IN[v] + body.slice(i + 1); out.push({str, text: "character " + (i + 1) + ": " + show(body[i]) + " should be " + show(DESC_IN[v])}); }
+  }
+  for(let i = 0; i + 1 < L; i++){ if(body[i] === body[i + 1]) continue;
+    if(hit(effect(new Map([[i, val(i + 1)], [i + 1, val(i)]])))){ const str = body.slice(0, i) + body[i + 1] + body[i] + body.slice(i + 2); out.push({str, text: "characters " + (i + 1) + " and " + (i + 2) + " are swapped: " + show(body[i] + body[i + 1]) + " should be " + show(body[i + 1] + body[i])}); }
+  }
+  if(L <= 800){   // a character left out or added changes every symbol after it, so these are checked in full (fast enough for common descriptors)
+    const want = descText([target[0], target[1]]);
+    for(let i = 0; i < L; i++){ const str = body.slice(0, i) + body.slice(i + 1); if(descSum(str) === want) out.push({str, text: "character " + (i + 1) + " (" + show(body[i]) + ") should not be there"}); }
+    for(let i = 0; i <= L; i++) for(const c of DESC_IN){ const str = body.slice(0, i) + c + body.slice(i); if(descSum(str) === want) out.push({str, text: show(c) + " is missing before character " + (i + 1)}); }
+  }
+  return out;
+}
+// For keys that fail Base58Check: the single changed characters that make them valid.
+async function descKeyFixes(keys){
+  const parts = [];
+  for(const k of keys){
+    const found = [];
+    for(let i = 0; i < k.length && found.length < 4; i++) for(const c of B58){ if(c === k[i]) continue; const k2 = k.slice(0, i) + c + k.slice(i + 1); if(await descKeyOk(k2)) found.push("character " + (i + 1) + " of the key “" + k[i] + "” should be “" + c + "”"); }
+    parts.push("The key " + k.slice(0, 12) + "..." + k.slice(-6) + " is not valid" + (found.length ? (found.length === 1 ? ": " + found[0] + "." : "; possible fixes: " + found.join("; ") + ".") : ", and no single changed character fixes it."));
+  }
+  return parts.join(" ");
+}
+async function descTypoUi(){
+  const st = document.getElementById("typoStatus"), btn = document.getElementById("typoBtn");
+  st.className = "status"; st.textContent = "Searching..."; btn.disabled = true;
+  try { const r = await descTypoFind(document.getElementById("typoIn").value); st.className = "status " + r.state; st.textContent = r.text; }
+  catch(e) { st.className = "status bad"; st.textContent = "Could not check it: " + e.message; }
+  finally { btn.disabled = false; }
+}
+function clearTypo(){ document.getElementById("typoIn").value = ""; const st = document.getElementById("typoStatus"); st.textContent = ""; st.className = "status"; }
 function clearReuse(){ document.getElementById("reuseIn").value = ""; const st = document.getElementById("reuseStatus"); st.textContent = ""; st.className = "status"; }
 async function openWalletView(mnemonic, pass){
   clearWalletView();

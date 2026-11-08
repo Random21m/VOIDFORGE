@@ -2358,6 +2358,26 @@ async function probe(w, mutated, fast) {
       r = await run([['voidforge.html', FX.html], ['SHA256SUMS', FX.sums], ['SHA256SUMS.asc', FX.sigArmor]], w.eval('VF_KEY')); if (r.state !== 'bad' || !/another key/.test(r.verdict)) fails.push('signed release: the built-in VOIDFORGE key refuses a test-key signature');
       $('dlSigStatus').textContent = 'x'; $('dlSigOut').textContent = 'y'; $('dlSigOut').style.display = ''; w.clearAll(); await new Promise((r2) => setTimeout(r2, 20));
       if ($('dlSigStatus').textContent !== '' || $('dlSigOut').textContent !== '' || $('dlSigOut').style.display !== 'none') fails.push('signed release: CLEAR ALL empties the result'); }
+    { // v2.9.0: Find a typo in a descriptor
+      const D = "pkh([d34db33f/44h/0h/0h]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL/1/*)", full = D + '#gw2sk4e2';
+      const IN = w.eval('DESC_IN'); let disagree = 0;
+      for (const t of [D, '', 'a', 'ab', 'abc', 'abcd', "wsh(multi(1,xpub/0/*))", IN.slice(0, 95), IN.slice(3, 64) + IN.slice(1, 40)]) if (w.descSum(t) !== w.descriptorChecksum(t).split('#').pop()) disagree++;
+      if (disagree) fails.push('typo finder: the fast checksum equals the reference one (' + disagree + ' differ)');
+      const F = async (t) => w.descTypoFind(t);
+      let r = await F(full); if (r.state !== 'ok' || !/^NO TYPO/.test(r.text)) fails.push('typo finder: a right descriptor has no typo');
+      r = await F(full.replace('LkBUHQ', 'LkBUhQ')); if (!/^FOUND: .*character 69: “h” should be “H”/.test(r.text) || !r.text.includes(full)) fails.push('typo finder: one replaced character is found and corrected [' + r.text.slice(0, 120) + ']');
+      r = await F(full.replace('/44h/0h', '/44h/h0')); if (!/^FOUND: .*characters 19 and 20 are swapped/.test(r.text)) fails.push('typo finder: two swapped neighbors are found');
+      r = await F(full.replace('KqhM', 'KqM')); if (!/^FOUND: .*“h” is missing before character 76/.test(r.text)) fails.push('typo finder: a missing character is found');
+      r = await F(full.replace('[d34d', '[dd34d')); if (r.state !== 'ok' || !/^FOUND: .*character 6 \(“d”\) should not be there/.test(r.text)) fails.push('typo finder: an extra character is found, once');
+      r = await F(D + '#gw2sk4e3'); if (!/^FOUND: .*the typo is in the checksum: it should be #gw2sk4e2 \(1 character differs\)/.test(r.text)) fails.push('typo finder: a typo in the checksum is named');
+      r = await F(D); if (r.state !== '' || !/no checksum/.test(r.text) || !/key is valid/.test(r.text)) fails.push('typo finder: no checksum: only the keys are checked');
+      r = await F(D.replace('LkBUHQ', 'LkBUhQ')); if (r.state !== 'bad' || !/character 41 of the key “h” should be “H”/.test(r.text)) fails.push('typo finder: no checksum: a bad key gets its one-character fix [' + r.text.slice(0, 160) + ']');
+      r = await F(full.replace('xpub', 'xpüb')); if (r.state !== 'bad' || !/Character 27/.test(r.text)) fails.push('typo finder: a character no descriptor has is named');
+      r = await F(full.replace('/1/*', '/1/ *')); if (r.state !== 'bad' || !/no spaces/.test(r.text)) fails.push('typo finder: spaces are refused');
+      r = await F('wpkh(xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi/0/*)'); if (r.state !== 'bad' || !/PRIVATE key/.test(r.text)) fails.push('typo finder: a private key is refused');
+      r = await F(D.replace('d34db33f', 'd34db3ff') + '#gw2sk4e2'); if (!/^(FOUND|Several)/.test(r.text) || !/character 15/.test(r.text)) fails.push('typo finder: a typo in the fingerprint is found');
+      r = await F(full.replace('LkBUHQ', 'LkBUhq')); if (r.state !== 'bad' || !/^NOT FOUND/.test(r.text)) fails.push('typo finder: two typos are not "fixed" by a guess');
+      $('typoIn').value = full; $('typoStatus').textContent = 'x'; w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('typoIn').value !== '' || $('typoStatus').textContent !== '') fails.push('typo finder: CLEAR ALL empties it'); }
     w.watchCheck(); if ($('watchStatus').textContent !== 'NO SIGN FOUND of extensions, translators or other scripts on this page right now.' || !/^That does not make it safe\./.test($('watchOut').textContent)) fails.push('watch check: no sign found, never safe');
     { const s = w.document.createElement('script'); s.src = 'chrome-extension://x/i.js'; w.document.head.appendChild(s); s.remove();
       $('phrase').setAttribute('data-unknown-helper', '1'); w.document.body.appendChild(w.document.createElement('grammarly-extension')); w.document.body.appendChild(w.document.createElement('div')); w.ethereum = {}; await sleep(450);
@@ -4256,7 +4276,7 @@ const M = [
   ["fixes: PSBT v2 sequence default wrong", ": 0xffffffff, lockH:th", ": 0xfffffffe, lockH:th"],
   ["fixes: previous transaction not checked", "      if(id===tx.ins[i].txid){ const o=psbtParseTxOutputs(nw.val)", "      if(true){ const o=psbtParseTxOutputs(nw.val)"],
   ["fixes: wipe leaves rolls and passphrase in state", "  seedSig = null; passKey = null; exCtx = null;   // fixes release", "  // fixes release"],
-  ["fixes: wipe leaves the public boxes", "  clearPsbt(true); clearCompare(true); clearSig(); clearReuse();   // fixes release", "  // fixes release"],
+  ["fixes: wipe leaves the public boxes", "  clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo();   // fixes release", "  clearTypo();   // fixes release"],
   ["fixes: signed messages skip the gate", "async function verifyMessageUi(){\n  if(!gateOk()) return;", "async function verifyMessageUi(){"],
   ["fixes: old FOUND stays after an edit", "() => { resetAddrScan(); const st = document.getElementById(\"addrCheckStatus\"); st.textContent = \"\"; st.className = \"status\"; }", "resetAddrScan"],
   ["fixes: old MATCH stays after an edit", "document.getElementById(\"verifyRecorded\").addEventListener(\"input\", () => { const m = document.getElementById(\"verifyMatch\"); m.textContent = \"\"; m.className = \"status\"; });", ""],
@@ -4328,6 +4348,22 @@ const M = [
   ["signed release: two files of one kind accepted", "if(byKind[kind]) return {state: \"bad\"", "if(false) return {state: \"bad\""],
   ["signed release: CLEAR ALL leaves the result", "  dlSignedClear();\n", ""],
   ["signed release: the signing date not shown", "  lines.push(\"SHA256SUMS: signed by that key on \" + day(r.created) + \" (signature valid)\");", ""],
+  ["typo finder: the fast checksum top bits wrong", "const top = s[0] >>> 3;", "const top = s[0] >>> 2;"],
+  ["typo finder: the group symbol weights wrong (fast checksum)", "if(g.length === 3){ syms.push(g[0] * 9 + g[1] * 3 + g[2]); g = []; } }", "if(g.length === 3){ syms.push(g[0] * 3 + g[1] * 9 + g[2]); g = []; } }"],
+  ["typo finder: the final 1 not added", "return [s[0], (s[1] ^ 1) >>> 0]; }", "return [s[0], s[1]]; }"],
+  ["typo finder: replaced characters not tried", "  for(let i = 0; i < L; i++) for(let v = 0; v < DESC_IN.length; v++){", "  for(let i = 0; i < 0; i++) for(let v = 0; v < DESC_IN.length; v++){"],
+  ["typo finder: swaps not tried", "  for(let i = 0; i + 1 < L; i++){ if(body[i] === body[i + 1]) continue;", "  for(let i = 0; i + 1 < 0; i++){ if(body[i] === body[i + 1]) continue;"],
+  ["typo finder: a left-out character not tried", "for(let i = 0; i < L; i++){ const str = body.slice(0, i) + body.slice(i + 1);", "for(let i = 0; i < 0; i++){ const str = body.slice(0, i) + body.slice(i + 1);"],
+  ["typo finder: an added character not tried", "for(let i = 0; i <= L; i++) for(const c of DESC_IN){", "for(let i = 0; i < 0; i++) for(const c of DESC_IN){"],
+  ["typo finder: the group symbol of a change ignored", "    for(const G of groups) add(acc, groupPos(G), groupSym(val, G) ^ groupSym(vals, G));", ""],
+  ["typo finder: the effect of the last position wrong", "if(j === n - 1){ let s = descStep([0, 0], 1 << b); for(let k = 0; k < 8; k++) s = descStep(s, 0);", "if(j === n - 1){ let s = descStep([0, 0], 1 << b); for(let k = 0; k < 7; k++) s = descStep(s, 0);"],
+  ["typo finder: fixes with an invalid key kept", "if(seen.has(c.str)) continue; seen.add(c.str); if(await descKeysOk(c.str)) fixes.push(c);", "if(seen.has(c.str)) continue; seen.add(c.str); fixes.push(c);"],
+  ["typo finder: the same fix listed twice", "if(seen.has(c.str)) continue; seen.add(c.str);", ""],
+  ["typo finder: a checksum typo never named", "if(diff <= 2) fixes.push({where: \"checksum\"", "if(false) fixes.push({where: \"checksum\""],
+  ["typo finder: private keys accepted", "if(/[xyzYZtuvUV]prv[1-9A-HJ-NP-Za-km-z]{20,}/.test(t)) return", "if(false) return"],
+  ["typo finder: the bad character not named", "for(let i = 0; i < body.length; i++) if(DESC_IN.indexOf(body[i]) < 0) return", "for(let i = 0; i < body.length; i++) if(false) return"],
+  ["typo finder: a bad key without a checksum gets no fix", "if(await descKeyOk(k2)) found.push(", "if(false) found.push("],
+  ["typo finder: CLEAR ALL leaves it", "clearReuse(); clearTypo();   // fixes release", "clearReuse();   // fixes release"],
   ["heir mode: the Detective button goes nowhere", "onclick=\"heirGo('check', 'detBlock')\"", "onclick=\"heirGo('tools', 'detBlock')\""],
 ];
 
