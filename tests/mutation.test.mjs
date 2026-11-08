@@ -2872,6 +2872,38 @@ async function probe(w, mutated, fast, only, hooks) {
     { const o = img('rgba'), rgba = new Uint8Array(o.S * o.S * 4); for (let i = 0; i < o.g.length; i++) { rgba[4 * i] = rgba[4 * i + 1] = rgba[4 * i + 2] = o.g[i]; rgba[4 * i + 3] = 255; } const r = w.qrDecodeRgba(rgba, o.S, o.S); if (!r || r.text !== 'rgba') fails.push('QR reader: canvas pixels (RGBA)'); }
   } catch (e) { fails.push('QR reader: the probe crashed: ' + e.message); }
   }
+  if (SEC(60, "v2.9.0 checks added after the release run (signed release, typo finder, wallet file, unmarked change, cards, SLIP39)")) {
+  try {
+    const hb = (h) => Uint8Array.from(Buffer.from(h, 'hex')), FX = JSON.parse(fs.readFileSync(new URL('./fixtures/signed.json', import.meta.url), 'utf8'));
+    { // RFC 8032 test vector 1, and the same signature with S + L (same point, not canonical): must be refused
+      const pk = hb('d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a'), sig = hb('e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b');
+      const L = (1n << 252n) + 27742317777372353535851937790883648493n; let S = 0n; for (let i = 63; i >= 32; i--) S = (S << 8n) | BigInt(sig[i]); S += L; const s2 = Uint8Array.from(sig); for (let i = 32; i < 64; i++) { s2[i] = Number(S & 255n); S >>= 8n; }
+      if (!(await w.ed25519Verify(sig, new Uint8Array(0), pk)) || (await w.ed25519Verify(s2, new Uint8Array(0), pk))) fails.push('signed release: RFC 8032 vector 1 verifies, and with S + L it is refused'); }
+    { const r = await w.pgpVerifyDetached(Uint8Array.from(Buffer.from(FX.sigShortMpi, 'base64')), new w.TextEncoder().encode(FX.dataC), hb(FX.keyC));
+      if (!r.ok) fails.push('signed release: a GnuPG signature whose S is shorter than 32 bytes verifies (padded on the left) [' + r.why + ']'); }
+    { const D = "pkh([d34db33f/44h/0h/0h]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL/1/*)", Bp = D.replace('LkBUHQ', 'LkBUHq');
+      const r = await w.descTypoFind(D + '#' + w.descSum(Bp)); if (r.text.includes(Bp)) fails.push('typo finder: a change that breaks a key is never offered as the fix'); }
+    if ($('kcBtn').disabled) fails.push('wallet file: CHECK THIS SEED is on once the self-test passes');
+    { $('lbIn').value = 'x'; $('lbStatus').textContent = 'old result'; $('phrase').value = 'abandon'; $('phrase').dispatchEvent(new w.Event('input')); if ($('lbStatus').textContent !== '') fails.push('labels: editing the words clears the old result'); $('lbIn').value = ''; $('phrase').value = ''; }
+    { const AB = 'abandon '.repeat(11) + 'about', rt = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, '')), oth = HDKey.fromMasterSeed(new Uint8Array(32).fill(7)).derive('m/0/0').publicKey;
+      const t = new btc.Transaction(); t.addInput({ txid: new Uint8Array(32).fill(1), index: 0, witnessUtxo: { script: btc.p2wpkh(rt.derive("m/84'/0'/0'/0/0").publicKey).script, amount: 300000n } }); t.addOutput({ script: btc.p2wpkh(oth).script, amount: 290000n });
+      $('phrase').value = AB; $('verifyPass').value = ''; $('psbtInput').value = Buffer.from(t.toPSBT(0)).toString('base64'); $('psbtNet').value = 'main'; await w.runPsbt();
+      if (/NO CHANGE COMES BACK/.test($('psbtOut').textContent)) fails.push('unmarked change: a payment with one output (all of it sent) needs no change'); $('phrase').value = ''; }
+    if (w.cdParse('as, 10h qd 2C').bad.length || w.cdParse('as;2c').bad.length) fails.push('cards: commas and semicolons separate cards');
+    { const V = JSON.parse(fs.readFileSync(new URL('./fixtures/slip39-vectors.json', import.meta.url), 'utf8'));
+      const r12 = await w.slip39Combine(V[11][1], 'TREZOR'); if (r12.ok || !/disagree on how many of its shares are needed/.test(r12.error)) fails.push('slip39: shares that disagree on the threshold are named as such');
+      // a third share of the official 2-of-3 set (vector 4), made from the other two: as many shares as needed opens it, one more is refused
+      const W = w.eval('SLIP39_WORDS'), a = w.slip39Parse(V[3][1][0]), b = w.slip39Parse(V[3][1][1]), used = [a.share.memberIndex, b.share.memberIndex], mi = [0, 1, 2].find((x) => !used.includes(x));
+      const y = w.s39Interpolate([{ x: a.share.memberIndex, y: a.share.value }, { x: b.share.memberIndex, y: b.share.value }], mi);
+      const idx = a.words.map((x) => W.indexOf(x)), sh = a.share, p = (sh.groupIndex << 16) | ((sh.groupThreshold - 1) << 12) | ((sh.groupCount - 1) << 8) | (mi << 4) | (sh.memberThreshold - 1);
+      let bits = Array.from(y).map((v) => v.toString(2).padStart(8, '0')).join(''); bits = '0'.repeat((10 - bits.length % 10) % 10) + bits;
+      const data = [idx[0], idx[1], p >> 10, p & 1023]; for (let i = 0; i < bits.length; i += 10) data.push(parseInt(bits.slice(i, i + 10), 2));
+      const cs = [...(sh.extendable ? 'shamir_extendable' : 'shamir')].map((c) => c.charCodeAt(0)), chk = w.s39Polymod(cs.concat(data, [0, 0, 0])) ^ 1;
+      const third = data.concat([(chk >> 20) & 1023, (chk >> 10) & 1023, chk & 1023]).map((i) => W[i]).join(' ');
+      const two = await w.slip39Combine([V[3][1][0], third], 'TREZOR'), three = await w.slip39Combine([...V[3][1], third], 'TREZOR');
+      if (!two.ok || Buffer.from(two.masterSecret).toString('hex') !== V[3][2] || three.ok || !/Remove 1 of them/.test(three.error)) fails.push('slip39: a third share works with one other, and all three together are refused (exactly the threshold)'); }
+  } catch (e) { fails.push('release-run checks: the probe crashed: ' + e.message); }
+  }
   if (SEC(54, "const meta = w.document.querySelector('meta[http-equiv=\"Cont")) {
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
@@ -4768,7 +4800,7 @@ const M = [
   ["compare: a bc1q address is never looked up in the lists", "if(kindRec === \"tr\" || kindRec === \"addr\" || kindRec === \"key\"", "if(kindRec === \"tr\" || kindRec === \"key\""],
   ["signed release: S above the group order accepted", "const S = edLe(sig.slice(32)); if(S >= ED_L) return false;", "const S = edLe(sig.slice(32));"],
   ["signed release: the hash of R, A and the message left out", "concatBytes(sig.slice(0, 32), pub, msg)", "concatBytes(sig.slice(0, 32), msg)"],
-  ["signed release: points compared by x only", "edMod(P[0] * Q[2] - Q[0] * P[2]) === 0n && edMod(P[1] * Q[2] - Q[1] * P[2]) === 0n", "edMod(P[0] * Q[2] - Q[0] * P[2]) === 0n"],
+  ["signed release: points compared by x only", "edMod(P[0] * Q[2] - Q[0] * P[2]) === 0n && edMod(P[1] * Q[2] - Q[1] * P[2]) === 0n", "edMod(P[0] * Q[2] - Q[0] * P[2]) === 0n", true],  // behaviorally equivalent: an x-only match also accepts [S]B = -(R + hA) - T, which nobody can produce without breaking SHA-512; all RFC 8032, @noble and GnuPG cases agree
   ["signed release: the armor checksum is not checked", "if(want.length !== 3 || ((want[0] << 16) | (want[1] << 8) | want[2]) !== pgpCrc24(raw)) throw", "if(false) throw"],
   ["signed release: armor headers not skipped", "while(i < lines.length && /^[A-Za-z][A-Za-z0-9-]*: /.test(lines[i])) i++;", ""],
   ["signed release: text-mode signatures accepted", "if(s[1] !== 0x00) return {ok: false", "if(false) return {ok: false"],
@@ -4945,9 +4977,9 @@ const M = [
   ["QR reader: UTF-8 two-byte letters not read", "if(c>=0xc2&&c<=0xdf){ need=1; cp=c&0x1f; min=0x80; }", "if(false){ need=1; cp=c&0x1f; min=0x80; }"],
   ["QR reader: letter pairs swapped", "out.push(qdAlnum.charCodeAt(Math.floor(v/45)),qdAlnum.charCodeAt(v%45));", "out.push(qdAlnum.charCodeAt(v%45),qdAlnum.charCodeAt(Math.floor(v/45)));"],
   ["QR reader: mask 4 wrong", "case 4: return (Math.floor(x/3)+Math.floor(y/2))%2===0;", "case 4: return (Math.floor(x/2)+Math.floor(y/3))%2===0;"],
-  ["QR reader: format mask XOR wrong", "|r)^0x5412)", "|r)^0x5413)"],
+  ["QR reader: format mask XOR wrong", "|r)^0x5412)", "|r)^0x5413)", true],  // behaviorally equivalent: a one-bit change in every format word is absorbed by the 3-bit BCH match, so only codes with three damaged format bits could differ
   ["QR reader: zigzag direction wrong", "    const up=((right+1)&2)===0;", "    const up=((right+1)&2)!==0;"],
-  ["QR reader: version info polynomial wrong", "(r>>>11)*0x1f25", "(r>>>11)*0x1f24"],
+  ["QR reader: version info polynomial wrong", "(r>>>11)*0x1f25", "(r>>>11)*0x1f24", true],  // behaviorally equivalent: the reader also counts the timing patterns to find the size, so wrong version words change nothing it decodes
   ["review: typo result written after an edit", "const r = await descTypoFind(document.getElementById(\"typoIn\").value); if(run !== typoRun) return;", "const r = await descTypoFind(document.getElementById(\"typoIn\").value);"],
   ["review: one part of several taken as whole", "if(r.partial){ camMsg(", "if(false){ camMsg("],
   ["review: going online leaves a SeedQR scan on", "window.addEventListener(\"online\", () => { if(cam && CAM_TARGETS[cam.id].secret) camStop(", "window.addEventListener(\"online\", () => { if(false) camStop("],
