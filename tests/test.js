@@ -1709,7 +1709,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(w.scriptAddrNote(MAIN0)===null&&w.scriptAddrNote(TEST0)===null&&w.scriptAddrNote('bc1pss0zhytly75awhm6x2hhvd5lnzv3vssgrf9axfheq8ldyzn88ges79fler')===null,'a single-key SegWit or a Taproot address is not called a script address');
     $('checkAddr').value=MAIN0; await w.checkAddress(); ok(/^FOUND: this SegWit address is receive address #0/.test($('addrCheckStatus').textContent),'CHECK ADDRESS: a single-key address is still found');
     // password managers
-    { const ids=['passphrase','passphrase2','verifyPass','reforgeWordsPass','drillPass','pkIn']; ok(ids.every(id=>{ const e=$(id); return e.getAttribute('data-lpignore')==='true'&&e.getAttribute('data-1p-ignore')==='true'&&e.getAttribute('data-bwignore')==='true'&&e.getAttribute('data-form-type')==='other'; })&&[...r.d.querySelectorAll('input[type=password]')].every(e=>ids.includes(e.id)),'password managers: every secret box (passphrases, private key) tells password-manager extensions to ignore it'); }
+    { const ids=['passphrase','passphrase2','verifyPass','reforgeWordsPass','drillPass','pkIn','s39Pass']; ok(ids.every(id=>{ const e=$(id); return e.getAttribute('data-lpignore')==='true'&&e.getAttribute('data-1p-ignore')==='true'&&e.getAttribute('data-bwignore')==='true'&&e.getAttribute('data-form-type')==='other'; })&&[...r.d.querySelectorAll('input[type=password]')].every(e=>ids.includes(e.id)),'password managers: every secret box (passphrases, private key) tells password-manager extensions to ignore it'); }
     ok(['passphrase','passphrase2','verifyPass','reforgeWordsPass'].every(id=>$(id).getAttribute('autocomplete')==='new-password'),'passphrase boxes keep autocomplete="new-password", so a saved password is never filled in as a passphrase');
     r.w.close(); }
   { // v2.7.0: dice passphrase, check your device's dice (and the test card), two wallets side by side, Roll together. Expected values from @scure.
@@ -1794,7 +1794,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const r=load(); await r.ready(); const $=r.$, w=r.w, AB='abandon '.repeat(11)+'about';
     const EL_STD='cycle rocket west magnet parrot shuffle foot correct salt library feed song', EL_SW='bitter grass shiver impose acquire brush forget axis eager alone wine silver';
     const DF=async(words,pass,addr)=>{ $('phrase').value=words; $('verifyPass').value=pass; $('detAddr').value=addr; await w.detFind(); return {st:$('detStatus').textContent, cls:$('detStatus').className, out:$('detOut').textContent, shown:$('detOut').style.display!=='none'}; };
-    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.8.1','v2.8.1: the footer shows the new version');
+    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.9.0','v2.9.0: the footer shows the new version');
     ok(html.indexOf('<li><b>2.8.0</b>')>0&&html.indexOf('<li><b>2.8.0</b>')<html.indexOf('<li><b>2.7.0</b>'),'v2.8.0: the changelog lists 2.8.0 first');
     // --- Wallet Detective ---
     ok(!$('detBtn').disabled&&!$('detListBtn').disabled&&$('detStop').disabled&&$('detBtn').className===''&&$('detListBtn').className==='secondary small','Wallet Detective: FIND MY WALLET is the gold main button, enabled after the self-test; LIST and STOP are gray');
@@ -2017,7 +2017,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // --- no network / external references ---
   const src=html.replace(/const WORDLIST = \[.*?\];/s,'');
   ok(!/fetch\(|XMLHttpRequest|WebSocket|sendBeacon|<script[^>]+src=|<link(?! rel="icon" type="image\/[a-z+]+"(?: sizes="\d+x\d+")? href="data:)|@import/.test(src),'no network APIs or external resources');
-  const urls=[...src.matchAll(/https?:\/\/[^\s"'<>)]+/g)].map(m=>m[0]); ok(urls.every(u=>u.startsWith('https://gitlab.com/random21m/voidforge')||u==='https://random21m.gitlab.io/voidforge/'||u==='https://random21m.gitlab.io'),'the only URLs are the project\'s own GitLab addresses: '+urls.join(', '));
+  const urls=[...src.matchAll(/https?:\/\/[^\s"'<>)]+/g)].map(m=>m[0]); ok(urls.every(u=>u.startsWith('https://gitlab.com/random21m/voidforge')||u==='https://random21m.gitlab.io/voidforge/'||u==='https://random21m.gitlab.io'||u==='http://www.w3.org/2000/svg'),'the only URLs are the project\'s own GitLab addresses (and the SVG namespace name the card pictures use, which is never visited): '+urls.join(', '));
   ok(t.errors.length===0,'no uncaught page errors '+JSON.stringify(t.errors));
   console.log(failed?`\n${failed} CHECK(S) FAILED`:'\nALL CHECKS PASSED'); process.exit(failed?1:0);
 })();

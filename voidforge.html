@@ -1394,6 +1394,13 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <textarea id="wpIn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Public key or descriptor" placeholder="xpub..., zpub... or wpkh([...]xpub.../0/*)"></textarea>
       <div class="btn-row" style="margin-top:6px;"><button type="button" id="wpBtn" onclick="openWatchOnly()">OPEN WATCH-ONLY</button></div>
       <div class="status" id="wpStatus" aria-live="polite" style="word-break:break-word; margin-top:6px;"></div>
+<div id="camBox" class="cam-box" style="display:none;">
+  <div class="cam-ban">CAMERA ON: only this page sees the picture, and nothing is saved or sent. STOP CAMERA turns it off.</div>
+  <video id="camVideo" playsinline muted aria-label="Camera picture"></video>
+  <div class="status" id="camMsg" aria-live="polite" style="margin-top:6px;"></div>
+  <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" id="camStopBtn" onclick="camStop()">STOP CAMERA</button><button type="button" class="secondary small" id="camPhotoBtn" onclick="document.getElementById('camFile').click()">OPEN A PHOTO INSTEAD</button></div>
+  <input type="file" id="camFile" accept="image/*" multiple style="display:none;" aria-label="Photos of the QR code">
+</div>
     </div>
     <div class="sec-block" id="pkBlock">
       <h3 class="sec">Or open a private key, read only<span class="tag tag-secret">SECRET</span></h3>
@@ -1993,13 +2000,6 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
 </div>
 <div id="printOnly"></div>
 <div id="printQr"></div>
-<div id="camBox" class="cam-box" style="display:none;">
-  <div class="cam-ban">CAMERA ON: only this page sees the picture, and nothing is saved or sent. STOP CAMERA turns it off.</div>
-  <video id="camVideo" playsinline muted aria-label="Camera picture"></video>
-  <div class="status" id="camMsg" aria-live="polite" style="margin-top:6px;"></div>
-  <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" id="camStopBtn" onclick="camStop()">STOP CAMERA</button><button type="button" class="secondary small" id="camPhotoBtn" onclick="document.getElementById('camFile').click()">OPEN A PHOTO INSTEAD</button></div>
-  <input type="file" id="camFile" accept="image/*" multiple style="display:none;" aria-label="Photos of the QR code">
-</div>
 <div id="camTag" aria-hidden="true">CAMERA ON</div>
 <div id="startGate" role="dialog" aria-modal="true" aria-labelledby="sgT"><div class="sg-box"><div class="sg-body" tabindex="0" aria-label="Before you make real keys: things to know">
 <h2 id="sgT">Before you make real keys</h2>
@@ -2023,12 +2023,12 @@ const CD_SUIT_OF = {C: "\u2663", D: "\u2666", H: "\u2665", S: "\u2660", "\u2663"
 const CD_NAMES = {A: "ace", T: "10", J: "jack", Q: "queen", K: "king"}, CD_SUIT_NAMES = {"\u2663": "clubs", "\u2666": "diamonds", "\u2665": "hearts", "\u2660": "spades"};
 const CD_LETTER = {"\u2663": "C", "\u2666": "D", "\u2665": "H", "\u2660": "S"};
 // ================= SLIP39 (Shamir shares of words): CHECK and COMBINE only =================
-// SLIP39, https://github.com/satoshilabs/slips/blob/master/slip-0039.md (read at commit dea4917, 2026-10-30).
+// SLIP39: slip-0039.md in the satoshilabs/slips repository on GitHub (read at commit dea4917, 2026-10-30).
 // A SLIP39 backup is a set of shares of 20 or 33 words (other lengths are possible). Some of them, in
 // groups, rebuild the master secret, which is then decrypted with the passphrase ("" if none).
 // This code only reads shares: slip39Parse checks one share, slip39Combine rebuilds the master secret.
 // It never makes shares, because that needs random numbers and this page uses no browser randomness for secrets.
-// Checked against every test vector in https://github.com/trezor/python-shamir-mnemonic/blob/master/vectors.json.
+// Checked against every test vector in vectors.json of the trezor/python-shamir-mnemonic repository on GitHub.
 // Not constant-time (table lookups in GF(256)): meant for an offline machine.
 
 // The 1024 English words, from slip-0039/wordlist.txt in the spec repository
@@ -3808,7 +3808,6 @@ const DICT = [
   ["Sequence number", "A field in each input. Among other things it signals that a transaction can be replaced (RBF) and can set a relative timelock.", "", "Transactions"],
   ["SHA256SUMS", "A text file listing the fingerprint of the published VOIDFORGE file, so you can check your download is unchanged.", "Check your download.", "VOIDFORGE"],
   ["SHAKE256", "A hash function from the SHA-3 family that can give as many output bytes as you ask for. BIP85 uses it to turn a seed into any number of dice rolls.", "BIP85 dice rolls.", "Units & math"],
-  ["SLIP39", "SatoshiLabs' standard for Shamir backups: shares of 20 or 33 words from its own list of 1,024 words, in one or more groups, made by Trezor and Keystone. A set number of shares rebuilds the wallet. A wrong passphrase opens a different wallet with no error.", "EXTRA TOOLS: SLIP39 shares (Shamir backup).", "Keys & seeds"],
   ["Shamir's Secret Sharing", "Splitting a secret into shares so that a chosen number of them rebuild it and fewer reveal nothing. SLIP39 and Codex32 use it.", "EXTRA TOOLS: SLIP39 shares (Shamir backup).", "Keys & seeds"],
   ["Side channel", "A leak of secrets through things like timing, power use, sound or light instead of through the data itself.", "", "Privacy & security"],
   ["Sidechain", "A separate blockchain linked to Bitcoin, with its own rules, where coins can be moved to and from.", "", "Lightning & layers"],
@@ -3819,7 +3818,7 @@ const DICT = [
   ["Signet", "A test network with predictable behavior, run by a few trusted signers, used for testing software. Its coins have no value. Its addresses and keys have exactly the same form as testnet's (tb1..., tpub), so everything VOIDFORGE shows for TESTNET (practice coins only) works on signet too.", "The network menus: choose TESTNET (practice coins only).", "Network & mining"],
   ["Signing", "Using a private key to prove a transaction is authorized. VOIDFORGE never signs anything.", "", "Transactions"],
   ["Single point of failure", "One thing whose loss or theft ruins everything, such as a single paper copy of a seed.", "", "Privacy & security"],
-  ["SLIP39", "A Trezor standard for backing up a seed as several Shamir shares of words. Not interchangeable with BIP39 words. Newer Trezor devices make a single 20-word share by default.", "The Wallet Detective names 20- and 33-word shares; restore them with a Trezor.", "Standards (BIPs)"],
+  ["SLIP39", "A Trezor (SatoshiLabs) standard for backing up a seed as Shamir shares of 20 or 33 words, from its own list of 1,024 words (not BIP39 words). A set number of shares rebuilds the wallet; newer Trezors make a single 20-word share by default. A wrong passphrase opens a different wallet with no error.", "EXTRA TOOLS: SLIP39 shares (Shamir backup) checks and combines them; the Wallet Detective names them.", "Standards (BIPs)"],
   ["SLIP132", "The scheme that gives extended keys different starting letters (xpub, ypub, zpub) to hint at the address type.", "", "Standards (BIPs)"],
   ["Social engineering", "Tricking a person, not a computer, into handing over a secret or doing something unsafe.", "", "Privacy & security"],
   ["Soft fork", "A rule change that tightens the rules, so old nodes still accept the new blocks. SegWit and Taproot were soft forks.", "", "Network & mining"],

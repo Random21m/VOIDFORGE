@@ -138,9 +138,9 @@ async function makeShares(gt, groups, ms, passphrase, {ext = true, e = 0, id = 1
   p = lib.slip39Parse(w.slice(0, 19).join(" "));
   check("parse: 19 words is too short", !p.ok && /only 19 words/.test(p.error), p.error);
   p = lib.slip39Parse(w.concat(["acid"]).join(" "));
-  check("parse: 21 words is not a possible length", !p.ok && /21 words is not a possible length \(the nearest possible lengths are 20 or 22\)/.test(p.error), p.error);
+  check("parse: 21 words is not a possible length", !p.ok && /21 words is not a possible length\. Check for a missing or extra word/ .test(p.error), p.error);
   p = lib.slip39Parse(vectors[19][1][0].split(" ").concat(["acid"]).join(" "));
-  check("parse: 34 words is not a possible length", !p.ok && /34 words is not a possible length \(the nearest possible lengths are 33 or 35\)/.test(p.error), p.error);
+  check("parse: 34 words is not a possible length", !p.ok && /34 words is not a possible length\. Check for a missing or extra word/ .test(p.error), p.error);
   const swapped = w.slice(); [swapped[6], swapped[7]] = [swapped[7], swapped[6]];
   p = lib.slip39Parse(swapped.join(" "));
   check("parse: two swapped words fail the checksum", !p.ok && /checksum failed/.test(p.error), p.error);
