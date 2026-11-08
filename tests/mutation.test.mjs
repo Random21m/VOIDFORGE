@@ -2835,12 +2835,16 @@ async function probe(w, mutated, fast, only, hooks) {
     await w.camScan('phrase', $('cam-phrase')); if ($('camPhotoBtn').style.display !== 'none') fails.push('review: no OPEN A PHOTO for a SeedQR');
     onl = true; w.camTick(); if (w.document.body.classList.contains('cam-on') || stopped !== 1 || !/network came on/.test($('camMsg').textContent)) fails.push('review: a SeedQR scan stops when the network comes on');
     await w.camScan('wpIn', $('cam-wpIn')); if ($('camPhotoBtn').style.display === 'none') fails.push('review: OPEN A PHOTO for public QR codes'); w.camStop();
+    onl = false; await w.camScan('phrase', $('cam-phrase')); onl = true; w.dispatchEvent(new w.Event('online')); if (w.document.body.classList.contains('cam-on') || !/network came on/.test($('camMsg').textContent)) fails.push('review: going online stops a SeedQR scan at once');
+    onl = true; await w.camScan('wpIn', $('cam-wpIn')); $('wpIn').value = ''; w.camGot({ text: 'xpub-part', partial: true }); if ($('wpIn').value !== '' || !/one part of several/.test($('camMsg').textContent)) fails.push('review: a code that is one part of several is not taken as whole'); w.camStop();
     delete w.navigator.mediaDevices; Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => true });
     { w.wipeSeed(); words(12); w.setMethod('cards'); const C = 'KS 3D 9H AC TC 5S JD 2H 8C QS 4D 7H 6C AH TS 9D 3C KH 5D JS 2S 8H QC 4H 7S'; let asked = '';
       w.confirm = (m) => { asked = m; return false; }; $('cdCards').value = C + ' KS'; w.cdUpdate(); await w.cdGenerate(); w.confirm = oc;
       if (w.hasSeed() || !/comes up twice before the deck ran out/.test(asked)) fails.push('review: a card typed twice asks first, and No makes no seed'); w.cdClear(); w.setMethod('dice'); }
     { const fx = '0'.repeat(64) + ' *voidforge.html\n', r = await w.dlSignedCheck([{ name: 'SHA256SUMS', bytes: new w.TextEncoder().encode(fx) }], w.eval('VF_KEY'));
       if (/none of the three files/.test(r.verdict)) fails.push('review: a SHA256SUMS written by sha256sum -b is read'); }
+    { $('typoIn').value = 'wpkh(02' + '11'.repeat(32) + ')'; const pr = w.descTypoUi(); $('typoIn').value = 'pkh(02' + '11'.repeat(32) + ')'; $('typoIn').dispatchEvent(new w.Event('input', { bubbles: true })); await pr;
+      if ($('typoStatus').textContent !== '') fails.push('review: a typo search finishing after an edit shows nothing'); $('typoIn').value = ''; }
     if (/nearest possible/.test(w.slip39Parse(('academic ').repeat(21)).error || '') || !/21 words is not a possible length/.test(w.slip39Parse(('academic ').repeat(21)).error || '')) fails.push('review: the SLIP39 length message');
   } catch (e) { fails.push('review fixes: the probe crashed: ' + e.message); }
   w.confirm = oc; w.alert = oa;
@@ -2888,10 +2892,11 @@ async function detectOnce(mutated, fast, only) { const w = newPage(mutated); try
 // counts only if it is the same check that caught this mutation last time, or if that section fails again when run alone on a
 // fresh page (so one flaky check cannot mark a mutation as caught). Anything else goes on to step B, the full probe.
 async function detect(mutated, fast, plan, hint) {
-  const confirmed = async (a) => { if (!a.by || a.sec === undefined) return !!a.by; const c = await detectOnce(mutated, fast, new Set([a.sec])); return !!c.by && c.sec === a.sec; };
+  const sure = (a) => a.by === 'self-test gate' || a.by === 'page failed to run';   // these do not depend on the sections run
+  const confirmed = async (a) => { if (!a.by) return false; if (a.sec === undefined) return sure(a); const c = await detectOnce(mutated, fast, new Set([a.sec])); return !!c.by && c.sec === a.sec; };
   if (fast && hint) {
     const a = await detectOnce(mutated, fast, new Set([hint.sec]));
-    if (a.by && (a.sec === undefined || a.by === 'end-to-end probe (' + hint.msg + ')' || await confirmed(a))) return Object.assign(a, { step: 'A1' });
+    if (a.by && (sure(a) || (a.sec !== undefined && a.by === 'end-to-end probe (' + hint.msg + ')') || await confirmed(a))) return Object.assign(a, { step: 'A1' });
   }
   const rest = (plan || []).filter((x) => !hint || x !== hint.sec);
   if (fast && rest.length) {
@@ -4924,7 +4929,7 @@ const M = [
   ["review: timelock explainer skips the gate", "  if(!gateOk()) return;   // review: it works out fingerprints from the words typed above\n", ""],
   ["review: the words keep the timelock result", "lbClear(true); msxWipe();", "lbClear(true);"],
   ["review: timelock inputs keep the result", "for(const id of [\"msxIn\", \"msxHeight\"]) document.getElementById(id).addEventListener(\"input\", msxWipe);", ""],
-  ["review: descriptor typo result kept", "document.getElementById(\"typoIn\").addEventListener(\"input\", () => { const st = document.getElementById(\"typoStatus\"); st.textContent = \"\"; st.className = \"status\"; });", ""],
+  ["review: descriptor typo result kept", "document.getElementById(\"typoIn\").addEventListener(\"input\", () => { typoRun++; const st = document.getElementById(\"typoStatus\"); st.textContent = \"\"; st.className = \"status\"; });", ""],
   ["review: Seed XOR result kept", "for(const id of [\"xorIn\", \"xorRolls\", \"xorN\", \"xorFrom\"]) document.getElementById(id).addEventListener(", "for(const id of []) document.getElementById(id).addEventListener("],
   ["review: SLIP39 result kept", "for(const id of [\"s39In\", \"s39Pass\"]) document.getElementById(id).addEventListener(\"input\", () => { s39Run++; s39Wipe(); });", ""],
   ["review: Taproot key path called real", " alone, through the Taproot key path (if it is a real key: some wallets, such as Liana, put a key here that nobody can use; the wallet that made it can tell you)\"", " alone, through the Taproot key path\""],
@@ -4943,6 +4948,9 @@ const M = [
   ["QR reader: format mask XOR wrong", "|r)^0x5412)", "|r)^0x5413)"],
   ["QR reader: zigzag direction wrong", "    const up=((right+1)&2)===0;", "    const up=((right+1)&2)!==0;"],
   ["QR reader: version info polynomial wrong", "(r>>>11)*0x1f25", "(r>>>11)*0x1f24"],
+  ["review: typo result written after an edit", "const r = await descTypoFind(document.getElementById(\"typoIn\").value); if(run !== typoRun) return;", "const r = await descTypoFind(document.getElementById(\"typoIn\").value);"],
+  ["review: one part of several taken as whole", "if(r.partial){ camMsg(", "if(false){ camMsg("],
+  ["review: going online leaves a SeedQR scan on", "window.addEventListener(\"online\", () => { if(cam && CAM_TARGETS[cam.id].secret) camStop(", "window.addEventListener(\"online\", () => { if(false) camStop("],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
