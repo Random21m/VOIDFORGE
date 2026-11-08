@@ -716,7 +716,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
     const addr = w.spEncode(w.pubkeyBytes(BigInt('0x' + v.scan)), w.pubkeyBytes(BigInt('0x' + v.spend)), 'main');
     if (!v.addresses.includes(addr)) vbad++;
   }
-  R.ok(vbad === 0 && fx.vectors.length >= 30, `silent payments: ${fx.vectors.length} official BIP-352 receivers give the expected address (${vbad} mismatches)`);
+  R.ok(vbad === 0 && fx.vectors.length >= 30, `silent payments: ${fx.vectors.length} official BIP352 receivers give the expected address (${vbad} mismatches)`);
   let sbad = 0, sn = 0;
   for (const [net, coin, hrp] of [['main', 0, 'sp'], ['test', 1, 'tsp']]) for (let i = 0; i < 12; i++) {
     const seed = nc.randomBytes(i % 2 ? 64 : 32), acct = i % 4, root = HDKey.fromMasterSeed(seed);
@@ -925,7 +925,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
 }
 
 // 2l. v2.3.0 Verify a signed message: signatures made by independent code (@noble/curves for the classic format,
-// @scure/btc-signer signing the BIP-322 to_sign transaction for "simple"), checked by the page.
+// @scure/btc-signer signing the BIP322 to_sign transaction for "simple"), checked by the page.
 {
   const T = new TextEncoder(), cat = (...a) => { const o = new Uint8Array(a.reduce((x, y) => x + y.length, 0)); let i = 0; for (const y of a) { o.set(y, i); i += y.length; } return o; };
   const vint = (n) => n < 0xfd ? Uint8Array.of(n) : n <= 0xffff ? Uint8Array.of(0xfd, n & 255, n >> 8) : Uint8Array.of(0xfe, n & 255, (n >> 8) & 255, (n >> 16) & 255, n >>> 24);
@@ -949,7 +949,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
       if (kind === 'pkh-u') { n++; const r4 = await w.verifyMessage(btc.p2wpkh(pubC, N).address, msg, b64); if (r4.state !== 'invalid') { bad++; console.log('UNCOMPRESSED KEY ACCEPTED FOR SEGWIT'); } }
     }
   }
-  R.ok(bad === 0, `${n} classic (BIP-137) checks: signatures made by @noble/curves for every header and address type, mainnet and testnet, long and Unicode messages, are VALID; a changed message or another address is NOT VALID (${bad} mismatches)`);
+  R.ok(bad === 0, `${n} classic (BIP137) checks: signatures made by @noble/curves for every header and address type, mainnet and testnet, long and Unicode messages, are VALID; a changed message or another address is NOT VALID (${bad} mismatches)`);
   bad = 0; n = 0;
   const toSpendId = (msg, spk) => { const mh = tag('BIP0322-signed-message', T.encode(msg)); return bhex.encode(sha256(sha256(cat(le32(0), Uint8Array.of(1), new Uint8Array(32), le32(0xffffffff), Uint8Array.of(34, 0, 0x20), mh, le32(0), Uint8Array.of(1), new Uint8Array(8), vint(spk.length), spk, le32(0)))).reverse()); };
   const simpleSig = (priv, pay, msg, prefix, sighash) => {
@@ -964,13 +964,13 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
     const priv = secp256k1.utils.randomPrivateKey(), pubC = secp256k1.getPublicKey(priv, true), net = t % 4 === 3 ? 'test' : 'main', N = nets[net], msg = MSGS[t % MSGS.length];
     for (const kind of ['wpkh', 'tr', 'tr-all']) {
       const pay = kind === 'wpkh' ? btc.p2wpkh(pubC, N) : btc.p2tr(pubC.slice(1), undefined, N), sig = simpleSig(priv, pay, msg, t % 2 === 0, kind === 'tr-all' ? btc.SigHash.ALL : undefined);
-      n++; const r1 = await w.verifyMessage(pay.address, msg, sig); if (r1.state !== 'valid' || !/BIP-322 simple/.test(r1.text)) { bad++; console.log('BIP-322 NOT VALID', kind, net, pay.address, JSON.stringify(msg.slice(0, 20)), r1.text); }
-      n++; const r2 = await w.verifyMessage(pay.address, msg + '!', sig); if (r2.state !== 'invalid') { bad++; console.log('BIP-322 CHANGED MESSAGE NOT CAUGHT', kind); }
+      n++; const r1 = await w.verifyMessage(pay.address, msg, sig); if (r1.state !== 'valid' || !/BIP322 simple/.test(r1.text)) { bad++; console.log('BIP322 NOT VALID', kind, net, pay.address, JSON.stringify(msg.slice(0, 20)), r1.text); }
+      n++; const r2 = await w.verifyMessage(pay.address, msg + '!', sig); if (r2.state !== 'invalid') { bad++; console.log('BIP322 CHANGED MESSAGE NOT CAUGHT', kind); }
       const otherPay = kind === 'wpkh' ? btc.p2wpkh(secp256k1.getPublicKey(secp256k1.utils.randomPrivateKey(), true), N) : btc.p2tr(secp256k1.getPublicKey(secp256k1.utils.randomPrivateKey(), true).slice(1), undefined, N);
-      n++; const r3 = await w.verifyMessage(otherPay.address, msg, sig); if (r3.state !== 'invalid') { bad++; console.log('BIP-322 OTHER ADDRESS NOT CAUGHT', kind); }
+      n++; const r3 = await w.verifyMessage(otherPay.address, msg, sig); if (r3.state !== 'invalid') { bad++; console.log('BIP322 OTHER ADDRESS NOT CAUGHT', kind); }
     }
   }
-  R.ok(bad === 0, `${n} BIP-322 simple checks: signatures made by @scure/btc-signer (P2WPKH, Taproot with SIGHASH_DEFAULT and ALL, mainnet and testnet, with and without the smp prefix) are VALID; a changed message or another address is NOT VALID (${bad} mismatches)`);
+  R.ok(bad === 0, `${n} BIP322 simple checks: signatures made by @scure/btc-signer (P2WPKH, Taproot with SIGHASH_DEFAULT and ALL, mainnet and testnet, with and without the smp prefix) are VALID; a changed message or another address is NOT VALID (${bad} mismatches)`);
 }
 
 // 2m. v2.4.0 Explain an address: addresses made by @scure/btc-signer (P2WPKH, P2WSH, P2TR, P2PKH, P2SH; mainnet and testnet)

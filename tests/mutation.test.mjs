@@ -1494,8 +1494,8 @@ async function probe(w, mutated, fast, only, hooks) {
     $('wdFind').value = '3 A 7'; w.wdFind(); if ($('wdFound').textContent !== 'Word 680: female') fails.push('word finder: shows the word'); $('wdFind').value = ''; w.wdFind(); if ($('wdFound').textContent !== '') fails.push('word finder: clears the line'); }
   }
   if (SEC(37, "v2.3.0 Verify a signed message. Signatures made here by @noble/curves ")) {
-  try { // v2.3.0 Verify a signed message. Signatures made here by @noble/curves (classic) and @scure/btc-signer (BIP-322 simple),
-    // plus the official BIP-322 vectors and Bitcoin Core's classic vector.
+  try { // v2.3.0 Verify a signed message. Signatures made here by @noble/curves (classic) and @scure/btc-signer (BIP322 simple),
+    // plus the official BIP322 vectors and Bitcoin Core's classic vector.
     const T = new TextEncoder(), cat = (...a) => { const o = new Uint8Array(a.reduce((x, y) => x + y.length, 0)); let i = 0; for (const y of a) { o.set(y, i); i += y.length; } return o; };
     const vint = (n) => n < 0xfd ? Uint8Array.of(n) : Uint8Array.of(0xfd, n & 255, n >> 8);
     const le = (n) => Uint8Array.of(n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255);
@@ -1523,13 +1523,13 @@ async function probe(w, mutated, fast, only, hooks) {
     for (const [kind, pay, sh] of [['P2WPKH', btc.p2wpkh(pubC), undefined], ['P2WPKH testnet', btc.p2wpkh(pubC, btc.TEST_NETWORK), undefined], ['Taproot', btc.p2tr(pubC.slice(1)), undefined], ['Taproot SIGHASH_ALL', btc.p2tr(pubC.slice(1)), btc.SigHash.ALL], ['Taproot testnet', btc.p2tr(pubC.slice(1), undefined, btc.TEST_NETWORK), undefined]]) {
       for (const msg of ['Probe message', 'x'.repeat(300)]) {
         const wit = simple(pay, msg, sh);
-        if ((await V(pay.address, msg, 'smp' + b64(wit))) !== 'valid') fails.push('signed message: BIP-322 simple ' + kind + ' (' + msg.length + ' characters) is VALID');
-        if ((await V(pay.address, msg, b64(wit))) !== 'valid') fails.push('signed message: BIP-322 simple ' + kind + ' without the smp prefix is VALID');
-        if ((await V(pay.address, msg + '!', 'smp' + b64(wit))) !== 'invalid') fails.push('signed message: BIP-322 simple ' + kind + ' with a changed message is NOT VALID');
-        const bad = wit.slice(); bad[bad.length - 5] ^= 1; if ((await V(pay.address, msg, 'smp' + b64(bad))) !== 'invalid') fails.push('signed message: BIP-322 simple ' + kind + ' with one bit changed is NOT VALID');
+        if ((await V(pay.address, msg, 'smp' + b64(wit))) !== 'valid') fails.push('signed message: BIP322 simple ' + kind + ' (' + msg.length + ' characters) is VALID');
+        if ((await V(pay.address, msg, b64(wit))) !== 'valid') fails.push('signed message: BIP322 simple ' + kind + ' without the smp prefix is VALID');
+        if ((await V(pay.address, msg + '!', 'smp' + b64(wit))) !== 'invalid') fails.push('signed message: BIP322 simple ' + kind + ' with a changed message is NOT VALID');
+        const bad = wit.slice(); bad[bad.length - 5] ^= 1; if ((await V(pay.address, msg, 'smp' + b64(bad))) !== 'invalid') fails.push('signed message: BIP322 simple ' + kind + ' with one bit changed is NOT VALID');
       }
     }
-    { // a P2WPKH signature that is valid except for a high S, or a sighash other than ALL, is refused (BIP-322 rules)
+    { // a P2WPKH signature that is valid except for a high S, or a sighash other than ALL, is refused (BIP322 rules)
       const pay = btc.p2wpkh(pubC); let SM = 'S', wit = simple(pay, SM, undefined);
       for (let q = 0; q < 64 && (wit[2] !== 0x30 || wit[5] !== 32 || wit[3] > 69); q++) { SM = 'S' + q; wit = simple(pay, SM, undefined); }  // r of 32 bytes, so one more 0 byte is still a legal length
       const items = []; let i = 1;
@@ -1539,10 +1539,10 @@ async function probe(w, mutated, fast, only, hooks) {
       const derHigh = cat(Uint8Array.of(0x30, 2 + rl + 2 + hsb.length, 0x02, rl), r, Uint8Array.of(0x02, hsb.length), hsb);
       const mk = (sigItem) => cat(vint(2), vint(sigItem.length), sigItem, vint(items[1].length), items[1]);
       if ((await V(pay.address, SM, 'smp' + b64(mk(items[0])))) !== 'valid') fails.push('signed message: the rebuilt low-S signature is VALID');
-      if ((await V(pay.address, SM, 'smp' + b64(mk(cat(derHigh, Uint8Array.of(1)))))) !== 'invalid') fails.push('signed message: BIP-322 refuses a high-S signature');
-      if ((await V(pay.address, SM, 'smp' + b64(mk(cat(der, Uint8Array.of(3)))))) !== 'invalid') fails.push('signed message: BIP-322 refuses a sighash other than ALL');
+      if ((await V(pay.address, SM, 'smp' + b64(mk(cat(derHigh, Uint8Array.of(1)))))) !== 'invalid') fails.push('signed message: BIP322 refuses a high-S signature');
+      if ((await V(pay.address, SM, 'smp' + b64(mk(cat(der, Uint8Array.of(3)))))) !== 'invalid') fails.push('signed message: BIP322 refuses a sighash other than ALL');
       const loose = cat(Uint8Array.of(0x30, der[1] + 1), der.slice(2, 4), Uint8Array.of(0), der.slice(4)); loose[3] = rl + 1;
-      if ((await V(pay.address, SM, 'smp' + b64(mk(cat(loose, Uint8Array.of(1)))))) !== 'invalid') fails.push('signed message: BIP-322 refuses DER that is not strict');
+      if ((await V(pay.address, SM, 'smp' + b64(mk(cat(loose, Uint8Array.of(1)))))) !== 'invalid') fails.push('signed message: BIP322 refuses DER that is not strict');
       const trW = simple(btc.p2tr(pubC.slice(1)), 'T', btc.SigHash.ALL), tr0 = trW.slice(); tr0[tr0.length - 1] = 0; tr0[1] = 65;
       if ((await V(btc.p2tr(pubC.slice(1)).address, 'T', 'smp' + b64(tr0))) !== 'invalid') fails.push('signed message: Taproot refuses an explicit 0 sighash byte'); }
     { // forgeries a sloppy verifier would accept
@@ -1567,11 +1567,11 @@ async function probe(w, mutated, fast, only, hooks) {
       const uAddr = bech32.encode('bc', [0, ...bech32.toWords(ripemd160(nsha(pubU)))]);
       if ((await V(uAddr, 'U', b64(cat(Uint8Array.of(27 + us.recovery), bhex.decode(us.r.toString(16).padStart(64, '0')), bhex.decode(us.s.toString(16).padStart(64, '0')))))) !== 'invalid') fails.push('signed message: an uncompressed key is never valid for a bc1q address'); }
     // official vectors
-    if ((await V('bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l', 'Hello World', 'smpAkgwRQIhAOzyynlqt93lOKJr+wmmxIens//zPzl9tqIOua93wO6MAiBi5n5EyAcPScOjf1lAqIUIQtr3zKNeavYabHyR8eGhowEhAsfxIAMZZEKUPYWI4BruhAQjzFT8FSFSajuFwrDL1Yhy')) !== 'valid') fails.push('signed message: BIP-322 official P2WPKH vector');
-    if ((await V('bc1pss0zhytly75awhm6x2hhvd5lnzv3vssgrf9axfheq8ldyzn88ges79fler', 'No prefix fallback', 'AUCJYOwOjxYAvatTAGYaVlNXBVyFuc4MwNQkOuK2tl8xhfKDONd0NjfYyNSYcRqeCp8hsAnCEPHAVEkO9h6vbQ/R')) !== 'valid') fails.push('signed message: BIP-322 official Taproot vector');
+    if ((await V('bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l', 'Hello World', 'smpAkgwRQIhAOzyynlqt93lOKJr+wmmxIens//zPzl9tqIOua93wO6MAiBi5n5EyAcPScOjf1lAqIUIQtr3zKNeavYabHyR8eGhowEhAsfxIAMZZEKUPYWI4BruhAQjzFT8FSFSajuFwrDL1Yhy')) !== 'valid') fails.push('signed message: BIP322 official P2WPKH vector');
+    if ((await V('bc1pss0zhytly75awhm6x2hhvd5lnzv3vssgrf9axfheq8ldyzn88ges79fler', 'No prefix fallback', 'AUCJYOwOjxYAvatTAGYaVlNXBVyFuc4MwNQkOuK2tl8xhfKDONd0NjfYyNSYcRqeCp8hsAnCEPHAVEkO9h6vbQ/R')) !== 'valid') fails.push('signed message: BIP322 official Taproot vector');
     if ((await V('mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB', 'This is just a test message', 'INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0=')) !== 'valid') fails.push('signed message: Bitcoin Core classic vector');
     { const r = await w.verifyMessage('mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB', 'This is just a test message\n', 'INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0='); if (r.state !== 'valid' || r.variant !== true || !/^VALID, after a small change to the message: the key of mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB/.test(r.text)) fails.push('signed message: a trailing line break is accepted only with the warning'); }
-    { const r = await w.verifyMessage('mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB', 'This is just a test message', 'INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0='); if (r.variant || !/^VALID: the key of mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB signed exactly this message\.\nFormat: classic \(BIP-137\), Legacy \(m\.\.\. or n\.\.\.\)\./.test(r.text)) fails.push('signed message: VALID names the address and the testnet type'); }
+    { const r = await w.verifyMessage('mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB', 'This is just a test message', 'INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0='); if (r.variant || !/^VALID: the key of mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB signed exactly this message\.\nFormat: classic \(BIP137\), Legacy \(m\.\.\. or n\.\.\.\)\./.test(r.text)) fails.push('signed message: VALID names the address and the testnet type'); }
     if ((await V('1BquDSCmzyqhKnMXByiDQEFbY3DkMRi1XP', 'recid two', 'IQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEjRWeJCrze8=')) !== 'valid') fails.push('signed message: recovery id 2 (R.x = r + n)');
     { // Windows line breaks: signed with \r\n, typed with \n (a text box always gives \n), and the other way round
       const sgn = (m) => { const mb = T.encode(m), sg = secp256k1.sign(nsha(nsha(cat(T.encode('\x18Bitcoin Signed Message:\n'), vint(mb.length), mb))), priv); return b64(cat(Uint8Array.of(31 + sg.recovery), bhex.decode(sg.r.toString(16).padStart(64, '0')), bhex.decode(sg.s.toString(16).padStart(64, '0')))); };
@@ -1580,7 +1580,7 @@ async function probe(w, mutated, fast, only, hooks) {
       const r2 = await w.verifyMessage(A, 'one\r\ntwo', sgn('one\ntwo')); if (r2.state !== 'valid' || !r2.variant) fails.push('signed message: signed with \\n, typed with Windows line breaks, is VALID with the warning');
       const r3 = await w.verifyMessage(A, 'one two', sgn('one two\n')); if (r3.state !== 'valid' || !r3.variant) fails.push('signed message: signed with a final line break, typed without, is VALID with the warning');
       const r4 = await w.verifyMessage(A, 'one two', sgn('one two!')); if (r4.state !== 'invalid') fails.push('signed message: another text is still NOT VALID'); }
-    { // unprefixed BIP-322 full / proof of funds are CANNOT CHECK; a damaged classic signature is an error
+    { // unprefixed BIP322 full / proof of funds are CANNOT CHECK; a damaged classic signature is an error
       const full = 'AgAAAAABAfkBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
       if ((await V('bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l', 'x', full)) !== 'cannot') fails.push('signed message: an unprefixed full signature (a transaction) is CANNOT CHECK');
       if ((await V('bc1pss0zhytly75awhm6x2hhvd5lnzv3vssgrf9axfheq8ldyzn88ges79fler', 'x', 'cHNidP8BAAoCAAAAAAAAAAAA')) !== 'cannot') fails.push('signed message: an unprefixed proof of funds (a PSBT) is CANNOT CHECK');
@@ -1593,7 +1593,7 @@ async function probe(w, mutated, fast, only, hooks) {
       ['bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l', '', '', 'error', 'an empty signature'], ['bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0m', '', 'smpAA==', 'error', 'an address with a bad checksum'],
       ['BC1Q9VZA2E8X573NCZRLZMS0WVX3GSQJX7VAVGKX0L', 'Hello World', 'smpAkgwRQIhAOzyynlqt93lOKJr+wmmxIens//zPzl9tqIOua93wO6MAiBi5n5EyAcPScOjf1lAqIUIQtr3zKNeavYabHyR8eGhowEhAsfxIAMZZEKUPYWI4BruhAQjzFT8FSFSajuFwrDL1Yhy', 'valid', 'an upper-case bc1q address works'],
       ['bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0L', 'Hello World', 'smpAkgwRQIhAOzyynlqt93lOKJr+wmmxIens//zPzl9tqIOua93wO6MAiBi5n5EyAcPScOjf1lAqIUIQtr3zKNeavYabHyR8eGhowEhAsfxIAMZZEKUPYWI4BruhAQjzFT8FSFSajuFwrDL1Yhy', 'error', 'a mixed-case address is refused'],
-      ['1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN3', 'x', 'smpAA==', 'error', 'a 1... address with a bad checksum'], ['1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2', 'x', 'smpAA==', 'cannot', 'BIP-322 simple for 1... cannot be checked']])
+      ['1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN3', 'x', 'smpAA==', 'error', 'a 1... address with a bad checksum'], ['1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2', 'x', 'smpAA==', 'cannot', 'BIP322 simple for 1... cannot be checked']])
       { const st = await V(a, m, sg); if (st !== want) fails.push('signed message: ' + why + ' (got ' + st + ')'); }
     // the box on the page
     $('sigAddr').value = 'mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB'; $('sigMsg').value = 'This is just a test message'; $('sigSig').value = 'INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0=';
@@ -1702,7 +1702,7 @@ async function probe(w, mutated, fast, only, hooks) {
       if (!/^24 words from 100 dice rolls, Keystone dice rules \(each 6 counts as 0\), .*\|Strength: the words hold 256 bits of randomness \(about 258 bits went in/.test(sum({ count: 100, coin: false, keystone: true, words: 24 }))) fails.push('summary: Keystone rules, 24 words');
       if (!/^24 words from Word draw \(23 drawn words and 3 coin flips\), .*\|Strength: the words hold 256 bits of randomness$/.test(sum({ wd: true, words: 24 }))) fails.push('summary: Word draw');
       w.showQr('wZpub', 'public key'); pr('printShownQr'); if (!/^VOIDFORGE ACCOUNT PUBLIC KEY/.test(P.qr) || !P.qr.includes($('wZpub').textContent) || !/Address type: Native SegWit/.test(P.qr) || !/<svg/.test(P.qrh)) fails.push('QR prints: the key QR with its text');
-      w.showQr('spAddr', 'Silent Payment address'); pr('printShownQr'); if (!/^VOIDFORGE SILENT PAYMENT ADDRESS/.test(P.qr) || !/Address type: Silent Payment \(BIP-352\)/.test(P.qr)) fails.push('QR prints: Silent Payment');
+      w.showQr('spAddr', 'Silent Payment address'); pr('printShownQr'); if (!/^VOIDFORGE SILENT PAYMENT ADDRESS/.test(P.qr) || !/Address type: Silent Payment \(BIP352\)/.test(P.qr)) fails.push('QR prints: Silent Payment');
       $('wNet').value = 'test'; await w.refreshWatch(); w.showQr('wDescR', 'receive descriptor'); pr('printShownQr'); if (!/^VOIDFORGE RECEIVE DESCRIPTOR \(TESTNET\)/.test(P.qr) || !/\]tpub/.test(P.qr)) fails.push('QR prints: testnet named, with the testnet descriptor');
       w.showQr('wZpub', 'public key'); $('wNet').value = 'main'; const rw = w.refreshWatch(); const nq = pr('printShownQr'); await rw;
       if (nq !== 0 || w.eval('qrShown') !== null) fails.push('QR prints: changing the network hides the code at once, so an old code cannot print');
@@ -1810,9 +1810,9 @@ async function probe(w, mutated, fast, only, hooks) {
         ['abandon '.repeat(11) + 'about', 'status bad', /^These look like SEED WORDS/],
         ['wpkh([d34db33f/84h/0h/0h]xpub6/0/*)', 'status warn', /^This is a descriptor/],
         ['lnbc1pvjluezsp5zyg3zyg3zyg', 'status warn', /^This is a Lightning invoice/],
-        ['bitcoin:bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu?amount=1', 'status ok', /It was written as a payment request \(BIP-21\).*In the dictionary: BIP21 · Native SegWit · P2WPKH$/],
-        [spX(0, 'sp'), 'status ok', /^Silent Payment address \(BIP-352\) on Bitcoin mainnet/],
-        [spX(1, 'tsp'), 'status ok', /^Silent Payment address \(BIP-352\) on testnet/],
+        ['bitcoin:bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu?amount=1', 'status ok', /It was written as a payment request \(BIP21\).*In the dictionary: BIP21 · Native SegWit · P2WPKH$/],
+        [spX(0, 'sp'), 'status ok', /^Silent Payment address \(BIP352\) on Bitcoin mainnet/],
+        [spX(1, 'tsp'), 'status ok', /^Silent Payment address \(BIP352\) on testnet/],
         [spX(0, 'sp').slice(0, -1) + (spX(0, 'sp').endsWith('q') ? 'p' : 'q'), 'status bad', /^Not a valid Silent Payment address/],
         ['hello', 'status bad', /^Not a Bitcoin address VOIDFORGE recognizes/],
         ['1. legal 2. winner 3. thank 4. year 5. wave 6. sausage', 'status bad', /^These look like SEED WORDS/],
@@ -1826,12 +1826,12 @@ async function probe(w, mutated, fast, only, hooks) {
         ['lntbs1pjqqqqqpp5', 'status warn', /^This is a Lightning invoice/],
         ['WPKH([D34DB33F/84H/0H/0H]XPUB6/0/*)', 'status warn', /^This is a descriptor/],
         ['sortedmulti(2,xpub1,xpub2)', 'status warn', /^This is a descriptor/],
-        ['6PRVWUbkzzsbcVac2qwfssoUJAN1Xhrg6bNk8J7Nzm5H7kxEbn2Nh2ZoGg', 'status bad', /^This is a password-protected PRIVATE KEY \(BIP-38\)/],
+        ['6PRVWUbkzzsbcVac2qwfssoUJAN1Xhrg6bNk8J7Nzm5H7kxEbn2Nh2ZoGg', 'status bad', /^This is a password-protected PRIVATE KEY \(BIP38\)/],
         ['S6c56bnXQiBjk9mqSYE7ykVQ7NzrRy', 'status bad', /^This is a mini PRIVATE KEY/],
         ['S6c56bnXQiBjk9mqSYE7ykVQ7NzrRz', 'status bad', /^Not a valid address: the checksum does not match/],
         [bech32m.encode('sp', [0, ...bech32m.toWords(new Uint8Array(2))], 1023), 'status bad', /^Not a valid Silent Payment address: the checksum is right, but/],
         [bech32m.encode('sp', [31, ...bech32m.toWords(new Uint8Array(66))], 1023), 'status bad', /^Not a valid Silent Payment address: the checksum is right, but/],
-        [bech32m.encode('sp', [1, ...bech32m.toWords(new Uint8Array(70))], 1023), 'status ok', /^Silent Payment address \(BIP-352\).*Its payments cannot be looked up/],
+        [bech32m.encode('sp', [1, ...bech32m.toWords(new Uint8Array(70))], 1023), 'status ok', /^Silent Payment address \(BIP352\).*Its payments cannot be looked up/],
         ['wpkh([73c5da0a/84h/0h/0h]xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi/0/*)', 'status bad', /^This descriptor holds a PRIVATE key/],
         ['wpkh(KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn)', 'status bad', /^This descriptor holds a PRIVATE key/],
         ['wpkh(xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8/0/*)', 'status warn', /^This is a descriptor/],
@@ -2520,7 +2520,7 @@ async function probe(w, mutated, fast, only, hooks) {
       r = await C('hello'); if (r.state !== 'bad' || !/No wallet description found/.test(r.text)) fails.push('wallet file: plain text is refused');
       $('kcIn').value = desc; $('kcStatus').textContent = 'x'; $('phrase').value = AB; $('phrase').dispatchEvent(new w.Event('input')); if ($('kcStatus').textContent !== '' || $('kcIn').value !== desc) fails.push('wallet file: changing the words clears the old result, not the file');
       $('kcStatus').textContent = 'x'; w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('kcIn').value !== '' || $('kcStatus').textContent !== '') fails.push('wallet file: CLEAR ALL empties it'); }
-    { // v2.9.0: Read a label file (BIP-329): which labeled addresses are this seed's (addresses from @scure and btc-signer)
+    { // v2.9.0: Read a label file (BIP329): which labeled addresses are this seed's (addresses from @scure and btc-signer)
       const AB = 'abandon '.repeat(11) + 'about', root = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, '')), rootT = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, 'TREZOR'));
       const a3 = btc.p2wpkh(root.derive("m/84'/0'/0'/0/3").publicKey).address, t1 = btc.p2tr(root.derive("m/86'/0'/0'/1/1").publicKey.slice(1)).address, n99 = btc.p2pkh(root.derive("m/44'/0'/0'/1/99").publicKey).address;
       const a100 = btc.p2wpkh(root.derive("m/84'/0'/0'/0/100").publicKey).address, p5 = btc.p2wpkh(rootT.derive("m/84'/0'/0'/0/5").publicKey).address;
@@ -2534,7 +2534,7 @@ async function probe(w, mutated, fast, only, hooks) {
       r = await w.lbRead(L([{ type: 'addr', ref: p5, label: 'P' }]), AB, 'TREZOR'); if (!/receive address #5, Native SegWit .* with the passphrase/.test(w.lbLines(r.rows, true).join('\n'))) fails.push('labels: an address of the passphrase wallet is found with it');
       r = await w.lbRead(L([{ type: 'addr', ref: p5, label: 'P' }]), AB, ''); if (r.state !== 'warn' || !/None of the 1 labeled addresses/.test(r.text)) fails.push('labels: none matched is a warning');
       r = await w.lbRead(file, '', ''); if (r.state !== '' || !/Type the seed words above/.test(r.text) || w.lbLines(r.rows, true).some((l) => /this seed/.test(l))) fails.push('labels: without words, labels are listed but not matched');
-      r = await w.lbRead('hello\n', AB, ''); if (r.state !== 'bad' || !/No BIP-329 labels found: 1 line is not/.test(r.text)) fails.push('labels: a file without labels is refused');
+      r = await w.lbRead('hello\n', AB, ''); if (r.state !== 'bad' || !/No BIP329 labels found: 1 line is not/.test(r.text)) fails.push('labels: a file without labels is refused');
       if (w.lbLines(r.rows || [], false).length !== 0) fails.push('labels: no rows from a bad file');
       { const rr = await w.lbRead(file, AB, ''); w.eval('lbRows = ' + JSON.stringify(rr.rows)); $('lbPrintText').checked = false; let n = 0; const op = w.print; w.print = () => { n++; }; w.printLabels(); const t = $('printOnly').textContent; w.dispatchEvent(new w.Event('afterprint'));
         if (n !== 1 || !/^VOIDFORGE LABEL SHEET/.test(t) || t.includes('Savings') || !t.includes(a3) || !/the label text is left off/.test(t)) fails.push('labels: the printed sheet leaves the label text off by default');
@@ -2816,6 +2816,35 @@ async function probe(w, mutated, fast, only, hooks) {
     $('s39In').value = 'x'; $('s39Pass').value = 'y'; w.wipeSeed(); if ($('s39In').value !== '' || $('s39Pass').value !== '' || $('s39Status').textContent !== '') fails.push('slip39: wiping empties the shares and the passphrase');
   } catch (e) { fails.push('slip39: the probe crashed: ' + e.message); }
   }
+  if (SEC(58, "v2.9.0 review fixes: results cleared on edits, gates, camera rules, repeated cards")) {
+  const oc = w.confirm, oa = w.alert;
+  try {
+    const typed = (id, v) => { $(id).value = v; $(id).dispatchEvent(new w.Event(/^(xorN|xorFrom)$/.test(id) ? 'change' : 'input', { bubbles: true })); };
+    for (const [id, st] of [['s39In', 's39Status'], ['s39Pass', 's39Status'], ['xorIn', 'xorStatus'], ['xorRolls', 'xorStatus'], ['xorN', 'xorStatus'], ['typoIn', 'typoStatus'], ['msxIn', 'msxStatus'], ['msxHeight', 'msxStatus']]) {
+      $(st).textContent = 'old result'; typed(id, $(id).value); if ($(st).textContent !== '') fails.push('review: editing ' + id + ' clears the old result');
+    }
+    $('msxStatus').textContent = 'old result'; typed('phrase', $('phrase').value); if ($('msxStatus').textContent !== '') fails.push('review: editing the words clears the timelock result');
+    w.eval('selfTestState = "fail"'); $('msxIn').value = 'wsh(multi(1,02' + '11'.repeat(32) + '))'; $('msxStatus').textContent = ''; await w.msExplainUi();
+    w.eval('selfTestState = "pass"'); if ($('msxStatus').textContent !== '') fails.push('review: the timelock explainer waits for the self-test'); $('msxIn').value = '';
+    { const nums = '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0', k = '02' + '22'.repeat(32);
+      const leaf = 'pk(' + k.slice(2) + ')'; const r = await w.msExplain('tr(' + k.slice(2) + ',' + leaf + ')', null, '', '');
+      if (!/through the Taproot key path \(if it is a real key: some wallets, such as Liana, put a key here that nobody can use/.test(r.text)) fails.push('review: a Taproot internal key that is not the NUMS point is called real only if it is'); }
+    let stopped = 0; w.HTMLMediaElement.prototype.play = async () => {}; w.HTMLMediaElement.prototype.pause = () => {}; w.alert = () => {};
+    Object.defineProperty(w.navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => ({ getTracks: () => [{ stop() { stopped++; } }] }) } });
+    let onl = false; Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => onl });
+    await w.camScan('phrase', $('cam-phrase')); if ($('camPhotoBtn').style.display !== 'none') fails.push('review: no OPEN A PHOTO for a SeedQR');
+    onl = true; w.camTick(); if (w.document.body.classList.contains('cam-on') || stopped !== 1 || !/network came on/.test($('camMsg').textContent)) fails.push('review: a SeedQR scan stops when the network comes on');
+    await w.camScan('wpIn', $('cam-wpIn')); if ($('camPhotoBtn').style.display === 'none') fails.push('review: OPEN A PHOTO for public QR codes'); w.camStop();
+    delete w.navigator.mediaDevices; Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => true });
+    { w.wipeSeed(); words(12); w.setMethod('cards'); const C = 'KS 3D 9H AC TC 5S JD 2H 8C QS 4D 7H 6C AH TS 9D 3C KH 5D JS 2S 8H QC 4H 7S'; let asked = '';
+      w.confirm = (m) => { asked = m; return false; }; $('cdCards').value = C + ' KS'; w.cdUpdate(); await w.cdGenerate(); w.confirm = oc;
+      if (w.hasSeed() || !/comes up twice before the deck ran out/.test(asked)) fails.push('review: a card typed twice asks first, and No makes no seed'); w.cdClear(); w.setMethod('dice'); }
+    { const fx = '0'.repeat(64) + ' *voidforge.html\n', r = await w.dlSignedCheck([{ name: 'SHA256SUMS', bytes: new w.TextEncoder().encode(fx) }], w.eval('VF_KEY'));
+      if (/none of the three files/.test(r.verdict)) fails.push('review: a SHA256SUMS written by sha256sum -b is read'); }
+    if (/nearest possible/.test(w.slip39Parse(('academic ').repeat(21)).error || '') || !/21 words is not a possible length/.test(w.slip39Parse(('academic ').repeat(21)).error || '')) fails.push('review: the SLIP39 length message');
+  } catch (e) { fails.push('review fixes: the probe crashed: ' + e.message); }
+  w.confirm = oc; w.alert = oa;
+  }
   if (SEC(54, "const meta = w.document.querySelector('meta[http-equiv=\"Cont")) {
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
@@ -2832,19 +2861,19 @@ const newPage = (mutated) => loadPage(mutated, (win) => { win.__focus = []; win.
 const closePage = (w) => { for (const f of ['detStop', 'reforgeStop', 'animStop']) { try { if (typeof w[f] === 'function') w[f](); } catch (e) { /* page may be broken */ } } try { w.close(); } catch (e) { /* already closed */ } };
 async function detectOnce(mutated, fast, only) { const w = newPage(mutated); try { return await detectIn(w, mutated, fast, only); } finally { closePage(w); } }
 // Step A has two parts. A1: the section that caught this mutation in the last full run (tests/fixtures/mut-caught.json), run
-// alone, exactly as the map proved it passes on the unchanged page; any failure there counts. A2: the sections the map lists,
-// in probe order; a failure in the first of them counts at once (nothing but section 0 ran before it), a later one only if
-// that section also fails alone.
+// alone, exactly as the map proved it passes on the unchanged page. A2: the sections the map lists. A failure in step A
+// counts only if it is the same check that caught this mutation last time, or if that section fails again when run alone on a
+// fresh page (so one flaky check cannot mark a mutation as caught). Anything else goes on to step B, the full probe.
 async function detect(mutated, fast, plan, hint) {
-  if (fast && hint !== undefined) {
-    const a = await detectOnce(mutated, fast, new Set([hint]));
-    if (a.by) return Object.assign(a, { step: 'A1' });
+  const confirmed = async (a) => { if (!a.by || a.sec === undefined) return !!a.by; const c = await detectOnce(mutated, fast, new Set([a.sec])); return !!c.by && c.sec === a.sec; };
+  if (fast && hint) {
+    const a = await detectOnce(mutated, fast, new Set([hint.sec]));
+    if (a.by && (a.sec === undefined || a.by === 'end-to-end probe (' + hint.msg + ')' || await confirmed(a))) return Object.assign(a, { step: 'A1' });
   }
-  const rest = (plan || []).filter((x) => x !== hint);
+  const rest = (plan || []).filter((x) => !hint || x !== hint.sec);
   if (fast && rest.length) {
     const a = await detectOnce(mutated, fast, new Set(rest));
-    if (a.by && (a.sec === undefined || a.sec === 0 || a.sec === Math.min(...rest))) return Object.assign(a, { step: 'A2' });
-    if (a.by) { const c = await detectOnce(mutated, fast, new Set([a.sec])); if (c.by && c.sec === a.sec) return Object.assign(c, { step: 'A2' }); }
+    if (a.by && await confirmed(a)) return Object.assign(a, { step: 'A2' });
   }
   return Object.assign(await detectOnce(mutated, fast, null), { step: 'B' });
 }
@@ -4123,7 +4152,7 @@ const M = [
   ['signed message: compressed flag wrong', 'const h = b[0], recid = (h - 27) & 3, compressed = h >= 31;', 'const h = b[0], recid = (h - 27) & 3, compressed = h >= 35;'],
   ['signed message: uncompressed key allowed for SegWit', '    if(!compressed && type !== "pkh") return false;\n', ''],
   ['signed message: classic address not compared', '    return got === addr;\n', '    return true;\n'],
-  ['signed message: BIP-322 tag wrong', 'taggedHash("BIP0322-signed-message", new TextEncoder().encode(msg))', 'taggedHash("BIP0322-signed-message ", new TextEncoder().encode(msg))'],
+  ['signed message: BIP322 tag wrong', 'taggedHash("BIP0322-signed-message", new TextEncoder().encode(msg))', 'taggedHash("BIP0322-signed-message ", new TextEncoder().encode(msg))'],
   ['signed message: to_spend scriptSig wrong', 'Uint8Array.of(34, 0x00, 0x20), mh,', 'Uint8Array.of(34, 0x51, 0x20), mh,'],
   ['signed message: to_spend prevout index 0', 'new Uint8Array(32), le32(0xffffffff),', 'new Uint8Array(32), le32(0),'],
   ['signed message: to_sign output not OP_RETURN', 'outputs = concatBytes(new Uint8Array(8), Uint8Array.of(1, 0x6a));', 'outputs = concatBytes(new Uint8Array(8), Uint8Array.of(1, 0x6b));'],
@@ -4242,7 +4271,7 @@ const M = [
   ["public QR print: no name", ": QR_PRINT_NAMES[id] || \"PUBLIC KEY\")", ": \"PUBLIC KEY\")"],
   ["public QR print: text missing", "\"\\n\\n\" + t + \"\\n\\n\" + qrShown.foot + \"\\n\", \"\");", "\"\\n\\n\" + qrShown.foot + \"\\n\", \"\");"],
   ["public QR print: testnet not named", "|| \"PUBLIC KEY\") + (net === \"test\" ? \" (TESTNET)\" : \"\"),", "|| \"PUBLIC KEY\"),"],
-  ["public QR print: Silent Payment type", "id === \"spAddr\" ? \"Address type: Silent Payment (BIP-352)\"", "false ? \"Address type: Silent Payment (BIP-352)\""],
+  ["public QR print: Silent Payment type", "id === \"spAddr\" ? \"Address type: Silent Payment (BIP352)\"", "false ? \"Address type: Silent Payment (BIP352)\""],
   ["address QR print: request called an address", "const req = t !== addr, fp", "const req = false, fp"],
   ["address QR print: link missing", "(req ? \"\\nPayment link: \" + t : \"\")", "\"\""],
   ["address QR print: no guard", "  if(!t) return alert(\"Press QR next to an address first.\");\n", ""],
@@ -4452,7 +4481,7 @@ const M = [
   ["explain: long descriptor name", "if(/^[a-z]{2,12}\\(/i.test(t)){", "if(/^[a-z]{2,6}\\(/i.test(t)){"],
   ["explain: Silent Payment contents not checked", "if(v === 31 || (v === 0 ? bytes !== 66 : bytes < 66)) return", "if(v === 31) return"],
   ["explain: Silent Payment version 31", "if(v === 31 || (v === 0 ? bytes !== 66 : bytes < 66)) return", "if((v === 0 ? bytes !== 66 : bytes < 66)) return"],
-  ["explain: BIP-38 key not flagged", "if(raw.length === 39 && v === 1 && (raw[1] === 0x42 || raw[1] === 0x43)) return", "if(false) return"],
+  ["explain: BIP38 key not flagged", "if(raw.length === 39 && v === 1 && (raw[1] === 0x42 || raw[1] === 0x43)) return", "if(false) return"],
   ["explain: mini key not flagged", "if(/^S[1-9A-HJ-NP-Za-km-z]{21,29}$/.test(t) && (await sha256bytes(new TextEncoder().encode(t + \"?\")))[0] === 0) return", "if(false) return"],
   ["explain: any S text called a mini key", "&& (await sha256bytes(new TextEncoder().encode(t + \"?\")))[0] === 0) return", ") return"],
   // ---- v2.4.0 second review fixes ----
@@ -4753,7 +4782,7 @@ const M = [
   ["wallet file: private keys accepted", "if(new RegExp(\"[xyzYZtuvUV]prv[1-9A-HJ-NP-Za-km-z]{20,}\").test(t)) return", "if(false) return"],
   ["wallet file: the BSMS first address not checked", "lines.push(\"The record's first address \" + (a === f.firstAddr ? \"matches\" : \"does NOT match\")", "lines.push(\"The record's first address \" + (true ? \"matches\" : \"does NOT match\")"],
   ["wallet file: the number of keys still needed wrong", "need = f.m !== null ? f.m - mine.length : 0;", "need = f.m !== null ? f.m : 0;"],
-  ["wallet file: a new phrase keeps the old result", "detClear(true); kcClear(true); lbClear(true); if(xorCtx", "detClear(true); lbClear(true); if(xorCtx"],
+  ["wallet file: a new phrase keeps the old result", "detClear(true); kcClear(true); lbClear(true); msxWipe(); if(xorCtx", "detClear(true); lbClear(true); msxWipe(); if(xorCtx"],
   ["wallet file: CLEAR ALL leaves it", "  kcClear();   // v2.9.0: the wallet file check\n", ""],
   ["wallet file: the button never enabled", "  if(!kcBusy) document.getElementById(\"kcBtn\").disabled = !on;", "  if(!kcBusy) document.getElementById(\"kcBtn\").disabled = true;"],
   ["labels: change addresses not searched", "for(const chain of [0, 1]){\n        for(const r of await walletAddresses(seed, t, net, 0, chain, 0, LB_SCAN))", "for(const chain of [0]){\n        for(const r of await walletAddresses(seed, t, net, 0, chain, 0, LB_SCAN))"],
@@ -4765,7 +4794,7 @@ const M = [
   ["labels: the label text never printed", "const withText = document.getElementById(\"lbPrintText\").checked;", "const withText = false;"],
   ["labels: unspendable outputs not marked", "(r.spendable === false ? \"\\n   marked not to be spent\" : \"\")", "\"\""],
   ["labels: CLEAR ALL leaves them", "  lbClear();   // v2.9.0: the label file (private)\n", ""],
-  ["labels: a new phrase keeps the old result", "kcClear(true); lbClear(true); if(xorCtx", "kcClear(true); if(xorCtx"],
+  ["labels: a new phrase keeps the old result", "kcClear(true); lbClear(true); msxWipe(); if(xorCtx", "kcClear(true); msxWipe(); if(xorCtx"],
   ["seed xor: the last part is not the XOR", "parts.push(xorBytes(e, ...parts));", "parts.push(xorBytes(e, ...parts.slice(1)));"],
   ["seed xor: the not-random split differs from Coldcard", "new TextEncoder().encode(i + \" of \" + n + \" parts\")", "new TextEncoder().encode(i + \" of \" + n)"],
   ["seed xor: random parts are not random", "const src = rolls === null ? concatBytes(", "const src = true ? concatBytes("],
@@ -4865,10 +4894,21 @@ const M = [
   ["slip39: GF(256) with the wrong polynomial", "if(p & 0x100) p ^= 0x11b;", "if(p & 0x100) p ^= 0x11d;"],
   ["slip39: round number left out of the password", "s39Concat(new Uint8Array([i]), passBytes)", "s39Concat(new Uint8Array([0]), passBytes)"],
   ["slip39: addresses of account 1 shown", "seg = await watchOnlyFromSeed(sec, \"wpkh\", 0)", "seg = await watchOnlyFromSeed(sec, \"wpkh\", 1)"],
-  ["slip39: button never turned on", "  document.getElementById(\"s39Btn\").disabled = !on;   // v2.9.0: SLIP-39\n", ""],
+  ["slip39: button never turned on", "  document.getElementById(\"s39Btn\").disabled = !on;   // v2.9.0: SLIP39\n", ""],
   ["slip39: the passphrase ignored", "slip39Combine(lines, document.getElementById(\"s39Pass\").value)", "slip39Combine(lines, \"\")"],
   ["slip39: wiping keeps the shares", "  wdClear(); cdClear(); clearS39();\n", "  wdClear(); cdClear();\n"],
   ["slip39: a failed combine still shows a wallet", "if(!r.ok){ st.className = \"status bad\"; st.textContent = each.join(\"\\n\") + \"\\n\\nNot combined: \" + r.error; return; }", "if(!r.ok){ st.className = \"status bad\"; st.textContent = each.join(\"\\n\") + \"\\n\\nNot combined: \" + r.error; }"],
+  ["review: timelock explainer skips the gate", "  if(!gateOk()) return;   // review: it works out fingerprints from the words typed above\n", ""],
+  ["review: the words keep the timelock result", "lbClear(true); msxWipe();", "lbClear(true);"],
+  ["review: timelock inputs keep the result", "for(const id of [\"msxIn\", \"msxHeight\"]) document.getElementById(id).addEventListener(\"input\", msxWipe);", ""],
+  ["review: descriptor typo result kept", "document.getElementById(\"typoIn\").addEventListener(\"input\", () => { const st = document.getElementById(\"typoStatus\"); st.textContent = \"\"; st.className = \"status\"; });", ""],
+  ["review: Seed XOR result kept", "for(const id of [\"xorIn\", \"xorRolls\", \"xorN\", \"xorFrom\"]) document.getElementById(id).addEventListener(", "for(const id of []) document.getElementById(id).addEventListener("],
+  ["review: SLIP39 result kept", "for(const id of [\"s39In\", \"s39Pass\"]) document.getElementById(id).addEventListener(\"input\", () => { s39Run++; s39Wipe(); });", ""],
+  ["review: Taproot key path called real", " alone, through the Taproot key path (if it is a real key: some wallets, such as Liana, put a key here that nobody can use; the wallet that made it can tell you)\"", " alone, through the Taproot key path\""],
+  ["review: photos offered for a SeedQR", "document.getElementById(\"camPhotoBtn\").style.display = t.secret ? \"none\" : \"\";", ""],
+  ["review: a SeedQR scan goes on when the network comes on", "if(CAM_TARGETS[cam.id].secret && navigator.onLine){ camStop(", "if(false){ camStop("],
+  ["review: a repeated card not questioned", "if(b.again && !confirm(", "if(false && !confirm("],
+  ["review: sha256sum -b lines not read", "/^[0-9a-f]{64} [ *]\\S/m.test(t)", "/^[0-9a-f]{64}  \\S/m.test(t)"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
@@ -4941,7 +4981,7 @@ if (!process.env.MUT_NOPLAN) { try { const P = JSON.parse(fs.readFileSync(new UR
 // the last full run, as its message; the section is found by where that message is written in the probe.
 const HINT = {};
 if (PLAN) { try { const C = JSON.parse(fs.readFileSync(new URL('./fixtures/mut-caught.json', import.meta.url), 'utf8')), src = probe.toString(), at = [...src.matchAll(/SEC\((\d+), /g)].map((m) => [m.index, +m[1]]);
-  let n = 0; for (const [name, msg] of Object.entries(C)) { const i = src.indexOf(msg); if (i < 0 || src.indexOf(msg, i + 1) >= 0) continue; let sec = 0; for (const [p0, k] of at) { if (p0 < i) sec = k; else break; } if (sec > 0) { HINT[name] = sec; n++; } }
+  let n = 0; for (const [name, msg] of Object.entries(C)) { const i = src.indexOf(msg); if (i < 0 || src.indexOf(msg, i + 1) >= 0) continue; let sec = 0; for (const [p0, k] of at) { if (p0 < i) sec = k; else break; } if (sec > 0) { HINT[name] = { sec, msg }; n++; } }
   console.log('step A1 hints: ' + n); } catch (e) { console.log('no step A1 hints (tests/fixtures/mut-caught.json)'); } }
 
 const survivors = [];

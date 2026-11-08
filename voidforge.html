@@ -1049,7 +1049,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <details id="cdBox" data-g="1">
       <summary>Cards and hex<span class="tag tag-secret">SECRET</span></summary>
-      <details class="wd-how"><summary>How cards work</summary><p class="hint" style="margin:6px 0 0;">Use a full deck of 52 cards with the jokers taken out. Shuffle it well (at least seven riffle shuffles), lay the cards out face up and type them in order, such as <b>AS 10H QD 2C</b>: the rank (A, 2 to 10, J, Q, K) and then the suit (C, D, H or S; &spades; &hearts; &diams; &clubs; work too). A 12-word seed needs <b>25 cards</b>. A 24-word seed needs <b>the whole deck and then 6 more</b> from a new shuffle. VOIDFORGE writes the cards as A&spades; 2&clubs; T&diams; and so on and hashes that text with SHA-256, as Ian Coleman&rsquo;s BIP39 tool does (choose Cards and the number of words there, not raw entropy) and EntropyLab&rsquo;s Coleman symbols option, so you can check the words with either.</p></details>
+      <details class="wd-how"><summary>How cards work</summary><p class="hint" style="margin:6px 0 0;">Use a full deck of 52 cards with the jokers taken out. Shuffle it well (at least seven riffle shuffles), lay the cards out face up and type them in order, such as <b>AS 10H QD 2C</b>: the rank (A, 2 to 10, J, Q, K) and then the suit (C, D, H or S; &spades; &hearts; &diams; &clubs; work too). A 12-word seed needs <b>25 cards</b>. A 24-word seed needs <b>the whole deck and then 6 more</b> from a new shuffle. VOIDFORGE writes the cards as A&spades; 2&clubs; T&diams; and so on and hashes that text with SHA-256, as Ian Coleman&rsquo;s BIP39 tool does (choose Cards and the number of words there, not raw entropy, and type T for a 10) and EntropyLab&rsquo;s Coleman symbols option, so you can check the words with either.</p></details>
       <div id="cdGrid" class="cd-grid" role="group" aria-label="Tap the cards in the order they lie"></div>
       <textarea id="cdCards" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Your cards in order" placeholder="Your cards in order, such as AS 10H QD 2C" oninput="cdUpdate()"></textarea>
       <div id="cdCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
@@ -1188,7 +1188,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div class="wlabel" id="addrLblC">Change addresses (native SegWit, m/84'/0'/0'/1/0 to 1/9)</div>
       <ol id="chList" class="addr-list"></ol>
       <button class="secondary small" onclick="copyAddrList(this,'chList')">COPY ALL 10 CHANGE</button>
-      <div id="aqBox" class="qrbox"><div id="aqCap" class="hint"></div><div id="aqImg" class="qr-img"></div><details class="bip21" id="aqReq"><summary>Payment request (BIP-21)<small>Add an amount, label or message; the QR becomes a bitcoin: link.</small></summary><div class="b21-row"><input type="text" id="aqAmt" inputmode="decimal" placeholder="Amount in BTC (optional)" aria-label="Amount in BTC" autocomplete="off" spellcheck="false"><input type="text" id="aqLbl" placeholder="Label (optional)" aria-label="Label" autocomplete="off" spellcheck="false"><input type="text" id="aqMsg" placeholder="Message (optional)" aria-label="Message" autocomplete="off" spellcheck="false"></div><div class="hint" id="aqUri" style="word-break:break-all;"></div><button type="button" class="secondary small" onclick="copyReq(this,'aq')">COPY LINK</button></details><button type="button" class="secondary small" onclick="printAddrQr('aq')">PRINT THIS QR</button><button type="button" class="secondary small" onclick="hideAddrQr('aq')">HIDE QR</button></div>
+      <div id="aqBox" class="qrbox"><div id="aqCap" class="hint"></div><div id="aqImg" class="qr-img"></div><details class="bip21" id="aqReq"><summary>Payment request (BIP21)<small>Add an amount, label or message; the QR becomes a bitcoin: link.</small></summary><div class="b21-row"><input type="text" id="aqAmt" inputmode="decimal" placeholder="Amount in BTC (optional)" aria-label="Amount in BTC" autocomplete="off" spellcheck="false"><input type="text" id="aqLbl" placeholder="Label (optional)" aria-label="Label" autocomplete="off" spellcheck="false"><input type="text" id="aqMsg" placeholder="Message (optional)" aria-label="Message" autocomplete="off" spellcheck="false"></div><div class="hint" id="aqUri" style="word-break:break-all;"></div><button type="button" class="secondary small" onclick="copyReq(this,'aq')">COPY LINK</button></details><button type="button" class="secondary small" onclick="printAddrQr('aq')">PRINT THIS QR</button><button type="button" class="secondary small" onclick="hideAddrQr('aq')">HIDE QR</button></div>
       <p class="hint" style="margin:8px 0 0;">BIP84 native SegWit. Your wallet app gives out the receive addresses to be paid at, and sends the change from your own payments back to the change addresses. The small QR button on each row shows that address as a QR code. These are public addresses (no spending power), but anyone who sees them can link them to this wallet.</p>
       <div id="trBox" style="display:none; margin-top:10px;">
         <p class="hint" style="margin:0;"><b>Taproot (BIP86)</b>, <span id="addrLblT">receive m/86'/0'/0'/0/0 to 0/9 and change m/86'/0'/0'/1/0 to 1/9, addresses start with bc1p</span>. For wallets that use Taproot. This is a separate address type from the same seed; the zpub and descriptors in the Watch-only wallet box below are for the SegWit addresses unless you pick Taproot there.</p>
@@ -1295,13 +1295,13 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       </div>
       <details id="spBox" class="ms-sub" style="margin-top:12px;">
         <summary style="cursor:pointer; font-weight:600;">Silent Payment address<span class="tag tag-note">ADVANCED</span><span class="tag tag-ro">NEW</span></summary>
-        <p class="hint" style="margin:8px 0;">A <span class="term" tabindex="0" data-tip="A newer kind of Bitcoin address (BIP-352). You publish one address and reuse it; each sender secretly derives a fresh, different address from it, so people cannot link your payments by looking at the blockchain.">Silent Payment</span> address is one address you can give out again and again. Each sender makes a fresh hidden address from it, so nobody can link your payments together by address reuse.</p>
+        <p class="hint" style="margin:8px 0;">A <span class="term" tabindex="0" data-tip="A newer kind of Bitcoin address (BIP352). You publish one address and reuse it; each sender secretly derives a fresh, different address from it, so people cannot link your payments by looking at the blockchain.">Silent Payment</span> address is one address you can give out again and again. Each sender makes a fresh hidden address from it, so nobody can link your payments together by address reuse.</p>
         <div class="ms-test" style="background:#ffb020;">LIMITED WALLET SUPPORT. Few wallets can send to or receive at these addresses yet. Test with a small amount first.</div>
         <div class="wlabel" id="spLabel">Silent Payment address</div>
         <div class="wval" id="spAddr"></div>
         <button class="secondary small" onclick="copyWatch(this,'spAddr')">COPY ADDRESS</button>
         <button class="secondary small" onclick="showQr('spAddr','Silent Payment address')">SHOW QR</button>
-        <div class="hint" style="margin:8px 0 0;">Made from your seed at <code>m/352&rsquo;/coin&rsquo;/account&rsquo;</code> (BIP-352), so it follows the Network and Account choices above. It contains only public keys. To receive you need a wallet that supports Silent Payments and scans the blockchain for you, together with this same seed, so keep your seed backup safe. Your normal addresses and descriptors are not affected.</div>
+        <div class="hint" style="margin:8px 0 0;">Made from your seed at <code>m/352&rsquo;/coin&rsquo;/account&rsquo;</code> (BIP352), so it follows the Network and Account choices above. It contains only public keys. To receive you need a wallet that supports Silent Payments and scans the blockchain for you, together with this same seed, so keep your seed backup safe. Your normal addresses and descriptors are not affected.</div>
       </details>
       <details id="coreBox" class="ms-sub" style="margin-top:12px;">
         <summary style="cursor:pointer; font-weight:600;">Import into Bitcoin Core<span class="tag tag-note">ADVANCED</span></summary>
@@ -1426,7 +1426,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div class="btn-row" id="wvPager"><button type="button" class="secondary small" id="wvPrev" onclick="wvPage(-1)">PREVIOUS 10</button><button type="button" class="secondary small" id="wvNext" onclick="wvPage(1)">NEXT 10</button><button type="button" class="secondary small" onclick="copyAddrList(this,'wvList')">COPY THESE 10</button><button type="button" class="secondary small" id="wvSheetBtn" onclick="printRecoverySheet()">PRINT RECOVERY SHEET</button></div>
       <label class="wv-born" for="wvBorn">Wallet made on, if you know (printed on the recovery sheet)<input type="date" id="wvBorn"></label>
       <p class="hint" id="wvSheetHint" style="margin:6px 0 0;">The recovery sheet holds no words and no passphrase: only the fingerprint, address type, path and the first addresses, plus how to restore. Keep it with your paper backup so someone you trust can tell which wallet the words belong to.</p>
-      <div id="wvqBox" class="qrbox"><div id="wvqCap" class="hint"></div><div id="wvqImg" class="qr-img"></div><details class="bip21" id="wvqReq"><summary>Payment request (BIP-21)<small>Add an amount, label or message; the QR becomes a bitcoin: link.</small></summary><div class="b21-row"><input type="text" id="wvqAmt" inputmode="decimal" placeholder="Amount in BTC (optional)" aria-label="Amount in BTC" autocomplete="off" spellcheck="false"><input type="text" id="wvqLbl" placeholder="Label (optional)" aria-label="Label" autocomplete="off" spellcheck="false"><input type="text" id="wvqMsg" placeholder="Message (optional)" aria-label="Message" autocomplete="off" spellcheck="false"></div><div class="hint" id="wvqUri" style="word-break:break-all;"></div><button type="button" class="secondary small" onclick="copyReq(this,'wvq')">COPY LINK</button></details><button type="button" class="secondary small" onclick="printAddrQr('wvq')">PRINT THIS QR</button><button type="button" class="secondary small" onclick="hideAddrQr('wvq')">HIDE QR</button></div>
+      <div id="wvqBox" class="qrbox"><div id="wvqCap" class="hint"></div><div id="wvqImg" class="qr-img"></div><details class="bip21" id="wvqReq"><summary>Payment request (BIP21)<small>Add an amount, label or message; the QR becomes a bitcoin: link.</small></summary><div class="b21-row"><input type="text" id="wvqAmt" inputmode="decimal" placeholder="Amount in BTC (optional)" aria-label="Amount in BTC" autocomplete="off" spellcheck="false"><input type="text" id="wvqLbl" placeholder="Label (optional)" aria-label="Label" autocomplete="off" spellcheck="false"><input type="text" id="wvqMsg" placeholder="Message (optional)" aria-label="Message" autocomplete="off" spellcheck="false"></div><div class="hint" id="wvqUri" style="word-break:break-all;"></div><button type="button" class="secondary small" onclick="copyReq(this,'wvq')">COPY LINK</button></details><button type="button" class="secondary small" onclick="printAddrQr('wvq')">PRINT THIS QR</button><button type="button" class="secondary small" onclick="hideAddrQr('wvq')">HIDE QR</button></div>
       <div class="sec-block" id="wvSqBlock">
         <h3 class="sec">Paper, metal and SeedQR backups<span class="tag tag-secret">SECRET</span></h3>
         <p class="hint" style="margin:0 0 6px;">Make another backup of these words: print them, show or print their first 4 letters for a metal plate, or print a SeedQR. Print only on a trusted offline computer with a directly connected printer. The passphrase is never shown or printed.</p>
@@ -1471,9 +1471,9 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div class="status" id="kcStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
     </div>
     <div class="sec-block" id="lbBlock">
-      <h3 class="sec">Read a label file (BIP-329)<span class="tag tag-private">PRIVATE</span></h3>
-      <p class="hint" style="margin:0 0 6px;">Wallet apps such as Sparrow, Bitcoin Core and Nunchuk can export their labels (&ldquo;Rent, March&rdquo;, &ldquo;Savings&rdquo;) as a BIP-329 file. Paste it or choose it: VOIDFORGE lists every label and, with the seed words typed above, says which labeled addresses are this seed&rsquo;s (the first 100 receive and change addresses of each address type, account 0). Labels are private: they link coins to you. The file is only read here, never stored or sent.</p>
-      <textarea id="lbIn" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Label file (BIP-329, one JSON record per line)" placeholder='{"type": "addr", "ref": "bc1q...", "label": "Savings"}' oninput="lbClear(true)"></textarea>
+      <h3 class="sec">Read a label file (BIP329)<span class="tag tag-private">PRIVATE</span></h3>
+      <p class="hint" style="margin:0 0 6px;">Wallet apps such as Sparrow, Bitcoin Core and Nunchuk can export their labels (&ldquo;Rent, March&rdquo;, &ldquo;Savings&rdquo;) as a BIP329 file. Paste it or choose it: VOIDFORGE lists every label and, with the seed words typed above, says which labeled addresses are this seed&rsquo;s (the first 100 receive and change addresses of each address type, account 0). Labels are private: they link coins to you. The file is only read here, never stored or sent.</p>
+      <textarea id="lbIn" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Label file (BIP329, one JSON record per line)" placeholder='{"type": "addr", "ref": "bc1q...", "label": "Savings"}' oninput="lbClear(true)"></textarea>
       <input type="file" id="lbFileIn" accept=".jsonl,.json,.txt,text/plain,application/json" aria-label="Choose the label file" onchange="lbFile()" style="width:100%; margin-top:6px;">
       <label style="display:block; margin-top:6px; font-size:13px;"><input type="checkbox" id="lbPrintText"> Print the label text too (labels can be private)</label>
       <div class="btn-row" style="margin-top:8px;"><button type="button" id="lbBtn" onclick="lbUi()" disabled>READ LABELS</button><button type="button" class="secondary small" id="lbPrintBtn" onclick="printLabels()" disabled>PRINT LABEL SHEET</button><button type="button" class="secondary small" onclick="lbClear()">CLEAR</button></div>
@@ -1581,10 +1581,10 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <details id="sigBox">
       <summary>Verify a signed message<span class="tag tag-ro">READ ONLY</span><small>Check that the key of an address signed a message. This page never signs.</small></summary>
-      <p class="hint" style="margin:8px 0;">Paste the address, the message exactly as it was signed, and the signature from the wallet that made it. Two formats are checked: the classic one (BIP-137, from Bitcoin Core, Electrum, Sparrow, Trezor, Coldcard and others, for 1..., 3... and bc1q... addresses) and BIP-322 &ldquo;simple&rdquo; signatures for single-key bc1q... and bc1p... addresses. A whole signed-message block (BEGIN BITCOIN SIGNED MESSAGE) can go in the message box. <b>It only checks. It cannot sign and sends nothing.</b> Every character of the message counts, including spaces and line breaks.</p>
+      <p class="hint" style="margin:8px 0;">Paste the address, the message exactly as it was signed, and the signature from the wallet that made it. Two formats are checked: the classic one (BIP137, from Bitcoin Core, Electrum, Sparrow, Trezor, Coldcard and others, for 1..., 3... and bc1q... addresses) and BIP322 &ldquo;simple&rdquo; signatures for single-key bc1q... and bc1p... addresses. A whole signed-message block (BEGIN BITCOIN SIGNED MESSAGE) can go in the message box. <b>It only checks. It cannot sign and sends nothing.</b> Every character of the message counts, including spaces and line breaks.</p>
       <input type="text" id="sigAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Address that signed" placeholder="Address (1..., 3..., bc1q..., bc1p...)">
       <textarea id="sigMsg" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Message, exactly as signed" placeholder="The message, exactly as it was signed" style="margin-top:6px;"></textarea>
-      <textarea id="sigSig" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Signature (base64)" placeholder="Signature (base64; a BIP-322 one may start with smp)" style="margin-top:6px;"></textarea>
+      <textarea id="sigSig" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Signature (base64)" placeholder="Signature (base64; a BIP322 one may start with smp)" style="margin-top:6px;"></textarea>
       <div class="btn-row" style="margin-top:6px;"><button type="button" id="sigBtn" onclick="verifyMessageUi()" disabled>VERIFY SIGNATURE</button><button type="button" class="secondary small" onclick="clearSig()">CLEAR</button></div>
       <div class="status" id="sigStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
     </details>
@@ -1897,7 +1897,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <details>
       <summary>What SELF-TEST checks</summary>
-      <p>It runs automatically every time the page loads; if any test fails, seed generation is disabled and a red banner appears. Press SELF-TEST to see the full list. It checks: the BIP39 wordlist hash; official BIP39 entropy vectors (12 to 24 words); SeedSigner&rsquo;s published 50- and 99-roll dice examples and 50-roll fingerprint; coin-flip vectors from an independent reference implementation of SeedSigner&rsquo;s method; the <code>abandon&hellip;about</code> fingerprints (with and without the <code>TREZOR</code> passphrase); BIP32 test vector 1; the first receive address (the published BIP84 vector, a second vector from two independent libraries, and the BIP173 bech32 example); the watch-only zpub (published BIP84 vector and an independent-library vector), the descriptor checksum, a QR code matrix checked against an independent QR library, and the fingerprint picture checked against independent LifeHash code and Sparrow Wallet; passphrase normalization; RIPEMD-160 vectors; the phrase checker; and, added since, Keystone dice rules, the dice passphrase, coin-flip and word-draw helpers, Electrum seeds, every address type and its account keys on mainnet and testnet, Taproot (BIP86 and the BIP350 example), multisig cosigner keys and addresses (BIP48), Silent Payment addresses (BIP352), private key versions (SLIP-132), BIP85 child seeds, keys and passwords (published vectors), SeedQR and CompactSeedQR, signed messages (BIP-137 and BIP-322 vectors), the transaction inspector on a known PSBT, and Reforge. If any test fails, do not use that copy for real funds.</p>
+      <p>It runs automatically every time the page loads; if any test fails, seed generation is disabled and a red banner appears. Press SELF-TEST to see the full list. It checks: the BIP39 wordlist hash; official BIP39 entropy vectors (12 to 24 words); SeedSigner&rsquo;s published 50- and 99-roll dice examples and 50-roll fingerprint; coin-flip vectors from an independent reference implementation of SeedSigner&rsquo;s method; the <code>abandon&hellip;about</code> fingerprints (with and without the <code>TREZOR</code> passphrase); BIP32 test vector 1; the first receive address (the published BIP84 vector, a second vector from two independent libraries, and the BIP173 bech32 example); the watch-only zpub (published BIP84 vector and an independent-library vector), the descriptor checksum, a QR code matrix checked against an independent QR library, and the fingerprint picture checked against independent LifeHash code and Sparrow Wallet; passphrase normalization; RIPEMD-160 vectors; the phrase checker; and, added since, Keystone dice rules, the dice passphrase, coin-flip and word-draw helpers, Electrum seeds, every address type and its account keys on mainnet and testnet, Taproot (BIP86 and the BIP350 example), multisig cosigner keys and addresses (BIP48), Silent Payment addresses (BIP352), private key versions (SLIP132), BIP85 child seeds, keys and passwords (published vectors), SeedQR and CompactSeedQR, signed messages (BIP137 and BIP322 vectors), the transaction inspector on a known PSBT, Reforge, Ed25519 signatures (RFC 8032 vectors) and the release key&rsquo;s fingerprint, a playing-card seed (as Ian Coleman&rsquo;s BIP39 tool makes it) and SLIP39 shares (an official test vector). If any test fails, do not use that copy for real funds.</p>
       <p><b>What the self-test cannot catch:</b> it only runs known answers through this same file, so it can miss a bug on inputs it does not cover, and a tampered file could simply fake a pass. It does not replace checking the file&rsquo;s SHA256 against the release, and it does not replace comparing your words and fingerprint in a second independent tool. The network tag at the top reads the browser&rsquo;s online flag only; it cannot prove the machine is air-gapped.</p>
     </details>
     <details>
@@ -1917,14 +1917,15 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details>
       <summary>Changelog</summary>
       <ul>
+        <li><b>2.9.0</b> &mdash; <b>More ways in, more ways to check.</b> (1) <b>Cards &amp; hex</b> in MAKE A SEED: tap real-looking cards in the order you dealt them (each one flips to the VOIDFORGE back once used), or type them; 25 cards make 12 words, a whole deck and 6 more make 24. The cards are hashed exactly as Ian Coleman&rsquo;s BIP39 tool and EntropyLab do, so either can check the words; PRINT CARD SHEET gives boxes to write them in. Or type 32 or 64 hex digits (a 16-sided die) used as they are. Every way to make a seed now has the same FORGE SEED button. (2) <b>SCAN</b> buttons read QR codes with the camera: a SeedQR (only while offline), a watch-only key, an address, or a transaction, including moving QR codes (UR and BBQr); a red CAMERA ON bar shows while it is on, and it stops as soon as a code is read. OPEN A PHOTO INSTEAD works without a camera. (3) EXTRA TOOLS: <b>Check a signed release</b> (as Sparrow does), <b>Seed XOR</b> (as Coldcard does), <b>SLIP39 shares</b> (check and combine a Trezor or Keystone Shamir backup), <b>Find a typo in a descriptor</b> and <b>Explain an inheritance or timelock wallet</b>. CHECK A BACKUP: <b>Is this seed in my wallet file?</b> and <b>Read a label file</b> (BIP329). The transaction inspector finds this wallet&rsquo;s change even when it is not marked. (4) The dictionary names signet next to testnet, and THREAT_MODEL.md says what VOIDFORGE protects and what it cannot.</li>
         <li><b>2.8.1</b> &mdash; <b>Fixes from a full review and the new tests.</b> (1) <b>Inspect a transaction</b>: an output marked as change is no longer trusted. The mark is written by whoever made the PSBT and a fingerprint is public, so with the wallet&rsquo;s words typed in CHECK A BACKUP the page now makes the key at the given path and checks that the output really pays it (&ldquo;CHANGE, CHECKED&rdquo;); a mark that names this wallet but pays someone else says &ldquo;Do not sign&rdquo; and fails the verdict; without the words a mark is called unchecked. PSBT version 2 (Bitcoin Core&rsquo;s default from version 32) is read, and a full previous transaction that is not the one being spent is caught. (2) CLEAR ALL and auto-clear also wipe the roll string and passphrases the page kept to notice edits, and the transaction, signature, descriptor and pay-check boxes. (3) Checking a signed message and setting up a multisig wallet wait for the self-test like everything else, and the self-test has new checks for watch-only keys, multisig, Silent Payments and key versions. (4) An old FOUND or MATCH is cleared when the address, words or recorded value change; turning practice mode on or off clears VERIFY&rsquo;s lines, the child seed, the device dice check and the transaction tools. (5) <b>Check your device&rsquo;s dice</b> says that a Coldcard refuses rolls where one face is more than 30% of them (Keystone only warns). (6) VERIFY recognizes testnet values (tb1p, 2&hellip;, m&hellip;, n&hellip;, tpub, upub, vpub); Uprv keys are known as private keys; a roll typed while FORGE works clears the new words at once; the made words are kept in memory, not read back from the screen. (7) <b>Addresses: the same 10 + 10 everywhere.</b> After FORGE, in the Watch-only box, on the summary sheet and on the recovery sheet, the page now lists the first 10 receive and the first 10 change addresses (Taproot too after FORGE), as Open this wallet already showed 10 at a time. VERIFY&rsquo;s MATCH also accepts any of those 20 addresses, for every address type (before, a bc1q address had to be the first address, and other types the first 5 receive addresses). (8) The online demo no longer warns that the page is shown inside another page: it is its own official page that does that. Any other site that shows VOIDFORGE in a frame still gets the warning. (9) <b>One way of saying things.</b> A full consistency pass: multisig setup also lists 10 receive and 10 change addresses; the address list labels show the test-network paths in practice mode, and the summary sheet title says TESTNET; testnet is written &ldquo;TESTNET (practice coins only)&rdquo; everywhere; buttons and tabs are named as on screen (CLEAR ALL, SEND TO CHECK, ABOUT &amp; HELP, IS ANYTHING WATCHING THIS PAGE?); OPEN A PRACTICE WALLET and the multisig ADD THIS KEY are gold main buttons; American spelling throughout; phones are for learning and practice only, never for real funds; outdated hints, dictionary pointers and the self-test description are corrected. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.8.0</b> &mdash; <b>Find a wallet, spot a watcher, help an heir.</b> (1) <b>Wallet Detective</b> (CHECK A BACKUP, My wallet shows zero): when the right words open an empty wallet, type one address the wallet received to and FIND MY WALLET tries the settings of well-known wallet apps (BIP84, BIP86, BIP49 and BIP44 with accounts 0 to 9, older m/0&#39; and m/ paths, Samourai&rsquo;s Whirlpool and Ricochet accounts, mixed address types some apps use, Electrum&rsquo;s own seeds, with and without the passphrase) until it matches, then names the apps that use those settings and the steps to open it in Sparrow or Electrum. LIST FIRST ADDRESSES shows the first address of each setting, to look up on another device. It never looks up a balance. (2) <b>Is anything watching this page?</b> (ABOUT &amp; HELP and MENU): looks for the signs browser extensions, translators and other scripts leave on the page while it runs, and shows a warning at the top when it finds one. Some extensions act before the page can look, and many leave no sign, so it says &ldquo;no sign found&rdquo;, never &ldquo;safe&rdquo;. (3) <b>Heir mode</b> (I FOUND A BITCOIN BACKUP, under the title): calm, step-by-step help in large text for someone who found a Bitcoin backup: what each kind of backup is, checking the words, finding the wallet, seeing the balance without risk, moving it later, and the scams that target heirs. The printed backup plan points family to it. New dictionary entries: Browser extension, Heir mode and Wallet Detective. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.7.0</b> &mdash; <b>Dice and passphrase.</b> (1) <b>Check your device&rsquo;s dice</b> (EXTRA TOOLS): type throwaway test rolls and see the words a SeedSigner, Coldcard or Keystone must show for them, by each device&rsquo;s own dice rules, and its first receive address. If the device shows other words although the rolls and its dice rules are the same, its dice seeds cannot be trusted. BitBox02 takes no dice, so you restore the test words on it and compare the address. PRINT TEST CARD prints public test rolls with the words each device must make. Test rolls and their words are not secret: reset the device before making your real wallet. (2) <b>Make a passphrase from dice</b> (Passphrase and note): new rolls, never the seed&rsquo;s own, become a passphrase of 6 or 8 BIP39 words (66 or 88 bits), hashed with SHA-256 as for the seed, and the rolls make it again, so they are kept with it, never with the seed rolls; USE AS PASSPHRASE puts it in both passphrase boxes. (3) <b>Two wallets side by side</b> (Open this wallet): with a passphrase, the wallet without it and the wallet with it, each with its fingerprint and first address, and a plain word on decoy wallets. (4) <b>Roll together</b> (Make a seed): how two people, or two dice, make one seed, and why each die should roll the full count. New dictionary entries: Device dice check, Dice passphrase and Roll together. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.6.0</b> &mdash; <b>Animated QR codes, older wallets, and checks before you pay.</b> (1) <b>Animated QR for a multisig wallet</b> (Multisig wallet): no one format reaches every device, so pick yours: UR crypto-output for Sparrow, SeedSigner and Nunchuk; BBQr for Coldcard Q; or UR bytes carrying the Coldcard-style setup file for Keystone and Passport. Three frame sizes, and PAUSE. Public keys only. (2) The <b>Inspect a transaction (PSBT)</b> also reads the text of an animated QR code pasted as parts (UR crypto-psbt or BBQr), one part per line. (3) <b>Open this wallet</b> takes a <b>custom account path</b> (such as m/0&#39; for some older apps), and <b>Or open a private key, read only</b> opens an xprv, yprv or zprv (or tprv, uprv, vprv), a WIF key or a Casascius mini key to show which addresses it controls. It never signs; the key is wiped by CLEAR ALL, auto-clear and END SESSION, and in practice mode only test-network keys open. (4) <b>Check an address before you pay</b> (CHECK A BACKUP, under Explain an address): compares the address you are about to pay with the one you were given, character by character, and warns when only the start and the end match, as in address poisoning and clipboard-swap scams. (5) <b>What will spending cost later?</b> (EXTRA TOOLS): the size and the fee of spending many small deposits, by address type. (6) <b>Fixes</b>: CLEAR ALL now also wipes the Reforge boxes, the words or passphrase Reforge found, and the practice words box. In practice mode COPY ADDRESS copies the test-network address, and VERIFY checks a recorded first address on its own network (a bc1q address against the real one, a tb1q address against the test-network one). A seed file saved from Word draw says the words were drawn by hand and gives the coin flips, not what was in the rolls box. CHECK ADDRESS and Try accounts 0 to 20 say when an address is a multisig script address (P2WSH) instead of searching for it. The passphrase and private key boxes ask password-manager extensions not to save them. New dictionary entries: Address poisoning, Animated QR, BBQr, Custom derivation path and UR. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.5.0</b> &mdash; <b>Plan your backup, practice safely, and take a wallet to another app.</b> (1) <b>Backup plan and stress test</b> (CHECK A BACKUP): list where each copy of the words is kept, how the passphrase is kept and who can help. VOIDFORGE then walks through a fire, a burglary, a death, a forgotten passphrase and a lost device, says for each whether the money stays safe, is lost or is open to a thief, and how to fix it. PRINT BACKUP PLAN adds the next yearly check-up date and a 5-minute check-up routine, and refuses to print anything that looks like seed words or a key. PLAN WHERE THE COPIES GO in the backup checklist opens it. (2) <b>Wallet birthday</b>: the date a seed is made is printed on the summary sheet, and can be added to the recovery sheet and the plan. (3) <b>Practice mode</b> (Practice making a backup): every address and key on the page moves to the test network, the network menus stay on Testnet, a banner says so, printed address sheets say TESTNET (seed backups print as usual), and OPEN A PRACTICE WALLET opens a public practice phrase for trying out test coins. VERIFY says when words are one of these public practice phrases. (4) <b>SAVE WATCH-ONLY FILE</b> (Watch-only wallet): a text file with the public descriptors that Sparrow opens directly, plus the separate descriptors for Bitcoin Core, the account key for Electrum, the first addresses and the birthday. (5) A warning under the passphrase boxes in Make a seed and Check a backup when the passphrase starts or ends with a space, or has two spaces in a row, an invisible character, a tab or a line break: a passphrase is used exactly as typed. (6) Seed words and other secrets on the screen can no longer be highlighted, so they are not copied by accident. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.4.0</b> &mdash; <b>A print for everything, one page each, and plain-language helpers.</b> (1) <b>One page, no blank pages.</b> Every printed sheet now comes out on exactly one page, on US Letter and on A4; before, most sheets also printed one or more blank pages. A test prints every sheet in a real browser to check this. (2) <b>Roll sheet extras</b>: a menu next to PRINT ROLL SHEET chooses no extra boxes, 10, 25 or 50 (with Keystone dice rules, up to Keystone&rsquo;s maximum of 256). (3) <b>CHECK A BACKUP</b>: once VERIFY accepts your words, <i>Open this wallet</i> has SHOW FIRST 4 LETTERS, PRINT WORDS and PRINT STAMP SHEET for any length from 12 to 24 words, and the three SeedQR prints for 12 and 24 words. VERIFY also reads 4-letter forms (as on a metal plate) and writes them out in full once the phrase checks out; for a word it does not know, it names the closest BIP39 words and changes nothing. (4) <b>New prints</b>: PRINT THIS QR for the watch-only key and descriptors, the Silent Payment address, and address and payment-request QR codes; PRINT CHILD SEED (or the key or password) for BIP85; a blank Word draw sheet; and a <b>seed summary sheet</b> with no words (how the seed was made, the fingerprint with its picture, the first address), also shown as one line on the backup checklist. (5) <b>Test only, no seed</b>: a switch in &ldquo;Your rolls&rdquo; turns FORGE off so you can roll a die many times just to see whether it is fair. Turning it on or off clears the rolls (and, after asking, a seed made from them), so test rolls never become a seed. (6) With a tap button focused, the number keys add rolls and Backspace undoes. (7) <b>Explain an address</b> (CHECK A BACKUP): paste any address to see its type, network and whether it has a typo, with links to the dictionary; private keys and private descriptors, xpubs, seed words, SeedQR digits, raw hex and Lightning invoices pasted by mistake are called out. (8) <b>What can someone do with this?</b>, a quick guide in the dictionary. (9) CLEAR ALL now also clears a child seed and the address box; SEND TO CHECK clears a child seed made from the old words; a child seed still being made is dropped when you press HIDE or change its parent words; a VERIFY overtaken by CLEAR ALL or an edit writes nothing; and the Dice rules menu is wide enough for its longest choice. (10) On a slow phone the page no longer flashes a red &ldquo;script is NOT running&rdquo; box before the start notice: the page appears once its script has run, and that box (now styled like the other warnings) shows only if the script cannot run. (11) <b>VOIDFORGE moved to GitLab</b>: releases are at gitlab.com/random21m/voidforge and the online practice copy is at random21m.gitlab.io/voidforge. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
-        <li><b>2.3.0</b> &mdash; <b>More rolls, Keystone and BitBox02 dice, signed messages and END SESSION.</b> (1) <b>The minimum or more.</b> FORGE SEED now takes 50 or 99 rolls (128 or 256 flips) <i>or more</i>, and every roll counts. A note says who makes the same words: exactly the minimum matches SeedSigner and Coldcard, more matches Coldcard; more than twice the minimum adds a reminder to check for a double paste. PRINT ROLL SHEET has 10 extra dashed boxes. (2) <b>Keystone dice rules</b> (Dice rules menu): each 6 counts as 0 and Keystone needs 50 or 100 rolls, at most 256, as on a Keystone wallet. (3) <b>BitBox02 diceware</b> in Word draw: the Word finder reads table codes such as 2143 2 T, ADD WORD (or Enter) adds the word, and the 3 flips for the last word use T as 1 and H as 0, giving the same 24th word BitBox shows. (4) <b>Verify a signed message</b> (EXTRA TOOLS, read only): classic signatures (BIP-137) for 1..., 3... and bc1q addresses and BIP-322 simple signatures for single-key bc1q and bc1p addresses; VALID names the address it checked, and a match found only after a small change to the message (line breaks, spaces at the ends) shows in amber with a warning; a whole signed-message block can be pasted, but it never replaces an address you typed; multisig and full signatures are reported as CANNOT CHECK. It never signs. (5) <b>END SESSION</b> (MENU) wipes everything, resets every box and reloads the page. (6) The start notice shows once in each browser tab while the computer is offline, and on every load while it is online. (7) A Word draw seed is cleared if you change its words, flips or length afterwards, as a dice seed already was, and PRINT ROLL SHEET records the dice rules. For the same inputs as before (exactly the minimum, SeedSigner and Coldcard rules), words, fingerprints, addresses, keys and descriptors are unchanged.</li>
-        <li><b>2.2.0</b> &mdash; <b>Watch-only wallets, payment requests and a backup checklist.</b> (1) <b>Or open a watch-only wallet</b> (CHECK A BACKUP): paste an account public key (xpub, ypub, zpub, or tpub, upub, vpub) or a single-key descriptor and see the same address list, with a QR code on every row, from public keys only. A plain xpub does not contain the master fingerprint, so the page shows it only when a descriptor gives it. Private keys and multisig keys are refused. (2) <b>Electrum seed warning:</b> when a phrase fails the BIP39 check, VERIFY also says if it is an Electrum seed, and which type, so you restore it in Electrum. (3) <b>Payment request (BIP-21):</b> under any address QR code, add an amount, label or message and the QR becomes a <code>bitcoin:</code> link a phone wallet reads; the amount is checked (at most 8 decimals, above 0, at most 21 million). (4) <b>Backup checklist</b> under your words: words written, restore drill passed, second tool matched, recovery sheet printed. The drill and the recovery sheet tick themselves, a passphrase change unticks them, and nothing is saved. (5) <b>Check descriptors for a reused key</b> (EXTRA TOOLS): warns when the same key appears twice, when two keys of one multisig come from the same seed, or when one fingerprint and path are given with two different keys.</li>
+        <li><b>2.3.0</b> &mdash; <b>More rolls, Keystone and BitBox02 dice, signed messages and END SESSION.</b> (1) <b>The minimum or more.</b> FORGE SEED now takes 50 or 99 rolls (128 or 256 flips) <i>or more</i>, and every roll counts. A note says who makes the same words: exactly the minimum matches SeedSigner and Coldcard, more matches Coldcard; more than twice the minimum adds a reminder to check for a double paste. PRINT ROLL SHEET has 10 extra dashed boxes. (2) <b>Keystone dice rules</b> (Dice rules menu): each 6 counts as 0 and Keystone needs 50 or 100 rolls, at most 256, as on a Keystone wallet. (3) <b>BitBox02 diceware</b> in Word draw: the Word finder reads table codes such as 2143 2 T, ADD WORD (or Enter) adds the word, and the 3 flips for the last word use T as 1 and H as 0, giving the same 24th word BitBox shows. (4) <b>Verify a signed message</b> (EXTRA TOOLS, read only): classic signatures (BIP137) for 1..., 3... and bc1q addresses and BIP322 simple signatures for single-key bc1q and bc1p addresses; VALID names the address it checked, and a match found only after a small change to the message (line breaks, spaces at the ends) shows in amber with a warning; a whole signed-message block can be pasted, but it never replaces an address you typed; multisig and full signatures are reported as CANNOT CHECK. It never signs. (5) <b>END SESSION</b> (MENU) wipes everything, resets every box and reloads the page. (6) The start notice shows once in each browser tab while the computer is offline, and on every load while it is online. (7) A Word draw seed is cleared if you change its words, flips or length afterwards, as a dice seed already was, and PRINT ROLL SHEET records the dice rules. For the same inputs as before (exactly the minimum, SeedSigner and Coldcard rules), words, fingerprints, addresses, keys and descriptors are unchanged.</li>
+        <li><b>2.2.0</b> &mdash; <b>Watch-only wallets, payment requests and a backup checklist.</b> (1) <b>Or open a watch-only wallet</b> (CHECK A BACKUP): paste an account public key (xpub, ypub, zpub, or tpub, upub, vpub) or a single-key descriptor and see the same address list, with a QR code on every row, from public keys only. A plain xpub does not contain the master fingerprint, so the page shows it only when a descriptor gives it. Private keys and multisig keys are refused. (2) <b>Electrum seed warning:</b> when a phrase fails the BIP39 check, VERIFY also says if it is an Electrum seed, and which type, so you restore it in Electrum. (3) <b>Payment request (BIP21):</b> under any address QR code, add an amount, label or message and the QR becomes a <code>bitcoin:</code> link a phone wallet reads; the amount is checked (at most 8 decimals, above 0, at most 21 million). (4) <b>Backup checklist</b> under your words: words written, restore drill passed, second tool matched, recovery sheet printed. The drill and the recovery sheet tick themselves, a passphrase change unticks them, and nothing is saved. (5) <b>Check descriptors for a reused key</b> (EXTRA TOOLS): warns when the same key appears twice, when two keys of one multisig come from the same seed, or when one fingerprint and path are given with two different keys.</li>
         <li><b>2.1.0</b> (not released on its own; included in 2.2.0) &mdash; <b>Open any wallet, a QR on every address, and a tidier page.</b> (1) <b>Open this wallet.</b> In CHECK A BACKUP, once VERIFY accepts a 12, 15, 18, 21 or 24 word phrase (with or without a passphrase), a closed box lists its addresses: Native SegWit, Taproot, Nested SegWit or Legacy, mainnet or testnet, any account number, receive or change, ten at a time, with the master fingerprint and its picture. It says plainly that the words were imported, not made here. PRINT RECOVERY SHEET prints the fingerprint, address type, path and first addresses with no words and no passphrase. Making a seed is still 12 or 24 words only. (2) <b>A QR button on every address row</b>, here and under your seed. (3) <b>SeedQR and CompactSeedQR</b> for any 12 or 24 word phrase you check; for 15, 18 and 21 words the page says no such format exists. (4) <b>Live preview.</b> While you roll, the gray word boxes show the words your rolls so far would make, so you can watch one roll change every word. They are not your seed until you press FORGE SEED. This replaces the old demo switch, which is gone. (5) <b>Simpler Make tab.</b> Dice, Coin and Word draw are tabs, the seed length sits beside them, the passphrase box is under the words, and changing the passphrase keeps your words and works out the fingerprint and addresses again. A short line under the step bar says what each step is for. (6) <b>TRY ACCOUNTS 0 TO 20</b> finds which account an address belongs to. PRINT ROLL SHEET prints a blank numbered sheet for your rolls, and PRINT STAMP SHEET (MENU) prints the first four letters of each word in capitals for metal plates. An optional <b>auto-clear</b> wipes the page after idle time or when you leave the tab; it is off whenever the page loads and stores nothing. (7) <b>Looks.</b> Smaller buttons, seed words that always stay inside their boxes, red only for warnings and wiping, one type scale, a one-line footer, and a top bar that fits a 320 pixel screen. Fixed: pressing FORGE SEED with too few rolls no longer wipes the gray preview words, and the preview note no longer stays after a seed is made. The README now gives the right self-test count.</li>
         <li><b>2.0.0</b> &mdash; <b>A calmer, cleaner look.</b> The page is now one narrow column in flat charcoal and gold. At the top left is a single golden die with the name VOIDFORGE in the same gold, a thin line across the page, and four file-style tabs below it. GUIDE ME, TEXT A+, PRINT SEED and the light/dark switch moved into a MENU at the top right; DOWNLOAD FOR USB stays in view. The page opens in charcoal, and the menu switches to white. The small labels (RECOMMENDED, SECRET, PUBLIC and the gray ones) are now plain colored words that always keep their word, buttons come in three kinds (gold for the main action, outlined for helpers, red outline for clearing), and every text color was checked for contrast in both themes. The first screen is quieter: one GUIDE ME, the seed buttons appear once there is a seed, and Word draw, the demo, and the roll history and fairness chart sit in closed boxes. The three rolling dice, the glow and the animations are gone, the owner&rsquo;s picture added in 1.29.0 is removed (the file no longer holds any picture), and the page icon in a tab is the gold die. Nothing about how seeds, words, fingerprints, addresses or keys are made or checked changed, and every earlier feature is still here.</li>
         <li><b>1.29.1</b> &mdash; <b>Late results can no longer come back.</b> Reported privately: if you changed the rolls or the passphrase, or pressed CLEAR ALL, in the split second after pressing FORGE while the fingerprint and addresses were still being worked out, the page cleared everything as it should but the unfinished run then wrote its old fingerprint and addresses back, with the words gone. Now every FORGE carries a run number, and any change or CLEAR ALL ends the older run, so it writes nothing. For the same inputs, words, fingerprints, addresses, keys and descriptors are identical to v1.29.0.</li>
@@ -1942,7 +1943,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <li><b>1.24.0</b> &mdash; <b>Signature checks.</b> The read-only transaction checker and the compare box now look at the signatures inside a transaction. They warn if two different signatures share a nonce (a repeated secret number that would let anyone work out a private key; the compare box also looks across both transactions) and if any signature, or a signing request, uses a sighash type other than ALL, which would let others change parts of the transaction after it is signed. ECDSA and Schnorr (taproot) signatures are both read. Public data only; no seed, key or address math changed.</li>
         <li><b>1.23.0</b> &mdash; <b>Easier to trust and easier to learn.</b> (1) A short <b>notice</b> now greets first-time visitors: this is an educational tool, not independently audited, so practice first and start real money small. It closes with one click or Escape. (2) <b>Practice mode</b> in CHECK A BACKUP gives you a throwaway 12-word phrase to write down, hides it, and checks that your paper copy matches, naming any word that is wrong, so you can rehearse before it matters. The phrase is random, is not a real seed, and is forgotten when cleared. (3) A <b>Privacy</b> section in About explains what the page keeps (only your light/dark choice and text size), what it never sends, and the only ways anything leaves. (4) REVIEW.md now invites outside reviewers. No seed, key or address math changed.</li>
         <li><b>1.22.0</b> &mdash; <b>Check a transaction more carefully, and an easier multisig control.</b> (1) The <b>transaction checker</b> now also reads a raw transaction, says whether it can be replaced with a higher-fee version (RBF), shows any locktime, decodes data notes (OP_RETURN), and ends with a list of checks and a verdict. If it cannot fully check something, it says <b>NO CLEAN VERDICT</b> instead of looking reassuring. (2) A new <b>Compare two transactions</b> box shows whether a signer changed anything between what you sent and what came back, and whether a fee bump is a plain fee bump. (3) The <b>multisig</b> setup is now one slider with two handles, from 2 to 15 keys, with a big live &ldquo;2-of-3&rdquo; label and one-click popular setups. Everything here only reads and displays. Words, fingerprints, addresses, keys and descriptors are identical to v1.21.0.</li>
-        <li><b>1.21.0</b> &mdash; <b>Easier to use, plus three additions.</b> (1) The <b>multisig card</b> now moves up directly above the seed maker while you set up, so progress, instructions and the seed maker are together, and the page scrolls to the finished wallet when the last key is saved. (2) A loud red <b>TESTNET</b> banner on the Watch-only box whenever Testnet is chosen. (3) <b>Import into Bitcoin Core</b> (advanced), in the Watch-only box: two ready-to-copy commands that make an empty watch-only wallet and load the descriptors, with a choice of scanning from now or from the beginning. (4) A <b>Silent Payment address</b> (BIP-352) box in the Watch-only box, with a limited-wallet-support warning; it is tested against all of the official test vectors and an independent library. Also: a softer gray-blue light theme, and the About text now says Coldcard&rsquo;s documented dice example gives the same words as VOIDFORGE. Seeds, fingerprints, addresses, keys and descriptors are identical to v1.20.1.</li>
+        <li><b>1.21.0</b> &mdash; <b>Easier to use, plus three additions.</b> (1) The <b>multisig card</b> now moves up directly above the seed maker while you set up, so progress, instructions and the seed maker are together, and the page scrolls to the finished wallet when the last key is saved. (2) A loud red <b>TESTNET</b> banner on the Watch-only box whenever Testnet is chosen. (3) <b>Import into Bitcoin Core</b> (advanced), in the Watch-only box: two ready-to-copy commands that make an empty watch-only wallet and load the descriptors, with a choice of scanning from now or from the beginning. (4) A <b>Silent Payment address</b> (BIP352) box in the Watch-only box, with a limited-wallet-support warning; it is tested against all of the official test vectors and an independent library. Also: a softer gray-blue light theme, and the About text now says Coldcard&rsquo;s documented dice example gives the same words as VOIDFORGE. Seeds, fingerprints, addresses, keys and descriptors are identical to v1.20.1.</li>
         <li><b>1.20.1</b> &mdash; Two comfort fixes. (1) <b>Opens at the top.</b> The page used to open already scrolled down the screen, because it put the text cursor in the rolls box and the browser scrolled to show it (worse with TEXT A+). The cursor still starts in the rolls box, but the page now stays at the top. (2) <b>Size on computer screens.</b> The default is a little smaller than in v1.20.0 (still larger than before v1.20.0), so you scroll less, and TEXT A+ is a smaller step up. Phones are unchanged. Seeds, fingerprints, addresses, keys and descriptors are identical to v1.20.0.</li>
         <li><b>1.20.0</b> &mdash; <b>Multisig wallet setup</b>. A new MULTISIG WALLET card walks you through an M-of-N wallet (such as 2-of-3) one key at a time: a &ldquo;Key 1 of 3&rdquo; banner sits above the normal seed maker, and after you have written down and backed up each seed, ADD THIS KEY keeps only its public part and wipes the seed from the page. You can also paste public keys from other devices or people (private keys and seed words are refused, and so are the same key twice, the wrong network, and keys from the wrong place in the key tree). At the end you get the wallet descriptor (text, QR code and a printable recovery sheet with no seeds on it) and the first addresses to check in your wallet app. Making every key on one device is allowed but clearly warned about. QR codes now go up to version 30 so long descriptors fit. Seeds, fingerprints, addresses and watch-only keys are identical to v1.19.5.</li>
         <li><b>1.19.5</b> &mdash; <b>Word draw</b>, for people who pick their words from physical word tiles (such as SeedSigner&rsquo;s SeedPills): type the 11 (or 23) words you drew and the 7 (or 3) coin flips, and VOIDFORGE works out the last word with the standard BIP39 checksum. Nothing is hashed, repeated words are accepted (every tile goes back in the bag), the flips are never filled in for you, and a seed made this way works in any BIP39 wallet. It shows every step of how the last word was made, then uses the same fingerprint, address, SeedQR, print and watch-only tools as the dice method. Seeds made by dice or coin are identical to v1.19.4.</li>
@@ -1986,7 +1987,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   </div>
 
   <footer>
-    <div class="ft-name">VOIDFORGE <span>v2.8.1</span></div>
+    <div class="ft-name">VOIDFORGE <span>v2.9.0</span></div>
     <div class="ft-line"><span>SHA-256 of your rolls &rarr; BIP39</span><span>Same method as SeedSigner and Coldcard</span><span>gitlab.com/random21m/voidforge</span></div>
   </footer>
 </div>
@@ -2021,9 +2022,9 @@ const CD_RANKS = "A23456789TJQK", CD_SUITS = "\u2663\u2666\u2665\u2660";
 const CD_SUIT_OF = {C: "\u2663", D: "\u2666", H: "\u2665", S: "\u2660", "\u2663": "\u2663", "\u2666": "\u2666", "\u2665": "\u2665", "\u2660": "\u2660", "\u2667": "\u2663", "\u2662": "\u2666", "\u2661": "\u2665", "\u2664": "\u2660"};
 const CD_NAMES = {A: "ace", T: "10", J: "jack", Q: "queen", K: "king"}, CD_SUIT_NAMES = {"\u2663": "clubs", "\u2666": "diamonds", "\u2665": "hearts", "\u2660": "spades"};
 const CD_LETTER = {"\u2663": "C", "\u2666": "D", "\u2665": "H", "\u2660": "S"};
-// ================= SLIP-39 (Shamir shares of words): CHECK and COMBINE only =================
-// SLIP-0039, https://github.com/satoshilabs/slips/blob/master/slip-0039.md (read at commit dea4917, 2026-10-30).
-// A SLIP-39 backup is a set of shares of 20 or 33 words (other lengths are possible). Some of them, in
+// ================= SLIP39 (Shamir shares of words): CHECK and COMBINE only =================
+// SLIP39, https://github.com/satoshilabs/slips/blob/master/slip-0039.md (read at commit dea4917, 2026-10-30).
+// A SLIP39 backup is a set of shares of 20 or 33 words (other lengths are possible). Some of them, in
 // groups, rebuild the master secret, which is then decrypted with the passphrase ("" if none).
 // This code only reads shares: slip39Parse checks one share, slip39Combine rebuilds the master secret.
 // It never makes shares, because that needs random numbers and this page uses no browser randomness for secrets.
@@ -2101,7 +2102,7 @@ const SLIP39_WORDS = [
   "wisdom","withdraw","wits","wolf","woman","work","worthy","wrap","wrist","writing","wrote","year","yelp","yield","yoga","zero"
 ];
 
-// Fast lookup from a word to its number (0-1023). SLIP-39 words are lower case.
+// Fast lookup from a word to its number (0-1023). SLIP39 words are lower case.
 const S39_WORD_INDEX = new Map(SLIP39_WORDS.map((w, i) => [w, i]));
 
 // Sizes of the parts of a share, in words of 10 bits each (see "Format of the share mnemonic" in the spec).
@@ -2160,7 +2161,7 @@ function s39Words(text){
   return String(text == null ? "" : text).toLowerCase().trim().split(/\s+/).filter(Boolean);
 }
 
-// Edit distance between two words, counting a swap of two neighbouring letters as one edit.
+// Edit distance between two words, counting a swap of two neighboring letters as one edit.
 function s39Distance(a, b){
   const d = [];
   for(let i = 0; i <= a.length; i++){ d.push([i]); }
@@ -2175,7 +2176,7 @@ function s39Distance(a, b){
   return d[a.length][b.length];
 }
 
-// Words to suggest for a word that is not in the list. Every SLIP-39 word starts with its own 4 letters,
+// Words to suggest for a word that is not in the list. Every SLIP39 word starts with its own 4 letters,
 // so if the first 4 letters match a word, that is the one suggestion. Otherwise offer up to 6 words that
 // are 1 or 2 edits away, and failing that, up to 6 words that start with the same 3 (or 2) letters.
 function s39Suggest(word){
@@ -2193,7 +2194,7 @@ function s39Suggest(word){
 
 function s39UnknownWordText(pos, word){
   const sug = s39Suggest(word);
-  let t = "Word " + (pos + 1) + " (\"" + word + "\") is not a SLIP-39 word.";
+  let t = "Word " + (pos + 1) + " (\"" + word + "\") is not a SLIP39 word.";
   if(sug.how === "one") t += " Did you mean \"" + sug.words[0] + "\"?";
   else if(sug.how === "near") t += " Close words: " + sug.words.join(", ") + ".";
   else if(sug.how === "start") t += " Words that start like it: " + sug.words.join(", ") + ".";
@@ -2206,12 +2207,8 @@ function s39LengthOk(n){
 }
 
 function s39LengthText(n){
-  let below = n - 1, above = n + 1;
-  while(below >= S39_MIN_WORDS && !s39LengthOk(below)) below--;
-  while(!s39LengthOk(above)) above++;
-  const near = below >= S39_MIN_WORDS ? below + " or " + above : String(above);
-  return "This share has " + n + " words. A SLIP-39 share has 20 words (128-bit secret) or 33 words (256-bit secret); " +
-    n + " words is not a possible length (the nearest possible lengths are " + near + "). Check for a missing or extra word.";
+  return "This share has " + n + " words. A SLIP39 share usually has 20 words (128-bit secret) or 33 words (256-bit secret), and " +
+    n + " words is not a possible length. Check for a missing or extra word.";
 }
 
 // Check one share and read its fields. Indexes are as stored (group 0 is the first group); thresholds and
@@ -2230,7 +2227,7 @@ function slip39Parse(mnemonic){
   if(unknown.length) return fail(unknown.join(" "));
 
   const n = words.length;
-  if(n < S39_MIN_WORDS) return fail("This share has only " + n + " words. A SLIP-39 share has at least 20 words: 20 for a 128-bit secret, 33 for a 256-bit secret.");
+  if(n < S39_MIN_WORDS) return fail("This share has only " + n + " words. A SLIP39 share has at least 20 words: 20 for a 128-bit secret, 33 for a 256-bit secret.");
   if(!s39LengthOk(n)) return fail(s39LengthText(n));
 
   // Words 1 and 2: identifier (15 bits), extendable flag (1 bit), iteration exponent (4 bits).
@@ -2340,7 +2337,7 @@ function s39PassphraseError(pass){
     const c = chars[i].codePointAt(0);
     if(c < 32 || c > 126){
       const shown = c < 32 || c === 127 ? "an invisible control character (U+" + c.toString(16).toUpperCase().padStart(4, "0") + ")" : "\"" + chars[i] + "\"";
-      return "The passphrase can only use printable ASCII characters (A-Z, a-z, 0-9, space and the symbols on a US keyboard), as SLIP-39 requires. Character " +
+      return "The passphrase can only use printable ASCII characters (A-Z, a-z, 0-9, space and the symbols on a US keyboard), as SLIP39 requires. Character " +
         (i + 1) + " is " + shown + ".";
     }
   }
@@ -2452,8 +2449,9 @@ async function slip39Combine(mnemonics, passphrase){
     const ems = await s39RecoverSecret(GT, groupShares);
     if(!ems) return fail("The groups do not fit together: the built-in check (digest) failed. One of the groups is probably from a different backup, or a share was altered.");
     out.masterSecret = await s39Decrypt(ems, new TextEncoder().encode(pass), f.iterationExponent, f.identifier, f.extendable);
+    ems.fill(0); for(const g of groupShares) if(g.y && g.y.fill) g.y.fill(0);   // review: the shared secret is not kept once it is used
   } catch(err){
-    return fail("This browser could not run the cryptography SLIP-39 needs (crypto.subtle): " + (err && err.message ? err.message : err));
+    return fail("This browser could not run the cryptography SLIP39 needs (crypto.subtle): " + (err && err.message ? err.message : err));
   }
   out.ok = true;
   return out;
@@ -2566,7 +2564,7 @@ function analyzeRolls(str, isCoin){
   for(let i=1;i<n;i++){ run = v[i]===v[i-1] ? run+1 : 1; if(run>best) best=run; }
   const maxRun = Math.ceil(Math.log(1000*n)/Math.log(k)) + 1;
   if(best >= maxRun){ level="bad"; problems.push("a run of " + best + " identical results"); }
-  // 3. constant step between neighbours (repeats, counting up/down, alternating)
+  // 3. constant step between neighbors (repeats, counting up/down, alternating)
   const steps = new Array(k).fill(0);
   for(let i=0;i<n-1;i++) steps[((v[i+1]-v[i])%k + k)%k]++;
   const m = n-1, sd1 = Math.sqrt(m*(1/k)*(1-1/k));
@@ -3576,7 +3574,7 @@ const DICT = [
   ["Bech32 and bech32m", "The address spelling used for bc1q (bech32) and bc1p (bech32m) addresses. It has a built-in checksum so a typo is caught instead of sending coins to the wrong place.", "", "Addresses & scripts"],
   ["Binary", "Counting with only 0 and 1. Coin flips are binary: heads 1, tails 0.", "", "Units & math"],
   ["BIP", "Bitcoin Improvement Proposal: a numbered public design document for a Bitcoin standard, such as BIP39 for seed words.", "", "Standards (BIPs)"],
-  ["BIP21", "The standard for bitcoin: payment links that carry an address, amount and label. The amount is in bitcoin, with at most 8 decimals.", "Payment request (BIP-21) under any address QR code.", "Standards (BIPs)"],
+  ["BIP21", "The standard for bitcoin: payment links that carry an address, amount and label. The amount is in bitcoin, with at most 8 decimals.", "Payment request (BIP21) under any address QR code.", "Standards (BIPs)"],
   ["BIP32", "The standard that lets one seed make a whole tree of keys (an HD wallet). Every key has a path such as m/84'/0'/0'/0/0.", "How your seed was made, watch-only export.", "Standards (BIPs)"],
   ["BIP39", "The standard that turns random bytes into 12 or 24 words from a list of 2048, with a checksum. Any wallet that follows it can restore your seed from the words.", "The whole MAKE A SEED tab.", "Standards (BIPs)"],
   ["BIP44", "The standard path for single-key Legacy wallets (addresses starting with 1): m/44'/0'/0'.", "", "Standards (BIPs)"],
@@ -3821,8 +3819,8 @@ const DICT = [
   ["Signet", "A test network with predictable behavior, run by a few trusted signers, used for testing software. Its coins have no value. Its addresses and keys have exactly the same form as testnet's (tb1..., tpub), so everything VOIDFORGE shows for TESTNET (practice coins only) works on signet too.", "The network menus: choose TESTNET (practice coins only).", "Network & mining"],
   ["Signing", "Using a private key to prove a transaction is authorized. VOIDFORGE never signs anything.", "", "Transactions"],
   ["Single point of failure", "One thing whose loss or theft ruins everything, such as a single paper copy of a seed.", "", "Privacy & security"],
-  ["SLIP-0039", "A Trezor standard for backing up a seed as several Shamir shares of words. Not interchangeable with BIP39 words. Newer Trezor devices make a single 20-word share by default.", "The Wallet Detective names 20- and 33-word shares; restore them with a Trezor.", "Standards (BIPs)"],
-  ["SLIP-0132", "The scheme that gives extended keys different starting letters (xpub, ypub, zpub) to hint at the address type.", "", "Standards (BIPs)"],
+  ["SLIP39", "A Trezor standard for backing up a seed as several Shamir shares of words. Not interchangeable with BIP39 words. Newer Trezor devices make a single 20-word share by default.", "The Wallet Detective names 20- and 33-word shares; restore them with a Trezor.", "Standards (BIPs)"],
+  ["SLIP132", "The scheme that gives extended keys different starting letters (xpub, ypub, zpub) to hint at the address type.", "", "Standards (BIPs)"],
   ["Social engineering", "Tricking a person, not a computer, into handing over a secret or doing something unsafe.", "", "Privacy & security"],
   ["Soft fork", "A rule change that tightens the rules, so old nodes still accept the new blocks. SegWit and Taproot were soft forks.", "", "Network & mining"],
   ["Software wallet", "A wallet app on a phone or computer. Convenient, but the keys are on a device that is online.", "", "Wallets & backups"],
@@ -3834,7 +3832,7 @@ const DICT = [
   ["Tapscript", "The script rules used inside Taproot's hidden branches.", "", "Addresses & scripts"],
   ["Testnet", "A practice copy of Bitcoin whose coins are worthless, for learning without risk. Its SegWit addresses start with tb1. Testnet3, testnet4 and signet all use the same address and key forms, so the same TESTNET (practice coins only) setting works for each.", "The network menus; Practice mode in CHECK A BACKUP.", "Network & mining"],
   ["Threat model", "A plain list of who might attack you, how, and what you are protecting. It tells you how much protection is enough.", "", "Privacy & security"],
-  ["Timelock", "A rule that stops a coin or transaction being spent until a chosen time or block. Locktime and the opcodes CLTV and CSV are timelocks. In a descriptor, older() waits a number of blocks after each deposit (BIP-68) and after() waits for a fixed block or date (BIP-65).", "EXTRA TOOLS: Explain an inheritance or timelock wallet.", "Transactions"],
+  ["Timelock", "A rule that stops a coin or transaction being spent until a chosen time or block. Locktime and the opcodes CLTV and CSV are timelocks. In a descriptor, older() waits a number of blocks after each deposit (BIP68) and after() waits for a fixed block or date (BIP65).", "EXTRA TOOLS: Explain an inheritance or timelock wallet.", "Transactions"],
   ["Tor", "A network that hides where a connection comes from. Some wallets and nodes use it for privacy.", "", "Privacy & security"],
   ["Transaction (tx)", "A message that moves coins: it spends some outputs and makes new ones.", "", "Transactions"],
   ["TXID (transaction ID)", "The unique fingerprint (a hash) of a transaction, used to look it up on the blockchain.", "", "Transactions"],
@@ -3848,8 +3846,8 @@ const DICT = [
   ["Wallet", "Software or a device that manages your keys and builds transactions. Your coins live on the blockchain; the wallet holds the keys to them.", "", "Wallets & backups"],
   ["Wallet birthday", "The date or block when a wallet was first used. A restore can skip older blocks, which makes it faster.", "Printed on the summary sheet, the recovery sheet and the backup plan, and written in the watch-only file.", "Wallets & backups"],
   ["Wallet Detective", "Finds which wallet app made a wallet when the right words open an empty one: it tries the paths, address types, accounts and seed formats of well-known apps until one address you know the wallet used matches. Offline; it never sees a balance.", "CHECK A BACKUP: My wallet shows zero.", "VOIDFORGE"],
-  ["Wallet labels (BIP-329)", "A standard file of the names a wallet app gives to its addresses, transactions and coins, one record per line, so the labels can move to another app. Labels are private: they link coins to a person.", "CHECK A BACKUP: Read a label file (BIP-329).", "Wallets & backups"],
-  ["BSMS (BIP-129)", "Bitcoin Secure Multisig Setup: a standard way for the devices of a multisig wallet to share their keys and agree on one wallet record, a descriptor and its first address.", "CHECK A BACKUP: Is this seed in my wallet file?", "Wallets & backups"],
+  ["Wallet labels (BIP329)", "A standard file of the names a wallet app gives to its addresses, transactions and coins, one record per line, so the labels can move to another app. Labels are private: they link coins to a person.", "CHECK A BACKUP: Read a label file (BIP329).", "Wallets & backups"],
+  ["BSMS (BIP129)", "Bitcoin Secure Multisig Setup: a standard way for the devices of a multisig wallet to share their keys and agree on one wallet record, a descriptor and its first address.", "CHECK A BACKUP: Is this seed in my wallet file?", "Wallets & backups"],
   ["Seed XOR", "A way, made by Coldcard, to split one seed into 2 or more seed phrases that are all needed: the secret is the XOR of their entropy. Each part alone looks like, and opens, an ordinary empty wallet. Losing any part loses the seed.", "EXTRA TOOLS: Seed XOR: split or combine.", "Wallets & backups"],
   ["Wallet file", "A file a wallet program keeps on disk, holding its keys or key information. It must be backed up.", "", "Wallets & backups"],
   ["Watch-only wallet", "A wallet that has only public keys. It shows addresses and balances but cannot spend, so a phone can hold it without being able to lose the coins.", "Watch-only box; CHECK A BACKUP, Or open a watch-only wallet.", "Wallets & backups"],
@@ -4118,7 +4116,7 @@ async function explainAddress(text){
   let t = String(text || "").trim(); const terms = [];
   if(!t) return null;
   let uri = "";
-  if(/^bitcoin:/i.test(t)){ uri = " It was written as a payment request (BIP-21), a bitcoin: link that can also hold an amount and a label."; t = t.slice(8).split("?")[0]; terms.push("BIP21"); }
+  if(/^bitcoin:/i.test(t)){ uri = " It was written as a payment request (BIP21), a bitcoin: link that can also hold an amount and a label."; t = t.slice(8).split("?")[0]; terms.push("BIP21"); }
   t = t.replace(/\s+/g, "");
   const pub = " What someone can do with it: send bitcoin to it, and look up its payments on a block explorer. Nobody can spend from it with the address alone.";
   // Secrets pasted by mistake come first: seed words (also numbered, or as 4-letter forms), SeedQR digits, raw hex.
@@ -4137,10 +4135,10 @@ async function explainAddress(text){
     const data = Array.from(low.slice(sep + 1, -6), ch => B32.indexOf(ch));
     const good = t === low || t === t.toUpperCase() ? data.length > 1 && !data.some(v => v < 0) && bech32mText(hrp, data) === low : false;
     if(!good) return {level: "bad", text: "Not a valid Silent Payment address: the checksum does not match, so at least one character is wrong. Do not send to it.", terms: ["Checksum", "BIP352 (Silent Payments)"]};
-    // BIP-352: version 0 carries exactly two 33-byte keys (66 bytes); versions 1 to 30 at least that; 31 is reserved.
+    // BIP352: version 0 carries exactly two 33-byte keys (66 bytes); versions 1 to 30 at least that; 31 is reserved.
     const v = data[0], bytes = Math.floor((data.length - 1) * 5 / 8);
-    if(v === 31 || (v === 0 ? bytes !== 66 : bytes < 66)) return {level: "bad", text: "Not a valid Silent Payment address: the checksum is right, but its contents are not two keys as BIP-352 requires. Do not send to it.", terms: ["BIP352 (Silent Payments)"]};
-    return {level: "ok", text: "Silent Payment address (BIP-352) on " + (hrp === "sp" ? EXPLAIN_NET.bc : EXPLAIN_NET.tb) + ". It can be reused: each payment goes to a new, unlinkable address that only the receiver can find. Few wallets can send to it yet. What someone can do with it: send bitcoin to it. Its payments cannot be looked up from the address, and nobody can spend with it." + uri, terms: terms.concat(["BIP352 (Silent Payments)", "Address"])};
+    if(v === 31 || (v === 0 ? bytes !== 66 : bytes < 66)) return {level: "bad", text: "Not a valid Silent Payment address: the checksum is right, but its contents are not two keys as BIP352 requires. Do not send to it.", terms: ["BIP352 (Silent Payments)"]};
+    return {level: "ok", text: "Silent Payment address (BIP352) on " + (hrp === "sp" ? EXPLAIN_NET.bc : EXPLAIN_NET.tb) + ". It can be reused: each payment goes to a new, unlinkable address that only the receiver can find. Few wallets can send to it yet. What someone can do with it: send bitcoin to it. Its payments cannot be looked up from the address, and nobody can spend with it." + uri, terms: terms.concat(["BIP352 (Silent Payments)", "Address"])};
   }
   if(Object.prototype.hasOwnProperty.call(EXPLAIN_NET, hrp)){
     const net = EXPLAIN_NET[hrp], d = segwitDecode(t);
@@ -4156,7 +4154,7 @@ async function explainAddress(text){
     const v = raw[0];
     if(raw.length === 21 && (v === 0 || v === 0x6f)) return {level: "ok", text: "Legacy address (P2PKH) on " + (v ? EXPLAIN_NET.tb : EXPLAIN_NET.bc) + ". The checksum is valid. It stands for one public key; sending to it costs more in fees than SegWit." + pub + uri, terms: terms.concat(["Legacy address", "P2PKH"])};
     if(raw.length === 21 && (v === 5 || v === 0xc4)) return {level: "ok", text: "Script address (P2SH) on " + (v === 5 ? EXPLAIN_NET.bc : EXPLAIN_NET.tb) + ". The checksum is valid. It is most often nested SegWit (one key) or an older multisig; the address alone does not say which." + pub + uri, terms: terms.concat(["P2SH", "Nested SegWit"])};
-    if(raw.length === 39 && v === 1 && (raw[1] === 0x42 || raw[1] === 0x43)) return {level: "bad", text: "This is a password-protected PRIVATE KEY (BIP-38), not an address. With its password, anyone can spend the bitcoin it holds.", terms: ["Private key"]};
+    if(raw.length === 39 && v === 1 && (raw[1] === 0x42 || raw[1] === 0x43)) return {level: "bad", text: "This is a password-protected PRIVATE KEY (BIP38), not an address. With its password, anyone can spend the bitcoin it holds.", terms: ["Private key"]};
     if((raw.length === 33 || (raw.length === 34 && raw[33] === 1)) && (v === 0x80 || v === 0xef)) return {level: "bad", text: "This is a PRIVATE KEY (WIF), not an address. Anyone who sees it can spend the bitcoin it holds. Never share it or paste it into a website.", terms: ["WIF (Wallet Import Format)", "Private key"]};
     if(raw.length === 78){
       const ver = hex(raw.slice(0, 4));
@@ -4259,7 +4257,7 @@ function wordFromPrefix(t){
   if(!/^[a-z]{4,8}$/.test(t)) return null;
   return WORDLIST.find(w => w.startsWith(t)) || null;   // 4 letters already pick at most one word
 }
-// Optimal string alignment distance (insert, delete, change or swap two neighbouring letters), stopping early past `max`.
+// Optimal string alignment distance (insert, delete, change or swap two neighboring letters), stopping early past `max`.
 function wordDistance(a, b, max){
   if(Math.abs(a.length - b.length) > max) return max + 1;
   const d = Array.from({length: a.length + 1}, (_, i) => [i]);
@@ -4530,7 +4528,7 @@ function reforgePassCandidates(text, typos){
       for(let i = 0; i < c.length; i++){
         add(c.slice(0, i).concat(c.slice(i + 1)).join(""));                              // a character left out
         add(c.slice(0, i + 1).concat(c.slice(i)).join(""));                              // a character typed twice
-        if(i + 1 < c.length) add(c.slice(0, i).concat([c[i + 1], c[i]], c.slice(i + 2)).join("")); // two neighbours swapped
+        if(i + 1 < c.length) add(c.slice(0, i).concat([c[i + 1], c[i]], c.slice(i + 2)).join("")); // two neighbors swapped
         const f = c[i] === c[i].toLowerCase() ? c[i].toUpperCase() : c[i].toLowerCase();
         if(f !== c[i]) add(c.slice(0, i).concat([f], c.slice(i + 1)).join(""));         // one letter in the other case
       }
@@ -5322,18 +5320,18 @@ async function runSelfTests(auto){
   eq("Multisig 2-of-3 native SegWit (BIP48): first address", async()=>multisigAddress("ms-wsh", 2, await katCos("ms-wsh", 2), 0, 0, "main"), "bc1qm43n7nnev58aj3nrznz2xscgv98t7gxycq5pmp20a5vzfp5t0q2s7r6twa");
   eq("Multisig 2-of-3 nested SegWit (BIP48): first address", async()=>multisigAddress("ms-sh-wsh", 2, await katCos("ms-sh-wsh", 1), 0, 0, "main"), "354ZuUuwopSS5CsTjYzXwgQLxVeeN2eQFJ");
   eq("Silent Payment address (BIP352 keys at m/352'/0'/0')", async()=>spAddressFromSeed(await mnemonicToSeed(KAT_M[0], ""), "main", 0), "sp1qqfqnnv8czppwysafq3uwgwvsc638hc8rx3hscuddh0xa2yd746s7xqh6yy9ncjnqhqxazct0fzh98w7lpkm5fvlepqec2yy0sxlq4j6ccc3h6t0g");
-  eq("Every private key version (SLIP-132) gives its prefix", async()=>{ const out = []; for(const v of EXT_PRIVATE) out.push((await base58check(Uint8Array.from([...fromHex(v), ...new Uint8Array(74)]))).slice(0, 4)); return out.join(","); }, "xprv,yprv,zprv,Yprv,Zprv,tprv,uprv,vprv,Uprv,Vprv");
+  eq("Every private key version (SLIP132) gives its prefix", async()=>{ const out = []; for(const v of EXT_PRIVATE) out.push((await base58check(Uint8Array.from([...fromHex(v), ...new Uint8Array(74)]))).slice(0, 4)); return out.join(","); }, "xprv,yprv,zprv,Yprv,Zprv,tprv,uprv,vprv,Uprv,Vprv");
   eq("coin flips 128 (1/0) -> 12 words", ()=>rollsToMnemonic(C128,12),"trigger soccer priority image feature romance whisper jar crush sleep super potato");
   eq("coin flips 256 (1/0) -> 24 words", ()=>rollsToMnemonic(C256,24),"supply kitten pigeon wealth myth execute add huge mention during defense universe fresh absurd possible hen social glad capital early narrow erode december fall");
   eq("explainer steps, 50 dice rolls: same 12 words as FORGE", async()=>(await explainSteps(R50,12)).words.join(" "),"hole luggage safe present express tragic orbit shed switch metal identify path");
   eq("explainer steps, 256 coin flips: same 24 words as FORGE, 8 checksum bits", async()=>{ const s=await explainSteps(C256,24); return s.words.join(" ")+"|"+s.checkBits.length; },"supply kitten pigeon wealth myth execute add huge mention during defense universe fresh absurd possible hen social glad capital early narrow erode december fall|8");
   // BitBox02 diceware (v2.3.0). The table: BitBox's printed rows 1111 (abandon...), 2111 (divorce...) and 4444 (...zoo). The last word: the official
   // vectors from BitBox's firmware tests (bitbox02-rust workflow/mnemonic.rs): 23 x violin gives these 8 choices for HHH ... TTT.
-  // Verify a signed message (v2.3.0). BIP-322 vectors from bitcoin/bips (bip-0322/basic-test-vectors.json, generated-test-vectors.json);
+  // Verify a signed message (v2.3.0). BIP322 vectors from bitcoin/bips (bip-0322/basic-test-vectors.json, generated-test-vectors.json);
   // the classic signature from Bitcoin Core's test suite (rpc_signmessagewithprivkey.py).
-  eq("BIP-322 message hash and virtual transactions (official vectors)", async()=>{ const p=await bip322Parts("", Uint8Array.of(0,20,...segwitDecode("bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l").prog)); const h=await taggedHash("BIP0322-signed-message", new TextEncoder().encode("Hello World")); return hex(h)+" "+hex(p.txid.slice().reverse())+" "+hex(p.toSignId.slice().reverse()); },
+  eq("BIP322 message hash and virtual transactions (official vectors)", async()=>{ const p=await bip322Parts("", Uint8Array.of(0,20,...segwitDecode("bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l").prog)); const h=await taggedHash("BIP0322-signed-message", new TextEncoder().encode("Hello World")); return hex(h)+" "+hex(p.txid.slice().reverse())+" "+hex(p.toSignId.slice().reverse()); },
      "f0eb03b1a75ac6d9847f55c624a99169b5dccba2a31f5b23bea77ba270de0a7a c5680aa69bb8d860bf82d4e9cd3504b55dde018de765a91bb566283c545a99a7 1e9654e951a5ba44c8604c4de6c67fd78a27e81dcadcfe1edf638ba3aaebaed6");
-  eq("BIP-322 simple signatures: P2WPKH and P2TR valid, wrong message not valid (official vectors)", async()=>(await Promise.all([
+  eq("BIP322 simple signatures: P2WPKH and P2TR valid, wrong message not valid (official vectors)", async()=>(await Promise.all([
       verifyMessage("bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l","Hello World","smpAkcwRAIgZRfIY3p7/DoVTty6YZbWS71bc5Vct9p9Fia83eRmw2QCICK/ENGfwLtptFluMGs2KsqoNSk89pO7F29zJLUx9a/sASECx/EgAxlkQpQ9hYjgGu6EBCPMVPwVIVJqO4XCsMvViHI="),
       verifyMessage("bc1pss0zhytly75awhm6x2hhvd5lnzv3vssgrf9axfheq8ldyzn88ges79fler","No prefix fallback","AUCJYOwOjxYAvatTAGYaVlNXBVyFuc4MwNQkOuK2tl8xhfKDONd0NjfYyNSYcRqeCp8hsAnCEPHAVEkO9h6vbQ/R"),
       verifyMessage("bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l","Wrong message that was not signed","smpAkcwRAIgM2gBAQqvZX15ZiysmKmQpDrG83avLIT492QBzLnQIxYCIBaTpOaD20qRlEylyxFSeEA2ba9YOixpX8z46TSDtS40ASECx/EgAxlkQpQ9hYjgGu6EBCPMVPwVIVJqO4XCsMvViHI=")])).map(r=>r.state).join(" "), "valid valid invalid");
@@ -5881,7 +5879,7 @@ function addrLi(addr, label){
   b.setAttribute("aria-label", "Show the QR code for " + label); b.title = "Show QR code"; b.setAttribute("data-addr", addr); b.innerHTML = QR_ICON;
   li.appendChild(b); return li;
 }
-// BIP-21 payment request: bitcoin:<address>?amount=&label=&message= (RFC 3986 percent-encoding). Amount in BTC, at most 8 decimals, above 0 and at most 21 million.
+// BIP21 payment request: bitcoin:<address>?amount=&label=&message= (RFC 3986 percent-encoding). Amount in BTC, at most 8 decimals, above 0 and at most 21 million.
 function bip21Amount(raw){
   const a = String(raw || "").trim(); if(!a) return {ok:true, v:""};
   if(!/^(\d{1,8})(\.\d{1,8})?$/.test(a)) return {ok:false, msg:"Amount: digits and one dot only, at most 8 decimals (for example 0.0015)."};
@@ -6016,7 +6014,7 @@ function updateCore(){
 }
 document.getElementById("coreWhen").addEventListener("change", updateCore);
 // Watch-only wallet file (v2.5.0): plain text in Sparrow's own descriptor layout. Lines starting with # are comments; the one other line is
-// the receive-and-change descriptor (BIP-389 multipath form) that Sparrow imports. Public keys only. Not offered for a multisig cosigner key.
+// the receive-and-change descriptor (BIP389 multipath form) that Sparrow imports. Public keys only. Not offered for a multisig cosigner key.
 function watchFileText(){
   const r = document.getElementById("wDescR").textContent, c = document.getElementById("wDescC").textContent, key = document.getElementById("wZpub").textContent, f = watchCtx && watchCtx.file;
   if(!f || !r || !c || !key || document.getElementById("wDescGroupC").style.display === "none") return "";
@@ -6435,7 +6433,7 @@ function detSay(cls, t){ const st = document.getElementById("detStatus"); st.cla
 function detShow(t){ const o = document.getElementById("detOut"); o.textContent = t; o.style.display = t ? "" : "none"; }
 function detStop(){ if(detBusy) detStopFlag = true; }
 // ===== Is this seed in my wallet file? (v2.9.0). Uses the words and passphrase typed at the top of CHECK A BACKUP. =====
-// Reads an output descriptor, a Coldcard multisig setup file or a BSMS record (BIP-129) and, for every key in it, checks whether
+// Reads an output descriptor, a Coldcard multisig setup file or a BSMS record (BIP129) and, for every key in it, checks whether
 // this seed makes that key: the master fingerprint, then the extended public key at the file's path. Nothing is stored or sent.
 const KC_XPUB = "[xyzYZtuvUV]pub[1-9A-HJ-NP-Za-km-z]{100,112}";
 function kcParse(text){
@@ -6454,7 +6452,7 @@ function kcParse(text){
     }
   } else {
     const lines = t.split("\n").map(x => x.trim()).filter(Boolean);
-    if(lines[0] === "BSMS 1.0"){ kind = "BSMS wallet record (BIP-129)"; firstAddr = lines[3] || ""; }
+    if(lines[0] === "BSMS 1.0"){ kind = "BSMS wallet record (BIP129)"; firstAddr = lines[3] || ""; }
     desc = (lines.find(l => /^(wsh|sh|wpkh|pkh|tr)\(/.test(l)) || "").replace(/\s+/g, "");
     if(!desc) return {error: "No wallet description found. Paste an output descriptor (it starts with wsh(, sh(, wpkh(, pkh( or tr(), a Coldcard multisig setup file, or a BSMS record."};
     if(!kind) kind = "descriptor";
@@ -6520,8 +6518,8 @@ function kcClear(keepText){
   if(!keepText){ document.getElementById("kcIn").value = ""; document.getElementById("kcFileIn").value = ""; }
   const st = document.getElementById("kcStatus"); st.textContent = ""; st.className = "status";
 }
-// ===== Read a label file (BIP-329) (v2.9.0). Uses the words and passphrase typed at the top of CHECK A BACKUP. =====
-// A BIP-329 file (from Sparrow, Bitcoin Core, Nunchuk...) has one JSON record per line: {"type", "ref", "label", ...}. It names
+// ===== Read a label file (BIP329) (v2.9.0). Uses the words and passphrase typed at the top of CHECK A BACKUP. =====
+// A BIP329 file (from Sparrow, Bitcoin Core, Nunchuk...) has one JSON record per line: {"type", "ref", "label", ...}. It names
 // addresses, transactions, outputs and keys in the user's own words, so it is PRIVATE: it is only read here, never stored or sent.
 // The page shows the labels and which address of this seed each labeled address is, so an heir can tell which wallet they belong to.
 const LB_TYPES = {addr: "address", tx: "transaction", output: "output", input: "input", pubkey: "public key", xpub: "account key"};
@@ -6538,7 +6536,7 @@ function lbParse(text){
 }
 async function lbRead(text, phrase, vp){
   const {recs, bad} = lbParse(text);
-  if(!recs.length) return {state: "bad", text: bad ? "No BIP-329 labels found: " + bad + " line" + (bad === 1 ? " is" : "s are") + " not label records. A label file has one {\"type\": ..., \"ref\": ..., \"label\": ...} record per line." : "Paste the label file first, or choose it (Sparrow: File, Export Labels; other apps: Export labels, BIP-329).", rows: []};
+  if(!recs.length) return {state: "bad", text: bad ? "No BIP329 labels found: " + bad + " line" + (bad === 1 ? " is" : "s are") + " not label records. A label file has one {\"type\": ..., \"ref\": ..., \"label\": ...} record per line." : "Paste the label file first, or choose it (Sparrow: File, Export Labels; other apps: Export labels, BIP329).", rows: []};
   const count = {}; for(const r of recs) count[r.type] = (count[r.type] || 0) + 1;
   const head = "Label file: " + recs.length + " label" + (recs.length === 1 ? "" : "s") + " (" + Object.keys(count).map(k => count[k] + " " + LB_TYPES[k] + (count[k] === 1 ? "" : "es".slice(LB_TYPES[k].endsWith("s") ? 0 : 1))).join(", ") + ")" + (bad ? "; " + bad + " line" + (bad === 1 ? "" : "s") + " could not be read" : "") + ".";
   const src = await detSource(phrase, vp), addrs = recs.filter(r => r.type === "addr");
@@ -6909,7 +6907,7 @@ async function pgpVerifyDetached(sigBytes, data, keyPacket){
   const created = pgpBe32(createdSp.data), expSp = hashed.find(sp => sp.type === 3);
   const fprSp = hashed.concat(unhashed).find(sp => sp.type === 33), idSp = hashed.concat(unhashed).find(sp => sp.type === 16);
   const fpr = fprSp && fprSp.data[0] === 4 && fprSp.data.length === 21 ? dlHex(fprSp.data.slice(1)) : "", keyId = idSp && idSp.data.length === 8 ? dlHex(idSp.data) : "";
-  if((fpr && fpr !== fprKey) || (!fpr && keyId !== fprKey.slice(24))) return {ok: false, created, fpr: fpr || keyId, why: "it was made with another key (" + (fpr ? pgpFprText(fpr) : "key ID " + keyId.toUpperCase()) + "), not the VOIDFORGE key"};
+  if((fpr && fpr !== fprKey) || (!fpr && keyId !== fprKey.slice(24))) return {ok: false, created, fpr: fpr || keyId, why: "it was made with another key (" + (fpr ? pgpFprText(fpr) : keyId ? "key ID " + keyId.toUpperCase() : "the signature names no key") + "), not the VOIDFORGE key"};
   let i = 8 + hl + ul; const left16 = s.slice(i, i + 2); i += 2;
   let sig;
   if(s[2] === 27){ sig = s.slice(i, i + 64); if(sig.length !== 64 || i + 64 !== s.length) return {ok: false, why: "the signature value is damaged"}; }
@@ -6931,7 +6929,7 @@ async function dlSignedCheck(files, K = VF_KEY){
   const byKind = {}, lines = [];
   for(const f of files){
     const t = new TextDecoder("utf-8", {fatal: false}).decode(f.bytes.slice(0, 2000));
-    const kind = /-----BEGIN PGP SIGNATURE-----/.test(t) || /\.(asc|sig)$/i.test(f.name) ? "sig" : /^\s*<!doctype html|<html/i.test(t) ? "html" : /^[0-9a-f]{64}  \S/m.test(t) ? "sums" : "other";
+    const kind = /-----BEGIN PGP SIGNATURE-----/.test(t) || /\.(asc|sig)$/i.test(f.name) ? "sig" : /^\s*<!doctype html|<html/i.test(t) ? "html" : /^[0-9a-f]{64} [ *]\S/m.test(t) ? "sums" : "other";
     if(kind === "other") return {state: "bad", lines, verdict: "“" + f.name + "” is none of the three files. Pick voidforge.html, SHA256SUMS and SHA256SUMS.asc from the release page."};
     if(byKind[kind]) return {state: "bad", lines, verdict: "Two files of the same kind were picked (" + byKind[kind].name + " and " + f.name + "). Pick each of the three files once."};
     byKind[kind] = f;
@@ -7117,6 +7115,7 @@ function xorModeChange(){
   document.getElementById("xorSplitPanel").style.display = split ? "" : "none"; document.getElementById("xorCombinePanel").style.display = split ? "none" : "";
   clearXor();
 }
+function xorWipe(){ xorSeq++; xorCtx = null; document.getElementById("xorPrintRow").style.display = "none"; const o = document.getElementById("xorOut"); o.textContent = ""; o.style.display = "none"; const t = document.getElementById("xorStatus"); t.textContent = ""; t.className = "status"; }
 function clearXor(){
   xorSeq++; xorCtx = null; document.getElementById("xorIn").value = ""; document.getElementById("xorRolls").value = ""; document.getElementById("xorPrintRow").style.display = "none";
   const o = document.getElementById("xorOut"); o.textContent = ""; o.style.display = "none";
@@ -7572,6 +7571,7 @@ async function camScan(id, btn){
   const box = document.getElementById("camBox"), v = document.getElementById("camVideo"), run = ++camRun;
   (btn.closest(".btn-row") || btn.parentElement).insertAdjacentElement("afterend", box); box.style.display = ""; v.style.display = "none";
   cam = {id, run, parts: [], stream: null, timer: null};
+  document.getElementById("camPhotoBtn").style.display = t.secret ? "none" : "";   // review: a photo of a SeedQR is a copy of the seed
   camMsg("Starting the camera. Your browser may ask for permission. Point it at the " + t.what + ".");
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ camMsg("This browser does not let the page use a camera here. Use OPEN A PHOTO INSTEAD."); return; }
   let stream;
@@ -7585,6 +7585,7 @@ async function camScan(id, btn){
 }
 function camTick(){
   if(!cam || !cam.stream) return;
+  if(CAM_TARGETS[cam.id].secret && navigator.onLine){ camStop("The network came on, so the camera stopped: a SeedQR is scanned only while the computer is offline."); return; }
   if(Date.now() > cam.until){ camStop("The camera turned off after " + CAM_SECONDS / 60 + " minutes. Press SCAN again to keep going."); return; }
   const v = document.getElementById("camVideo"); if(!v.videoWidth) return;
   const r = camRead(v, v.videoWidth, v.videoHeight, 800); if(r) camGot(r);
@@ -7642,7 +7643,7 @@ function camStop(note){
 // OPEN A PHOTO INSTEAD: one or more photos (a moving QR code needs a photo of each part)
 async function camPhotos(e){
   const files = [...(e.target.files || [])]; e.target.value = "";
-  if(!cam || !files.length) return;
+  if(!cam || !files.length || CAM_TARGETS[cam.id].secret) return;
   if(cam.stream){ clearInterval(cam.timer); cam.stream.getTracks().forEach(x => x.stop()); cam.stream = null; document.body.classList.remove("cam-on"); document.getElementById("camVideo").style.display = "none"; }
   const run = cam.run; let found = 0;
   for(const f of files){
@@ -7653,7 +7654,7 @@ async function camPhotos(e){
   }
   if(cam && cam.run === run && !found) camMsg("No QR code was found in " + (files.length === 1 ? "this photo" : "these photos") + ". Try a sharper photo with the whole code in it.");
 }
-// ===== SLIP-39 shares (v2.9.0): check each share, then combine (slip39Parse, slip39Combine). Trezor and Keystone make the
+// ===== SLIP39 shares (v2.9.0): check each share, then combine (slip39Parse, slip39Combine). Trezor and Keystone make the
 // wallet from the master secret as a BIP32 seed, so the fingerprint and addresses below are the ones those devices show. =====
 let s39Run = 0;
 function clearS39(){ s39Run++; for(const id of ["s39In", "s39Pass"]) document.getElementById(id).value = ""; s39Wipe(); }
@@ -7705,7 +7706,7 @@ function qrSnapshot(id, text){
     : cos ? "PUBLIC: one cosigner key of a multisig wallet. It cannot spend, and on its own it shows no addresses.\nAdd it to the multisig setup in your wallet app and check its fingerprint there."
     : "PUBLIC: no seed words and no private keys, so it cannot spend. Anyone who scans it can see this wallet's addresses and balance: keep it private.\nScan it into a watch-only wallet app and check that the first address matches.";
   return {id, text, foot, title: "VOIDFORGE " + (cos ? (id === "wZpub" ? "COSIGNER PUBLIC KEY" : "COSIGNER KEY WITH ORIGIN") : QR_PRINT_NAMES[id] || "PUBLIC KEY") + (net === "test" ? " (TESTNET)" : ""),
-    info: [document.getElementById("fingerprint").textContent, id === "spAddr" ? "Address type: Silent Payment (BIP-352)" : "Address type: " + sel.options[sel.selectedIndex].text,
+    info: [document.getElementById("fingerprint").textContent, id === "spAddr" ? "Address type: Silent Payment (BIP352)" : "Address type: " + sel.options[sel.selectedIndex].text,
       "Network: " + (net === "test" ? "TESTNET (practice coins only)" : "Mainnet"), "Account number: " + document.getElementById("wAcct").value.trim()]};
 }
 // QR size on paper: 11 cm, or smaller with smaller text for big codes, so the code and its text stay on one page.
@@ -7717,7 +7718,7 @@ function printShownQr(){
   printSqSheet(qrShown.title, qrSvg(q.rows), qrPrintSize(q),
     qrShown.info.join("\n") + "\n\n" + t + "\n\n" + qrShown.foot + "\n", "");
 }
-// Print an address QR code, or the payment request (BIP-21) made from it (v2.4.0).
+// Print an address QR code, or the payment request (BIP21) made from it (v2.4.0).
 function printAddrQr(pfx){
   const box = document.getElementById(pfx + "Box"), t = box.dataset.text, addr = box.dataset.addr;
   if(!t) return alert("Press QR next to an address first.");
@@ -8456,10 +8457,10 @@ async function checkKeyReuse(){
   st.className = "status " + (r.ok ? "ok" : "bad"); st.textContent = r.text;
 }
 // ===== Verify a signed message (v2.3.0). READ ONLY: this page never signs anything, and nothing here touches a seed. =====
-// Classic format (BIP-137): 65 bytes = a header (27 to 42) and r, s of an ECDSA signature over the double SHA-256 of
+// Classic format (BIP137): 65 bytes = a header (27 to 42) and r, s of an ECDSA signature over the double SHA-256 of
 // "\x18Bitcoin Signed Message:\n" + length + message. The public key is recovered from the signature and turned into the address.
 // Headers 27-34 are accepted for any single-key address type, as Electrum, Sparrow and Trezor do; Bitcoin Core accepts 1... only.
-// BIP-322 "simple": the witness stack that spends a virtual transaction committing to the message (to_spend / to_sign), for
+// BIP322 "simple": the witness stack that spends a virtual transaction committing to the message (to_spend / to_sign), for
 // P2WPKH (ECDSA, BIP143 signature hash, strict DER, low S, SIGHASH_ALL) and P2TR key path (Schnorr, BIP341 hash, DEFAULT or ALL).
 // Anything else (multisig, script paths, "full" signatures) is reported as "cannot check", never as valid.
 function concatBytes(...parts){ const o = new Uint8Array(parts.reduce((a, x) => a + x.length, 0)); let i = 0; for(const x of parts){ o.set(x, i); i += x.length; } return o; }
@@ -8521,7 +8522,7 @@ async function msgHashLegacy(msg){
   const m = new TextEncoder().encode(msg), pre = new TextEncoder().encode("\x18Bitcoin Signed Message:\n");
   return dsha256(concatBytes(pre, varintBytes(m.length), m));
 }
-// BIP-322 virtual transactions. Returns the to_spend txid (internal byte order) and what the signature hashes need.
+// BIP322 virtual transactions. Returns the to_spend txid (internal byte order) and what the signature hashes need.
 async function bip322Parts(msg, spk){
   const mh = await taggedHash("BIP0322-signed-message", new TextEncoder().encode(msg));
   const toSpend = concatBytes(le32(0), Uint8Array.of(1), new Uint8Array(32), le32(0xffffffff), Uint8Array.of(34, 0x00, 0x20), mh, le32(0), Uint8Array.of(1), new Uint8Array(8), varintBytes(spk.length), spk, le32(0));
@@ -8546,7 +8547,7 @@ function witnessParse(b){
   if(i !== b.length) throw new Error("extra bytes");
   return items;
 }
-// A BIP-322 "full" signature is a whole transaction (version 0, 1 or 2 first), and "proof of funds" is a PSBT (starts with "psbt" 0xff).
+// A BIP322 "full" signature is a whole transaction (version 0, 1 or 2 first), and "proof of funds" is a PSBT (starts with "psbt" 0xff).
 function looksLikeFull(b){
   if(b.length >= 5 && b[0] === 0x70 && b[1] === 0x73 && b[2] === 0x62 && b[3] === 0x74 && b[4] === 0xff) return true;
   return b.length >= 60 && b[0] <= 2 && b[1] === 0 && b[2] === 0 && b[3] === 0;
@@ -8585,20 +8586,20 @@ async function verifyMessage(addrIn, msgIn, sigIn){
   if(!/^(bc1|tb1)/i.test(addr)){ try { const pl = await base58decode(addr); if(pl.length !== 21) throw new Error("length"); } catch(e) { return {state: "error", text: "That address has a typo: its checksum does not match."}; } }
   if(!st) return {state: "error", text: "Paste the signature."};
   const pre = st.slice(0, 3);
-  if(pre === "ful" || pre === "pof") return {state: "cannot", text: "CANNOT CHECK: this is a BIP-322 “" + (pre === "ful" ? "full" : "proof of funds") + "” signature. This page checks classic signatures and BIP-322 “simple” ones only. Check it in a wallet that supports it."};
+  if(pre === "ful" || pre === "pof") return {state: "cannot", text: "CANNOT CHECK: this is a BIP322 “" + (pre === "ful" ? "full" : "proof of funds") + "” signature. This page checks classic signatures and BIP322 “simple” ones only. Check it in a wallet that supports it."};
   let simple = false; if(pre === "smp"){ simple = true; st = st.slice(3); }
   const b = b64bytes(st); if(!b) return {state: "error", text: "The signature is not valid base64. Paste it exactly as the wallet gave it."};
   if(!simple && !(b.length === 65 && b[0] >= 27 && b[0] <= 42)){
-    // No prefix and not a classic signature. A whole transaction or PSBT is a BIP-322 "full" or "proof of funds" signature from a
-    // wallet made before the prefixes existed; otherwise BIP-322 says a verifier may assume "simple" (native SegWit addresses only).
-    if(looksLikeFull(b)) return {state: "cannot", text: "CANNOT CHECK: this looks like a BIP-322 \u201cfull\u201d signature (a whole transaction) without its ful prefix. This page checks classic signatures and BIP-322 \u201csimple\u201d ones only."};
+    // No prefix and not a classic signature. A whole transaction or PSBT is a BIP322 "full" or "proof of funds" signature from a
+    // wallet made before the prefixes existed; otherwise BIP322 says a verifier may assume "simple" (native SegWit addresses only).
+    if(looksLikeFull(b)) return {state: "cannot", text: "CANNOT CHECK: this looks like a BIP322 \u201cfull\u201d signature (a whole transaction) without its ful prefix. This page checks classic signatures and BIP322 \u201csimple\u201d ones only."};
     if(type === "pkh" || type === "sh-wpkh") return {state: "error", text: b.length === 65 ? "This classic signature is damaged: its first byte must be 27 to 42. Paste it exactly as the wallet gave it." : "This is not a classic signature (65 bytes, about 88 characters of base64). Paste it exactly as the wallet gave it."};
     simple = true;
   }
   const sw = segwitDecode(addr);
   if(sw && !((sw.version === 0 && sw.prog.length === 20) || (sw.version === 1 && sw.prog.length === 32))) return {state: "cannot", text: "CANNOT CHECK: this looks like a script address (such as multisig). This page checks single-key addresses only."};
-  if(!simple && type === "tr") return {state: "cannot", text: "CANNOT CHECK: Taproot (bc1p...) addresses do not use the classic signature format. Ask for a BIP-322 signature, which this page checks."};
-  if(simple && (type === "pkh" || type === "sh-wpkh")) return {state: "cannot", text: "CANNOT CHECK: a BIP-322 signature for a " + (type === "pkh" ? "1..." : "3...") + " address must use the “full” format, which this page does not check. (For these addresses, the classic format is checked here.)"};
+  if(!simple && type === "tr") return {state: "cannot", text: "CANNOT CHECK: Taproot (bc1p...) addresses do not use the classic signature format. Ask for a BIP322 signature, which this page checks."};
+  if(simple && (type === "pkh" || type === "sh-wpkh")) return {state: "cannot", text: "CANNOT CHECK: a BIP322 signature for a " + (type === "pkh" ? "1..." : "3...") + " address must use the “full” format, which this page does not check. (For these addresses, the classic format is checked here.)"};
   // If the exact text fails: Windows line breaks either way (a text box always gives \n), spaces or line breaks at the ends, a final line break.
   const variants = [msg], n1 = msg.replace(/\r\n/g, "\n");
   for(const v of [n1, msg.trim(), n1.trim(), n1.replace(/\n/g, "\r\n"), n1 + "\n", n1.replace(/\n/g, "\r\n") + "\r\n"]) if(!variants.includes(v)) variants.push(v);
@@ -8608,9 +8609,9 @@ async function verifyMessage(addrIn, msgIn, sigIn){
     if(r !== true) continue;
     const test = addressNetOf(addr) === "test", kinds = {"pkh": "Legacy (" + (test ? "m... or n..." : "1...") + ")", "sh-wpkh": "Nested SegWit (" + (test ? "2..." : "3...") + ")", "wpkh": "Native SegWit (" + (test ? "tb1q..." : "bc1q...") + ")", "tr": "Taproot (" + (test ? "tb1p..." : "bc1p...") + ")"};
     let fmt;
-    if(simple) fmt = "BIP-322 simple, " + kinds[type] + (pre === "smp" ? "" : ", without the smp prefix that newer wallets add");
+    if(simple) fmt = "BIP322 simple, " + kinds[type] + (pre === "smp" ? "" : ", without the smp prefix that newer wallets add");
     else { const h = b[0], hk = h <= 30 ? "pkh-u" : h <= 34 ? "pkh" : h <= 38 ? "sh-wpkh" : "wpkh";
-      fmt = "classic (BIP-137), " + kinds[type] + (hk === type ? "" : hk === "pkh-u" ? ", uncompressed key" : hk === "pkh" ? ", with the legacy header that Electrum and Sparrow use for every address type (Bitcoin Core checks 1... addresses only)" : ", although the header names a different address type"); }
+      fmt = "classic (BIP137), " + kinds[type] + (hk === type ? "" : hk === "pkh-u" ? ", uncompressed key" : hk === "pkh" ? ", with the legacy header that Electrum and Sparrow use for every address type (Bitcoin Core checks 1... addresses only)" : ", although the header names a different address type"); }
     return {state: "valid", variant: k > 0, text: (k ? "VALID, after a small change to the message: the key of " + addr + " signed it once spaces or line breaks at its start or end are removed or added, or its line breaks are written the Windows way. Make sure that is the text you expect." : "VALID: the key of " + addr + " signed exactly this message.") +
       "\nFormat: " + fmt + ".\nA signature shows that whoever holds this address's key signed the message. It does not show who that is, or that any coins are still there."};
   }
@@ -8862,7 +8863,7 @@ async function msExplain(raw, height, phrase, vp){
   const lines = paths.map((p, i) => {
     const keys = [], waits = [], hashes = [];
     for(const c of p){
-      if(c.t === "key") keys.push(nameOf(c.key) + (c.keyPath ? " alone, through the Taproot key path" : ""));
+      if(c.t === "key") keys.push(nameOf(c.key) + (c.keyPath ? " alone, through the Taproot key path (if it is a real key: some wallets, such as Liana, put a key here that nobody can use; the wallet that made it can tell you)" : ""));
       else if(c.t === "multi") keys.push(c.k + " of " + c.keys.map(nameOf).join(", "));
       else if(c.t === "older") waits.push(msOlderText(c.n));
       else if(c.t === "after") waits.push(msAfterText(c.n, height));
@@ -8874,14 +8875,17 @@ async function msExplain(raw, height, phrase, vp){
   const relative = paths.some(p => p.some(c => c.t === "older")), fixed = paths.some(p => p.some(c => c.t === "after"));
   return {state: "ok", text: "This " + kind + " wallet can be spent in " + paths.length + " way" + (paths.length === 1 ? "" : "s") + ":\n" + lines.join("\n") + "\n\n" + keyList.join("\n") + (relative ? "\n\nA waiting time “after each deposit” starts again whenever coins are moved: sending them to a new address of the same wallet before the time is up keeps the later paths closed (Liana calls this refreshing the coins)." : "") + (fixed ? "\n\nA fixed block or date does not restart: once it has passed, that path stays open for good." : "") + (paths.some(p => p.some(c => c.t === "hash")) ? "\n\nA path that needs a secret (a hash preimage) can only be used by someone who knows that secret." : "")};
 }
+let msxRun = 0;
+function msxWipe(){ msxRun++; const st = document.getElementById("msxStatus"); st.textContent = ""; st.className = "status"; }   // review: the result belongs to the inputs that made it
 async function msExplainUi(){
-  const st = document.getElementById("msxStatus"), h = document.getElementById("msxHeight").value.trim();
+  if(!gateOk()) return;   // review: it works out fingerprints from the words typed above
+  const run = ++msxRun, st = document.getElementById("msxStatus"), h = document.getElementById("msxHeight").value.trim();
   if(h && !/^\d{1,8}$/.test(h)){ st.className = "status bad"; st.textContent = "The block height is a whole number, such as 925000."; return; }
   st.className = "status"; st.textContent = "Reading...";
-  try { const r = await msExplain(document.getElementById("msxIn").value, h ? parseInt(h, 10) : null, document.getElementById("phrase").value, document.getElementById("verifyPass").value); st.className = "status " + r.state; st.textContent = r.text; }
-  catch(e) { st.className = "status bad"; st.textContent = "Could not read it: " + e.message; }
+  try { const r = await msExplain(document.getElementById("msxIn").value, h ? parseInt(h, 10) : null, document.getElementById("phrase").value, document.getElementById("verifyPass").value); if(run !== msxRun) return; st.className = "status " + r.state; st.textContent = r.text; }
+  catch(e) { if(run !== msxRun) return; st.className = "status bad"; st.textContent = "Could not read it: " + e.message; }
 }
-function clearMsx(){ document.getElementById("msxIn").value = ""; document.getElementById("msxHeight").value = ""; const st = document.getElementById("msxStatus"); st.textContent = ""; st.className = "status"; }
+function clearMsx(){ msxRun++; document.getElementById("msxIn").value = ""; document.getElementById("msxHeight").value = ""; const st = document.getElementById("msxStatus"); st.textContent = ""; st.className = "status"; }
 function clearReuse(){ document.getElementById("reuseIn").value = ""; const st = document.getElementById("reuseStatus"); st.textContent = ""; st.className = "status"; }
 async function openWalletView(mnemonic, pass){
   clearWalletView();
@@ -8975,7 +8979,12 @@ document.getElementById("verifyRecorded").addEventListener("input", () => { cons
 for(const id of ["phrase","verifyPass","childWords","childIndex","childLen","childSides","childRolls"]) document.getElementById(id).addEventListener("input", clearChild);
 for(const id of ["phrase","verifyPass"]) document.getElementById(id).addEventListener("input", () => { verifySeq++; if(wvCtx && wvCtx.mnemonic) clearWalletView(); if(childCtx || document.getElementById("childOut").textContent) clearChild(); });
 document.getElementById("verifyPass").addEventListener("input", passWarnUpdate);
-for(const id of ["phrase", "verifyPass"]) document.getElementById(id).addEventListener("input", () => { detClear(true); kcClear(true); lbClear(true); if(xorCtx && document.querySelector('input[name=xorMode]:checked').value === "split") clearXor(); });   // v2.8.0: the Detective result belongs to the old words
+for(const id of ["phrase", "verifyPass"]) document.getElementById(id).addEventListener("input", () => { detClear(true); kcClear(true); lbClear(true); msxWipe(); if(xorCtx && document.querySelector('input[name=xorMode]:checked').value === "split") clearXor(); });   // v2.8.0: the Detective result belongs to the old words
+// review (v2.9.0): a result never stays on screen next to inputs that did not make it
+for(const id of ["msxIn", "msxHeight"]) document.getElementById(id).addEventListener("input", msxWipe);
+document.getElementById("typoIn").addEventListener("input", () => { const st = document.getElementById("typoStatus"); st.textContent = ""; st.className = "status"; });
+for(const id of ["xorIn", "xorRolls", "xorN", "xorFrom"]) document.getElementById(id).addEventListener(id === "xorN" || id === "xorFrom" ? "change" : "input", xorWipe);
+for(const id of ["s39In", "s39Pass"]) document.getElementById(id).addEventListener("input", () => { s39Run++; s39Wipe(); });
 document.getElementById("reuseIn").addEventListener("input", () => { const st = document.getElementById("reuseStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wpIn").addEventListener("input", () => { if(wvCtx && wvCtx.kind === "pub" && !wvCtx.secret) clearWalletView(); const st = document.getElementById("wpStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wType").addEventListener("change", refreshWatch);
@@ -9048,7 +9057,7 @@ function setGate(state, text, cls){
   if(!kcBusy) document.getElementById("kcBtn").disabled = !on;   // v2.9.0: Is this seed in my wallet file?
   if(!lbBusy) document.getElementById("lbBtn").disabled = !on;   // v2.9.0: Read a label file
   for(const id of ["xorSplitBtn", "xorCombineBtn"]) document.getElementById(id).disabled = !on;   // v2.9.0: Seed XOR
-  document.getElementById("s39Btn").disabled = !on;   // v2.9.0: SLIP-39
+  document.getElementById("s39Btn").disabled = !on;   // v2.9.0: SLIP39
   document.getElementById("wpBtn").disabled = !on;
   document.getElementById("reuseBtn").disabled = !on;
   document.getElementById("childBtn").disabled = !on;
@@ -9368,6 +9377,7 @@ async function cdGenerate(){
   if(pr.bad.length || b.bits < need){ cdUpdate(); return; }
   const ix = pr.cards.map(c => CD_SUITS.indexOf(c[1]) * 13 + CD_RANKS.indexOf(c[0])), step = (d) => ix.every((v, i) => i === 0 || v - ix[i - 1] === d);
   if((step(1) || step(-1)) && !confirm("Your cards are in the order of a new, unshuffled deck. A seed made from them is weak. Make it anyway?")) return;
+  if(b.again && !confirm("A card comes up twice before the deck ran out. That is right only if you shuffled the whole deck again in between; a card typed twice by mistake makes the seed weaker than counted. Make it anyway?")) return;
   const sig0 = inputSig("cd"), mnemonic = await rollsToMnemonic(pr.cards.join(" "), wc);
   await finishSeed(mnemonic, null, sig0, "cd", {cards: pr.cards.length, bits: b.bits});
   if(hasSeed()) document.getElementById("explainBox").style.display = "none";   // the dice explainer does not apply

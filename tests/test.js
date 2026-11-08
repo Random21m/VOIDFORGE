@@ -359,9 +359,9 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const r2=await t.w.checkPhrase('abandon '.repeat(11)+'abandon'); ok(!r2.ok&&!/Electrum/.test(r2.msg),'Electrum: an ordinary bad phrase gets no Electrum note');
       const r3=await t.w.checkPhrase(AB); ok(r3.ok&&!/Electrum/.test(r3.msg),'Electrum: a valid BIP39 phrase is never called Electrum');
       ok(await t.w.electrumSeedType('say brain hammer whip plug sad budget improve scout myself interest input')==='two-factor (2FA)'&&await t.w.electrumSeedType('neglect morning hat science deputy alarm seed eager cover letter pencil second')==='two-factor (2FA) SegWit'&&await t.w.electrumSeedType('shoulder between fitness double soap point region fade rose guide kitten loud')===null,'Electrum: two-factor types are named, and a phrase whose hash starts 103 is not Electrum'); }
-    // payment request (BIP-21)
+    // payment request (BIP21)
     { const A=t.w.bip21Amount; ok(A('0.0015').v==='0.0015'&&A('1').v==='1'&&A('1.10000000').v==='1.1'&&A('21000000').v==='21000000'&&A('').v===''&&!A('0').ok&&!A('1.123456789').ok&&!A('21000000.00000001').ok&&!A('1,5').ok&&!A('-1').ok,'payment request: amounts are checked (8 decimals, above 0, at most 21 million)');
-      ok(t.w.bip21Uri('bc1qx','0.5','Café & tea','Thanks!')==='bitcoin:bc1qx?amount=0.5&label=Caf%C3%A9%20%26%20tea&message=Thanks!','payment request: link is built and encoded as BIP-21 says');
+      ok(t.w.bip21Uri('bc1qx','0.5','Café & tea','Thanks!')==='bitcoin:bc1qx?amount=0.5&label=Caf%C3%A9%20%26%20tea&message=Thanks!','payment request: link is built and encoded as BIP21 says');
       t.$('phrase').value=AB; t.$('verifyPass').value=''; await t.w.verify(); await until(()=>rows().length===10);
       t.$('wvList').querySelector('li button.qr-mini').click(); t.$('wvqAmt').value='0.0015'; t.$('wvqLbl').value='Rent'; t.$('wvqAmt').dispatchEvent(new t.w.Event('input'));
       const uri='bitcoin:bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu?amount=0.0015&label=Rent', d=t.d.createElement('div'); d.innerHTML=t.w.qrSvg(t.w.qrMatrix(uri).rows);
@@ -1094,32 +1094,32 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       tb.$('wdFind').value='1111 1 H'; tb.w.wdAddFound(); ok(!tb.w.hasSeed(),'Word draw: adding a word after the seed was made clears it');
       tb.$('wdWords').value=made.split(' ').slice(0,23).join(' '); tb.w.wdUpdate(); await tb.w.wdGenerate(); tb.words(12); ok(!tb.w.hasSeed(),'Word draw: changing the word count clears the seed'); }
     ok(/Using BitBox02&rsquo;s diceware table\?/.test(html)&&/T as 1 and H as 0/.test(html)&&/HHH picks the first, TTT the eighth/.test(html),'BitBox02: the Word draw box explains the table codes and the 3 flips'); }
-  { // v2.3.0 Verify a signed message: official BIP-322 vectors (bitcoin/bips) and Bitcoin Core's classic test vector, through the page
+  { // v2.3.0 Verify a signed message: official BIP322 vectors (bitcoin/bips) and Bitcoin Core's classic test vector, through the page
     const ts=load(); await ts.ready(); const V=(a,m,sg)=>ts.w.verifyMessage(a,m,sg);
     const CORE=['mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB','This is just a test message','INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0='];
     const W1='bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l', SE='smpAkcwRAIgM2gBAQqvZX15ZiysmKmQpDrG83avLIT492QBzLnQIxYCIBaTpOaD20qRlEylyxFSeEA2ba9YOixpX8z46TSDtS40ASECx/EgAxlkQpQ9hYjgGu6EBCPMVPwVIVJqO4XCsMvViHI=';
     const SH=['smpAkcwRAIgZRfIY3p7/DoVTty6YZbWS71bc5Vct9p9Fia83eRmw2QCICK/ENGfwLtptFluMGs2KsqoNSk89pO7F29zJLUx9a/sASECx/EgAxlkQpQ9hYjgGu6EBCPMVPwVIVJqO4XCsMvViHI=','smpAkgwRQIhAOzyynlqt93lOKJr+wmmxIens//zPzl9tqIOua93wO6MAiBi5n5EyAcPScOjf1lAqIUIQtr3zKNeavYabHyR8eGhowEhAsfxIAMZZEKUPYWI4BruhAQjzFT8FSFSajuFwrDL1Yhy'];
     const TR=['bc1pss0zhytly75awhm6x2hhvd5lnzv3vssgrf9axfheq8ldyzn88ges79fler','No prefix fallback','AUCJYOwOjxYAvatTAGYaVlNXBVyFuc4MwNQkOuK2tl8xhfKDONd0NjfYyNSYcRqeCp8hsAnCEPHAVEkO9h6vbQ/R'];
-    let r=await V(...CORE); ok(r.state==='valid'&&!r.variant&&/^VALID: the key of mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB signed exactly this message\.\nFormat: classic \(BIP-137\), Legacy \(m\.\.\. or n\.\.\.\)\.\nA signature shows that whoever holds/.test(r.text),'signed message: Bitcoin Core\'s test vector is VALID, names the address, testnet labels');
+    let r=await V(...CORE); ok(r.state==='valid'&&!r.variant&&/^VALID: the key of mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB signed exactly this message\.\nFormat: classic \(BIP137\), Legacy \(m\.\.\. or n\.\.\.\)\.\nA signature shows that whoever holds/.test(r.text),'signed message: Bitcoin Core\'s test vector is VALID, names the address, testnet labels');
     r=await V('1BquDSCmzyqhKnMXByiDQEFbY3DkMRi1XP','recid two','IQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEjRWeJCrze8='); ok(r.state==='valid'&&/Legacy \(1\.\.\.\)/.test(r.text),'signed message: recovery id 2 (R.x = r + n), checked with @noble/curves');
     r=await V(CORE[0],CORE[1],Buffer.from([0x2b,...Buffer.from(CORE[2],'base64').subarray(1)]).toString('base64')); ok(r.state==='error'&&/damaged: its first byte must be 27 to 42/.test(r.text),'signed message: a classic signature with a bad first byte is called damaged');
     r=await V(CORE[0],CORE[1],'AAAA'); ok(r.state==='error'&&/not a classic signature/.test(r.text),'signed message: a short signature for a 1... address is refused');
     r=await V(CORE[0],CORE[1]+'.',CORE[2]); ok(r.state==='invalid'&&/^NOT VALID: this signature does not match this address and this message\./.test(r.text),'signed message: one character more is NOT VALID');
     r=await V(CORE[0],CORE[1]+'\r\n',CORE[2]); ok(r.state==='valid'&&r.variant===true&&/^VALID, after a small change to the message: the key of mpLQ/.test(r.text),'signed message: a trailing line break is accepted, with a clear warning');
     r=await V('mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxC',CORE[1],CORE[2]); ok(r.state==='error'&&/checksum does not match/.test(r.text),'signed message: an address with a typo is refused');
-    r=await V(W1,'',SE); ok(r.state==='valid'&&/BIP-322 simple, Native SegWit \(bc1q\.\.\.\)/.test(r.text)&&r.text.includes(W1),'signed message: BIP-322 simple P2WPKH, empty message (official vector)');
-    // every official BIP-322 vector (bitcoin/bips bip-0322/*.json): simple ones VALID (or CANNOT CHECK for multisig), full and proof-of-funds
+    r=await V(W1,'',SE); ok(r.state==='valid'&&/BIP322 simple, Native SegWit \(bc1q\.\.\.\)/.test(r.text)&&r.text.includes(W1),'signed message: BIP322 simple P2WPKH, empty message (official vector)');
+    // every official BIP322 vector (bitcoin/bips bip-0322/*.json): simple ones VALID (or CANNOT CHECK for multisig), full and proof-of-funds
     // CANNOT CHECK with and without their prefix, every error case never VALID
     { const VB=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures','bip322-basic-test-vectors.json'),'utf8')), VG=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures','bip322-generated-test-vectors.json'),'utf8'));
       let bad=[], n=0;
       for(const v of [...VB.simple,...VG.simple]) for(const sg of v.bip322_signatures){ n++; const want=/p2wsh/.test(v.type)?'cannot':'valid'; for(const x of [sg, sg.startsWith('smp')?sg.slice(3):'smp'+sg]){ const g=(await V(v.address,v.message,x)).state; if(g!==want) bad.push(v.type+' '+g); } }
       for(const v of [...VG.full,...VG.proof_of_funds]) for(const sg of v.bip322_signatures){ n++; for(const x of [sg, /^(ful|pof)/.test(sg)?sg.slice(3):sg]){ const g=(await V(v.address,v.message,x)).state; if(g!=='cannot') bad.push(v.type+' full '+g+(x===sg?'':' (no prefix)')); } }
       for(const v of [...VB.error,...VG.error]){ n++; const g=(await V(v.address,v.message,v.signature)).state; if(g==='valid') bad.push('error case '+v.description); }
-      ok(n===59&&bad.length===0,'signed message: all '+n+' official BIP-322 vectors give the right result, with and without the prefix ('+(bad.join('; ')||'no mismatches')+')'); }
-    for(const sg of SH){ r=await V(W1,'Hello World',sg); ok(r.state==='valid','signed message: BIP-322 simple P2WPKH "Hello World" (official vector, '+sg.slice(3,10)+'...)'); }
-    r=await V(W1,'Hello World',SH[0].slice(3)); ok(r.state==='valid'&&/without the smp prefix/.test(r.text),'signed message: a BIP-322 signature without the smp prefix is read as simple');
+      ok(n===59&&bad.length===0,'signed message: all '+n+' official BIP322 vectors give the right result, with and without the prefix ('+(bad.join('; ')||'no mismatches')+')'); }
+    for(const sg of SH){ r=await V(W1,'Hello World',sg); ok(r.state==='valid','signed message: BIP322 simple P2WPKH "Hello World" (official vector, '+sg.slice(3,10)+'...)'); }
+    r=await V(W1,'Hello World',SH[0].slice(3)); ok(r.state==='valid'&&/without the smp prefix/.test(r.text),'signed message: a BIP322 signature without the smp prefix is read as simple');
     r=await V(W1,'Wrong message that was not signed',SE); ok(r.state==='invalid','signed message: official vector, wrong message is NOT VALID');
-    r=await V(...TR); ok(r.state==='valid'&&/BIP-322 simple, Taproot/.test(r.text),'signed message: BIP-322 simple Taproot (official vector)');
+    r=await V(...TR); ok(r.state==='valid'&&/BIP322 simple, Taproot/.test(r.text),'signed message: BIP322 simple Taproot (official vector)');
     r=await V(TR[0],'No prefix fallback!',TR[2]); ok(r.state==='invalid','signed message: Taproot with another message is NOT VALID');
     r=await V(W1,'','smpAA=='); ok(r.state==='invalid','signed message: an empty witness is NOT VALID (official vector)');
     r=await V(W1,'','not-valid-base64!!!'); ok(r.state==='error'&&/not valid base64/.test(r.text),'signed message: not base64 is refused');
@@ -1310,7 +1310,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     [c,x]=await X('3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy'); ok(/^Script address \(P2SH\) on Bitcoin mainnet/.test(x),'explain: a 3 address');
     [c,x]=await X('mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn'); ok(/^Legacy address \(P2PKH\) on testnet/.test(x),'explain: an m address is testnet');
     [c,x]=await X('1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN3'); ok(c==='status bad'&&/checksum does not match/.test(x),'explain: a typo in a 1 address');
-    [c,x]=await X('bitcoin:bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu?amount=0.1'); ok(c==='status ok'&&/payment request \(BIP-21\)/.test(x)&&/BIP21/.test(x),'explain: a bitcoin: link');
+    [c,x]=await X('bitcoin:bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu?amount=0.1'); ok(c==='status ok'&&/payment request \(BIP21\)/.test(x)&&/BIP21/.test(x),'explain: a bitcoin: link');
     [c,x]=await X('5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ'); ok(c==='status bad'&&/PRIVATE KEY \(WIF\)/.test(x),'explain: a private key is called out');
     [c,x]=await X('xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8'); ok(c==='status warn'&&/extended PUBLIC key/.test(x),'explain: an xpub is explained as public but not an address');
     [c,x]=await X('xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi'); ok(c==='status bad'&&/extended PRIVATE key/.test(x),'explain: an xprv is called out');
@@ -1320,7 +1320,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     [c,x]=await X('hello'); ok(c==='status bad'&&/Not a Bitcoin address/.test(x),'explain: other text');
     [c,x]=await X(''); ok(c==='status'&&x==='','explain: an empty box shows nothing');
     const sp=(await (async()=>{ const seed=await w.mnemonicToSeed('abandon '.repeat(11)+'about',''); return w.spAddressFromSeed(seed,'main',0); })());
-    [c,x]=await X(sp); ok(c==='status ok'&&/^Silent Payment address \(BIP-352\) on Bitcoin mainnet/.test(x),'explain: a Silent Payment address');
+    [c,x]=await X(sp); ok(c==='status ok'&&/^Silent Payment address \(BIP352\) on Bitcoin mainnet/.test(x),'explain: a Silent Payment address');
     [c,x]=await X(sp.slice(0,-1)+(sp.endsWith('q')?'p':'q')); ok(c==='status bad'&&/Silent Payment address/.test(x),'explain: a typo in a Silent Payment address');
     // dictionary links
     const names=new Set(w.eval('DICT').map(e=>e[0])), targets=[...html.matchAll(/dictGo\('([^']+)'\)/g)].map(m=>m[1]), found=[...html.matchAll(/terms: (?:terms\.concat\()?\[([^\]]*)\]/g)].flatMap(m=>[...m[1].matchAll(/"([^"]+)"/g)].map(y=>y[1]));
@@ -1380,7 +1380,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(/no copy or save; its print button prints it on one sheet, after asking/.test(t9.d.querySelector('#childBox').textContent),'child: the box says it can be printed');
     // explainer: more secrets pasted by mistake, and Silent Payment contents
     const X=async a=>{ const r=await w.explainAddress(a); return r?r.level+' '+r.text:''; };
-    for(const [a,re] of [['1. legal 2. winner 3. thank 4. year 5. wave 6. sausage',/^bad These look like SEED WORDS/],['lega winn than year wave saus',/^bad These look like SEED WORDS/],['0'.repeat(96),/^bad These look like SeedQR digits/],['ab'.repeat(32),/^bad This is 64 hex characters/],['lnurl1dp68gurn8ghj7',/^warn This is an LNURL/],['lntbs1pjqqqqqpp5',/^warn This is a Lightning invoice/],['WSH(SORTEDMULTI(2,A,B))',/^warn This is a descriptor/],['6PRVWUbkzzsbcVac2qwfssoUJAN1Xhrg6bNk8J7Nzm5H7kxEbn2Nh2ZoGg',/^bad This is a password-protected PRIVATE KEY \(BIP-38\)/],['S6c56bnXQiBjk9mqSYE7ykVQ7NzrRy',/^bad This is a mini PRIVATE KEY/],['S6c56bnXQiBjk9mqSYE7ykVQ7NzrRz',/^bad Not a valid address/],['send me the money by friday please now',/^bad Not a Bitcoin address/]])
+    for(const [a,re] of [['1. legal 2. winner 3. thank 4. year 5. wave 6. sausage',/^bad These look like SEED WORDS/],['lega winn than year wave saus',/^bad These look like SEED WORDS/],['0'.repeat(96),/^bad These look like SeedQR digits/],['ab'.repeat(32),/^bad This is 64 hex characters/],['lnurl1dp68gurn8ghj7',/^warn This is an LNURL/],['lntbs1pjqqqqqpp5',/^warn This is a Lightning invoice/],['WSH(SORTEDMULTI(2,A,B))',/^warn This is a descriptor/],['6PRVWUbkzzsbcVac2qwfssoUJAN1Xhrg6bNk8J7Nzm5H7kxEbn2Nh2ZoGg',/^bad This is a password-protected PRIVATE KEY \(BIP38\)/],['S6c56bnXQiBjk9mqSYE7ykVQ7NzrRy',/^bad This is a mini PRIVATE KEY/],['S6c56bnXQiBjk9mqSYE7ykVQ7NzrRz',/^bad Not a valid address/],['send me the money by friday please now',/^bad Not a Bitcoin address/]])
       ok(re.test(await X(a)),'explain: '+a.slice(0,24));
     const B32='qpzry9x8gf2tvdw0s3jn54khce6mua7l', toW=(n)=>{ const out=[]; let acc=0,bits=0; for(let i=0;i<n;i++){ acc=(acc<<8)|(i&255); bits+=8; while(bits>=5){ bits-=5; out.push((acc>>bits)&31); } acc&=(1<<bits)-1; } if(bits) out.push((acc<<(5-bits))&31); return out; };
     ok(/^bad .*contents are not two keys/.test(await X(w.bech32mText('sp',[0,...toW(2)])))&&/^bad .*contents are not two keys/.test(await X(w.bech32mText('sp',[31,...toW(66)])))&&/^ok Silent Payment address/.test(await X(w.bech32mText('sp',[1,...toW(70)])))&&/^bad .*contents are not two keys/.test(await X(w.bech32mText('sp',[1,...toW(60)]))),'explain: a Silent Payment address must hold two keys (66 bytes; version 31 is reserved)'); }
@@ -1563,7 +1563,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     for(const ty of ['wpkh','tr','sh-wpkh','pkh']){
       $('wType').value=ty; await w.refreshWatch(); const txt=w.watchFileText(), lines=txt.split('\n'), live=lines.filter(l=>l.trim()&&!l.startsWith('#'));
       const recv=$('wDescR').textContent, body=recv.replace(/#[a-z0-9]{8}$/,'').replace('/0/*)','/<0;1>/*)');
-      ok(live.length===1&&live[0]===body+'#'+CS(body),'watch-only file ('+ty+'): one line Sparrow reads, the receive-and-change descriptor with a correct checksum (independent BIP-380 code)');
+      ok(live.length===1&&live[0]===body+'#'+CS(body),'watch-only file ('+ty+'): one line Sparrow reads, the receive-and-change descriptor with a correct checksum (independent BIP380 code)');
       ok(txt.includes('# Receive descriptor: '+recv)&&txt.includes('# Change descriptor:  '+$('wDescC').textContent)&&$('wFirst').textContent.split('\n').every((a,i)=>txt.includes('#   '+i+': '+a))&&new RegExp('Made on: '+today).test(txt),'watch-only file ('+ty+'): the separate descriptors, the first addresses and the birthday as comments');
       ok(ty==='tr'?/Electrum cannot open Taproot wallets/.test(txt)&&!/master key\):/.test(txt):txt.includes('master key): '+$('wZpub').textContent),'watch-only file ('+ty+'): the Electrum line fits the address type');
     }
@@ -1976,7 +1976,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       $('verifyRecorded').value=tpub; await w.verify(); const a=$('verifyMatch').textContent; $('verifyRecorded').value=tb; await w.verify(); const b=$('verifyMatch').textContent;
       ok(/^MATCH \(without passphrase\)/.test(a)&&/account key at m\/44'\/1'\/0'/.test(a)&&/^MATCH \(without passphrase\)/.test(b),'VERIFY: a tpub and a tb1p address from the wallet app are recognized and matched on the test network'); $('verifyRecorded').value=''; }
     // 8. Uprv is a private key (review L2), and Coldcard refuses lopsided rolls (Test upgrade, vendor source)
-    { const uprv=await w.base58check(Uint8Array.from([0x02,0x42,0x85,0xb5,...new Uint8Array(74)])); ok(/^Uprv/.test(uprv)&&(await w.descriptorHasSecret('wsh(sortedmulti(2,'+uprv+'))'))===true,'keys: Uprv (SLIP-132) is known as a private key'); }
+    { const uprv=await w.base58check(Uint8Array.from([0x02,0x42,0x85,0xb5,...new Uint8Array(74)])); ok(/^Uprv/.test(uprv)&&(await w.descriptorHasSecret('wsh(sortedmulti(2,'+uprv+'))'))===true,'keys: Uprv (SLIP132) is known as a private key'); }
     { const sk='1'.repeat(20)+'23456'.repeat(6); $('dcDev').value='coldcard'; $('dcLen').value='12'; $('dcRolls').value=sk; await w.dcCheck();
       ok(/^Coldcard refuses these rolls: 1 is 20 of the 50 rolls, more than 30%/.test($('dcStatus').textContent)&&!$('dcOut').textContent,'device dice: Coldcard refuses rolls where one face is over 30%, as its code does');
       $('dcDev').value='keystone'; await w.dcCheck(); ok(/Keystone will warn that they look uneven; it still makes the words/.test($('dcStatus').textContent)&&!!$('dcOut').textContent,'device dice: Keystone warns about such rolls but still makes the words'); }

@@ -93,4 +93,4 @@ Key origin used: `m/48'/0'/<account>'/2'` for native SegWit (P2WSH) or `.../1'` 
 ## Bitcoin Core watch-only import and Silent Payment addresses (v1.21.0)
 
 - **Bitcoin Core:** in the Watch-only box, open *Import into Bitcoin Core*, choose whether the wallet is new or has history, then run the two commands (Core console or `bitcoin-cli`). The wallet is watch-only and cannot spend. Check the first receive address against VOIDFORGE's before you send anything. The commands are a template: check them against `bitcoin-cli help importdescriptors` for your Core version.
-- **Silent Payment address:** it is made from the same seed at `m/352'/coin'/account'` (BIP-352). To receive you need a wallet that supports Silent Payments, plus the same seed words (and passphrase, if you used one). Few wallets support it yet, so test with a small amount first.
+- **Silent Payment address:** it is made from the same seed at `m/352'/coin'/account'` (BIP352). To receive you need a wallet that supports Silent Payments, plus the same seed words (and passphrase, if you used one). Few wallets support it yet, so test with a small amount first.
