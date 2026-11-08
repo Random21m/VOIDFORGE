@@ -874,7 +874,8 @@ async function probe(w, mutated, fast) {
     $('wvSqBtns').querySelector('button').click(); if ($('wvsBox').style.display !== 'block' || !/SECRET/.test($('wvsCap').textContent)) fails.push('wallet view: SeedQR is marked SECRET');
     printed = 0; w.printRecoverySheet(); if (printed !== 1 || !/^VOIDFORGE RECOVERY SHEET/.test(ptxt) || !ptxt.includes('73c5da0a') || !ptxt.includes(first[0]) || /abandon/.test(ptxt) || !/Passphrase used: NO/.test(ptxt)) fails.push('recovery sheet: fingerprint, type, path and addresses, never the words');
     { const ad = (ch, i) => { const k = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, '')).derive(`m/84'/0'/0'/${ch}/${i}`); return bech32.encode('bc', [0, ...bech32.toWords(ripemd160(nsha(k.publicKey)))]); };
-      if (!/First 10 receive and first 10 change addresses/.test(ptxt) || !ptxt.includes('  9:  ' + ad(0, 9)) || !ptxt.includes(ad(1, 0)) || !ptxt.includes(ad(1, 9)) || ptxt.includes(ad(0, 10)) || ptxt.includes(ad(1, 10))) fails.push('recovery sheet: the first 10 receive and the first 10 change addresses'); }
+      if (!/First 10 receive and first 10 change addresses/.test(ptxt) || !ptxt.includes('  9:  ' + ad(0, 9)) || !ptxt.includes(ad(1, 0)) || !ptxt.includes(ad(1, 9)) || ptxt.includes(ad(0, 10)) || ptxt.includes(ad(1, 10))) fails.push('recovery sheet: the first 10 receive and the first 10 change addresses');
+      if (!/Derivation path: m\/84'\/0'\/0'\/0\/index \(receive\) and \.\.\.\/1\/index \(change\)\n/.test(ptxt)) fails.push('recovery sheet: the path line names both chains'); }
     w.dispatchEvent(new w.Event('afterprint'));
     $('phrase').value = AB + ' '; $('phrase').dispatchEvent(new w.Event('input', { bubbles: true })); if ($('walletView').style.display !== 'none' || $('wvList').textContent !== '' || $('wvsImg').textContent !== '' || $('wvqImg').textContent !== '') fails.push('wallet view: editing the words wipes it');
     $('phrase').value = AB; $('verifyPass').value = 'SECRETPASS'; await w.verify(); await until(() => rows().length === 10);
@@ -1285,6 +1286,9 @@ async function probe(w, mutated, fast) {
       [tx, cl] = await M(wq('', 7, 1), ''); if (!/^MATCH \(without passphrase\): your address/.test(tx) || !/first 10 receive or first 10 change/.test(tx)) fails.push('compare: a bc1q change address in the first 10 matches');
       [tx, cl] = await M(wq('TREZOR', 3), 'TREZOR'); if (!/^MATCH \(with passphrase\)/.test(tx)) fails.push('compare: a bc1q receive address of the passphrase wallet matches with the passphrase');
       [tx, cl] = await M(wq('', 10), ''); if (!/^NO MATCH/.test(tx)) fails.push('compare: bc1q receive address 10 is outside the first 10');
+      if (!/Only the first 10 receive and the first 10 change addresses of account 0 are checked here/.test(tx)) fails.push('compare: an address NO MATCH says only the first 10 + 10 of account 0 are checked');
+      [tx, cl] = await M(wq('TREZOR', 10), 'TREZOR'); if (!/^NO MATCH: your address matches neither/.test(tx) || !/Only the first 10 receive/.test(tx)) fails.push('compare: the search limit is also said with a passphrase');
+      [tx, cl] = await M('ffffffff', ''); if (!/^NO MATCH/.test(tx) || /Only the first 10/.test(tx)) fails.push('compare: a fingerprint NO MATCH does not talk about addresses');
       [tx, cl] = await M(tr('TREZOR', 0), ''); if (!/^NO MATCH/.test(tx)) fails.push('compare: Taproot address of the passphrase wallet without passphrase');
       [tx, cl] = await M('wpkh(garbage)', ''); if (!/Not recognized/.test(tx)) fails.push('compare: garbage descriptor not recognized'); }
     // "Is this address yours?" (search range 4 per press to keep the run short)
@@ -4281,6 +4285,9 @@ const M = [
   ["practice: address list labels keep the mainnet path", "const c = net === \"test\" ? 1 : 0, last = ADDR_SHOWN - 1", "const c = 0, last = ADDR_SHOWN - 1"],
   ["practice: summary sheet title not marked TESTNET", "\"VOIDFORGE SEED SUMMARY\" + (document.getElementById(\"addrBox\").dataset.net === \"test\" ? \" (TESTNET)\" : \"\")", "\"VOIDFORGE SEED SUMMARY\""],
   ["compare: a bc1q address is never looked up in the lists", "if(kindRec === \"tr\" || kindRec === \"addr\" || kindRec === \"key\"", "if(kindRec === \"tr\" || kindRec === \"key\""],
+  ["match: the address search limit is not said", "const scope = kind === \"addr\" || kind === \"tr\" ? \" Only", "const scope = false ? \" Only"],
+  ["match: the search limit said for a fingerprint too", "const scope = kind === \"addr\" || kind === \"tr\" ? \" Only", "const scope = true ? \" Only"],
+  ["recovery sheet: the path line names one chain", "\"'/0/index (receive) and .../1/index (change)\\nAccount number: \"", "\"'/0/index\\nAccount number: \""],
   ["heir mode: the Detective button goes nowhere", "onclick=\"heirGo('check', 'detBlock')\"", "onclick=\"heirGo('tools', 'detBlock')\""],
 ];
 

@@ -255,7 +255,7 @@ await p.click('#verifyBtn');
 await p.waitForFunction(() => document.getElementById('wvList').children.length === 10);
 await p.evaluate(async () => { const e = document.getElementById('wvPathIn'); e.value = "m/0'"; e.dispatchEvent(new Event('input')); await wvRefresh(); });
 await sheet('custom path: recovery sheet', () => printRecoverySheet());
-ok(await p.evaluate(() => { printRecoverySheet(); const t = document.getElementById('printOnly').textContent; window.dispatchEvent(new Event('afterprint')); return /Derivation path: m\/0'\/0\/index \(a custom path\)/.test(t); }), 'custom path: the recovery sheet names the custom path');
+ok(await p.evaluate(() => { printRecoverySheet(); const t = document.getElementById('printOnly').textContent; window.dispatchEvent(new Event('afterprint')); return /Derivation path: m\/0'\/0\/index \(receive\) and m\/0'\/1\/index \(change\), a custom path/.test(t); }), 'custom path: the recovery sheet names the custom path, both chains');
 ok(await p.evaluate(async () => { clearWalletView(); document.getElementById('pkIn').value = 'KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617'; await openPrivateKey(); return getComputedStyle(document.getElementById('wvSheetBtn')).display === 'none' && /SECRET, read only/.test(document.getElementById('wvBanner').textContent); }), 'private key: no recovery sheet is offered for an open private key');
 await p.evaluate(() => { clearWalletView(); document.getElementById('pkIn').value = ''; document.getElementById('phrase').value = ''; });
 await p.click('#tab-make');

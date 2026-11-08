@@ -3094,7 +3094,7 @@ const DICT = [
   ["Dice rules (Keystone)", "Keystone wallets hash dice rolls like SeedSigner and Coldcard, but write each 6 as 0 first, and ask for at least 50 rolls (12 words) or 100 (24 words), at most 256. The same rolls give different words unless the same rules are used.", "MAKE A SEED: the Dice rules menu.", "Keys & seeds"],
   ["Diceware", "Picking words with dice and a printed table instead of a computer. BitBox02's table uses four dice for the row, then a fifth die and a coin for the column, every die re-rolled until it shows 1 to 4.", "Word draw: the word finder reads BitBox02 codes such as 2143 2 T.", "Keys & seeds"],
   ["Difficulty", "How hard it currently is to find a valid block. It adjusts every 2016 blocks (about two weeks) to keep blocks coming roughly every ten minutes.", "", "Network & mining"],
-  ["Digital signature", "A calculation, made with a private key, that proves a message came from the key's owner and was not changed. Bitcoin uses it to authorise spending.", "", "Basics"],
+  ["Digital signature", "A calculation, made with a private key, that proves a message came from the key's owner and was not changed. Bitcoin uses it to authorize spending.", "", "Basics"],
   ["Dollar-cost averaging (DCA)", "Buying a fixed amount at regular times instead of all at once. It is a method, not advice.", "", "Culture & markets"],
   ["Double spend", "Trying to spend the same coin twice. Bitcoin's blockchain and confirmations exist to prevent it.", "", "Network & mining"],
   ["Dust", "A coin so small that the fee to spend it would cost more than it is worth.", "", "Transactions"],
@@ -3111,7 +3111,7 @@ const DICT = [
   ["Fairness test", "A statistic (Pearson chi-square) that shows whether the face counts of your dice look uneven. It can raise a concern but can never prove dice are fair.", "Under the roll chart, and the \u201cTest only, no seed\u201d switch.", "VOIDFORGE"],
   ["Dice test", "Rolling the same die (or flipping the same coin) many times only to see whether it comes up evenly, with no seed made from those rolls.", "The \u201cTest only, no seed\u201d switch in \u201cYour rolls\u201d.", "VOIDFORGE"],
   ["Stress test (backup)", "Walking through everyday mishaps, such as a fire, a burglary, a death or a forgotten passphrase, to see whether a backup plan would lose the money or let a thief take it.", "Backup plan and stress test, in CHECK A BACKUP.", "Wallets & backups"],
-  ["Summary sheet", "A printed page about a seed with no words and no passphrase on it: how it was made, its master fingerprint and its first address. It helps find and check the right wallet later.", "PRINT SUMMARY SHEET on the backup checklist.", "VOIDFORGE"],
+  ["Summary sheet", "A printed page about a seed with no words and no passphrase on it: how it was made, its master fingerprint, its first address and its first 10 receive and 10 change addresses. It helps find and check the right wallet later.", "PRINT SUMMARY SHEET on the backup checklist.", "VOIDFORGE"],
   ["Fee (miner fee)", "What you pay to have a transaction included in a block: the inputs minus the outputs.", "Inspect a transaction (PSBT).", "Transactions"],
   ["Fee bumping", "Raising the fee of a stuck transaction, either by replacing it (RBF) or by spending its output with a high fee (CPFP).", "Compare two transactions shows a fee bump.", "Transactions"],
   ["Fee rate (sat/vB)", "How much fee you pay per virtual byte of transaction size. Miners generally pick the highest fee rates first.", "", "Network & mining"],
@@ -3212,7 +3212,7 @@ const DICT = [
   ["Reforge", "The recovery tool in this page: it fills in missing seed words, finds a wrong or swapped word, or tries passphrase guesses, and reports only results it has checked against your wallet's fingerprint, an address or its xpub.", "EXTRA TOOLS.", "VOIDFORGE"],
   ["Regtest", "A private test network that you run on your own computer, where blocks are made on demand. It is only for developers.", "", "Network & mining"],
   ["Relay policy", "A node's own rules for which unconfirmed transactions it passes on (for example a minimum fee). They are not consensus rules.", "", "Network & mining"],
-  ["Reorg (chain reorganisation)", "When the network switches to a longer competing chain, so the last few blocks are replaced. This is why more confirmations mean more safety.", "", "Network & mining"],
+  ["Reorg (chain reorganization)", "When the network switches to a longer competing chain, so the last few blocks are replaced. This is why more confirmations mean more safety.", "", "Network & mining"],
   ["Reproducible build", "Software built so that anyone gets the byte-for-byte same file from the source code, proving the published file matches the code.", "", "Privacy & security"],
   ["Rescan", "Making a wallet look back through old blocks to find its transactions again.", "", "Wallets & backups"],
   ["Restore drill", "VOIDFORGE's test that hides the words on screen and has you type them back from your paper, to prove the paper backup is correct.", "Restore drill card.", "VOIDFORGE"],
@@ -3245,7 +3245,7 @@ const DICT = [
   ["Signed message", "Text signed with the key of an address, to show that whoever holds that key agrees with it, for example to prove an address is yours. Anyone can check it with the address alone. It does not show who holds the key, or that any coins are still there.", "EXTRA TOOLS: Verify a signed message.", "Keys & seeds"],
   ["Signer", "A device or program that holds the keys and signs transactions, such as a hardware wallet.", "", "Wallets & backups"],
   ["Signet", "A test network with predictable behavior, run by a few trusted signers, used for testing software. Its coins have no value.", "", "Network & mining"],
-  ["Signing", "Using a private key to prove a transaction is authorised. VOIDFORGE never signs anything.", "", "Transactions"],
+  ["Signing", "Using a private key to prove a transaction is authorized. VOIDFORGE never signs anything.", "", "Transactions"],
   ["Single point of failure", "One thing whose loss or theft ruins everything, such as a single paper copy of a seed.", "", "Privacy & security"],
   ["SLIP-0039", "A Trezor standard for backing up a seed as several Shamir shares of words. Not interchangeable with BIP39 words. Newer Trezor devices make a single 20-word share by default.", "The Wallet Detective names 20- and 33-word shares; restore them with a Trezor.", "Standards (BIPs)"],
   ["SLIP-0132", "The scheme that gives extended keys different starting letters (xpub, ypub, zpub) to hint at the address type.", "", "Standards (BIPs)"],
@@ -5050,7 +5050,7 @@ function planRender(){
   document.getElementById("plNext").textContent = (bad ? bad + " of " + R.length + " cases lose the money or let a thief take it. Follow the fixes, then look again. " : chk ? "No case loses the money, but " + chk + " need" + (chk === 1 ? "s" : "") + " a check: see above. " : "Every case here keeps the money safe. ") + "Next check-up: " + plusYearISO(todayISO()) + ", then once a year (the steps are on the printed plan).";
 }
 // Secrets typed into the plan by mistake (all boxes are checked together, so words split across boxes count too):
-// 12 or more seed words in a row (also as 4-letter forms or with one misspelt word; short labels such as "w1" or "1st" are skipped),
+// 12 or more seed words in a row (also as 4-letter forms or with one misspelled word; short labels such as "w1" or "1st" are skipped),
 // SeedQR digits or hex (also in groups), keys and private descriptors (as Explain an address reads them), or "passphrase: ...".
 async function planSecret(text){
   const raw = String(text || "");
@@ -5580,8 +5580,10 @@ function matchRecorded(raw, fp0, a0, fp1, a1, hasPass, ids0, ids1){
   const done = h => h + (hit || "");
   if(hasPass && test(fp1, a1, ids1)) return {ok:true, text:"MATCH (with passphrase): your " + label + " matches this phrase WITH the passphrase you typed." + done(hint)};
   if(test(fp0, a0, ids0)) return {ok:true, text:"MATCH (without passphrase): your " + label + " matches this phrase with NO passphrase." + done(hint)};
-  if(hasPass) return {ok:false, text:"NO MATCH: your " + label + " matches neither this phrase without a passphrase nor with the passphrase you typed. Recheck every word and the passphrase (capitals, spaces, accents)."};
-  return {ok:false, text:"NO MATCH without a passphrase. If you used one, type it in the passphrase box above and press VERIFY again. Otherwise recheck the words."};
+  // An address is looked up only among the first 10 receive and 10 change addresses of account 0: say so, so a later address is not taken for a wrong backup.
+  const scope = kind === "addr" || kind === "tr" ? " Only the first 10 receive and the first 10 change addresses of account 0 are checked here: for a later address or another account, use \u201cExplain an address, or check that it is yours\u201d below." : "";
+  if(hasPass) return {ok:false, text:"NO MATCH: your " + label + " matches neither this phrase without a passphrase nor with the passphrase you typed. Recheck every word and the passphrase (capitals, spaces, accents)." + scope};
+  return {ok:false, text:"NO MATCH without a passphrase. If you used one, type it in the passphrase box above and press VERIFY again. Otherwise recheck the words." + scope};
 }
 // "Is this address mine?": searches the typed phrase (and the passphrase, if typed) for an address copied from a wallet app.
 // Each press searches `range` more indices on each chain (default 50); the next press continues where the last one stopped.
@@ -7033,7 +7035,7 @@ function printRecoverySheet(){
   const add = (cls, text) => { const d = document.createElement("div"); if(cls) d.className = cls; d.textContent = text; po.appendChild(d); return d; };
   add("ps-title", "VOIDFORGE RECOVERY SHEET");
   add("ps-sub", "No seed words and no passphrase are on this sheet. It says which wallet your " + n + " words open, so the right one can be rebuilt. Keep it with the paper backup, not in the same place as the passphrase.");
-  add("ps-info", document.getElementById("wvFp").textContent + "\nPassphrase used: " + (wvCtx.pass ? "YES (kept separately; it is not written here)" : "NO") + "\nWallet made on: " + (document.getElementById("wvBorn").value || "____________") + "\nSeed phrase length: " + n + " words\nNetwork: " + (sh.net === "test" ? "TESTNET (practice coins only)" : "Mainnet") + "\nAddress type: " + T.label + (sh.custom ? "\nDerivation path: " + sh.custom + "/" + sh.chain + "/index (a custom path)" : "\nDerivation path: m/" + T.purpose + "'/" + NETS[sh.net].coin + "'/" + sh.acct + "'/" + sh.chain + "/index\nAccount number: " + sh.acct));
+  add("ps-info", document.getElementById("wvFp").textContent + "\nPassphrase used: " + (wvCtx.pass ? "YES (kept separately; it is not written here)" : "NO") + "\nWallet made on: " + (document.getElementById("wvBorn").value || "____________") + "\nSeed phrase length: " + n + " words\nNetwork: " + (sh.net === "test" ? "TESTNET (practice coins only)" : "Mainnet") + "\nAddress type: " + T.label + (sh.custom ? "\nDerivation path: " + sh.custom + "/0/index (receive) and " + sh.custom + "/1/index (change), a custom path" : "\nDerivation path: m/" + T.purpose + "'/" + NETS[sh.net].coin + "'/" + sh.acct + "'/0/index (receive) and .../1/index (change)\nAccount number: " + sh.acct));
   add("ps-rule", "");
   if(!sh.sheet) return alert("Open the wallet again, then print.");
   add("ps-info", "First " + ADDR_SHOWN + " receive and first " + ADDR_SHOWN + " change addresses (public; to compare in the wallet app):"); add("ps-addr", addrSheetLines(sh.sheet.recv.map(r => r.address), sh.sheet.change.map(r => r.address)));
