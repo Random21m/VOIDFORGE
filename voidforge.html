@@ -1982,6 +1982,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   </footer>
 </div>
 <div id="printOnly"></div>
+<div id="printQr"></div>
 <div id="camBox" class="cam-box" style="display:none;">
   <div class="cam-ban">CAMERA ON: only this page sees the picture, and nothing is saved or sent. STOP CAMERA turns it off.</div>
   <video id="camVideo" playsinline muted aria-label="Camera picture"></video>
@@ -1990,7 +1991,6 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   <input type="file" id="camFile" accept="image/*" multiple style="display:none;" aria-label="Photos of the QR code">
 </div>
 <div id="camTag" aria-hidden="true">CAMERA ON</div>
-<div id="printQr"></div>
 <div id="startGate" role="dialog" aria-modal="true" aria-labelledby="sgT"><div class="sg-box"><div class="sg-body" tabindex="0" aria-label="Before you make real keys: things to know">
 <h2 id="sgT">Before you make real keys</h2>
 <p class="sg-sub">VOIDFORGE is an educational tool. It works fully offline and never stores your rolls, words or keys, and its code is open to read, but it has <b>not been independently audited</b>. Your computer, though, can keep secrets. Three things worth knowing first:</p>
@@ -8688,8 +8688,8 @@ function updateLabels(){
   rsExtraSync();
 }
 document.getElementById("diceTest").checked = false;
-camInit();   // v2.9.0: SCAN buttons next to the boxes that take a QR code
 updateLabels(); msInitSlider();
+camInit();   // v2.9.0: SCAN buttons next to the boxes that take a QR code
 document.getElementById("methodTabs").addEventListener("click", e => { const b = e.target.closest ? e.target.closest("button[data-method]") : null; if(b) setMethod(b.getAttribute("data-method")); });
 document.getElementById("methodTabs").addEventListener("keydown", e => {
   const order = ["dice", "coin", "words", "cards"]; if(e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;

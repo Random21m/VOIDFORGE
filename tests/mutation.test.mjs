@@ -2757,6 +2757,47 @@ async function probe(w, mutated, fast, only, hooks) {
     w.setMethod('dice'); w.confirm = oc;
   } catch (e) { fails.push('cards and hex: the probe crashed: ' + e.message); }
   }
+  if (SEC(56, "v2.9.0 camera scanning, with a stand-in camera (parts from @ngraveio/bc-ur, PSBT from btc-signer)")) {
+  const oa = w.alert, al = []; let stopped = 0, asked = [], refuse = null, slow = null;
+  const hx = (b) => Buffer.from(b).toString('hex');
+  try {
+    w.alert = (m) => al.push(m); w.HTMLMediaElement.prototype.play = async () => {}; w.HTMLMediaElement.prototype.pause = () => {};
+    Object.defineProperty(w.navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async (c) => { asked.push(c); if (refuse) throw refuse; if (slow) await slow; return { getTracks: () => [{ stop() { stopped++; } }] }; } } });
+    const on = () => w.document.body.classList.contains('cam-on'), shown = () => $('camBox').style.display === '', msg = () => $('camMsg').textContent;
+    const ids = { phrase: 'SCAN SEEDQR', wpIn: 'SCAN QR', psbtInput: 'SCAN QR', checkAddr: 'SCAN', detAddr: 'SCAN QR' };
+    if (!Object.entries(ids).every(([id, t]) => $('cam-' + id) && $('cam-' + id).textContent === t && $('cam-' + id).classList.contains('secondary'))) fails.push('camera: five gray SCAN buttons next to the boxes that take a QR code');
+    Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => true });
+    await w.camScan('phrase', $('cam-phrase')); if (!/scans one only while this computer is offline/.test(al.join()) || asked.length || on()) fails.push('camera: a SeedQR is never scanned while the page sees a network');
+    const tx = new btc.Transaction(); tx.addInput({ txid: new Uint8Array(32).fill(1), index: 0, witnessUtxo: { script: btc.p2wpkh(secp256k1.getPublicKey(new Uint8Array(32).fill(3), true)).script, amount: 100000n } }); tx.addOutputAddress(addr(expect.d50, ''), 90000n);
+    const pb = tx.toPSBT(), enc = new UREncoder(UR.fromBuffer(Buffer.from(pb)), 60, 0, 10), parts = []; for (let i = 0; i < enc.fragmentsLength; i++) parts.push(enc.nextPart());
+    await w.camScan('psbtInput', $('cam-psbtInput'));
+    if (!on() || !shown() || asked.length !== 1 || asked[0].audio !== false || !asked[0].video || asked[0].video.facingMode !== 'environment') fails.push('camera: SCAN turns on the back camera only (no microphone) and shows CAMERA ON');
+    const order = parts.map((x, i) => i).reverse(); w.camGot({ text: parts[order[0]] }); w.camGot({ text: parts[order[0]] });
+    if (!new RegExp('^Read 1 of ' + parts.length + ' parts').test(msg()) || !on()) fails.push('camera: a moving QR part read twice counts once, and the camera stays on');
+    for (const i of order.slice(1)) w.camGot({ text: parts[i] });
+    if (hx(w.psbtFromText($('psbtInput').value)) !== hx(pb) || on() || stopped !== 1 || !new RegExp('^All ' + parts.length + ' parts read\\. The camera is off').test(msg())) fails.push('camera: every part read fills the PSBT box and turns the camera off');
+    const A = addr(expect.d50, ''); await w.camScan('checkAddr', $('cam-checkAddr')); w.camGot({ text: 'bitcoin:' + A + '?amount=0.1&label=x' });
+    if ($('checkAddr').value !== A || on()) fails.push('camera: a bitcoin: link becomes the plain address');
+    Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => false });
+    const sq = expect.d50.split(' ').map((x) => String(wordlist.indexOf(x)).padStart(4, '0')).join('');
+    await w.camScan('phrase', $('cam-phrase')); w.camGot({ text: 'hello' }); if (!/not a SeedQR/.test(msg()) || !on() || $('phrase').value === 'hello') fails.push('camera: other text is not taken as a SeedQR');
+    w.camGot({ text: sq }); if ($('phrase').value !== sq || on()) fails.push('camera: a SeedQR fills the words box (offline)');
+    const ent = Uint8Array.from(sha(D50).slice(0, 16)); await w.camScan('phrase', $('cam-phrase')); w.camGot({ text: String.fromCharCode(...ent), bytes: ent });
+    if ($('phrase').value !== hx(ent)) fails.push('camera: a CompactSeedQR becomes its hex');
+    $('phrase').value = ''; Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => true });
+    let s0 = stopped; await w.camScan('wpIn', $('cam-wpIn')); w.showTab('make'); if (on() || stopped !== s0 + 1 || shown()) fails.push('camera: changing tabs turns it off');
+    s0 = stopped; w.showTab('check'); await w.camScan('wpIn', $('cam-wpIn')); w.clearAll(); if (on() || stopped !== s0 + 1) fails.push('camera: CLEAR ALL turns it off');
+    s0 = stopped; await w.camScan('wpIn', $('cam-wpIn')); Object.defineProperty(w.document, 'hidden', { configurable: true, get: () => true }); w.document.dispatchEvent(new w.Event('visibilitychange'));
+    Object.defineProperty(w.document, 'hidden', { configurable: true, get: () => false }); if (on() || stopped !== s0 + 1) fails.push('camera: leaving the page turns it off');
+    s0 = stopped; await w.camScan('wpIn', $('cam-wpIn')); w.eval('cam.until = 0'); w.camTick(); if (on() || stopped !== s0 + 1 || !/turned off after 2 minutes/.test(msg())) fails.push('camera: it turns off after 2 minutes');
+    refuse = Object.assign(new Error('no'), { name: 'NotAllowedError' }); await w.camScan('wpIn', $('cam-wpIn')); refuse = null;
+    if (on() || !/permission was refused\)\. Use OPEN A PHOTO INSTEAD/.test(msg())) fails.push('camera: a refused permission points to OPEN A PHOTO INSTEAD');
+    s0 = stopped; let go; slow = new Promise((r) => { go = r; }); const pend = w.camScan('wpIn', $('cam-wpIn')); await new Promise((r) => setTimeout(r, 10)); w.camStop(); go(); await pend; slow = null;
+    if (on() || stopped !== s0 + 1) fails.push('camera: stopped while the browser asks, the camera it then gives is turned off at once');
+    w.camStop(); if (shown()) fails.push('camera: STOP CAMERA closes the box');
+  } catch (e) { fails.push('camera: the probe crashed: ' + e.message); }
+  w.alert = oa; delete w.navigator.mediaDevices; Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => true }); w.camStop();
+  }
   if (SEC(54, "const meta = w.document.querySelector('meta[http-equiv=\"Cont")) {
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
@@ -2931,7 +2972,7 @@ const M = [
   ['auto-clear: choice not wired', 'aria-label="Wipe after no activity for" onchange="autoClearSet()"', 'aria-label="Wipe after no activity for" onchange=""'],
   ['auto-clear: tab option not wired', 'id="autoHide" onchange="autoClearSet()"', 'id="autoHide" onchange=""'],
   ['roll sheet: one box short', 'for(let i = 1; i <= need; i++)', 'for(let i = 1; i < need; i++)'],
-  ['roll sheet: boxes not numbered', 'const c = add("ps-cell", "", g); add("ps-n", String(i), c);', 'const c = add("ps-cell", "", g); add("ps-n", "", c);'],
+  ['roll sheet: boxes not numbered', 'i <= need; i++){ const c = add("ps-cell", "", g); add("ps-n", String(i), c);', 'i <= need; i++){ const c = add("ps-cell", "", g); add("ps-n", "", c);'],
   ['roll sheet: ignores coin mode', 'const coin = getMode() === "coin", wc', 'const coin = false, wc'],
   ['roll sheet: ignores the word count', 'need = getNeeded(wc), unit', 'need = getNeeded("12"), unit'],
   ['roll sheet: no secret warning', 'Once filled in, this sheet is as secret as your seed: anyone who sees it can make your wallet.\\nType it in on an offline computer, then shred it (or keep it only as a locked-away backup of the rolls)', 'This sheet is harmless.\\nType it in on an offline computer, then shred it (or keep it only as a locked-away backup of the rolls)'],
@@ -3677,8 +3718,8 @@ const M = [
   ['multisig: recovery sheet testnet label missing', '(ms.net === "test" ? ", TESTNET (practice coins only)" : ", mainnet")', '", mainnet"'],
   ['multisig: sheet title testnet label missing', '"VOIDFORGE MULTISIG RECOVERY SHEET" + (ms.net === "test" ? " (TESTNET)" : "")', '"VOIDFORGE MULTISIG RECOVERY SHEET"'],
   ['multisig: sheet QR size switch (layout only)', 'ms.n >= 5 ? "pq-ms pq-ms-l" : "pq-ms"', 'ms.n >= 6 ? "pq-ms pq-ms-l" : "pq-ms"', true],
-  ['multisig: CLEAR ALL keeps the setup', 'msReset(); wipeSeed(); planClear();\n}', 'wipeSeed(); planClear();\n}'],
-  ['CLEAR ALL: backup plan kept', 'msReset(); wipeSeed(); planClear();\n}', 'msReset(); wipeSeed();\n}'],
+  ['multisig: CLEAR ALL keeps the setup', 'msReset(); wipeSeed(); planClear(); camStop();\n}', 'wipeSeed(); planClear(); camStop();\n}'],
+  ['CLEAR ALL: backup plan kept', 'msReset(); wipeSeed(); planClear(); camStop();\n}', 'msReset(); wipeSeed(); camStop();\n}'],
   ["multisig: reset leaves the descriptor on screen", "for(const id of [\"msDescR\",\"msDescC\",\"msAddrs\",\"msChange\",\"msSlots\",\"msRunErr\",\"msBanErr\",\"msErr\"])", "for(const id of [\"msDescC\",\"msAddrs\",\"msChange\",\"msSlots\",\"msRunErr\",\"msBanErr\",\"msErr\"])"],
   ['core guide: new wallet is not watch-only', 'createwallet "voidforge-watch" true true "" false true', 'createwallet "voidforge-watch" false true "" false true'],
   ['core guide: wallet is not descriptor type', 'true true "" false true', 'true true "" false false'],
@@ -4771,6 +4812,25 @@ const M = [
   ["hex: 64 digits with 12 words not explained", "\"64 hex digits make a 24-word seed: choose 24 words above.\"", "\"Too many hex digits.\""],
   ["hex: a letter after f not refused", "else if(/[^0-9a-f]/.test(hx)) msg = ", "else if(false) msg = "],
   ["hex: summary says hashed", "\" hex digits, used directly as the randomness\"", "\" hex digits\""],
+  ["camera: a seed QR scanned while online", "if(t.secret && navigator.onLine) return alert(", "if(false) return alert("],
+  ["camera: the microphone asked for too", "audio: false}); }", "audio: true}); }"],
+  ["camera: stopped while asking, the camera stays on", "if(!cam || cam.run !== run){ stream.getTracks().forEach(x => x.stop()); return; }", "if(!cam || cam.run !== run){ return; }"],
+  ["camera: STOP leaves the camera running", "if(cam.stream) cam.stream.getTracks().forEach(x => x.stop()); }", "}"],
+  ["camera: no time limit", "if(Date.now() > cam.until){", "if(false){"],
+  ["camera: CAMERA ON never shown", "cam.stream = stream; cam.until = Date.now() + CAM_SECONDS * 1000; document.body.classList.add(\"cam-on\");", "cam.stream = stream; cam.until = Date.now() + CAM_SECONDS * 1000;"],
+  ["camera: changing tabs keeps it on", "  camStop();   // v2.9.0: the camera never keeps running on another tab", ""],
+  ["camera: leaving the page keeps it on", "if(document.hidden) camStop();", ""],
+  ["camera: CLEAR ALL keeps it on", "planClear(); camStop();", "planClear();"],
+  ["camera: a part read twice counts twice", "if(!cam.parts.includes(key)) cam.parts.push(key);", "cam.parts.push(key);"],
+  ["camera: done after the first part", "if(q) return camDone(", "if(true) return camDone("],
+  ["camera: bitcoin: kept in the address", ".replace(/^bitcoin:/i, \"\")", ""],
+  ["camera: the amount kept in the address", "replace(/\\?.*$/, \"\")", "replace(/^$/, \"\")"],
+  ["camera: a CompactSeedQR not turned into hex", "return {value: hex(r.bytes)};", "return {value: text};"],
+  ["camera: any text taken as a SeedQR", "return {error: \"This QR code is not a SeedQR or CompactSeedQR.\"};", "return {value: text};"],
+  ["camera: the box never filled", "el.value = value; el.dispatchEvent(", "el.dispatchEvent("],
+  ["camera: no SCAN buttons", "a.insertAdjacentElement(\"afterend\", b);", ""],
+  ["camera: the front camera asked for", "facingMode: \"environment\"", "facingMode: \"user\""],
+  ["camera: refused permission not explained", "e && e.name === \"NotAllowedError\" ? \"permission was refused\" : ", ""],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
