@@ -758,6 +758,12 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .wd-how > summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--muted); }
   body.m-words #forgeBtn, body.m-words #bigCount, body.m-words #bigSub { display: none; }
   #cdBox > summary { display: none; }
+  .cam-box { border: 1.5px solid var(--gold); border-radius: 8px; padding: 8px; margin-top: 8px; }
+  .cam-ban { background: #B3261E; color: #FFFFFF; font-weight: 700; font-size: 13px; padding: 5px 8px; border-radius: 4px; }
+  #camVideo { display: block; width: 100%; max-height: 50vh; background: #000; margin-top: 6px; border-radius: 4px; }
+  #camTag { display: none; position: fixed; top: 8px; right: 8px; z-index: 50; background: #B3261E; color: #FFFFFF; font-weight: 700; font-size: 12px; padding: 4px 8px; border-radius: 4px; }
+  body.cam-on #camTag { display: block; }
+  @media print { #camBox, #camTag { display: none !important; } }
   .cd-grid { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 4px; margin: 8px 0; }
   @media (max-width: 559px) { .cd-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
   .cd-card { padding: 0; border: 0; background: none; min-width: 0; min-height: 0; box-shadow: none; cursor: pointer; border-radius: 5px; }
@@ -1976,6 +1982,14 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   </footer>
 </div>
 <div id="printOnly"></div>
+<div id="camBox" class="cam-box" style="display:none;">
+  <div class="cam-ban">CAMERA ON: only this page sees the picture, and nothing is saved or sent. STOP CAMERA turns it off.</div>
+  <video id="camVideo" playsinline muted aria-label="Camera picture"></video>
+  <div class="status" id="camMsg" aria-live="polite" style="margin-top:6px;"></div>
+  <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" id="camStopBtn" onclick="camStop()">STOP CAMERA</button><button type="button" class="secondary small" id="camPhotoBtn" onclick="document.getElementById('camFile').click()">OPEN A PHOTO INSTEAD</button></div>
+  <input type="file" id="camFile" accept="image/*" multiple style="display:none;" aria-label="Photos of the QR code">
+</div>
+<div id="camTag" aria-hidden="true">CAMERA ON</div>
 <div id="printQr"></div>
 <div id="startGate" role="dialog" aria-modal="true" aria-labelledby="sgT"><div class="sg-box"><div class="sg-body" tabindex="0" aria-label="Before you make real keys: things to know">
 <h2 id="sgT">Before you make real keys</h2>
@@ -6764,6 +6778,7 @@ function hasSeed(){ return document.getElementById("genResult").dataset.seed ===
 const TAB_NAMES = ["make", "check", "tools", "about"];
 function showTab(name, targetId, focusTab){
   if(TAB_NAMES.indexOf(name) < 0) return;
+  camStop();   // v2.9.0: the camera never keeps running on another tab
   TAB_NAMES.forEach(t => {
     const on = t === name, panel = document.getElementById("tp-" + t), btn = document.getElementById("tab-" + t);
     panel.classList.toggle("tab-off", !on); btn.setAttribute("aria-selected", on ? "true" : "false"); btn.tabIndex = on ? 0 : -1;
@@ -7076,6 +7091,119 @@ function printWordSheet(){
     add("ps-warn", "Once filled in, this sheet is as secret as your seed: anyone who sees it can make your wallet.\nType it in on an offline computer, then shred it (or keep it only as a locked-away backup).\nNever photograph it.");
   });
 }
+// ===== Camera QR scanning (v2.9.0) =====
+// The camera turns on only when a SCAN button is pressed, and stops as soon as a code is read, when STOP CAMERA is pressed,
+// when another tab or the page is left, on CLEAR ALL and END SESSION, and after 2 minutes. Each picture is read inside this
+// page (a canvas, then qrDecodeRgba); nothing is saved or sent. Moving QR codes (UR and BBQr parts) are gathered until every
+// part is in. A SeedQR holds the seed words, so it is scanned only while the page sees no network.
+const CAM_TARGETS = {
+  phrase: {after: "verifyBtn", label: "SCAN SEEDQR", secret: true, what: "SeedQR or CompactSeedQR"},
+  wpIn: {after: "wpBtn", label: "SCAN QR", what: "account public key or descriptor"},
+  psbtInput: {after: "psbtBtn", label: "SCAN QR", what: "transaction (a still or moving QR)", parts: true},
+  checkAddr: {after: "checkAcct", label: "SCAN", what: "address", addr: true},
+  detAddr: {after: "detBtn", label: "SCAN QR", what: "address", addr: true}
+};
+const CAM_SECONDS = 120;
+let cam = null, camRun = 0;
+function camMsg(t){ document.getElementById("camMsg").textContent = t; }
+function camInit(){
+  for(const id of Object.keys(CAM_TARGETS)){
+    const t = CAM_TARGETS[id], a = document.getElementById(t.after); if(!a || document.getElementById("cam-" + id)) continue;
+    const b = document.createElement("button"); b.type = "button"; b.className = "secondary small"; b.id = "cam-" + id; b.textContent = t.label;
+    b.setAttribute("aria-label", "Scan the " + t.what + " with the camera"); b.onclick = () => camScan(id, b);
+    if(a.tagName === "INPUT") b.style.flex = "none";
+    a.insertAdjacentElement("afterend", b);
+  }
+  document.getElementById("camFile").addEventListener("change", camPhotos);
+}
+async function camScan(id, btn){
+  const t = CAM_TARGETS[id]; if(!t) return;
+  camStop();
+  if(t.secret && navigator.onLine) return alert("A SeedQR holds your seed words, so VOIDFORGE scans one only while this computer is offline (NETWORK: OFFLINE at the top of the page). Disconnect it first, or type the digits in.");
+  const box = document.getElementById("camBox"), v = document.getElementById("camVideo"), run = ++camRun;
+  (btn.closest(".btn-row") || btn.parentElement).insertAdjacentElement("afterend", box); box.style.display = ""; v.style.display = "none";
+  cam = {id, run, parts: [], stream: null, timer: null};
+  camMsg("Starting the camera. Your browser may ask for permission. Point it at the " + t.what + ".");
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ camMsg("This browser does not let the page use a camera here. Use OPEN A PHOTO INSTEAD."); return; }
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: "environment", width: {ideal: 1280}, height: {ideal: 720}}, audio: false}); }
+  catch(e){ if(cam && cam.run === run) camMsg("The camera did not start (" + (e && e.name === "NotAllowedError" ? "permission was refused" : e && e.name === "NotFoundError" ? "no camera was found" : (e && e.message) || "unknown reason") + "). Use OPEN A PHOTO INSTEAD."); return; }
+  if(!cam || cam.run !== run){ stream.getTracks().forEach(x => x.stop()); return; }   // stopped while the browser asked
+  cam.stream = stream; cam.until = Date.now() + CAM_SECONDS * 1000; document.body.classList.add("cam-on");
+  v.srcObject = stream; v.style.display = ""; try { await v.play(); } catch(e){ /* some browsers play muted video on their own */ }
+  camMsg("Point the camera at the " + t.what + ". Hold it steady, about a hand's width away.");
+  cam.timer = setInterval(camTick, 200);
+}
+function camTick(){
+  if(!cam || !cam.stream) return;
+  if(Date.now() > cam.until){ camStop("The camera turned off after " + CAM_SECONDS / 60 + " minutes. Press SCAN again to keep going."); return; }
+  const v = document.getElementById("camVideo"); if(!v.videoWidth) return;
+  const r = camRead(v, v.videoWidth, v.videoHeight, 800); if(r) camGot(r);
+}
+// reads one picture (video or image) at most maxW pixels wide
+function camRead(src, w0, h0, maxW){
+  const sc = Math.min(1, maxW / w0), w = Math.max(1, Math.round(w0 * sc)), h = Math.max(1, Math.round(h0 * sc));
+  const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d", {willReadFrequently: true}); if(!g) return null;
+  g.drawImage(src, 0, 0, w, h); let r = null;
+  try { r = qrDecodeRgba(g.getImageData(0, 0, w, h).data, w, h); } catch(e){ r = null; }
+  c.width = c.height = 0; return r;
+}
+// What a read code becomes in each box.
+function camValue(id, r){
+  const t = CAM_TARGETS[id], text = (r.text || "").trim();
+  if(id === "phrase"){
+    if(/^\d{48}$|^\d{96}$/.test(text)) return {value: text};
+    if(r.bytes && (r.bytes.length === 16 || r.bytes.length === 32) && !/^[\x20-\x7e]+$/.test(text)) return {value: hex(r.bytes)};
+    return {error: "This QR code is not a SeedQR or CompactSeedQR."};
+  }
+  if(t.addr){ const a = text.replace(/^bitcoin:/i, "").replace(/\?.*$/, ""); return a ? {value: a} : {error: "This QR code holds no address."}; }
+  return text ? {value: text} : {error: "This QR code holds no text."};
+}
+function camGot(r){
+  if(!cam) return;
+  const t = CAM_TARGETS[cam.id], text = (r.text || "").trim();
+  if(t.parts && /^(ur:|B\$)/i.test(text)){
+    const key = /^ur:/i.test(text) ? text.toLowerCase() : text;
+    if(!cam.parts.includes(key)) cam.parts.push(key);
+    let q = null; try { q = qrTextDecode(cam.parts.join("\n")); } catch(e){ q = null; }
+    if(q) return camDone(cam.parts.join("\n"), cam.parts.length > 1 ? "All " + cam.parts.length + " parts read." : "Read.");
+    const m = /^ur:[^/]+\/(\d+)-(\d+)\//i.exec(text), total = m ? +m[2] : /^B\$/i.test(text) ? parseInt(text.slice(4, 6), 36) : 0;
+    camMsg("Read " + cam.parts.length + (total ? " of " + total : "") + " parts of a moving QR code. Keep the camera on it.");
+    return;
+  }
+  const v = camValue(cam.id, r);
+  if(v.error){ camMsg(v.error + " Point the camera at the " + t.what + "."); return; }
+  camDone(v.value, "Read.");
+}
+function camDone(value, note){
+  const id = cam.id, el = document.getElementById(id);
+  el.value = value; el.dispatchEvent(new Event("input", {bubbles: true}));
+  camStop(note + " The camera is off. Check what was filled in" + (id === "psbtInput" ? ", then press INSPECT." : id === "phrase" ? ", then press VERIFY." : "."));
+}
+// Stops the camera (and forgets the parts read). With a message, the box stays open to show it.
+function camStop(note){
+  const box = document.getElementById("camBox"), v = document.getElementById("camVideo");
+  if(cam){ if(cam.timer) clearInterval(cam.timer); if(cam.stream) cam.stream.getTracks().forEach(x => x.stop()); }
+  cam = null; camRun++; document.body.classList.remove("cam-on");
+  if(v && v.srcObject){ try { v.pause(); } catch(e){ /* nothing to pause */ } v.srcObject = null; }
+  if(v) v.style.display = "none";
+  if(!box) return;
+  if(note){ camMsg(note); } else { box.style.display = "none"; camMsg(""); }
+}
+// OPEN A PHOTO INSTEAD: one or more photos (a moving QR code needs a photo of each part)
+async function camPhotos(e){
+  const files = [...(e.target.files || [])]; e.target.value = "";
+  if(!cam || !files.length) return;
+  if(cam.stream){ clearInterval(cam.timer); cam.stream.getTracks().forEach(x => x.stop()); cam.stream = null; document.body.classList.remove("cam-on"); document.getElementById("camVideo").style.display = "none"; }
+  const run = cam.run; let found = 0;
+  for(const f of files){
+    let r = null;
+    try { const bm = await createImageBitmap(f); for(const W of [1600, 800, 2400]){ r = camRead(bm, bm.width, bm.height, W); if(r) break; } if(bm.close) bm.close(); } catch(err){ r = null; }
+    if(!cam || cam.run !== run) return;
+    if(r){ found++; camGot(r); if(!cam) return; }
+  }
+  if(cam && cam.run === run && !found) camMsg("No QR code was found in " + (files.length === 1 ? "this photo" : "these photos") + ". Try a sharper photo with the whole code in it.");
+}
 // Card sheet (v2.9.0): numbered boxes to write the cards down as they are dealt: 25 for 12 words, or a whole deck and then
 // 6 more from a new shuffle for 24 words (see cdBits).
 function printCardSheet(){
@@ -7226,7 +7354,7 @@ function updateRollHistory(rolls){
 function clearAll(){
   if(!confirm("Clear all rolls, results, the verify box, the backup plan and (if the browser allows) the clipboard?")) return;
   reforgeStop(); reforgeReset(true); AUTO_FIELDS.forEach(id => { const e = document.getElementById(id); if(e) e.value = ""; });   // v2.6.0: also Reforge and every box auto-clear wipes
-  msReset(); wipeSeed(); planClear();
+  msReset(); wipeSeed(); planClear(); camStop();
 }
 
 // END SESSION (v2.3.0, in the MENU): wipes everything on the page, forgets that the start notice was read, then reloads the page,
@@ -7234,6 +7362,7 @@ function clearAll(){
 // (not just empty), so a browser that refills boxes on reload refills them with the defaults. The theme and text size stay (not secret).
 function endSession(){
   if(!confirm("End this session?\n\nEverything on the page is wiped: rolls, words, passphrases, every box and (if the browser allows) the clipboard. The page then reloads and the start notice shows again.")) return null;
+  camStop();   // v2.9.0
   for(const f of [reforgeStop, msReset, () => practiceMode(false), wipeSeed, clearChild, hideExplain, hideQr, hideSeedQr, clearReuse, () => hideAddrQr("aq"), () => hideAddrQr("wvq")]){ try { f(); } catch(e) {} }
   document.querySelectorAll("input, textarea, select").forEach(e => {
     try {
@@ -7315,6 +7444,8 @@ function autoClearSet(){
   const h = document.getElementById("autoHide").checked;
   document.getElementById("autoNote").textContent = (m || h) ? "Auto-clear is ON" + (m ? ": after " + m + " minutes with no activity" : "") + (h ? (m ? " and" : ":") + " when you leave this tab" : "") + "." : "Auto-clear is off.";
 }
+document.addEventListener("visibilitychange", () => { if(document.hidden) camStop(); });   // v2.9.0: leaving the page turns the camera off
+window.addEventListener("pagehide", () => camStop());
 document.addEventListener("visibilitychange", () => { if(document.hidden && document.getElementById("autoHide").checked) autoWipe("because you left this tab"); });
 
 // ---- Multisig wizard: collect M-of-N public keys one at a time, wiping each seed after its key is saved ----
@@ -8556,6 +8687,7 @@ function updateLabels(){
   rsExtraSync();
 }
 document.getElementById("diceTest").checked = false;
+camInit();   // v2.9.0: SCAN buttons next to the boxes that take a QR code
 updateLabels(); msInitSlider();
 document.getElementById("methodTabs").addEventListener("click", e => { const b = e.target.closest ? e.target.closest("button[data-method]") : null; if(b) setMethod(b.getAttribute("data-method")); });
 document.getElementById("methodTabs").addEventListener("keydown", e => {
