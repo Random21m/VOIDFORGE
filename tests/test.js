@@ -1992,6 +1992,25 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(['psbtInput','cmpA','cmpB','sigAddr','sigMsg','sigSig','reuseIn','wpIn','payA','payB','dlPaste'].every(id=>$(id).value===''),'CLEAR ALL empties the transaction, signature, descriptor, pay-check and download-check boxes');
       ok(w.eval('seedSig')===null&&w.eval('passKey')===null&&w.eval('exCtx')===null&&w.eval('madeMnemonic')==='','CLEAR ALL leaves no rolls, passphrase or words in the page\'s state'); }
     r.w.close(); }
+  // v2.9.0: Cards & hex (expected words from @scure and Node's SHA-256; same text and method as Ian Coleman's BIP39 tool)
+  { const {entropyToMnemonic}=require('@scure/bip39'); const {wordlist}=require('@scure/bip39/wordlists/english');
+    const r=load(); await r.ready(); const w=r.w, $=r.$; const SU={C:'♣',D:'♦',H:'♥',S:'♠'};
+    const cs=t=>t.split(' ').map(x=>x[0]+SU[x[1]]).join(' '), expC=(t,n)=>entropyToMnemonic(nc.createHash('sha256').update(cs(t),'utf8').digest().subarray(0,n===24?32:16),wordlist);
+    const C25='KS 3D 9H AC TC 5S JD 2H 8C QS 4D 7H 6C AH TS 9D 3C KH 5D JS 2S 8H QC 4H 7S', first=()=>$('genResult').textContent.split('\n')[0];
+    eq(expC('AS 2C TD',12),'embody only exact pride episode winter estate perfect security often scout tiger','cards: the research vector (A♠ 2♣ T♦, 12 words) agrees with @scure');
+    w.setMethod('cards'); ok(w.document.body.classList.contains('m-cards')&&$('cdBox').open,'cards: the Cards & hex tab opens its box');
+    $('cdCards').value=C25.split(' ').slice(0,24).join(' '); w.cdUpdate(); ok($('cdBtn').disabled&&/^24 cards, about 127 of the 128 bits/.test($('cdCount').textContent),'cards: 24 cards are not enough for 12 words (127 bits)');
+    $('cdCards').value=C25.toLowerCase().replace(/t/g,'10'); w.cdUpdate(); ok(!$('cdBtn').disabled,'cards: 25 cards, lower case and 10 for T, are enough');
+    await w.cdGenerate(); eq(first(),expC(C25,12),'cards: MAKE SEED FROM CARDS gives the words of SHA-256 of A♠ 2♣ ... text');
+    w.downloadSeed(); const dl=r.st.blob?await blobText(w,r.st.blob):''; ok(/Input: Playing cards: K♠ 3♦ 9♥ A♣ T♣/.test(dl),'cards: DOWNLOAD names the cards as the input');
+    ok(/^Made from: 25 playing cards/.test(w.seedSummary().lines[1]),'cards: the summary sheet says 25 playing cards');
+    $('cdCards').value='KS QH XZ'; w.cdUpdate(); ok(/“XZ” is not a card/.test($('cdMsg').textContent)&&!w.hasSeed(),'cards: a word that is not a card is named, and the old seed is cleared');
+    $('cdCards').value=''; $('cdHex').value='00112233445566778899aabbccddeeff'; w.cdUpdate(); await w.cdHexGenerate();
+    eq(first(),entropyToMnemonic(Buffer.from('00112233445566778899aabbccddeeff','hex'),wordlist),'hex: 32 hex digits are the entropy itself (raw, as Ian Coleman\'s tool with Hexadecimal)');
+    $('cdHex').value='00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff'; w.cdUpdate(); ok(/choose 24 words above/.test($('cdMsg').textContent),'hex: 64 digits with 12 words chosen ask for 24 words');
+    $('cdHex').value='ab'; w.clearAll(); ok($('cdCards').value===''&&$('cdHex').value==='','CLEAR ALL empties the cards and hex boxes');
+    ok(/\["Card entropy"/.test(html)&&/\["Hex entropy"/.test(html),'dictionary: Card entropy and Hex entropy');
+    r.w.close(); }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
 

@@ -304,6 +304,8 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     body.print-seed #printOnly .ps-grid.ps-roll { grid-template-columns: repeat(10, 1fr); gap: 4px; }
     body.print-seed #printOnly .ps-roll .ps-cell { min-height: 30px; padding: 2px 4px; border-radius: 3px; }
     body.print-seed #printOnly .ps-roll .ps-cell.ps-extra { border-style: dashed; }
+    body.print-seed #printOnly .ps-grid.ps-card { grid-template-columns: repeat(8, 1fr); gap: 5px; }
+    body.print-seed #printOnly .ps-card .ps-cell { min-height: 40px; padding: 2px 5px; border-radius: 4px; }
     body.print-seed #printOnly .ps-grid.ps-roll.ps-roll20 { grid-template-columns: repeat(20, 1fr); gap: 3px; }
     body.print-seed #printOnly .ps-roll20 .ps-cell { padding: 1px 3px; }
     body.print-seed #printOnly .ps-roll20 .ps-n { font-size: 9px; }
@@ -756,6 +758,12 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .wd-how > summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--muted); }
   body.m-words #forgeBtn, body.m-words #bigCount, body.m-words #bigSub { display: none; }
   #cdBox > summary { display: none; }
+  .cd-grid { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 4px; margin: 8px 0; }
+  @media (max-width: 559px) { .cd-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+  .cd-card { padding: 0; border: 0; background: none; min-width: 0; min-height: 0; box-shadow: none; cursor: pointer; border-radius: 5px; }
+  .cd-card svg { display: block; width: 100%; height: auto; }
+  .cd-card[aria-disabled="true"] { cursor: default; }
+  .cd-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   body:not(.m-cards) #cdBox { display: none; }
   body.m-cards .gen-left > [data-g="2"] { display: none !important; }
   #cdBox { background: none !important; border: 0 !important; padding: 0 !important; margin-top: 0 !important; }
@@ -1036,9 +1044,10 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details id="cdBox" data-g="1">
       <summary>Cards and hex<span class="tag tag-secret">SECRET</span></summary>
       <details class="wd-how"><summary>How cards work</summary><p class="hint" style="margin:6px 0 0;">Use a full deck of 52 cards with the jokers taken out. Shuffle it well (at least seven riffle shuffles), lay the cards out face up and type them in order, such as <b>AS 10H QD 2C</b>: the rank (A, 2 to 10, J, Q, K) and then the suit (C, D, H or S; &spades; &hearts; &diams; &clubs; work too). A 12-word seed needs <b>25 cards</b>. A 24-word seed needs <b>the whole deck and then 6 more</b> from a new shuffle. VOIDFORGE writes the cards as A&spades; 2&clubs; T&diams; and so on and hashes that text with SHA-256, as Ian Coleman&rsquo;s BIP39 tool does (choose Cards and the number of words there, not raw entropy) and EntropyLab&rsquo;s Coleman symbols option, so you can check the words with either.</p></details>
+      <div id="cdGrid" class="cd-grid" role="group" aria-label="Tap the cards in the order they lie"></div>
       <textarea id="cdCards" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Your cards in order" placeholder="Your cards in order, such as AS 10H QD 2C" oninput="cdUpdate()"></textarea>
       <div id="cdCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
-      <div class="btn-row" style="margin-top:8px;"><button type="button" id="cdBtn" onclick="cdGenerate()" disabled>MAKE SEED FROM CARDS</button></div>
+      <div class="btn-row" style="margin-top:8px;"><button type="button" id="cdBtn" onclick="cdGenerate()" disabled>MAKE SEED FROM CARDS</button><button type="button" class="secondary small" id="cdUndoBtn" onclick="cdUndo()">UNDO LAST CARD</button><button type="button" class="secondary small" id="cdSheetBtn" onclick="printCardSheet()">PRINT CARD SHEET</button></div>
       <details class="wd-how" id="cdHexBox" style="margin-top:12px;"><summary>Or hex: a 16-sided die, or checking another tool</summary>
         <p class="hint" style="margin:6px 0 0;">Type exactly <b>32</b> hex digits (0 to 9 and a to f) for 12 words, or <b>64</b> for 24 words. They are used <b>directly</b> as the seed&rsquo;s randomness, with no hashing, as in Ian Coleman&rsquo;s tool with Hexadecimal and raw entropy chosen. For a real seed, roll a 16-sided die yourself (one digit per roll). Never use hex that a website or a program made for you.</p>
         <input type="text" id="cdHex" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Hex digits" placeholder="32 or 64 hex digits" oninput="cdUpdate()" style="margin-top:6px;">
@@ -1984,6 +1993,11 @@ let guideOn = false, guideN = 1, ms = null;
 if(window.vfOwnEls){ window.vfOwnEls.push(document.currentScript); const st0 = document.head.querySelector("style"); if(st0 && /--bg: #07070b/.test(st0.textContent)) window.vfOwnEls.push(st0); }
 const WORDLIST = ["abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident","account","accuse","achieve","acid","acoustic","acquire","across","act","action","actor","actress","actual","adapt","add","addict","address","adjust","admit","adult","advance","advice","aerobic","affair","afford","afraid","again","age","agent","agree","ahead","aim","air","airport","aisle","alarm","album","alcohol","alert","alien","all","alley","allow","almost","alone","alpha","already","also","alter","always","amateur","amazing","among","amount","amused","analyst","anchor","ancient","anger","angle","angry","animal","ankle","announce","annual","another","answer","antenna","antique","anxiety","any","apart","apology","appear","apple","approve","april","arch","arctic","area","arena","argue","arm","armed","armor","army","around","arrange","arrest","arrive","arrow","art","artefact","artist","artwork","ask","aspect","assault","asset","assist","assume","asthma","athlete","atom","attack","attend","attitude","attract","auction","audit","august","aunt","author","auto","autumn","average","avocado","avoid","awake","aware","away","awesome","awful","awkward","axis","baby","bachelor","bacon","badge","bag","balance","balcony","ball","bamboo","banana","banner","bar","barely","bargain","barrel","base","basic","basket","battle","beach","bean","beauty","because","become","beef","before","begin","behave","behind","believe","below","belt","bench","benefit","best","betray","better","between","beyond","bicycle","bid","bike","bind","biology","bird","birth","bitter","black","blade","blame","blanket","blast","bleak","bless","blind","blood","blossom","blouse","blue","blur","blush","board","boat","body","boil","bomb","bone","bonus","book","boost","border","boring","borrow","boss","bottom","bounce","box","boy","bracket","brain","brand","brass","brave","bread","breeze","brick","bridge","brief","bright","bring","brisk","broccoli","broken","bronze","broom","brother","brown","brush","bubble","buddy","budget","buffalo","build","bulb","bulk","bullet","bundle","bunker","burden","burger","burst","bus","business","busy","butter","buyer","buzz","cabbage","cabin","cable","cactus","cage","cake","call","calm","camera","camp","can","canal","cancel","candy","cannon","canoe","canvas","canyon","capable","capital","captain","car","carbon","card","cargo","carpet","carry","cart","case","cash","casino","castle","casual","cat","catalog","catch","category","cattle","caught","cause","caution","cave","ceiling","celery","cement","census","century","cereal","certain","chair","chalk","champion","change","chaos","chapter","charge","chase","chat","cheap","check","cheese","chef","cherry","chest","chicken","chief","child","chimney","choice","choose","chronic","chuckle","chunk","churn","cigar","cinnamon","circle","citizen","city","civil","claim","clap","clarify","claw","clay","clean","clerk","clever","click","client","cliff","climb","clinic","clip","clock","clog","close","cloth","cloud","clown","club","clump","cluster","clutch","coach","coast","coconut","code","coffee","coil","coin","collect","color","column","combine","come","comfort","comic","common","company","concert","conduct","confirm","congress","connect","consider","control","convince","cook","cool","copper","copy","coral","core","corn","correct","cost","cotton","couch","country","couple","course","cousin","cover","coyote","crack","cradle","craft","cram","crane","crash","crater","crawl","crazy","cream","credit","creek","crew","cricket","crime","crisp","critic","crop","cross","crouch","crowd","crucial","cruel","cruise","crumble","crunch","crush","cry","crystal","cube","culture","cup","cupboard","curious","current","curtain","curve","cushion","custom","cute","cycle","dad","damage","damp","dance","danger","daring","dash","daughter","dawn","day","deal","debate","debris","decade","december","decide","decline","decorate","decrease","deer","defense","define","defy","degree","delay","deliver","demand","demise","denial","dentist","deny","depart","depend","deposit","depth","deputy","derive","describe","desert","design","desk","despair","destroy","detail","detect","develop","device","devote","diagram","dial","diamond","diary","dice","diesel","diet","differ","digital","dignity","dilemma","dinner","dinosaur","direct","dirt","disagree","discover","disease","dish","dismiss","disorder","display","distance","divert","divide","divorce","dizzy","doctor","document","dog","doll","dolphin","domain","donate","donkey","donor","door","dose","double","dove","draft","dragon","drama","drastic","draw","dream","dress","drift","drill","drink","drip","drive","drop","drum","dry","duck","dumb","dune","during","dust","dutch","duty","dwarf","dynamic","eager","eagle","early","earn","earth","easily","east","easy","echo","ecology","economy","edge","edit","educate","effort","egg","eight","either","elbow","elder","electric","elegant","element","elephant","elevator","elite","else","embark","embody","embrace","emerge","emotion","employ","empower","empty","enable","enact","end","endless","endorse","enemy","energy","enforce","engage","engine","enhance","enjoy","enlist","enough","enrich","enroll","ensure","enter","entire","entry","envelope","episode","equal","equip","era","erase","erode","erosion","error","erupt","escape","essay","essence","estate","eternal","ethics","evidence","evil","evoke","evolve","exact","example","excess","exchange","excite","exclude","excuse","execute","exercise","exhaust","exhibit","exile","exist","exit","exotic","expand","expect","expire","explain","expose","express","extend","extra","eye","eyebrow","fabric","face","faculty","fade","faint","faith","fall","false","fame","family","famous","fan","fancy","fantasy","farm","fashion","fat","fatal","father","fatigue","fault","favorite","feature","february","federal","fee","feed","feel","female","fence","festival","fetch","fever","few","fiber","fiction","field","figure","file","film","filter","final","find","fine","finger","finish","fire","firm","first","fiscal","fish","fit","fitness","fix","flag","flame","flash","flat","flavor","flee","flight","flip","float","flock","floor","flower","fluid","flush","fly","foam","focus","fog","foil","fold","follow","food","foot","force","forest","forget","fork","fortune","forum","forward","fossil","foster","found","fox","fragile","frame","frequent","fresh","friend","fringe","frog","front","frost","frown","frozen","fruit","fuel","fun","funny","furnace","fury","future","gadget","gain","galaxy","gallery","game","gap","garage","garbage","garden","garlic","garment","gas","gasp","gate","gather","gauge","gaze","general","genius","genre","gentle","genuine","gesture","ghost","giant","gift","giggle","ginger","giraffe","girl","give","glad","glance","glare","glass","glide","glimpse","globe","gloom","glory","glove","glow","glue","goat","goddess","gold","good","goose","gorilla","gospel","gossip","govern","gown","grab","grace","grain","grant","grape","grass","gravity","great","green","grid","grief","grit","grocery","group","grow","grunt","guard","guess","guide","guilt","guitar","gun","gym","habit","hair","half","hammer","hamster","hand","happy","harbor","hard","harsh","harvest","hat","have","hawk","hazard","head","health","heart","heavy","hedgehog","height","hello","helmet","help","hen","hero","hidden","high","hill","hint","hip","hire","history","hobby","hockey","hold","hole","holiday","hollow","home","honey","hood","hope","horn","horror","horse","hospital","host","hotel","hour","hover","hub","huge","human","humble","humor","hundred","hungry","hunt","hurdle","hurry","hurt","husband","hybrid","ice","icon","idea","identify","idle","ignore","ill","illegal","illness","image","imitate","immense","immune","impact","impose","improve","impulse","inch","include","income","increase","index","indicate","indoor","industry","infant","inflict","inform","inhale","inherit","initial","inject","injury","inmate","inner","innocent","input","inquiry","insane","insect","inside","inspire","install","intact","interest","into","invest","invite","involve","iron","island","isolate","issue","item","ivory","jacket","jaguar","jar","jazz","jealous","jeans","jelly","jewel","job","join","joke","journey","joy","judge","juice","jump","jungle","junior","junk","just","kangaroo","keen","keep","ketchup","key","kick","kid","kidney","kind","kingdom","kiss","kit","kitchen","kite","kitten","kiwi","knee","knife","knock","know","lab","label","labor","ladder","lady","lake","lamp","language","laptop","large","later","latin","laugh","laundry","lava","law","lawn","lawsuit","layer","lazy","leader","leaf","learn","leave","lecture","left","leg","legal","legend","leisure","lemon","lend","length","lens","leopard","lesson","letter","level","liar","liberty","library","license","life","lift","light","like","limb","limit","link","lion","liquid","list","little","live","lizard","load","loan","lobster","local","lock","logic","lonely","long","loop","lottery","loud","lounge","love","loyal","lucky","luggage","lumber","lunar","lunch","luxury","lyrics","machine","mad","magic","magnet","maid","mail","main","major","make","mammal","man","manage","mandate","mango","mansion","manual","maple","marble","march","margin","marine","market","marriage","mask","mass","master","match","material","math","matrix","matter","maximum","maze","meadow","mean","measure","meat","mechanic","medal","media","melody","melt","member","memory","mention","menu","mercy","merge","merit","merry","mesh","message","metal","method","middle","midnight","milk","million","mimic","mind","minimum","minor","minute","miracle","mirror","misery","miss","mistake","mix","mixed","mixture","mobile","model","modify","mom","moment","monitor","monkey","monster","month","moon","moral","more","morning","mosquito","mother","motion","motor","mountain","mouse","move","movie","much","muffin","mule","multiply","muscle","museum","mushroom","music","must","mutual","myself","mystery","myth","naive","name","napkin","narrow","nasty","nation","nature","near","neck","need","negative","neglect","neither","nephew","nerve","nest","net","network","neutral","never","news","next","nice","night","noble","noise","nominee","noodle","normal","north","nose","notable","note","nothing","notice","novel","now","nuclear","number","nurse","nut","oak","obey","object","oblige","obscure","observe","obtain","obvious","occur","ocean","october","odor","off","offer","office","often","oil","okay","old","olive","olympic","omit","once","one","onion","online","only","open","opera","opinion","oppose","option","orange","orbit","orchard","order","ordinary","organ","orient","original","orphan","ostrich","other","outdoor","outer","output","outside","oval","oven","over","own","owner","oxygen","oyster","ozone","pact","paddle","page","pair","palace","palm","panda","panel","panic","panther","paper","parade","parent","park","parrot","party","pass","patch","path","patient","patrol","pattern","pause","pave","payment","peace","peanut","pear","peasant","pelican","pen","penalty","pencil","people","pepper","perfect","permit","person","pet","phone","photo","phrase","physical","piano","picnic","picture","piece","pig","pigeon","pill","pilot","pink","pioneer","pipe","pistol","pitch","pizza","place","planet","plastic","plate","play","please","pledge","pluck","plug","plunge","poem","poet","point","polar","pole","police","pond","pony","pool","popular","portion","position","possible","post","potato","pottery","poverty","powder","power","practice","praise","predict","prefer","prepare","present","pretty","prevent","price","pride","primary","print","priority","prison","private","prize","problem","process","produce","profit","program","project","promote","proof","property","prosper","protect","proud","provide","public","pudding","pull","pulp","pulse","pumpkin","punch","pupil","puppy","purchase","purity","purpose","purse","push","put","puzzle","pyramid","quality","quantum","quarter","question","quick","quit","quiz","quote","rabbit","raccoon","race","rack","radar","radio","rail","rain","raise","rally","ramp","ranch","random","range","rapid","rare","rate","rather","raven","raw","razor","ready","real","reason","rebel","rebuild","recall","receive","recipe","record","recycle","reduce","reflect","reform","refuse","region","regret","regular","reject","relax","release","relief","rely","remain","remember","remind","remove","render","renew","rent","reopen","repair","repeat","replace","report","require","rescue","resemble","resist","resource","response","result","retire","retreat","return","reunion","reveal","review","reward","rhythm","rib","ribbon","rice","rich","ride","ridge","rifle","right","rigid","ring","riot","ripple","risk","ritual","rival","river","road","roast","robot","robust","rocket","romance","roof","rookie","room","rose","rotate","rough","round","route","royal","rubber","rude","rug","rule","run","runway","rural","sad","saddle","sadness","safe","sail","salad","salmon","salon","salt","salute","same","sample","sand","satisfy","satoshi","sauce","sausage","save","say","scale","scan","scare","scatter","scene","scheme","school","science","scissors","scorpion","scout","scrap","screen","script","scrub","sea","search","season","seat","second","secret","section","security","seed","seek","segment","select","sell","seminar","senior","sense","sentence","series","service","session","settle","setup","seven","shadow","shaft","shallow","share","shed","shell","sheriff","shield","shift","shine","ship","shiver","shock","shoe","shoot","shop","short","shoulder","shove","shrimp","shrug","shuffle","shy","sibling","sick","side","siege","sight","sign","silent","silk","silly","silver","similar","simple","since","sing","siren","sister","situate","six","size","skate","sketch","ski","skill","skin","skirt","skull","slab","slam","sleep","slender","slice","slide","slight","slim","slogan","slot","slow","slush","small","smart","smile","smoke","smooth","snack","snake","snap","sniff","snow","soap","soccer","social","sock","soda","soft","solar","soldier","solid","solution","solve","someone","song","soon","sorry","sort","soul","sound","soup","source","south","space","spare","spatial","spawn","speak","special","speed","spell","spend","sphere","spice","spider","spike","spin","spirit","split","spoil","sponsor","spoon","sport","spot","spray","spread","spring","spy","square","squeeze","squirrel","stable","stadium","staff","stage","stairs","stamp","stand","start","state","stay","steak","steel","stem","step","stereo","stick","still","sting","stock","stomach","stone","stool","story","stove","strategy","street","strike","strong","struggle","student","stuff","stumble","style","subject","submit","subway","success","such","sudden","suffer","sugar","suggest","suit","summer","sun","sunny","sunset","super","supply","supreme","sure","surface","surge","surprise","surround","survey","suspect","sustain","swallow","swamp","swap","swarm","swear","sweet","swift","swim","swing","switch","sword","symbol","symptom","syrup","system","table","tackle","tag","tail","talent","talk","tank","tape","target","task","taste","tattoo","taxi","teach","team","tell","ten","tenant","tennis","tent","term","test","text","thank","that","theme","then","theory","there","they","thing","this","thought","three","thrive","throw","thumb","thunder","ticket","tide","tiger","tilt","timber","time","tiny","tip","tired","tissue","title","toast","tobacco","today","toddler","toe","together","toilet","token","tomato","tomorrow","tone","tongue","tonight","tool","tooth","top","topic","topple","torch","tornado","tortoise","toss","total","tourist","toward","tower","town","toy","track","trade","traffic","tragic","train","transfer","trap","trash","travel","tray","treat","tree","trend","trial","tribe","trick","trigger","trim","trip","trophy","trouble","truck","true","truly","trumpet","trust","truth","try","tube","tuition","tumble","tuna","tunnel","turkey","turn","turtle","twelve","twenty","twice","twin","twist","two","type","typical","ugly","umbrella","unable","unaware","uncle","uncover","under","undo","unfair","unfold","unhappy","uniform","unique","unit","universe","unknown","unlock","until","unusual","unveil","update","upgrade","uphold","upon","upper","upset","urban","urge","usage","use","used","useful","useless","usual","utility","vacant","vacuum","vague","valid","valley","valve","van","vanish","vapor","various","vast","vault","vehicle","velvet","vendor","venture","venue","verb","verify","version","very","vessel","veteran","viable","vibrant","vicious","victory","video","view","village","vintage","violin","virtual","virus","visa","visit","visual","vital","vivid","vocal","voice","void","volcano","volume","vote","voyage","wage","wagon","wait","walk","wall","walnut","want","warfare","warm","warrior","wash","wasp","waste","water","wave","way","wealth","weapon","wear","weasel","weather","web","wedding","weekend","weird","welcome","west","wet","whale","what","wheat","wheel","when","where","whip","whisper","wide","width","wife","wild","will","win","window","wine","wing","wink","winner","winter","wire","wisdom","wise","wish","witness","wolf","woman","wonder","wood","wool","word","work","world","worry","worth","wrap","wreck","wrestle","wrist","write","wrong","yard","year","yellow","you","young","youth","zebra","zero","zone","zoo"];
 const WORD_MAP = Object.fromEntries(WORDLIST.map((w,i)=>[w,i]));
+// Cards (v2.9.0): defined here, before anything at page load can draw the card picker (see cdParse and cdGridSync).
+const CD_RANKS = "A23456789TJQK", CD_SUITS = "\u2663\u2666\u2665\u2660";
+const CD_SUIT_OF = {C: "\u2663", D: "\u2666", H: "\u2665", S: "\u2660", "\u2663": "\u2663", "\u2666": "\u2666", "\u2665": "\u2665", "\u2660": "\u2660", "\u2667": "\u2663", "\u2662": "\u2666", "\u2661": "\u2665", "\u2664": "\u2660"};
+const CD_NAMES = {A: "ace", T: "10", J: "jack", Q: "queen", K: "king"}, CD_SUIT_NAMES = {"\u2663": "clubs", "\u2666": "diamonds", "\u2665": "hearts", "\u2660": "spades"};
+const CD_LETTER = {"\u2663": "C", "\u2666": "D", "\u2665": "H", "\u2660": "S"};
 function getNeeded(wc){
   const mode = document.querySelector('input[name="mode"]:checked')?.value || "dice";
   if(mode==="coin") return {12:128,24:256}[wc];
@@ -3162,6 +3176,7 @@ const DICT = [
   ["Child key and parent key", "In a key tree, a child key is worked out from its parent. Knowing a hardened child never reveals its parent.", "", "Keys & seeds"],
   ["Child seed", "A new seed derived from a parent seed (BIP85). The same parent, word count and index always give the same child.", "EXTRA TOOLS.", "Keys & seeds"],
   ["Clipboard", "Your computer's short-term copy memory. Some systems keep a history of it or sync it to other devices, so copying a secret can leak it.", "Browser safety checklist.", "Privacy & security"],
+  ["Card entropy", "Randomness taken from a well-shuffled deck of 52 playing cards, typed in the order they lie. Card after card from one shuffle adds a little less each time (log2 of the cards left), so 25 cards give about 132 bits (12 words) and a whole deck about 226 bits; a 24-word seed needs the whole deck and 6 more from a new shuffle. The cards are hashed with SHA-256, as in Ian Coleman's BIP39 tool.", "MAKE A SEED: the Cards & hex tab.", "Keys & seeds"],
   ["Coin control", "A wallet feature that lets you pick exactly which coins to spend, mostly for privacy.", "", "Transactions"],
   ["Coin flip entropy", "Randomness taken from real coin tosses, written as 1 and 0. 128 flips give a 12-word seed and 256 give 24 words.", "MAKE A SEED: the Coin tab.", "Keys & seeds"],
   ["Coin selection", "How a wallet chooses which of your coins (UTXOs) to spend in a payment.", "", "Transactions"],
@@ -3228,6 +3243,7 @@ const DICT = [
   ["Hash rate", "The total number of hash calculations per second that miners are doing. A higher hash rate makes the network harder to attack.", "", "Network & mining"],
   ["HD wallet", "Hierarchical deterministic wallet: one seed makes a whole tree of keys (BIP32), so one backup covers every address.", "", "Keys & seeds"],
   ["Hex", "Base 16: numbers written with 0 to 9 and a to f. Hashes and keys are usually shown in hex.", "", "Units & math"],
+  ["Hex entropy", "Seed randomness typed as hex digits (0 to 9, a to f) and used as it is: 32 digits are the 128 bits of a 12-word seed and 64 digits the 256 bits of a 24-word seed. For a real seed it must come from a 16-sided die you rolled, never from a website or a program; it is also a way to check what another tool made.", "MAKE A SEED: the Cards & hex tab.", "Keys & seeds"],
   ["HMAC", "A way to mix a secret key into a hash. Seeds and child keys are made with HMAC-SHA512 in BIP32.", "", "Keys & seeds"],
   ["HODL", "Slang for holding bitcoin instead of selling it. It began as a typo of the word hold.", "", "Culture & markets"],
   ["Hot wallet", "A wallet on a device that is online, such as a phone app. Handy for small amounts, riskier for large ones.", "", "Wallets & backups"],
@@ -4925,6 +4941,7 @@ async function runSelfTests(auto){
     eq("BIP85 password, Base64, 21 characters (published BIP85 vector)", ()=>bip85App(BK,BC,"pwd64",0,21),"dKLoepugzdVJvdL56ogNV");
     eq("BIP85 password, Base85, 12 characters (published BIP85 vector)", ()=>bip85App(BK,BC,"pwd85",0,12),"_s`{TW89)i4`");
     eq("BIP85 dice, 10 rolls of a 6-sided die (published BIP85 vector)", ()=>bip85App(BK,BC,"dice",0,6,10),"1,0,0,2,0,1,5,5,2,4");
+    eq("Cards: AS 2C 10D written as A\u2660 2\u2663 T\u2666 and hashed, as in Ian Coleman's BIP39 tool (12 words, from @scure)", ()=>rollsToMnemonic(cdParse("as 2c 10d").cards.join(" "), 12), "embody only exact pride episode winter estate perfect security often scout tiger");
     eq("SHAKE256 BIP85-DRNG, 80 bytes (published BIP85 vector)", ()=>hex(shake256Reader(fromHex("efecfbccffea313214232d29e71563d941229afb4338c21f9517c41aaa0d16f00b83d2a09ef747e7a64e8e2bd5a14869e693da66ce94ac2da570ab7ee48618f7")).read(80)),"b78b1ee6b345eae6836c2d53d33c64cdaf9a696487be81b03e822dc84b3f1cd883d7559e53d175f243e4c349e822a957bbff9224bc5dde9492ef54e8a439f6bc8c7355b87a925a37ee405a7502991111"); }
   eq("SeedQR digit string -> words ('abandon..about' = 0000 x11 + 0003)", async()=>(await checkPhrase("0000".repeat(11)+"0003")).mnemonic, "abandon ".repeat(11)+"about");
   eq("CompactSeedQR hex -> words (BIP39 vector 7f x16)", async()=>(await checkPhrase("7f".repeat(16))).mnemonic, "legal winner thank year wave sausage worth useful legal winner thank yellow");
@@ -7059,6 +7076,26 @@ function printWordSheet(){
     add("ps-warn", "Once filled in, this sheet is as secret as your seed: anyone who sees it can make your wallet.\nType it in on an offline computer, then shred it (or keep it only as a locked-away backup).\nNever photograph it.");
   });
 }
+// Card sheet (v2.9.0): numbered boxes to write the cards down as they are dealt: 25 for 12 words, or a whole deck and then
+// 6 more from a new shuffle for 24 words (see cdBits).
+function printCardSheet(){
+  const wc = +document.querySelector('input[name="words"]:checked').value === 24 ? 24 : 12, first = wc === 24 ? 52 : 25;
+  printSheet(add => {
+    add("ps-title", "VOIDFORGE CARD SHEET");
+    add("ps-sub", "For a " + wc + "-word seed: " + (wc === 24 ? "the whole deck (52 cards), then 6 more from a new shuffle." : "25 cards.") + " Take the jokers out of a full deck of 52 cards and shuffle it well (at least seven riffle shuffles). Deal the cards face up and write each one in the next box, in order: its rank (A, 2 to 10, J, Q, K) and suit (C clubs, D diamonds, H hearts, S spades), such as 10H.");
+    const g = add("ps-grid ps-card", "");
+    for(let i = 1; i <= first; i++){ const c = add("ps-cell", "", g); add("ps-n", String(i), c); }
+    if(wc === 24){
+      add("ps-sub ps-extra-sub", "Second shuffle: put all 52 cards back, shuffle well again, then deal 6 more and write them here.");
+      const g2 = add("ps-grid ps-card", "");
+      for(let i = 53; i <= 58; i++){ const c = add("ps-cell", "", g2); add("ps-n", String(i), c); }
+    }
+    add("ps-rule", "");
+    add("ps-fields", "Date:       ____________\nTyped into VOIDFORGE and checked:  ____");
+    add("ps-rule", "");
+    add("ps-warn", "Once filled in, this sheet is as secret as your seed: anyone who sees it can make your wallet.\nType it in on an offline computer, then shred it (or keep it only as a locked-away backup of the cards).\nNever photograph it.");
+  });
+}
 // Print the public QR code shown in the watch-only box (v2.4.0): key, descriptor or Silent Payment address, with its text.
 // The sheet is described when the code is shown (not when it is printed), so the title, network and account always belong to
 // the code on screen; changing the type, network or account hides the code (refreshWatch).
@@ -8692,8 +8729,6 @@ function wdClear(){
 // with a number of words) and EntropyLab's Coleman symbols option. Strength is counted for cards dealt from a shuffled deck
 // without putting them back: card k of a run adds log2(52 - k) bits, and a card that comes up again starts a new run (a new
 // shuffle). Hex: exactly 32 or 64 hex digits are the entropy itself, with no hashing, as in Ian Coleman's tool (Hexadecimal, raw).
-const CD_RANKS = "A23456789TJQK", CD_SUITS = "\u2663\u2666\u2665\u2660";
-const CD_SUIT_OF = {C: "\u2663", D: "\u2666", H: "\u2665", S: "\u2660", "\u2663": "\u2663", "\u2666": "\u2666", "\u2665": "\u2665", "\u2660": "\u2660", "\u2667": "\u2663", "\u2662": "\u2666", "\u2661": "\u2665", "\u2664": "\u2660"};
 function cdParse(text){
   const cards = [], bad = [], t = String(text).toUpperCase().replace(/\uFE0F/g, "").replace(/[,;]/g, " "), re = /(10|[A2-9TJQK])\s*([CDHS\u2660-\u2667])|(\S+)/g;
   let m; while((m = re.exec(t))){ if(m[3] !== undefined || !CD_SUIT_OF[m[2]]){ bad.push(m[0]); continue; } cards.push((m[1] === "10" ? "T" : m[1]) + CD_SUIT_OF[m[2]]); }
@@ -8718,7 +8753,7 @@ function cdUpdate(){
   document.getElementById("cdMsg").textContent = msg;
   document.getElementById("cdBtn").disabled = !(selfTestState === "pass" && !pr.bad.length && b.bits >= need);
   document.getElementById("cdHexBtn").disabled = !(selfTestState === "pass" && /^[0-9a-f]+$/.test(hx) && hx.length === hxNeed);
-  staleCheck();
+  cdGridSync(); staleCheck();
 }
 async function cdGenerate(){
   if(!gateOk()) return;
@@ -8742,6 +8777,78 @@ async function cdHexGenerate(){
 }
 function cdClear(){
   document.getElementById("cdCards").value = ""; document.getElementById("cdHex").value = ""; cdUpdate();
+}
+// The card picker (v2.9.0): 52 card faces to tap in the order the cards lie. A card already dealt in this shuffle shows the
+// VOIDFORGE back (charcoal and gold), so it cannot be added twice by mistake; after a whole deck every card shows its face
+// again, ready for the next shuffle. The typed box stays the record: tapping only adds the card's code to it.
+function cdSvg(){ const v = document.createElementNS("http://www.w3.org/2000/svg", "svg"); v.setAttribute("viewBox", "0 0 50 70"); v.setAttribute("aria-hidden", "true"); return v; }
+function cdEl(v, tag, at, text){ const e = document.createElementNS("http://www.w3.org/2000/svg", tag); for(const k in at) e.setAttribute(k, at[k]); if(text !== undefined) e.textContent = text; v.appendChild(e); return e; }
+function cdFace(card){
+  const v = cdSvg(), red = card[1] === "\u2665" || card[1] === "\u2666", ink = red ? "#B3261E" : "#1F2328", rank = card[0] === "T" ? "10" : card[0], font = "Georgia, 'Times New Roman', serif", su = card[1];
+  cdEl(v, "rect", {x: 0.75, y: 0.75, width: 48.5, height: 68.5, rx: 5, fill: "#FFFFFF", stroke: "#B3AEA2", "stroke-width": 1.5});
+  // corner marks, top left and (turned over) bottom right, as on a real card
+  for(const turn of [false, true]){
+    const g = cdEl(v, "g", turn ? {transform: "rotate(180 25 35)"} : {});
+    cdEl(g, "text", {x: 6.5, y: 11, fill: ink, "font-size": rank === "10" ? 8.5 : 10, "font-weight": 700, "text-anchor": "middle", "font-family": font}, rank);
+    cdEl(g, "text", {x: 6.5, y: 20, fill: ink, "font-size": 8.5, "text-anchor": "middle", "font-family": font}, su);
+  }
+  const pip = (x, y, size) => { const g = cdEl(v, "g", y > 35.5 ? {transform: "rotate(180 " + x + " " + y + ")"} : {}); cdEl(g, "text", {x, y: y + size * 0.35, fill: ink, "font-size": size, "text-anchor": "middle", "font-family": font}, su); };
+  if(rank === "J" || rank === "Q" || rank === "K"){
+    cdEl(v, "rect", {x: 12, y: 9, width: 26, height: 52, rx: 2, fill: "#FBF6E7", stroke: "#C9971C", "stroke-width": 1.2});
+    cdEl(v, "text", {x: 25, y: 43, fill: ink, "font-size": 22, "font-weight": 700, "text-anchor": "middle", "font-family": font}, rank);
+    pip(25, 17, 8); pip(25, 53, 8);
+  } else if(rank === "A") pip(25, 35, 26);
+  else {
+    const L = 19, M = 25, R = 31, n = +rank, rows4 = [15, 28.3, 41.7, 55];
+    const lay = {2: [[M, 15], [M, 55]], 3: [[M, 15], [M, 35], [M, 55]], 4: [[L, 15], [R, 15], [L, 55], [R, 55]],
+      5: [[L, 15], [R, 15], [M, 35], [L, 55], [R, 55]], 6: [[L, 15], [R, 15], [L, 35], [R, 35], [L, 55], [R, 55]],
+      7: [[L, 15], [R, 15], [M, 25], [L, 35], [R, 35], [L, 55], [R, 55]], 8: [[L, 15], [R, 15], [M, 25], [L, 35], [R, 35], [M, 45], [L, 55], [R, 55]],
+      9: [...rows4.flatMap(y => [[L, y], [R, y]]), [M, 35]], 10: [...rows4.flatMap(y => [[L, y], [R, y]]), [M, 21.7], [M, 48.3]]}[n];
+    for(const [x, y] of lay) pip(x, y, 10);
+  }
+  return v;
+}
+function cdBack(){
+  const v = cdSvg(), G = "#E3B83F";
+  cdEl(v, "rect", {x: 0.75, y: 0.75, width: 48.5, height: 68.5, rx: 5, fill: "#1E2124", stroke: G, "stroke-width": 1.5});
+  cdEl(v, "rect", {x: 4.5, y: 4.5, width: 41, height: 61, rx: 3, fill: "none", stroke: G, "stroke-width": 0.8});
+  cdEl(v, "path", {d: cdLattice(), fill: "none", stroke: G, "stroke-width": 0.5, opacity: 0.55});
+  cdEl(v, "path", {d: "M25 24 L33 35 L25 46 L17 35 Z", fill: "#1E2124", stroke: G, "stroke-width": 1.2});
+  cdEl(v, "text", {x: 25, y: 39, fill: G, "font-size": 11, "font-weight": 700, "text-anchor": "middle", "font-family": "Georgia, 'Times New Roman', serif"}, "V");
+  return v;
+}
+// diagonal lines both ways inside the inner frame (4.5..45.5 by 4.5..65.5), clipped by hand so no shared ids are needed
+function cdLattice(){
+  const x0 = 4.5, y0 = 4.5, w = 41, h = 61, out = [], clip = (ax, ay, bx, by) => { const pts = [];
+    const add = (x, y) => { if(x >= x0 - 1e-9 && x <= x0 + w + 1e-9 && y >= y0 - 1e-9 && y <= y0 + h + 1e-9) pts.push([x, y]); };
+    const dx = bx - ax, dy = by - ay; for(const t of [(x0 - ax) / dx, (x0 + w - ax) / dx, (y0 - ay) / dy, (y0 + h - ay) / dy]) if(isFinite(t)) add(ax + t * dx, ay + t * dy);
+    pts.sort((p, q) => p[0] - q[0]); if(pts.length >= 2) out.push("M" + pts[0][0].toFixed(2) + " " + pts[0][1].toFixed(2) + "L" + pts[pts.length - 1][0].toFixed(2) + " " + pts[pts.length - 1][1].toFixed(2)); };
+  for(let c = -h; c <= w + h; c += 7){ clip(x0 + c, y0, x0 + c + 10, y0 + 10); clip(x0 + c, y0, x0 + c - 10, y0 + 10); }
+  return out.join(" ");
+}
+// the cards dealt in the current shuffle (as cdBits counts runs); a whole deck means the next card starts a new shuffle
+function cdRunSet(cards){ let run = new Set(); for(const c of cards){ if(run.has(c)) run = new Set(); run.add(c); } return run.size === 52 ? new Set() : run; }
+function cdCardName(c){ return (CD_NAMES[c[0]] || c[0]) + " of " + CD_SUIT_NAMES[c[1]]; }
+function cdGridSync(){
+  const grid = document.getElementById("cdGrid"); if(!grid) return;
+  if(!grid.children.length){
+    for(const su of "\u2660\u2665\u2666\u2663") for(const r of CD_RANKS){
+      const c = r + su, b = document.createElement("button"); b.type = "button"; b.className = "cd-card"; b.dataset.c = c; b.dataset.used = "";
+      b.onclick = () => { if(b.dataset.used === "true") return; const el = document.getElementById("cdCards"), cur = el.value.replace(/\s+$/, ""); el.value = (cur ? cur + " " : "") + (r === "T" ? "10" : r) + CD_LETTER[su]; cdUpdate(); };
+      grid.appendChild(b);
+    }
+  }
+  const used = cdRunSet(cdParse(document.getElementById("cdCards").value).cards);
+  for(const b of grid.children){
+    const u = used.has(b.dataset.c) ? "true" : "false"; if(b.dataset.used === u) continue;
+    b.dataset.used = u; b.textContent = ""; b.appendChild(u === "true" ? cdBack() : cdFace(b.dataset.c));
+    b.setAttribute("aria-disabled", u); b.setAttribute("aria-label", u === "true" ? cdCardName(b.dataset.c) + ", already dealt in this shuffle" : "Add the " + cdCardName(b.dataset.c));
+    b.title = u === "true" ? "Already dealt in this shuffle" : "Add the " + cdCardName(b.dataset.c);
+  }
+}
+function cdUndo(){
+  const el = document.getElementById("cdCards"), t = el.value.replace(/\s+$/, ""), m = /(10|[A2-9TJQK])\s*([CDHS\u2660-\u2667]\uFE0F?)$/i.exec(t);
+  if(!m) return; el.value = t.slice(0, m.index).replace(/\s+$/, ""); cdUpdate();
 }
 // Word finder (v1.25.1): a word number 1-2048, or a D8 roll plus two hex digits, gives the BIP39 word. Display only; it does not touch the seed.
 function wdFindWord(raw){

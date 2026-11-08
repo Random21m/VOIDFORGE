@@ -84,6 +84,8 @@ await p.selectOption('#diceRules', 'std'); await p.selectOption('#wordSel', '12'
 
 // 2. Word draw sheets.
 for (const n of ['12', '24']) { await p.selectOption('#wordSel', n); await sheet('word draw sheet ' + n, () => printWordSheet()); }
+// v2.9.0: card sheets (25 boxes; or 52 and then 6 more)
+for (const n of ['12', '24']) { await p.selectOption('#wordSel', n); await sheet('card sheet ' + n, () => printCardSheet()); }
 
 // 3. A made seed: backup sheet, stamp sheet, SeedQR prints, public QR prints, address QR prints.
 for (const [n, rolls] of [['12', '1'.repeat(25) + '2'.repeat(25)], ['24', '3'.repeat(50) + '4'.repeat(49)]]) {
