@@ -222,10 +222,10 @@ await sheet('backup plan, short (one copy, worst case)', () => printPlan());
 ok(await p.evaluate(() => /backup plan/i.test(document.getElementById('planBox').textContent) && document.getElementById('plTest').children.length >= 5), 'backup plan: the stress test is on the page');
 await p.click('#tab-make');
 await p.evaluate(() => practiceMode(true));
-await p.waitForFunction(() => /TEST NETWORK for practice/.test(document.getElementById('address').textContent) && /^tb1q/.test(document.getElementById('wFirst').textContent) && /^tb1q/.test(document.getElementById('addrList').textContent));
+await p.waitForFunction(() => /TESTNET \(practice coins only\)/.test(document.getElementById('address').textContent) && /^tb1q/.test(document.getElementById('wFirst').textContent) && /^tb1q/.test(document.getElementById('addrList').textContent));
 for (const [label, fn] of [['summary sheet (test-network first address)', () => printSummary()], ['backup sheet (prints as usual)', () => printSeed()]])
   await sheet('practice mode: ' + label, fn);
-ok(await p.evaluate(() => { printSummary(); const t = document.getElementById('printOnly').textContent; window.dispatchEvent(new Event('afterprint')); return /First receive address, TEST NETWORK for practice \(BIP84, m\/84'\/1'\/0'\/0\/0\): tb1q/.test(t); }), 'practice mode: the summary sheet gives the test-network first address, and says so');
+ok(await p.evaluate(() => { printSummary(); const t = document.getElementById('printOnly').textContent; window.dispatchEvent(new Event('afterprint')); return /First receive address, TESTNET \(practice coins only\), BIP84, m\/84'\/1'\/0'\/0\/0: tb1q/.test(t); }), 'practice mode: the summary sheet gives the test-network first address, and says so');
 await p.evaluate(() => document.querySelector('#addrList button.qr-mini').click());
 await sheet('practice mode: address QR', () => printAddrQr('aq'));
 ok(await p.evaluate(() => { printAddrQr('aq'); const t = document.getElementById('printQr').textContent; window.dispatchEvent(new Event('afterprint')); hideAddrQr('aq'); return /^VOIDFORGE RECEIVE ADDRESS \(TESTNET\)/.test(t) && /Path: m\/84'\/1'\/0'\/0\/0/.test(t); }), 'practice mode: a printed address sheet says TESTNET');

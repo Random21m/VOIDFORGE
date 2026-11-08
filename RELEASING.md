@@ -33,6 +33,9 @@ Releases up to v2.3.0 were built on GitHub and also carry a GitHub build-provena
 ## README refresh (every release)
 The README has no screenshots or video for now; they will be redone once the project is feature-complete. Before the final candidate commit, re-read the README text so it describes what the page does now: new or changed features are described, retired wording is removed, and the online practice copy (https://random21m.gitlab.io/voidforge/) is still the right link and still serves the latest release.
 
+## Consistency sweep (every release)
+Before the final review, check that the same thing is named, counted, shown and styled the same way everywhere: the page, the printed sheets, the Bitcoin dictionary, the current changelog entry and these documents. In particular: buttons and tabs are quoted exactly as they read on screen (tabs in capitals, as their headings: MAKE A SEED, CHECK A BACKUP, EXTRA TOOLS, ABOUT & HELP); every address list shows the first 10 receive and the first 10 change addresses; testnet is written "TESTNET (practice coins only)"; every main action is a gold button and every PRINT button is gray; outside checks are called a review, and VOIDFORGE "has not been independently audited"; phones are "for learning and practice only, never for real funds"; American spelling. Hints that point to another part of the page ("above", "below", a tab) must still point the right way. Fix every difference before the review.
+
 ## Bitcoin dictionary (every release)
 The in-page Bitcoin dictionary (ABOUT & HELP) is general, not only about VOIDFORGE. With every release add entries for any new feature, standard or term (a new BIP or SLIP must have an entry: the tests fail if the page names one that the dictionary lacks), check new definitions against a trustworthy source, add a fact check for any number or prefix in a new entry, and add mutation targets that change those facts. Also use the release to add a few missing general terms.
 

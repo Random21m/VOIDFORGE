@@ -151,7 +151,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(!/#rollCount \{ display: none; \}/.test(css)&&!!t.$('rollCount'),'calmer page: one column, so the roll count stays beside the box on every screen size');
       { const css=html.match(/<style>[\s\S]*?<\/style>/)[0]; ok(/@media \(max-width: 559px\) \{ #wordGrid, #cardGen \.gen-right #wordGrid \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \} \}/.test(css)&&/\.wcell \{ animation: none; box-shadow: none; font-size: 18px; font-weight: 700; padding: 10px 12px; min-width: 0; \}/.test(css)&&/@media \(max-width: 400px\) \{ \.wcell \{ font-size: 16px;/.test(css)&&/@media \(max-width: 345px\) \{ \.wcell \{ font-size: 14\.5px;/.test(css),'seed words: two columns below 560px and smaller type on narrow phones, so long words stay inside their boxes'); }
       { const rs=t.$('rollStats'); ok(!!rs&&rs.previousElementSibling.id==='ignoredNote'&&t.$('advanced').closest('#genRight')!==null&&t.$('advanced').previousElementSibling.classList.contains('seed-actions')&&t.$('advanced').nextElementSibling.querySelector('#fingerprint')!==null,'order: roll entry, then the roll history and fairness chart; then FORGE and the words, then the passphrase box, then the fingerprints'); ok(!!rs&&rs.tagName==='DETAILS'&&!rs.open&&rs.contains(t.$('rollChart'))&&rs.contains(t.$('rollHistory'))&&rs.contains(t.$('diceVisual')),'tucked away: roll history and the fairness chart live in one closed box'); { const css=html.match(/<style>[\s\S]*?<\/style>/)[0]; ok(/#rollStats \{ margin-top: 10px; padding: 8px 12px; font-size: 13px; \}/.test(css)&&/#rollStats > summary \{ cursor: pointer; font-weight: 600; \}/.test(css),'tucked away: the roll history box is styled like the More options and Advanced options boxes'); } }
-      ok(!t.$('moreBox')&&!t.$('demoBox')&&!t.$('demoOn')&&![...t.d.querySelectorAll('.tag-note')].some(e=>/DEMO/.test(e.textContent)),'no demo box and no More options box: the grey live words replaced the demo');
+      ok(!t.$('moreBox')&&!t.$('demoBox')&&!t.$('demoOn')&&![...t.d.querySelectorAll('.tag-note')].some(e=>/DEMO/.test(e.textContent)),'no demo box and no More options box: the gray live words replaced the demo');
       { const tabs=[...t.d.querySelectorAll('#methodTabs button')]; ok(tabs.map(b=>b.textContent).join('|')==='Dice|Coin|Word draw'&&tabs.every(b=>b.getAttribute('role')==='tab')&&tabs[0].getAttribute('aria-selected')==='true'&&t.$('wordSel').options.length===2&&t.$('wordSel').value==='12'&&/50 dice rolls/.test(t.$('lenNote').textContent)&&!t.d.body.classList.contains('m-words'),'make tab: Dice, Coin and Word draw tabs with one Seed length menu (12 or 24), Dice and 12 words by default'); }
       ok(!/Enter your rolls or flips, generate the seed, then compare/.test(d.querySelector('footer').textContent)&&/VOIDFORGE v\d+\.\d+\.\d+/.test(d.querySelector('footer').textContent),'calmer page: the footer is two lines'); }
     { // The seed buttons follow the seed (v1.33.0)
@@ -165,17 +165,17 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const svgText=svg?decodeURIComponent(svg.slice(svg.indexOf(',')+1)):'', pb=png?Buffer.from(png.slice(png.indexOf(',')+1),'base64'):Buffer.alloc(0);
       ok(ic.length===2&&hs.every(h=>h.startsWith('data:'))&&(svgText.match(/<circle/g)||[]).length===5&&/^<svg[^>]*viewBox="0 0 64 64"/.test(svgText)&&/fill="#E3B83F"/.test(svgText)&&pb.subarray(1,4).toString()==='PNG'&&pb.readUInt32BE(16)===32&&pb.readUInt32BE(20)===32,'page icon: a data: SVG with the five-pip die and a 32x32 PNG are built in, and no icon link points to the network');
       ok(!t.w.document.querySelector('link[rel~="apple-touch-icon"], link[rel="manifest"]')&&/never from a website\. Check the file.s SHA256 first \(see the README\)\. The online copy on the project page is for practice only\. Its address is random21m\.gitlab\.io\/voidforge, the only link on this page/.test(t.w.document.body.textContent),'page icon: nothing else is linked, and the About page says the online copy is for practice only'); }
-    { // Every main "go" action across the page is a primary (cyan) button, not grey "secondary" -- a uniform rule, not just START DRILL (v1.27.3)
+    { // Every main "go" action across the page is a primary (cyan) button, not gray "secondary" -- a uniform rule, not just START DRILL (v1.27.3)
       const primaryIds=['forgeBtn','prStart','prCheckBtn','checkAddrBtn','checkAcctsBtn','reforgeWordsBtn','psbtBtn','cmpBtn','childBtn','wpBtn','reuseBtn','sigBtn'];
       const missing=primaryIds.filter(id=>{ const b=t.$(id); return !b || b.classList.contains('secondary') || b.classList.contains('btn-clear'); });
-      ok(missing.length===0,'every main action button (FORGE SEED, START PRACTICE, CHECK MY PAPER, CHECK ADDRESS, TRY ACCOUNTS, Reforge SEARCH, INSPECT, COMPARE, DERIVE CHILD SEED, OPEN WATCH-ONLY, CHECK KEYS, VERIFY SIGNATURE) is the gold primary style, none grey (missing: '+missing.join(', ')+')');
+      ok(missing.length===0,'every main action button (FORGE SEED, START PRACTICE, CHECK MY PAPER, CHECK ADDRESS, TRY ACCOUNTS, Reforge SEARCH, INSPECT, COMPARE, DERIVE CHILD SEED, OPEN WATCH-ONLY, CHECK KEYS, VERIFY SIGNATURE) is the gold primary style, none gray (missing: '+missing.join(', ')+')');
       const drillBtn=[...t.$('drillStart').querySelectorAll('button')][0];
       ok(drillBtn&&drillBtn.textContent.trim()==='START DRILL'&&!drillBtn.classList.contains('secondary'),'START DRILL is also the cyan primary style');
       const css=html.match(/<style>[\s\S]*?<\/style>/)[0];
       ok(/button \{[^}]*background: linear-gradient\(90deg, var\(--accent\)/.test(css),'the primary button style is still the cyan gradient that every unclassed button inherits');
-      // and the small helper actions (COPY, SHOW QR, HIDE, PRINT, UNDO) stay the quieter grey secondary style, so the primary ones still stand out
+      // and the small helper actions (COPY, SHOW QR, HIDE, PRINT, UNDO) stay the quieter gray secondary style, so the primary ones still stand out
       const helperBtns=[...t.w.document.querySelectorAll('button.secondary.small')];
-      ok(helperBtns.length>=20&&helperBtns.every(b=>b.classList.contains('secondary')),'helper buttons like COPY, SHOW QR and HIDE stay the quieter grey secondary style, so the primary actions still stand out'); }
+      ok(helperBtns.length>=20&&helperBtns.every(b=>b.classList.contains('secondary')),'helper buttons like COPY, SHOW QR and HIDE stay the quieter gray secondary style, so the primary actions still stand out'); }
     { // Bitcoin dictionary (v1.27.3): offline glossary with search
       const box=t.$('dictBox'), items=[...t.$('dictList').querySelectorAll('.dict-item')], names=items.map(e=>e.querySelector('dt').textContent), def=e=>e.querySelector('dd').firstChild.textContent;
       const q=async v=>{ t.$('dictSearch').value=v; t.w.dictFilter(); return items.filter(e=>e.style.display!=='none').map(e=>e.querySelector('dt').textContent); };
@@ -221,7 +221,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const mix=(fg,a,bg)=>fg.map((v,i)=>v*a+bg[i]*(1-a));
     const btn=(fn)=>[...t.w.document.querySelectorAll('button')].find(b=>b.getAttribute('onclick')===fn);
     const clr=btn('clearAll()'), st=btn('toggleSelfTests()');
-    ok(clr&&clr.textContent.trim()==='CLEAR'&&clr.classList.contains('btn-clear')&&!clr.classList.contains('secondary'),'CLEAR button uses the red style');
+    ok(clr&&clr.textContent.trim()==='CLEAR ALL'&&clr.classList.contains('btn-clear')&&!clr.classList.contains('secondary'),'CLEAR button uses the red style');
     ok(st&&st.textContent.trim()==='SELF-TEST'&&st.classList.contains('btn-test')&&st.classList.contains('small')&&!st.classList.contains('secondary'),'SELF-TEST button uses the green style');
     ok(/\n  button\.btn-clear \{[^}]*color: var\(--bad-text\)[^}]*border: 1px solid var\(--bad-text\)/.test(css),'red style: red text and red border');
     ok(/\n  button\.btn-test \{[^}]*color: var\(--ok-text\)[^}]*border: 1px solid var\(--ok-text\)/.test(css),'green style: green text and green border');
@@ -355,7 +355,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(t.$('walletView').style.display==='none'&&!t.$('wvType').disabled&&!t.$('wvAcct').disabled&&t.$('wvSqBlock').style.display!=='none','watch-only: editing the key wipes the view and puts the controls back');
     // Electrum seed warning
     { const r=await t.w.checkPhrase('wild father tree among universe such mobile favorite target dynamic credit identify');
-      ok(!r.ok&&/Electrum seed \(SegWit type\)/.test(r.msg),'Electrum: the Electrum SegWit example seed is recognised and named');
+      ok(!r.ok&&/Electrum seed \(SegWit type\)/.test(r.msg),'Electrum: the Electrum SegWit example seed is recognized and named');
       const r2=await t.w.checkPhrase('abandon '.repeat(11)+'abandon'); ok(!r2.ok&&!/Electrum/.test(r2.msg),'Electrum: an ordinary bad phrase gets no Electrum note');
       const r3=await t.w.checkPhrase(AB); ok(r3.ok&&!/Electrum/.test(r3.msg),'Electrum: a valid BIP39 phrase is never called Electrum');
       ok(await t.w.electrumSeedType('say brain hammer whip plug sad budget improve scout myself interest input')==='two-factor (2FA)'&&await t.w.electrumSeedType('neglect morning hat science deputy alarm seed eager cover letter pencil second')==='two-factor (2FA) SegWit'&&await t.w.electrumSeedType('shoulder between fitness double soap point region fade rose guide kitten loud')===null,'Electrum: two-factor types are named, and a phrase whose hash starts 103 is not Electrum'); }
@@ -440,12 +440,12 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t.w.showSeedQr('seedqr'); t.w.printSeedQr();
     ok(t.st.printed===p0+1&&/print-qr/.test(t.st.printClass)&&/VOIDFORGE SEEDQR \(12 words, 25 x 25 squares\)/.test(t.st.printQrText)&&/<svg/.test(t.st.printQrHTML)&&!t.st.printQrText.includes('SECRETPASS')&&!t.st.printQrText.includes(sw.split(' ').slice(0,3).join(' ')),'PRINT THIS QR prints the code, no words and no passphrase');
     t.w.dispatchEvent(new t.w.Event('afterprint')); ok(t.$('printQr').textContent===''&&!t.d.body.classList.contains('print-qr'),'SeedQR print area cleaned up after printing');
-    // by hand: 7 x 7 blocks, mini-map, grey squares outside the code
+    // by hand: 7 x 7 blocks, mini-map, gray squares outside the code
     t.w.showSeedQr('seedqr'); t.w.openSqGuide();
     ok(t.$('sqGuide').style.display===''&&/^Block 1 of 16: rows 1 to 7, columns 1 to 7 of the 25 x 25 grid/.test(gc())&&!!t.$('sqGuideImg').querySelector('svg')&&!!t.$('sqMini').querySelector('svg'),'COPY BY HAND opens block 1 of 16 with a mini-map');
     t.w.sqGuideBlock(1); ok(/^Block 2 of 16: rows 1 to 7, columns 8 to 14/.test(gc()),'NEXT BLOCK moves right');
-    for(let i=0;i<2;i++) t.w.sqGuideBlock(1); ok(/^Block 4 of 16: rows 1 to 7, columns 22 to 25/.test(gc())&&/Grey squares are outside the code/.test(gc()),'the last block of a row is cut at the edge of the code');
-    ok(!!t.$('sqGuideImg').querySelector('path[fill="#c8c8c8"]')&&/^M/.test(t.$('sqGuideImg').querySelector('path[fill="#c8c8c8"]').getAttribute('d')),'squares outside the code are drawn grey');
+    for(let i=0;i<2;i++) t.w.sqGuideBlock(1); ok(/^Block 4 of 16: rows 1 to 7, columns 22 to 25/.test(gc())&&/Gray squares are outside the code/.test(gc()),'the last block of a row is cut at the edge of the code');
+    ok(!!t.$('sqGuideImg').querySelector('path[fill="#c8c8c8"]')&&/^M/.test(t.$('sqGuideImg').querySelector('path[fill="#c8c8c8"]').getAttribute('d')),'squares outside the code are drawn gray');
     t.w.sqGuideBlock(1); ok(/^Block 5 of 16: rows 8 to 14, columns 1 to 7/.test(gc()),'blocks continue on the next row of blocks');
     t.w.sqGuideBlock(-1); ok(/^Block 4 of 16/.test(gc()),'PREVIOUS BLOCK moves back');
     t.w.openSqGuide(); t.w.sqGuideBlock(-1); ok(/^Block 16 of 16: rows 22 to 25, columns 22 to 25/.test(gc()),'PREVIOUS BLOCK wraps from the first block to the last');
@@ -752,13 +752,16 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     eq(nums,'2,4,1,0,0,3','chart counts per dice face (1..6), ignoring invalid characters');
     eq(t.$('rollChart').querySelectorAll('.rc-bar').length,6,'chart has six bars for dice');
     eq(t.$('rollChart').querySelectorAll('img,script,a').length,0,'chart contains no images, scripts or links');
-    // five addresses, 4-letter view, guide
+    // ten receive and ten change addresses (v2.8.1), 4-letter view, guide
     t.$('rolls').value='65515223131652132161133154444123616466443112153441'; t.w.updateCount(); await t.w.generate();
-    eq(t.$('addrList').querySelectorAll('li').length,5,'five receive addresses are listed after FORGE');
+    eq(t.$('addrList').querySelectorAll('li').length,10,'ten receive addresses are listed after FORGE');
+    { const rc=[...t.$('addrList').children].map(x=>x.textContent), ch=[...t.$('chList').children].map(x=>x.textContent), tc=[...t.$('trChList').children].map(x=>x.textContent);
+      ok(ch.length===10&&ch.every(x=>/^bc1q[0-9a-z]{38}$/.test(x))&&new Set(rc.concat(ch)).size===20,'ten change addresses are listed after FORGE, none of them a receive address');
+      ok(tc.length===10&&tc.every(x=>/^bc1p[0-9a-z]{58}$/.test(x))&&new Set(tc).size===10,'ten Taproot change addresses are listed after FORGE'); }
     ok(t.$('addrList').querySelector('li').textContent===/First receive address[^:]*: (bc1[0-9a-z]+)/.exec(t.$('address').textContent)[1],'first listed address equals the single first-address line');
     eq(t.$('addrBox').style.display,'','address list is shown after FORGE');
     { const tr=[...t.$('trList').querySelectorAll('li')].map(x=>x.textContent);
-      ok(tr.length===5&&tr.every(x=>/^bc1p[0-9a-z]{58}$/.test(x))&&new Set(tr).size===5,'five distinct Taproot (bc1p) addresses are listed after FORGE');
+      ok(tr.length===10&&tr.every(x=>/^bc1p[0-9a-z]{58}$/.test(x))&&new Set(tr).size===10,'ten distinct Taproot (bc1p) receive addresses are listed after FORGE');
       eq(t.$('trBox').style.display,'','Taproot list is shown after FORGE'); }
     eq(t.$('checkGuide').style.display,'','second-tool guide is shown after FORGE');
     const full=[...t.$('wordGrid').querySelectorAll('.wtxt')].map(e=>e.textContent);
@@ -839,7 +842,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const lum=c=>{const f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);};return .2126*f(c[0])+.7152*f(c[1])+.0722*f(c[2]);};
       const cr=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
       const tags=[...t.w.document.querySelectorAll('.tag-rec')], opts=[...t.w.document.querySelectorAll('option.opt-rec')];
-      // every "recommended" label on a screen (not the changelog or help text) is a badge or a coloured option
+      // every "recommended" label on a screen (not the changelog or help text) is a badge or a colored option
       const labels=[...t.w.document.querySelectorAll('summary, option')].filter(e=>/recommended/i.test(e.textContent));
       ok(tags.length===2&&opts.length===1&&labels.length===3&&labels.every(e=>e.querySelector('.tag-rec')||e.classList.contains('opt-rec')),'recommended: every RECOMMENDED label is an amber badge (or an amber option in the menu)');
       const tok=(blk,n)=>{ const m=new RegExp(n+': (#[0-9a-fA-F]{6})').exec(blk); return m?m[1]:'#000000'; };
@@ -847,11 +850,11 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       for(const [nm,blk] of [['dark',rootBlk],['light',lightBlk]]){
         const bg=hex(tok(blk,'--bg')), sf=hex(tok(blk,'--surface'));
         const pairs=[['--text',bg],['--muted',bg],['--muted',sf],['--goldtx',bg],['--warn-text',sf],['--bad-text',sf],['--ok-text',sf]];
-        ok(pairs.every(([k,b2])=>cr(hex(tok(blk,k)),b2)>=4.5)&&cr(hex(tok(blk,'--btntx')),hex(tok(blk,'--btn')))>=4.5,'colours ('+nm+'): text, grey text, gold, red and green words and the gold button label all keep contrast >= 4.5:1'); }
-      ok(/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(css)&&/\.tag-rec, body\.light \.tag-rec \{ color: var\(--warn-text\); background: none; \}/.test(css)&&/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(css),'labels: RECOMMENDED, SECRET, PUBLIC and the grey ones are plain coloured words (no pill, border or fill)');
+        ok(pairs.every(([k,b2])=>cr(hex(tok(blk,k)),b2)>=4.5)&&cr(hex(tok(blk,'--btntx')),hex(tok(blk,'--btn')))>=4.5,'colors ('+nm+'): text, gray text, gold, red and green words and the gold button label all keep contrast >= 4.5:1'); }
+      ok(/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(css)&&/\.tag-rec, body\.light \.tag-rec \{ color: var\(--warn-text\); background: none; \}/.test(css)&&/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(css),'labels: RECOMMENDED, SECRET, PUBLIC and the gray ones are plain colored words (no pill, border or fill)');
       { const notes=[...t.w.document.querySelectorAll('.tag-note')], ros=[...t.w.document.querySelectorAll('.tag-ro')];
-        ok(notes.length===2&&notes.every(e=>/^ADVANCED$/.test(e.textContent))&&![...t.w.document.querySelectorAll('summary')].some(e=>/\((demo only|advanced)/i.test(e.textContent)),'tags: ADVANCED is a grey label, not plain (brackets) in the headings');
-        ok(ros.filter(e=>e.textContent==='NEW').length===2,'tags: every "NEW" badge (Multisig header and Silent Payment address) looks the same -- the same grey tag-ro style, not two different colours for the same word');
+        ok(notes.length===2&&notes.every(e=>/^ADVANCED$/.test(e.textContent))&&![...t.w.document.querySelectorAll('summary')].some(e=>/\((demo only|advanced)/i.test(e.textContent)),'tags: ADVANCED is a gray label, not plain (brackets) in the headings');
+        ok(ros.filter(e=>e.textContent==='NEW').length===2,'tags: every "NEW" badge (Multisig header and Silent Payment address) looks the same -- the same gray tag-ro style, not two different colors for the same word');
  }
     }
     ok(/#statusLine \{ position: relative; z-index: 1;/.test(html),'status line sits above the page background');
@@ -881,9 +884,9 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   { const tcn=load(); await tcn.ready(); tcn.mode('coin'); tcn.set('0101'); await tcn.w.generate(); ok(/flips/.test(tcn.$('genResult').textContent)&&!/rolls/.test(tcn.$('genResult').textContent),'coin-mode length message says flips'); }
   { const ts=load(); await ts.ready(); ts.set(rnd(50)); await ts.w.generate(); const w0=ts.$('genResult').textContent.split('\n')[0];
     await ts.w.sendToVerify();
-    ok(ts.$('phrase').value===w0&&/Valid 12-word/.test(ts.$('verifyStatus').textContent),'SEND TO VERIFY fills the VERIFY box and validates the seed');
-    ok(ts.st.clip.length===0,'SEND TO VERIFY does not touch the clipboard');
-    const te=load(); await te.ready(); await te.w.sendToVerify(); ok(te.st.alerts.length===1&&te.$('phrase').value==='','SEND TO VERIFY with no seed alerts and does nothing'); }
+    ok(ts.$('phrase').value===w0&&/Valid 12-word/.test(ts.$('verifyStatus').textContent),'SEND TO CHECK fills the VERIFY box and validates the seed');
+    ok(ts.st.clip.length===0,'SEND TO CHECK does not touch the clipboard');
+    const te=load(); await te.ready(); await te.w.sendToVerify(); ok(te.st.alerts.length===1&&te.$('phrase').value==='','SEND TO CHECK with no seed alerts and does nothing'); }
   { // Multisig wizard: three known seeds -> known descriptor and addresses (made with @scure/bip32 + btc-signer), wipes, refusals
     const tm=load(); await tm.ready(); const $=tm.$, A11='abandon '.repeat(11);
     const mk=async(words,flips)=>{ $('wdLen').value='12'; $('wdWords').value=words; $('wdFlips').value=flips; tm.w.wdUpdate(); await tm.w.wdGenerate(); await new Promise(r=>setTimeout(r,1200)); };
@@ -928,7 +931,8 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     // the seed from key 2 is still on screen (never added twice); wallet result
     const d=$('msDescR').textContent, K=['[3f635a63/48h/0h/0h/2h]xpub6FHZCoNb3tg3o1GAJQxSwgFNF8mLRtTk2GgkF7n5rwzoxBhUEdFWa8cyZRHqytAzKZWsKz8627cQEMCCfR5GDSv6yXegqirpgDUX41Pxybr/0/*','[73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/0/*'];
     ok(d.startsWith('wsh(sortedmulti(2,'+K[0]+','+K[1]+',')&&/\/0\/\*\)\)#[a-z0-9]{8}$/.test(d),'multisig: descriptor has the known keys in sorted order and a checksum');
-    eq($('msAddrs').textContent,'bc1qea2gkgeszr7wm66x2ejkgdxm9nhg9462sszn75zmkhazev0t02vs70kkll'+'bc1qa0sj5tjwunnxyhmkgd85548gwqv2r0tc6vjs9c3yy2j7gjea72hs9dvptd'+'bc1qmes7qgkj4fedgj86er5z2yx2hyfjwaw9rmhsap30ul42xl4eayrsx3qsm0','multisig: first 3 addresses equal the independent library');
+    eq([...$('msAddrs').children].slice(0,3).map(li=>li.textContent).join(''),'bc1qea2gkgeszr7wm66x2ejkgdxm9nhg9462sszn75zmkhazev0t02vs70kkll'+'bc1qa0sj5tjwunnxyhmkgd85548gwqv2r0tc6vjs9c3yy2j7gjea72hs9dvptd'+'bc1qmes7qgkj4fedgj86er5z2yx2hyfjwaw9rmhsap30ul42xl4eayrsx3qsm0','multisig: the first 3 receive addresses equal the independent library');
+    ok($('msAddrs').children.length===10&&$('msChange').children.length===10&&new Set([...$('msAddrs').children,...$('msChange').children].map(li=>li.textContent)).size===20,'multisig: 10 receive and 10 change addresses, all different');
     ok($('msOneDev').style.display==='none','multisig: one-device warning is hidden when a key came from elsewhere');
     ok($('msBanner').style.display==='none','multisig: banner goes away when finished');
     tm.w.msShowQr(); ok($('msQrBox').style.display===''&&/81 x 81/.test($('msQrCaption').textContent),'multisig: descriptor QR shows');
@@ -994,7 +998,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const homeless=['rolls','forgeBtn','phrase','psbtInput','cmpA','msN','about','beforeCard','disclaimer'].filter(id=>!tl.$(id).closest('.tabpanel')); ok(homeless.length===0,'feature inventory: every tool lives inside a tab'+(homeless.length?' ('+homeless.join(', ')+')':''));
       ok(['printOnly','printQr'].every(id=>!tl.$(id).closest('.tabpanel')),'printing works from any tab: the print sheets sit outside the tabs');
       const btns=[...tl.d.querySelectorAll('button')].filter(b=>!b.closest('.tabpanel')&&!b.closest('#startGate')&&!b.closest('#tabs')).map(b=>b.textContent.trim().replace(/\s+/g,' ')).sort().join('|');
-      eq(btns,['DARK','DOWNLOAD FOR USB','END SESSION','GUIDE ME','PRINT SEED','PRINT STAMP SHEET','TEXT A+','Read before real keys \u2192','Turn practice mode off','IS ANYTHING WATCHING?','I FOUND A BITCOIN BACKUP','CHECK THE WORDS','OPEN THE WALLET DETECTIVE','CLOSE'].sort().join('|'),'page frame holds exactly the top buttons, the notice link, the practice banner\'s off switch (v2.5.0; hidden unless practice mode is on), and Heir mode with its three buttons and the watch check in the MENU (v2.8.0)'); }
+      eq(btns,['DARK','DOWNLOAD FOR USB','END SESSION','GUIDE ME','PRINT SEED','PRINT STAMP SHEET','TEXT A+','Read before real keys \u2192','Turn practice mode off','IS ANYTHING WATCHING THIS PAGE?','I FOUND A BITCOIN BACKUP','CHECK THE WORDS','OPEN THE WALLET DETECTIVE','CLOSE'].sort().join('|'),'page frame holds exactly the top buttons, the notice link, the practice banner\'s off switch (v2.5.0; hidden unless practice mode is on), and Heir mode with its three buttons and the watch check in the MENU (v2.8.0)'); }
     // the three warnings and the disclaimer moved to About, with their text intact
     ok(/AIR-GAPPED USE ONLY/.test(tl.$('tp-about').textContent)&&/not been independently audited/.test(tl.$('disclaimer').textContent)&&tl.$('beforeCard').querySelectorAll('.sg-item').length===3,'About & help holds the air-gap warning, the disclaimer and the three computer-memory warnings');
     ok(!tl.$('tp-make').contains(tl.$('about'))&&tl.$('tp-tools').contains(tl.$('cardMulti'))&&tl.$('tp-tools').contains(tl.$('cardTools'))&&tl.$('tp-check').contains(tl.$('cardCheck')),'each card sits in the right tab');
@@ -1129,7 +1133,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const box=ts.$('sigBox'), btn=ts.$('sigBtn'); ok(!!box&&box.closest('#cardTools')&&/READ ONLY/.test(box.querySelector('summary').textContent)&&btn.textContent==='VERIFY SIGNATURE'&&!btn.classList.contains('secondary')&&/never signs/.test(box.textContent),'signed message: a READ ONLY box in Extra tools with a gold VERIFY SIGNATURE button');
     ts.$('sigAddr').value=CORE[0]; ts.$('sigMsg').value=CORE[1]; ts.$('sigSig').value=CORE[2]; r=await ts.w.verifyMessageUi(); ok(r.state==='valid'&&ts.$('sigStatus').className==='status ok'&&/^VALID/.test(ts.$('sigStatus').textContent),'signed message: VALID shows in green');
     ts.$('sigMsg').value=CORE[1]+'\n'; r=await ts.w.verifyMessageUi(); ok(r.state==='valid'&&ts.$('sigStatus').className==='status warn'&&/^VALID, after a small change/.test(ts.$('sigStatus').textContent),'signed message: a match only after a small change shows in amber, not green');
-    ok(/\n  \.status\.warn \{ color: var\(--warn-text\); \}/.test(html),'signed message: the amber is the warning colour');
+    ok(/\n  \.status\.warn \{ color: var\(--warn-text\); \}/.test(html),'signed message: the amber is the warning color');
     ts.$('sigMsg').value='changed'; ts.$('sigMsg').dispatchEvent(new ts.w.Event('input')); ok(ts.$('sigStatus').textContent==='','signed message: editing a box clears the old result');
     r=await ts.w.verifyMessageUi(); ok(ts.$('sigStatus').className==='status bad'&&/^NOT VALID/.test(ts.$('sigStatus').textContent),'signed message: NOT VALID shows in red');
     ts.$('sigAddr').value='bc1qp0ahvfh83088w49k405szqgg4f3pptr7p2g06tdxfjcd40z4lh4q95lsz9'; ts.$('sigSig').value=SE; r=await ts.w.verifyMessageUi(); ok(ts.$('sigStatus').className==='status'&&/^CANNOT CHECK/.test(ts.$('sigStatus').textContent),'signed message: "cannot check" is neither green nor red');
@@ -1166,7 +1170,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     rules('std'); ok(!tk.w.hasSeed()&&/You changed the rolls/.test(tk.$('genResult').textContent),'Keystone: changing the dice rules after FORGE clears the words');
     await tk.w.generate(); ok(tk.$('genResult').textContent.split('\n')[0]!==made||!/6/.test(R60),'Keystone: the standard rules give different words when there is a 6');
     rules('keystone'); tk.set(R60); await new Promise(r=>setTimeout(r,30)); tk.set(R60.slice(0,55)); await new Promise(r=>setTimeout(r,60));
-    ok([...tk.d.querySelectorAll('#wordGrid .wcell span')].map(x=>x.textContent).join(' ')===mnK(R60.slice(0,55),12),'Keystone: the grey preview words follow the Keystone rules');
+    ok([...tk.d.querySelectorAll('#wordGrid .wcell span')].map(x=>x.textContent).join(' ')===mnK(R60.slice(0,55),12),'Keystone: the gray preview words follow the Keystone rules');
     tk.set(R60); await tk.w.generate(); await tk.w.showExplain(); const ex=tk.$('exOut').textContent; ok(/Keystone dice rules: every 6 is written as 0/.test(ex)&&/These words match the seed above/.test(ex),'Keystone: How your seed was made shows the 6-as-0 step and matches');
     tk.st.blob=null; tk.w.downloadSeed(); const dl=await blobText(tk.w,tk.st.blob); ok(/Dice rules: Keystone \(each 6 counts as 0 before hashing\)/.test(dl),'Keystone: the downloaded file says Keystone rules were used');
     tk.mode('coin'); ok(tk.$('rulesRow').style.display==='none'&&!tk.w.keystoneOn()&&tk.$('lenNote').textContent==='128 coin flips or more','Keystone: the menu is hidden and off in coin mode');
@@ -1466,7 +1470,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(/a passphrase makes a new wallet, so the money then has to be moved to it/.test(w.planStress({copies:[P('paper','home')],pass:'none',know:true})[1].fix)&&/move the money at once/.test(w.planStress({copies:[P('paper','home')],pass:'mem',know:true}).find(r=>r.event==='A burglar searches your home').text),'stress test: the fixes say a passphrase makes a new wallet, and to move the money at once when the only copies are stolen');
     // the box on the page
     ok($('planBox')&&$('planBox').tagName==='DETAILS'&&!$('planBox').open&&$('planBox').closest('#tp-check')!==null&&/NO WORDS, KEEP PRIVATE/.test($('planBox').querySelector('summary').textContent)&&$('planBox').querySelector('summary .tag').classList.contains('tag-private'),'backup plan: a closed box in CHECK A BACKUP, marked NO WORDS, KEEP PRIVATE');
-    ok($('plPrint')&&$('plPrint').classList.contains('secondary')&&$('planBox').querySelectorAll('button:not(.secondary)').length===0,'backup plan: PRINT BACKUP PLAN is a grey helper button, like every other PRINT button');
+    ok($('plPrint')&&$('plPrint').classList.contains('secondary')&&$('planBox').querySelectorAll('button:not(.secondary)').length===0,'backup plan: PRINT BACKUP PLAN is a gray helper button, like every other PRINT button');
     eq($('plTest').querySelectorAll('li').length,6,'backup plan: the stress test shows from the start (one paper copy at home by default)');
     ok(new RegExp('Next check-up: '+nextYear).test($('plNext').textContent)&&/4 of 6 cases/.test($('plNext').textContent),'backup plan: it says how many cases go wrong and when the next check-up is');
     $('plM2').value='metal'; $('plM2').dispatchEvent(new w.Event('change')); ok(/A fire or flood at home\. The copy away from home survives/.test($('plTest').textContent),'backup plan: the stress test updates as the boxes change');
@@ -1513,13 +1517,14 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const tb=HDKey.fromMasterSeed(mnemonicToSeedSync(words,'')).derive("m/84'/1'/0'/0/0"), tbAddr=btc.p2wpkh(tb.publicKey,btc.TEST_NETWORK).address;
     const until=async(f)=>{ for(let k=0;k<120&&!f();k++) await new Promise(r=>setTimeout(r,50)); };
     const NETS5=['wNet','wvNet','psbtNet','cmpNet','msNet'], locked=()=>NETS5.every(id=>$(id).value==='test'&&$(id).disabled);
-    const tbList=(ws,pass,pur,n)=>Array.from({length:n},(_,i)=>{ const k=HDKey.fromMasterSeed(mnemonicToSeedSync(ws,pass)).derive("m/"+pur+"'/1'/0'/0/"+i); return pur===84?btc.p2wpkh(k.publicKey,btc.TEST_NETWORK).address:btc.p2tr(k.publicKey.slice(1),undefined,btc.TEST_NETWORK).address; });
+    const tbList=(ws,pass,pur,n,ch=0)=>Array.from({length:n},(_,i)=>{ const k=HDKey.fromMasterSeed(mnemonicToSeedSync(ws,pass)).derive("m/"+pur+"'/1'/0'/"+ch+"/"+i); return pur===84?btc.p2wpkh(k.publicKey,btc.TEST_NETWORK).address:btc.p2tr(k.publicKey.slice(1),undefined,btc.TEST_NETWORK).address; });
     $('wNet').value='main'; $('cmpNet').value='main';
     w.practiceMode(true); await until(()=>$('address').textContent.endsWith(tbAddr)&&$('wFirst').textContent.split('\n')[0]===tbAddr);
     ok(tq.d.body.classList.contains('practice')&&$('practiceMode').checked&&locked(),'practice mode: every network menu is on Testnet and locked');
-    ok(/^First receive address, TEST NETWORK for practice \(BIP84, m\/84'\/1'\/0'\/0\/0\): tb1/.test($('address').textContent)&&$('address').textContent.endsWith(tbAddr),'practice mode: the first address shown is the test-network one (checked with @scure)');
+    ok(/^First receive address, TESTNET \(practice coins only\), BIP84, m\/84'\/1'\/0'\/0\/0: tb1/.test($('address').textContent)&&$('address').textContent.endsWith(tbAddr),'practice mode: the first address shown is the test-network one (checked with @scure)');
     { const L=[...$('addrList').children].map(li=>li.textContent), T=[...$('trList').children].map(li=>li.textContent);
-      eq(L.join(' ')+' | '+T.join(' '),tbList(words,'',84,5).join(' ')+' | '+tbList(words,'',86,5).join(' '),'practice mode: the address lists are the test-network addresses (checked with @scure)'); }
+      eq(L.join(' ')+' | '+T.join(' '),tbList(words,'',84,10).join(' ')+' | '+tbList(words,'',86,10).join(' '),'practice mode: the receive lists are the test-network addresses (checked with @scure)');
+      eq([...$('chList').children].map(li=>li.textContent).join(' ')+' | '+[...$('trChList').children].map(li=>li.textContent).join(' '),tbList(words,'',84,10,1).join(' ')+' | '+tbList(words,'',86,10,1).join(' '),'practice mode: the change lists are the test-network change addresses (checked with @scure)'); }
     ok(/^vpub/.test($('wZpub').textContent)&&$('wFirst').textContent.split('\n')[0]===tbAddr,'practice mode: the watch-only box follows it');
     ok(/body\.practice #practiceBan \{ display: block;/.test(css)&&!/practice[^{]*::before/.test(css),'practice mode: a banner on the page; seed backups print as usual (no practice line on them)');
     { $('addrList').querySelector('button').click(); const p0=tq.st.printed; w.printAddrQr('aq'); ok(tq.st.printed===p0+1&&/^VOIDFORGE RECEIVE ADDRESS \(TESTNET\)/.test(tq.st.printQrText)&&/Path: m\/84'\/1'\/0'\/0\/0/.test(tq.st.printQrText)&&/Network: TESTNET \(practice coins only\)/.test(tq.st.printQrText)&&tq.st.printQrText.includes('Address: '+tbAddr),'practice mode: a printed address sheet says TESTNET, with the test-network path'); w.dispatchEvent(new w.Event('afterprint')); w.hideAddrQr('aq'); }
@@ -1529,7 +1534,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(locked()&&$('address').textContent.endsWith(tb2)&&$('wFirst').textContent.split('\n')[0]===tb2&&/^vpub/.test($('wZpub').textContent)&&$('addrList').firstChild.textContent===tb2,'practice mode: FORGE while it is on shows test-network addresses everywhere, menus still locked');
     $('passphrase').value='pr'; $('passphrase2').value='pr'; await w.rePass(); const tb3=tbList(words2,'pr',84,1)[0];
     await until(()=>$('address').textContent.includes(tb3)&&$('wFirst').textContent.split('\n')[0]===tb3);
-    ok(locked()&&/TEST NETWORK for practice/.test($('address').textContent)&&$('address').textContent.includes(tb3+' (with passphrase)')&&$('wFirst').textContent.split('\n')[0]===tb3,'practice mode: a new passphrase keeps it on the test network');
+    ok(locked()&&/TESTNET \(practice coins only\)/.test($('address').textContent)&&$('address').textContent.includes(tb3+' (with passphrase)')&&$('wFirst').textContent.split('\n')[0]===tb3,'practice mode: a new passphrase keeps it on the test network');
     await w.sendToVerify(); $('verifyPass').value='pr'; await w.verify(); await until(()=>/With passphrase.*test network/.test($('verifyStatus').textContent));
     ok(locked()&&$('verifyStatus').textContent.includes(tb2+' (test network)')&&$('verifyStatus').textContent.includes(tb3+' (test network)')&&!/bc1q/.test($('verifyStatus').textContent),'practice mode: VERIFY gives the test-network first addresses, with and without the passphrase');
     ok(!/PUBLIC PRACTICE PHRASE/.test($('verifyStatus').textContent),'practice mode: VERIFY does not call a new seed a practice phrase');
@@ -1757,7 +1762,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const want=[dcExp(C.slice(0,50),12,false),dcExp(C.slice(0,99),24,false),dcExp(C.slice(0,50),12,true),dcExp(C,24,true)].join(' ');
       ok(r.st.printed===p0+1&&/^VOIDFORGE DICE TEST CARD/.test(t)&&ws===want&&t.includes(C.slice(0,10)+' '+C.slice(10,20))&&t.includes(adS(dcExp(C.slice(0,50),12,false),'',0,'bc'))&&/TEST ONLY\. These rolls and words are printed for anyone to see/.test(t),'test card: the public rolls and, for SeedSigner/Coldcard and Keystone, 12 and 24 words and first addresses');
       w.dispatchEvent(new w.Event('afterprint')); ok($('printOnly').textContent===''&&!r.d.body.classList.contains('print-seed'),'test card: cleaned up after printing'); }
-    ok(!$('dpBtn').classList.contains('secondary')&&!$('dcBtn').classList.contains('secondary')&&[...$('dcBox').querySelectorAll('button')].filter(b=>/PRINT/.test(b.textContent)).every(b=>b.classList.contains('secondary')),'buttons: MAKE PASSPHRASE and SHOW EXPECTED WORDS are gold; PRINT TEST CARD is grey');
+    ok(!$('dpBtn').classList.contains('secondary')&&!$('dcBtn').classList.contains('secondary')&&[...$('dcBox').querySelectorAll('button')].filter(b=>/PRINT/.test(b.textContent)).every(b=>b.classList.contains('secondary')),'buttons: MAKE PASSPHRASE and SHOW EXPECTED WORDS are gold; PRINT TEST CARD is gray');
     // --- two wallets side by side ---
     $('phrase').value=AB; $('verifyPass').value='TREZOR'; await w.verify(); await until(()=>$('wvDecoy').style.display==='');
     ok($('wvD0').textContent==='Fingerprint '+fpS(AB,'')&&$('wvD0a').textContent==='First address: '+adS(AB,'',0,'bc')&&$('wvD1').textContent==='Fingerprint '+fpS(AB,'TREZOR')&&$('wvD1a').textContent==='First address: '+adS(AB,'TREZOR',0,'bc'),'two wallets side by side: without and with the passphrase, fingerprint and first address each');
@@ -1792,7 +1797,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.8.1','v2.8.1: the footer shows the new version');
     ok(html.indexOf('<li><b>2.8.0</b>')>0&&html.indexOf('<li><b>2.8.0</b>')<html.indexOf('<li><b>2.7.0</b>'),'v2.8.0: the changelog lists 2.8.0 first');
     // --- Wallet Detective ---
-    ok(!$('detBtn').disabled&&!$('detListBtn').disabled&&$('detStop').disabled&&$('detBtn').className===''&&$('detListBtn').className==='secondary small','Wallet Detective: FIND MY WALLET is the gold main button, enabled after the self-test; LIST and STOP are grey');
+    ok(!$('detBtn').disabled&&!$('detListBtn').disabled&&$('detStop').disabled&&$('detBtn').className===''&&$('detListBtn').className==='secondary small','Wallet Detective: FIND MY WALLET is the gold main button, enabled after the self-test; LIST and STOP are gray');
     { const pos=['addrCheckStatus','detBlock'].map(id=>html.indexOf('id="'+id+'"')); ok(pos[0]>0&&pos[1]>pos[0]&&$('detBlock').closest('#tp-check'),'Wallet Detective: in CHECK A BACKUP, after the address check'); }
     let d=await DF(AB,'',ref(bip(AB,''),"m/0'/1/7",'wpkh'));
     ok(d.cls==='status ok'&&d.shown&&d.out.startsWith('FOUND: '+ref(bip(AB,''),"m/0'/1/7",'wpkh')+" is change address #7 (m/0'/1/7) of these words, without a passphrase.")&&/derivation path m\/0'\./.test(d.out)&&/Apps that use these settings: BRD \(Breadwallet\) after it moved to SegWit, and BlueWallet's Breadwallet type\./.test(d.out),'Wallet Detective: finds a native SegWit change address on the old m/0\' path and names BRD and BlueWallet (address from @scure)');
@@ -1993,7 +1998,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // --- no network / external references ---
   const src=html.replace(/const WORDLIST = \[.*?\];/s,'');
   ok(!/fetch\(|XMLHttpRequest|WebSocket|sendBeacon|<script[^>]+src=|<link(?! rel="icon" type="image\/[a-z+]+"(?: sizes="\d+x\d+")? href="data:)|@import/.test(src),'no network APIs or external resources');
-  const urls=[...src.matchAll(/https?:\/\/[^\s"'<>)]+/g)].map(m=>m[0]); ok(urls.every(u=>u.startsWith('https://gitlab.com/random21m/voidforge')||u==='https://random21m.gitlab.io/voidforge/'),'only URL is the GitHub link: '+urls.join(', '));
+  const urls=[...src.matchAll(/https?:\/\/[^\s"'<>)]+/g)].map(m=>m[0]); ok(urls.every(u=>u.startsWith('https://gitlab.com/random21m/voidforge')||u==='https://random21m.gitlab.io/voidforge/'||u==='https://random21m.gitlab.io'),'the only URLs are the project\'s own GitLab addresses: '+urls.join(', '));
   ok(t.errors.length===0,'no uncaught page errors '+JSON.stringify(t.errors));
   console.log(failed?`\n${failed} CHECK(S) FAILED`:'\nALL CHECKS PASSED'); process.exit(failed?1:0);
 })();

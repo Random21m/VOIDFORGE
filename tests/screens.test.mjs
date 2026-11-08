@@ -1,5 +1,5 @@
 // VOIDFORGE screenshot comparison (Test upgrade): the main screens, on a desktop and a phone, in both themes and with larger
-// text, are compared pixel by pixel with saved pictures in tests/fixtures/screens/. A change in layout, colour or text that
+// text, are compared pixel by pixel with saved pictures in tests/fixtures/screens/. A change in layout, color or text that
 // nobody meant shows up as a difference. The clock is frozen, animations are off and the seed comes from fixed rolls, so the
 // same file gives the same pictures.
 // Fonts differ between computers, so the saved pictures belong to one setup (the maintainer's test machine, Chromium from
@@ -25,7 +25,7 @@ let browser;
 try { browser = await chromium.launch(); } catch (e) { console.log('SCREENS: SKIPPED (no Chromium)'); process.exit(0); }
 fs.mkdirSync(DIR, { recursive: true });
 
-// Pixel comparison: a pixel differs when any colour channel differs by more than 24 (anti-aliasing noise stays under that).
+// Pixel comparison: a pixel differs when any color channel differs by more than 24 (anti-aliasing noise stays under that).
 function compare(name, buf) {
   const file = path.join(DIR, name + '.png');
   if (UPDATE || !fs.existsSync(file)) { fs.writeFileSync(file, buf); console.log((UPDATE ? 'SAVED ' : 'NEW ') + name); return; }

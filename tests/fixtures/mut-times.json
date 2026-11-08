@@ -759,7 +759,7 @@
 "run counter: old fingerprint written back": 97,
 "run counter: old first address written back": 143,
 "secp256k1 generator y altered": 13,
-"seed flag never set (SEND TO VERIFY would refuse)": 174,
+"seed flag never set (SEND TO CHECK would refuse)": 174,
 "seed flag not cleared after an error (error text treated as a seed)": 119,
 "seed words: boxes can grow past their column": 95,
 "seed words: no smaller type on small phones": 131,

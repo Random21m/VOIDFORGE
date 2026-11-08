@@ -2,7 +2,7 @@
 
 ## Status
 
-VOIDFORGE is **not independently audited**. It is a single HTML file you can read, with automated tests (known-answer vectors, differential tests against independent libraries, and tests that deliberately break the code). That raises confidence; it is not a substitute for an audit. For large amounts, generate on dedicated hardware (SeedSigner, Coldcard, etc.) and use VOIDFORGE only to cross-check.
+VOIDFORGE is **not independently audited**. It is a single HTML file you can read, with automated tests (known-answer vectors, differential tests against independent libraries, and tests that deliberately break the code). That raises confidence; it does not mean VOIDFORGE has been independently audited. For large amounts, generate on dedicated hardware (SeedSigner, Coldcard, etc.) and use VOIDFORGE only to cross-check.
 
 ## How VOIDFORGE is checked
 
@@ -19,7 +19,7 @@ Every release passes all of these before it is published (RELEASING.md says how 
 - **Memory** (`tests/memory.test.mjs`): after CLEAR ALL, auto-clear and END SESSION, a heap snapshot holds none of the seed words, rolls or passphrases.
 - **Screens** (`tests/screens.test.mjs`): the main screens against saved pictures.
 - **Mutation tests** (`tests/mutation.test.mjs`): about 1,800 deliberate small bugs; each one must be caught by the self-test or an end-to-end check.
-- **A fresh AI code review** before every release, by a model that did not write the code, and a full review of the whole file before the first signed release. These are not an independent audit.
+- **A fresh AI code review** before every release, by a model that did not write the code, and a full review of the whole file before the first signed release. These reviews do not mean VOIDFORGE has been independently audited.
 
 ## Reporting a vulnerability
 
@@ -42,9 +42,9 @@ Please include the version (shown at the bottom of the page), the browser, and s
 - The secp256k1 code is not constant-time. This is acceptable offline but is why the tool must never run on a networked or shared computer.
 - The self-test runs inside the same file it checks, so a tampered file could fake a pass. Verify the SHA256 with a tool that is not the page (see RELEASING.md).
 - The randomness check is advisory and cannot prove your dice or coin are fair.
-- Only the BIP84 (native SegWit, mainnet) first address is shown; other wallet types use other paths.
+- After FORGE the page lists the first 10 receive and 10 change addresses of native SegWit and Taproot, account 0; Open this wallet shows any address type, account or custom path. A wallet app on another path or type shows other addresses (the Wallet Detective helps find them).
 - The PSBT inspector can check that an output marked as change is really the wallet's own only when that wallet's words are typed in CHECK A BACKUP (and only for single-key outputs). Without them it says the mark is unchecked: a change mark is written by whoever made the PSBT.
-- Not supported on phones or in file previews.
+- Phones: for learning and practice only, never for real funds. File previews (Quick Look, email, phone Files) do not run the page.
 
 ## Release signing key
 

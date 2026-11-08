@@ -124,8 +124,8 @@ for (const bytes of [16, 20, 24, 28, 32]) for (let i = 0; i < 12; i++) {
 R.ok(bad === 0, `${n} random phrases (all lengths, odd passphrases): first receive address matches the independent libraries (${bad} mismatches)`);
 
 // 2c. first five receive addresses (BIP84 m/84'/0'/0'/0/0..4) against the independent libraries
-const addrOracleN = (mn, pw, i) => {
-  const k = HDKey.fromMasterSeed(mnemonicToSeedSync(mn, pw)).derive(`m/84'/0'/0'/0/${i}`);
+const addrOracleN = (mn, pw, i, chain = 0) => {
+  const k = HDKey.fromMasterSeed(mnemonicToSeedSync(mn, pw)).derive(`m/84'/0'/0'/${chain}/${i}`);
   return bech32.encode('bc', [0, ...bech32.toWords(ripemd160(sha256(k.publicKey)))]);
 };
 bad = 0; n = 0;
@@ -245,8 +245,9 @@ for (let i = 0; i < 6; i++) {
   const want = entropyToMnemonic(sha(rolls).slice(0, words === 12 ? 16 : 32), wordlist);
   const fp = ($('fingerprint').textContent.match(/: ([0-9a-f]{8})/) || [])[1];
   const ad = ($('address').textContent.match(/: (bc1[0-9a-z]+)/) || [])[1];
-  const five = Array.from(w.document.querySelectorAll('#addrList li')).map((x) => x.textContent).join(' ');
-  if (five !== [0, 1, 2, 3, 4].map((j) => addrOracleN(want, pw, j)).join(' ')) { bad++; console.log('UI ADDR LIST MISMATCH', coin, words); }
+  const listed = (id) => Array.from(w.document.querySelectorAll('#' + id + ' li')).map((x) => x.textContent).join(' '), ten = [...Array(10).keys()];
+  if (listed('addrList') !== ten.map((j) => addrOracleN(want, pw, j)).join(' ')) { bad++; console.log('UI ADDR LIST MISMATCH', coin, words); }
+  if (listed('chList') !== ten.map((j) => addrOracleN(want, pw, j, 1)).join(' ')) { bad++; console.log('UI CHANGE LIST MISMATCH', coin, words); }
   if ($('genResult').textContent.split('\n')[0] !== want || fp !== fpOracle(want, pw) || ad !== addrOracle(want, pw)) { bad++; console.log('UI MISMATCH', coin, words); }
 }
 R.ok(bad === 0, `6 end-to-end UI runs (words, fingerprint, address) match the independent libraries (${bad} mismatches)`);
@@ -626,7 +627,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
     // the row-by-row list rebuilds the code exactly
     const rebuilt = q.rows.map((row) => { const out = new Array(N).fill(false); for (const part of w.qrRowRuns(row).split(', ').filter(Boolean)) { const [a, b] = part.split('-').map(Number); for (let x = a; x <= (b || a); x++) out[x - 1] = true; } return out; });
     n++; if (hashOf(rebuilt) !== hashOf(q.rows)) { bad++; console.log('GUIDE ROWS MISMATCH', kind, ws.length); }
-    // whole grid: dark squares drawn = dark modules; blocks of 7 x 7 together draw every dark square once and the grey squares are outside the code
+    // whole grid: dark squares drawn = dark modules; blocks of 7 x 7 together draw every dark square once and the gray squares are outside the code
     const count = (svg, fill) => { const m = svg.match(new RegExp('<path d="([^"]*)" fill="' + fill + '"')); return m ? (m[1].match(/M/g) || []).length : 0; };
     n++; if (count(w.qrGridSvg(q.rows, 0, 0, N, N, 7, false), '#000') !== dark) { bad++; console.log('GUIDE WHOLE GRID MISMATCH', kind, ws.length); }
     let sumDark = 0, sumGrey = 0; const per = Math.ceil(N / 7);
@@ -634,7 +635,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
     n++; if (sumDark !== dark || sumGrey !== per * per * 49 - N * N) { bad++; console.log('GUIDE BLOCKS MISMATCH', kind, ws.length, sumDark, dark, sumGrey); }
     n++; if (count(w.qrGridSvg(q.rows, 0, 0, N, N, 7, true), '#000') !== 0) { bad++; console.log('BLANK GRID NOT BLANK', kind, ws.length); }
   }
-  R.ok(bad === 0, `${n} hand-copy checks over all codes: the row lists rebuild each code exactly, the whole grid and the 7 x 7 blocks draw every dark square once, grey squares are exactly those outside the code, the blank grid has none (${bad} mismatches)`);
+  R.ok(bad === 0, `${n} hand-copy checks over all codes: the row lists rebuild each code exactly, the whole grid and the 7 x 7 blocks draw every dark square once, gray squares are exactly those outside the code, the blank grid has none (${bad} mismatches)`);
 }
 
 // 2i. "How your seed was made": for random dice and coin inputs, explainSteps must give the same words as @scure's
@@ -815,10 +816,10 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   // the Make tab address rows carry the same QR button, and the Taproot rows too
   { const radio = w.document.querySelector('input[name=mode][value=dice]'); radio.checked = true; radio.onchange(); const wr = w.document.querySelector('input[name=words][value="12"]'); wr.checked = true; wr.onchange(); }
   $('passphrase').value = ''; $('passphrase2').value = '';
-  $('rolls').value = rnd(50, 6); $('rolls').oninput(); await w.generate(); await w.eval('passWork'); await until(() => w.document.querySelectorAll('#trList li').length === 5);
-  const rows = Array.from(w.document.querySelectorAll('#addrList li, #trList li')); bad = 0;
+  $('rolls').value = rnd(50, 6); $('rolls').oninput(); await w.generate(); await w.eval('passWork'); await until(() => w.document.querySelectorAll('#trChList li').length === 10);
+  const rows = Array.from(w.document.querySelectorAll('#addrList li, #chList li, #trList li, #trChList li')); bad = 0;
   for (const li of rows) { const b = li.querySelector('button.qr-mini'); if (!b) { bad++; continue; } b.click(); const dec = jsqrDecode(w.qrMatrix(li.textContent).rows); if (!dec || dec.data !== li.textContent || viewOf('aqBox').style.display === 'none') bad++; }
-  R.ok(rows.length === 10 && bad === 0, `Make tab: all ${rows.length} address rows (5 SegWit, 5 Taproot) have a QR button and the QR reads back as that address (${bad} mismatches)`);
+  R.ok(rows.length === 40 && bad === 0, `Make tab: all ${rows.length} address rows (10 + 10 SegWit, 10 + 10 Taproot) have a QR button and the QR reads back as that address (${bad} mismatches)`);
 }
 
 // 2j. v2.2.0: watch-only view from public keys and descriptors (every type, both networks, both chains) against the independent libraries;
