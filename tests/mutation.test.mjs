@@ -4280,6 +4280,7 @@ const M = [
   ["multisig: reset leaves the change list on screen", "for(const id of [\"msDescR\",\"msDescC\",\"msAddrs\",\"msChange\",\"msSlots\",\"msRunErr\",\"msBanErr\",\"msErr\"])", "for(const id of [\"msDescR\",\"msDescC\",\"msAddrs\",\"msSlots\",\"msRunErr\",\"msBanErr\",\"msErr\"])"],
   ["practice: address list labels keep the mainnet path", "const c = net === \"test\" ? 1 : 0, last = ADDR_SHOWN - 1", "const c = 0, last = ADDR_SHOWN - 1"],
   ["practice: summary sheet title not marked TESTNET", "\"VOIDFORGE SEED SUMMARY\" + (document.getElementById(\"addrBox\").dataset.net === \"test\" ? \" (TESTNET)\" : \"\")", "\"VOIDFORGE SEED SUMMARY\""],
+  ["compare: a bc1q address is never looked up in the lists", "if(kindRec === \"tr\" || kindRec === \"addr\" || kindRec === \"key\"", "if(kindRec === \"tr\" || kindRec === \"key\""],
   ["heir mode: the Detective button goes nowhere", "onclick=\"heirGo('check', 'detBlock')\"", "onclick=\"heirGo('tools', 'detBlock')\""],
 ];
 
