@@ -5,7 +5,7 @@
 An offline, educational tool that turns dice rolls or coin flips into a BIP39 seed phrase (12 or 24 words), then helps you back it up and set up a wallet, including multisig (a simple slider picks 2 to 15 keys). One HTML file, no dependencies, no network.
 
 <p align="center"><a href="https://gitlab.com/random21m/voidforge/-/releases"><b>&#11015; Download the latest release</b></a><br>
-Get <code>voidforge.html</code> and <code>SHA256SUMS</code> from the release page, check the hash, then copy the file to a USB stick for your offline computer. This is the only place to download it. For real funds, use that downloaded file on an offline computer.</p>
+Get <code>voidforge.html</code>, <code>SHA256SUMS</code> and <code>SHA256SUMS.asc</code> from the release page, check the signature and the hash (step 1 of the Quick start), then copy the file to a USB stick for your offline computer. This is the only place to download it. For real funds, use that downloaded file on an offline computer.</p>
 
 <p align="center"><a href="https://random21m.gitlab.io/voidforge/"><b>&#9654; Try it in your browser</b></a> (an online copy for learning and practice, works on a phone; <a href="#try-it-online-practice-only">read this first</a>)</p>
 
@@ -37,7 +37,7 @@ VOIDFORGE is free software provided **"as is", without warranty of any kind** (s
 
 ## Quick start
 
-1. Download `voidforge.html` from the [latest release](https://gitlab.com/random21m/voidforge/-/releases) and check it: `sha256sum -c SHA256SUMS`.
+1. Download `voidforge.html`, `SHA256SUMS` and `SHA256SUMS.asc` from the [latest release](https://gitlab.com/random21m/voidforge/-/releases) and check them with tools that are not the page: `gpg --verify SHA256SUMS.asc SHA256SUMS` (import the release key first; its fingerprint and steps are in [SECURITY.md](SECURITY.md)), then `sha256sum -c SHA256SUMS`. Releases up to v2.8.0 are not signed; check those with `sha256sum -c SHA256SUMS` only.
 2. Copy it to a USB stick and open it in a desktop browser (Safari 14+, Chrome or Firefox) on an **offline computer**. Phones: for learning and practice only, never for real funds (the page works in a phone browser once you open it from a real file, not a preview, or from the [online practice copy](https://random21m.gitlab.io/voidforge/)); for real funds use an offline computer.
 3. Confirm the green **SELF-TEST PASSED (90/90)** badge and the **NETWORK: OFFLINE** tag. A red notice saying the script is not running means the page did not start; do not use it.
 4. Pick Dice, Coin or Word draw, choose 12 or 24 words, enter your physical rolls or flips (type, paste, or tap the buttons; the minimum or more, and every one counts) and watch the gray preview words change with every roll, then press FORGE SEED. The words appear as a numbered grid. A passphrase, if you want one, goes in the box right under the words ("Passphrase and note"); changing it does not clear your words, it only works out the fingerprint and addresses again.
