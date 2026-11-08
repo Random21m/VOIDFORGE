@@ -85,16 +85,22 @@ function failList(fast) {
   if (fast) a.push = function (m) { Array.prototype.push.call(this, m); throw new ProbeStop(String(this[0])); };
   return a;
 }
-async function probe(w, mutated, fast) {
+async function probe(w, mutated, fast, only, hooks) {
   const fails = failList(fast), $ = (id) => w.document.getElementById(id);
+  // Sections (the smarter mutation test): section 0 always runs; with `only` (a Set of numbers) the others run only if listed.
+  let r; const SEC = (i, label) => { probe.cur = i; probe.curLabel = label; return !only || i === 0 || only.has(i); };
   const mode = (m) => { const e = w.document.querySelector(`input[name=mode][value=${m}]`); e.checked = true; e.onchange(); };
   const words = (n) => { const e = w.document.querySelector(`input[name=words][value="${n}"]`); e.checked = true; e.onchange(); };
   const run = async (m, n, input, pw = '') => { mode(m); words(n); $('rolls').value = input; $('rolls').oninput(); $('passphrase').value = pw; $('passphrase2').value = pw; await w.generate(); return $('genResult').textContent.split('\n')[0]; };
   const adOf = () => (($('address').textContent.match(/: (bc1[0-9a-z]+)/) || [])[1]);
   const fpOf = () => (($('fingerprint').textContent.match(/: ([0-9a-f]{8})/) || [])[1]);
 
-  let r = await run('dice', 12, D50); if (r !== expect.d50 || fpOf() !== fp(expect.d50, '')) fails.push('dice 12 words / fingerprint');
+  if (SEC(0, "r = await run('dice', 12, D50); if (r !== expect.d50 || fpOf")) {
+  r = await run('dice', 12, D50); if (r !== expect.d50 || fpOf() !== fp(expect.d50, '')) fails.push('dice 12 words / fingerprint');
   if (adOf() !== addr(expect.d50, '')) fails.push('first receive address');
+  }
+  if (hooks && hooks.afterBase) await hooks.afterBase();
+  if (SEC(1, "{ const wo = watch(expect.d50, ''), z = $('wZpub').textConte")) {
   { const wo = watch(expect.d50, ''), z = $('wZpub').textContent, dr = $('wDescR').textContent, dc = $('wDescC').textContent;
     if (z !== wo.zpub) fails.push('watch-only zpub');
     if (!dr.startsWith(`wpkh([${wo.fp}/84h/0h/0h]${wo.xpub}/0/*)#`) || !/#[02-9ac-hj-np-z]{8}$/.test(dr)) fails.push('watch-only receive descriptor');
@@ -121,6 +127,8 @@ async function probe(w, mutated, fast) {
       w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('spAddr').textContent !== '') fails.push('silent payments: cleared with the seed');
       if ($('coreCmd').textContent !== '' || $('coreBox').style.display !== 'none' || $('wTestBan').style.display !== 'none') fails.push('core guide cleared with the seed');
       await run('dice', 12, D50); }
+  }
+  if (SEC(2, "{ const ABOUT = 'abandon abandon abandon abandon abandon aba")) {
   { const ABOUT = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'; const seedB = mnemonicToSeedSync(ABOUT, ''); const VER = { wpkh: 0x04b24746, 'sh-wpkh': 0x049d7cb2, pkh: 0x0488b21e, tr: 0x0488b21e }, PUR = { wpkh: 84, 'sh-wpkh': 49, pkh: 44, tr: 86 };
     for (const [type, acct] of [['wpkh', 0], ['sh-wpkh', 0], ['pkh', 0], ['tr', 0], ['sh-wpkh', 3], ['pkh', 7], ['tr', 2147483647]]) {
       const wo = await w.watchOnlyFromSeed(seedB, type, acct), pu = PUR[type], hk = HDKey.fromMasterSeed(seedB, { private: 0, public: VER[type] }), hx = HDKey.fromMasterSeed(seedB);
@@ -132,6 +140,8 @@ async function probe(w, mutated, fast) {
       else if (wo.first !== first) fails.push(tag + ': first address');
       const o = `${wo.fp}/${pu}h/0h/${acct}h`, wrap = (b) => type === 'sh-wpkh' ? `sh(wpkh([${o}]${wo.xpub}/${b}/*))#` : `${type}([${o}]${wo.xpub}/${b}/*)#`;
       if (!wo.receive.startsWith(wrap(0)) || !wo.change.startsWith(wrap(1))) fails.push(tag + ': descriptors'); } }
+  }
+  if (SEC(3, "{ const ABOUT = 'abandon abandon abandon abandon abandon aba")) {
   { const ABOUT = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'; const seedB = mnemonicToSeedSync(ABOUT, '');
     const TV = { wpkh: 0x045f1cf6, 'sh-wpkh': 0x044a5262, pkh: 0x043587cf, tr: 0x043587cf }, PUR = { wpkh: 84, 'sh-wpkh': 49, pkh: 44, tr: 86 };
     const MV = { main: { 'ms-wsh': 0x02aa7ed3, 'ms-sh-wsh': 0x0295b43f }, test: { 'ms-wsh': 0x02575483, 'ms-sh-wsh': 0x024289ef } }, SC = { 'ms-wsh': 2, 'ms-sh-wsh': 1 };
@@ -147,6 +157,8 @@ async function probe(w, mutated, fast) {
       if (wo.key !== HDKey.fromMasterSeed(seedB, { private: 0, public: MV[net][type] }).derive(path).publicExtendedKey) fails.push(tag + ': key');
       if (wo.receive !== `[${wo.fp}/48h/${coin}h/${acct}h/${SC[type]}h]${HDKey.fromMasterSeed(seedB, { private: 0, public: net === 'test' ? 0x043587cf : 0x0488b21e }).derive(path).publicExtendedKey}`) fails.push(tag + ': key origin');
       if (wo.change !== '' || wo.first !== '') fails.push(tag + ': has no addresses'); } }
+  }
+  if (SEC(4, "v1.26.0: five receiving addresses for every single-key type, both netw")) {
   { // v1.26.0: five receiving addresses for every single-key type, both networks, checked with @scure/btc-signer (independent address encoder)
     const seedF = mnemonicToSeedSync('legal winner thank year wave sausage worth useful legal winner thank yellow', 'x'), root = HDKey.fromMasterSeed(seedF);
     const PURF = { wpkh: 84, 'sh-wpkh': 49, pkh: 44, tr: 86 };
@@ -169,6 +181,8 @@ async function probe(w, mutated, fast) {
     if ($('wFirst').style.whiteSpace !== 'pre-line') fails.push('five addresses keep their line breaks'); if (!w.document.querySelector("button[onclick=\"copyWatch(this,'wFirst')\"]") || !/COPY ALL/.test(w.document.querySelector("button[onclick=\"copyWatch(this,'wFirst')\"]").textContent)) fails.push('COPY ALL copies the five addresses');
     $('wType').value = 'ms-wsh'; await w.refreshWatch(); if ($('wFirstGroup').style.display !== 'none') fails.push('multisig shows no addresses');
     $('wType').value = 'wpkh'; await w.refreshWatch(); w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('wFirst').textContent !== '' || $('wChange').textContent !== '') fails.push('watch box: addresses cleared with the seed'); }
+  }
+  if (SEC(5, "v1.27.0 restore drill: type the words back from paper; positions only,")) {
   { // v1.27.0 restore drill: type the words back from paper; positions only, never the right words
     const body = w.document.body, dst = () => $('drillStatus').textContent, typed = (t, pw = '') => { $('drillWords').value = t; $('drillPass').value = pw; };
     const alerts2 = []; const oldAlert = w.alert; w.alert = (m) => alerts2.push(m);
@@ -204,6 +218,8 @@ async function probe(w, mutated, fast) {
     await run('dice', 12, D50); w.drillStart(); typed(W.join(' ')); $('passphrase').value = 'q'; $('passphrase').dispatchEvent(new w.Event('input', { bubbles: true })); if (body.classList.contains('drill-on') || $('drillWords').value !== '') fails.push('drill: changing the passphrase ends the drill');
     await run('dice', 12, D50); w.drillStart(); typed(W.join(' ')); w.wipeSeed(); if (body.classList.contains('drill-on') || $('drillWords').value !== '' || $('drillBox').style.display !== 'none') fails.push('drill: CLEAR ends the drill and hides the card');
     w.alert = oldAlert; w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); }
+  }
+  if (SEC(6, "v1.26.2 CLEAR is red, SELF-TEST is green, readable in both themes")) {
   { // v1.26.2 CLEAR is red, SELF-TEST is green, readable in both themes
     const css = mutated.match(/<style>[\s\S]*?<\/style>/)[0], hexc = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
     const lum = (c) => { const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); };
@@ -230,6 +246,8 @@ async function probe(w, mutated, fast) {
       cr(hexc(lt.bad), mixc(hexc(lt.bad), al(/body\.light button\.btn-clear \{ background: rgba\(192,20,60,([.0-9]+)\)/), hexc(lt.sf))),
       cr(hexc(lt.ok), mixc(hexc(lt.ok), al(/body\.light button\.btn-test \{ background: rgba\(6,104,58,([.0-9]+)\)/), hexc(lt.sf))));
     if (!(worst >= 4.5)) fails.push('buttons: red and green text stay readable in both themes'); }
+  }
+  if (SEC(7, "v1.26.1 stale-result guard: the result on screen always belongs to the")) {
   { // v1.26.1 stale-result guard: the result on screen always belongs to the inputs that made it
     const on = () => $('genResult').dataset.seed === '1', gone = () => !on() && !/[0-9a-f]{8}/.test($('fingerprint').textContent) && $('address').textContent === '' && !$('wZpub').textContent && $('wordGrid').querySelectorAll('.wcell:not(.empty)').length === 0;
     const ev = (id) => $(id).dispatchEvent(new w.Event('input', { bubbles: true }));
@@ -271,6 +289,8 @@ async function probe(w, mutated, fast) {
       $('passphrase').value = 'z'; ev('passphrase'); await w.eval('passWork'); if (!on()) fails.push('stale: a passphrase edit keeps a Word draw seed');
       words(24); if (on()) fails.push('stale: changing the word count clears a Word draw seed'); words(12); $('passphrase').value = ''; ev('passphrase'); await w.eval('passWork'); }
     w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); }
+  }
+  if (SEC(8, "Try accounts 0 to 20 (v1.33.0)")) {
   { // Try accounts 0 to 20 (v1.33.0)
     const AB = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
     const addrAt = async (pw, purpose, type, coin, acct, chain, i) => { const seed = await w.mnemonicToSeed(AB, pw); let [k, c] = await w.masterFromSeed(seed); for (const [n, h] of [[purpose, true], [coin, true], [acct, true], [chain, false], [i, false]]) [k, c] = await w.ckdPriv(k, c, n, h); return w.addressFromKey(type, k, coin === 1 ? 'test' : 'main'); };
@@ -297,11 +317,15 @@ async function probe(w, mutated, fast) {
       if (!/^FOUND: this SegWit address is receive address #0 /.test(st())) fails.push('try accounts: the button starts the search'); }
     w.setGate('fail', 'SELF-TEST FAILED', 'bad'); if (!$('checkAcctsBtn').disabled) fails.push('try accounts: a failed self-test disables the button'); w.setGate('pass', 'SELF-TEST PASSED', 'good');
     $('phrase').value = ''; $('checkAddr').value = ''; $('verifyPass').value = ''; $('addrCheckStatus').textContent = ''; }
+  }
+  if (SEC(9, "Translation and passphrase notes (v1.29.0)")) {
   { // Translation and passphrase notes (v1.29.0)
     const d = w.document, m = d.querySelector('meta[name="google"]'), adv = w.document.getElementById('passphrase').closest('details');
     if (d.documentElement.getAttribute('translate') !== 'no') fails.push('translation: html translate=no');
     if (!m || m.getAttribute('content') !== 'notranslate') fails.push('translation: notranslate meta');
     if (!adv || !/Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it\./.test(adv.textContent)) fails.push('passphrase: hardware wallet limit note'); }
+  }
+  if (SEC(10, "Page icon (v1.28.0)")) {
   { // Page icon (v1.28.0)
     const ic = [...w.document.querySelectorAll('link[rel~="icon"]')], hs = ic.map((l) => l.getAttribute('href') || '');
     const svg = hs.find((h) => /^data:image\/svg\+xml,/.test(h)), png = hs.find((h) => /^data:image\/png;base64,/.test(h));
@@ -312,6 +336,8 @@ async function probe(w, mutated, fast) {
     if (w.document.querySelector('link[rel~="apple-touch-icon"], link[rel="manifest"]')) fails.push('page icon: no other linked files');
     { const as = [...w.document.querySelectorAll('a')]; if (as.length !== 1 || as[0].getAttribute('href') !== 'https://random21m.gitlab.io/voidforge/' || as[0].getAttribute('target') !== '_blank' || as[0].getAttribute('rel') !== 'noopener noreferrer') fails.push('page icon: the one link goes to the online copy, in a new tab, with noopener noreferrer'); }
     if (!/never from a website\. Check the file.s SHA256 first \(see the README\)\. The online copy on the project page is for practice only\. Its address is random21m\.gitlab\.io\/voidforge, the only link on this page/.test(w.document.body.textContent)) fails.push('page icon: About page says the online copy is practice-only'); }
+  }
+  if (SEC(11, "Reforge (v1.28.0): kept to a few seconds, because it runs for every mu")) {
   { // Reforge (v1.28.0): kept to a few seconds, because it runs for every mutation
     const RF = async (x, chk, pw) => { $('reforgeWordsInput').value = x; $('reforgeWordsCheck').value = chk || ''; $('reforgeWordsPass').value = pw || ''; await w.reforgeWords(); return [$('reforgeStatus').textContent, $('reforgeOut').textContent]; };
     const ZP = 'zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs', A11 = 'abandon '.repeat(11), A0 = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu';
@@ -359,6 +385,8 @@ async function probe(w, mutated, fast) {
       await RP(AB, 'trezor', TZ); $('reforgePassInput').dispatchEvent(new w.Event('input')); if ($('reforgeOut').textContent !== '') fails.push('reforge passphrase: editing the guesses clears the result');
       $('reforgePassTypos').checked = true; $('reforgePassWords').value = 'w'; w.reforgeClear(); if ($('reforgePassTypos').checked || $('reforgePassWords').value !== '') fails.push('reforge passphrase: CLEAR empties the passphrase fields'); }
     $('reforgeWordsInput').value = 'a'; $('reforgeWordsCheck').value = 'b'; $('reforgeWordsPass').value = 'c'; w.reforgeClear(); if (['reforgeWordsInput', 'reforgeWordsCheck', 'reforgeWordsPass'].some((id) => $(id).value !== '')) fails.push('reforge: CLEAR empties every field'); }
+  }
+  if (SEC(12, "try { const K = (n) => new Uint8Array(32).fill(n), pubE = (n")) {
   try { const K = (n) => new Uint8Array(32).fill(n), pubE = (n) => secp256k1.getPublicKey(K(n), true), pubS = (n) => schnorr.getPublicKey(K(n));
     const kinds = { p2wpkh: (n) => btc.p2wpkh(pubE(n)), p2pkh: (n) => btc.p2pkh(pubE(n)), p2tr: (n) => btc.p2tr(pubS(n)), p2sh: (n) => btc.p2sh(btc.p2wpkh(pubE(n))), p2wsh: (n) => btc.p2wsh(btc.p2ms(1, [pubE(n), pubE(n + 1)])) };
     const insp = async (bytes, net = 'main') => w.inspectPsbt(new Uint8Array(bytes), net);
@@ -569,6 +597,8 @@ async function probe(w, mutated, fast) {
       let bn = null; try { bn = Buffer.from(neg.toPSBT(0)).toString('base64'); } catch (e) { bn = null; }
       if (bn) { [a, o] = await run(bn); if (!/FEE: -0\.00004000 BTC \(-?4000 sats\)/.test(o)) fails.push('psbt: outputs larger than inputs shown as a negative fee'); } } }
   catch (e) { fails.push('psbt: the inspector crashed: ' + e.message); }
+  }
+  if (SEC(13, "{ const cells = [...w.document.querySelectorAll('#wordGrid .")) {
   { const cells = [...w.document.querySelectorAll('#wordGrid .wcell')]; await run('dice', 12, D50);
     const cs = [...w.document.querySelectorAll('#wordGrid .wcell')];
     if (cs.length !== 12 || cs[0].textContent !== '1.' + expect.d50.split(' ')[0] || cs[11].textContent !== '12.' + expect.d50.split(' ')[11]) fails.push('numbered word grid');
@@ -585,10 +615,14 @@ async function probe(w, mutated, fast) {
   r = await run('dice', 12, D50 + '1', ''); if (r !== entropyToMnemonic(sha(D50 + '1').slice(0, 16), wordlist)) fails.push('more rolls: 51 rolls make 12 words from the SHA-256 of all 51 (Coldcard)');
   if ($('countNote').textContent !== 'Every roll counts: all 51 are hashed. Coldcard makes the same words from these rolls; SeedSigner takes exactly 50, so it would make different words.') fails.push('more rolls: the note says every roll counts');
   r = await run('dice', 12, D50.slice(0, 40), ''); if (r !== 'Enter 10 more rolls (40 of 50).') fails.push('too few rolls message');
+  }
+  if (SEC(14, "{ const bs = [...w.document.querySelectorAll('#tapRow button")) {
   { const bs = [...w.document.querySelectorAll('#tapRow button')];
     if (bs.length !== 6 || !bs.every((b, i) => b.querySelectorAll('svg circle').length === i + 1)) fails.push('dice faces have the right pips'); }
   r = await run('dice', 24, D99);     if (r !== expect.d99) fails.push('dice 24 words');
   r = await run('coin', 12, C128);    if (r !== expect.c128) fails.push('coin 12 words');
+  }
+  if (SEC(14, "coin buttons (needs coin mode from the checks before)")) {
   { const bs = [...w.document.querySelectorAll('#tapRow button')];
     if (bs.length !== 2 || bs[0].dataset.v !== '1' || bs[1].dataset.v !== '0') fails.push('coin buttons: heads is 1 and tails is 0');
     else {
@@ -598,6 +632,8 @@ async function probe(w, mutated, fast) {
       if (!bs[0].querySelector('svg g.btc') || bs[0].querySelectorAll('svg g.btc path').length !== 2 || bs[0].querySelector('svg g.sat') || !bs[1].querySelector('svg g.sat') || bs[1].querySelectorAll('svg g.sat rect').length !== 5 || !/rotate\(10 /.test(bs[0].querySelector('svg g.btc').getAttribute('transform') || '') || !/rotate\(10 /.test(bs[1].querySelector('svg g.sat').getAttribute('transform') || '') || bs.some(b => b.querySelector('radialGradient, text')) || bs[0].querySelector('svg g.btc').getAttribute('stroke-width') !== '7' || ![...bs[1].querySelectorAll('svg g.sat rect')].every((r) => Math.min(+r.getAttribute('width'), +r.getAttribute('height')) === 7)) fails.push('coin buttons: the lines are the same thickness on both coins; heads shows the Bitcoin sign, tails shows the sat sign, both tilted and flat');
       $('rolls').value = ''; bs[0].onclick(); bs[1].onclick(); bs[0].onclick(); if ($('rolls').value !== '101') fails.push('coin buttons: tap adds 1 for heads and 0 for tails'); } }
   r = await run('dice', 12, D50.replace(/(.{5})/g, '$1 ') + ' x,y;z'); if (r !== expect.d50) fails.push('input cleaning (spaces/junk)');
+  }
+  if (SEC(16, "v2.3.0: the minimum or more; every roll is hashed (Coldcard); exactly ")) {
   { // v2.3.0: the minimum or more; every roll is hashed (Coldcard); exactly the minimum also matches SeedSigner
     const D150 = (D50 + D99 + D50).slice(0, 150), C300 = (C128 + C128 + C128).slice(0, 300);
     r = await run('dice', 12, D50.slice(0, 49)); if (r !== 'Enter 1 more roll (49 of 50).' || w.hasSeed()) fails.push('more rolls: 49 rolls are still one short');
@@ -620,11 +656,15 @@ async function probe(w, mutated, fast) {
   r = await run('dice', 12, D50, UNI);    if (fpOf() !== fp(expect.d50, UNI)) fails.push('unicode passphrase fingerprint');
   if (adOf() !== addr(expect.d50, UNI)) fails.push('first receive address with unicode passphrase');
   if ($('wZpub').textContent !== watch(expect.d50, UNI).zpub) fails.push('watch-only zpub with unicode passphrase');
+  }
+  if (SEC(17, "{ let bl = 0;")) {
   { let bl = 0;
     for (const f of LH_FPS) { const rows = await w.lifeHash(f), mine = rows.flat(2), ref = LH_EXPECT[f]; if (mine.length !== ref.length || mine.some((v, i) => v !== ref[i])) bl++; }
     if (bl) fails.push('fingerprint pictures match the independent lifehash package');
     await run('dice', 12, D50); await new Promise((r) => setTimeout(r, 40)); const px = svgPixels($('fpIcon').innerHTML), fpNow = fpOf(), refPx = fpNow ? Array.from(LifeHash.makeFrom(hexb4(fpNow), 2, 1, false).colors) : null;
     if (!refPx || px.some((v, i) => v !== refPx[i])) fails.push('fingerprint picture shown next to the fingerprint'); }
+  }
+  if (SEC(18, "{ const li = [...w.document.querySelectorAll('#addrList li')")) {
   { const li = [...w.document.querySelectorAll('#addrList li')].map(x => x.textContent);
     if (li.length !== 10 || (adOf() && li[0] !== adOf()) || new Set(li).size !== 10) fails.push('ten receive addresses are listed');
     { const root = HDKey.fromMasterSeed(mnemonicToSeedSync($('genResult').textContent.split('\n')[0].trim(), $('passphrase').value)), L = (id) => [...w.document.querySelectorAll('#' + id + ' li')].map((x) => x.textContent).join();
@@ -637,12 +677,16 @@ async function probe(w, mutated, fast) {
     const ab = [...w.document.querySelectorAll('#wordGrid .wtxt')].map(x => x.textContent);
     if (!full.length || ab.some((a, i) => a !== full[i].slice(0, 4))) fails.push('4-letter view shows the first four letters');
     w.toggleAbbr(); if ([...w.document.querySelectorAll('#wordGrid .wtxt')].map(x => x.textContent).join(' ') !== full.join(' ')) fails.push('4-letter view toggles back'); }
+  }
+  if (SEC(19, "{ const fx = JSON.parse(fs.readFileSync(new URL('./fixtures/")) {
   { const fx = JSON.parse(fs.readFileSync(new URL('./fixtures/qr.json', import.meta.url), 'utf8')); let bq = 0;
     const hh = (rows) => nc.createHash('sha256').update(rows.map(r => r.map(x => x ? '1' : '0').join('')).join('')).digest('hex');
     fx.forEach((c, i) => { const m = i % 8, q = w.qrMatrix(c.text, m); if (q.version !== c.version || hh(q.rows) !== c.hashes[m]) bq++;
       const a = w.qrMatrix(c.text); if (hh(a.rows) !== c.hashes[a.mask]) bq++; });
     if (bq) fails.push('QR codes match the independent library');
     w.showQr('wZpub', 'zpub'); if (!$('qrImg').querySelector('svg path')) fails.push('SHOW QR draws a code'); }
+  }
+  if (SEC(20, "SeedQR / CompactSeedQR: data, QR codes, 7 x 7 blocks for copying by ha")) {
   // SeedQR / CompactSeedQR: data, QR codes, 7 x 7 blocks for copying by hand, print sheets, clearing
   try {
     const fxS = JSON.parse(fs.readFileSync(new URL('./fixtures/seedqr.json', import.meta.url), 'utf8')); let bd = 0, bs = 0, bg = 0;
@@ -720,6 +764,8 @@ async function probe(w, mutated, fast) {
     { const q = w.qrMatrix('a'), mm2 = w.qrMiniMapSvg(q.rows, 18, 18, 25, 25).match(/<rect x="(\d+)" y="(\d+)" width="(\d+)" height="(\d+)" fill="rgba/); if (!mm2 || mm2.slice(3).join() !== '3,3') fails.push('seedqr: the mini-map outline is cut at the bottom and right edges'); }
     w.print = () => {}; w.confirm = () => true; w.alert = () => {};
   } catch (e) { fails.push('seedqr: the probe crashed: ' + e.message); }
+  }
+  if (SEC(21, "explainer and backup sheet")) {
   // explainer and backup sheet
   try {
     const shaB = (b) => nc.createHash('sha256').update(b).digest(), bitsOf = (b) => Array.from(b).map(x => x.toString(2).padStart(8, '0')).join('');
@@ -803,6 +849,8 @@ async function probe(w, mutated, fast) {
       if (!eo.querySelector('.ex-bad') || eo.querySelector('.ex-ok') || !/do NOT match/.test(eo.textContent)) fails.push('explain: a mismatch between the steps and the seed is reported, not hidden'); }
     w.print = () => {}; w.confirm = () => true;
   } catch (e) { fails.push('explain: the probe crashed: ' + e.message); }
+  }
+  if (SEC(22, "Guide me, term tips, larger text")) {
   try { // Guide me, term tips, larger text
     if (!w.Element.prototype.scrollIntoView) w.Element.prototype.scrollIntoView = function () {};
     w.confirm = () => true; const B = w.document.body, gh = (id) => $(id).classList.contains('gh'), nextOff = () => $('gNext').disabled;
@@ -843,6 +891,8 @@ async function probe(w, mutated, fast) {
     w.toggleSize(); if (B.classList.contains('big') || $('sizeBtn').getAttribute('aria-pressed') !== 'false') fails.push('text size: A- goes back');
     w.confirm = () => true;
   } catch (e) { fails.push('guide: the probe crashed: ' + e.message); }
+  }
+  if (SEC(23, "wallet view (v2.1.0): addresses, QR on every row, SeedQR, recovery she")) {
   try { // wallet view (v2.1.0): addresses, QR on every row, SeedQR, recovery sheet
     const AB = 'abandon '.repeat(11) + 'about', sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
     const until = async (f) => { for (let k = 0; k < 400 && !f(); k++) await sleep(25); return f(); };
@@ -890,6 +940,8 @@ async function probe(w, mutated, fast) {
     if (mk[0]) { mk[0].querySelector('button.qr-mini').click(); const d = w.document.createElement('div'); d.innerHTML = w.qrSvg(w.qrMatrix(mk[0].textContent).rows); if ($('aqBox').style.display !== 'block' || $('aqImg').innerHTML !== d.innerHTML || !$('aqCap').textContent.includes(mk[0].textContent)) fails.push('address QR: the button under the seed shows exactly that address'); }
     w.clearAll(); await sleep(20);
   } catch (e) { fails.push('wallet view: the probe crashed: ' + e.message); }
+  }
+  if (SEC(24, "v2.2.0: watch-only view, Electrum warning, payment request, backup che")) {
   try { // v2.2.0: watch-only view, Electrum warning, payment request, backup checklist, key-reuse check
     const AB = 'abandon '.repeat(11) + 'about', sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
     const until = async (f) => { for (let k = 0; k < 400 && !f(); k++) await sleep(25); return f(); };
@@ -957,6 +1009,8 @@ async function probe(w, mutated, fast) {
       w.clearReuse(); }
     w.clearAll(); await sleep(20);
   } catch (e) { fails.push('v2.2.0 probe crashed: ' + e.message); }
+  }
+  if (SEC(25, "rolling-dice logo and the live preview words")) {
   try { // rolling-dice logo and the live preview words
     const setRolls = (v) => { $('rolls').value = v; $('rolls').oninput(); };
     w.clearAll(); await new Promise(r => setTimeout(r, 20)); mode('dice'); words(12);
@@ -1072,6 +1126,8 @@ async function probe(w, mutated, fast) {
     }
     w.clearAll();
   } catch (e) { fails.push('preview: the probe crashed: ' + e.message); }
+  }
+  if (SEC(26, "Word draw")) {
   try { // Word draw
     if (!w.Element.prototype.scrollIntoView) w.Element.prototype.scrollIntoView = function () {};
     const A11 = 'abandon '.repeat(11), LEG = 'legal winner thank year wave sausage worth useful legal winner thank';
@@ -1114,6 +1170,8 @@ async function probe(w, mutated, fast) {
     if (w.document.querySelectorAll('#wdBox a, #wdBox script, #wdBox img, #wdBox form').length || !/word tiles/.test($('wdBox').textContent) || /Entropia/i.test(w.document.body.innerHTML)) fails.push('word draw: no links, and no product name');
     $('wdLen').value = '24'; w.wdUpdate(); if (!/0 \/ 23 words, 0 \/ 3 flips/.test($('wdCount').textContent)) fails.push('word draw: counts for 24 words'); $('wdLen').value = '12';
   } catch (e) { fails.push('word draw: the probe crashed: ' + e.message); }
+  }
+  if (SEC(27, "Multisig")) {
   try { // Multisig
     if (!w.Element.prototype.scrollIntoView) w.Element.prototype.scrollIntoView = function () {};
     const slp = (t) => new Promise((r2) => setTimeout(r2, t));
@@ -1219,9 +1277,13 @@ async function probe(w, mutated, fast) {
     w.msCancel(); if (w.eval('ms') !== null) fails.push('multisig: START OVER resets');
     w.clearAll(); await slp(20);
   } catch (e) { fails.push('multisig: the probe crashed: ' + e.message); }
+  }
+  if (SEC(28, "{ await run('dice', 12, D50, ''); await new Promise((r) => s")) {
   { await run('dice', 12, D50, ''); await new Promise((r) => setTimeout(r, 60)); const had = !!$('fpIcon').querySelector('svg');
     $('rolls').value = D50.slice(0, 10); $('rolls').oninput(); await new Promise((r) => setTimeout(r, 20));
     if (!had || $('fpIcon').innerHTML !== '' || w.hasSeed()) fails.push('fingerprint picture cleared when changed rolls clear the words'); }
+  }
+  if (SEC(29, "passphrase confirmation must block a mismatch")) {
   // passphrase confirmation must block a mismatch
   await run('dice', 12, D50, ''); w.showQr('wZpub', 'zpub');
   mode('dice'); words(12); $('rolls').value = D50; $('rolls').oninput(); $('passphrase').value = 'abc'; $('passphrase2').value = 'abd'; await w.generate();
@@ -1232,20 +1294,28 @@ async function probe(w, mutated, fast) {
   if ($('addrList').textContent !== '' || $('addrBox').style.display !== 'none' || $('checkGuide').style.display !== 'none') fails.push('address list and guide hidden after an error');
   if ($('trList').textContent !== '' || $('chList').textContent !== '' || $('trChList').textContent !== '') fails.push('Taproot and change lists cleared after an error');
   $('passphrase').value = ''; $('passphrase2').value = '';
+  }
+  if (SEC(30, "tap buttons append the right values")) {
   // tap buttons append the right values
   $('rolls').value = ''; w.updateCount(); const taps = [...w.document.querySelectorAll('#tapRow button')];
   if (taps.length !== 6 || !taps.every((b, i) => { const r = b.querySelector('svg rect'), c = [...b.querySelectorAll('svg circle')]; return r && /fill:var\(--surface\)/.test(r.getAttribute('style')) && /stroke:var\(--accent\)/.test(r.getAttribute('style')) && c.length === i + 1 && c.every((x) => /fill:var\(--accent\)/.test(x.getAttribute('style'))); })) fails.push('dice buttons: unchanged outline die');
   if (taps.length !== 6) fails.push('six dice tap buttons'); else { taps[3].onclick(); taps[0].onclick(); if ($('rolls').value !== '41') fails.push('tap buttons append the right roll'); }
   $('rolls').value = '';
+  }
+  if (SEC(31, "VERIFY must show the published BIP84 vector address")) {
   // VERIFY must show the published BIP84 vector address
   $('phrase').value = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'; await w.verify();
   if (!/bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu/.test($('verifyStatus').textContent)) fails.push('VERIFY shows first address');
   $('verifyPass').value = 'TREZOR'; await w.verify(); { const vs = $('verifyStatus').textContent;
     if (!/Without passphrase: fingerprint 73c5da0a \| first address bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu/.test(vs)) fails.push('VERIFY without-passphrase line');
     if (!/With passphrase \(6 characters, not shown\): fingerprint b4e3f5ed \| first address bc1qv5rmq0kt9yz3pm36wvzct7p3x6mtgehjul0feu/.test(vs)) fails.push('VERIFY with-passphrase line'); }
+  }
+  if (SEC(31, "VERIFY pictures (needs the VERIFY run before)")) {
   { await new Promise((r) => setTimeout(r, 30)); const i0 = svgPixels($('vIcon0').innerHTML), i1 = svgPixels($('vIcon1').innerHTML);
     if (!LH_EXPECT['73c5da0a'] || i0.some((v, i) => v !== LH_EXPECT['73c5da0a'][i]) || $('vFig0').style.display === 'none') fails.push('VERIFY shows the picture without passphrase');
     if (i1.some((v, i) => v !== LH_EXPECT['b4e3f5ed'][i]) || $('vFig1').style.display === 'none') fails.push('VERIFY shows the picture with passphrase'); }
+  }
+  if (SEC(33, "{ const ABOUT = 'abandon abandon abandon abandon abandon aba")) {
   { const ABOUT = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
     const M = async (rec, pw) => { $('phrase').value = ABOUT; $('verifyPass').value = pw; $('verifyRecorded').value = rec; await w.verify(); return [$('verifyMatch').textContent, $('verifyMatch').className]; };
     let [tx, cl] = await M('b4e3f5ed', 'TREZOR'); if (!/^MATCH \(with passphrase\)/.test(tx) || !/ok/.test(cl)) fails.push('match: fingerprint with passphrase');
@@ -1390,10 +1460,14 @@ async function probe(w, mutated, fast) {
   $('passphrase').value = ''; $('passphrase2').value = '';
   $('verifyPass').value = '';
   if ((await w.checkPhrase(expect.d50)).ok !== true) fails.push('checker accepts valid');
+  }
+  if (SEC(34, "Corrupt one word; the checker must agree with @scure about whether the")) {
   // Corrupt one word; the checker must agree with @scure about whether the result is valid.
   const parts = expect.d50.split(' '); parts[11] = parts[11] === 'zoo' ? 'abandon' : 'zoo';
   const corrupted = parts.join(' ');
   if ((await w.checkPhrase(corrupted)).ok !== validateMnemonic(corrupted, wordlist)) fails.push('checker rejects bad checksum');
+  }
+  if (SEC(35, "v1.25.1 QR boxes scroll fully into view and the stylesheet keeps the s")) {
   // v1.25.1 QR boxes scroll fully into view and the stylesheet keeps the seed panel from covering content
   { if (!/#cardGen \.gen-right \{ grid-column: 2; grid-row: 1 \/ span 2;[^}]*position: sticky/.test(mutated) || !/#cardGen \.gen-bottom \{ grid-column: 1; grid-row: 2;/.test(mutated)) fails.push('qr: the sticky seed panel must not slide over the content below');
     { const tg = loadPage(mutated, () => {}); await ready(tg); const gb = tg.document.querySelector('.sg-body'), go = tg.document.getElementById('sgGo'); if (!gb || gb.contains(go) || go.parentNode !== gb.parentNode) fails.push('notice: the button must stay outside the scrolling text'); else if (gb.getAttribute('tabindex') !== '0' || !/things to know/.test(gb.getAttribute('aria-label') || '')) fails.push('notice: the scrolling text is keyboard reachable and named');
@@ -1407,12 +1481,16 @@ async function probe(w, mutated, fast) {
     tq.document.getElementById('wDescR').textContent = 'wpkh(x)'; tq.showQr('wDescR', 'receive descriptor'); if (seen.length !== 1 || seen[0][0] !== 'qrBox' || seen[0][1] !== 'nearest') fails.push('qr: watch-only QR scrolls fully into view');
     tq.document.getElementById('rolls').value = D50; tq.document.getElementById('rolls').oninput(); await tq.generate(); tq.showSeedQr('seedqr'); if (seen.length !== 2 || seen[1][0] !== 'sqBox' || seen[1][1] !== 'nearest') fails.push('qr: SeedQR scrolls fully into view');
     { await new Promise((r) => setTimeout(r, 50)); const before = tq.document.getElementById('fpIcon').innerHTML; tq.document.getElementById('sqBox').scrollIntoView = () => {}; await tq.sendToVerify(); await new Promise((r) => setTimeout(r, 80)); if (before.length < 100 || tq.document.getElementById('fpIcon').innerHTML !== before) fails.push('verify: the master fingerprint picture survives SEND TO CHECK'); if (!tq.document.getElementById('vIcon0').querySelector('svg')) fails.push('verify: draws its own fingerprint picture'); tq.document.getElementById('phrase').value = 'abandon abandon'; await tq.verify(); await new Promise((r) => setTimeout(r, 50)); if (tq.document.getElementById('vIcon0').innerHTML !== '' || tq.document.getElementById('vFig0').style.display !== 'none') fails.push('verify: old fingerprint pictures are cleared before a new check'); } }
+  }
+  if (SEC(36, "v1.25.1 word finder (reference words from the python-mnemonic English ")) {
   // v1.25.1 word finder (reference words from the python-mnemonic English list)
   { for (const [i, wd, n] of [['1','abandon',1],['2048','zoo',2048],['257','cactus',257],['680','female',680],['3 A 7','female',680],['3-a-7','female',680],['1 0 0','abandon',1],['8 F F','zoo',2048],['2 0 0','cactus',257],['300','century',300],[' 300 ','century',300],['8 0 0','theme',1793]]) { const r = w.wdFindWord(i); if (r.word !== wd || r.idx !== n - 1 || r.msg !== 'Word ' + n + ': ' + wd) fails.push('word finder: ' + JSON.stringify(i) + ' gives the right word'); }
     for (const x of ['9 0 0','0 0 0','3 G 7','abc','3 A','3 A 7 7','-']) { const r = w.wdFindWord(x); if (r.word !== undefined || r.idx !== undefined || r.msg !== 'Type a number from 1 to 2048, a D8 roll (1-8) then two hex digits (0-F) like 3 A 7, or a BitBox02 diceware roll like 2143 2 T.') fails.push('word finder: bad entry ' + JSON.stringify(x) + ' refused with the hint'); }
     for (const x of ['0','2049','99999']) { const r = w.wdFindWord(x); if (r.msg !== 'A word number is between 1 and 2048.' || r.idx !== undefined) fails.push('word finder: out-of-range number ' + x + ' explained'); }
     if (w.wdFindWord('').msg !== '' || w.wdFindWord('  ').msg !== '') fails.push('word finder: empty entry is silent');
     $('wdFind').value = '3 A 7'; w.wdFind(); if ($('wdFound').textContent !== 'Word 680: female') fails.push('word finder: shows the word'); $('wdFind').value = ''; w.wdFind(); if ($('wdFound').textContent !== '') fails.push('word finder: clears the line'); }
+  }
+  if (SEC(37, "v2.3.0 Verify a signed message. Signatures made here by @noble/curves ")) {
   try { // v2.3.0 Verify a signed message. Signatures made here by @noble/curves (classic) and @scure/btc-signer (BIP-322 simple),
     // plus the official BIP-322 vectors and Bitcoin Core's classic vector.
     const T = new TextEncoder(), cat = (...a) => { const o = new Uint8Array(a.reduce((x, y) => x + y.length, 0)); let i = 0; for (const y of a) { o.set(y, i); i += y.length; } return o; };
@@ -1533,6 +1611,8 @@ async function probe(w, mutated, fast) {
       const r3 = await w.verifyMessageUi(); if (r3.state !== 'valid' || $('sigAddr').value !== 'mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB') fails.push('signed message: a block with an Address: header is read'); }
     w.clearSig(); if ($('sigAddr').value || $('sigMsg').value || $('sigSig').value || $('sigStatus').textContent) fails.push('signed message: CLEAR empties the box');
   } catch (e) { fails.push('signed message: the probe crashed: ' + e.message); }
+  }
+  if (SEC(38, "v2.3.0 BitBox02 diceware (expected words from @scure's English list an")) {
   try { // v2.3.0 BitBox02 diceware (expected words from @scure's English list and Node's SHA-256)
     const bbIdx = (c) => { const d = c.slice(0, 5).split('').map(Number); return (((d[0] - 1) * 64 + (d[1] - 1) * 16 + (d[2] - 1) * 4 + (d[3] - 1)) * 8) + (d[4] - 1) * 2 + (c[5] === 'T' ? 1 : 0); };
     let bad = 0; const seen = new Set();
@@ -1563,6 +1643,9 @@ async function probe(w, mutated, fast) {
     for (let i = 0; i < 8; i++) got.push((await w.wdSteps(viol, i.toString(2).padStart(3, '0'), 24)).lastWord);
     if (got.join(' ') !== 'boss coyote dry habit panel regular speed winter' || got.some((x, i) => x !== cand(viol, i))) fails.push('BitBox02 last word: 23 x violin gives BitBox\'s 8 choices in order (HHH first)');
   } catch (e) { fails.push('BitBox02: the probe crashed: ' + e.message); }
+  }
+  if (SEC(39, "v2.4.0: one-page prints, roll sheet extras, CHECK A BACKUP backups, QR")) {
+  if (!w.Element.prototype.scrollIntoView) w.Element.prototype.scrollIntoView = function () {}; // jsdom has none (set by earlier sections in a full run)
   try { // v2.4.0: one-page prints, roll sheet extras, CHECK A BACKUP backups, QR / child / Word draw / summary prints, dice test, keys, typo helper, explain
     const P = { n: 0, cells: [], txt: '', qr: '', qrh: '', lh: 0, sec: '' }, al = [], op = w.print, oa = w.alert, oc = w.confirm; let cnf = true;
     w.print = () => { P.n++; P.cells = [...w.document.querySelectorAll('#printOnly .ps-cell')].map((c) => c.textContent); P.txt = $('printOnly').textContent; P.qr = $('printQr').textContent; P.qrh = $('printQr').innerHTML; P.lh = w.document.querySelectorAll('#printOnly .ps-lh svg').length; P.sec = (w.document.querySelector('#printOnly .ps-secret') || {}).className || ''; P.secTxt = (w.document.querySelector('#printOnly .ps-secret') || {}).textContent || ''; P.cls = w.document.body.className; };
@@ -1766,6 +1849,8 @@ async function probe(w, mutated, fast) {
       const wl = [...w.document.querySelectorAll('#whatBox li')]; if (wl.length !== 10 || wl.filter((e) => e.querySelector('.tag-secret')).length !== 6 || wl.filter((e) => e.querySelector('.tag-public')).length !== 3) fails.push('what guide: 6 secret, 3 public'); }
     w.print = op; w.alert = oa; w.confirm = oc; $('checkAddr').value = ''; $('phrase').value = ''; $('rollStats').open = rsOpen0; $('addrExplain').textContent = ''; $('addrExplain').className = 'status';
   } catch (e) { fails.push('v2.4.0: the probe crashed: ' + e.message); }
+  }
+  if (SEC(40, "v2.4.0: no red flash while the page loads (the notice and the half-bui")) {
   try { // v2.4.0: no red flash while the page loads (the notice and the half-built page stay hidden until the main script has run)
     const css = mutated.match(/<style>[\s\S]*?<\/style>/)[0], main = mutated.indexOf('<script>', mutated.indexOf('</style>'));
     if (!w.document.documentElement.classList.contains('js')) fails.push('first paint: scripts mark the page as able to run');
@@ -1776,6 +1861,8 @@ async function probe(w, mutated, fast) {
     const tb = loadPage(mutated.slice(0, main) + '<script>\n' + mutated.slice(mutated.indexOf('</script>', main)), () => {}); await new Promise((r) => setTimeout(r, 30));
     if (tb.document.documentElement.classList.contains('js')) fails.push('first paint: a main script that does not run brings the notice back'); tb.close();
   } catch (e) { fails.push('first paint probe crashed: ' + e.message); }
+  }
+  if (SEC(41, "v2.5.0: passphrase warning, secrets not selectable, backup plan + stre")) {
   try { // v2.5.0: passphrase warning, secrets not selectable, backup plan + stress test, wallet birthday, practice mode, watch-only file
     const css = mutated.match(/<style>[\s\S]*?<\/style>/)[0], op = w.print, oa = w.alert; let printed = null; w.alert = () => {};
     w.print = () => { printed = $('printOnly').textContent; };
@@ -1904,6 +1991,8 @@ async function probe(w, mutated, fast) {
     $('wNet').value = 'main'; await w.refreshWatch();
     w.print = op; w.alert = oa; w.planClear(); $('verifyPass').value = ''; $('passphrase').value = ''; $('passphrase2').value = ''; w.updateAdvSummary();
   } catch (e) { fails.push('v2.5.0 probe crashed: ' + e.message); }
+  }
+  if (SEC(42, "v2.6.0: animated QR (UR + BBQr), UR/BBQr paste, custom paths, private ")) {
   try { // v2.6.0: animated QR (UR + BBQr), UR/BBQr paste, custom paths, private keys read only, check an address before you pay, spending cost
     const oa = w.alert, oc = w.confirm; w.alert = () => {}; w.confirm = () => true;
     const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), until = async (f) => { for (let k = 0; k < 100 && !f(); k++) await sleep(50); };
@@ -2022,6 +2111,8 @@ async function probe(w, mutated, fast) {
     w.msReset(); if ($('msAnimBox').style.display !== 'none' || $('msAnimImg').textContent !== '' || w.eval('animTimer') !== null) fails.push('animated QR: START OVER stops it');
     w.alert = oa; w.confirm = oc;
   } catch (e) { fails.push('v2.6.0 probe crashed: ' + e.message); }
+  }
+  if (SEC(43, "v2.3.0 Keystone dice rules (expected words from @scure and Node's SHA-")) {
   try { // v2.3.0 Keystone dice rules (expected words from @scure and Node's SHA-256 of the rolls with every 6 as 0)
     const rules = (v) => { $('diceRules').value = v; $('diceRules').dispatchEvent(new w.Event('change')); };
     const mk = (r, wc) => entropyToMnemonic(sha(r.replace(/6/g, '0')).slice(0, wc === 24 ? 32 : 16), wordlist);
@@ -2051,6 +2142,8 @@ async function probe(w, mutated, fast) {
     w.setMethod('words'); if ($('rulesRow').style.display !== 'none') fails.push('Keystone: hidden in Word draw'); w.setMethod('dice');
     rules('std'); words(12); $('rolls').value = ''; $('rolls').oninput();
   } catch (e) { fails.push('Keystone: the probe crashed: ' + e.message); }
+  }
+  if (SEC(44, "v1.25.1 fairness test (reference values from scipy.stats.chisquare)")) {
   // v1.25.1 fairness test (reference values from scipy.stats.chisquare)
   { const mk = (c) => c.map((n, i) => String(i + 1).repeat(n)).join('');
     for (const [c, x, pv] of [[[5,5,5,5,5,5],0,1],[[8,6,4,5,3,4],3.2,0.669183],[[10,6,5,4,3,2],8,0.156236],[[12,8,4,3,2,1],17.6,0.003492],[[15,12,9,6,3,0],21,0.00081],[[20,5,2,1,1,1],56.4,0]]) { const r = w.faceTest(mk(c), false); if (Math.abs(r.chi - x) > 1e-6 || Math.abs(r.p - pv) > 2e-6 || r.df !== 5) fails.push('fairness: dice chi-square and p match scipy for ' + c.join(',')); }
@@ -2066,6 +2159,8 @@ async function probe(w, mutated, fast) {
     $('rolls').value = '1'.repeat(14) + '0'.repeat(5); $('rolls').oninput(); if (st()) fails.push('fairness: coin test waits for 20 flips');
     $('rolls').value = '1'.repeat(15) + '0'.repeat(5); $('rolls').oninput(); if (!/χ² = 5\.00, 1 degree of freedom, p ≈ 0\.025\. Mildly unusual: a fair coin does this/.test(st())) fails.push('fairness: coin text');
     $('rolls').value = ''; $('rolls').oninput(); mode('dice'); }
+  }
+  if (SEC(45, "v1.25.0 layout: tabs, Your seed panel, step bar, word slots, dice wait")) {
   // v1.25.0 layout: tabs, Your seed panel, step bar, word slots, dice wait
   { const on = (n) => !$('tp-' + n).classList.contains('tab-off'), sel = (n) => $('tab-' + n).getAttribute('aria-selected'), disp = (n) => w.getComputedStyle($('tp-' + n)).display;
     const names = ['make', 'check', 'tools', 'about'];
@@ -2120,6 +2215,8 @@ async function probe(w, mutated, fast) {
       const t2 = loadPage(mutated, () => {}); await ready(t2); t2.document.dispatchEvent(new t2.KeyboardEvent('keydown', { key: 'Escape' })); if (t2.document.body.classList.contains('dice-wait')) fails.push('layout: dice released when Escape closes the notice');
       const t3 = loadPage(mutated, () => {}); await ready(t3); t3.document.getElementById('startGate').remove(); t3.document.dispatchEvent(new t3.Event('DOMContentLoaded')); if (t3.document.body.classList.contains('dice-wait')) fails.push('layout: dice not held back when there is no notice'); }
   }
+  }
+  if (SEC(46, "{ const $p = (id) => w.document.getElementById(id), E = ['ab")) {
   { const $p = (id) => w.document.getElementById(id), E = ['abandon', 'ability', 'able', 'about'];
     if ((await w.practiceMake(new w.Uint8Array(16))).join(' ') !== 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about') fails.push('practice: phrase made from entropy');
     if (!w.practiceCompare(E, 'abandon ability able about').ok || !w.practiceCompare(E, '  ABANDON  ability\nable about ').ok) fails.push('practice: correct copy matches, case and spacing ignored');
@@ -2139,6 +2236,8 @@ async function probe(w, mutated, fast) {
     w.eval('practiceNext=0'); const ph = []; for (let i = 0; i < 8; i++) { await w.practiceStart(); ph.push(w.eval('practice.words.join(" ")')); } w.practiceClear();
     if (ph.slice(0, 6).join('|') !== PH.join('|') || ph[6] !== PH[0] || ph[7] !== PH[1]) fails.push('practice: steps through the six published test phrases in order, then starts over');
     if (/getRandomValues|Math\.random|\.randomUUID|msCrypto/.test(mutated.replace(/const WORDLIST = \[.*?\];/s, ''))) fails.push('no browser random-number call anywhere in the page'); }
+  }
+  if (SEC(47, "{ const w2 = loadPage(mutated, (win) => { win.__focus = []; ")) {
   { const w2 = loadPage(mutated, (win) => { win.__focus = []; win.HTMLElement.prototype.focus = function (o) { win.__focus.push([this.id, o]); }; });
     await ready(w2); await new Promise((r) => setTimeout(r, 100));
     const fo = w2.__focus.find((x) => x[0] === 'sgGo'); if (!fo || !fo[1] || fo[1].preventScroll !== true || w2.__focus.some((x) => x[0] === 'rolls')) fails.push('page open: the notice button is focused without scrolling');
@@ -2150,6 +2249,8 @@ async function probe(w, mutated, fast) {
     w2.__focus.length = 0; w2.matchMedia = (q) => ({ matches: /pointer:\s*coarse/.test(q) }); w2.startGateClose(); if (w2.__focus.some((x) => x[0] === 'rolls')) fails.push('notice: a touch device does not get the rolls box focused (no keyboard pop-up)');
     w2.__focus.length = 0; w2.matchMedia = () => ({ matches: false }); w2.startGateClose(); if (!w2.__focus.some((x) => x[0] === 'rolls')) fails.push('notice: a mouse device still gets the rolls box focused'); delete w2.matchMedia;
     if (!/educational tool/.test(w2.document.getElementById('disclaimer').textContent)) fails.push('notice: disclaimer calls it an educational tool'); }
+  }
+  if (SEC(48, "v2.3.0: the start notice shows once per browser session while offline ")) {
   try { // v2.3.0: the start notice shows once per browser session while offline and on every load while online; END SESSION wipes, forgets it and reloads
     const off = (win, ack) => { Object.defineProperty(win.navigator, 'onLine', { configurable: true, get: () => false }); if (ack) win.sessionStorage.setItem('voidforge-ack', '1'); };
     const a = loadPage(mutated, (win) => off(win, true)); await ready(a);
@@ -2174,6 +2275,8 @@ async function probe(w, mutated, fast) {
     if (!/function endSessionReload\(\)\{ location\.reload\(\); \}/.test(mutated)) fails.push('END SESSION: a real page reload');
     const eb = $e('endSessionBtn'); if (!eb || eb.className !== 'btn-clear' || !eb.closest('#menuBox')) fails.push('END SESSION: a red button in the MENU');
   } catch (e) { fails.push('session notice: the probe crashed: ' + e.message); }
+  }
+  if (SEC(49, "Redesign (charcoal and gold, one column): the header, the MENU, the ta")) {
   { // Redesign (charcoal and gold, one column): the header, the MENU, the tabs, the labels
     const die = $('brandDie'), h1 = w.document.querySelector('#topbar h1'), mb = $('menuBox'), css = [...w.document.querySelectorAll('style')].map((x) => x.textContent).join('\n');
     if (!die || die.querySelectorAll('.dp').length !== 5 || !h1 || h1.textContent !== 'VOIDFORGE') fails.push('redesign: the header has one five-pip die and the name');
@@ -2200,6 +2303,8 @@ async function probe(w, mutated, fast) {
       w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if (d.body.classList.contains('has-seed')) fails.push('calmer page: no seed, so seed buttons stay hidden');
       await run('dice', 12, D50); if (!d.body.classList.contains('has-seed')) fails.push('calmer page: a seed shows the seed buttons'); }
     if ($('ownerLogo') || w.document.querySelector('img')) fails.push('redesign: no picture is built into the page'); }
+  }
+  if (SEC(50, "v2.6.0 review fixes (expected addresses from @scure): CLEAR ALL, pract")) {
   try { // v2.6.0 review fixes (expected addresses from @scure): CLEAR ALL, practice-mode COPY ADDRESS and recorded address, Word draw download, P2WSH, password managers
     const oa = w.alert, oc = w.confirm, ocu = w.URL.createObjectURL, orv = w.URL.revokeObjectURL; w.alert = () => {}; w.confirm = () => true;
     const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), AB = 'abandon '.repeat(11) + 'about';
@@ -2233,6 +2338,8 @@ async function probe(w, mutated, fast) {
     if (!['passphrase', 'passphrase2', 'verifyPass', 'reforgeWordsPass', 'drillPass', 'pkIn'].every((id) => { const e = $(id); return e.getAttribute('data-lpignore') === 'true' && e.getAttribute('data-1p-ignore') === 'true' && e.getAttribute('data-bwignore') === 'true' && e.getAttribute('data-form-type') === 'other'; })) fails.push('password managers: every secret box tells them to ignore it');
     w.alert = oa; w.confirm = oc; w.URL.createObjectURL = ocu; w.URL.revokeObjectURL = orv;
   } catch (e) { fails.push('v2.6.0 review-fix probe crashed: ' + e.message); }
+  }
+  if (SEC(51, "v2.7.0 (expected values from @scure and Node's SHA-256): dice passphra")) {
   try { // v2.7.0 (expected values from @scure and Node's SHA-256): dice passphrase, device dice check and test card, two wallets side by side
     const oa = w.alert, oc = w.confirm, op = w.print; w.alert = () => {}; w.confirm = () => true;
     const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), until = async (f) => { for (let k = 0; k < 200 && !f(); k++) await sleep(50); };
@@ -2285,6 +2392,8 @@ async function probe(w, mutated, fast) {
     $('phrase').value = ''; $('verifyPass').value = '';
     w.alert = oa; w.confirm = oc;
   } catch (e) { fails.push('v2.7.0 probe crashed: ' + e.message); }
+  }
+  if (SEC(52, "v2.8.0 (expected values from @scure and Node's PBKDF2): Wallet Detecti")) {
   try { // v2.8.0 (expected values from @scure and Node's PBKDF2): Wallet Detective, Is anything watching this page?, Heir mode
     const oa = w.alert, oc = w.confirm; w.alert = () => {}; w.confirm = () => true;
     const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), AB = 'abandon '.repeat(11) + 'about';
@@ -2520,6 +2629,8 @@ async function probe(w, mutated, fast) {
       if ($('watchWarn').style.display !== 'block' || !/^Something else may be reading or changing this page\./.test($('watchWarn').textContent)) fails.push('watch check: the warning shows at the top by itself'); }
     w.alert = oa; w.confirm = oc;
   } catch (e) { fails.push('v2.8.0 probe crashed: ' + e.message); }
+  }
+  if (SEC(53, "v2.8.1 fixes (expected values from @scure and btc-signer): change mark")) {
   try { // v2.8.1 fixes (expected values from @scure and btc-signer): change marks, PSBT v2, previous transaction, wipes, gate, stale results
     const oa = w.alert, oc = w.confirm; w.alert = () => {}; w.confirm = () => true;
     const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), AB = 'abandon '.repeat(11) + 'about', H = 0x80000000;
@@ -2604,22 +2715,86 @@ async function probe(w, mutated, fast) {
       if (!/^MATCH \(without passphrase\): your first address/.test($('verifyMatch').textContent)) fails.push('VERIFY: a testnet first address is named the first address, also on mainnet'); $('verifyRecorded').value = ''; }
     $('phrase').value = ''; w.alert = oa; w.confirm = oc;
   } catch (e) { fails.push('v2.8.1 probe crashed: ' + e.message); }
+  }
+  if (SEC(55, "v2.9.0 Cards & hex (expected words from @scure and Node's SHA-256)")) {
+  try {
+    const SU = { C: '♣', D: '♦', H: '♥', S: '♠' }, cs = (t) => t.split(' ').map((x) => x[0] + SU[x[1]]).join(' ');
+    const expC = (t, n) => entropyToMnemonic(sha(cs(t)).slice(0, n === 24 ? 32 : 16), wordlist), first = () => $('genResult').textContent.split('\n')[0];
+    const C25 = 'KS 3D 9H AC TC 5S JD 2H 8C QS 4D 7H 6C AH TS 9D 3C KH 5D JS 2S 8H QC 4H 7S', C24 = C25.split(' ').slice(0, 24).join(' ');
+    const bitsOf = (n) => { let b = 0; for (let k = 0; k < n; k++) b += Math.log2(52 - k); return b; };
+    const oc = w.confirm; w.wipeSeed(); words(12); w.setMethod('cards');
+    if (!w.document.body.classList.contains('m-cards') || $('mt-cards').getAttribute('aria-selected') !== 'true' || !/25 cards/.test($('lenNote').textContent)) fails.push('cards: the Cards & hex tab opens and says 25 cards');
+    if (w.cdParse('as, 10h qd 2C').cards.join(' ') !== 'A\u2660 T\u2665 Q\u2666 2\u2663' || w.cdParse('1H AS').bad.length !== 1) fails.push('cards: AS, 10h qd 2C are read as A♠ T♥ Q♦ 2♣, and 1H is not a card');
+    { const a = w.cdBits(C25.split(' ').map((x) => x[0] + SU[x[1]])), d = w.cdBits(['A♠', 'A♠']);
+      if (Math.abs(a.bits - bitsOf(25)) > 1e-9 || a.again || Math.abs(d.bits - 2 * Math.log2(52)) > 1e-9 || !d.again) fails.push('cards: bits for cards dealt without putting them back, and a repeat starts a new run'); }
+    $('cdCards').value = C24; w.cdUpdate(); const off24 = $('cdBtn').disabled; await w.cdGenerate();
+    if (!off24 || w.hasSeed()) fails.push('cards: 24 cards (127 bits) are not enough for 12 words');
+    w.eval('selfTestState = "fail"'); $('cdCards').value = C25; w.cdUpdate(); const offGate = $('cdBtn').disabled; w.eval('selfTestState = "pass"'); w.cdUpdate();
+    if (!offGate || $('cdBtn').disabled || !/^25 cards, about 132 of the 128 bits/.test($('cdCount').textContent)) fails.push('cards: MAKE SEED FROM CARDS waits for the self-test, then 25 cards are enough');
+    await w.cdGenerate(); const wc = first();
+    if (wc !== expC(C25, 12) || fpOf() !== fp(expC(C25, 12), '')) fails.push('cards: 25 cards give the words of SHA-256 of the card list');
+    { const S = w.seedSummary(); if (!S || !/^Made from: 25 playing cards \(SHA-256 of the card list/.test(S.lines[1]) || !/about 132 bits went in, if the deck was well shuffled/.test(S.lines[2])) fails.push('cards: the summary says 25 playing cards and about 132 bits'); }
+    $('cdCards').value = C25 + ' 2D'; w.cdUpdate(); if (w.hasSeed() || !/You changed the cards/.test($('genResult').textContent)) fails.push('cards: changing the cards clears the seed');
+    { const deck = [...'CDHS'].flatMap((x) => [...'A23456789TJQK'].map((r2) => r2 + x)), mix = deck.map((c, i) => deck[(i * 7) % 52]).join(' ');
+      words(24); w.setMethod('cards'); $('cdCards').value = mix; w.cdUpdate(); const off52 = $('cdBtn').disabled;
+      $('cdCards').value = mix + ' AS 2S 3S 4S 5S 6S'; w.cdUpdate(); const on58 = !$('cdBtn').disabled; await w.cdGenerate();
+      if (!off52 || !on58 || first() !== expC(mix + ' AS 2S 3S 4S 5S 6S', 24)) fails.push('cards: 24 words need the whole deck and 6 more, hashed the same way');
+      words(12); w.setMethod('cards'); w.confirm = () => false; $('cdCards').value = deck.slice(0, 25).join(' '); w.cdUpdate(); await w.cdGenerate(); w.confirm = oc;
+      if (w.hasSeed()) fails.push('cards: an unshuffled deck asks first, and No makes no seed'); }
+    { const H = '0123456789abcdef0011223344556677', H64 = '00112233445566778899aabbccddeeff0123456789abcdef0f1e2d3c4b5a6978';
+      $('cdCards').value = ''; $('cdHex').value = '0x' + H.slice(0, 16) + ' ' + H.slice(16); w.cdUpdate(); await w.cdHexGenerate();
+      if (first() !== entropyToMnemonic(hexb4(H), wordlist) || !/^Made from: 32 hex digits, used directly/.test(w.seedSummary().lines[1])) fails.push('hex: 32 hex digits (0x and spaces allowed) are the entropy itself');
+      $('cdHex').value = H64; w.cdUpdate(); if (!/64 hex digits make a 24-word seed: choose 24 words/.test($('cdMsg').textContent) || !$('cdHexBtn').disabled) fails.push('hex: 64 digits with 12 words chosen ask for 24 words');
+      $('cdHex').value = H.slice(0, 31); w.cdUpdate(); await w.cdHexGenerate(); if (w.hasSeed() || !$('cdHexBtn').disabled) fails.push('hex: 31 digits make no seed');
+      $('cdHex').value = H.slice(0, 31) + 'g'; w.cdUpdate(); if (!/only the digits 0 to 9 and the letters a to f/.test($('cdMsg').textContent)) fails.push('hex: a letter after f is refused');
+      w.confirm = () => false; $('cdHex').value = '1212121212121212121212121212121a'; w.cdUpdate(); await w.cdHexGenerate(); w.confirm = oc;
+      if (w.hasSeed()) fails.push('hex: digits that look non-random ask first, and No makes no seed');
+      words(24); w.setMethod('cards'); $('cdHex').value = H64; w.cdUpdate(); await w.cdHexGenerate(); if (first() !== entropyToMnemonic(hexb4(H64), wordlist)) fails.push('hex: 64 hex digits give 24 words'); words(12); }
+    $('cdCards').value = C25; $('cdHex').value = 'ab'; w.wipeSeed(); if ($('cdCards').value !== '' || $('cdHex').value !== '') fails.push('cards: wiping the seed empties the cards and hex boxes');
+    { w.setMethod('cards'); mode('dice'); w.setMethod('cards'); $('rolls').value = D50; await w.previewRefresh(); if ($('pvNote').textContent !== '') fails.push('cards: no dice preview words on the Cards & hex tab'); $('rolls').value = ''; }
+    if (!w.guideCanNext(2)) fails.push('cards: the guide can go on from the Cards & hex tab');
+    { w.setMethod('words'); const e = new w.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }); $('methodTabs').dispatchEvent(e); if (w.eval('method') !== 'cards') fails.push('cards: the arrow key moves from Word draw to Cards & hex'); }
+    w.setMethod('dice'); w.confirm = oc;
+  } catch (e) { fails.push('cards and hex: the probe crashed: ' + e.message); }
+  }
+  if (SEC(54, "const meta = w.document.querySelector('meta[http-equiv=\"Cont")) {
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
+  }
   return fails;
 }
 
-async function detect(mutated, fast) {
-  const w = loadPage(mutated, (win) => { win.__focus = []; win.HTMLElement.prototype.focus = function (o) { win.__focus.push([this.id, o]); }; });
-  try { return await detectIn(w, mutated, fast); }
-  finally { for (const f of ['detStop', 'reforgeStop', 'animStop']) { try { if (typeof w[f] === 'function') w[f](); } catch (e) { /* page may be broken */ } } try { w.close(); } catch (e) { /* already closed */ } }
+// Smarter mutation test (two steps). Step A runs only the probe sections that run the changed code (from the map in
+// tests/fixtures/mut-plan.json, made for this exact page and probe; see MUT_MAP below). A failure there counts only if the
+// failing section also fails when run alone on a fresh page (each section is proven to pass alone on the unchanged page).
+// Step B is the full probe, exactly as before, for every mutation step A did not catch; so a mutation survives only if the
+// full probe misses it, as without the map.
+const newPage = (mutated) => loadPage(mutated, (win) => { win.__focus = []; win.HTMLElement.prototype.focus = function (o) { win.__focus.push([this.id, o]); }; });
+const closePage = (w) => { for (const f of ['detStop', 'reforgeStop', 'animStop']) { try { if (typeof w[f] === 'function') w[f](); } catch (e) { /* page may be broken */ } } try { w.close(); } catch (e) { /* already closed */ } };
+async function detectOnce(mutated, fast, only) { const w = newPage(mutated); try { return await detectIn(w, mutated, fast, only); } finally { closePage(w); } }
+// Step A has two parts. A1: the section that caught this mutation in the last full run (tests/fixtures/mut-caught.json), run
+// alone, exactly as the map proved it passes on the unchanged page; any failure there counts. A2: the sections the map lists,
+// in probe order; a failure in the first of them counts at once (nothing but section 0 ran before it), a later one only if
+// that section also fails alone.
+async function detect(mutated, fast, plan, hint) {
+  if (fast && hint !== undefined) {
+    const a = await detectOnce(mutated, fast, new Set([hint]));
+    if (a.by) return Object.assign(a, { step: 'A1' });
+  }
+  const rest = (plan || []).filter((x) => x !== hint);
+  if (fast && rest.length) {
+    const a = await detectOnce(mutated, fast, new Set(rest));
+    if (a.by && (a.sec === undefined || a.sec === 0 || a.sec === Math.min(...rest))) return Object.assign(a, { step: 'A2' });
+    if (a.by) { const c = await detectOnce(mutated, fast, new Set([a.sec])); if (c.by && c.sec === a.sec) return Object.assign(c, { step: 'A2' }); }
+  }
+  return Object.assign(await detectOnce(mutated, fast, null), { step: 'B' });
 }
-async function detectIn(w, mutated, fast) {
+async function detectIn(w, mutated, fast, only) {
   if (!w.selfTestDone) return { by: 'page failed to run' };
   await ready(w);
   const badge = w.document.getElementById('selfTestBadge').textContent;
   if (!/PASSED/.test(badge)) return { by: 'self-test gate' };
-  let f; try { f = await probe(w, mutated, fast); } catch (e) { if (e instanceof ProbeStop) return { by: 'end-to-end probe (' + e.message + ')' }; return { by: 'end-to-end probe (page error: ' + String(e && e.message).slice(0, 60) + ')' }; }
+  probe.cur = 0; let f; try { f = await probe(w, mutated, fast, only); } catch (e) { if (e instanceof ProbeStop) return { by: 'end-to-end probe (' + e.message + ')', sec: probe.cur }; return { by: 'end-to-end probe (page error: ' + String(e && e.message).slice(0, 60) + ')', sec: probe.cur }; }
   if (process.env.MUT_DEBUG && f.length) console.log('PROBE FAILS:', f);
   return f.length ? { by: 'end-to-end probe (' + (process.env.MUT_ONLY === '^$' ? f.join(' || ') : f[0]) + ')' } : { by: null };
 }
@@ -3248,12 +3423,12 @@ const M = [
   ['preview: too-few-rolls FORGE wipes the gray words', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote(); previewRefresh();', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote();'],
   ["preview: gray note stays after FORGE", "wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body", "wdWipe(); drillEnd(); bkReset(!!words); document.body"],
   ["word draw: dice FORGE leaves old steps", "  madeMnemonic = words ? words.join(\" \") : \"\";\n  sumCtx = null;\n  wdWipe(); drillEnd();", "  madeMnemonic = words ? words.join(\" \") : \"\";\n  sumCtx = null;\n  drillEnd();"],
-  ['word draw: CLEAR leaves the boxes', '  wdClear();\n', ''],
+  ['word draw: CLEAR leaves the boxes', '  wdClear(); cdClear();\n', '  cdClear();\n'],
   ['word draw: CLEAR button leaves the words', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();'],
   ['word draw: CLEAR button leaves the flips', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdWords").value = "";\n  wdWipe(); wdUpdate();'],
   ['word draw: wipe leaves the steps', 'function wdWipe(){ const o = document.getElementById("wdOut"); o.textContent = ""; o.style.display = "none"; }', 'function wdWipe(){ const o = document.getElementById("wdOut"); o.style.display = "none"; }'],
   ['word draw: wipe leaves the panel open', 'function wdWipe(){ const o = document.getElementById("wdOut"); o.textContent = ""; o.style.display = "none"; }', 'function wdWipe(){ const o = document.getElementById("wdOut"); o.textContent = ""; }'],
-  ['word draw: self-test gate does not refresh the button (typing refreshes it anyway)', '  document.getElementById("childBtn").disabled = !on;\n  wdUpdate();\n}', '  document.getElementById("childBtn").disabled = !on;\n}', true],
+  ['word draw: self-test gate does not refresh the button (typing refreshes it anyway)', '  document.getElementById("childBtn").disabled = !on;\n  wdUpdate(); cdUpdate();\n}', '  document.getElementById("childBtn").disabled = !on;\n  cdUpdate();\n}', true],
   ['word draw: not offered on guide step 1', '<details id="wdBox" data-g="1">', '<details id="wdBox" data-g="2">'],
   ['word draw: words rows missing', '  st.wordBits.forEach((b, i) => add((1 + i) + ".",', '  st.wordBits.slice(0, 0).forEach((b, i) => add((1 + i) + ".",'],
   ['word draw: flips row missing', '  add("Flips", st.flips + "  (" + st.flips.length + " bits)");\n', ''],
@@ -3741,7 +3916,7 @@ const M = [
   ["stale: rolls missing from signature", "clean(v(\"rolls\"))", "\"\""],
   ["stale: word count missing from signature", "\"|\" + document.querySelector('input[name=\"words\"]:checked').value + \"|\" + clean(v(\"rolls\"))", "\"|\" + clean(v(\"rolls\"))"],
   ["stale: mode missing from signature", "\"rolls|\" + getMode() + \"|\"", "\"rolls|\" + \"|\"", true],  // equivalent: switching dice/coin always empties the rolls box (or reverts the switch), so the rolls part of the signature already changes
-  ["stale: kind always rolls", "seedKind = ctx ? \"rolls\" : \"wd\";", "seedKind = \"rolls\";"],
+  ["stale: kind always rolls", "seedKind = kind || (ctx ? \"rolls\" : \"wd\");", "seedKind = \"rolls\";"],
   ["stale: fingerprint and address left", "  document.getElementById(\"fingerprint\").textContent = \"\"; document.getElementById(\"address\").textContent = \"\";\n}\n// More than the minimum (v2.3.0)", "\n}\n// More than the minimum (v2.3.0)"],
   ["stale: no message", "else setResult(\"You changed the rolls, the word count, the dice/coin choice or the dice rules after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.\");", "else setResult(\"\\u2014\");"],
   ["stale: download uses typed rolls", "const rolls = (exCtx && exCtx.rolls) || document.getElementById(\"rolls\").value;", "const rolls = document.getElementById(\"rolls\").value;"],
@@ -4095,7 +4270,7 @@ const M = [
   ["summary: coin called dice", "c.coin ? c.count + \" coin flips\"", "false ? c.count + \" coin flips\""],
   ["summary: Keystone not said", "(c.keystone ? \"Keystone dice rules (each 6 counts as 0)\"", "(false ? \"Keystone dice rules (each 6 counts as 0)\""],
   ["summary: 24 words as 128 bits", "bits = n === 24 ? 256 : 128;", "bits = 128;"],
-  ["summary: dice bits as rolls", "Math.floor(c.coin ? c.count : c.count * Math.log2(6))", "Math.floor(c.count)"],
+  ["summary: dice bits as rolls", "c.coin ? c.count : c.count * Math.log2(6))", "c.coin ? c.count : c.count)"],
   ["summary: passphrase always NO", "\"Passphrase used: \" + (used ? \"YES (kept separately; it is not written here)\" : \"NO\"), fpT", "\"Passphrase used: NO\", fpT"],
   ["summary: fingerprint missing", "\"NO\"), fpT, document.getElementById(\"address\").textContent", "\"NO\"), document.getElementById(\"address\").textContent"],
   ["summary: no tick", "  });\n  bkTick(\"bk4\");\n}", "  });\n}"],
@@ -4428,7 +4603,7 @@ const M = [
   ["fixes: practice mode keeps VERIFY lines", "  verifySeq++; { const v = document.getElementById(\"verifyStatus\"); if(v.textContent){", "  { const v = document.getElementById(\"verifyStatus\"); if(false){"],
   ["fixes: tpub not compared on the test network", "    return {pairs, net: \"tuv\".includes(c) ? \"test\" : \"main\"};", "    return {pairs, net: \"main\"};"],
   ["fixes: Coldcard 30% rule gone", "  if(skewed && dev === \"coldcard\") return say(\"bad\"", "  if(false) return say(\"bad\""],
-  ["fixes: FORGE signature after the hash", "  exCtx = ctx; seedKind = ctx ? \"rolls\" : \"wd\"; seedSig = sig0 !== undefined ? sig0 : inputSig(seedKind);", "  exCtx = ctx; seedKind = ctx ? \"rolls\" : \"wd\"; seedSig = inputSig(seedKind);"],
+  ["fixes: FORGE signature after the hash", "  exCtx = ctx; seedKind = kind || (ctx ? \"rolls\" : \"wd\"); seedSig = sig0 !== undefined ? sig0 : inputSig(seedKind);", "  exCtx = ctx; seedKind = kind || (ctx ? \"rolls\" : \"wd\"); seedSig = inputSig(seedKind);"],
   ["fixes: words read back from the screen", "  return {words: madeMnemonic.split(\" \"), fp: document.getElementById(\"fingerprint\").textContent,", "  return {words: document.getElementById(\"genResult\").textContent.split(\"\\n\")[0].split(\" \"), fp: document.getElementById(\"fingerprint\").textContent,"],
   ["fixes: Uprv version wrong again", "\"045f18bc\",\"024285b5\",\"02575048\"]", "\"045f18bc\",\"02424c24\",\"02575048\"]"],
   ["fixes: a script output said to hold the key is trusted", "in a multisig wallet, confirm the change address in the wallet app that has all the keys.\", true);", "in a multisig wallet, confirm the change address in the wallet app that has all the keys.\", false);"],
@@ -4569,14 +4744,106 @@ const M = [
   ["match: the search limit said for a fingerprint too", "const scope = kind === \"addr\" || kind === \"tr\" ? \" Only", "const scope = true ? \" Only"],
   ["recovery sheet: the path line names one chain", "\"'/0/index (receive) and .../1/index (change)\\nAccount number: \"", "\"'/0/index\\nAccount number: \""],
   ["heir mode: the Detective button goes nowhere", "onclick=\"heirGo('check', 'detBlock')\"", "onclick=\"heirGo('tools', 'detBlock')\""],
+  ["cards: 10 not read as T", "(m[1] === \"10\" ? \"T\" : m[1])", "m[1]"],
+  ["cards: clubs and diamonds swapped", "C: \"\\u2663\", D: \"\\u2666\"", "C: \"\\u2666\", D: \"\\u2663\""],
+  ["cards: a word that is not a card ignored", "bad.push(m[0]); continue;", "continue;"],
+  ["cards: commas not read as spaces", ".replace(/\\uFE0F/g, \"\").replace(/[,;]/g, \" \")", ".replace(/\\uFE0F/g, \"\")"],
+  ["cards: bits counted as if each card went back", "bits += Math.log2(52 - run.size);", "bits += Math.log2(52);"],
+  ["cards: a repeat does not start a new run", "if(run.has(c)){ if(run.size < 52) again = true; run = new Set(); }", "if(run.has(c)){ if(run.size < 52) again = true; }"],
+  ["cards: fewer than 128 bits accepted", "!pr.bad.length && b.bits >= need);", "!pr.bad.length && b.bits >= need - 8);"],
+  ["cards: MAKE SEED does not check the bits again", "if(pr.bad.length || b.bits < need){ cdUpdate(); return; }", "if(pr.bad.length){ cdUpdate(); return; }"],
+  ["cards: button on before the self-test", "document.getElementById(\"cdBtn\").disabled = !(selfTestState === \"pass\" && ", "document.getElementById(\"cdBtn\").disabled = !("],
+  ["cards: hashed with letters for the suits", "rollsToMnemonic(pr.cards.join(\" \"), wc)", "rollsToMnemonic(pr.cards.join(\" \").replace(/\\u2660/g, \"S\"), wc)"],
+  ["cards: hashed without spaces", "rollsToMnemonic(pr.cards.join(\" \"), wc)", "rollsToMnemonic(pr.cards.join(\"\"), wc)"],
+  ["cards: an unshuffled deck is not questioned", "if((step(1) || step(-1)) && !confirm(", "if(false && !confirm("],
+  ["cards: the seed is recorded as Word draw", "await finishSeed(mnemonic, null, sig0, \"cd\", {cards: pr.cards.length, bits: b.bits});", "await finishSeed(mnemonic, null, sig0, \"wd\", {cards: pr.cards.length, bits: b.bits});"],
+  ["cards: changing the cards keeps the seed", "return \"cd|\" + document.querySelector('input[name=\"words\"]:checked').value + \"|\" + cdParse(v(\"cdCards\")).cards.join(\" \");", "return \"cd|\";"],
+  ["cards: summary leaves out the bits", "Math.floor(c.cd ? c.bits : c.coin", "Math.floor(c.cd ? c.count : c.coin"],
+  ["cards: wiping the seed keeps the cards", "  wdClear(); cdClear();\n", "  wdClear();\n"],
+  ["cards: dice preview shown on the Cards tab", "method === \"words\" || method === \"cards\" || !rolls", "method === \"words\" || !rolls"],
+  ["cards: the guide cannot go on", "if(n === 2 && (method === \"words\" || method === \"cards\")) return true;", "if(n === 2 && method === \"words\") return true;"],
+  ["cards: arrow keys skip the tab", "const order = [\"dice\", \"coin\", \"words\", \"cards\"];", "const order = [\"dice\", \"coin\", \"words\"];"],
+  ["cards: the tab never opens", "if(m === \"cards\"){ method = \"cards\"; syncMethodUi(); return; }", ""],
+  ["hex: hex read as decimal", "hx.match(/../g).map(x => parseInt(x, 16))", "hx.match(/../g).map(x => parseInt(x, 10))"],
+  ["hex: 0x not removed", ".trim().replace(/^0x/i, \"\")", ".trim()"],
+  ["hex: MAKE SEED does not check the length", "if(!/^[0-9a-f]+$/.test(hx) || hx.length !== (wc === 24 ? 64 : 32)){ cdUpdate(); return; }", "if(!/^[0-9a-f]+$/.test(hx)){ cdUpdate(); return; }"],
+  ["hex: non-random digits are not questioned", "if(kinds < 6 && !confirm(", "if(false && !confirm("],
+  ["hex: 64 digits with 12 words not explained", "\"64 hex digits make a 24-word seed: choose 24 words above.\"", "\"Too many hex digits.\""],
+  ["hex: a letter after f not refused", "else if(/[^0-9a-f]/.test(hx)) msg = ", "else if(false) msg = "],
+  ["hex: summary says hashed", "\" hex digits, used directly as the randomness\"", "\" hex digits\""],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
   let badT = 0; for (const [name, find] of M) { const c = html.split(find).length - 1; if (c !== 1) { badT++; console.log(`target occurs ${c}x: ${name}`); } }
   console.log(badT ? `${badT} bad target(s)` : 'all mutation targets occur exactly once'); process.exit(badT ? 1 : 0);
 }
+const hex256 = (x) => nc.createHash('sha256').update(x).digest('hex');
+const PROBE_HASH = hex256(probe.toString()), HTML_HASH = hex256(html);
+const SECS = [...new Set([...probe.toString().matchAll(/SEC\((\d+), /g)].map((m) => +m[1]))].sort((a, b) => a - b), NSEC = SECS.length; // section numbers (a number used twice joins two parts)
+
+// MUT_MAP=file.json makes the map for step A: each probe section (1 to NSEC-1) runs alone on a fresh copy of the unchanged
+// page, after section 0, while V8 records which code runs. A section that fails alone is reported and left out of the map.
+// For each mutation target inside a <script>, the map lists the sections that run its code. MUT_MAP_SHARD=i/n splits the
+// sections across machines; MUT_MAP_MERGE=a.json,b.json joins the parts into MUT_MAP.
+if (process.env.MUT_MAP_MERGE) {
+  const parts = process.env.MUT_MAP_MERGE.split(',').map((f) => JSON.parse(fs.readFileSync(f, 'utf8')));
+  const out = { html: HTML_HASH, probe: PROBE_HASH, sections: NSEC, secTime: {}, secFail: {}, outside: parts[0].outside, plan: {} };
+  for (const pt of parts) { if (pt.html !== HTML_HASH || pt.probe !== PROBE_HASH) { console.log('map part is for another page or probe'); process.exit(1); }
+    Object.assign(out.secTime, pt.secTime); Object.assign(out.secFail, pt.secFail); for (const [n, l] of Object.entries(pt.plan)) out.plan[n] = [...(out.plan[n] || []), ...l]; }
+  const byTime = (a, b) => (out.secTime[a] || 0) - (out.secTime[b] || 0) || a - b;
+  for (const n of Object.keys(out.plan)) out.plan[n] = [...new Set(out.plan[n])].sort(byTime);
+  const missing = SECS.slice(1).filter((i) => !(i in out.secTime) && !(i in out.secFail));
+  if (missing.length) { console.log('map parts leave out sections ' + missing.join(' ')); process.exit(1); }
+  fs.writeFileSync(process.env.MUT_MAP, JSON.stringify(out));
+  console.log('map: ' + Object.keys(out.plan).length + ' targets mapped, ' + out.outside.length + ' outside any script, sections failing alone: ' + (Object.keys(out.secFail).join(' ') || 'none'));
+  process.exit(Object.keys(out.secFail).length ? 1 : 0);
+}
+if (process.env.MUT_MAP) {
+  const inspector = await import('node:inspector/promises');
+  const S = new inspector.Session(); S.connect();
+  const lens = new Map(); S.on('Debugger.scriptParsed', (m) => { if (m.params.url === 'https://example.org/') lens.set(m.params.scriptId, m.params.length); });
+  await S.post('Debugger.enable'); await S.post('Profiler.enable'); await S.post('Profiler.startPreciseCoverage', { callCount: true, detailed: true });
+  // inline <script> blocks of the page, by position
+  const blocks = []; { const lo = html.toLowerCase(); let i = 0; for (;;) { const a = lo.indexOf('<script', i); if (a < 0) break; const b = html.indexOf('>', a) + 1, c = lo.indexOf('</script', b); blocks.push({ start: b, end: c, len: c - b }); i = c + 1; } }
+  const tg = [], outside = [];
+  for (const [name, find] of M) { const at = html.indexOf(find), b = blocks.find((x) => at >= x.start && at < x.end); if (at < 0) continue; if (!b) { outside.push(name); continue; }
+    const s0 = at - b.start, e0 = Math.min(s0 + find.length, b.len) - 1; tg.push({ name, len: b.len, pts: [s0, (s0 + e0) >> 1, e0] }); }
+  const ran = (fns, x) => { let best = null; for (const f of fns) for (const r of f.ranges) if (r.startOffset <= x && x < r.endOffset && (!best || r.endOffset - r.startOffset < best.endOffset - best.startOffset)) best = r; return !!best && best.count > 0; };
+  const sh = process.env.MUT_MAP_SHARD ? process.env.MUT_MAP_SHARD.split('/').map(Number) : [0, 1];
+  const out = { html: HTML_HASH, probe: PROBE_HASH, sections: NSEC, secTime: {}, secFail: {}, outside, plan: {} };
+  const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
+  for (const [k, i] of SECS.slice(1).entries()) {
+    if (k % sh[1] !== sh[0]) continue;
+    if (process.env.MUT_MAP_ONLY && !process.env.MUT_MAP_ONLY.split(',').includes(String(i))) continue; // map only these sections
+    const seen = new Set(lens.keys()), w = newPage(html); let f, t0;
+    try { await ready(w); if (!/PASSED/.test(w.document.getElementById('selfTestBadge').textContent)) { console.log('the unchanged page fails its self-test'); process.exit(1); }
+      const hooks = { afterBase: async () => { await sleep(50); await S.post('Profiler.takePreciseCoverage'); t0 = Date.now(); } };
+      try { f = await probe(w, html, false, new Set([i]), hooks); } catch (e) { f = ['section crashed: ' + (e && e.message)]; }
+      await sleep(200);
+    } finally { closePage(w); }
+    const ms = Date.now() - t0, cov = (await S.post('Profiler.takePreciseCoverage')).result.filter((c) => lens.has(c.scriptId) && !seen.has(c.scriptId));
+    if (f.length) { out.secFail[i] = f; console.log('SECTION ' + i + ' FAILS ALONE: ' + f.slice(0, 3).join(' | ')); continue; }
+    out.secTime[i] = ms; let n = 0;
+    for (const t of tg) { if (cov.some((c) => lens.get(c.scriptId) === t.len && t.pts.some((x) => ran(c.functions, x)))) { (out.plan[t.name] = out.plan[t.name] || []).push(i); n++; } }
+    console.log('section ' + i + ' passes alone (' + Math.round(ms / 1000) + ' s) and runs the code of ' + n + ' targets');
+  }
+  fs.writeFileSync(process.env.MUT_MAP, JSON.stringify(out)); console.log('map part written: ' + process.env.MUT_MAP);
+  process.exit(Object.keys(out.secFail).length ? 1 : 0);
+}
+
 const base = await detect(html);
 R.ok(base.by === null, "control: the unmodified file passes the self-test and every probe" + (base.by ? " [" + base.by + "]" : ""));
+// the map for step A, used only if it was made for this exact page and probe
+let PLAN = null;
+if (!process.env.MUT_NOPLAN) { try { const P = JSON.parse(fs.readFileSync(new URL('./fixtures/mut-plan.json', import.meta.url), 'utf8'));
+  if (P.html === HTML_HASH && P.probe === PROBE_HASH) { PLAN = P.plan; console.log('step A map: ' + Object.keys(PLAN).length + ' targets'); } else console.log('tests/fixtures/mut-plan.json was made for another page or probe: every mutation runs the full probe (make a new map with MUT_MAP)'); } catch (e) { console.log('no step A map (tests/fixtures/mut-plan.json): every mutation runs the full probe'); } }
+
+// Hints for step A1 (only with a valid map, which proves every section passes alone): the check that caught each mutation in
+// the last full run, as its message; the section is found by where that message is written in the probe.
+const HINT = {};
+if (PLAN) { try { const C = JSON.parse(fs.readFileSync(new URL('./fixtures/mut-caught.json', import.meta.url), 'utf8')), src = probe.toString(), at = [...src.matchAll(/SEC\((\d+), /g)].map((m) => [m.index, +m[1]]);
+  let n = 0; for (const [name, msg] of Object.entries(C)) { const i = src.indexOf(msg); if (i < 0 || src.indexOf(msg, i + 1) >= 0) continue; let sec = 0; for (const [p0, k] of at) { if (p0 < i) sec = k; else break; } if (sec > 0) { HINT[name] = sec; n++; } }
+  console.log('step A1 hints: ' + n); } catch (e) { console.log('no step A1 hints (tests/fixtures/mut-caught.json)'); } }
 
 const survivors = [];
 const ONLY = process.env.MUT_ONLY ? new RegExp(process.env.MUT_ONLY) : null; // optional: run only the mutations whose name matches
@@ -4613,8 +4880,8 @@ for (const mi of ORDER) {
   const count = html.split(find).length - 1;
   if (count !== 1) { R.ok(false, `mutation target must occur exactly once (${count}x): ${name}`); continue; }
   if (DONE.has(name)) { const d = DONE.get(name); R.ok(d.by !== null || !!equivalent, d.by ? `${name}: caught by ${d.by} (earlier run)` : `${name}: ${equivalent ? 'survives as expected' : 'SURVIVED (a hole in the safety net)'} (earlier run)`); if (!d.by && !equivalent) survivors.push(name); continue; }
-  const t0 = Date.now(), res = await detect(html.replace(find, () => rep), !process.env.MUT_ALLFAILS);
-  if (process.env.MUT_RESULTS) fs.appendFileSync(process.env.MUT_RESULTS, JSON.stringify({ name, s: Math.round((Date.now() - t0) / 1000), by: res.by }) + '\n');
+  const t0 = Date.now(), res = await detect(html.replace(find, () => rep), !process.env.MUT_ALLFAILS, equivalent ? null : PLAN && PLAN[name], equivalent ? undefined : HINT[name]); // a known-harmless mutation goes straight to step B
+  if (process.env.MUT_RESULTS) fs.appendFileSync(process.env.MUT_RESULTS, JSON.stringify({ name, s: Math.round((Date.now() - t0) / 1000), by: res.by, step: res.step, sec: res.sec }) + '\n');
   if (equivalent) { R.ok(true, `${name}: behaviorally equivalent, ${res.by ? 'caught by ' + res.by : 'survives as expected'}`); continue; }
   R.ok(res.by !== null, res.by ? `${name}: caught by ${res.by}` : `${name}: SURVIVED (a hole in the safety net)`);
   if (!res.by) survivors.push(name);
