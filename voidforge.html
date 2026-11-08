@@ -4439,6 +4439,28 @@ async function psbtCheckChange(res, root, fpw, net){
   }
   return res;
 }
+// v2.9.0: with the words typed, an output without key information can still be this wallet's own address. Looks for it among
+// the first PSBT_FIND receive and change addresses of accounts 0 to 2, for the address type of that output.
+const PSBT_FIND = 50;
+async function psbtFindUnmarked(res, root, net){
+  res.searched = !!root; if(!root) return res;
+  const todo = res.outs.filter(o => !o.fps.length && o.address && !(o.script && o.script[0] === 0x6a) && addressTypeOf(o.address));
+  for(const t of new Set(todo.map(o => addressTypeOf(o.address)))){
+    const want = new Map(todo.filter(o => addressTypeOf(o.address) === t && !o.found).map(o => [o.address, o]));
+    for(let acct = 0; acct <= 2 && want.size; acct++) for(const chain of [1, 0]){
+      if(!want.size) break;
+      const rows = await walletAddressesFrom(root, [[SCRIPT_TYPES[t].purpose, true], [NETS[net].coin, true], [acct, true]], t, net, chain, 0, PSBT_FIND);
+      for(const r of rows) if(want.has(r.address)){ const o = want.get(r.address); o.found = {chain, index: r.index, acct, type: t, path: r.path}; want.delete(r.address); }
+    }
+  }
+  return res;
+}
+function psbtUnmarkedLine(x, searched){
+  if(x.found) return x.found.chain === 1
+    ? "\n   CHANGE, FOUND: this wallet's change address #" + x.found.index + " (" + x.found.path + ", " + SCRIPT_TYPES[x.found.type].label + "), made from the words above, though the PSBT does not mark it"
+    : "\n   PAID TO THIS WALLET: its own receive address #" + x.found.index + " (" + x.found.path + ", " + SCRIPT_TYPES[x.found.type].label + "), not marked as change";
+  return "\n   no wallet key information: treat as a payment to someone else" + (searched ? " (it is not among this wallet's first " + PSBT_FIND + " receive and change addresses of accounts 0 to 2)" : "");
+}
 // The checks this tool can do. "Blocking" ones decide between a clean result and NO CLEAN VERDICT.
 function psbtChecks(res, fpWallet){
   const C=[], add=(ok,text,blocking)=>C.push({ok,text,blocking:!!blocking});
@@ -4466,8 +4488,10 @@ function psbtChecks(res, fpWallet){
   if(nUnch) add(false, nUnch + " output" + (nUnch===1?" names":"s name") + " this wallet but its key record could not be checked (an unusual path). Confirm the address in your wallet.", false);
   if(nUnv) add(false, nUnv + " output" + (nUnv===1?" is":"s are") + " marked as change by the app that made the PSBT. That mark can be forged, and this page cannot check it without the wallet's words: type them in CHECK A BACKUP to check it, or confirm the address in your wallet.", false);
   if(nOther) add(false, nOther + " output" + (nOther===1?" carries":"s carry") + " key information of another wallet (a different fingerprint than the words above).", false);
-  const withKeys=res.outs.filter(x=>x.fps.length).length;
-  if(!res.raw && !withKeys) add(withKeys>0, withKeys>0 ? withKeys + " output" + (withKeys===1?" is":"s are") + " marked as this wallet's own change." : "No output is marked as change. Everything not sent to someone goes to the fee, so check that you meant to send all of it.", false);
+  const withKeys=res.outs.filter(x=>x.fps.length).length, found=res.outs.filter(x=>x.found), spendable=res.outs.filter(x=>!(x.script && x.script[0]===0x6a));
+  if(found.length) add(true, found.length + " output" + (found.length===1?" without a change mark is":"s without a change mark are") + " this wallet's own address" + (found.length===1?"":"es") + ", found from the words above.", false);   // v2.9.0
+  if(res.searched && spendable.length>=2 && !found.length && !res.outs.some(x=>x.change==="verified")) add(false, "NO CHANGE COMES BACK: none of the " + spendable.length + " outputs is this wallet's (checked with the words above: the change marks, and the first " + PSBT_FIND + " receive and change addresses of accounts 0 to 2). If you expected change, do not sign until you know where it goes.", false);   // v2.9.0
+  if(!res.raw && !withKeys && !found.length) add(withKeys>0, withKeys>0 ? withKeys + " output" + (withKeys===1?" is":"s are") + " marked as this wallet's own change." : "No output is marked as change. Everything not sent to someone goes to the fee, so check that you meant to send all of it.", false);
   return C;
 }
 function psbtVerdict(res, fpWallet){
@@ -4495,7 +4519,7 @@ function psbtReport(res, fpWallet){
   L.push("");
   res.ins.forEach((x,i)=>{ L.push("INPUT " + i + ": " + (x.amount===null ? (x.prevMismatch ? "amount NOT trusted (the previous transaction included is not the one this input spends)" : "amount unknown (the PSBT does not include the coin being spent)") : btcText(x.amount)) + (x.address ? "\n   from " + x.address : "") + "\n   coin " + x.txid + ":" + x.vout + "\n   " + (x.final ? "finalized" : x.sigs + " signature" + (x.sigs===1?"":"s") + " so far")); });
   L.push("");
-  res.outs.forEach((x,i)=>{ L.push("OUTPUT " + i + ": " + btcText(x.amount) + "\n   to " + x.address + (x.script && x.script[0]===0x6a ? "\n   data note: " + opReturnText(x.script) + "\n   (this output carries data, not money, and cannot be spent)" : "") + (x.fps.length ? psbtChangeLine(x) : (x.script && x.script[0]===0x6a ? "" : "\n   no wallet key information: treat as a payment to someone else"))); });
+  res.outs.forEach((x,i)=>{ L.push("OUTPUT " + i + ": " + btcText(x.amount) + "\n   to " + x.address + (x.script && x.script[0]===0x6a ? "\n   data note: " + opReturnText(x.script) + "\n   (this output carries data, not money, and cannot be spent)" : "") + (x.fps.length ? psbtChangeLine(x) : (x.script && x.script[0]===0x6a ? "" : psbtUnmarkedLine(x, res.searched)))); });
   L.push("");
   L.push(res.fee===null ? "FEE: cannot be worked out because some inputs have no amount." : "FEE: " + btcText(res.fee) + (res.totalOut>0n ? " (" + (Number(res.fee*10000n/res.totalOut)/100).toFixed(2) + "% of the total of all outputs)" : ""));
   L.push(res.rbf ? "REPLACEABLE (RBF): yes. While it is unconfirmed it can be replaced by a version that pays a higher fee." : "REPLACEABLE (RBF): no. It cannot be replaced by a higher-fee version, so a low fee cannot be bumped.");
@@ -4711,6 +4735,7 @@ async function showPsbt(bytes){
     let fpw=null, root=null; const r=await checkPhrase(document.getElementById("phrase").value);
     if(r.ok){ const sd=await mnemonicToSeed(r.mnemonic, document.getElementById("verifyPass").value); fpw=await fingerprintFromSeed(sd); root=await masterFromSeed(sd); }
     await psbtCheckChange(res, root, fpw, net);   // fixes release: a change mark is checked against the wallet's own key, never trusted
+    await psbtFindUnmarked(res, root, net);   // v2.9.0: this wallet's change without a mark
     st.className="status ok"; st.textContent="Read OK. Check every address and amount below against what you expect.";
     o.textContent=psbtReport(res, fpw); o.style.display="block";
   } catch(e){ st.className="status bad"; st.textContent=e.message; }

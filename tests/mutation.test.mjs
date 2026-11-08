@@ -2455,6 +2455,25 @@ async function probe(w, mutated, fast) {
       if (!$('xorOut').textContent.includes('silent') || !/Combined 3 parts\. Master fingerprint/.test($('xorStatus').textContent)) fails.push('seed xor: COMBINE shows the seed and its fingerprint');
       w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('xorOut').textContent !== '' || $('xorIn').value !== '' || w.eval('xorCtx') !== null) fails.push('seed xor: CLEAR ALL forgets the parts');
       w.document.querySelector('input[name=xorMode][value=split]').checked = true; w.xorModeChange(); }
+    { // v2.9.0: Inspect a transaction finds this wallet's change without a mark (PSBTs from btc-signer, keys from @scure)
+      const AB = 'abandon '.repeat(11) + 'about', rt = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, '')), kp = (p) => rt.derive(p).publicKey, oth = HDKey.fromMasterSeed(new Uint8Array(32).fill(7)).derive('m/0/0').publicKey, oth2 = HDKey.fromMasterSeed(new Uint8Array(32).fill(9)).derive('m/0/1').publicKey;
+      const mk = (outs) => { const t = new btc.Transaction(); t.addInput({ txid: new Uint8Array(32).fill(1), index: 0, witnessUtxo: { script: btc.p2wpkh(kp("m/84'/0'/0'/0/0")).script, amount: 300000n } }); for (const o of outs) t.addOutput(o); return Buffer.from(t.toPSBT(0)).toString('base64'); };
+      const run = async (b64, words = AB) => { $('phrase').value = words; $('verifyPass').value = ''; $('psbtInput').value = b64; $('psbtNet').value = 'main'; await w.runPsbt(); return $('psbtOut').textContent; };
+      let o = await run(mk([{ script: btc.p2wpkh(oth).script, amount: 100000n }, { script: btc.p2wpkh(kp("m/84'/0'/2'/1/49")).script, amount: 190000n }]));
+      if (!/CHANGE, FOUND: this wallet's change address #49 \(m\/84'\/0'\/2'\/1\/49, Native SegWit/.test(o) || !/1 output without a change mark is this wallet's own address/.test(o)) fails.push('unmarked change: change address 49 of account 2 is found');
+      if (!/treat as a payment to someone else \(it is not among this wallet's first 50 receive and change addresses of accounts 0 to 2\)/.test(o)) fails.push('unmarked change: the other output says how far it was searched');
+      o = await run(mk([{ script: btc.p2wpkh(oth).script, amount: 100000n }, { script: btc.p2tr(kp("m/86'/0'/0'/0/3").slice(1)).script, amount: 190000n }]));
+      if (!/PAID TO THIS WALLET: its own receive address #3 \(m\/86'\/0'\/0'\/0\/3, Taproot/.test(o)) fails.push('unmarked change: a receive address of this wallet is named');
+      o = await run(mk([{ script: btc.p2wpkh(oth).script, amount: 100000n }, { script: btc.p2wpkh(kp("m/84'/0'/0'/1/50")).script, amount: 190000n }]));
+      if (/CHANGE, FOUND/.test(o) || !/NO CHANGE COMES BACK: none of the 2 outputs is this wallet's/.test(o)) fails.push('unmarked change: address 50 is past the search, and nothing coming back is said');
+      o = await run(mk([{ script: btc.p2wpkh(oth).script, amount: 100000n }, { script: btc.p2wpkh(kp("m/84'/0'/3'/1/0")).script, amount: 190000n }]));
+      if (/CHANGE, FOUND/.test(o)) fails.push('unmarked change: account 3 is past the search');
+      o = await run(mk([{ script: btc.p2pkh(kp("m/44'/0'/1'/0/0")).script, amount: 290000n }]));
+      if (!/PAID TO THIS WALLET: its own receive address #0 \(m\/44'\/0'\/1'\/0\/0, Legacy/.test(o) || /NO CHANGE COMES BACK/.test(o)) fails.push('unmarked change: legacy addresses are searched, and one output needs no change');
+      o = await run(mk([{ script: btc.p2wpkh(oth).script, amount: 100000n }, { script: btc.p2wpkh(oth2).script, amount: 190000n }]), '');
+      if (/not among this wallet's first/.test(o) || /NO CHANGE COMES BACK/.test(o)) fails.push('unmarked change: without the words nothing is searched or claimed');
+      o = await run(mk([{ script: btc.p2sh(btc.p2wpkh(kp("m/49'/0'/0'/1/2"))).script, amount: 100000n }, { script: btc.p2wpkh(oth).script, amount: 190000n }]));
+      if (!/CHANGE, FOUND: this wallet's change address #2 \(m\/49'\/0'\/0'\/1\/2, Nested SegWit/.test(o)) fails.push('unmarked change: nested SegWit change is found'); }
     w.watchCheck(); if ($('watchStatus').textContent !== 'NO SIGN FOUND of extensions, translators or other scripts on this page right now.' || !/^That does not make it safe\./.test($('watchOut').textContent)) fails.push('watch check: no sign found, never safe');
     { const s = w.document.createElement('script'); s.src = 'chrome-extension://x/i.js'; w.document.head.appendChild(s); s.remove();
       $('phrase').setAttribute('data-unknown-helper', '1'); w.document.body.appendChild(w.document.createElement('grammarly-extension')); w.document.body.appendChild(w.document.createElement('div')); w.ethereum = {}; await sleep(450);
@@ -3059,8 +3078,8 @@ const M = [
   ['dictionary: topic filter never resets', 'b.onclick = () => { dictCat = c;', 'b.onclick = () => { dictCat = dictCat;'],
   ['dictionary: pressed state not shown', 'x.setAttribute("aria-pressed", x === b ? "true" : "false"));', 'x.setAttribute("aria-pressed", "false"));'],
   ['dictionary: no-match line loses the topic', '(dictCat === "All" ? "" : " in " + dictCat)', '""'],
-  ["wallet view: coin type ignored", "[NETS[net].coin, true], [acct, true]]", "[0, true], [acct, true]]"],
-  ["wallet view: account ignored", "[NETS[net].coin, true], [acct, true]]", "[NETS[net].coin, true], [0, true]]"],
+  ["wallet view: coin type ignored", "steps || [[SCRIPT_TYPES[type].purpose, true], [NETS[net].coin, true], [acct, true]]", "steps || [[SCRIPT_TYPES[type].purpose, true], [0, true], [acct, true]]"],
+  ["wallet view: account ignored", "steps || [[SCRIPT_TYPES[type].purpose, true], [NETS[net].coin, true], [acct, true]]", "steps || [[SCRIPT_TYPES[type].purpose, true], [NETS[net].coin, true], [0, true]]"],
   ["wallet view: chain ignored", "for(const [i,h] of steps.concat([[chain, false]]))", "for(const [i,h] of steps.concat([[0, false]]))"],
   ["wallet view: second page shows the first", "rows = await walletAddressesFrom(root, path, type, net, chain, wvFrom, WV_PAGE);", "rows = await walletAddressesFrom(root, path, type, net, chain, 0, WV_PAGE);"],
   ["wallet view: no QR button on a row", "  li.appendChild(b); return li;", "  return li;"],
@@ -4476,6 +4495,14 @@ const M = [
   ["seed xor: the parts not printed on separate pages", "const box = add(\"ps-part\", \"\");", "const box = add(\"\", \"\");"],
   ["seed xor: CLEAR ALL keeps the parts", "  clearXor();   // v2.9.0: Seed XOR parts (secret)\n", ""],
   ["seed xor: new words keep the old parts", "if(xorCtx && document.querySelector('input[name=xorMode]:checked').value === \"split\") clearXor(); });", "});"],
+  ["unmarked change: never searched", "    await psbtFindUnmarked(res, root, net);   // v2.9.0: this wallet's change without a mark\n", ""],
+  ["unmarked change: only 49 addresses searched", "const PSBT_FIND = 50;", "const PSBT_FIND = 49;"],
+  ["unmarked change: account 2 not searched", "for(let acct = 0; acct <= 2 && want.size; acct++)", "for(let acct = 0; acct <= 1 && want.size; acct++)"],
+  ["unmarked change: change chain not searched", "for(const chain of [1, 0]){\n      if(!want.size) break;", "for(const chain of [0]){\n      if(!want.size) break;"],
+  ["unmarked change: receive and change mixed up", "return x.found.chain === 1\n    ?", "return x.found.chain === 0\n    ?"],
+  ["unmarked change: nothing coming back not said", "if(res.searched && spendable.length>=2 && !found.length", "if(false && spendable.length>=2 && !found.length"],
+  ["unmarked change: one output warned", "spendable.length>=2 && !found.length", "spendable.length>=1 && !found.length"],
+  ["unmarked change: searched without the words", "res.searched = !!root; if(!root) return res;", "res.searched = true; if(!root) return res;"],
   ["heir mode: the Detective button goes nowhere", "onclick=\"heirGo('check', 'detBlock')\"", "onclick=\"heirGo('tools', 'detBlock')\""],
 ];
 
