@@ -1431,6 +1431,16 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div class="btn-row" style="margin-top:8px;"><button type="button" id="kcBtn" onclick="kcUi()" disabled>CHECK THIS SEED</button><button type="button" class="secondary small" onclick="kcClear()">CLEAR</button></div>
       <div class="status" id="kcStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
     </div>
+    <div class="sec-block" id="lbBlock">
+      <h3 class="sec">Read a label file (BIP-329)<span class="tag tag-private">PRIVATE</span></h3>
+      <p class="hint" style="margin:0 0 6px;">Wallet apps such as Sparrow, Bitcoin Core and Nunchuk can export their labels (&ldquo;Rent, March&rdquo;, &ldquo;Savings&rdquo;) as a BIP-329 file. Paste it or choose it: VOIDFORGE lists every label and, with the seed words typed above, says which labeled addresses are this seed&rsquo;s (the first 100 receive and change addresses of each address type, account 0). Labels are private: they link coins to you. The file is only read here, never stored or sent.</p>
+      <textarea id="lbIn" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Label file (BIP-329, one JSON record per line)" placeholder='{"type": "addr", "ref": "bc1q...", "label": "Savings"}' oninput="lbClear(true)"></textarea>
+      <input type="file" id="lbFileIn" accept=".jsonl,.json,.txt,text/plain,application/json" aria-label="Choose the label file" onchange="lbFile()" style="width:100%; margin-top:6px;">
+      <label style="display:block; margin-top:6px; font-size:13px;"><input type="checkbox" id="lbPrintText"> Print the label text too (labels can be private)</label>
+      <div class="btn-row" style="margin-top:8px;"><button type="button" id="lbBtn" onclick="lbUi()" disabled>READ LABELS</button><button type="button" class="secondary small" id="lbPrintBtn" onclick="printLabels()" disabled>PRINT LABEL SHEET</button><button type="button" class="secondary small" onclick="lbClear()">CLEAR</button></div>
+      <div class="status" id="lbStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+      <pre id="lbOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
+    </div>
   </div>
   </div>
 
@@ -5505,7 +5515,7 @@ async function sendToVerify(){
   const words = madeMnemonic;
   const box = document.getElementById("phrase");
   box.value = words; clearChild(); resetAddrScan();   // v2.4.0: as typing does: a child seed belongs to the old parent words
-  detClear(true); kcClear(true);   // v2.8.0 / v2.9.0: a Detective or wallet file result belongs to the old words
+  detClear(true); kcClear(true); lbClear(true);   // v2.8.0 / v2.9.0: a Detective or wallet file result belongs to the old words
   await verify();
   reveal(box, {behavior:"smooth", block:"center"});
 }
@@ -5937,6 +5947,82 @@ function kcFile(){
 function kcClear(keepText){
   if(!keepText){ document.getElementById("kcIn").value = ""; document.getElementById("kcFileIn").value = ""; }
   const st = document.getElementById("kcStatus"); st.textContent = ""; st.className = "status";
+}
+// ===== Read a label file (BIP-329) (v2.9.0). Uses the words and passphrase typed at the top of CHECK A BACKUP. =====
+// A BIP-329 file (from Sparrow, Bitcoin Core, Nunchuk...) has one JSON record per line: {"type", "ref", "label", ...}. It names
+// addresses, transactions, outputs and keys in the user's own words, so it is PRIVATE: it is only read here, never stored or sent.
+// The page shows the labels and which address of this seed each labeled address is, so an heir can tell which wallet they belong to.
+const LB_TYPES = {addr: "address", tx: "transaction", output: "output", input: "input", pubkey: "public key", xpub: "account key"};
+const LB_SCAN = 100;   // receive and change addresses looked at per address type, account 0
+function lbParse(text){
+  const recs = []; let bad = 0;
+  for(const line of String(text || "").split(/\r?\n/)){
+    const l = line.trim(); if(!l) continue;
+    let o; try { o = JSON.parse(l); } catch(e) { bad++; continue; }
+    if(!o || typeof o !== "object" || !LB_TYPES[o.type] || typeof o.ref !== "string" || !o.ref) { bad++; continue; }
+    recs.push({type: o.type, ref: o.ref.trim(), label: typeof o.label === "string" ? o.label : "", origin: typeof o.origin === "string" ? o.origin : "", spendable: o.spendable});
+  }
+  return {recs, bad};
+}
+async function lbRead(text, phrase, vp){
+  const {recs, bad} = lbParse(text);
+  if(!recs.length) return {state: "bad", text: bad ? "No BIP-329 labels found: " + bad + " line" + (bad === 1 ? " is" : "s are") + " not label records. A label file has one {\"type\": ..., \"ref\": ..., \"label\": ...} record per line." : "Paste the label file first, or choose it (Sparrow: File, Export Labels; other apps: Export labels, BIP-329).", rows: []};
+  const count = {}; for(const r of recs) count[r.type] = (count[r.type] || 0) + 1;
+  const head = "Label file: " + recs.length + " label" + (recs.length === 1 ? "" : "s") + " (" + Object.keys(count).map(k => count[k] + " " + LB_TYPES[k] + (count[k] === 1 ? "" : "es".slice(LB_TYPES[k].endsWith("s") ? 0 : 1))).join(", ") + ")" + (bad ? "; " + bad + " line" + (bad === 1 ? "" : "s") + " could not be read" : "") + ".";
+  const src = await detSource(phrase, vp), addrs = recs.filter(r => r.type === "addr");
+  const found = new Map(); let note = "";
+  if(src.error || !src.mnemonic){ note = src.error ? "Type the seed words above to see which labeled addresses are this seed's." : "These are Electrum seed words: the addresses are not matched (BIP39 words only)."; }
+  else if(addrs.length){
+    const want = new Set(addrs.map(r => /^(bc1|tb1)/i.test(r.ref) ? r.ref.toLowerCase() : r.ref)), types = new Set(), nets = new Set();
+    for(const a of want){ const t = addressTypeOf(a), n = addressNetOf(a); if(t && n){ types.add(t); nets.add(n); } }
+    for(const [label, pass] of src.passes){ const seed = await mnemonicToSeed(src.mnemonic, pass);
+      for(const net of nets) for(const t of types) for(const chain of [0, 1]){
+        for(const r of await walletAddresses(seed, t, net, 0, chain, 0, LB_SCAN)) if(want.has(r.address) && !found.has(r.address)) found.set(r.address, (chain ? "change" : "receive") + " address #" + r.index + ", " + SCRIPT_TYPES[t].label + ", account 0, " + label);
+      } }
+  }
+  const rows = recs.map(r => { const key = /^(bc1|tb1)/i.test(r.ref) ? r.ref.toLowerCase() : r.ref;
+    const where = r.type !== "addr" ? "" : found.has(key) ? "this seed: " + found.get(key) : (note ? "" : "not among this seed's first " + LB_SCAN + " receive and change addresses (account 0)");
+    return {type: r.type, ref: r.ref, label: r.label, where, spendable: r.spendable}; });
+  const mine = rows.filter(r => r.where.startsWith("this seed")).length;
+  const summary = addrs.length && !note ? (mine ? mine + " of " + addrs.length + " labeled address" + (addrs.length === 1 ? " is" : "es are") + " this seed's." : "None of the " + addrs.length + " labeled addresses is among this seed's first " + LB_SCAN + " receive and change addresses: the labels may belong to another wallet, account or passphrase.") : note;
+  return {state: addrs.length && !note ? (mine ? "ok" : "warn") : "", text: head + (summary ? "\n" + summary : ""), rows};
+}
+const lbShort = (t, ref) => t === "tx" || t === "input" || t === "output" ? ref.slice(0, 12) + "..." + ref.slice(-8) : ref;
+function lbLines(rows, withText){
+  return rows.map(r => LB_TYPES[r.type].toUpperCase() + "  " + lbShort(r.type, r.ref) + (withText && r.label ? "\n   label: " + r.label : "") + (r.where ? "\n   " + r.where : "") + (r.spendable === false ? "\n   marked not to be spent" : ""));
+}
+let lbRows = null, lbBusy = false;
+async function lbUi(){
+  if(lbBusy || !gateOk()) return;
+  const st = document.getElementById("lbStatus"), out = document.getElementById("lbOut");
+  lbBusy = true; document.getElementById("lbBtn").disabled = true; st.className = "status"; st.textContent = "Reading..."; out.textContent = ""; out.style.display = "none"; lbRows = null;
+  try { const r = await lbRead(document.getElementById("lbIn").value, document.getElementById("phrase").value, document.getElementById("verifyPass").value);
+    st.className = "status " + r.state; st.textContent = r.text;
+    if(r.rows.length){ lbRows = r.rows; out.textContent = lbLines(r.rows, true).join("\n"); out.style.display = ""; document.getElementById("lbPrintBtn").disabled = false; } }
+  catch(e) { st.className = "status bad"; st.textContent = "Could not read it: " + e.message; }
+  finally { lbBusy = false; document.getElementById("lbBtn").disabled = selfTestState !== "pass"; }
+}
+function lbFile(){
+  const f = document.getElementById("lbFileIn").files && document.getElementById("lbFileIn").files[0]; if(!f) return;
+  if(f.size > 8 * 1024 * 1024) return alert("That file is larger than 8 MB. Export the labels again from the wallet app.");
+  const r = new FileReader(); r.onload = () => { document.getElementById("lbIn").value = String(r.result || ""); lbClear(true); }; r.readAsText(f);
+}
+function lbClear(keepText){
+  if(!keepText){ document.getElementById("lbIn").value = ""; document.getElementById("lbFileIn").value = ""; }
+  lbRows = null; const st = document.getElementById("lbStatus"), out = document.getElementById("lbOut");
+  st.textContent = ""; st.className = "status"; out.textContent = ""; out.style.display = "none"; document.getElementById("lbPrintBtn").disabled = true;
+}
+// The printed label sheet, for an heir pack. The label text is left off unless "Print the label text too" is ticked.
+function printLabels(){
+  if(!lbRows) return alert("Read a label file first.");
+  const withText = document.getElementById("lbPrintText").checked;
+  printSheet(add => {
+    add("ps-title", "VOIDFORGE LABEL SHEET");
+    add("ps-sub", "Which addresses, transactions and keys the wallet app labeled" + (withText ? ", with the labels" : " (the label text is left off this sheet)") + ". No seed words and no passphrase are on it. It is private: it shows which coins belong to this wallet.");
+    add("ps-info", lbLines(lbRows, withText).join("\n"));
+    add("ps-rule", "");
+    add("ps-warn", "Anyone who reads this sheet can link these addresses and transactions to you. Keep it with the backup plan, not in public.");
+  });
 }
 function detClear(keepAddr){
   detSeq++; if(detBusy) detStopFlag = true;
@@ -6943,6 +7029,7 @@ function wipeSeed(){
   dpClear(); dcClear();   // v2.7.0: the dice passphrase and the device dice check
   detClear();   // v2.8.0: the Wallet Detective
   kcClear();   // v2.9.0: the wallet file check
+  lbClear();   // v2.9.0: the label file (private)
   seedSig = null; passKey = null; exCtx = null;   // fixes release: these held the rolls and the passphrases after a wipe (found by tests/memory.test.mjs)
   clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo();   // fixes release: public but private data (xpubs, descriptors, addresses, amounts)
   for(const id of ["wpIn", "payA", "payB", "dlPaste"]){ const e = document.getElementById(id); if(e) e.value = ""; }
@@ -7934,7 +8021,7 @@ document.getElementById("verifyRecorded").addEventListener("input", () => { cons
 for(const id of ["phrase","verifyPass","childWords","childIndex","childLen","childSides","childRolls"]) document.getElementById(id).addEventListener("input", clearChild);
 for(const id of ["phrase","verifyPass"]) document.getElementById(id).addEventListener("input", () => { verifySeq++; if(wvCtx && wvCtx.mnemonic) clearWalletView(); if(childCtx || document.getElementById("childOut").textContent) clearChild(); });
 document.getElementById("verifyPass").addEventListener("input", passWarnUpdate);
-for(const id of ["phrase", "verifyPass"]) document.getElementById(id).addEventListener("input", () => { detClear(true); kcClear(true); });   // v2.8.0: the Detective result belongs to the old words
+for(const id of ["phrase", "verifyPass"]) document.getElementById(id).addEventListener("input", () => { detClear(true); kcClear(true); lbClear(true); });   // v2.8.0: the Detective result belongs to the old words
 document.getElementById("reuseIn").addEventListener("input", () => { const st = document.getElementById("reuseStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wpIn").addEventListener("input", () => { if(wvCtx && wvCtx.kind === "pub" && !wvCtx.secret) clearWalletView(); const st = document.getElementById("wpStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wType").addEventListener("change", refreshWatch);
@@ -8005,6 +8092,7 @@ function setGate(state, text, cls){
   document.getElementById("msStartBtn").disabled = !on;
   if(!detBusy) for(const id of ["detBtn", "detListBtn"]) document.getElementById(id).disabled = !on;   // v2.8.0: Wallet Detective
   if(!kcBusy) document.getElementById("kcBtn").disabled = !on;   // v2.9.0: Is this seed in my wallet file?
+  if(!lbBusy) document.getElementById("lbBtn").disabled = !on;   // v2.9.0: Read a label file
   document.getElementById("wpBtn").disabled = !on;
   document.getElementById("reuseBtn").disabled = !on;
   document.getElementById("childBtn").disabled = !on;

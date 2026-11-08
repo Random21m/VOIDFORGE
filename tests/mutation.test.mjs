@@ -2402,6 +2402,27 @@ async function probe(w, mutated, fast) {
       r = await C('hello'); if (r.state !== 'bad' || !/No wallet description found/.test(r.text)) fails.push('wallet file: plain text is refused');
       $('kcIn').value = desc; $('kcStatus').textContent = 'x'; $('phrase').value = AB; $('phrase').dispatchEvent(new w.Event('input')); if ($('kcStatus').textContent !== '' || $('kcIn').value !== desc) fails.push('wallet file: changing the words clears the old result, not the file');
       $('kcStatus').textContent = 'x'; w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('kcIn').value !== '' || $('kcStatus').textContent !== '') fails.push('wallet file: CLEAR ALL empties it'); }
+    { // v2.9.0: Read a label file (BIP-329): which labeled addresses are this seed's (addresses from @scure and btc-signer)
+      const AB = 'abandon '.repeat(11) + 'about', root = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, '')), rootT = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, 'TREZOR'));
+      const a3 = btc.p2wpkh(root.derive("m/84'/0'/0'/0/3").publicKey).address, t1 = btc.p2tr(root.derive("m/86'/0'/0'/1/1").publicKey.slice(1)).address, n99 = btc.p2pkh(root.derive("m/44'/0'/0'/1/99").publicKey).address;
+      const a100 = btc.p2wpkh(root.derive("m/84'/0'/0'/0/100").publicKey).address, p5 = btc.p2wpkh(rootT.derive("m/84'/0'/0'/0/5").publicKey).address;
+      const L = (o) => o.map((x) => JSON.stringify(x)).join('\n');
+      const file = L([{ type: 'addr', ref: a3, label: 'Savings' }, { type: 'addr', ref: t1.toUpperCase(), label: 'Change' }, { type: 'addr', ref: n99, label: 'Old' }, { type: 'addr', ref: a100, label: 'Far' }, { type: 'tx', ref: 'f91d0a8a78462bc59398f2c5d7a84fcff491c26ba54c4833478b202796c8aafd', label: 'Rent' }, { type: 'output', ref: 'f91d0a8a78462bc59398f2c5d7a84fcff491c26ba54c4833478b202796c8aafd:0', label: 'Coin', spendable: false }]) + '\nnot json\n{"type":"bogus","ref":"x"}\n';
+      let r = await w.lbRead(file, AB, ''); const out = w.lbLines(r.rows, true).join('\n');
+      if (r.state !== 'ok' || !/^Label file: 6 labels \(4 addresses, 1 transaction, 1 output\); 2 lines could not be read\./.test(r.text) || !/3 of 4 labeled addresses are this seed's/.test(r.text)) fails.push('labels: the summary counts labels, lines and this seed\'s addresses [' + r.text + ']');
+      if (!out.includes(a3 + '\n   label: Savings\n   this seed: receive address #3, Native SegWit') || !/change address #1, Taproot/.test(out) || !/change address #99, Legacy/.test(out)) fails.push('labels: each address is named with its chain, number and type');
+      if (!/not among this seed's first 100 receive and change addresses/.test(out)) fails.push('labels: address 100 is past the search');
+      if (!/marked not to be spent/.test(out) || !/TRANSACTION  f91d0a8a7846\.\.\.96c8aafd/.test(out)) fails.push('labels: transactions are shortened and unspendable outputs marked');
+      r = await w.lbRead(L([{ type: 'addr', ref: p5, label: 'P' }]), AB, 'TREZOR'); if (!/receive address #5, Native SegWit .* with the passphrase/.test(w.lbLines(r.rows, true).join('\n'))) fails.push('labels: an address of the passphrase wallet is found with it');
+      r = await w.lbRead(L([{ type: 'addr', ref: p5, label: 'P' }]), AB, ''); if (r.state !== 'warn' || !/None of the 1 labeled addresses/.test(r.text)) fails.push('labels: none matched is a warning');
+      r = await w.lbRead(file, '', ''); if (r.state !== '' || !/Type the seed words above/.test(r.text) || w.lbLines(r.rows, true).some((l) => /this seed/.test(l))) fails.push('labels: without words, labels are listed but not matched');
+      r = await w.lbRead('hello\n', AB, ''); if (r.state !== 'bad' || !/No BIP-329 labels found: 1 line is not/.test(r.text)) fails.push('labels: a file without labels is refused');
+      if (w.lbLines(r.rows || [], false).length !== 0) fails.push('labels: no rows from a bad file');
+      { const rr = await w.lbRead(file, AB, ''); w.eval('lbRows = ' + JSON.stringify(rr.rows)); $('lbPrintText').checked = false; let n = 0; const op = w.print; w.print = () => { n++; }; w.printLabels(); const t = $('printOnly').textContent; w.dispatchEvent(new w.Event('afterprint'));
+        if (n !== 1 || !/^VOIDFORGE LABEL SHEET/.test(t) || t.includes('Savings') || !t.includes(a3) || !/the label text is left off/.test(t)) fails.push('labels: the printed sheet leaves the label text off by default');
+        $('lbPrintText').checked = true; w.printLabels(); const t2 = $('printOnly').textContent; w.dispatchEvent(new w.Event('afterprint')); w.print = op; $('lbPrintText').checked = false;
+        if (!t2.includes('label: Savings') || /left off/.test(t2)) fails.push('labels: ticked, the printed sheet has the label text'); }
+      $('lbIn').value = file; $('lbStatus').textContent = 'x'; w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('lbIn').value !== '' || $('lbStatus').textContent !== '' || !$('lbPrintBtn').disabled) fails.push('labels: CLEAR ALL empties them'); }
     w.watchCheck(); if ($('watchStatus').textContent !== 'NO SIGN FOUND of extensions, translators or other scripts on this page right now.' || !/^That does not make it safe\./.test($('watchOut').textContent)) fails.push('watch check: no sign found, never safe');
     { const s = w.document.createElement('script'); s.src = 'chrome-extension://x/i.js'; w.document.head.appendChild(s); s.remove();
       $('phrase').setAttribute('data-unknown-helper', '1'); w.document.body.appendChild(w.document.createElement('grammarly-extension')); w.document.body.appendChild(w.document.createElement('div')); w.ethereum = {}; await sleep(450);
@@ -4279,7 +4300,7 @@ const M = [
   ["wallet detective: two-factor seeds not sent to Electrum", "if(el && el !== \"standard\" && el !== \"SegWit\") return {error:", "if(false) return {error:"],
   ["wallet detective: Electrum passphrase as typed not tried", "    if(detRawDiffers(pw)) list.push(", "    if(false) list.push("],
   ["wipe: Wallet Detective kept", "  detClear();   // v2.8.0: the Wallet Detective\n", ""],
-  ["wallet detective: result kept when the words change", "() => { detClear(true); kcClear(true); });", "() => { kcClear(true); });"],
+  ["wallet detective: result kept when the words change", "() => { detClear(true); kcClear(true); lbClear(true); });", "() => { kcClear(true); lbClear(true); });"],
   ["wallet detective: unusual mix not named", "if(!f.usual) lines.push(", "if(false) lines.push("],
   ["watch check: extension elements ignored", "  if(t.includes(\"-\")) return", "  if(false) return"],
   ["watch check: removed scripts forgotten", "/^(SCRIPT|IFRAME|FRAME|OBJECT|EMBED|LINK|STYLE|FONT)$|-/.test(n.tagName)", "/^(IFRAME|FRAME|OBJECT|EMBED|LINK|STYLE|FONT)$|-/.test(n.tagName)"],
@@ -4390,7 +4411,7 @@ const M = [
   ["typo finder: CLEAR ALL leaves it", "clearReuse(); clearTypo();   // fixes release", "clearReuse();   // fixes release"],
   ["wallet file: the key at the path not compared", "if(hex(pubkeyBytes(kk)) === hex(parsed.pub) && hex(cc) === hex(parsed.chain)){", "if(true){"],
   ["wallet file: the chain code not compared", "if(hex(pubkeyBytes(kk)) === hex(parsed.pub) && hex(cc) === hex(parsed.chain)){", "if(hex(pubkeyBytes(kk)) === hex(parsed.pub)){", true],
-  ["wallet file: the passphrase wallet never tried", "for(const [label, pass] of src.passes){ const seed", "for(const [label, pass] of src.passes.slice(-1)){ const seed"],
+  ["wallet file: the passphrase wallet never tried", "for(const [label, pass] of src.passes){ const seed = await mnemonicToSeed(src.mnemonic, pass); seeds.push(", "for(const [label, pass] of src.passes.slice(-1)){ const seed = await mnemonicToSeed(src.mnemonic, pass); seeds.push("],
   ["wallet file: Coldcard paths ignored", "if((mm = /^Derivation\\s*:\\s*(m(?:\\/\\d+['hH]?)+)\\s*$/i.exec(l))){ path = mm[1].replace(/[hH]/g, \"'\"); continue; }", ""],
   ["wallet file: Coldcard keys not read", "if((mm = new RegExp(\"^([0-9A-Fa-f]{8})\\\\s*:\\\\s*(\" + KC_XPUB + \")$\").exec(l))) keys.push(", "if(false) keys.push("],
   ["wallet file: the descriptor checksum not checked", "if(hashAt >= 0 && descriptorChecksum(desc.slice(0, hashAt)) !== desc) return", "if(false) return"],
@@ -4398,9 +4419,19 @@ const M = [
   ["wallet file: private keys accepted", "if(new RegExp(\"[xyzYZtuvUV]prv[1-9A-HJ-NP-Za-km-z]{20,}\").test(t)) return", "if(false) return"],
   ["wallet file: the BSMS first address not checked", "lines.push(\"The record's first address \" + (a === f.firstAddr ? \"matches\" : \"does NOT match\")", "lines.push(\"The record's first address \" + (true ? \"matches\" : \"does NOT match\")"],
   ["wallet file: the number of keys still needed wrong", "need = f.m !== null ? f.m - mine.length : 0;", "need = f.m !== null ? f.m : 0;"],
-  ["wallet file: a new phrase keeps the old result", "detClear(true); kcClear(true); });", "detClear(true); });"],
+  ["wallet file: a new phrase keeps the old result", "detClear(true); kcClear(true); lbClear(true); });", "detClear(true); lbClear(true); });"],
   ["wallet file: CLEAR ALL leaves it", "  kcClear();   // v2.9.0: the wallet file check\n", ""],
   ["wallet file: the button never enabled", "  if(!kcBusy) document.getElementById(\"kcBtn\").disabled = !on;", "  if(!kcBusy) document.getElementById(\"kcBtn\").disabled = true;"],
+  ["labels: change addresses not searched", "for(const chain of [0, 1]){\n        for(const r of await walletAddresses(seed, t, net, 0, chain, 0, LB_SCAN))", "for(const chain of [0]){\n        for(const r of await walletAddresses(seed, t, net, 0, chain, 0, LB_SCAN))"],
+  ["labels: only 99 addresses searched", "const LB_SCAN = 100;", "const LB_SCAN = 99;"],
+  ["labels: uppercase bech32 not folded", "const want = new Set(addrs.map(r => /^(bc1|tb1)/i.test(r.ref) ? r.ref.toLowerCase() : r.ref))", "const want = new Set(addrs.map(r => r.ref))"],
+  ["labels: the passphrase wallet never tried", "for(const [label, pass] of src.passes){ const seed = await mnemonicToSeed(src.mnemonic, pass);\n      for(const net of nets)", "for(const [label, pass] of src.passes.slice(-1)){ const seed = await mnemonicToSeed(src.mnemonic, pass);\n      for(const net of nets)"],
+  ["labels: unknown record types accepted", "if(!o || typeof o !== \"object\" || !LB_TYPES[o.type] || typeof o.ref !== \"string\" || !o.ref) { bad++; continue; }", "if(!o || typeof o !== \"object\" || typeof o.ref !== \"string\" || !o.ref) { bad++; continue; }"],
+  ["labels: the label text always printed", "const withText = document.getElementById(\"lbPrintText\").checked;", "const withText = true;"],
+  ["labels: the label text never printed", "const withText = document.getElementById(\"lbPrintText\").checked;", "const withText = false;"],
+  ["labels: unspendable outputs not marked", "(r.spendable === false ? \"\\n   marked not to be spent\" : \"\")", "\"\""],
+  ["labels: CLEAR ALL leaves them", "  lbClear();   // v2.9.0: the label file (private)\n", ""],
+  ["labels: a new phrase keeps the old result", "kcClear(true); lbClear(true); });", "kcClear(true); });"],
   ["heir mode: the Detective button goes nowhere", "onclick=\"heirGo('check', 'detBlock')\"", "onclick=\"heirGo('tools', 'detBlock')\""],
 ];
 
