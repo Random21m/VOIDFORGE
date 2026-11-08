@@ -25,7 +25,7 @@ stages: [test, deploy]
 
 test-unit:
   <<: *test
-  script: [node tests/test.js]
+  script: [node tests/test.js, node tests/signed.test.mjs, node tests/slip39.test.mjs]
 
 test-oracle:
   <<: *test

@@ -2801,6 +2801,21 @@ async function probe(w, mutated, fast, only, hooks) {
   } catch (e) { fails.push('camera: the probe crashed: ' + e.message); }
   w.alert = oa; delete w.navigator.mediaDevices; Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => true }); w.camStop();
   }
+  if (SEC(57, "v2.9.0 SLIP39 shares (official vectors from trezor/python-shamir-mnemonic; keys from @scure)")) {
+  try {
+    const hx = (b) => Buffer.from(b).toString('hex'), V = JSON.parse(fs.readFileSync(new URL('./fixtures/slip39-vectors.json', import.meta.url), 'utf8'));
+    for (const [desc, mn, secret] of V) { const r = await w.slip39Combine(mn, 'TREZOR'); if (secret ? (!r.ok || hx(r.masterSecret) !== secret) : r.ok) { fails.push('slip39: official vector "' + desc + '"'); break; } }
+    const v4 = V[3], root = HDKey.fromMasterSeed(Buffer.from(v4[2], 'hex')), k84 = root.derive("m/84'/0'/0'/0/0");
+    const fp4 = root.fingerprint.toString(16).padStart(8, '0'), a84 = bech32.encode('bc', [0, ...bech32.toWords(ripemd160(nsha(k84.publicKey)))]);
+    if ($('s39Btn').disabled) fails.push('slip39: CHECK AND COMBINE is on once the self-test passes');
+    $('s39In').value = v4[1].join('\n'); $('s39Pass').value = 'TREZOR'; await w.s39Ui(); const out = $('s39Out').textContent, st = $('s39Status').textContent;
+    if (!/^Share 1: checksum OK, share number 3 \(2 shares are needed\)\./.test(st) || !/Combined: these shares open one wallet/.test(st) || !out.includes('Master fingerprint: ' + fp4) || !out.includes('(m/84\'/0\'/0\'/0/0): ' + a84)) fails.push('slip39: 2 of 3 shares show the fingerprint and first address @scure gives');
+    $('s39Pass').value = ''; await w.s39Ui(); if ($('s39Out').textContent.includes(fp4) || !/If your backup has a passphrase, type it/.test($('s39Out').textContent)) fails.push('slip39: without the passphrase another wallet, and the page says so');
+    $('s39In').value = v4[1][0]; $('s39Pass').value = 'TREZOR'; await w.s39Ui(); if (!/Not combined: /.test($('s39Status').textContent) || $('s39Out').style.display !== 'none') fails.push('slip39: one share of 2 is not enough, and nothing is shown');
+    $('s39In').value = v4[1][0].replace(/^shadow/, 'shadoe'); await w.s39Ui(); if (!/Share 1: /.test($('s39Status').textContent) || /checksum OK/.test($('s39Status').textContent)) fails.push('slip39: a mistyped word is reported');
+    $('s39In').value = 'x'; $('s39Pass').value = 'y'; w.wipeSeed(); if ($('s39In').value !== '' || $('s39Pass').value !== '' || $('s39Status').textContent !== '') fails.push('slip39: wiping empties the shares and the passphrase');
+  } catch (e) { fails.push('slip39: the probe crashed: ' + e.message); }
+  }
   if (SEC(54, "const meta = w.document.querySelector('meta[http-equiv=\"Cont")) {
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
@@ -3467,7 +3482,7 @@ const M = [
   ['preview: too-few-rolls FORGE wipes the gray words', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote(); previewRefresh();', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote();'],
   ["preview: gray note stays after FORGE", "wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body", "wdWipe(); drillEnd(); bkReset(!!words); document.body"],
   ["word draw: dice FORGE leaves old steps", "  madeMnemonic = words ? words.join(\" \") : \"\";\n  sumCtx = null;\n  wdWipe(); drillEnd();", "  madeMnemonic = words ? words.join(\" \") : \"\";\n  sumCtx = null;\n  drillEnd();"],
-  ['word draw: CLEAR leaves the boxes', '  wdClear(); cdClear();\n', '  cdClear();\n'],
+  ['word draw: CLEAR leaves the boxes', '  wdClear(); cdClear(); clearS39();\n', '  cdClear(); clearS39();\n'],
   ['word draw: CLEAR button leaves the words', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();'],
   ['word draw: CLEAR button leaves the flips', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdWords").value = "";\n  wdWipe(); wdUpdate();'],
   ['word draw: wipe leaves the steps', 'function wdWipe(){ const o = document.getElementById("wdOut"); o.textContent = ""; o.style.display = "none"; }', 'function wdWipe(){ const o = document.getElementById("wdOut"); o.style.display = "none"; }'],
@@ -4803,7 +4818,7 @@ const M = [
   ["cards: the seed is recorded as Word draw", "await finishSeed(mnemonic, null, sig0, \"cd\", {cards: pr.cards.length, bits: b.bits});", "await finishSeed(mnemonic, null, sig0, \"wd\", {cards: pr.cards.length, bits: b.bits});"],
   ["cards: changing the cards keeps the seed", "return \"cd|\" + document.querySelector('input[name=\"words\"]:checked').value + \"|\" + cdParse(v(\"cdCards\")).cards.join(\" \");", "return \"cd|\";"],
   ["cards: summary leaves out the bits", "Math.floor(c.cd ? c.bits : c.coin", "Math.floor(c.cd ? c.count : c.coin"],
-  ["cards: wiping the seed keeps the cards", "  wdClear(); cdClear();\n", "  wdClear();\n"],
+  ["cards: wiping the seed keeps the cards", "  wdClear(); cdClear(); clearS39();\n", "  wdClear(); clearS39();\n"],
   ["cards: dice preview shown on the Cards tab", "method === \"words\" || method === \"cards\" || !rolls", "method === \"words\" || !rolls"],
   ["cards: the guide cannot go on", "if(n === 2 && (method === \"words\" || method === \"cards\")) return true;", "if(n === 2 && method === \"words\") return true;"],
   ["cards: arrow keys skip the tab", "const order = [\"dice\", \"coin\", \"words\", \"cards\"];", "const order = [\"dice\", \"coin\", \"words\"];"],
@@ -4834,6 +4849,26 @@ const M = [
   ["camera: no SCAN buttons", "a.insertAdjacentElement(\"afterend\", b);", ""],
   ["camera: the front camera asked for", "facingMode: \"environment\"", "facingMode: \"user\""],
   ["camera: refused permission not explained", "e && e.name === \"NotAllowedError\" ? \"permission was refused\" : ", ""],
+  ["slip39: the checksum string is always shamir", "const cs = extendable ? \"shamir_extendable\" : \"shamir\";", "const cs = \"shamir\";"],
+  ["slip39: the checksum starts from 0", "  let chk = 1;\n  for(const v of values){\n    const b = chk >>> 20;", "  let chk = 0;\n  for(const v of values){\n    const b = chk >>> 20;"],
+  ["slip39: the checksum shifts 9 bits", "chk = ((chk & 0xfffff) << 10) ^ v;", "chk = ((chk & 0xfffff) << 9) ^ v;"],
+  ["slip39: padding bits not checked", "if(bits.slice(0, padBits).includes(\"1\"))", "if(false)"],
+  ["slip39: the secret read at the digest point", "const S39_SECRET_INDEX = 255;", "const S39_SECRET_INDEX = 254;"],
+  ["slip39: the digest never checked", "for(let i = 0; i < S39_DIGEST_BYTES; i++){ if(mac[i] !== d[i]) return null; }", ""],
+  ["slip39: the rounds run forward", "for(let i = S39_ROUNDS - 1; i >= 0; i--){", "for(let i = 0; i < S39_ROUNDS; i++){"],
+  ["slip39: iterations not raised by the exponent", "iterations:(S39_BASE_ITERATIONS / S39_ROUNDS) << e}", "iterations:(S39_BASE_ITERATIONS / S39_ROUNDS)}"],
+  ["slip39: extendable shares salted like old ones", "const saltPrefix = extendable ? new Uint8Array(0)", "const saltPrefix = false ? new Uint8Array(0)"],
+  ["slip39: the identifier left out of the salt", "new Uint8Array([identifier >>> 8, identifier & 255])", "new Uint8Array([0, 0])"],
+  ["slip39: the halves joined the wrong way", "  return s39Concat(r, l);\n}", "  return s39Concat(l, r);\n}"],
+  ["slip39: extra shares accepted", "if(g.shares.length > g.threshold)", "if(false)"],
+  ["slip39: member thresholds not compared", "if(s.memberThreshold !== g.threshold)", "if(false)"],
+  ["slip39: GF(256) with the wrong polynomial", "if(p & 0x100) p ^= 0x11b;", "if(p & 0x100) p ^= 0x11d;"],
+  ["slip39: round number left out of the password", "s39Concat(new Uint8Array([i]), passBytes)", "s39Concat(new Uint8Array([0]), passBytes)"],
+  ["slip39: addresses of account 1 shown", "seg = await watchOnlyFromSeed(sec, \"wpkh\", 0)", "seg = await watchOnlyFromSeed(sec, \"wpkh\", 1)"],
+  ["slip39: button never turned on", "  document.getElementById(\"s39Btn\").disabled = !on;   // v2.9.0: SLIP-39\n", ""],
+  ["slip39: the passphrase ignored", "slip39Combine(lines, document.getElementById(\"s39Pass\").value)", "slip39Combine(lines, \"\")"],
+  ["slip39: wiping keeps the shares", "  wdClear(); cdClear(); clearS39();\n", "  wdClear(); cdClear();\n"],
+  ["slip39: a failed combine still shows a wallet", "if(!r.ok){ st.className = \"status bad\"; st.textContent = each.join(\"\\n\") + \"\\n\\nNot combined: \" + r.error; return; }", "if(!r.ok){ st.className = \"status bad\"; st.textContent = each.join(\"\\n\") + \"\\n\\nNot combined: \" + r.error; }"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

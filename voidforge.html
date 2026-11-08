@@ -1612,6 +1612,15 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <pre id="xorOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
       <div class="btn-row" id="xorPrintRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" onclick="printXorParts()">PRINT THE PARTS</button></div>
     </details>
+    <details id="s39Box" style="margin-top:8px;">
+      <summary>SLIP39 shares (Shamir backup)<span class="tag tag-secret">SECRET</span><small>Check SLIP39 shares, or combine them to see which wallet they open.</small></summary>
+      <p class="hint" style="margin:8px 0;">A SLIP39 backup (a Shamir backup, made by Trezor and Keystone) is a set of shares of 20 or 33 words each, from a list of 1,024 words that is not the BIP39 list. A set number of them (for example 2 of 3) opens the wallet; fewer reveal nothing. Type each share on its own line. VOIDFORGE checks every share, and with enough of them shows the wallet&rsquo;s master fingerprint and first addresses, so you can compare them with your device. It only reads shares; it never makes them. Do this only on your offline computer.</p>
+      <textarea id="s39In" rows="5" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="SLIP39 shares, one per line" placeholder="One share per line (20 or 33 words each)"></textarea>
+      <input type="password" id="s39Pass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="Passphrase of the backup, if it has one" placeholder="Passphrase, only if the backup has one" style="margin-top:6px;">
+      <div class="btn-row" style="margin-top:8px;"><button type="button" id="s39Btn" onclick="s39Ui()" disabled>CHECK AND COMBINE</button><button type="button" class="secondary small" onclick="clearS39()">CLEAR</button></div>
+      <div class="status" id="s39Status" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+      <pre id="s39Out" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+    </details>
     <details id="childBox">
       <summary>Child seed (BIP85)<span class="tag tag-secret">SECRET</span><small>Make a separate new seed, key or password from this one.</small></summary>
       <p class="hint" style="margin:8px 0;">Makes a brand new seed phrase from the parent words (and passphrase) typed in the CHECK A BACKUP tab, for a separate wallet, using the BIP85 standard. BIP85 can also make a Bitcoin Core HD seed (WIF), a master xprv, hex bytes, a password (Base64 or Base85) or dice rolls: choose one under &ldquo;What to make&rdquo;. The same parent, type, settings and index always give the same result. <b>The child is as secret as the parent.</b> It is shown here, with no copy or save; its print button prints it on one sheet, after asking, for a trusted offline printer only. Use the same safety steps as for a new seed, and keep the parent safe: if you lose the parent you lose every child.</p>
@@ -2012,6 +2021,443 @@ const CD_RANKS = "A23456789TJQK", CD_SUITS = "\u2663\u2666\u2665\u2660";
 const CD_SUIT_OF = {C: "\u2663", D: "\u2666", H: "\u2665", S: "\u2660", "\u2663": "\u2663", "\u2666": "\u2666", "\u2665": "\u2665", "\u2660": "\u2660", "\u2667": "\u2663", "\u2662": "\u2666", "\u2661": "\u2665", "\u2664": "\u2660"};
 const CD_NAMES = {A: "ace", T: "10", J: "jack", Q: "queen", K: "king"}, CD_SUIT_NAMES = {"\u2663": "clubs", "\u2666": "diamonds", "\u2665": "hearts", "\u2660": "spades"};
 const CD_LETTER = {"\u2663": "C", "\u2666": "D", "\u2665": "H", "\u2660": "S"};
+// ================= SLIP-39 (Shamir shares of words): CHECK and COMBINE only =================
+// SLIP-0039, https://github.com/satoshilabs/slips/blob/master/slip-0039.md (read at commit dea4917, 2026-10-30).
+// A SLIP-39 backup is a set of shares of 20 or 33 words (other lengths are possible). Some of them, in
+// groups, rebuild the master secret, which is then decrypted with the passphrase ("" if none).
+// This code only reads shares: slip39Parse checks one share, slip39Combine rebuilds the master secret.
+// It never makes shares, because that needs random numbers and this page uses no browser randomness for secrets.
+// Checked against every test vector in https://github.com/trezor/python-shamir-mnemonic/blob/master/vectors.json.
+// Not constant-time (table lookups in GF(256)): meant for an offline machine.
+
+// The 1024 English words, from slip-0039/wordlist.txt in the spec repository
+// (the same file as shamir_mnemonic/wordlist.txt in python-shamir-mnemonic).
+// SHA-256 of that file (one word per line, each line ending in "\n"):
+// bcc4555340332d169718aed8bf31dd9d5248cb7da6e5d355140ef4f1e601eec3
+const SLIP39_WORDS = [
+  "academic","acid","acne","acquire","acrobat","activity","actress","adapt","adequate","adjust","admit","adorn","adult","advance","advocate","afraid",
+  "again","agency","agree","aide","aircraft","airline","airport","ajar","alarm","album","alcohol","alien","alive","alpha","already","alto",
+  "aluminum","always","amazing","ambition","amount","amuse","analysis","anatomy","ancestor","ancient","angel","angry","animal","answer","antenna","anxiety",
+  "apart","aquatic","arcade","arena","argue","armed","artist","artwork","aspect","auction","august","aunt","average","aviation","avoid","award",
+  "away","axis","axle","beam","beard","beaver","become","bedroom","behavior","being","believe","belong","benefit","best","beyond","bike",
+  "biology","birthday","bishop","black","blanket","blessing","blimp","blind","blue","body","bolt","boring","born","both","boundary","bracelet",
+  "branch","brave","breathe","briefing","broken","brother","browser","bucket","budget","building","bulb","bulge","bumpy","bundle","burden","burning",
+  "busy","buyer","cage","calcium","camera","campus","canyon","capacity","capital","capture","carbon","cards","careful","cargo","carpet","carve",
+  "category","cause","ceiling","center","ceramic","champion","change","charity","check","chemical","chest","chew","chubby","cinema","civil","class",
+  "clay","cleanup","client","climate","clinic","clock","clogs","closet","clothes","club","cluster","coal","coastal","coding","column","company",
+  "corner","costume","counter","course","cover","cowboy","cradle","craft","crazy","credit","cricket","criminal","crisis","critical","crowd","crucial",
+  "crunch","crush","crystal","cubic","cultural","curious","curly","custody","cylinder","daisy","damage","dance","darkness","database","daughter","deadline",
+  "deal","debris","debut","decent","decision","declare","decorate","decrease","deliver","demand","density","deny","depart","depend","depict","deploy",
+  "describe","desert","desire","desktop","destroy","detailed","detect","device","devote","diagnose","dictate","diet","dilemma","diminish","dining","diploma",
+  "disaster","discuss","disease","dish","dismiss","display","distance","dive","divorce","document","domain","domestic","dominant","dough","downtown","dragon",
+  "dramatic","dream","dress","drift","drink","drove","drug","dryer","duckling","duke","duration","dwarf","dynamic","early","earth","easel",
+  "easy","echo","eclipse","ecology","edge","editor","educate","either","elbow","elder","election","elegant","element","elephant","elevator","elite",
+  "else","email","emerald","emission","emperor","emphasis","employer","empty","ending","endless","endorse","enemy","energy","enforce","engage","enjoy",
+  "enlarge","entrance","envelope","envy","epidemic","episode","equation","equip","eraser","erode","escape","estate","estimate","evaluate","evening","evidence",
+  "evil","evoke","exact","example","exceed","exchange","exclude","excuse","execute","exercise","exhaust","exotic","expand","expect","explain","express",
+  "extend","extra","eyebrow","facility","fact","failure","faint","fake","false","family","famous","fancy","fangs","fantasy","fatal","fatigue",
+  "favorite","fawn","fiber","fiction","filter","finance","findings","finger","firefly","firm","fiscal","fishing","fitness","flame","flash","flavor",
+  "flea","flexible","flip","float","floral","fluff","focus","forbid","force","forecast","forget","formal","fortune","forward","founder","fraction",
+  "fragment","frequent","freshman","friar","fridge","friendly","frost","froth","frozen","fumes","funding","furl","fused","galaxy","game","garbage",
+  "garden","garlic","gasoline","gather","general","genius","genre","genuine","geology","gesture","glad","glance","glasses","glen","glimpse","goat",
+  "golden","graduate","grant","grasp","gravity","gray","greatest","grief","grill","grin","grocery","gross","group","grownup","grumpy","guard",
+  "guest","guilt","guitar","gums","hairy","hamster","hand","hanger","harvest","have","havoc","hawk","hazard","headset","health","hearing",
+  "heat","helpful","herald","herd","hesitate","hobo","holiday","holy","home","hormone","hospital","hour","huge","human","humidity","hunting",
+  "husband","hush","husky","hybrid","idea","identify","idle","image","impact","imply","improve","impulse","include","income","increase","index",
+  "indicate","industry","infant","inform","inherit","injury","inmate","insect","inside","install","intend","intimate","invasion","involve","iris","island",
+  "isolate","item","ivory","jacket","jerky","jewelry","join","judicial","juice","jump","junction","junior","junk","jury","justice","kernel",
+  "keyboard","kidney","kind","kitchen","knife","knit","laden","ladle","ladybug","lair","lamp","language","large","laser","laundry","lawsuit",
+  "leader","leaf","learn","leaves","lecture","legal","legend","legs","lend","length","level","liberty","library","license","lift","likely",
+  "lilac","lily","lips","liquid","listen","literary","living","lizard","loan","lobe","location","losing","loud","loyalty","luck","lunar",
+  "lunch","lungs","luxury","lying","lyrics","machine","magazine","maiden","mailman","main","makeup","making","mama","manager","mandate","mansion",
+  "manual","marathon","march","market","marvel","mason","material","math","maximum","mayor","meaning","medal","medical","member","memory","mental",
+  "merchant","merit","method","metric","midst","mild","military","mineral","minister","miracle","mixed","mixture","mobile","modern","modify","moisture",
+  "moment","morning","mortgage","mother","mountain","mouse","move","much","mule","multiple","muscle","museum","music","mustang","nail","national",
+  "necklace","negative","nervous","network","news","nuclear","numb","numerous","nylon","oasis","obesity","object","observe","obtain","ocean","often",
+  "olympic","omit","oral","orange","orbit","order","ordinary","organize","ounce","oven","overall","owner","paces","pacific","package","paid",
+  "painting","pajamas","pancake","pants","papa","paper","parcel","parking","party","patent","patrol","payment","payroll","peaceful","peanut","peasant",
+  "pecan","penalty","pencil","percent","perfect","permit","petition","phantom","pharmacy","photo","phrase","physics","pickup","picture","piece","pile",
+  "pink","pipeline","pistol","pitch","plains","plan","plastic","platform","playoff","pleasure","plot","plunge","practice","prayer","preach","predator",
+  "pregnant","premium","prepare","presence","prevent","priest","primary","priority","prisoner","privacy","prize","problem","process","profile","program","promise",
+  "prospect","provide","prune","public","pulse","pumps","punish","puny","pupal","purchase","purple","python","quantity","quarter","quick","quiet",
+  "race","racism","radar","railroad","rainbow","raisin","random","ranked","rapids","raspy","reaction","realize","rebound","rebuild","recall","receiver",
+  "recover","regret","regular","reject","relate","remember","remind","remove","render","repair","repeat","replace","require","rescue","research","resident",
+  "response","result","retailer","retreat","reunion","revenue","review","reward","rhyme","rhythm","rich","rival","river","robin","rocky","romantic",
+  "romp","roster","round","royal","ruin","ruler","rumor","sack","safari","salary","salon","salt","satisfy","satoshi","saver","says",
+  "scandal","scared","scatter","scene","scholar","science","scout","scramble","screw","script","scroll","seafood","season","secret","security","segment",
+  "senior","shadow","shaft","shame","shaped","sharp","shelter","sheriff","short","should","shrimp","sidewalk","silent","silver","similar","simple",
+  "single","sister","skin","skunk","slap","slavery","sled","slice","slim","slow","slush","smart","smear","smell","smirk","smith",
+  "smoking","smug","snake","snapshot","sniff","society","software","soldier","solution","soul","source","space","spark","speak","species","spelling",
+  "spend","spew","spider","spill","spine","spirit","spit","spray","sprinkle","square","squeeze","stadium","staff","standard","starting","station",
+  "stay","steady","step","stick","stilt","story","strategy","strike","style","subject","submit","sugar","suitable","sunlight","superior","surface",
+  "surprise","survive","sweater","swimming","swing","switch","symbolic","sympathy","syndrome","system","tackle","tactics","tadpole","talent","task","taste",
+  "taught","taxi","teacher","teammate","teaspoon","temple","tenant","tendency","tension","terminal","testify","texture","thank","that","theater","theory",
+  "therapy","thorn","threaten","thumb","thunder","ticket","tidy","timber","timely","ting","tofu","together","tolerate","total","toxic","tracks",
+  "traffic","training","transfer","trash","traveler","treat","trend","trial","tricycle","trip","triumph","trouble","true","trust","twice","twin",
+  "type","typical","ugly","ultimate","umbrella","uncover","undergo","unfair","unfold","unhappy","union","universe","unkind","unknown","unusual","unwrap",
+  "upgrade","upstairs","username","usher","usual","valid","valuable","vampire","vanish","various","vegan","velvet","venture","verdict","verify","very",
+  "veteran","vexed","victim","video","view","vintage","violence","viral","visitor","visual","vitamins","vocal","voice","volume","voter","voting",
+  "walnut","warmth","warn","watch","wavy","wealthy","weapon","webcam","welcome","welfare","western","width","wildlife","window","wine","wireless",
+  "wisdom","withdraw","wits","wolf","woman","work","worthy","wrap","wrist","writing","wrote","year","yelp","yield","yoga","zero"
+];
+
+// Fast lookup from a word to its number (0-1023). SLIP-39 words are lower case.
+const S39_WORD_INDEX = new Map(SLIP39_WORDS.map((w, i) => [w, i]));
+
+// Sizes of the parts of a share, in words of 10 bits each (see "Format of the share mnemonic" in the spec).
+const S39_ID_EXP_WORDS = 2;    // identifier (15 bits), extendable flag (1 bit), iteration exponent (4 bits)
+const S39_PARAM_WORDS = 2;     // group index, group threshold, group count, member index, member threshold (4 bits each)
+const S39_CHECKSUM_WORDS = 3;  // RS1024 checksum
+const S39_META_WORDS = S39_ID_EXP_WORDS + S39_PARAM_WORDS + S39_CHECKSUM_WORDS; // 7 words that are not the secret
+const S39_MIN_SECRET_BITS = 128;
+const S39_MIN_WORDS = S39_META_WORDS + Math.ceil(S39_MIN_SECRET_BITS / 10);   // 20 words
+const S39_BASE_ITERATIONS = 10000; // PBKDF2 iterations in total for e = 0, spread over the 4 rounds
+const S39_ROUNDS = 4;
+const S39_SECRET_INDEX = 255;  // the shared secret is stored as f(255)
+const S39_DIGEST_INDEX = 254;  // its digest is stored as f(254)
+const S39_DIGEST_BYTES = 4;
+
+// The RS1024 checksum generator, copied from the spec's Python snippet.
+const S39_GEN = [0xe0e040, 0x1c1c080, 0x3838100, 0x7070200, 0xe0e0009,
+                 0x1c0c2412, 0x38086c24, 0x3090fc48, 0x21b1f890, 0x3f3f120];
+
+// Logarithm and exponent tables for GF(256) with the AES polynomial x^8 + x^4 + x^3 + x + 1 (0x11b).
+const S39_GF = s39MakeTables();
+
+function s39MakeTables(){
+  const exp = new Uint8Array(255), log = new Uint8Array(256);
+  let p = 1;
+  for(let i = 0; i < 255; i++){
+    exp[i] = p;
+    log[p] = i;
+    p ^= p << 1;              // multiply by the generator x + 1
+    if(p & 0x100) p ^= 0x11b; // reduce by the AES polynomial
+  }
+  return {exp, log};
+}
+
+// RS1024 over GF(1024), as in the spec. All values stay below 2^30, so 32-bit integer operations are exact.
+function s39Polymod(values){
+  let chk = 1;
+  for(const v of values){
+    const b = chk >>> 20;
+    chk = ((chk & 0xfffff) << 10) ^ v;
+    for(let i = 0; i < 10; i++){ if((b >>> i) & 1) chk ^= S39_GEN[i]; }
+  }
+  return chk;
+}
+
+// The customization string is "shamir" for old shares (extendable flag 0) and "shamir_extendable" for new ones.
+function s39ChecksumOk(indices, extendable){
+  const cs = extendable ? "shamir_extendable" : "shamir";
+  const values = [];
+  for(let i = 0; i < cs.length; i++) values.push(cs.charCodeAt(i));
+  return s39Polymod(values.concat(indices)) === 1;
+}
+
+// Split typed text into lower-case words. Any spaces, tabs or new lines separate words.
+function s39Words(text){
+  return String(text == null ? "" : text).toLowerCase().trim().split(/\s+/).filter(Boolean);
+}
+
+// Edit distance between two words, counting a swap of two neighbouring letters as one edit.
+function s39Distance(a, b){
+  const d = [];
+  for(let i = 0; i <= a.length; i++){ d.push([i]); }
+  for(let j = 1; j <= b.length; j++) d[0][j] = j;
+  for(let i = 1; i <= a.length; i++){
+    for(let j = 1; j <= b.length; j++){
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if(i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  }
+  return d[a.length][b.length];
+}
+
+// Words to suggest for a word that is not in the list. Every SLIP-39 word starts with its own 4 letters,
+// so if the first 4 letters match a word, that is the one suggestion. Otherwise offer up to 6 words that
+// are 1 or 2 edits away, and failing that, up to 6 words that start with the same 3 (or 2) letters.
+function s39Suggest(word){
+  const four = word.length >= 4 ? SLIP39_WORDS.find(w => w.startsWith(word.slice(0, 4))) : undefined;
+  if(four) return {how:"one", words:[four]};
+  const near = SLIP39_WORDS.map(w => [s39Distance(word, w), w]).filter(x => x[0] <= 2)
+    .sort((x, y) => x[0] - y[0] || (x[1] < y[1] ? -1 : 1)).slice(0, 6).map(x => x[1]);
+  if(near.length) return {how:"near", words:near};
+  for(let n = Math.min(3, word.length); n >= 2; n--){
+    const found = SLIP39_WORDS.filter(w => w.startsWith(word.slice(0, n)));
+    if(found.length) return {how:"start", words:found.slice(0, 6)};
+  }
+  return {how:"none", words:[]};
+}
+
+function s39UnknownWordText(pos, word){
+  const sug = s39Suggest(word);
+  let t = "Word " + (pos + 1) + " (\"" + word + "\") is not a SLIP-39 word.";
+  if(sug.how === "one") t += " Did you mean \"" + sug.words[0] + "\"?";
+  else if(sug.how === "near") t += " Close words: " + sug.words.join(", ") + ".";
+  else if(sug.how === "start") t += " Words that start like it: " + sug.words.join(", ") + ".";
+  return t;
+}
+
+// A share of n words is possible when its secret part has at most 8 padding bits and at least 128 bits.
+function s39LengthOk(n){
+  return n >= S39_MIN_WORDS && ((n - S39_META_WORDS) * 10) % 16 <= 8;
+}
+
+function s39LengthText(n){
+  let below = n - 1, above = n + 1;
+  while(below >= S39_MIN_WORDS && !s39LengthOk(below)) below--;
+  while(!s39LengthOk(above)) above++;
+  const near = below >= S39_MIN_WORDS ? below + " or " + above : String(above);
+  return "This share has " + n + " words. A SLIP-39 share has 20 words (128-bit secret) or 33 words (256-bit secret); " +
+    n + " words is not a possible length (the nearest possible lengths are " + near + "). Check for a missing or extra word.";
+}
+
+// Check one share and read its fields. Indexes are as stored (group 0 is the first group); thresholds and
+// counts are the real numbers (stored minus one). Nothing here is secret except share.value.
+function slip39Parse(mnemonic){
+  const words = s39Words(mnemonic);
+  const fail = (error) => ({ok:false, error, share:null, words});
+  if(!words.length) return fail("No words were given.");
+
+  const idx = [], unknown = [];
+  words.forEach((w, i) => {
+    const k = S39_WORD_INDEX.get(w);
+    if(k === undefined) unknown.push(s39UnknownWordText(i, w));
+    idx.push(k);
+  });
+  if(unknown.length) return fail(unknown.join(" "));
+
+  const n = words.length;
+  if(n < S39_MIN_WORDS) return fail("This share has only " + n + " words. A SLIP-39 share has at least 20 words: 20 for a 128-bit secret, 33 for a 256-bit secret.");
+  if(!s39LengthOk(n)) return fail(s39LengthText(n));
+
+  // Words 1 and 2: identifier (15 bits), extendable flag (1 bit), iteration exponent (4 bits).
+  const idExp = idx[0] * 1024 + idx[1];
+  const identifier = idExp >>> 5;
+  const extendable = ((idExp >>> 4) & 1) === 1;
+  const iterationExponent = idExp & 15;
+
+  if(!s39ChecksumOk(idx, extendable))
+    return fail("The checksum failed, so at least one word is wrong or words are in the wrong order. Check each word against the paper.");
+
+  // Words 3 and 4: five 4-bit fields.
+  const p = idx[2] * 1024 + idx[3];
+  const groupIndex = p >>> 16;
+  const groupThreshold = ((p >>> 12) & 15) + 1;
+  const groupCount = ((p >>> 8) & 15) + 1;
+  const memberIndex = (p >>> 4) & 15;
+  const memberThreshold = (p & 15) + 1;
+  if(groupThreshold > groupCount)
+    return fail("This share says " + groupThreshold + " groups are needed but only " + groupCount + " exist, which is impossible. It is not a valid share.");
+
+  // The secret part: words 5 to n-3, left-padded with zero bits up to a multiple of 10 bits.
+  let bits = "";
+  for(let i = S39_ID_EXP_WORDS + S39_PARAM_WORDS; i < n - S39_CHECKSUM_WORDS; i++) bits += idx[i].toString(2).padStart(10, "0");
+  const padBits = bits.length % 16;
+  if(bits.slice(0, padBits).includes("1"))
+    return fail("The padding bits at the start of word 5 are not zero, so this is not a valid share (its checksum is right, so it was probably made wrongly, not mistyped).");
+  bits = bits.slice(padBits);
+  const value = new Uint8Array(bits.length / 8);
+  for(let i = 0; i < value.length; i++) value[i] = parseInt(bits.slice(i * 8, i * 8 + 8), 2);
+
+  return {ok:true, error:"", words, share:{identifier, extendable, iterationExponent, groupIndex, groupThreshold,
+    groupCount, memberIndex, memberThreshold, value}};
+}
+
+// Lagrange interpolation in GF(256), one byte position at a time: returns f(x) given points {x, y}.
+// The x values must differ and every y must have the same length (the caller checks both).
+function s39Interpolate(points, x){
+  for(const p of points){ if(p.x === x) return p.y.slice(); }
+  const {exp, log} = S39_GF;
+  let logProd = 0;
+  for(const p of points) logProd += log[p.x ^ x];
+  const out = new Uint8Array(points[0].y.length);
+  for(const p of points){
+    // The logarithm of the Lagrange basis polynomial for p, evaluated at x.
+    let lb = logProd - log[p.x ^ x];
+    for(const q of points){ if(q !== p) lb -= log[p.x ^ q.x]; }
+    lb = ((lb % 255) + 255) % 255;
+    for(let k = 0; k < out.length; k++){
+      if(p.y[k]) out[k] ^= exp[(log[p.y[k]] + lb) % 255];
+    }
+  }
+  return out;
+}
+
+async function s39HmacSha256(keyBytes, data){
+  const key = await crypto.subtle.importKey("raw", keyBytes, {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
+  return new Uint8Array(await crypto.subtle.sign("HMAC", key, data));
+}
+
+// RecoverSecret from the spec: with threshold 1 the share is the secret; otherwise rebuild f(255) and
+// check it against the digest kept in f(254). Returns null if the digest does not match.
+async function s39RecoverSecret(threshold, points){
+  if(threshold === 1) return points[0].y.slice();
+  const secret = s39Interpolate(points, S39_SECRET_INDEX);
+  const d = s39Interpolate(points, S39_DIGEST_INDEX);
+  const mac = await s39HmacSha256(d.slice(S39_DIGEST_BYTES), secret);
+  for(let i = 0; i < S39_DIGEST_BYTES; i++){ if(mac[i] !== d[i]) return null; }
+  return secret;
+}
+
+function s39Concat(a, b){
+  const o = new Uint8Array(a.length + b.length);
+  o.set(a, 0); o.set(b, a.length);
+  return o;
+}
+
+// Round function of the Feistel network:
+// F(i, R) = PBKDF2(HMAC-SHA256, password = i || passphrase, salt = salt_prefix || R, 2500 << e iterations, n/2 bytes).
+async function s39Round(i, passBytes, e, saltPrefix, r){
+  const key = await crypto.subtle.importKey("raw", s39Concat(new Uint8Array([i]), passBytes), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({name:"PBKDF2", hash:"SHA-256", salt:s39Concat(saltPrefix, r),
+    iterations:(S39_BASE_ITERATIONS / S39_ROUNDS) << e}, key, r.length * 8);
+  return new Uint8Array(bits);
+}
+
+// Decrypt the encrypted master secret: the 4 Feistel rounds in reverse order (3, 2, 1, 0).
+// Salt prefix: "shamir" + identifier (2 bytes, big-endian) if the extendable flag is 0; empty if it is 1.
+async function s39Decrypt(ems, passBytes, e, identifier, extendable){
+  const saltPrefix = extendable ? new Uint8Array(0)
+    : s39Concat(new TextEncoder().encode("shamir"), new Uint8Array([identifier >>> 8, identifier & 255]));
+  const half = ems.length / 2;
+  let l = ems.slice(0, half), r = ems.slice(half);
+  for(let i = S39_ROUNDS - 1; i >= 0; i--){
+    const f = await s39Round(i, passBytes, e, saltPrefix, r);
+    const next = new Uint8Array(half);
+    for(let k = 0; k < half; k++) next[k] = l[k] ^ f[k];
+    l = r; r = next;
+  }
+  return s39Concat(r, l);
+}
+
+// The spec allows only printable ASCII (code points 32-126) in the passphrase. Returns an error text, or "".
+function s39PassphraseError(pass){
+  const chars = Array.from(pass);
+  for(let i = 0; i < chars.length; i++){
+    const c = chars[i].codePointAt(0);
+    if(c < 32 || c > 126){
+      const shown = c < 32 || c === 127 ? "an invisible control character (U+" + c.toString(16).toUpperCase().padStart(4, "0") + ")" : "\"" + chars[i] + "\"";
+      return "The passphrase can only use printable ASCII characters (A-Z, a-z, 0-9, space and the symbols on a US keyboard), as SLIP-39 requires. Character " +
+        (i + 1) + " is " + shown + ".";
+    }
+  }
+  return "";
+}
+
+function s39Plural(n, one, many){ return n + " " + (n === 1 ? one : many); }
+
+// Combine shares into the master secret. mnemonics: an array of shares (blank entries are skipped; the
+// same share typed twice counts once). passphrase: exactly as typed, "" if none.
+// Group and share numbers in messages count from 1 (the share stores the first group as index 0).
+async function slip39Combine(mnemonics, passphrase){
+  const out = {ok:false, error:"", masterSecret:null, identifier:null, extendable:null, iterationExponent:null,
+    groups:{needed:0, have:0, detail:[]}};
+  const fail = (error) => { out.error = error; return out; };
+
+  const pass = passphrase == null ? "" : String(passphrase);
+  const passErr = s39PassphraseError(pass);
+  if(passErr) return fail(passErr);
+
+  const list = (Array.isArray(mnemonics) ? mnemonics : [mnemonics]).filter(m => s39Words(m).length);
+  if(!list.length) return fail("No shares were given.");
+
+  // Check every share on its own first.
+  const shares = [], errors = [], seen = new Map(), dupNotes = [];
+  list.forEach((m, i) => {
+    const r = slip39Parse(m);
+    if(!r.ok){ errors.push("Share " + (i + 1) + ": " + r.error); return; }
+    const key = r.words.join(" ");
+    if(seen.has(key)){ dupNotes.push("share " + (i + 1) + " is the same as share " + seen.get(key) + ", so it was counted once"); return; }
+    seen.set(key, i + 1);
+    shares.push({pos:i + 1, s:r.share, words:r.words});
+  });
+  if(errors.length) return fail(errors.join("\n"));
+
+  // All shares must come from the same backup: same identifier, extendable flag, iteration exponent,
+  // group threshold, group count and length.
+  const first = shares[0], f = first.s;
+  for(const sh of shares.slice(1)){
+    const s = sh.s, a = "Share " + sh.pos, b = "share " + first.pos;
+    const begin = (x) => "\"" + x.words.slice(0, 2).join(" ") + "\"";
+    const mixed = " Shares of one backup all begin with the same two words; " + a.toLowerCase() + " begins " + begin(sh) + " and " + b + " begins " + begin(first) + ".";
+    if(s.identifier !== f.identifier) return fail(a + " is from a different backup than " + b + " (identifier " + s.identifier + ", not " + f.identifier + ")." + mixed);
+    if(s.extendable !== f.extendable) return fail(a + " and " + b + " differ in the extendable flag, so they are from different backups." + mixed);
+    if(s.iterationExponent !== f.iterationExponent) return fail(a + " and " + b + " differ in the iteration exponent (" + s.iterationExponent + " and " + f.iterationExponent + "), so they are from different backups." + mixed);
+    if(s.groupThreshold !== f.groupThreshold || s.groupCount !== f.groupCount)
+      return fail(a + " says the backup needs " + s.groupThreshold + " of " + s.groupCount + " groups, but " + b + " says " + f.groupThreshold + " of " + f.groupCount + ". They cannot both be right: one is from another backup or was made wrongly.");
+    if(s.value.length !== f.value.length) return fail(a + " has " + sh.words.length + " words but " + b + " has " + first.words.length + ". All shares of one backup have the same number of words.");
+  }
+  out.identifier = f.identifier;
+  out.extendable = f.extendable;
+  out.iterationExponent = f.iterationExponent;
+
+  // Sort the shares into their groups. Within a group, the member threshold must agree and no two shares
+  // may have the same member index.
+  const groups = new Map();
+  for(const sh of shares){
+    const s = sh.s, gname = f.groupCount > 1 ? " of group " + (s.groupIndex + 1) : "";
+    if(!groups.has(s.groupIndex)) groups.set(s.groupIndex, {index:s.groupIndex, threshold:s.memberThreshold, shares:[]});
+    const g = groups.get(s.groupIndex), other = g.shares[0];
+    if(s.memberThreshold !== g.threshold)
+      return fail("Shares " + other.pos + " and " + sh.pos + " are both from group " + (s.groupIndex + 1) + " but disagree on how many of its shares are needed (" +
+        g.threshold + " and " + s.memberThreshold + "). One is from another backup or was made wrongly.");
+    const twin = g.shares.find(o => o.s.memberIndex === s.memberIndex);
+    if(twin) return fail("Shares " + twin.pos + " and " + sh.pos + " are both share number " + (s.memberIndex + 1) + gname +
+      ", but their words differ. One of them is mistyped or from another backup; use only one.");
+    g.shares.push(sh);
+  }
+
+  const groupList = Array.from(groups.values()).sort((x, y) => x.index - y.index);
+  const GT = f.groupThreshold, G = f.groupCount;
+  out.groups.needed = GT;
+  out.groups.detail = groupList.map(g => ({group:g.index + 1, needed:g.threshold, have:g.shares.length}));
+  out.groups.have = groupList.filter(g => g.shares.length >= g.threshold).length;
+  const groupName = (g) => G > 1 ? " from group " + (g.index + 1) : "";
+  const dupText = dupNotes.length ? " (Note: " + dupNotes.join("; ") + ".)" : "";
+
+  // The spec asks for exactly the threshold: exactly GT groups, and exactly T shares in each.
+  for(const g of groupList){
+    if(g.shares.length > g.threshold)
+      return fail((G > 1 ? "Group " + (g.index + 1) : "This backup") + " needs exactly " + s39Plural(g.threshold, "share", "shares") + ", but " +
+        g.shares.length + " were given (shares " + g.shares.map(o => o.pos).join(", ") + "). Remove " + (g.shares.length - g.threshold) + " of them.");
+  }
+  if(groupList.length > GT)
+    return fail("This backup needs shares from exactly " + GT + " of its " + G + " groups, but shares from " + groupList.length +
+      " groups were given (groups " + groupList.map(g => g.index + 1).join(", ") + "). Leave out the shares of " + s39Plural(groupList.length - GT, "group", "groups") + ".");
+  const missing = [];
+  for(const g of groupList){
+    const more = g.threshold - g.shares.length;
+    if(more > 0) missing.push(s39Plural(more, "more share", "more shares") + groupName(g) + (more === 1 ? " is" : " are") + " needed");
+  }
+  if(groupList.length < GT) missing.push("shares from " + s39Plural(GT - groupList.length, "more group", "more groups") + " are needed");
+  if(missing.length){
+    let t = "Not enough shares yet: " + missing.join(", and ") + ".";
+    if(G > 1) t += " This backup needs " + GT + " of its " + G + " groups to be complete; " + s39Plural(out.groups.have, "group is", "groups are") + " complete now.";
+    else t += " This backup needs " + s39Plural(groupList[0].threshold, "share", "shares") + ".";
+    return fail(t + dupText);
+  }
+
+  try{
+    // First level: rebuild each group's share from its member shares.
+    const groupShares = [];
+    for(const g of groupList){
+      const y = await s39RecoverSecret(g.threshold, g.shares.map(o => ({x:o.s.memberIndex, y:o.s.value})));
+      if(!y) return fail("The shares" + groupName(g) + " do not fit together: the built-in check (digest) failed. Each share passed its own checksum, so one of them is probably from a different backup, or was altered.");
+      groupShares.push({x:g.index, y});
+    }
+    // Second level: rebuild the encrypted master secret from the group shares.
+    const ems = await s39RecoverSecret(GT, groupShares);
+    if(!ems) return fail("The groups do not fit together: the built-in check (digest) failed. One of the groups is probably from a different backup, or a share was altered.");
+    out.masterSecret = await s39Decrypt(ems, new TextEncoder().encode(pass), f.iterationExponent, f.identifier, f.extendable);
+  } catch(err){
+    return fail("This browser could not run the cryptography SLIP-39 needs (crypto.subtle): " + (err && err.message ? err.message : err));
+  }
+  out.ok = true;
+  return out;
+}
 function getNeeded(wc){
   const mode = document.querySelector('input[name="mode"]:checked')?.value || "dice";
   if(mode==="coin") return {12:128,24:256}[wc];
@@ -3191,7 +3637,7 @@ const DICT = [
   ["Child seed", "A new seed derived from a parent seed (BIP85). The same parent, word count and index always give the same child.", "EXTRA TOOLS.", "Keys & seeds"],
   ["Clipboard", "Your computer's short-term copy memory. Some systems keep a history of it or sync it to other devices, so copying a secret can leak it.", "Browser safety checklist.", "Privacy & security"],
   ["Camera scanning", "Reading a QR code with the computer's camera instead of typing it. In VOIDFORGE the camera turns on only when you press a SCAN button, shows a red CAMERA ON bar, and stops as soon as the code is read; the picture never leaves the page. A seed QR is scanned only while the computer is offline.", "SCAN buttons in CHECK A BACKUP (SCAN SEEDQR, the watch-only key, Explain an address, the Wallet Detective) and EXTRA TOOLS (Inspect a transaction).", "VOIDFORGE"],
-  ["Card entropy", "Randomness taken from a well-shuffled deck of 52 playing cards, typed in the order they lie. Card after card from one shuffle adds a little less each time (log2 of the cards left), so 25 cards give about 132 bits (12 words) and a whole deck about 226 bits; a 24-word seed needs the whole deck and 6 more from a new shuffle. The cards are hashed with SHA-256, as in Ian Coleman's BIP39 tool.", "MAKE A SEED: the Cards & hex tab.", "Keys & seeds"],
+  ["Card entropy", "Randomness from a well-shuffled deck of 52 playing cards, typed in the order they lie. Each card from one shuffle adds a little less than the one before, so 25 cards give a 12-word seed; 24 words need the whole deck and 6 more from a new shuffle. Hashed with SHA-256, as in Ian Coleman's BIP39 tool.", "MAKE A SEED: the Cards & hex tab.", "Keys & seeds"],
   ["Coin control", "A wallet feature that lets you pick exactly which coins to spend, mostly for privacy.", "", "Transactions"],
   ["Coin flip entropy", "Randomness taken from real coin tosses, written as 1 and 0. 128 flips give a 12-word seed and 256 give 24 words.", "MAKE A SEED: the Coin tab.", "Keys & seeds"],
   ["Coin selection", "How a wallet chooses which of your coins (UTXOs) to spend in a payment.", "", "Transactions"],
@@ -3364,7 +3810,8 @@ const DICT = [
   ["Sequence number", "A field in each input. Among other things it signals that a transaction can be replaced (RBF) and can set a relative timelock.", "", "Transactions"],
   ["SHA256SUMS", "A text file listing the fingerprint of the published VOIDFORGE file, so you can check your download is unchanged.", "Check your download.", "VOIDFORGE"],
   ["SHAKE256", "A hash function from the SHA-3 family that can give as many output bytes as you ask for. BIP85 uses it to turn a seed into any number of dice rolls.", "BIP85 dice rolls.", "Units & math"],
-  ["Shamir's Secret Sharing", "Splitting a secret into shares so that a chosen number of them rebuild it and fewer reveal nothing. SLIP39 and Codex32 use it.", "", "Keys & seeds"],
+  ["SLIP39", "SatoshiLabs' standard for Shamir backups: shares of 20 or 33 words from its own list of 1,024 words, in one or more groups, made by Trezor and Keystone. A set number of shares rebuilds the wallet. A wrong passphrase opens a different wallet with no error.", "EXTRA TOOLS: SLIP39 shares (Shamir backup).", "Keys & seeds"],
+  ["Shamir's Secret Sharing", "Splitting a secret into shares so that a chosen number of them rebuild it and fewer reveal nothing. SLIP39 and Codex32 use it.", "EXTRA TOOLS: SLIP39 shares (Shamir backup).", "Keys & seeds"],
   ["Side channel", "A leak of secrets through things like timing, power use, sound or light instead of through the data itself.", "", "Privacy & security"],
   ["Sidechain", "A separate blockchain linked to Bitcoin, with its own rules, where coins can be moved to and from.", "", "Lightning & layers"],
   ["Sighash", "A flag on a signature saying which parts of the transaction it covers. The usual one (SIGHASH_ALL) covers every input and output.", "", "Transactions"],
@@ -4957,6 +5404,7 @@ async function runSelfTests(auto){
     eq("BIP85 password, Base85, 12 characters (published BIP85 vector)", ()=>bip85App(BK,BC,"pwd85",0,12),"_s`{TW89)i4`");
     eq("BIP85 dice, 10 rolls of a 6-sided die (published BIP85 vector)", ()=>bip85App(BK,BC,"dice",0,6,10),"1,0,0,2,0,1,5,5,2,4");
     eq("Cards: AS 2C 10D written as A\u2660 2\u2663 T\u2666 and hashed, as in Ian Coleman's BIP39 tool (12 words, from @scure)", ()=>rollsToMnemonic(cdParse("as 2c 10d").cards.join(" "), 12), "embody only exact pride episode winter estate perfect security often scout tiger");
+    eq("SLIP39: 2 of 3 shares with passphrase TREZOR give the master secret (official test vector 4)", async()=>hex((await slip39Combine(["shadow pistol academic always adequate wildlife fancy gross oasis cylinder mustang wrist rescue view short owner flip making coding armed", "shadow pistol academic acid actress prayer class unknown daughter sweater depict flip twice unkind craft early superior advocate guest smoking"], "TREZOR")).masterSecret), "b43ceb7e57a0ea8766221624d01b0864");
     eq("SHAKE256 BIP85-DRNG, 80 bytes (published BIP85 vector)", ()=>hex(shake256Reader(fromHex("efecfbccffea313214232d29e71563d941229afb4338c21f9517c41aaa0d16f00b83d2a09ef747e7a64e8e2bd5a14869e693da66ce94ac2da570ab7ee48618f7")).read(80)),"b78b1ee6b345eae6836c2d53d33c64cdaf9a696487be81b03e822dc84b3f1cd883d7559e53d175f243e4c349e822a957bbff9224bc5dde9492ef54e8a439f6bc8c7355b87a925a37ee405a7502991111"); }
   eq("SeedQR digit string -> words ('abandon..about' = 0000 x11 + 0003)", async()=>(await checkPhrase("0000".repeat(11)+"0003")).mnemonic, "abandon ".repeat(11)+"about");
   eq("CompactSeedQR hex -> words (BIP39 vector 7f x16)", async()=>(await checkPhrase("7f".repeat(16))).mnemonic, "legal winner thank year wave sausage worth useful legal winner thank yellow");
@@ -7205,6 +7653,28 @@ async function camPhotos(e){
   }
   if(cam && cam.run === run && !found) camMsg("No QR code was found in " + (files.length === 1 ? "this photo" : "these photos") + ". Try a sharper photo with the whole code in it.");
 }
+// ===== SLIP-39 shares (v2.9.0): check each share, then combine (slip39Parse, slip39Combine). Trezor and Keystone make the
+// wallet from the master secret as a BIP32 seed, so the fingerprint and addresses below are the ones those devices show. =====
+let s39Run = 0;
+function clearS39(){ s39Run++; for(const id of ["s39In", "s39Pass"]) document.getElementById(id).value = ""; s39Wipe(); }
+function s39Wipe(){ const st = document.getElementById("s39Status"), o = document.getElementById("s39Out"); st.textContent = ""; st.className = "status"; o.textContent = ""; o.style.display = "none"; }
+async function s39Ui(){
+  if(!gateOk()) return;
+  const run = ++s39Run, st = document.getElementById("s39Status"), o = document.getElementById("s39Out"); s39Wipe();
+  const lines = document.getElementById("s39In").value.split(/\n+/).map(x => x.trim()).filter(Boolean);
+  if(!lines.length){ st.textContent = "Type your shares, one per line."; return; }
+  const each = lines.map((l, i) => { const p = slip39Parse(l), sh = p.share;
+    return "Share " + (i + 1) + ": " + (p.ok ? "checksum OK, share number " + (sh.memberIndex + 1) + (sh.groupCount > 1 ? " of group " + (sh.groupIndex + 1) + " (this group needs " + sh.memberThreshold + " share" + (sh.memberThreshold === 1 ? "" : "s") + ", and " + sh.groupThreshold + " of the " + sh.groupCount + " groups are needed)." : " (" + sh.memberThreshold + " share" + (sh.memberThreshold === 1 ? " is" : "s are") + " needed).") : p.error); });
+  st.textContent = "Checking and combining..."; const r = await slip39Combine(lines, document.getElementById("s39Pass").value);
+  if(run !== s39Run) return;
+  if(!r.ok){ st.className = "status bad"; st.textContent = each.join("\n") + "\n\nNot combined: " + r.error; return; }
+  const sec = r.masterSecret, fp = await fingerprintFromSeed(sec), seg = await watchOnlyFromSeed(sec, "wpkh", 0), tr = await watchOnlyFromSeed(sec, "tr", 0);
+  sec.fill(0); if(run !== s39Run) return;
+  st.className = "status ok"; st.textContent = each.join("\n") + "\n\nCombined: these shares open one wallet.";
+  o.textContent = "Master fingerprint: " + fp + "\nFirst Native SegWit address (m/84'/0'/0'/0/0): " + seg.first + "\nFirst Taproot address (m/86'/0'/0'/0/0): " + tr.first +
+    "\n\nCompare the fingerprint with your device. " + (document.getElementById("s39Pass").value ? "A wrong passphrase opens a different, empty wallet with no error, so a fingerprint that does not match usually means a mistyped passphrase." : "If your backup has a passphrase, type it: without it these shares open a different wallet.");
+  o.style.display = "";
+}
 // Card sheet (v2.9.0): numbered boxes to write the cards down as they are dealt: 25 for 12 words, or a whole deck and then
 // 6 more from a new shuffle for 24 words (see cdBits).
 function printCardSheet(){
@@ -7397,7 +7867,7 @@ function wipeSeed(){
   document.getElementById("checkAddr").value=""; explainSeq++; document.getElementById("addrExplain").textContent=""; document.getElementById("addrExplain").className="status";
   document.getElementById("testResults").textContent="";
   setResult("\u2014"); updateAdvSummary(); if(guideOn){ guideN = 1; guideRender(); }
-  wdClear(); cdClear();
+  wdClear(); cdClear(); clearS39();
   dpClear(); dcClear();   // v2.7.0: the dice passphrase and the device dice check
   detClear();   // v2.8.0: the Wallet Detective
   kcClear();   // v2.9.0: the wallet file check
@@ -7418,7 +7888,7 @@ function wipeSeed(){
 }
 
 // Auto-clear (v1.34.0): optional, off at every page load, nothing stored. Wipes the secrets without asking after idle time or when the tab is hidden.
-const AUTO_FIELDS = ["pkIn", "rolls", "passphrase", "passphrase2", "note", "phrase", "verifyPass", "verifyRecorded", "checkAddr", "drillWords", "drillPass", "prInput", "reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "wdWords", "wdFlips", "wdFind", "cdCards", "cdHex", "dpRolls", "dcRolls"];
+const AUTO_FIELDS = ["pkIn", "rolls", "passphrase", "passphrase2", "note", "phrase", "verifyPass", "verifyRecorded", "checkAddr", "drillWords", "drillPass", "prInput", "reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "wdWords", "wdFlips", "wdFind", "cdCards", "cdHex", "s39In", "s39Pass", "dpRolls", "dcRolls"];
 let autoLast = Date.now(), autoTimer = null;
 function autoTouch(){ autoLast = Date.now(); }
 ["keydown", "pointerdown", "input", "touchstart", "wheel"].forEach(e => document.addEventListener(e, autoTouch, {capture: true, passive: true}));
@@ -8578,6 +9048,7 @@ function setGate(state, text, cls){
   if(!kcBusy) document.getElementById("kcBtn").disabled = !on;   // v2.9.0: Is this seed in my wallet file?
   if(!lbBusy) document.getElementById("lbBtn").disabled = !on;   // v2.9.0: Read a label file
   for(const id of ["xorSplitBtn", "xorCombineBtn"]) document.getElementById(id).disabled = !on;   // v2.9.0: Seed XOR
+  document.getElementById("s39Btn").disabled = !on;   // v2.9.0: SLIP-39
   document.getElementById("wpBtn").disabled = !on;
   document.getElementById("reuseBtn").disabled = !on;
   document.getElementById("childBtn").disabled = !on;
