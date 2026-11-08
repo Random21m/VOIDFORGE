@@ -1,6 +1,6 @@
 // Offline copy for the VOIDFORGE online demo. Network first: when you are online you always get the
 // current files; when you are offline the last copy you opened is used. Bump CACHE on every demo update.
-const CACHE = 'voidforge-demo-2.8.0';
+const CACHE = 'voidforge-demo-2.8.1';
 const FILES = ['./', 'index.html', 'voidforge.html', 'favicon.svg', 'favicon-32.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'manifest.webmanifest', 'register.js'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });

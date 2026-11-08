@@ -26,16 +26,44 @@ const ROLLS = '1'.repeat(25) + '2'.repeat(25), AB = 'abandon '.repeat(11) + 'abo
 const addr84 = (m, p, c, i) => { const k = HDKey.fromMasterSeed(mnemonicToSeedSync(m, p)).derive(`m/84'/0'/0'/${c}/${i}`); return bech32.encode('bc', [0, ...bech32.toWords(ripemd160(sha256(k.publicKey)))]); };
 const fpOf = (m, p) => HDKey.fromMasterSeed(mnemonicToSeedSync(m, p)).fingerprint.toString(16).padStart(8, '0');
 
+// Opening the page. The normal way: the file itself, with the browser context offline. WebKit's Linux test build can fail
+// to open a file:// page while offline ("WebKit encountered an internal error"); for WebKit only, two more ways are then
+// tried, each still with no outside network: the file with every http(s) request aborted, then offline; or the same bytes
+// served from 127.0.0.1 with every other request aborted, then offline. The way that worked is printed as a NOTE.
+const WAY_FIRST = 'file, offline';
+let server, serverUrl;
+async function serve() {
+  if (serverUrl) return serverUrl;
+  const http = await import('node:http'), fs = await import('node:fs');
+  const body = fs.readFileSync(fileURLToPath(FILE));
+  server = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); r.end(body); });
+  await new Promise((ok2) => server.listen(0, '127.0.0.1', ok2)); server.unref();
+  return (serverUrl = 'http://127.0.0.1:' + server.address().port + '/voidforge.html');
+}
+async function openPage(browser, name) {
+  const ways = [[WAY_FIRST, async (ctx, p) => { await ctx.setOffline(true); await p.goto(FILE); }]];
+  if (name === 'webkit') ways.push(
+    ['file, web requests aborted, then offline', async (ctx, p) => { await ctx.route(/^https?:/, (r) => r.abort()); await p.goto(FILE); await ctx.setOffline(true); }],
+    ['127.0.0.1, other requests aborted, then offline', async (ctx, p) => { const url = await serve(); await ctx.route((u) => !String(u).startsWith(url), (r) => r.abort()); await p.goto(url); await ctx.setOffline(true); }]);
+  let last;
+  for (const [how, go] of ways) {
+    const ctx = await browser.newContext(), p = await ctx.newPage(), errors = [];
+    p.on('pageerror', (e) => errors.push(e.message)); p.on('dialog', (d) => d.accept());
+    try { await go(ctx, p); await p.waitForFunction(() => document.body.classList.contains('js-ok')); return { p, how, errors }; }
+    catch (e) { last = e; console.log('NOTE ' + name + ': could not open the page as ' + how + ': ' + String(e.message).split('\n')[0]); await ctx.close().catch(() => {}); }
+  }
+  throw last;
+}
+
 for (const name of ENGINES) {
   let browser;
   try { browser = await pw[name].launch(); } catch (e) { console.log('SKIPPED ' + name + ' (not installed here: ' + String(e.message).split('\n')[0].slice(0, 80) + ')'); continue; }
   ran++;
   const L = (m) => name + ': ' + m;
   try {
-    const ctx = await browser.newContext(); await ctx.setOffline(true);
-    const p = await ctx.newPage(); const errors = []; p.on('pageerror', (e) => errors.push(e.message)); p.on('dialog', (d) => d.accept());
     const t0 = Date.now();
-    await p.goto(FILE); await p.waitForFunction(() => document.body.classList.contains('js-ok'));
+    const { p, how, errors } = await openPage(browser, name);
+    if (how !== WAY_FIRST) console.log('NOTE ' + L('opened as: ' + how + ' (the first way, ' + WAY_FIRST + ', failed in this engine build)'));
     await p.waitForFunction(() => /PASSED|FAILED/.test(document.getElementById('selfTestBadge').textContent), null, { timeout: 180000 });
     ok(/PASSED/.test(await p.textContent('#selfTestBadge')), L('the self-test passes (' + Math.round((Date.now() - t0) / 1000) + ' s)'));
     await p.evaluate(() => { const g = document.getElementById('sgGo'); if (g) g.click(); window.print = () => {}; });
