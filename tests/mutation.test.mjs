@@ -2845,6 +2845,29 @@ async function probe(w, mutated, fast, only, hooks) {
   } catch (e) { fails.push('review fixes: the probe crashed: ' + e.message); }
   w.confirm = oc; w.alert = oa;
   }
+  if (SEC(59, "v2.9.0 QR reader (codes made by the independent qrcode package)")) {
+  try {
+    const QRC = requireC('qrcode');
+    const img = (text, opt = {}, px = 4, tr = null) => { const m = QRC.create(text, Object.assign({ errorCorrectionLevel: 'M' }, opt)).modules, n = m.size, q = 4, S = (n + 2 * q) * px, g = new Uint8Array(S * S).fill(255);
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (m.get(y, x)) { const [X, Y] = tr ? tr(x, y, n) : [x, y]; for (let dy = 0; dy < px; dy++) for (let dx = 0; dx < px; dx++) g[((Y + q) * px + dy) * S + (X + q) * px + dx] = 0; }
+      return { g, S }; };
+    const dec = (o) => { const r = w.qrDecodeGray(o.g, o.S, o.S); return r ? r.text : null; };
+    const A = addr(expect.d50, ''), sq = expect.d50.split(' ').map((x) => String(wordlist.indexOf(x)).padStart(4, '0')).join('');
+    if (dec(img('bitcoin:' + A)) !== 'bitcoin:' + A) fails.push('QR reader: an address QR');
+    if (dec(img(sq, { mode: 'numeric' })) !== sq) fails.push('QR reader: a SeedQR (numeric mode)');
+    if (dec(img('UR:CRYPTO-PSBT/ABC', { mode: 'alphanumeric' })) !== 'UR:CRYPTO-PSBT/ABC') fails.push('QR reader: alphanumeric mode');
+    if (dec(img('pässwört ✓')) !== 'pässwört ✓') fails.push('QR reader: UTF-8 text');
+    { const long = 'x'.repeat(400); if (dec(img(long, { errorCorrectionLevel: 'L' }, 3)) !== long) fails.push('QR reader: a large code (version 10 and up, 16-bit byte count)'); }
+    for (const lv of ['L', 'M', 'Q', 'H']) if (dec(img('level ' + lv, { errorCorrectionLevel: lv })) !== 'level ' + lv) { fails.push('QR reader: error correction level ' + lv); break; }
+    for (let mk = 0; mk < 8; mk++) if (dec(img('mask ' + mk, { maskPattern: mk })) !== 'mask ' + mk) { fails.push('QR reader: mask ' + mk); break; }
+    if (dec(img('rotated', {}, 4, (x, y, n) => [n - 1 - y, x])) !== 'rotated') fails.push('QR reader: a code turned 90 degrees');
+    { const o = img('inverted'); for (let i = 0; i < o.g.length; i++) o.g[i] = 255 - o.g[i]; if (dec(o) !== 'inverted') fails.push('QR reader: light on dark'); }
+    { const o = img('damaged but fine', { errorCorrectionLevel: 'H' }), S = o.S; for (let y = 4 * 13; y < 4 * 16; y++) for (let x = 4 * 13; x < 4 * 16; x++) o.g[y * S + x] = 255 - o.g[y * S + x];
+      if (dec(o) !== 'damaged but fine') fails.push('QR reader: Reed-Solomon fixes damage within its limit'); }
+    { const g = new Uint8Array(200 * 200); let sd = 7; for (let i = 0; i < g.length; i++) { sd = (sd * 1103515245 + 12345) & 0x7fffffff; g[i] = sd & 255; } if (w.qrDecodeGray(g, 200, 200) !== null) fails.push('QR reader: noise is not a code'); }
+    { const o = img('rgba'), rgba = new Uint8Array(o.S * o.S * 4); for (let i = 0; i < o.g.length; i++) { rgba[4 * i] = rgba[4 * i + 1] = rgba[4 * i + 2] = o.g[i]; rgba[4 * i + 3] = 255; } const r = w.qrDecodeRgba(rgba, o.S, o.S); if (!r || r.text !== 'rgba') fails.push('QR reader: canvas pixels (RGBA)'); }
+  } catch (e) { fails.push('QR reader: the probe crashed: ' + e.message); }
+  }
   if (SEC(54, "const meta = w.document.querySelector('meta[http-equiv=\"Cont")) {
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
@@ -3117,15 +3140,15 @@ const M = [
   ['watch: descriptor origin path wrong', '"h/" + N.coin + "h/" + account + "h";\n  const d=', '"h/" + N.coin + "h/" + (account+1) + "h";\n  const d='],
   ['watch: change descriptor uses branch 0', 'change:d(1)', 'change:d(0)'],
   ['watch: export not hidden on errors', '    clearWatch();\n    clearFpIcons();', '    clearFpIcons();'],
-  ['qr: format info XOR mask wrong', '^0x5412', '^0x5413'],
-  ['qr: format BCH polynomial wrong', '*0x537', '*0x536'],
+  ['qr: format info XOR mask wrong', 'rem)^0x5412', 'rem)^0x5413'],
+  ['qr: format BCH polynomial wrong', '(rem>>>9)*0x537', '(rem>>>9)*0x536'],
   ['qr: dark module missing', 'set(8,size-8,true);', 'set(8,size-8,false);'],
-  ['qr: version info polynomial wrong', '*0x1f25', '*0x1f24'],
+  ['qr: version info polynomial wrong', '(rem>>>11)*0x1f25', '(rem>>>11)*0x1f24'],
   ['qr: Galois field polynomial wrong', '*0x11d', '*0x11c'],
   ['qr: Reed-Solomon root step wrong', 'root=qrGfMul(root,2)', 'root=qrGfMul(root,3)'],
   ['qr: pad bytes wrong', 'pad^=0xec^0x11', 'pad^=0xec^0x12'],
-  ['qr: zigzag direction wrong', 'up=((right+1)&2)===0', 'up=((right+1)&2)!==0'],
-  ['qr: column 6 not skipped', 'if(right===6) right=5;', ''],
+  ['qr: zigzag direction wrong', 'const x=right-j, up=((right+1)&2)===0', 'const x=right-j, up=((right+1)&2)!==0'],
+  ['qr: column 6 not skipped', 'right-=2){ if(right===6) right=5;', 'right-=2){'],
   ['qr: error codewords not interleaved', 'for(let i=0;i<ecLen;i++) for(const b of blocks) words.push(b[1][i]);', 'for(const b of blocks) for(let i=0;i<ecLen;i++) words.push(b[1][i]);'],
   ['qr: data codewords not interleaved', 'for(let i=0;i<maxLen;i++) for(const b of blocks) if(i<b[0].length) words.push(b[0][i]);', 'for(const b of blocks) for(let i=0;i<b[0].length;i++) words.push(b[0][i]);'],
   ['qr: character count width for versions 10+', ':(v<10?8:16);', ':(v<10?8:8);'],
@@ -4909,6 +4932,17 @@ const M = [
   ["review: a SeedQR scan goes on when the network comes on", "if(CAM_TARGETS[cam.id].secret && navigator.onLine){ camStop(", "if(false){ camStop("],
   ["review: a repeated card not questioned", "if(b.again && !confirm(", "if(false && !confirm("],
   ["review: sha256sum -b lines not read", "/^[0-9a-f]{64} [ *]\\S/m.test(t)", "/^[0-9a-f]{64}  \\S/m.test(t)"],
+  ["QR reader: error correction levels mixed up", "const qdLevelByBits=[\"M\",\"L\",\"H\",\"Q\"];", "const qdLevelByBits=[\"L\",\"M\",\"Q\",\"H\"];"],
+  ["QR reader: three digits read with 11 bits", "len=[0,4,7,10][digits]", "len=[0,4,7,11][digits]"],
+  ["QR reader: byte count always 8 bits", "const cb=band===0?8:16;", "const cb=8;"],
+  ["QR reader: no error correction", "const f=qdRsCorrect(bl.b,ecLen,maxErr);", "const f=qdRsCorrect(bl.b,ecLen,0);"],
+  ["QR reader: light-on-dark codes never tried", "qdBinarize(src,w,h,pass%2===1)", "qdBinarize(src,w,h,false)"],
+  ["QR reader: UTF-8 two-byte letters not read", "if(c>=0xc2&&c<=0xdf){ need=1; cp=c&0x1f; min=0x80; }", "if(false){ need=1; cp=c&0x1f; min=0x80; }"],
+  ["QR reader: letter pairs swapped", "out.push(qdAlnum.charCodeAt(Math.floor(v/45)),qdAlnum.charCodeAt(v%45));", "out.push(qdAlnum.charCodeAt(v%45),qdAlnum.charCodeAt(Math.floor(v/45)));"],
+  ["QR reader: mask 4 wrong", "case 4: return (Math.floor(x/3)+Math.floor(y/2))%2===0;", "case 4: return (Math.floor(x/2)+Math.floor(y/3))%2===0;"],
+  ["QR reader: format mask XOR wrong", "|r)^0x5412)", "|r)^0x5413)"],
+  ["QR reader: zigzag direction wrong", "    const up=((right+1)&2)===0;", "    const up=((right+1)&2)!==0;"],
+  ["QR reader: version info polynomial wrong", "(r>>>11)*0x1f25", "(r>>>11)*0x1f24"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
