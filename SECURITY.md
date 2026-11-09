@@ -9,11 +9,12 @@ VOIDFORGE is **not independently audited**. It is a single HTML file you can rea
 Every release passes all of these before it is published (RELEASING.md says how to run each):
 
 - **The self-test in the page.** Known-answer vectors from the published standards (BIP39, BIP32, BIP84/86/49/44, BIP85, BIP352, Electrum's own test wallets and more) run each time the page opens; if one fails, the tools that make or check keys stay off.
-- **Unit tests** (`tests/test.js`): over 1,250 checks of every feature, in a simulated browser.
+- **Unit tests** (`tests/test.js`): over 1,550 checks of every feature, in a simulated browser.
 - **Oracle tests** (`tests/oracle.test.mjs`): the same inputs through the page and through independent libraries (`@scure`, `@noble`, `bc-ur`, `bbqr`), compared byte for byte.
 - **Property tests** (`tests/fuzz.test.mjs`): random inputs (seeds, Unicode passphrases, any derivation path, roll strings, damaged addresses, arbitrary text) through the page and the independent libraries.
 - **Bitcoin Core** (`tests/core.test.mjs`): on a private test network, Core checks the page's descriptors and import commands for every address type, sees payments to the page's addresses in the watch-only wallet, derives the same multisig addresses, and makes the transactions and signed messages the page reads.
-- **Device makers' rules** (`tests/vendor.test.mjs`): "Check your device's dice" against SeedSigner's, Coldcard's and Keystone's own dice code, read at pinned commits.
+- **Device makers' rules** (`tests/vendor.test.mjs`): "Check your device's dice" against SeedSigner's, Coldcard's and Keystone's own dice code, and *Check a Coldcard seed mix* against Coinkite's own checker and vectors, read at pinned commits.
+- **Other projects' own code** (v2.10.0): punch plates against Krux (`tests/krux.test.mjs`), raw card entropy against Ian Coleman's BIP39 tool (`tests/coleman.test.mjs`), new SLIP39 shares against python-shamir-mnemonic (`tests/slip39.test.mjs`), old Electrum seeds against Electrum's source and tests, encrypted descriptor backups against the official BIP138 vectors, and signature checks against Bitcoin Core's `sighash.json` and `tx_valid.json` (`tests/sigcheck.test.mjs`). Each file is pinned by commit and SHA-256, and only its pure functions are run.
 - **Three browser engines** (`tests/browsers.test.mjs`): Chromium, Firefox and WebKit.
 - **Prints** (`tests/print.test.mjs`): every printed sheet is exactly one page on Letter and A4, in a real browser.
 - **Memory** (`tests/memory.test.mjs`): after CLEAR ALL, auto-clear and END SESSION, a heap snapshot holds none of the seed words, rolls or passphrases.
