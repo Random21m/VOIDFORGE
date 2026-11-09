@@ -98,7 +98,12 @@ async function probe(w, mutated, fast, only, hooks) {
   const until = async (f, ms = 5000) => { for (let t = 0; t < ms && !f(); t += 20) await new Promise((r2) => setTimeout(r2, 20)); };
   const drawn = (id, d = w.document) => /<rect/.test((d.getElementById(id) || {}).innerHTML || '');
 
-  // v2.10.0: first, so a mutation of these tools fails within seconds; it ends with CLEAR ALL, so the page is as new.
+  if (SEC(0, "r = await run('dice', 12, D50); if (r !== expect.d50 || fpOf")) {
+  r = await run('dice', 12, D50); if (r !== expect.d50 || fpOf() !== fp(expect.d50, '')) fails.push('dice 12 words / fingerprint');
+  if (adOf() !== addr(expect.d50, '')) fails.push('first receive address');
+  }
+  if (hooks && hooks.afterBase) await hooks.afterBase();
+  // v2.10.0: right after section 0 (and after the map's start mark), so a mutation of these tools fails within seconds; it ends with CLEAR ALL, then makes section 0's seed again.
   if (SEC(66, "v2.10.0 Coldcard seed mix and flawed-device questions")) {
   try {
     const H = (...p) => nc.createHash('sha256').update(Buffer.concat(p.map((x) => Buffer.from(x)))).digest();
@@ -140,13 +145,9 @@ async function probe(w, mutated, fast, only, hooks) {
     if (!/1\. On your offline computer/.test($('flwOut').textContent)) fails.push('flawed device: a weak answer shows the move checklist');
     $('flwVer').dispatchEvent(new w.Event('input')); if ($('flwStatus').textContent) fails.push('flawed device: editing an answer clears the old result');
     w.clearAll(); if ($('flwVer').value) fails.push('flawed device: CLEAR ALL empties the answers');
+    r = await run('dice', 12, D50);   // put back the seed section 0 made
   } catch (e) { fails.push('v2.10.0 Coldcard mix checks: the probe crashed: ' + e.message); }
   }
-  if (SEC(0, "r = await run('dice', 12, D50); if (r !== expect.d50 || fpOf")) {
-  r = await run('dice', 12, D50); if (r !== expect.d50 || fpOf() !== fp(expect.d50, '')) fails.push('dice 12 words / fingerprint');
-  if (adOf() !== addr(expect.d50, '')) fails.push('first receive address');
-  }
-  if (hooks && hooks.afterBase) await hooks.afterBase();
   if (SEC(68, "v2.10.0 BIP138 encrypted descriptor backups (official vectors from bitcoin/bips, addresses from embit, keys from @scure)")) {
   try {
     const FX = (n) => JSON.parse(fs.readFileSync(new URL('./fixtures/bip138/' + n, import.meta.url), 'utf8'));
