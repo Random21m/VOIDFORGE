@@ -453,6 +453,102 @@ async function probe(w, mutated, fast, only, hooks) {
   $('wordSel').value = '12'; $('wordSel').dispatchEvent(new w.Event('change')); w.wipeSeed();
   r = await run('dice', 12, D50);
   }
+  if (SEC(69, "v2.11.0 codex32 (BIP93 test vectors; strings from python-codex32; wallet from @scure)")) {
+  // Placed early so a caught mutation stops quickly. It ends with CLEAR ALL, then makes section 0's seed again.
+  // Expected strings: BIP93's test vectors and the strings python-codex32 makes from the page's stream (tests/codex32.test.mjs).
+  const oc = w.confirm, realC = w.c32Combine, realP = w.c32Parse, realM = w.c32Make, realW = w.c32WalletText;
+  try {
+    const A = 'MS12NAMEA320ZYXWVUTSRQPNMLKJHGFEDCAXRPP870HKKQRM', C = 'MS12NAMECACDEFGHJKLMNPQRSTUVWXYZ023FTR2GDZMPY6PN', D = 'MS12NAMEDLL4F8JLH4E5VDVULDLFXU2JHDNLSM97XVENRXEG';
+    const T3 = { s: 'ms13cashsllhdmn9m42vcsamx24zrxgs3qqjzqud4m0d6nln', a: 'ms13casha320zyxwvutsrqpnmlkjhgfedca2a8d0zehn8a0t', c: 'ms13cashcacdefghjklmnpqrstuvwxyz023949xq35my48dr', d: 'ms13cashd0wsedstcdcts64cd7wvy4m90lm28w4ffupqs7rm', f: 'ms13cashf8jh6sdrkpyrsp5ut94pj8ktehhw2hfvyrj48704' };
+    const KA = ['ms12mkznaszh8xu3qpv9ejqsh7wx790takx9j23c8z42fsg9', 'ms12mkznc42x4k884t89zu64h6gsyjn7fevkwg28w57m4xtg', 'ms12mkzndq34jfhelgg9jxxqhrfwcqw5000ans6we23ggclx'];
+    const RA = '123456'.repeat(9), hx = (b) => Buffer.from(b).toString('hex'), msA = hx(sha(RA).slice(0, 16));
+    const seedOf = (l) => { const x = w.c32Combine(l); return x.ok ? hx(x.seed) : 'error: ' + x.error; }, err = (l) => w.c32Combine(l).error, perr = (s) => w.c32Parse(s).error;
+    const wallet = (seedHex, test) => { const root = HDKey.fromMasterSeed(Buffer.from(seedHex, 'hex')), coin = test ? 1 : 0, net = test ? btc.TEST_NETWORK : undefined, at = (p) => btc.p2wpkh(root.derive(p).publicKey, net).address;
+      return { fp: root.fingerprint.toString(16).padStart(8, '0'), rows: [0, 1].flatMap((ch) => Array.from({ length: 10 }, (_, i) => [ch + '/' + i, at(`m/84'/${coin}'/0'/${ch}/${i}`)])), tr: btc.p2tr(root.derive(`m/86'/${coin}'/0'/0/0`).publicKey.slice(1), undefined, net).address }; };
+    const shownRows = (t) => t.split('\n').filter((l) => /^[01]\/\d+ +(bc|tb)1q/.test(l)).map((l) => l.split(/ +/));
+    // the math, and a message for every kind of mistake
+    if (seedOf([A, C]) !== 'd1808e096b35b209ca12132b264662a5' || seedOf([D, A.toLowerCase()]) !== 'd1808e096b35b209ca12132b264662a5') fails.push('codex32: shares A and C, or D and A, give the seed (BIP93 vector 2)');
+    if (seedOf([T3.f, T3.a, T3.d]) !== 'ffeeddccbbaa99887766554433221100' || seedOf([T3.s]) !== 'ffeeddccbbaa99887766554433221100') fails.push('codex32: shares f, a, d and the secret give the seed (BIP93 vector 3)');
+    if (!/^It mixes capital and small letters/.test(perr('ms10fauxsxxxxxxxxxxxxxxxxxxxxxxxxxxUQXKK05LYF3X2'))) fails.push('codex32: mixed capitals and small letters are refused');
+    if (!/^The 4th character, the threshold/.test(perr('ms1fauxxxxxxxxxxxxxxxxxxxxxxxxxxxxxda3kr3s0s2swg'))) fails.push('codex32: a threshold that is not a digit is refused (BIP93 invalid vector)');
+    if (!/^Its threshold is 0/.test(perr('ms10fauxxxxxxxxxxxxxxxxxxxxxxxxxxxx0z26tfn0ulw3p'))) fails.push('codex32: threshold 0 with a share index is refused (BIP93 invalid vector)');
+    if (!/^It has 46 characters/.test(perr('ms10fauxsxxxxxxxxxxxxxxxxxxxxxxxxw0a4c70rfefn4')) || !/^It has 49 characters/.test(perr('ms10fauxsxxxxxxxxxxxxxxxxxxxxxxxxxxx9lrwar5zwng4w'))) fails.push('codex32: lengths that hold no master seed are refused (BIP93 invalid vectors)');
+    if (!/^The checksum does not match/.test(perr('ms10fauxsxxxxxxxxxxxxxxxxxxxxxxxxxxve740yyge2ghq'))) fails.push('codex32: a wrong checksum is refused');
+    if (!/^Character 12 \("b"\) is not a codex32 character/.test(perr('ms10testsxxbxxxxxxxxxxxxxxxxxxxxxxx4nzvca9cmczlw'))) fails.push('codex32: a character outside the codex32 set is named');
+    if (!/^String 2 has the identifier MKZN and string 1 has NAME/.test(err([A, KA[1]]))) fails.push('codex32: shares of two sets are refused');
+    if (!/^Strings 1 and 2 are both share A/.test(err([A, A.toLowerCase()]))) fails.push('codex32: one share typed twice is refused');
+    if (!/^This set needs 3 shares .* Type 1 more\./.test(err([T3.a, T3.c]))) fails.push('codex32: too few shares are refused');
+    if (!/^String 2 is a secret \(share index S\)/.test(err([T3.a, T3.s, T3.c]))) fails.push('codex32: a secret typed with shares is named');
+    if (seedOf([T3.a, T3.c, T3.d, T3.f]) !== 'ffeeddccbbaa99887766554433221100' || !/^String 4 \(share F\) is not the share the first 3 give/.test(err([T3.a, T3.c, T3.d, 'ms13cashf8jh6sdrkpyrsp5ut94pj8kteh5vwd3vxpsarlkv']))) fails.push('codex32: a fourth share must fit the first three');
+    { const m2 = await realM('6'.repeat(99), { bits: 256, k: 2, n: 2 }); if (!/^String 2 has 74 characters and string 1 has 48/.test(err([A, m2.shares[0]]))) fails.push('codex32: shares of two lengths are refused'); }
+    // made from dice
+    let m = await realM(RA, { bits: 128, k: 2, n: 3 });
+    if (!m.ok || JSON.stringify(m.shares) !== JSON.stringify(KA) || hx(m.masterSeed) !== msA || m.identifier !== 'mkzn') fails.push('codex32 make: 54 rolls give the 2-of-3 shares python-codex32 makes from the same stream');
+    m = await realM('5'.repeat(99), { bits: 256, k: 0, n: 1 });
+    if (!m.ok || m.shares.join() !== 'ms107qtvs8am8wv7cyurceavtsz5nn5etn4ejt3wjd4yeyw3tzmahnz28264q7ex38e7gnuxjy') fails.push('codex32 make: 99 rolls give one 256-bit secret (k = 0)');
+    m = await realM('654321'.repeat(16) + '654', { bits: 256, k: 2, n: 2 });   // 56 stream bytes: two HMAC blocks
+    if (m.shares.join(' ') !== 'ms125zswar4andkzlwsz7wvxrhcy0ggjsaj8ghj3lcrpy2ppaa3n56e4zycwuzf75ytlz6jhzr ms125zswch5v0hzwt3tzex0zqg2f6mly8nzjh9weqw2txjtum8fz3e4gyv65lt2u9puccn7jpn') fails.push('codex32 make: 99 rolls give the 256-bit 2-of-2 shares python-codex32 makes (a second stream block)');
+    if ((await realM(RA, { bits: 128, k: 2, n: 4 })).identifier === 'mkzn') fails.push('codex32 make: another number of shares gives another identifier (all settings in the label)');
+    for (const [rolls, o, re, label] of [['1'.repeat(49), { bits: 128, k: 2, n: 3 }, /^Roll a die at least 50 times/, '49 rolls'], ['1'.repeat(98), { bits: 256, k: 2, n: 3 }, /^Roll a die at least 99 times/, '98 rolls for 256 bits'],
+      [RA, { bits: 128, k: 1, n: 3 }, /2 to 9 shares needed/, 'k = 1'], [RA, { bits: 128, k: 2, n: 32 }, /to 31, as BIP93 allows/, '32 shares']]) {
+      const r2 = await realM(rolls, o); if (r2.ok || !re.test(r2.error) || r2.shares.length) fails.push('codex32 make: refuses ' + label + ' (' + r2.error + ')'); }
+    w.c32Combine = (l) => { const r2 = realC(l); if (r2.seed) r2.seed[0] ^= 1; return r2; };
+    m = await realM(RA, { bits: 128, k: 2, n: 3 }); if (m.ok || !/^The self-check failed/.test(m.error)) fails.push('codex32 make: shares that combine to another seed are not shown');
+    w.c32Combine = (l) => (l.includes(KA[2]) ? { ok: false, error: 'last share', seed: null } : realC(l));
+    m = await realM(RA, { bits: 128, k: 2, n: 3 }); if (m.ok || !/\(last share\)/.test(m.error)) fails.push('codex32 make: every share is combined again in the self-check');
+    w.c32Combine = realC;
+    w.c32Parse = (x) => { const p = realP(x); if (p.ok && p.index === 'd') p.index = 'e'; return p; };
+    m = await realM(RA, { bits: 128, k: 2, n: 3 }); if (m.ok || !/string 3 does not hold the settings/.test(m.error)) fails.push('codex32 make: a share that reads back with another index is not shown');
+    w.c32Parse = realP;
+    // the box: gate, CHECK AND COMBINE and its wallet (from @scure), wipes, practice mode
+    if ($('c32Btn').disabled || $('c32mBtn').disabled) fails.push('codex32: both buttons are on once the self-test passes');
+    $('c32In').value = A + '\n' + C; w.eval('selfTestState = "fail"'); await w.c32Ui();
+    if ($('c32Status').textContent !== '' || $('c32Out').textContent !== '') fails.push('codex32: nothing is combined before the self-test passes');
+    w.document.querySelector('input[name=c32Mode][value=make]').checked = true; w.c32ModeChange(); $('c32mRolls').value = RA; await w.c32mUi(); w.eval('selfTestState = "pass"');
+    if ($('c32Status').textContent !== '' || $('c32mOut').textContent !== '') fails.push('codex32: nothing is combined or made before the self-test passes');
+    w.document.querySelector('input[name=c32Mode][value=combine]').checked = true; w.c32ModeChange();
+    let got = null; w.c32Combine = (l) => { got = realC(l); return got; };
+    $('c32In').value = A + '\n' + C; await w.c32Ui(); w.c32Combine = realC;
+    { const e = wallet('d1808e096b35b209ca12132b264662a5', false), t = $('c32Out').textContent;
+      if (!t.startsWith('Master fingerprint: ' + e.fp + '\n') || JSON.stringify(shownRows(t)) !== JSON.stringify(e.rows) || !t.includes("First Taproot address (m/86'/0'/0'/0/0): " + e.tr + '\n')) fails.push('codex32: CHECK AND COMBINE shows the fingerprint, 10 receive and 10 change addresses and the first Taproot address as @scure gives');
+      if (!/^String 1: checksum OK\. Share A, identifier NAME/.test($('c32Status').textContent) || !/Combined: these 2 shares of set NAME/.test($('c32Status').textContent)) fails.push('codex32: the status names each share and the set'); }
+    if (!got || !got.seed || got.seed.some((x) => x !== 0)) fails.push('codex32: the combined master seed is wiped once the wallet is shown');
+    $('c32In').dispatchEvent(new w.Event('input', { bubbles: true })); if ($('c32Out').textContent !== '' || $('c32Status').textContent !== '') fails.push('codex32: typing in the box clears the old result');
+    await w.c32Ui(); w.practiceMode(true);
+    if ($('c32Out').textContent !== '') fails.push('codex32: turning practice mode on clears the result');
+    await w.c32Ui();
+    { const e = wallet('d1808e096b35b209ca12132b264662a5', true), t = $('c32Out').textContent;
+      if (!/^TESTNET \(practice coins only\)\./.test(t) || JSON.stringify(shownRows(t)) !== JSON.stringify(e.rows) || !t.includes("First Taproot address (m/86'/1'/0'/0/0): " + e.tr + '\n')) fails.push('codex32: in practice mode the addresses are on the test network (m/84\'/1\'/0\', from @scure)'); }
+    w.practiceMode(false); w.clearC32();
+    // making from dice in the box
+    w.document.querySelector('input[name=c32Mode][value=make]').checked = true; w.c32ModeChange();
+    let made = null; w.c32Make = async (x, o) => { made = await realM(x, o); return made; };
+    $('c32mRolls').value = RA; await w.c32mUi(); w.c32Make = realM;
+    { const shown = $('c32mOut').textContent.split('\n\n').map((b) => b.split('\n').slice(1).join('').replace(/ /g, '').toLowerCase()), e = wallet(msA, false), info = $('c32mInfo').textContent;
+      if (shown.join('|') !== KA.join('|') || !/^SHARE A \(1 OF 3\)  \(Any 2 of the 3 shares open the wallet/.test($('c32mOut').textContent)) fails.push('codex32 make: the page shows the 3 shares');
+      if (!info.startsWith('Master fingerprint: ' + e.fp + '\n') || JSON.stringify(shownRows(info)) !== JSON.stringify(e.rows) || !info.endsWith(e.tr)) fails.push('codex32 make: the wallet of the new shares as @scure gives (SHA-256 of the rolls as the BIP32 seed)'); }
+    if (!made || !made.masterSeed || made.masterSeed.some((x) => x !== 0)) fails.push('codex32 make: the master seed is wiped once the wallet is shown');
+    if (!/user-select:\s*none/.test($('c32mOut').getAttribute('style') || '')) fails.push('codex32 make: the shares cannot be selected');
+    for (const [id, ev] of [['c32mRolls', 'input'], ['c32mBits', 'change'], ['c32mK', 'change'], ['c32mN', 'change']]) {
+      await w.c32mUi(); $(id).dispatchEvent(new w.Event(ev, { bubbles: true })); if ($('c32mOut').textContent !== '' || $('c32mPrintRow').style.display !== 'none' || w.eval('c32mCtx')) fails.push('codex32 make: changing ' + id + ' clears the shares'); }
+    { let calls = 0; w.c32WalletText = async (sd) => { calls++; return realW(sd); };
+      w.c32Make = async (x, o) => { const r2 = await realM(x, o); $('c32mRolls').value = RA; $('c32mRolls').dispatchEvent(new w.Event('input', { bubbles: true })); return r2; };
+      await w.c32mUi(); w.c32Make = realM; w.c32WalletText = realW; if ($('c32mOut').textContent !== '' || calls !== 0) fails.push('codex32 make: an edit while it works leaves no shares (and stops at once)'); }
+    w.c32WalletText = async (sd) => { const x = await realW(sd); $('c32mRolls').value = RA; $('c32mRolls').dispatchEvent(new w.Event('input', { bubbles: true })); return x; };
+    await w.c32mUi(); w.c32WalletText = realW; if ($('c32mOut').textContent !== '' || w.eval('c32mCtx')) fails.push('codex32 make: an edit while the addresses are worked out leaves no shares');
+    await w.c32mUi(); w.practiceMode(true); if ($('c32mOut').textContent !== '' || w.eval('c32mCtx')) fails.push('codex32 make: practice mode clears the shares'); w.practiceMode(false);
+    { let asked = 0, printed = 0, parts = 0; const op = w.print; w.print = () => { printed++; parts = w.document.querySelectorAll('#printOnly .ps-part').length; };
+      await w.c32mUi(); w.confirm = () => { asked++; return false; }; w.printC32Shares(); if (asked !== 1 || printed !== 0) fails.push('codex32 make: PRINT asks first');
+      w.confirm = () => true; w.printC32Shares(); w.dispatchEvent(new w.Event('afterprint')); w.print = op; if (printed !== 1 || parts !== 3) fails.push('codex32 make: each share prints on its own page'); }
+    if (!w.eval('AUTO_FIELDS').includes('c32mRolls') || !w.eval('AUTO_FIELDS').includes('c32In')) fails.push('codex32: auto-clear knows the two boxes');
+    $('c32In').value = A; await w.c32mUi(); w.clearAll();
+    if ($('c32mRolls').value !== '' || $('c32In').value !== '' || $('c32mOut').textContent !== '' || w.eval('c32mCtx')) fails.push('codex32: CLEAR ALL wipes the strings, the rolls and the shares');
+    $('c32mRolls').value = RA; await w.c32mUi(); w.document.querySelector('input[name=c32Mode][value=combine]').checked = true; w.c32ModeChange();
+    if ($('c32mRolls').value !== '' || w.eval('c32mCtx')) fails.push('codex32 make: switching to Check or combine strings wipes the made shares');
+  } catch (e) { if (e instanceof ProbeStop) throw e; fails.push('codex32: the probe crashed: ' + e.message); }
+  w.confirm = oc; w.c32Combine = realC; w.c32Parse = realP; w.c32Make = realM; w.c32WalletText = realW;
+  w.practiceMode(false); w.wipeSeed(); r = await run('dice', 12, D50);
+  }
   if (SEC(1, "{ const wo = watch(expect.d50, ''), z = $('wZpub').textConte")) {
   { const wo = watch(expect.d50, ''), z = $('wZpub').textContent, dr = $('wDescR').textContent, dc = $('wDescC').textContent;
     if (z !== wo.zpub) fails.push('watch-only zpub');
@@ -5866,6 +5962,60 @@ const M = [
   ["card method: changing it does nothing", "document.getElementById(\"cdMethod\").addEventListener(\"change\", () => { cdUpdate(); syncMethodUi(); });", ""],
   ["card method: raw range fewest cards only", "deck.sort((x, y) => up ? x - y : y - x);", "deck.sort((x, y) => y - x);"],
   ["card method: raw card sheet as hashed", "total = raw ? (wc === 21 ? 52 : rr[1]) : cdNeedCards(wc)", "total = cdNeedCards(wc)"],
+  // v2.11.0 codex32 (BIP93): check, combine and make (probe section 69)
+  ["codex32: regular checksum constant wrong", "C32_CONST = 0x10ce0795c2fd1e62an", "C32_CONST = 0x10ce0795c2fd1e62bn"],
+  ["codex32: long checksum shifted wrong", "top = long ? 70n : 60n", "top = long ? 65n : 60n"],
+  ["codex32: long checksum never used", "if(n >= 96 && n <= 1023) return c32Polymod(data, true) === C32_LONG_CONST;", "if(n >= 96 && n <= 1023) return false;"],
+  ["codex32: hrp residue wrong", "let r = 0x23181b3n;", "let r = 1n;"],
+  ["codex32: GF(32) reduction wrong", "if(a >= 32) a ^= 41; }", "if(a >= 32) a ^= 37; }"],
+  ["codex32: Lagrange weight of a share wrong", "for(const j of xs) m = c32Mul(m, (i === j ? x : i) ^ j);", "for(const j of xs) m = c32Mul(m, (i === j ? i : x) ^ j);"],
+  ["codex32: padding kept as a byte", "out = new Uint8Array(Math.floor(pay.length * 5 / 8));", "out = new Uint8Array(Math.ceil(pay.length * 5 / 8));"],
+  ["codex32: new secrets padded with ones", "if(bits) out.push((acc << (5 - bits)) & 31);", "if(bits) out.push(((acc << (5 - bits)) | 1) & 31);"],
+  ["codex32: mixed case accepted", "if(s !== s.toLowerCase() && s !== s.toUpperCase()) return fail(\"It mixes", "if(false) return fail(\"It mixes"],
+  ["codex32: a letter as threshold accepted", "if(t.length > 3 && !\"023456789\".includes(t[3])) return fail(", "if(false) return fail("],
+  ["codex32: characters not checked", "for(let i = 3; i < t.length; i++) if(!C32_CHARSET.includes(t[i]))", "for(let i = 3; i < t.length; i++) if(false)"],
+  ["codex32: any length accepted", "const bytes = C32_SEED_BYTES[t.length];", "const bytes = C32_SEED_BYTES[t.length] || 16;"],
+  ["codex32: threshold 0 with a share index accepted", "if(t[3] === \"0\" && t[8] !== \"s\") return fail(", "if(false) return fail("],
+  ["codex32: a wrong checksum accepted", "if(!c32ChecksumOk(data)) return fail(\"The checksum does not match", "if(false) return fail(\"The checksum does not match"],
+  ["codex32: a secret combined with shares", "if(sec >= 0 && ps.length > 1) return fail(", "if(false) return fail("],
+  ["codex32: lengths of a set not compared", "if(p.text.length !== f.text.length) return fail(", "if(false) return fail("],
+  ["codex32: identifiers of a set not compared", "if(p.id !== f.id) return fail(", "if(false) return fail("],
+  ["codex32: a share typed twice combined", "if(j < i) return fail(\"Strings \"", "if(false) return fail(\"Strings \""],
+  ["codex32: too few shares combined", "if(ps.length < f.k) return fail(\"This set needs \"", "if(false) return fail(\"This set needs \""],
+  ["codex32: extra shares not checked", "if(d.some((v, x) => v !== ps[i].data[x])) return fail(", "if(false) return fail("],
+  ["codex32 make: settings not in the label", "const take = await c32mStream(hash, out.settings);", "const take = await c32mStream(hash, \"\");"],
+  ["codex32 make: number of shares not in the label", "return o.bits + \" \" + (o.k ? o.k + \"of\" + o.n : \"secret\");", "return o.bits + \" \" + (o.k ? o.k + \"of\" : \"secret\");"],
+  ["codex32 make: stream counter never moves", "      c += 1;\n", ""],
+  ["codex32 make: stream bytes reused", "    const out = buf.slice(0, n);\n    buf = buf.slice(n);", "    const out = buf.slice(0, n);"],
+  ["codex32 make: self-check result ignored", "  if(problem !== \"\"){ ms.fill(0); return fail(", "  if(false){ ms.fill(0); return fail("],
+  ["codex32 make: master seed not the first bytes of the hash", "const hash = await sha256(typed), ms = hash.slice(0, o.bits / 8);", "const hash = await sha256(typed), ms = hash.slice(1, o.bits / 8 + 1);"],
+  ["codex32 make: 49 rolls accepted", "if(typed.length < need) return fail(\"Roll a die at least \" + need + \" times for a \"", "if(typed.length < need - 1) return fail(\"Roll a die at least \" + need + \" times for a \""],
+  ["codex32 make: 98 rolls accepted for 256 bits", "const C32M_ROLLS = {128: 50, 256: 99};", "const C32M_ROLLS = {128: 50, 256: 98};"],
+  ["codex32 make: k = 1 allowed", "o.k < 2 || o.k > 9) return \"BIP93 allows", "o.k < 1 || o.k > 9) return \"BIP93 allows"],
+  ["codex32 make: 32 shares allowed", "o.n < o.k || o.n > 31) return", "o.n < o.k || o.n > 32) return"],
+  ["codex32 make: self-check skipped", "const problem = c32mSelfCheck(out.shares, o, out.identifier, ms);", "const problem = \"\";"],
+  ["codex32 make: self-check uses only the first shares", "for(let a = 0; a < o.n; a += k){", "for(let a = 0; a < k; a += k){"],
+  ["codex32 make: self-check skips the share index", "if(p.k !== o.k || p.id !== id || p.index !== want ||", "if(p.k !== o.k || p.id !== id ||"],
+  ["codex32: buttons never turned on", "  for(const id of [\"c32Btn\", \"c32mBtn\"]) document.getElementById(id).disabled = !on;   // v2.11.0: codex32\n", ""],
+  ["codex32: combines before the self-test passes", "async function c32Ui(){\n  if(!gateOk()) return;", "async function c32Ui(){"],
+  ["codex32 make: works before the self-test passes", "async function c32mUi(){\n  if(!gateOk()) return;", "async function c32mUi(){"],
+  ["codex32: typing keeps the old result", "document.getElementById(\"c32In\").addEventListener(\"input\", c32Wipe);", ""],
+  ["codex32 make: a setting change keeps the shares", "for(const id of [\"c32mRolls\", \"c32mBits\", \"c32mK\", \"c32mN\"])", "for(const id of [\"c32mRolls\"])"],
+  ["codex32 make: shares written after an edit", "if(run !== c32mRun){ if(r.masterSeed) r.masterSeed.fill(0); return; }", "if(false){ if(r.masterSeed) r.masterSeed.fill(0); return; }"],
+  ["codex32 make: wallet shown after an edit", "  if(run !== c32mRun) return;\n  const c = {shares: r.shares", "  const c = {shares: r.shares"],
+  ["codex32 make: master seed kept after use", "try { w = await c32WalletText(r.masterSeed); } finally { r.masterSeed.fill(0); }", "try { w = await c32WalletText(r.masterSeed); } finally { }"],
+  ["codex32: combined seed kept after use", "try { wt = await c32WalletText(sec); } finally { sec.fill(0); }", "try { wt = await c32WalletText(sec); } finally { }"],
+  ["codex32: CLEAR ALL keeps the shares", "  c32Clear();   // v2.11.0: codex32 strings typed in and made from dice (secret)\n", ""],
+  ["codex32: auto-clear does not see the boxes", "AUTO_FIELDS.push(\"c32In\", \"c32mRolls\");", "AUTO_FIELDS.push();"],
+  ["codex32 make: switching mode keeps the shares", "make ? \"\" : \"none\";\n  c32Clear();\n}", "make ? \"\" : \"none\";\n}"],
+  ["codex32 make: shares can be selected", "font-size:15px; -webkit-user-select:none; user-select:none; margin:8px 0 0;\"></pre>", "font-size:15px; margin:8px 0 0;\"></pre>"],
+  ["codex32 make: print without asking", "if(!confirm(\"Printing sends the \" + (c.o.k", "if(false && !confirm(\"Printing sends the \" + (c.o.k"],
+  ["codex32 make: shares not printed on separate pages", "const page = add(\"ps-part\", \"\");", "const page = add(\"\", \"\");"],
+  ["codex32: practice mode keeps the results", "  c32Wipe(); c32mWipe();   // v2.11.0: codex32 results show the addresses of the old network\n", ""],
+  ["codex32: practice mode shows mainnet addresses", "if(!practiceOn) return s39mWalletText(seed);", "return s39mWalletText(seed);"],
+  ["codex32: practice addresses of coin type 0", "for(const [i, h] of [[84, true], [1, true], [0, true]]) [k, c] = await ckdPriv(k, c, i, h);", "for(const [i, h] of [[84, true], [0, true], [0, true]]) [k, c] = await ckdPriv(k, c, i, h);"],
+  ["codex32: practice Taproot address on mainnet", "const tr = await watchOnlyFromSeed(seed, \"tr\", 0, \"test\")", "const tr = await watchOnlyFromSeed(seed, \"tr\", 0, \"main\")"],
+  ["codex32: practice change addresses from the receive chain", "for(const ch of [0, 1]){ const [k2, c2] = await ckdPriv(k, c, ch, false);", "for(const ch of [0, 1]){ const [k2, c2] = await ckdPriv(k, c, 0, false);"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

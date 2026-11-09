@@ -234,6 +234,39 @@ for (const [label, setup, want] of [
 }
 await p.evaluate(() => { s39mClear(); document.querySelector('input[name=s39Mode][value=combine]').checked = true; s39ModeChange(); });
 
+// 5c. v2.11.0: codex32 shares made from dice. Each string is one sheet: N strings must print as exactly N pages (48 and 74
+// characters, one secret and up to 31 shares, the light theme and TEXT A+).
+for (const [label, setup, want] of [
+  ['2 of 3, 128 bits', { c32mBits: '128', c32mK: '2', c32mN: '3', rolls: '123456'.repeat(9) }, 3],
+  ['one 256-bit secret', { c32mBits: '256', c32mK: '0', c32mN: '3', rolls: '5'.repeat(99) }, 1],
+  ['9 of 31, 256 bits', { c32mBits: '256', c32mK: '9', c32mN: '31', rolls: '654321'.repeat(17) }, 31],
+]) {
+  for (const theme of ['dark', 'light', 'big']) {
+    if (theme === 'light') await p.evaluate(() => toggleTheme());
+    if (theme === 'big') await p.evaluate(() => toggleSize());
+    for (const format of ['Letter', 'A4']) {
+      const made = await p.evaluate(async (s) => {
+        document.querySelector('input[name=c32Mode][value=make]').checked = true; c32ModeChange();
+        for (const id of ['c32mBits', 'c32mK', 'c32mN']) document.getElementById(id).value = s[id];
+        document.getElementById('c32mRolls').value = s.rolls; await c32mUi(); printC32Shares();
+        return { parts: document.querySelectorAll('#printOnly .ps-part').length, seed: document.body.classList.contains('print-seed') };
+      }, setup);
+      if (!made.seed) { ok(false, 'codex32 shares ' + label + ' (' + theme + ', ' + format + '): no sheet was made'); continue; }
+      await p.emulateMedia({ media: 'print' });
+      const shown = await p.evaluate(() => [...document.body.children].filter((e) => e.id !== 'printOnly' && getComputedStyle(e).display !== 'none').map((e) => e.id || e.className || e.tagName));
+      await p.emulateMedia({ media: null });
+      ok(shown.length === 0, 'codex32 shares ' + label + ' (' + theme + ', ' + format + '): only the sheets are laid out when printing (also shown: ' + shown.join(', ') + ')');
+      const n = pages(await p.pdf({ format }));
+      ok(made.parts === want && n === want, 'codex32 shares ' + label + ' (' + theme + ', ' + format + '): ' + want + ' strings print on exactly ' + want + ' pages, one each (got ' + made.parts + ' sheets, ' + n + ' pages)');
+      await p.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+      ok(await p.evaluate(() => !document.body.classList.contains('print-seed') && !document.getElementById('printOnly').textContent), 'codex32 shares ' + label + ': sheets wiped after printing');
+    }
+    if (theme === 'light') await p.evaluate(() => toggleTheme());
+    if (theme === 'big') await p.evaluate(() => toggleSize());
+  }
+}
+await p.evaluate(() => { c32mClear(); document.querySelector('input[name=c32Mode][value=combine]').checked = true; c32ModeChange(); });
+
 // 6. Multisig recovery sheets, from 2-of-2 up to the largest QR code (6-of-9) and past it (15 keys, no QR code).
 const cos = Array.from({ length: 15 }, () => { const m = HDKey.fromMasterSeed(randomBytes(32)); return { fp: m.fingerprint.toString(16).padStart(8, '0'), xpub: m.derive("m/48'/0'/0'/2'").publicExtendedKey }; });
 for (const [m, n] of [[2, 2], [2, 3], [3, 5], [5, 7], [6, 9], [7, 10], [15, 15]]) {

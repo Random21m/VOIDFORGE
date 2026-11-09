@@ -324,6 +324,8 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     body.print-seed #printOnly .ps-part { break-after: page; }
     body.print-seed #printOnly .ps-part:last-child { break-after: auto; }
     body.print-seed #printOnly .ps-grid.ps-20, body.print-seed #printOnly .ps-grid.ps-33 { grid-template-columns: repeat(4, 1fr); }   /* v2.10.0: SLIP39 shares */
+    body.print-seed #printOnly .ps-grid.ps-c32 { grid-template-columns: repeat(4, 1fr); }   /* v2.11.0: codex32 shares, 4 characters a box */
+    body.print-seed #printOnly .ps-c32 .ps-w { font-family: 'Courier New', monospace; font-size: 24px; letter-spacing: 3px; }
     body.print-seed #printOnly .ps-addr { white-space: pre; font-family: "Courier New", monospace; font-size: 10.5px; line-height: 1.3; margin-top: 4px; }
     body.print-seed #printOnly .ps-info { margin-bottom: 8px; }
     body.print-seed #printOnly .ps-small { font-size: 11px; }
@@ -1809,6 +1811,35 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <div class="btn-row" id="s39mPrintRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" onclick="printS39Shares()">PRINT THE SHARES</button></div>
       </div>
     </details>
+    <details id="c32Box" style="margin-top:8px;">
+      <summary>Codex32 shares (BIP93)<span class="tag tag-secret">SECRET</span><small>Check codex32 strings, combine shares to see which wallet they open, or make new shares from dice.</small></summary>
+      <p class="hint" style="margin:8px 0;">Codex32 (BIP93) writes a wallet&rsquo;s master seed as one string of 48 characters (128 bits) or 74 (256 bits) that starts with MS1 and ends with a strong checksum. It can also be split into shares: a set number of them (2 to 9, for example 2 of 3) rebuilds the seed, and fewer reveal nothing. <b>A codex32 seed is not the same wallet as BIP39 words:</b> it is the BIP32 seed itself, with no word list and no passphrase, so the same randomness written as words opens a different wallet. Codex32 was made so that a person can check the checksum, and even make and combine shares, by hand with paper wheels called volvelles, with no computer at all. Coldcard reads and makes codex32 (firmware 5.6.3 on Mk4 and Mk5, 1.5.3Q on Q). Type each string on its own line (spaces are ignored). VOIDFORGE checks every string and says what is wrong with one, but it never corrects a string for you. With a secret (share index S) or enough shares it shows the wallet&rsquo;s master fingerprint and the first 10 receive and 10 change addresses, so you can compare them with your device. It can also make a new wallet as codex32 shares from your own dice rolls (choose &ldquo;Make new codex32 shares from dice&rdquo;). Do this only on your offline computer.</p>
+      <div class="radio-group">
+        <label><input type="radio" name="c32Mode" value="combine" checked onchange="c32ModeChange()"><span>Check or combine strings</span></label>
+        <label><input type="radio" name="c32Mode" value="make" onchange="c32ModeChange()"><span>Make new codex32 shares from dice</span></label>
+      </div>
+      <div id="c32CombinePanel">
+        <textarea id="c32In" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Codex32 strings, one per line" placeholder="One string per line, starting with MS1 (48 or 74 characters; spaces are ignored)"></textarea>
+        <div class="btn-row" style="margin-top:8px;"><button type="button" id="c32Btn" onclick="c32Ui()" disabled>CHECK AND COMBINE</button><button type="button" class="secondary small" onclick="clearC32()">CLEAR</button></div>
+        <div class="status" id="c32Status" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+        <pre id="c32Out" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+      </div>
+      <div id="c32MakePanel" style="display:none;">
+        <p class="hint" style="margin:6px 0;">Makes a <b>new</b> wallet, backed up as codex32 shares (or as one codex32 secret that is not split). As with a seed, the randomness comes from your dice only: roll at least 50 times for a 128-bit seed (strings of 48 characters) or 99 times for 256 bits (74 characters) and type the results. Use new rolls, never the rolls of a seed you already use. The master seed is SHA-256 of the rolls, as in MAKE A SEED; the other random parts codex32 needs (the 4-character identifier and the first shares) are worked out from the same rolls, so the same rolls and settings always give the same strings. The shares are named A, C, D, E and so on, as BIP93 numbers them.</p>
+        <p class="hint" style="margin:6px 0;"><b>This cannot turn seed words you already have into codex32.</b> A codex32 wallet is not the same wallet as BIP39 words, even from the same rolls: codex32 made from your words would open a different, empty wallet.</p>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <select id="c32mBits" aria-label="Seed length" style="width:auto; flex:none;"><option value="128" selected>48 characters (128 bits)</option><option value="256">74 characters (256 bits)</option></select>
+          <select id="c32mK" aria-label="Shares needed" style="width:auto; flex:none;"><option value="0">1 secret string, not split</option><option value="2" selected>2 needed</option><option value="3">3 needed</option><option value="4">4 needed</option><option value="5">5 needed</option><option value="6">6 needed</option><option value="7">7 needed</option><option value="8">8 needed</option><option value="9">9 needed</option></select>
+          <select id="c32mN" aria-label="Shares in all" style="width:auto; flex:none;"><option value="2">of 2 shares</option><option value="3" selected>of 3 shares</option><option value="4">of 4 shares</option><option value="5">of 5 shares</option><option value="6">of 6 shares</option><option value="7">of 7 shares</option><option value="8">of 8 shares</option><option value="9">of 9 shares</option><option value="10">of 10 shares</option><option value="11">of 11 shares</option><option value="12">of 12 shares</option><option value="13">of 13 shares</option><option value="14">of 14 shares</option><option value="15">of 15 shares</option><option value="16">of 16 shares</option><option value="17">of 17 shares</option><option value="18">of 18 shares</option><option value="19">of 19 shares</option><option value="20">of 20 shares</option><option value="21">of 21 shares</option><option value="22">of 22 shares</option><option value="23">of 23 shares</option><option value="24">of 24 shares</option><option value="25">of 25 shares</option><option value="26">of 26 shares</option><option value="27">of 27 shares</option><option value="28">of 28 shares</option><option value="29">of 29 shares</option><option value="30">of 30 shares</option><option value="31">of 31 shares</option></select>
+        </div>
+        <textarea id="c32mRolls" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Dice rolls for the new codex32 strings" placeholder="Dice rolls, 1 to 6: at least 50 for 128 bits, 99 for 256 bits" style="margin-top:6px;"></textarea>
+        <div class="btn-row" style="margin-top:8px;"><button type="button" id="c32mBtn" onclick="c32mUi()" disabled>MAKE THE SHARES</button><button type="button" class="secondary small" onclick="c32mClear()">CLEAR</button></div>
+        <div class="status" id="c32mStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+        <pre id="c32mOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:15px; -webkit-user-select:none; user-select:none; margin:8px 0 0;"></pre>
+        <pre id="c32mInfo" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
+        <div class="btn-row" id="c32mPrintRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" onclick="printC32Shares()">PRINT THE SHARES</button></div>
+      </div>
+    </details>
     <details id="childBox">
       <summary>Child seed (BIP85)<span class="tag tag-secret">SECRET</span><small>Make a separate new seed, key or password from this one.</small></summary>
       <p class="hint" style="margin:8px 0;">Makes a brand new seed phrase from the parent words (and passphrase) typed in the CHECK A BACKUP tab, for a separate wallet, using the BIP85 standard. BIP85 can also make a Bitcoin Core HD seed (WIF), a master xprv, hex bytes, a password (Base64 or Base85) or dice rolls: choose one under &ldquo;What to make&rdquo;. The same parent, type, settings and index always give the same result. <b>The child is as secret as the parent.</b> It is shown here, with no copy or save; its print button prints it on one sheet, after asking, for a trusted offline printer only. Use the same safety steps as for a new seed, and keep the parent safe: if you lose the parent you lose every child.</p>
@@ -2111,7 +2142,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <details>
       <summary>What SELF-TEST checks</summary>
-      <p>It runs automatically every time the page loads; if any test fails, seed generation is disabled and a red banner appears. Press SELF-TEST to see the full list. It checks: the BIP39 wordlist hash; official BIP39 entropy vectors (12 to 24 words); SeedSigner&rsquo;s published 50- and 99-roll dice examples and 50-roll fingerprint; coin-flip vectors from an independent reference implementation of SeedSigner&rsquo;s method; the <code>abandon&hellip;about</code> fingerprints (with and without the <code>TREZOR</code> passphrase); BIP32 test vector 1; the first receive address (the published BIP84 vector, a second vector from two independent libraries, and the BIP173 bech32 example); the watch-only zpub (published BIP84 vector and an independent-library vector), the descriptor checksum, a QR code matrix checked against an independent QR library, and the fingerprint picture checked against independent LifeHash code and Sparrow Wallet; passphrase normalization; RIPEMD-160 vectors; the phrase checker; and, added since, Keystone dice rules, the dice passphrase, coin-flip and word-draw helpers, Electrum seeds, every address type and its account keys on mainnet and testnet, Taproot (BIP86 and the BIP350 example), multisig cosigner keys and addresses (BIP48), Silent Payment addresses (BIP352), private key versions (SLIP132), BIP85 child seeds, keys and passwords (published vectors), SeedQR and CompactSeedQR, signed messages (BIP137 and BIP322 vectors), the transaction inspector on a known PSBT, Reforge, Ed25519 signatures (RFC 8032 vectors) and the release key&rsquo;s fingerprint, a playing-card seed (as Ian Coleman&rsquo;s BIP39 tool makes it, hashed and as raw entropy) and 15, 18 and 21-word seeds, SLIP39 shares (an official test vector, and shares made from fixed dice rolls), old Electrum seeds (the old word list&rsquo;s hash and Electrum&rsquo;s own test wallets), Reforge&rsquo;s damaged-word patterns, public example phrases, look-alike letters and rolls typed twice, punch plate numbers, signature checks (legacy, SegWit and Taproot signature hashes, and one signature checked valid and, with 1 sat less, invalid), Coinkite&rsquo;s Coldcard seed mix examples, and encrypted descriptor backups (the official BIP138 vectors, and a miniscript and a Taproot-tree address from embit). If any test fails, do not use that copy for real funds.</p>
+      <p>It runs automatically every time the page loads; if any test fails, seed generation is disabled and a red banner appears. Press SELF-TEST to see the full list. It checks: the BIP39 wordlist hash; official BIP39 entropy vectors (12 to 24 words); SeedSigner&rsquo;s published 50- and 99-roll dice examples and 50-roll fingerprint; coin-flip vectors from an independent reference implementation of SeedSigner&rsquo;s method; the <code>abandon&hellip;about</code> fingerprints (with and without the <code>TREZOR</code> passphrase); BIP32 test vector 1; the first receive address (the published BIP84 vector, a second vector from two independent libraries, and the BIP173 bech32 example); the watch-only zpub (published BIP84 vector and an independent-library vector), the descriptor checksum, a QR code matrix checked against an independent QR library, and the fingerprint picture checked against independent LifeHash code and Sparrow Wallet; passphrase normalization; RIPEMD-160 vectors; the phrase checker; and, added since, Keystone dice rules, the dice passphrase, coin-flip and word-draw helpers, Electrum seeds, every address type and its account keys on mainnet and testnet, Taproot (BIP86 and the BIP350 example), multisig cosigner keys and addresses (BIP48), Silent Payment addresses (BIP352), private key versions (SLIP132), BIP85 child seeds, keys and passwords (published vectors), SeedQR and CompactSeedQR, signed messages (BIP137 and BIP322 vectors), the transaction inspector on a known PSBT, Reforge, Ed25519 signatures (RFC 8032 vectors) and the release key&rsquo;s fingerprint, a playing-card seed (as Ian Coleman&rsquo;s BIP39 tool makes it, hashed and as raw entropy) and 15, 18 and 21-word seeds, SLIP39 shares (an official test vector, and shares made from fixed dice rolls), old Electrum seeds (the old word list&rsquo;s hash and Electrum&rsquo;s own test wallets), Reforge&rsquo;s damaged-word patterns, public example phrases, look-alike letters and rolls typed twice, punch plate numbers, signature checks (legacy, SegWit and Taproot signature hashes, and one signature checked valid and, with 1 sat less, invalid), Coinkite&rsquo;s Coldcard seed mix examples, encrypted descriptor backups (the official BIP138 vectors, and a miniscript and a Taproot-tree address from embit), and codex32 strings (the BIP93 test vectors, and shares made from fixed dice rolls). If any test fails, do not use that copy for real funds.</p>
       <p><b>What the self-test cannot catch:</b> it only runs known answers through this same file, so it can miss a bug on inputs it does not cover, and a tampered file could simply fake a pass. It does not replace checking the file&rsquo;s SHA256 against the release, and it does not replace comparing your words and fingerprint in a second independent tool. The network tag at the top reads the browser&rsquo;s online flag only; it cannot prove the machine is air-gapped.</p>
     </details>
     <details>
@@ -2844,6 +2875,275 @@ async function s39mSelfCheck(groups, o, identifier, ms, pass){
     if(!same) return "combining " + pick.length + (pick.length === 1 ? " share" : " shares") + " did not give back the secret (" + (r.ok ? "another secret" : r.error) + ").";
   }
   return "";
+}
+// ===== v2.11.0 codex32 (BIP93): check, combine and make codex32 strings (c32Parse, c32Combine, c32Make) =====
+// BIP93: bip-0093.mediawiki in the bitcoin/bips repository on GitHub (read at commit a34f044, 2026-11-09). A codex32 string is
+// "ms1", then the threshold k (0, or 2 to 9), a 4-character identifier, the share index ("s" is the secret itself), the payload and
+// a BCH checksum: 13 characters ("regular") when the hrp's 5 expanded values plus the data part are at most 93, 15 ("long") from 96
+// to 1023. Only these lengths hold a master seed: 48, 54, 61, 67, 74 or 127 characters for 16, 20, 24, 28, 32 or 64 bytes. The
+// payload is the seed's bits, 5 to a character; the last 4 bits or fewer are padding and are dropped (any value is allowed).
+// The master seed goes into BIP32 directly, so it is NOT the wallet of BIP39 words made from the same randomness. There is no
+// passphrase. Shares are points of a polynomial over GF(32): k shares give every other share, and the secret at index "s", by
+// Lagrange interpolation of all their characters (ms32_interpolate in the BIP). Every function below follows the BIP's Python.
+// The page only says where a string is wrong; it never corrects one (the codex32 project's wallet guide asks a wallet that does
+// not do full error correction not to offer it).
+const C32_CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';   // the bech32 alphabet (BIP173), the same as B32; kept apart so a change to one cannot hide in the other
+const C32_SEED_BYTES = {48: 16, 54: 20, 61: 24, 67: 28, 74: 32, 127: 64};   // string length -> master seed bytes (BIP93 table)
+const C32_GEN = [0x19dc500ce73fde210n, 0x1bfae00def77fe529n, 0x1fbd920fffe7bee52n, 0x1739640bdeee3fdadn, 0x07729a039cfc75f5an];
+const C32_GEN_LONG = [0x3d59d273535ea62d897n, 0x7a9becb6361c6c51507n, 0x543f9b7e6c38d8a2a0en, 0x0c577eaeccf1990d13cn, 0x1887f74f8dc71b10651n];
+const C32_CONST = 0x10ce0795c2fd1e62an, C32_LONG_CONST = 0x43381e570bf4798ab26n;
+const C32_INV = [0, 1, 20, 24, 10, 8, 12, 29, 5, 11, 4, 9, 6, 28, 26, 31, 22, 18, 17, 23, 2, 25, 16, 19, 3, 21, 14, 30, 13, 7, 27, 15];
+const C32_S = 16;   // the value of "s", the secret's share index
+// Share indexes of a new set, in order: the letters of the bech32 alphabet alphabetically (as BIP93 numbers the first shares:
+// a, c, d, ...), then its digits, so up to 31 shares. Coldcard numbers its shares the same way.
+const C32_ORDER = "acdefghjklmnpqrtuvwxyz023456789";
+
+// ms32_polymod and ms32_long_polymod: 0x23181b3 is the residue after the expanded hrp "ms", as in the BIP.
+function c32Polymod(values, long){
+  const gen = long ? C32_GEN_LONG : C32_GEN, top = long ? 70n : 60n, mask = (1n << top) - 1n;
+  let r = 0x23181b3n;
+  for(const v of values){
+    const b = r >> top;
+    r = ((r & mask) << 5n) ^ BigInt(v);
+    for(let i = 0; i < 5; i++) if((b >> BigInt(i)) & 1n) r ^= gen[i];
+  }
+  return r;
+}
+// ms32_verify_checksum: data is the whole data part (after "ms1") as numbers 0 to 31.
+function c32ChecksumOk(data){
+  const n = 5 + data.length;
+  if(n <= 93) return c32Polymod(data, false) === C32_CONST;
+  if(n >= 96 && n <= 1023) return c32Polymod(data, true) === C32_LONG_CONST;
+  return false;
+}
+// ms32_create_checksum: the checksum characters for data without one.
+function c32Checksum(data){
+  const long = 5 + data.length + 13 > 93, n = long ? 15 : 13;
+  const pm = c32Polymod(data.concat(new Array(n).fill(0)), long) ^ (long ? C32_LONG_CONST : C32_CONST);
+  const out = [];
+  for(let i = 0; i < n; i++) out.push(Number((pm >> BigInt(5 * (n - 1 - i))) & 31n));
+  return out;
+}
+// GF(32) as in BIP93 (bech32_mul): x^5 = x^3 + 1.
+function c32Mul(a, b){
+  let r = 0;
+  for(let i = 0; i < 5; i++){ if((b >> i) & 1) r ^= a; a <<= 1; if(a >= 32) a ^= 41; }
+  return r;
+}
+// bech32_lagrange and ms32_interpolate: the data of the share at index x, from shares (arrays of data values; index at [5]).
+function c32Interpolate(shares, x){
+  const xs = shares.map(s => s[5]), w = [];
+  let n = 1;
+  for(const i of xs){
+    n = c32Mul(n, i ^ x);
+    let m = 1;
+    for(const j of xs) m = c32Mul(m, (i === j ? x : i) ^ j);
+    w.push(m);
+  }
+  const wt = w.map(m => c32Mul(n, C32_INV[m]));
+  const out = [];
+  for(let i = 0; i < shares[0].length; i++){ let v = 0; for(let j = 0; j < shares.length; j++) v ^= c32Mul(wt[j], shares[j][i]); out.push(v); }
+  return out;
+}
+function c32Text(data){ return "ms1" + data.map(v => C32_CHARSET[v]).join(""); }
+// The checksum's length for a whole data part.
+function c32CsLen(data){ return 5 + data.length > 93 ? 15 : 13; }
+// The master seed from a secret's data: the payload's bits, 8 to a byte; the last 4 bits or fewer are padding.
+function c32SeedOf(data){
+  const pay = data.slice(6, data.length - c32CsLen(data)), out = new Uint8Array(Math.floor(pay.length * 5 / 8));
+  let acc = 0, bits = 0, j = 0;
+  for(const v of pay){ acc = ((acc << 5) | v) & 0xfff; bits += 5; if(bits >= 8){ bits -= 8; if(j < out.length) out[j++] = (acc >> bits) & 255; } }
+  return out;
+}
+// A seed as payload characters, with zero padding (as in BIP93 test vector 3 and as Coldcard writes them).
+function c32Payload(seed){
+  const n = Math.ceil(seed.length * 8 / 5), out = [];
+  let acc = 0, bits = 0;
+  for(const b of seed){ acc = ((acc << 8) | b) & 0x1fff; bits += 8; while(bits >= 5){ bits -= 5; out.push((acc >> bits) & 31); } }
+  if(bits) out.push((acc << (5 - bits)) & 31);
+  return out.slice(0, n);
+}
+
+// Checks one string. Spaces are ignored (people write it in groups of 4). Returns {ok, error, text} and, when ok, {k, id,
+// index, data, bits}: k is the threshold (0 for a secret that is not split), index the share index ("s" for the secret).
+function c32Parse(text){
+  const s = String(text == null ? "" : text).replace(/\s+/g, "");
+  const fail = (error) => ({ok:false, error, text:s});
+  if(!s) return fail("It is empty.");
+  if(s !== s.toLowerCase() && s !== s.toUpperCase()) return fail("It mixes capital and small letters. A codex32 string is written all in capitals or all in small letters.");
+  const t = s.toLowerCase();
+  if(/^c[wx]1/.test(t)) return fail("It starts with " + s.slice(0, 3) + ": a Coldcard extension of codex32 (CW1 holds BIP39 words, CX1 an extended private key). This tool reads only MS1 strings, the master seeds of BIP93.");
+  if(!t.startsWith("ms1")) return fail("A codex32 seed string starts with MS1 (this one starts with \"" + s.slice(0, 3) + "\").");
+  if(t.length > 3 && !"023456789".includes(t[3])) return fail("The 4th character, the threshold (how many shares are needed), must be 0 or a digit from 2 to 9; here it is \"" + s[3] + "\".");
+  for(let i = 3; i < t.length; i++) if(!C32_CHARSET.includes(t[i]))
+    return fail("Character " + (i + 1) + " (\"" + s[i] + "\") is not a codex32 character. Codex32 uses the digits 0 and 2 to 9 and every letter except b, i and o.");
+  const bytes = C32_SEED_BYTES[t.length];
+  if(!bytes) return fail("It has " + t.length + " characters (spaces not counted). A codex32 seed string has 48 characters (a 128-bit seed), 54, 61, 67, 74 (256-bit) or 127 (512-bit): a character is missing or extra, or the string is not complete.");
+  if(t[3] === "0" && t[8] !== "s") return fail("Its threshold is 0, which only a secret that is not split may have, but its share index (the 9th character) is \"" + s[8] + "\", not S.");
+  const data = Array.from(t.slice(3), ch => C32_CHARSET.indexOf(ch));
+  if(!c32ChecksumOk(data)) return fail("The checksum does not match: at least one character is wrong (the checksum notices any 8 or fewer wrong characters). Compare it again with your paper, character by character. VOIDFORGE does not guess a correction.");
+  return {ok:true, error:"", text:s, k:+t[3], id:t.slice(4, 8), index:t[8], data, bits:bytes * 8};
+}
+
+// Combines strings (one secret, or k shares of one set). Returns {ok, error, seed, k, id, bits, secret (true for a secret
+// typed on its own), used, extra}. The caller wipes seed. A string with a mistake is named; with more than k shares, the
+// first k are combined and every other one must be the share they give at its index.
+function c32Combine(list){
+  const out = {ok:false, error:"", seed:null, k:0, id:"", bits:0, secret:false, used:0, extra:0};
+  const fail = (error) => { out.error = error; return out; };
+  const items = (Array.isArray(list) ? list : [list]).filter(x => String(x == null ? "" : x).trim());
+  if(!items.length) return fail("Type a codex32 string.");
+  const ps = items.map(c32Parse), bad = ps.findIndex(p => !p.ok);
+  if(bad >= 0) return fail((items.length > 1 ? "String " + (bad + 1) + ": " : "") + ps[bad].error);
+  const sec = ps.findIndex(p => p.index === "s");
+  if(sec >= 0 && ps.length > 1) return fail("String " + (sec + 1) + " is a secret (share index S): it opens the wallet on its own. Check it on its own line alone, or leave it out to combine the shares.");
+  const f = ps[0];
+  out.k = f.k; out.id = f.id; out.bits = f.bits;
+  if(sec === 0){ out.seed = c32SeedOf(f.data); out.secret = true; out.used = 1; out.ok = true; return out; }
+  for(let i = 1; i < ps.length; i++){
+    const p = ps[i], n = "String " + (i + 1);
+    if(p.text.length !== f.text.length) return fail(n + " has " + p.text.length + " characters and string 1 has " + f.text.length + ": the shares of one set all have the same length.");
+    if(p.id !== f.id) return fail(n + " has the identifier " + p.id.toUpperCase() + " and string 1 has " + f.id.toUpperCase() + ": they are not shares of the same set.");
+    if(p.k !== f.k) return fail(n + " needs " + p.k + " shares and string 1 needs " + f.k + " (the 4th character): they are not shares of the same set.");
+    const j = ps.findIndex(q => q.index === p.index);
+    if(j < i) return fail("Strings " + (j + 1) + " and " + (i + 1) + " are both share " + p.index.toUpperCase() + ". Type each share once.");
+  }
+  if(ps.length < f.k) return fail("This set needs " + f.k + " shares (the 4th character of each string); " + ps.length + (ps.length === 1 ? " is" : " are") + " typed. Type " + (f.k - ps.length) + " more.");
+  const base = ps.slice(0, f.k).map(p => p.data);
+  for(let i = f.k; i < ps.length; i++){
+    const d = c32Interpolate(base, ps[i].data[5]);
+    if(d.some((v, x) => v !== ps[i].data[x])) return fail("String " + (i + 1) + " (share " + ps[i].index.toUpperCase() + ") is not the share the first " + f.k + " give at its index: one of these strings has a mistake, or they are not all from the same set.");
+  }
+  const s = c32Interpolate(base, C32_S);
+  if(!c32ChecksumOk(s) || s[5] !== C32_S) return fail("The shares did not combine to a valid secret.");
+  out.seed = c32SeedOf(s); s.fill(0);
+  out.used = f.k; out.extra = ps.length - f.k; out.ok = true;
+  return out;
+}
+
+// ===== v2.11.0 codex32 maker: a NEW wallet as codex32 shares (or one codex32 secret), from dice (c32Make) =====
+// Follows "For an existing secret" in BIP93: the secret S (threshold k, identifier, index "s", the master seed with zero padding),
+// then k - 1 random shares at the first indexes (a, c, d, ...), then every other share by interpolation (Generating Shares).
+// - The master seed is the first 16 bytes (128 bits) or all 32 bytes (256 bits) of SHA-256 of the rolls as typed, as MAKE A SEED
+//   makes the entropy of 12 or 24 words and with the same minimums (50 rolls, 99 rolls). It is the BIP32 seed itself.
+// - Every other random value (the 4 identifier characters, then the payload characters of the k - 1 random shares, one share
+//   after another) is one byte of a stream, the low 5 bits of the byte giving the character (256 is a multiple of 32, so each
+//   character is uniform):
+//     block c = HMAC-SHA256(key = SHA-256(rolls), message = "VOIDFORGE codex32 shares v1 " + settings + byte 0 + c as 4 bytes, big-endian)
+//   for c = 0, 1, 2, ..., the blocks joined in order; settings is the length and the set, such as "128 2of3" or "256 secret".
+// Why this is safe: the same reasons as for slip39Make. HMAC-SHA256 keyed with the hash of at least 128 bits of dice cannot be
+// predicted without the rolls, so fewer than k shares reveal nothing. Every setting is in the label, so two sets made from the
+// same rolls with other settings share no random value: reused share values would let one share of each set show how the two
+// sets differ (the v2.10.0 review finding). The same rolls and settings always give the same strings.
+const C32M_ROLLS = {128: 50, 256: 99};
+const C32M_LABEL = "VOIDFORGE codex32 shares v1";
+function c32mSettings(o){ return o.bits + " " + (o.k ? o.k + "of" + o.n : "secret"); }
+async function c32mStream(key, settings){
+  const msg = new TextEncoder().encode(C32M_LABEL + " " + settings);
+  const kk = await crypto.subtle.importKey("raw", key, {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
+  let buf = new Uint8Array(0), c = 0;
+  return async function take(n){
+    while(buf.length < n){
+      const m = new Uint8Array(msg.length + 5);   // the label, byte 0 (a new array is all zeros), then the counter
+      m.set(msg, 0);
+      new DataView(m.buffer).setUint32(msg.length + 1, c, false);   // big-endian
+      c += 1;
+      buf = s39Concat(buf, new Uint8Array(await crypto.subtle.sign("HMAC", kk, m)));
+    }
+    const out = buf.slice(0, n);
+    buf = buf.slice(n);
+    return out;
+  };
+}
+// What is wrong with the settings, as a sentence, or "".
+function c32mOptionsError(o){
+  if(o.bits !== 128 && o.bits !== 256) return "Choose 48 characters (128 bits) or 74 characters (256 bits).";
+  if(o.k === 0) return "";
+  if(!Number.isInteger(o.k) || o.k < 2 || o.k > 9) return "BIP93 allows 2 to 9 shares needed (or one secret string that is not split).";
+  if(!Number.isInteger(o.n) || o.n < o.k || o.n > 31) return "The number of shares must be from the number needed (" + o.k + ") to 31, as BIP93 allows.";
+  return "";
+}
+// Makes the strings. rolls: dice rolls 1 to 6 as typed (spaces ignored). opts: {bits: 128 or 256, k: 0 or 2 to 9, n: k to 31}.
+// Returns {ok, error, shares: [strings, lower case], identifier, settings, masterSeed}; the caller wipes masterSeed. The strings are
+// read back and combined again (c32mSelfCheck) before they are returned; if that fails, none are returned.
+async function c32Make(rolls, opts){
+  const out = {ok:false, error:"", shares:[], identifier:"", settings:"", masterSeed:null};
+  const fail = (error) => { out.error = error; out.shares = []; return out; };
+  const o = {bits:opts.bits, k:opts.k, n:opts.k === 0 ? 1 : opts.n};
+  const optErr = c32mOptionsError(o);
+  if(optErr) return fail(optErr);
+  const typed = String(rolls == null ? "" : rolls).split(/\s+/).join(""), need = C32M_ROLLS[o.bits];
+  const bad = /[^1-6]/.exec(typed);
+  if(bad) return fail("The rolls can only be the numbers 1 to 6 (\"" + bad[0] + "\" was typed). Spaces and new lines are ignored.");
+  if(typed.length < need) return fail("Roll a die at least " + need + " times for a " + o.bits + "-bit seed and type the results (1 to 6); " +
+    (typed.length ? typed.length + " so far." : "none typed yet.") + " The rolls make the wallet, so use new rolls, never the rolls of a seed you already use.");
+  const hash = await sha256(typed), ms = hash.slice(0, o.bits / 8);
+  out.settings = c32mSettings(o);
+  const take = await c32mStream(hash, out.settings);
+  hash.fill(0);
+  const id = Array.from(await take(4), b => b & 31), L = Math.ceil(o.bits / 5);
+  const head = (index) => [C32_CHARSET.indexOf(String(o.k))].concat(id, [index]);   // the threshold digit as a character
+  const pay = c32Payload(ms), sd = head(C32_S).concat(pay);
+  const secret = sd.concat(c32Checksum(sd));
+  pay.fill(0); sd.fill(0);
+  const all = [];
+  if(o.k === 0) all.push(secret);
+  else {
+    for(let j = 0; j < o.k - 1; j++){
+      const d = head(C32_CHARSET.indexOf(C32_ORDER[j])).concat(Array.from(await take(L), b => b & 31));
+      all.push(d.concat(c32Checksum(d)));
+    }
+    const base = [secret].concat(all);
+    for(let j = o.k - 1; j < o.n; j++) all.push(c32Interpolate(base, C32_CHARSET.indexOf(C32_ORDER[j])));
+  }
+  out.shares = all.map(c32Text);
+  for(const d of all) d.fill(0);
+  secret.fill(0);
+  out.identifier = id.map(v => C32_CHARSET[v]).join("");
+  const problem = c32mSelfCheck(out.shares, o, out.identifier, ms);
+  if(problem !== ""){ ms.fill(0); return fail("The self-check failed, so no strings are shown: " + problem + " Do not use this copy of the page."); }
+  out.masterSeed = ms; out.ok = true;
+  return out;
+}
+// Reads every string back with c32Parse and combines them again with c32Combine, the same code CHECK AND COMBINE uses: k shares
+// at a time (shares 1 to k, then k + 1 to 2k, and so on, wrapping around), so every share is used at least once. Each time the
+// master seed must come back. Returns a problem as a sentence, or "".
+function c32mSelfCheck(shares, o, id, ms){
+  if(shares.length !== o.n) return "the set has the wrong number of strings.";
+  for(let j = 0; j < shares.length; j++){
+    const p = c32Parse(shares[j]), want = o.k ? C32_ORDER[j] : "s";
+    if(!p.ok) return "string " + (j + 1) + " does not read back (" + p.error + ")";
+    if(p.k !== o.k || p.id !== id || p.index !== want || p.bits !== o.bits) return "string " + (j + 1) + " does not hold the settings it was made with.";
+  }
+  const k = o.k || 1;
+  for(let a = 0; a < o.n; a += k){
+    const pick = [];
+    for(let b = 0; b < k; b++) pick.push(shares[(a + b) % o.n]);
+    const r = c32Combine(pick);
+    const same = r.ok && r.seed.length === ms.length && r.seed.every((x, i) => x === ms[i]);
+    if(r.seed) r.seed.fill(0);
+    if(!same) return "combining " + pick.length + (pick.length === 1 ? " string" : " strings") + " did not give back the master seed (" + (r.ok ? "another seed" : r.error) + ").";
+  }
+  return "";
+}
+// The self-test's known answers: BIP93's own test vectors, and strings made from fixed rolls (the same strings python-codex32, the
+// reference implementation, makes from the same stream; see tests/codex32.test.mjs).
+function c32SelfTests(eq){
+  const seed = (l) => { const r = c32Combine(l); return r.ok ? hex(r.seed) : r.error; };
+  const C3 = ["ms13cashsllhdmn9m42vcsamx24zrxgs3qqjzqud4m0d6nln", "ms13casha320zyxwvutsrqpnmlkjhgfedca2a8d0zehn8a0t", "ms13cashcacdefghjklmnpqrstuvwxyz023949xq35my48dr"];
+  eq("Codex32: a secret gives its master seed (BIP93 test vector 1)", () => seed(["ms10testsxxxxxxxxxxxxxxxxxxxxxxxxxx4nzvca9cmczlw"]), "318c6318c6318c6318c6318c6318c631");
+  eq("Codex32: shares A and C, in capitals, give the master seed (BIP93 test vector 2)", () => seed(["MS12NAMEA320ZYXWVUTSRQPNMLKJHGFEDCAXRPP870HKKQRM", "MS12NAMECACDEFGHJKLMNPQRSTUVWXYZ023FTR2GDZMPY6PN"]), "d1808e096b35b209ca12132b264662a5");
+  eq("Codex32: the secret and shares A and C give shares D, E and F, and F, D and C give the seed (BIP93 test vector 3)", () => {
+    const d = C3.map(x => c32Parse(x).data), def = ["d", "e", "f"].map(x => c32Text(c32Interpolate(d, C32_CHARSET.indexOf(x))));
+    return def.join(" ") + " " + seed([def[2], def[0], C3[2]]); },
+    "ms13cashd0wsedstcdcts64cd7wvy4m90lm28w4ffupqs7rm ms13casheekgpemxzshcrmqhaydlp6yhms3ws7320xyxsar9 ms13cashf8jh6sdrkpyrsp5ut94pj8ktehhw2hfvyrj48704 ffeeddccbbaa99887766554433221100");
+  eq("Codex32: a 256-bit secret (BIP93 test vector 4)", () => seed(["ms10leetsllhdmn9m42vcsamx24zrxgs3qrl7ahwvhw4fnzrhve25gvezzyqqtum9pgv99ycma"]), "ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100");
+  eq("Codex32: a 512-bit secret with the long, 15-character checksum (BIP93 test vector 5)", () => seed(["MS100C8VSM32ZXFGUHPCHTLUPZRY9X8GF2TVDW0S3JN54KHCE6MUA7LQPZYGSFJD6AN074RXVCEMLH8WU3TK925ACDEFGHJKLMNPQRSTUVWXY06FHPV80UNDVARHRAK"]),
+    "dc5423251cb87175ff8110c8531d0952d8d73e1194e95b5f19d6f9df7c01111104c9baecdfea8cccc677fb9ddc8aec5553b86e528bcadfdcc201c17c638c47e9");
+  eq("Codex32: a wrong checksum, and a checksum of the wrong kind for the length, are refused (BIP93 invalid test vectors)", () => ["ms10fauxsxxxxxxxxxxxxxxxxxxxxxxxxxxve740yyge2ghq", "ms10fauxsxxxxxxxxxxxxxxxxxxxxxxxxurfvwmdcmymdufv",
+    "ms10fauxs" + "x".repeat(105) + "cwm4re8fs78vn"].map(x => String(c32Parse(x).ok)).join(" "), "false false false");
+  eq("Codex32 make: 54 fixed rolls give fixed 2-of-3 shares (the strings python-codex32 makes from the same stream)", async () => (await c32Make("123456".repeat(9), {bits:128, k:2, n:3})).shares.join(" "),
+    "ms12mkznaszh8xu3qpv9ejqsh7wx790takx9j23c8z42fsg9 ms12mkznc42x4k884t89zu64h6gsyjn7fevkwg28w57m4xtg ms12mkzndq34jfhelgg9jxxqhrfwcqw5000ans6we23ggclx");
 }
 // Seed lengths (v2.10.0): 12, 15, 18, 21 or 24 words for every method. BIP39 entropy is 32 x words / 3 bits (128, 160, 192, 224
 // or 256); hashed methods keep the first that many bits of SHA-256, as BIP39 tools do (Ian Coleman's tool: "Truncate hash to suit
@@ -3996,7 +4296,7 @@ const DICT = [
   ["BIP84", "The standard path for single-key Native SegWit wallets (bc1q addresses): m/84'/0'/0'.", "Default watch-only export and first addresses.", "Standards (BIPs)"],
   ["BIP85", "A standard that makes new secrets from a parent seed: child seeds, keys, passwords or dice rolls, so one backup can recreate them all.", "EXTRA TOOLS: Child seed (BIP85).", "Standards (BIPs)"],
   ["BIP86", "The standard path for single-key Taproot wallets (bc1p addresses): m/86'/0'/0'.", "Taproot addresses.", "Standards (BIPs)"],
-  ["BIP93 (Codex32)", "A way to write a seed, or shares of it, as text with a checksum you can work out by hand. Made for careful, offline backups.", "", "Standards (BIPs)"],
+  ["BIP93 (Codex32)", "The standard for codex32: a wallet's BIP32 master seed, or Shamir shares of it, written in the 32 bech32 characters with a checksum that can be worked out by hand. See Codex32.", "EXTRA TOOLS: Codex32 shares (BIP93).", "Standards (BIPs)"],
   ["BIP125", "The standard for replace-by-fee: how a transaction signals that it may be replaced by one with a higher fee.", "", "Standards (BIPs)"],
   ["BIP137", "The classic way to sign a message with a Bitcoin key: 65 bytes, written in base64, from which the public key can be worked out. Its first byte names the address type. Bitcoin Core, Electrum, Sparrow, Trezor and Coldcard make it.", "EXTRA TOOLS: Verify a signed message.", "Standards (BIPs)"],
   ["BIP141 (SegWit)", "The rule change that created SegWit.", "", "Standards (BIPs)"],
@@ -4238,7 +4538,7 @@ const DICT = [
   ["Sequence number", "A field in each input. Among other things it signals that a transaction can be replaced (RBF) and can set a relative timelock.", "", "Transactions"],
   ["SHA256SUMS", "A text file listing the fingerprint of the published VOIDFORGE file, so you can check your download is unchanged.", "Check your download.", "VOIDFORGE"],
   ["SHAKE256", "A hash function from the SHA-3 family that can give as many output bytes as you ask for. BIP85 uses it to turn a seed into any number of dice rolls.", "BIP85 dice rolls.", "Units & math"],
-  ["Shamir's Secret Sharing", "Splitting a secret into shares so that a chosen number of them rebuild it and fewer reveal nothing. SLIP39 and Codex32 use it.", "EXTRA TOOLS: SLIP39 shares (Shamir backup).", "Keys & seeds"],
+  ["Shamir's Secret Sharing", "Splitting a secret into shares so that a chosen number of them rebuild it and fewer reveal nothing. SLIP39 and Codex32 use it.", "EXTRA TOOLS: SLIP39 shares (Shamir backup) and Codex32 shares (BIP93).", "Keys & seeds"],
   ["Side channel", "A leak of secrets through things like timing, power use, sound or light instead of through the data itself.", "", "Privacy & security"],
   ["Sidechain", "A separate blockchain linked to Bitcoin, with its own rules, where coins can be moved to and from.", "", "Lightning & layers"],
   ["Sighash", "A flag on a signature saying which parts of the transaction it covers. The usual one (SIGHASH_ALL) covers every input and output.", "Inspect a transaction (PSBT) names it and checks the signature with it.", "Transactions"],
@@ -4293,7 +4593,10 @@ const DICT = [
   // v2.10.0
   ["Old Electrum seed", "The 12 words of an Electrum wallet made before version 2.0, from Electrum's own old list of 1626 words, not BIP39. It has no checksum and no passphrase, and its addresses are legacy ones with uncompressed keys. Electrum still opens it.", "VERIFY shows its seed, master public key and addresses; the Wallet Detective finds its addresses; Heir mode.", "Keys & seeds"],
   ["Master public key (old Electrum)", "The public key of an old Electrum wallet (before version 2.0), 128 hex characters. Every address of the wallet comes from it, so it shows them all, but it cannot spend.", "VERIFY, for an old Electrum seed.", "Keys & seeds"],
-  ["Damaged word", "A seed word that can only partly be read, as on a burned, rusted or smudged backup. In Reforge, ? stands for one letter that cannot be read and * for any number of them; the first 4 letters of a BIP39 word are enough.", "Reforge (EXTRA TOOLS), Missing or wrong words.", "Keys & seeds"]
+  ["Damaged word", "A seed word that can only partly be read, as on a burned, rusted or smudged backup. In Reforge, ? stands for one letter that cannot be read and * for any number of them; the first 4 letters of a BIP39 word are enough.", "Reforge (EXTRA TOOLS), Missing or wrong words.", "Keys & seeds"],
+  // v2.11.0
+  ["Codex32", "A way (BIP93) to back up a wallet's BIP32 master seed as one string of 48 or 74 characters starting with MS1, or as Shamir shares of it (2 to 9 needed). It is not BIP39: the same randomness as words is another wallet. There is no passphrase. The checksum can be checked by hand.", "EXTRA TOOLS: Codex32 shares (BIP93) checks and combines them, and makes new ones from dice.", "Keys & seeds"],
+  ["Volvelle", "A paper computer: paper wheels that turn on a pin, read to look up a result instead of working it out. The codex32 project uses volvelles to compute codex32 checksums and shares by hand, with no electronic device.", "EXTRA TOOLS: Codex32 shares (BIP93), in the help text.", "Units & math"]
 ];
 let dictCat = "All";
 function buildDict(){
@@ -5894,6 +6197,7 @@ function practiceMode(on){
   // fixes release: VERIFY's lines, the child seed, the device dice check and the two transaction tools showed addresses of the old network
   verifySeq++; { const v = document.getElementById("verifyStatus"); if(v.textContent){ v.className = "status"; v.textContent = "Practice mode was turned " + (on ? "on" : "off") + ": press VERIFY again."; } const m = document.getElementById("verifyMatch"); m.textContent = ""; m.className = "status"; clearVerifyIcons(); }
   clearChild(); dcClear(true); cmxClear(true); clearPsbt(false); clearCompare(false); oeClear();
+  c32Wipe(); c32mWipe();   // v2.11.0: codex32 results show the addresses of the old network
   if(!on) practiceWalletClose();
   reshowSeed();
   knownRefresh();   // v2.10.0: the public phrase warnings say whether practice mode is on
@@ -6150,6 +6454,7 @@ async function runSelfTests(auto){
   eq("SeedQR code (25 x 25 squares) equals the independent qrcode library (mask 0)", ()=>sqHash("seedqr"), "9ccf42587b3d709c640e7305c8612a031e83c36f7bd795993d02bc97b476678b");
   eq("CompactSeedQR code (21 x 21 squares) equals the independent qrcode library (mask 0)", ()=>sqHash("compact"), "9bb4e6caab91bea9bfb4612b7f90ba3ee3dd2c0d6e56d9bbab36d7c93d927010");
   b138SelfTests(eq);   // v2.10.0: BIP138 encrypted descriptor backups (official vectors) and descriptor addresses (embit)
+  c32SelfTests(eq);   // v2.11.0: codex32 (BIP93 test vectors, and strings made from fixed rolls)
   // v2.10.0: punch plates, numbered from 1 as Krux numbers them (worked out by hand: legal = 1020 = 512+256+...+4, zoo = 2048, abandon = 1)
   eq("punch plates: legal, zoo and abandon as a binary grid, Stackbit 1248, decimal, hex and octal (Krux counts from 1)", ()=>["legal","zoo","abandon"].map(w=>{ const n=pnNum(w), b=pnBases(n); return pnBits(n).join("")+" "+pnStack(n).map(d=>d.join("+")||"0").join("|")+" "+b.dec+" "+b.hex+" "+b.oct; }).join(", "), "001111111100 1|0|2|0 1020 3FC 1774, 100000000000 2|0|4|8 2048 800 4000, 000000000001 0|0|0|1 1 1 1");
   eq("punch plates read back: hex, octal, a ticked binary grid and a ticked Stackbit plate give the words", ()=>[pnParse("3FC 7e0", 16), pnParse("1774 3740", 8), pnReadRows("grid", [pnBits(1020), pnBits(2048)]), pnReadRows("stack", [[1,0,0,0,0,0,0,1,0,0,0,0,0,0], [0,1,0,0,0,0,1,0,0,0,0,1,1,0]])].map(r=>r.words.join(" ")).join(", "), "legal winner, legal winner, legal zoo, legal winner");
@@ -9500,6 +9805,123 @@ function printS39Shares(){
     }));
   });
 }
+// ===== v2.11.0 codex32 (UI): the "Codex32 shares (BIP93)" box in EXTRA TOOLS (c32Parse, c32Combine and c32Make do the math).
+// CHECK AND COMBINE checks each string and opens the wallet of a secret or of enough shares. The strings made from dice are
+// secret: shown with no copy button and not selectable, wiped by CLEAR, CLEAR ALL, auto-clear and END SESSION (wipeSeed calls
+// c32Clear), and cleared as soon as a setting or the rolls change, or practice mode is turned on or off. =====
+let c32Run = 0, c32mRun = 0, c32mCtx = null;
+function c32ModeChange(){
+  const make = document.querySelector('input[name=c32Mode]:checked').value === "make";
+  document.getElementById("c32CombinePanel").style.display = make ? "none" : ""; document.getElementById("c32MakePanel").style.display = make ? "" : "none";
+  c32Clear();
+}
+function c32Wipe(){ c32Run++; const st = document.getElementById("c32Status"), o = document.getElementById("c32Out"); st.textContent = ""; st.className = "status"; o.textContent = ""; o.style.display = "none"; }
+function clearC32(){ document.getElementById("c32In").value = ""; c32Wipe(); }
+function c32mWipe(){
+  c32mRun++; c32mCtx = null;
+  for(const id of ["c32mOut", "c32mInfo"]){ const o = document.getElementById(id); o.textContent = ""; o.style.display = "none"; }
+  document.getElementById("c32mPrintRow").style.display = "none";
+  const st = document.getElementById("c32mStatus"); st.textContent = ""; st.className = "status";
+}
+function c32mClear(){ c32mWipe(); document.getElementById("c32mRolls").value = ""; }
+function c32Clear(){ clearC32(); c32mClear(); }   // both panels: CLEAR ALL, auto-clear and END SESSION (wipeSeed)
+// The settings menus: the number of shares does not apply to a secret that is not split.
+function c32mKChange(){ document.getElementById("c32mN").style.display = document.getElementById("c32mK").value === "0" ? "none" : ""; }
+// The wallet of a master seed, as s39mWalletText shows it (fingerprint, 10 receive and 10 change addresses, first Taproot address).
+// In practice mode the addresses are on the test network (m/84'/1'/0' and m/86'/1'/0'), as everywhere else on the page.
+async function c32WalletText(seed){
+  if(!practiceOn) return s39mWalletText(seed);
+  const fp = await fingerprintFromSeed(seed), list = {0: [], 1: []};
+  let [k, c] = await masterFromSeed(seed);
+  for(const [i, h] of [[84, true], [1, true], [0, true]]) [k, c] = await ckdPriv(k, c, i, h);
+  for(const ch of [0, 1]){ const [k2, c2] = await ckdPriv(k, c, ch, false); for(let i = 0; i < ADDR_SHOWN; i++){ const [ck] = await ckdPriv(k2, c2, i, false); list[ch].push(await addressFromKey("wpkh", ck, "test")); } }
+  const tr = await watchOnlyFromSeed(seed, "tr", 0, "test"), last = ADDR_SHOWN - 1;
+  const rows = (chain) => list[chain].map((a, i) => String(chain + "/" + i).padEnd(5) + a).join("\n");
+  return {fp, text: "TESTNET (practice coins only). Practice mode is on, so these addresses are on the test network.\n\nMaster fingerprint: " + fp +
+    "\n\nFirst " + ADDR_SHOWN + " receive addresses (native SegWit, m/84'/1'/0'/0/0 to 0/" + last + "):\n" + rows(0) +
+    "\n\nFirst " + ADDR_SHOWN + " change addresses (native SegWit, m/84'/1'/0'/1/0 to 1/" + last + "):\n" + rows(1) + "\n\nFirst Taproot address (m/86'/1'/0'/0/0): " + tr.first};
+}
+// One line per string: what it is, or what is wrong with it.
+function c32Line(p, i){
+  const n = "String " + (i + 1) + ": ";
+  if(!p.ok) return n + p.error;
+  const size = "a " + p.bits + "-bit seed";
+  if(p.index === "s") return n + "checksum OK. A secret (share index S), identifier " + p.id.toUpperCase() + ", " + size + ": it opens the wallet on its own.";
+  return n + "checksum OK. Share " + p.index.toUpperCase() + ", identifier " + p.id.toUpperCase() + ", " + size + "; this set needs " + p.k + " shares.";
+}
+async function c32Ui(){
+  if(!gateOk()) return;
+  c32Wipe();
+  const run = c32Run, st = document.getElementById("c32Status"), o = document.getElementById("c32Out");
+  const lines = document.getElementById("c32In").value.split(/\n+/).map(x => x.trim()).filter(Boolean);
+  if(!lines.length){ st.textContent = "Type your codex32 strings, one per line."; return; }
+  const each = lines.map((l, i) => c32Line(c32Parse(l), i));
+  const r = c32Combine(lines);
+  if(!r.ok){ st.className = "status bad"; st.textContent = each.concat(["", "Not combined: " + r.error]).join("\n"); return; }
+  st.textContent = "Checking and combining...";
+  const sec = r.seed; let wt;
+  try { wt = await c32WalletText(sec); } finally { sec.fill(0); }
+  if(run !== c32Run) return;
+  st.className = "status ok";
+  st.textContent = each.join("\n") + "\n\n" + (r.secret ? "Read: this secret holds a " + r.bits + "-bit master seed." :
+    "Combined: these " + r.used + " shares of set " + r.id.toUpperCase() + " give its secret, a " + r.bits + "-bit master seed." +
+    (r.extra ? " The other " + (r.extra === 1 ? "share fits" : r.extra + " shares fit") + " the same set." : ""));
+  o.textContent = [wt.text, "The master seed is the BIP32 seed itself (codex32 has no passphrase). Compare the fingerprint and the first address with your wallet or device."].join("\n\n");
+  o.style.display = "";
+}
+// A string in capitals, in groups of 4, 6 groups to a line (as people write it).
+function c32Show(s){
+  const g = s.toUpperCase().match(/.{1,4}/g), rows = [];
+  for(let i = 0; i < g.length; i += 6) rows.push(g.slice(i, i + 6).join(" "));
+  return rows.join("\n");
+}
+function c32mName(c, j){ return c.o.k ? "SHARE " + C32_ORDER[j].toUpperCase() + " (" + (j + 1) + " OF " + c.o.n + ")" : "SECRET S"; }
+function c32mRule(c){
+  const {k, n} = c.o;
+  return !k ? "This one string opens the wallet on its own, like seed words." : k === n ? "All " + n + " shares are needed to open the wallet; fewer reveal nothing." : "Any " + k + " of the " + n + " shares open the wallet; fewer reveal nothing.";
+}
+async function c32mUi(){
+  if(!gateOk()) return;
+  c32mWipe();
+  const run = c32mRun, st = document.getElementById("c32mStatus"), say = (cls, t) => { st.className = "status " + cls; st.textContent = t; };
+  const k = parseInt(document.getElementById("c32mK").value, 10), o = {bits: parseInt(document.getElementById("c32mBits").value, 10), k, n: k ? parseInt(document.getElementById("c32mN").value, 10) : 1};
+  say("", "Making the strings and checking them...");
+  const r = await c32Make(document.getElementById("c32mRolls").value, o);
+  if(run !== c32mRun){ if(r.masterSeed) r.masterSeed.fill(0); return; }
+  if(!r.ok) return say("bad", "Not made: " + r.error);
+  let w; try { w = await c32WalletText(r.masterSeed); } finally { r.masterSeed.fill(0); }
+  if(run !== c32mRun) return;
+  const c = {shares: r.shares, o, id: r.identifier, fp: w.fp};
+  c32mCtx = c;
+  const out = document.getElementById("c32mOut");
+  out.textContent = r.shares.map((s, j) => c32mName(c, j) + (j === 0 ? "  (" + c32mRule(c) + ")" : "") + "\n" + c32Show(s)).join("\n\n"); out.style.display = "";
+  const info = document.getElementById("c32mInfo"); info.textContent = w.text; info.style.display = "";
+  document.getElementById("c32mPrintRow").style.display = "";
+  const rolls = document.getElementById("c32mRolls").value.replace(/\s+/g, "").length;
+  say("ok", (k ? o.n + " shares" : "1 secret string") + " made from your " + rolls + " rolls and checked: the page read " + (k ? "every share back and combined them again (every share used at least once)" : "it back") +
+    (k ? ", and each time got" : " and got") + " the same wallet, master fingerprint " + w.fp + ". " + c32mRule(c) + (k ? " Every share of this set has" : " It has") + " the identifier " + r.identifier.toUpperCase() + " (characters 5 to 8)." +
+    (k ? "\n\nWrite each share on its own paper (or print them) in capital letters, in groups of 4, and check every character against the screen. Keep the shares in different places. Then check them" :
+      "\n\nWrite the string on paper (or print it) in capital letters, in groups of 4, and check every character against the screen. Then check it") +
+    " in “Check or combine strings”, and compare the fingerprint.");
+}
+function printC32Shares(){
+  const c = c32mCtx; if(!c) return alert("Make the shares first.");
+  const n = c.shares.length;
+  if(!confirm("Printing sends the " + (c.o.k ? "shares" : "secret") + " to a printer and its spooler. Only print on a trusted offline computer with a directly connected printer. Each string prints on its own page (" + n + (n === 1 ? " page" : " pages") + ")" + (c.o.k ? "; keep the pages in different places" : "") + ". Print now?")) return;
+  printSheet(add => {
+    c.shares.forEach((s, j) => {
+      const page = add("ps-part", "");
+      const a = (cls, t, parent) => { const d = document.createElement("div"); d.className = cls; d.textContent = t; (parent || page).appendChild(d); return d; };
+      a("ps-title", "VOIDFORGE CODEX32 " + c32mName(c, j));
+      a("ps-sub", "SECRET. " + (c.o.k ? "One share of a codex32 (BIP93) backup, identifier " + c.id.toUpperCase() + ". " + c32mRule(c) + " Keep it apart from the other shares." : "A codex32 (BIP93) secret, identifier " + c.id.toUpperCase() + ". " + c32mRule(c)));
+      const grid = a("ps-grid ps-c32", "");
+      s.toUpperCase().match(/.{1,4}/g).forEach((g, k) => { const x = a("ps-cell", "", grid); a("ps-n", String(k + 1).padStart(2, "0"), x); a("ps-w", g, x); });
+      a("ps-info", "Master fingerprint of the wallet: " + c.fp + "\nSpaces between the groups do not count. Write it in capital letters." +
+        "\nTo restore: a wallet that reads codex32 (BIP93) strings. To check: VOIDFORGE EXTRA TOOLS, Codex32 shares.");
+      a("ps-warn", (c.o.k ? "Anyone who gets enough shares can take the coins." : "Anyone who gets this string can take the coins.") + " Never photograph this page.");
+    });
+  });
+}
 // Card sheet (v2.9.0): numbered boxes to write the cards down as they are dealt: 25 for 12 words, or a whole deck and then
 // 6 more from a new shuffle for 24 words (see cdBits). v2.10.0: every seed length, and with raw entropy as many boxes as the
 // most cards that length can take (cdRawRange).
@@ -9701,6 +10123,7 @@ function wipeSeed(){
   lbClear();   // v2.9.0: the label file (private)
   clearXor();   // v2.9.0: Seed XOR parts (secret)
   s39mClear();   // v2.10.0: SLIP39 shares made from dice (secret)
+  c32Clear();   // v2.11.0: codex32 strings typed in and made from dice (secret)
   cmxClear(); flwClear(true);   // v2.10.0: the Coldcard seed mix check (secret) and the flawed-device questions
   smudgeShow("vSmudge", null); knownSeq++; knownShow("phrasePub", "");   // v2.10.0
   pnClear();   // v2.10.0: the punch plate on screen and the plate read-back boxes (secret)
@@ -11526,6 +11949,11 @@ document.getElementById("typoIn").addEventListener("input", () => { typoRun++; c
 for(const id of ["xorIn", "xorRolls", "xorN", "xorFrom"]) document.getElementById(id).addEventListener(id === "xorN" || id === "xorFrom" ? "change" : "input", xorWipe);
 for(const id of ["s39In", "s39Pass"]) document.getElementById(id).addEventListener("input", () => { s39Run++; s39Wipe(); });
 for(const id of ["s39mRolls", "s39mPass", "s39mPass2", "s39mGroups", "s39mBits", "s39mT", "s39mN", "s39mGT", "s39mExt", "s39mExp"]) document.getElementById(id).addEventListener(/^(s39mRolls|s39mPass|s39mPass2|s39mGroups)$/.test(id) ? "input" : "change", s39mWipe);   // v2.10.0: a result never stays next to settings that did not make it
+// v2.11.0 codex32: a result never stays next to inputs that did not make it; auto-clear knows the two boxes
+document.getElementById("c32In").addEventListener("input", c32Wipe);
+for(const id of ["c32mRolls", "c32mBits", "c32mK", "c32mN"]) document.getElementById(id).addEventListener(id === "c32mRolls" ? "input" : "change", c32mWipe);
+document.getElementById("c32mK").addEventListener("change", c32mKChange);
+AUTO_FIELDS.push("c32In", "c32mRolls");
 document.getElementById("reuseIn").addEventListener("input", () => { const st = document.getElementById("reuseStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wpIn").addEventListener("input", () => { if(wvCtx && wvCtx.kind === "pub" && !wvCtx.secret) clearWalletView(); const st = document.getElementById("wpStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wType").addEventListener("change", refreshWatch);
@@ -12223,6 +12651,7 @@ function setGate(state, text, cls){
   for(const id of ["xorSplitBtn", "xorCombineBtn"]) document.getElementById(id).disabled = !on;   // v2.9.0: Seed XOR
   document.getElementById("s39Btn").disabled = !on;   // v2.9.0: SLIP39
   document.getElementById("s39mBtn").disabled = !on;   // v2.10.0: SLIP39 shares from dice
+  for(const id of ["c32Btn", "c32mBtn"]) document.getElementById(id).disabled = !on;   // v2.11.0: codex32
   document.getElementById("cmxBtn").disabled = !on;   // v2.10.0: Check a Coldcard seed mix
   document.getElementById("wpBtn").disabled = !on;
   document.getElementById("reuseBtn").disabled = !on;

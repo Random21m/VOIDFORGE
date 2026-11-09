@@ -25,7 +25,7 @@ stages: [test, deploy]
 
 test-unit:
   <<: *test
-  script: [node --max-old-space-size=4096 tests/test.js, node tests/signed.test.mjs, node tests/slip39.test.mjs, node tests/qrdecode.test.mjs]
+  script: [node --max-old-space-size=4096 tests/test.js, node tests/signed.test.mjs, node tests/slip39.test.mjs, node tests/codex32.test.mjs, node tests/qrdecode.test.mjs]
 
 test-oracle:
   <<: *test
