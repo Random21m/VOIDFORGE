@@ -323,6 +323,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     body.print-seed #printOnly .ps-warn { font-weight: 700; }
     body.print-seed #printOnly .ps-part { break-after: page; }
     body.print-seed #printOnly .ps-part:last-child { break-after: auto; }
+    body.print-seed #printOnly .ps-grid.ps-20, body.print-seed #printOnly .ps-grid.ps-33 { grid-template-columns: repeat(4, 1fr); }   /* v2.10.0: SLIP39 shares */
     body.print-seed #printOnly .ps-addr { white-space: pre; font-family: "Courier New", monospace; font-size: 10.5px; line-height: 1.3; margin-top: 4px; }
     body.print-seed #printOnly .ps-info { margin-bottom: 8px; }
     body.print-seed #printOnly .ps-small { font-size: 11px; }
@@ -1621,13 +1622,47 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div class="btn-row" id="xorPrintRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" onclick="printXorParts()">PRINT THE PARTS</button></div>
     </details>
     <details id="s39Box" style="margin-top:8px;">
-      <summary>SLIP39 shares (Shamir backup)<span class="tag tag-secret">SECRET</span><small>Check SLIP39 shares, or combine them to see which wallet they open.</small></summary>
-      <p class="hint" style="margin:8px 0;">A SLIP39 backup (a Shamir backup, made by Trezor and Keystone) is a set of shares of 20 or 33 words each, from a list of 1,024 words that is not the BIP39 list. A set number of them (for example 2 of 3) opens the wallet; fewer reveal nothing. Type each share on its own line. VOIDFORGE checks every share, and with enough of them shows the wallet&rsquo;s master fingerprint and first addresses, so you can compare them with your device. It only reads shares; it never makes them. Do this only on your offline computer.</p>
-      <textarea id="s39In" rows="5" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="SLIP39 shares, one per line" placeholder="One share per line (20 or 33 words each)"></textarea>
-      <input type="password" id="s39Pass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="Passphrase of the backup, if it has one" placeholder="Passphrase, only if the backup has one" style="margin-top:6px;">
-      <div class="btn-row" style="margin-top:8px;"><button type="button" id="s39Btn" onclick="s39Ui()" disabled>CHECK AND COMBINE</button><button type="button" class="secondary small" onclick="clearS39()">CLEAR</button></div>
-      <div class="status" id="s39Status" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
-      <pre id="s39Out" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+      <summary>SLIP39 shares (Shamir backup)<span class="tag tag-secret">SECRET</span><small>Check SLIP39 shares, combine them to see which wallet they open, or make new shares from dice.</small></summary>
+      <p class="hint" style="margin:8px 0;">A SLIP39 backup (a Shamir backup, made by Trezor and Keystone) is a set of shares of 20 or 33 words each, from a list of 1,024 words that is not the BIP39 list. A set number of them (for example 2 of 3) opens the wallet; fewer reveal nothing. Type each share on its own line. VOIDFORGE checks every share, and with enough of them shows the wallet&rsquo;s master fingerprint and first addresses, so you can compare them with your device. It can also make a new wallet as SLIP39 shares from your own dice rolls (choose &ldquo;Make new SLIP39 shares from dice&rdquo;). Do this only on your offline computer.</p>
+      <div class="radio-group">
+        <label><input type="radio" name="s39Mode" value="combine" checked onchange="s39ModeChange()"><span>Check or combine shares</span></label>
+        <label><input type="radio" name="s39Mode" value="make" onchange="s39ModeChange()"><span>Make new SLIP39 shares from dice</span></label>
+      </div>
+      <div id="s39CombinePanel">
+        <textarea id="s39In" rows="5" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="SLIP39 shares, one per line" placeholder="One share per line (20 or 33 words each)"></textarea>
+        <input type="password" id="s39Pass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="Passphrase of the backup, if it has one" placeholder="Passphrase, only if the backup has one" style="margin-top:6px;">
+        <div class="btn-row" style="margin-top:8px;"><button type="button" id="s39Btn" onclick="s39Ui()" disabled>CHECK AND COMBINE</button><button type="button" class="secondary small" onclick="clearS39()">CLEAR</button></div>
+        <div class="status" id="s39Status" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+        <pre id="s39Out" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+      </div>
+      <div id="s39MakePanel" style="display:none;">
+        <p class="hint" style="margin:6px 0;">Makes a <b>new</b> wallet, backed up as SLIP39 shares. As with a seed, the randomness comes from your dice only: roll at least 50 times for 20-word shares (128 bits) or 99 times for 33-word shares (256 bits) and type the results. Use new rolls, never the rolls of a seed you already use. The wallet&rsquo;s secret is SHA-256 of the rolls, as in MAKE A SEED; the other random parts SLIP39 needs (the backup&rsquo;s identifier and the share values) are worked out from the same rolls, so the same rolls and settings always give the same shares.</p>
+        <p class="hint" style="margin:6px 0;"><b>This cannot turn seed words you already have into shares.</b> A SLIP39 wallet is not the same wallet as BIP39 words, even from the same rolls: shares made from your words would open a different, empty wallet.</p>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <select id="s39mBits" aria-label="Share length" style="width:auto; flex:none;"><option value="128" selected>20 words (128 bits)</option><option value="256">33 words (256 bits)</option></select>
+          <select id="s39mT" aria-label="Shares needed" style="width:auto; flex:none;"><option value="1">1 needed</option><option value="2" selected>2 needed</option><option value="3">3 needed</option><option value="4">4 needed</option><option value="5">5 needed</option><option value="6">6 needed</option><option value="7">7 needed</option><option value="8">8 needed</option><option value="9">9 needed</option><option value="10">10 needed</option><option value="11">11 needed</option><option value="12">12 needed</option><option value="13">13 needed</option><option value="14">14 needed</option><option value="15">15 needed</option><option value="16">16 needed</option></select>
+          <select id="s39mN" aria-label="Shares in all" style="width:auto; flex:none;"><option value="1">of 1 share</option><option value="2">of 2 shares</option><option value="3" selected>of 3 shares</option><option value="4">of 4 shares</option><option value="5">of 5 shares</option><option value="6">of 6 shares</option><option value="7">of 7 shares</option><option value="8">of 8 shares</option><option value="9">of 9 shares</option><option value="10">of 10 shares</option><option value="11">of 11 shares</option><option value="12">of 12 shares</option><option value="13">of 13 shares</option><option value="14">of 14 shares</option><option value="15">of 15 shares</option><option value="16">of 16 shares</option></select>
+        </div>
+        <label style="display:block; margin-top:6px;"><input type="checkbox" id="s39mAdv" onchange="s39mAdvChange()"> Advanced: groups (for example, a share you keep yourself, or 3 of 5 friends together with 2 of 6 family members)</label>
+        <div id="s39mAdvPanel" style="display:none; margin-top:6px;">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;"><select id="s39mGT" aria-label="Groups needed" style="width:auto; flex:none;"><option value="1">1 group needed</option><option value="2" selected>2 groups needed</option><option value="3">3 groups needed</option><option value="4">4 groups needed</option><option value="5">5 groups needed</option><option value="6">6 groups needed</option><option value="7">7 groups needed</option><option value="8">8 groups needed</option><option value="9">9 groups needed</option><option value="10">10 groups needed</option><option value="11">11 groups needed</option><option value="12">12 groups needed</option><option value="13">13 groups needed</option><option value="14">14 groups needed</option><option value="15">15 groups needed</option><option value="16">16 groups needed</option></select><span class="hint">of the groups below, one per line: shares needed of shares in the group</span></div>
+          <textarea id="s39mGroups" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Groups, one per line" placeholder="1 of 1&#10;3 of 5&#10;2 of 6" style="margin-top:6px;"></textarea>
+        </div>
+        <input type="password" id="s39mPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="SLIP39 passphrase (optional)" placeholder="SLIP39 passphrase (optional)" style="margin-top:6px;">
+        <input type="password" id="s39mPass2" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="Confirm the SLIP39 passphrase" placeholder="Confirm passphrase (must match)" style="margin-top:6px;">
+        <p class="hint" style="margin:6px 0;">The passphrase is optional. SLIP39 uses it to encrypt the wallet&rsquo;s secret inside the shares; it is not a BIP39 passphrase (the &ldquo;25th word&rdquo;) and does not work like one. Every passphrase opens a wallet, with no error: a mistyped or forgotten one opens a different, empty wallet, so write it down apart from the shares. Only printable ASCII is allowed (A-Z, a-z, 0-9, space and the symbols on a US keyboard).</p>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <label><input type="checkbox" id="s39mExt" checked> Extendable backup (recommended)</label>
+          <select id="s39mExp" aria-label="Iteration exponent" style="width:auto; flex:none;"><option value="0">Iteration exponent 0 (10,000 iterations)</option><option value="1" selected>Iteration exponent 1 (20,000, the reference default)</option><option value="2">Iteration exponent 2 (40,000)</option><option value="3">Iteration exponent 3 (80,000)</option><option value="4">Iteration exponent 4 (160,000)</option><option value="5">Iteration exponent 5 (320,000)</option></select>
+        </div>
+        <p class="hint" style="margin:6px 0;">Leave these as they are unless you know you need another value. New shares should be extendable, as SLIP39 says (more sets of shares can then be made later for the same wallet); turn it off only for a wallet app too old to read such shares. The iteration exponent sets how much work (PBKDF2 iterations) the passphrase takes to try; a higher one makes guessing a passphrase slower, and opening the wallet too.</p>
+        <textarea id="s39mRolls" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Dice rolls for the new shares" placeholder="Dice rolls, 1 to 6: at least 50 for 20 words, 99 for 33 words" style="margin-top:6px;"></textarea>
+        <div class="btn-row" style="margin-top:8px;"><button type="button" id="s39mBtn" onclick="s39mUi()" disabled>MAKE THE SHARES</button><button type="button" class="secondary small" onclick="s39mClear()">CLEAR</button></div>
+        <div class="status" id="s39mStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+        <pre id="s39mOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0; -webkit-user-select:none; user-select:none;"></pre>
+        <pre id="s39mInfo" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
+        <div class="btn-row" id="s39mPrintRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" onclick="printS39Shares()">PRINT THE SHARES</button></div>
+      </div>
     </details>
     <details id="childBox">
       <summary>Child seed (BIP85)<span class="tag tag-secret">SECRET</span><small>Make a separate new seed, key or password from this one.</small></summary>
@@ -1905,7 +1940,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <details>
       <summary>What SELF-TEST checks</summary>
-      <p>It runs automatically every time the page loads; if any test fails, seed generation is disabled and a red banner appears. Press SELF-TEST to see the full list. It checks: the BIP39 wordlist hash; official BIP39 entropy vectors (12 to 24 words); SeedSigner&rsquo;s published 50- and 99-roll dice examples and 50-roll fingerprint; coin-flip vectors from an independent reference implementation of SeedSigner&rsquo;s method; the <code>abandon&hellip;about</code> fingerprints (with and without the <code>TREZOR</code> passphrase); BIP32 test vector 1; the first receive address (the published BIP84 vector, a second vector from two independent libraries, and the BIP173 bech32 example); the watch-only zpub (published BIP84 vector and an independent-library vector), the descriptor checksum, a QR code matrix checked against an independent QR library, and the fingerprint picture checked against independent LifeHash code and Sparrow Wallet; passphrase normalization; RIPEMD-160 vectors; the phrase checker; and, added since, Keystone dice rules, the dice passphrase, coin-flip and word-draw helpers, Electrum seeds, every address type and its account keys on mainnet and testnet, Taproot (BIP86 and the BIP350 example), multisig cosigner keys and addresses (BIP48), Silent Payment addresses (BIP352), private key versions (SLIP132), BIP85 child seeds, keys and passwords (published vectors), SeedQR and CompactSeedQR, signed messages (BIP137 and BIP322 vectors), the transaction inspector on a known PSBT, Reforge, Ed25519 signatures (RFC 8032 vectors) and the release key&rsquo;s fingerprint, a playing-card seed (as Ian Coleman&rsquo;s BIP39 tool makes it) and SLIP39 shares (an official test vector). If any test fails, do not use that copy for real funds.</p>
+      <p>It runs automatically every time the page loads; if any test fails, seed generation is disabled and a red banner appears. Press SELF-TEST to see the full list. It checks: the BIP39 wordlist hash; official BIP39 entropy vectors (12 to 24 words); SeedSigner&rsquo;s published 50- and 99-roll dice examples and 50-roll fingerprint; coin-flip vectors from an independent reference implementation of SeedSigner&rsquo;s method; the <code>abandon&hellip;about</code> fingerprints (with and without the <code>TREZOR</code> passphrase); BIP32 test vector 1; the first receive address (the published BIP84 vector, a second vector from two independent libraries, and the BIP173 bech32 example); the watch-only zpub (published BIP84 vector and an independent-library vector), the descriptor checksum, a QR code matrix checked against an independent QR library, and the fingerprint picture checked against independent LifeHash code and Sparrow Wallet; passphrase normalization; RIPEMD-160 vectors; the phrase checker; and, added since, Keystone dice rules, the dice passphrase, coin-flip and word-draw helpers, Electrum seeds, every address type and its account keys on mainnet and testnet, Taproot (BIP86 and the BIP350 example), multisig cosigner keys and addresses (BIP48), Silent Payment addresses (BIP352), private key versions (SLIP132), BIP85 child seeds, keys and passwords (published vectors), SeedQR and CompactSeedQR, signed messages (BIP137 and BIP322 vectors), the transaction inspector on a known PSBT, Reforge, Ed25519 signatures (RFC 8032 vectors) and the release key&rsquo;s fingerprint, a playing-card seed (as Ian Coleman&rsquo;s BIP39 tool makes it) and SLIP39 shares (an official test vector, and shares made from fixed dice rolls). If any test fails, do not use that copy for real funds.</p>
       <p><b>What the self-test cannot catch:</b> it only runs known answers through this same file, so it can miss a bug on inputs it does not cover, and a tampered file could simply fake a pass. It does not replace checking the file&rsquo;s SHA256 against the release, and it does not replace comparing your words and fingerprint in a second independent tool. The network tag at the top reads the browser&rsquo;s online flag only; it cannot prove the machine is air-gapped.</p>
     </details>
     <details>
@@ -2023,12 +2058,12 @@ const CD_RANKS = "A23456789TJQK", CD_SUITS = "\u2663\u2666\u2665\u2660";
 const CD_SUIT_OF = {C: "\u2663", D: "\u2666", H: "\u2665", S: "\u2660", "\u2663": "\u2663", "\u2666": "\u2666", "\u2665": "\u2665", "\u2660": "\u2660", "\u2667": "\u2663", "\u2662": "\u2666", "\u2661": "\u2665", "\u2664": "\u2660"};
 const CD_NAMES = {A: "ace", T: "10", J: "jack", Q: "queen", K: "king"}, CD_SUIT_NAMES = {"\u2663": "clubs", "\u2666": "diamonds", "\u2665": "hearts", "\u2660": "spades"};
 const CD_LETTER = {"\u2663": "C", "\u2666": "D", "\u2665": "H", "\u2660": "S"};
-// ================= SLIP39 (Shamir shares of words): CHECK and COMBINE only =================
+// ================= SLIP39 (Shamir shares of words): CHECK, COMBINE and (v2.10.0) MAKE from dice =================
 // SLIP39: slip-0039.md in the satoshilabs/slips repository on GitHub (read at commit dea4917, 2026-10-30).
 // A SLIP39 backup is a set of shares of 20 or 33 words (other lengths are possible). Some of them, in
 // groups, rebuild the master secret, which is then decrypted with the passphrase ("" if none).
-// This code only reads shares: slip39Parse checks one share, slip39Combine rebuilds the master secret.
-// It never makes shares, because that needs random numbers and this page uses no browser randomness for secrets.
+// slip39Parse checks one share, slip39Combine rebuilds the master secret. v2.10.0: slip39Make (below) makes new shares, with
+// every random value it needs worked out from the user's dice rolls, never from the browser's random numbers.
 // Checked against every test vector in vectors.json of the trezor/python-shamir-mnemonic repository on GitHub.
 // Not constant-time (table lookups in GF(256)): meant for an offline machine.
 
@@ -2456,6 +2491,183 @@ async function slip39Combine(mnemonics, passphrase){
   }
   out.ok = true;
   return out;
+}
+// ===== v2.10.0 SLIP39 maker: a NEW wallet as SLIP39 shares, from dice (slip39Make) =====
+// Follows GenerateShares, SplitSecret and the encryption of the spec (slip-0039.md, read at commit dea4917) and
+// generate_mnemonics of the reference implementation (python-shamir-mnemonic, read at commit 9fcb9c8, 2026-11-04):
+// extendable flag 1 and iteration exponent 1 by default, as the reference does. Nothing comes from the browser's random numbers.
+// - The master secret is the first 16 bytes (128 bits) or all 32 bytes (256 bits) of SHA-256 of the rolls as typed, exactly as
+//   MAKE A SEED makes the entropy of 12 or 24 words, with the same minimums: 50 rolls for 128 bits, 99 for 256.
+//   It goes into BIP32 directly (the spec's rule for wallets), so it is NOT the wallet that BIP39 words of these rolls open.
+// - Every other random value SLIP39 needs (the 15-bit identifier, the T - 2 random share values of each split and the random
+//   part R of each digest) is read from one stream of bytes, made from the same hash:
+//     block c = HMAC-SHA256(key = SHA-256(rolls), message = "VOIDFORGE SLIP39 shares v1 " + settings + byte 0 + c as 4 bytes, big-endian)
+//   for c = 0, 1, 2, ..., the blocks joined in order. settings names the length, the groups, the extendable flag and the
+//   iteration exponent (for example "128 1 2of3 ext1 e1"; see s39mSettings). The stream is read in the same order as the
+//   reference reads its random source: 2 bytes for the identifier (the top bit dropped), then for the groups and then for each
+//   group in turn: T - 2 share values of n bytes, then R (n - 4 bytes). So the reference's generate_mnemonics, given these bytes
+//   in place of its random source, makes exactly the same words (tests/slip39.test.mjs checks this).
+// Why this is safe: these values never need to be hidden from someone who has the rolls (the rolls are the wallet itself). They
+// only need to be unpredictable to everyone else, so that fewer shares than needed reveal nothing and shares cannot be forged.
+// HMAC-SHA256 keyed with a secret is a pseudorandom function: without the key (the hash of at least 128 bits of dice) its output
+// cannot be predicted or told apart from random bytes, even by someone who holds some of the shares. The label keeps this stream
+// apart from every other use of the hash (the master secret is the hash itself, never a stream block), and the counter makes
+// every block different. Because the settings are in the label, other groups or another flag give another identifier, so a
+// non-extendable set (flag 0) is never made twice with one identifier and one encrypted secret, which the spec asks to avoid.
+// The same rolls and settings always give the same shares; a different passphrase gives the same identifier but other values.
+const S39M_ROLLS = {128: 50, 256: 99};   // dice rolls needed, as for 12 and 24 words in MAKE A SEED
+const S39M_LABEL = "VOIDFORGE SLIP39 shares v1";
+const S39M_EXP_DEFAULT = 1;   // the reference's default iteration exponent (20,000 PBKDF2 iterations in all)
+
+function s39mSettings(o){
+  return o.bits + " " + o.groupThreshold + " " + o.groups.map(g => g[0] + "of" + g[1]).join(",") + " ext" + (o.extendable ? 1 : 0) + " e" + o.iterationExponent;
+}
+
+// The stream above: returns take(n), which gives the next n bytes.
+async function s39mStream(key, settings){
+  const msg = new TextEncoder().encode(S39M_LABEL + " " + settings);
+  const k = await crypto.subtle.importKey("raw", key, {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
+  let buf = new Uint8Array(0), c = 0;
+  return async function take(n){
+    while(buf.length < n){
+      const m = new Uint8Array(msg.length + 5);
+      m.set(msg); m[msg.length] = 0;
+      m.set([(c >>> 24) & 255, (c >>> 16) & 255, (c >>> 8) & 255, c & 255], msg.length + 1);
+      c++;
+      buf = s39Concat(buf, new Uint8Array(await crypto.subtle.sign("HMAC", k, m)));
+    }
+    const out = buf.slice(0, n); buf = buf.slice(n);
+    return out;
+  };
+}
+
+// Encryption of the master secret: the 4 Feistel rounds in order (0, 1, 2, 3); s39Decrypt undoes it.
+async function s39Encrypt(ms, passBytes, e, identifier, extendable){
+  const saltPrefix = !extendable ? s39Concat(new TextEncoder().encode("shamir"), Uint8Array.of(identifier >>> 8, identifier & 255)) : new Uint8Array(0);
+  const half = ms.length / 2;
+  let l = ms.slice(0, half), r = ms.slice(half);
+  for(let i = 0; i < S39_ROUNDS; i++){
+    const f = await s39Round(i, passBytes, e, saltPrefix, r);
+    const next = new Uint8Array(half);
+    for(let k = 0; k < half; k++) next[k] = l[k] ^ f[k];
+    l = r; r = next;
+  }
+  return s39Concat(r, l);   // EMS = R || L
+}
+
+// SplitSecret from the spec: shares for indices 0 to count - 1. take(n) gives the random bytes.
+async function s39Split(threshold, count, secret, take){
+  if(threshold === 1) return Array.from({length:count}, (_, i) => ({x:i, y:secret.slice()}));
+  const shares = [];
+  for(let i = 0; i < threshold - 2; i++) shares.push({x:i, y:await take(secret.length)});
+  const r = await take(secret.length - S39_DIGEST_BYTES);
+  const d = s39Concat((await s39HmacSha256(r, secret)).slice(0, S39_DIGEST_BYTES), r);
+  const base = shares.concat([{x:S39_DIGEST_INDEX, y:d}, {x:S39_SECRET_INDEX, y:secret}]);
+  for(let i = threshold - 2; i < count; i++) shares.push({x:i, y:s39Interpolate(base, i)});
+  d.fill(0); r.fill(0);
+  return shares;
+}
+
+// One share as words (the format slip39Parse reads): f holds the real thresholds and counts, indexes from 0.
+function s39Encode(f, value){
+  const nWords = Math.ceil(value.length * 8 / 10);
+  const bits = "0".repeat(nWords * 10 - value.length * 8) + Array.from(value, b => b.toString(2).padStart(8, "0")).join("");
+  const idExp = (f.identifier << 5) | ((f.extendable ? 1 : 0) << 4) | f.iterationExponent;
+  const p = (f.groupIndex << 16) | ((f.groupThreshold - 1) << 12) | ((f.groupCount - 1) << 8) | (f.memberIndex << 4) | (f.memberThreshold - 1);
+  const data = [idExp >>> 10, idExp & 1023, p >>> 10, p & 1023];
+  for(let i = 0; i < bits.length; i += 10) data.push(parseInt(bits.slice(i, i + 10), 2));
+  const cs = f.extendable ? "shamir_extendable" : "shamir", values = [];
+  for(let i = 0; i < cs.length; i++) values.push(cs.charCodeAt(i));
+  const pm = s39Polymod(values.concat(data, [0, 0, 0])) ^ 1;
+  data.push((pm >>> 20) & 1023, (pm >>> 10) & 1023, pm & 1023);
+  return data.map(i => SLIP39_WORDS[i]).join(" ");
+}
+
+// What is wrong with the settings, as a sentence, or "".
+function s39mOptionsError(o){
+  if(o.bits !== 128 && o.bits !== 256) return "Choose 20 words (128 bits) or 33 words (256 bits).";
+  const G = o.groups.length;
+  if(!G || G > 16) return "SLIP39 allows 1 to 16 groups.";
+  for(let i = 0; i < G; i++){
+    const [t, n] = o.groups[i], name = G > 1 ? "Group " + (i + 1) : "The backup";
+    if(!Number.isInteger(t) || !Number.isInteger(n) || n < 1 || n > 16) return name + ": SLIP39 allows 1 to 16 shares.";
+    if(t < 1 || t > n) return name + ": the number of shares needed must be from 1 to the number of shares (" + n + ").";
+    if(t === 1 && n > 1) return name + ": with 1 share needed, make just 1 share (1 of 1), as SLIP39 requires: more shares would all be the same secret, each one enough on its own.";
+  }
+  if(!Number.isInteger(o.groupThreshold) || o.groupThreshold < 1 || o.groupThreshold > G) return "The number of groups needed must be from 1 to the number of groups (" + G + ").";
+  if(!Number.isInteger(o.iterationExponent) || o.iterationExponent < 0 || o.iterationExponent > 15) return "The iteration exponent must be from 0 to 15.";
+  return "";
+}
+
+// Makes the shares. rolls: dice rolls 1 to 6 as typed (spaces ignored). opts: {bits: 128 or 256, groupThreshold, groups:
+// [[T, N], ...], passphrase ("" if none), extendable (default true), iterationExponent (default 1)}. Returns {ok, error,
+// groups: [[words of share 1, ...], ...], identifier, settings, masterSecret}; the caller wipes masterSecret after use.
+// The shares are combined again with slip39Combine before they are returned (s39mSelfCheck); if that fails, none are returned.
+async function slip39Make(rolls, opts){
+  const out = {ok:false, error:"", groups:[], identifier:null, settings:"", masterSecret:null};
+  const fail = (error) => { out.error = error; out.groups = []; return out; };
+  const o = {bits:opts.bits, groupThreshold:opts.groupThreshold, groups:opts.groups || [],
+    extendable:opts.extendable !== false, iterationExponent:opts.iterationExponent == null ? S39M_EXP_DEFAULT : opts.iterationExponent};
+  const pass = opts.passphrase == null ? "" : String(opts.passphrase);
+  const optErr = s39mOptionsError(o);
+  if(optErr) return fail(optErr);
+  const passErr = s39PassphraseError(pass);
+  if(passErr) return fail(passErr);
+  const typed = String(rolls == null ? "" : rolls).replace(/\s+/g, ""), need = S39M_ROLLS[o.bits], words = o.bits === 128 ? 20 : 33;
+  const bad = typed.match(/[^1-6]/);
+  if(bad) return fail("The rolls can only be the numbers 1 to 6 (\"" + bad[0] + "\" was typed). Spaces and new lines are ignored.");
+  if(typed.length < need) return fail("Roll a die at least " + need + " times for " + words + "-word shares and type the results (1 to 6); " +
+    (typed.length ? typed.length + " so far." : "none typed yet.") + " The rolls make the wallet, so use new rolls, never the rolls of a seed you already use.");
+
+  const h = await sha256(typed), ms = h.slice(0, o.bits / 8);
+  out.settings = s39mSettings(o);
+  const take = await s39mStream(h, out.settings);
+  h.fill(0);
+  const idb = await take(2), identifier = ((idb[0] << 8) | idb[1]) & 0x7fff;
+  const ems = await s39Encrypt(ms, new TextEncoder().encode(pass), o.iterationExponent, identifier, o.extendable);
+  const G = o.groups.length, groupShares = await s39Split(o.groupThreshold, G, ems, take);
+  ems.fill(0);
+  for(let g = 0; g < G; g++){
+    const [t, n] = o.groups[g], members = await s39Split(t, n, groupShares[g].y, take);
+    out.groups.push(members.map(m => s39Encode({identifier, extendable:o.extendable, iterationExponent:o.iterationExponent, groupIndex:g,
+      groupThreshold:o.groupThreshold, groupCount:G, memberIndex:m.x, memberThreshold:t}, m.y)));
+    for(const m of members) m.y.fill(0);
+  }
+  for(const s of groupShares) s.y.fill(0);
+  const problem = await s39mSelfCheck(out.groups, o, identifier, ms, pass);
+  if(problem){ ms.fill(0); return fail("The self-check failed, so no shares are shown: " + problem + " Do not use this copy of the page."); }
+  out.identifier = identifier; out.masterSecret = ms; out.ok = true;
+  return out;
+}
+
+// Reads every share back with slip39Parse and combines them again with slip39Combine, the same code CHECK AND COMBINE uses.
+// Round k takes groups k, k+1, ... (as many as needed) and in each group shares k, k+1, ... (wrapping around), so every share and
+// every group is used at least once. Each round must give back the master secret. Returns a problem as a sentence, or "".
+async function s39mSelfCheck(groups, o, identifier, ms, pass){
+  const G = groups.length, words = o.bits === 128 ? 20 : 33;
+  for(let g = 0; g < G; g++){
+    if(groups[g].length !== o.groups[g][1]) return "group " + (g + 1) + " has the wrong number of shares.";
+    for(let j = 0; j < groups[g].length; j++){
+      const p = slip39Parse(groups[g][j]), s = p.share;
+      if(!p.ok) return "share " + (j + 1) + (G > 1 ? " of group " + (g + 1) : "") + " does not read back (" + p.error + ")";
+      if(p.words.length !== words || s.identifier !== identifier || s.extendable !== o.extendable || s.iterationExponent !== o.iterationExponent ||
+        s.groupIndex !== g || s.groupThreshold !== o.groupThreshold || s.groupCount !== G || s.memberIndex !== j || s.memberThreshold !== o.groups[g][0])
+        return "share " + (j + 1) + (G > 1 ? " of group " + (g + 1) : "") + " does not hold the settings it was made with.";
+    }
+  }
+  const rounds = Math.max(G, ...o.groups.map(x => x[1]));
+  for(let k = 0; k < rounds; k++){
+    const pick = [];
+    for(let a = 0; a < o.groupThreshold; a++){
+      const g = (k + a) % G, [t, n] = o.groups[g];
+      for(let b = 0; b < t; b++) pick.push(groups[g][(k + b) % n]);
+    }
+    const r = await slip39Combine(pick, pass);
+    const same = r.ok && r.masterSecret.length === ms.length && r.masterSecret.every((x, i) => x === ms[i]);
+    if(r.masterSecret) r.masterSecret.fill(0);
+    if(!same) return "combining " + pick.length + (pick.length === 1 ? " share" : " shares") + " did not give back the secret (" + (r.ok ? "another secret" : r.error) + ").";
+  }
+  return "";
 }
 function getNeeded(wc){
   const mode = document.querySelector('input[name="mode"]:checked')?.value || "dice";
@@ -3678,6 +3890,7 @@ const DICT = [
   ["Entropy", "Unpredictability, counted in bits. A seed is only as safe as the randomness it was made from.", "Your rolls: history and fairness chart.", "Keys & seeds"],
   ["Evil maid attack", "Someone with short physical access to your device tampers with it while you are away.", "", "Privacy & security"],
   ["Exchange", "A company where you can buy, sell and hold bitcoin. If you leave coins there, the company holds the keys.", "", "Wallets & backups"],
+  ["Extendable backup (SLIP39)", "A flag in SLIP39 shares (on in new shares) saying the backup's identifier is not mixed into the encryption, so more sets of shares can later be made for the same wallet. Older shares have it off.", "EXTRA TOOLS: SLIP39 shares, Make new SLIP39 shares from dice.", "Wallets & backups"],
   ["Extended private key (xprv)", "A private key plus a chain code from which all the private keys of an account can be worked out. As secret as the seed.", "BIP85 in Child seed.", "Keys & seeds"],
   ["Extended public key (xpub, ypub, zpub)", "A public key that can work out all the addresses of one account. It cannot spend, but anyone who has it can see all your addresses and balance, so share it carefully.", "Watch-only export.", "Keys & seeds"],
   ["Fairness test", "A statistic (Pearson chi-square) that shows whether the face counts of your dice look uneven. It can raise a concern but can never prove dice are fair.", "Under the roll chart, and the \u201cTest only, no seed\u201d switch.", "VOIDFORGE"],
@@ -3712,6 +3925,7 @@ const DICT = [
   ["Index", "The number of one address or child inside a path or a BIP85 child seed.", "BIP85 index, address numbers.", "Keys & seeds"],
   ["Inheritance planning", "Making sure the people you trust can find and restore your wallet if something happens to you, without exposing it today.", "Backup plan and stress test; Heir mode (I FOUND A BITCOIN BACKUP) for the family.", "Wallets & backups"],
   ["Input and output", "The two sides of a transaction: inputs are the coins being spent, outputs are the new coins being made (the payment and the change).", "Inspect a transaction (PSBT).", "Transactions"],
+  ["Iteration exponent (SLIP39)", "A number in SLIP39 shares that sets how much work the passphrase encryption takes: 10,000 PBKDF2 iterations times 2 to that power. Higher makes guessing a passphrase slower.", "EXTRA TOOLS: SLIP39 shares, Make new SLIP39 shares from dice.", "Wallets & backups"],
   ["Key pair", "A private key and the public key worked out from it.", "", "Keys & seeds"],
   ["Key reuse (multisig)", "Using the same public key, or keys from the same seed, more than once in a wallet setup. In a multisig it quietly lowers the protection: one seed then counts as two signers.", "EXTRA TOOLS, Check descriptors for a reused key.", "Wallets & backups"],
   ["Key stretching", "Making a secret slow to test on purpose, so guessing is costly. BIP39 does this with PBKDF2.", "", "Keys & seeds"],
@@ -3730,6 +3944,7 @@ const DICT = [
   ["Malleability", "Before SegWit, someone could change a transaction's ID without changing what it did. SegWit fixed this for its own inputs.", "", "Transactions"],
   ["Market cap", "A coin's price multiplied by the number of coins in circulation.", "", "Culture & markets"],
   ["Master key", "The root key of the tree, made from the seed. Every other key comes from it.", "", "Keys & seeds"],
+  ["Master secret (SLIP39)", "The secret SLIP39 shares hold. It goes straight into BIP32 as the wallet's seed, so it opens a different wallet than BIP39 words made from the same randomness.", "EXTRA TOOLS: SLIP39 shares.", "Keys & seeds"],
   ["mBTC and bits", "Smaller ways to write amounts: one mBTC is 0.001 bitcoin, and in some wallets one bit is 100 satoshis (not the same as the bit of computing).", "", "Units & math"],
   ["Mempool", "The waiting room where transactions sit until a miner puts them in a block.", "", "Network & mining"],
   ["Merkle root", "The single hash at the top of a Merkle tree, stored in the block header.", "", "Units & math"],
@@ -3824,7 +4039,7 @@ const DICT = [
   ["Signet", "A test network with predictable behavior, run by a few trusted signers, used for testing software. Its coins have no value. Its addresses and keys have exactly the same form as testnet's (tb1..., tpub), so everything VOIDFORGE shows for TESTNET (practice coins only) works on signet too.", "The network menus: choose TESTNET (practice coins only).", "Network & mining"],
   ["Signing", "Using a private key to prove a transaction is authorized. VOIDFORGE never signs anything.", "", "Transactions"],
   ["Single point of failure", "One thing whose loss or theft ruins everything, such as a single paper copy of a seed.", "", "Privacy & security"],
-  ["SLIP39", "A Trezor (SatoshiLabs) standard for backing up a seed as Shamir shares of 20 or 33 words, from its own list of 1,024 words (not BIP39 words). A set number of shares rebuilds the wallet; newer Trezors make a single 20-word share by default. A wrong passphrase opens a different wallet with no error.", "EXTRA TOOLS: SLIP39 shares (Shamir backup) checks and combines them; the Wallet Detective names them.", "Standards (BIPs)"],
+  ["SLIP39", "A Trezor (SatoshiLabs) standard for backing up a seed as Shamir shares of 20 or 33 words, from its own list of 1,024 words (not BIP39 words). A set number of shares rebuilds the wallet; newer Trezors make a single 20-word share by default. A wrong passphrase opens a different wallet with no error.", "EXTRA TOOLS: SLIP39 shares (Shamir backup) checks and combines them, and makes new ones from dice; the Wallet Detective names them.", "Standards (BIPs)"],
   ["SLIP132", "The scheme that gives extended keys different starting letters (xpub, ypub, zpub) to hint at the address type.", "", "Standards (BIPs)"],
   ["Social engineering", "Tricking a person, not a computer, into handing over a secret or doing something unsafe.", "", "Privacy & security"],
   ["Soft fork", "A rule change that tightens the rules, so old nodes still accept the new blocks. SegWit and Taproot were soft forks.", "", "Network & mining"],
@@ -5424,6 +5639,9 @@ async function runSelfTests(auto){
     eq("BIP85 dice, 10 rolls of a 6-sided die (published BIP85 vector)", ()=>bip85App(BK,BC,"dice",0,6,10),"1,0,0,2,0,1,5,5,2,4");
     eq("Cards: AS 2C 10D written as A\u2660 2\u2663 T\u2666 and hashed, as in Ian Coleman's BIP39 tool (12 words, from @scure)", ()=>rollsToMnemonic(cdParse("as 2c 10d").cards.join(" "), 12), "embody only exact pride episode winter estate perfect security often scout tiger");
     eq("SLIP39: 2 of 3 shares with passphrase TREZOR give the master secret (official test vector 4)", async()=>hex((await slip39Combine(["shadow pistol academic always adequate wildlife fancy gross oasis cylinder mustang wrist rescue view short owner flip making coding armed", "shadow pistol academic acid actress prayer class unknown daughter sweater depict flip twice unkind craft early superior advocate guest smoking"], "TREZOR")).masterSecret), "b43ceb7e57a0ea8766221624d01b0864");
+    // v2.10.0: SLIP39 shares made from dice; the expected words are the ones python-shamir-mnemonic makes when it is given the same rolls' stream
+    eq("SLIP39 make: 54 fixed rolls give fixed 2-of-3 shares (the words python-shamir-mnemonic makes from the same stream)", async()=>(await slip39Make("123456".repeat(9), {bits:128, groupThreshold:1, groups:[[2,3]], passphrase:""})).groups[0].join(" / "), "clogs premium academic acid depend penalty graduate echo pancake echo remind chew lend epidemic unusual jury museum story crystal deal / clogs premium academic agency alien lips guilt evoke demand axle nervous coastal climate cinema tadpole lawsuit floral miracle rival credit / clogs premium academic always carbon thumb axis equation emperor teammate nail cover machine ordinary meaning impact amuse scroll snapshot spew");
+    eq("SLIP39 make: 99 fixed rolls, 2 of 2 groups, passphrase TREZOR, not extendable: the shares combine to SHA-256 of the rolls", async()=>{ const r=await slip39Make("654321".repeat(16)+"654", {bits:256, groupThreshold:2, groups:[[1,1],[2,2]], passphrase:"TREZOR", extendable:false, iterationExponent:0}); const c=await slip39Combine([r.groups[1][1], r.groups[0][0], r.groups[1][0]], "TREZOR"); return r.groups[0][0].split(" ").slice(0,4).join(" ")+" "+hex(c.masterSecret); }, "grief merchant acrobat easy f19bba2d22d685cdc31f1d381ba411cc53cde88b5176be6f4c21c79349d38dee");
     eq("SHAKE256 BIP85-DRNG, 80 bytes (published BIP85 vector)", ()=>hex(shake256Reader(fromHex("efecfbccffea313214232d29e71563d941229afb4338c21f9517c41aaa0d16f00b83d2a09ef747e7a64e8e2bd5a14869e693da66ce94ac2da570ab7ee48618f7")).read(80)),"b78b1ee6b345eae6836c2d53d33c64cdaf9a696487be81b03e822dc84b3f1cd883d7559e53d175f243e4c349e822a957bbff9224bc5dde9492ef54e8a439f6bc8c7355b87a925a37ee405a7502991111"); }
   eq("SeedQR digit string -> words ('abandon..about' = 0000 x11 + 0003)", async()=>(await checkPhrase("0000".repeat(11)+"0003")).mnemonic, "abandon ".repeat(11)+"about");
   eq("CompactSeedQR hex -> words (BIP39 vector 7f x16)", async()=>(await checkPhrase("7f".repeat(16))).mnemonic, "legal winner thank year wave sausage worth useful legal winner thank yellow");
@@ -8449,6 +8667,118 @@ async function s39Ui(){
     "\n\nCompare the fingerprint with your device. " + (document.getElementById("s39Pass").value ? "A wrong passphrase opens a different, empty wallet with no error, so a fingerprint that does not match usually means a mistyped passphrase." : "If your backup has a passphrase, type it: without it these shares open a different wallet.");
   o.style.display = "";
 }
+// ===== v2.10.0 SLIP39 maker (UI): "Make new SLIP39 shares from dice" in the SLIP39 box (slip39Make does the math). The shares are
+// secret: shown with no copy button and not selectable, wiped by CLEAR, CLEAR ALL, auto-clear and END SESSION (wipeSeed calls
+// s39mClear), and cleared as soon as any setting, the rolls or the passphrase change. =====
+let s39mRun = 0, s39mCtx = null;
+function s39ModeChange(){
+  const make = document.querySelector('input[name=s39Mode]:checked').value === "make";
+  document.getElementById("s39CombinePanel").style.display = make ? "none" : ""; document.getElementById("s39MakePanel").style.display = make ? "" : "none";
+  clearS39(); s39mClear();
+}
+function s39mAdvChange(){
+  const adv = document.getElementById("s39mAdv").checked;
+  document.getElementById("s39mAdvPanel").style.display = adv ? "" : "none";
+  for(const id of ["s39mT", "s39mN"]) document.getElementById(id).style.display = adv ? "none" : "";
+  s39mWipe();
+}
+function s39mWipe(){
+  s39mRun++; s39mCtx = null;
+  for(const id of ["s39mOut", "s39mInfo"]){ const o = document.getElementById(id); o.textContent = ""; o.style.display = "none"; }
+  document.getElementById("s39mPrintRow").style.display = "none";
+  const st = document.getElementById("s39mStatus"); st.textContent = ""; st.className = "status";
+}
+function s39mClear(){ s39mWipe(); for(const id of ["s39mRolls", "s39mPass", "s39mPass2"]) document.getElementById(id).value = ""; }
+// The groups as typed in the advanced box: one per line (or comma), "3 of 5". Returns {groups} or {error}.
+function s39mParseGroups(text){
+  const items = String(text).split(/[\n,;]+/).map(x => x.trim()).filter(Boolean), groups = [];
+  if(!items.length) return {error:"Type the groups, one per line, such as 2 of 3."};
+  for(let i = 0; i < items.length; i++){
+    const m = items[i].match(/^(\d{1,2})\s*(?:of|\/)\s*(\d{1,2})$/i);
+    if(!m) return {error:"Group " + (i + 1) + " (\"" + items[i] + "\") is not written as shares needed \"of\" shares in the group, such as 3 of 5."};
+    groups.push([parseInt(m[1], 10), parseInt(m[2], 10)]);
+  }
+  return {groups};
+}
+// The page's settings for slip39Make, or {error}.
+function s39mOptions(){
+  const v = (id) => document.getElementById(id).value, adv = document.getElementById("s39mAdv").checked;
+  let groups = [[parseInt(v("s39mT"), 10), parseInt(v("s39mN"), 10)]], gt = 1;
+  if(adv){ const g = s39mParseGroups(v("s39mGroups")); if(g.error) return {error: g.error}; groups = g.groups; gt = parseInt(v("s39mGT"), 10); }
+  return {bits: parseInt(v("s39mBits"), 10), groupThreshold: gt, groups, passphrase: v("s39mPass"),
+    extendable: document.getElementById("s39mExt").checked, iterationExponent: parseInt(v("s39mExp"), 10)};
+}
+// The master fingerprint and the first 10 receive and 10 change addresses (native SegWit, account 0), and the first Taproot address,
+// of the wallet a master secret opens (the master secret is the BIP32 seed).
+async function s39mWalletText(seed){
+  const fp = await fingerprintFromSeed(seed), list = {0: [], 1: []};
+  let [k, c] = await masterFromSeed(seed);
+  for(const [i, h] of [[84, true], [0, true], [0, true]]) [k, c] = await ckdPriv(k, c, i, h);
+  for(const chain of [0, 1]){ const [k2, c2] = await ckdPriv(k, c, chain, false); for(let i = 0; i < ADDR_SHOWN; i++){ const [ck] = await ckdPriv(k2, c2, i, false); list[chain].push(await addressFromKey("wpkh", ck, "main")); } }
+  const tr = await watchOnlyFromSeed(seed, "tr", 0), last = ADDR_SHOWN - 1;
+  const rows = (chain) => list[chain].map((a, i) => String(chain + "/" + i).padEnd(5) + a).join("\n");
+  return {fp, text: "Master fingerprint: " + fp + "\n\nFirst " + ADDR_SHOWN + " receive addresses (native SegWit, m/84'/0'/0'/0/0 to 0/" + last + "):\n" + rows(0) +
+    "\n\nFirst " + ADDR_SHOWN + " change addresses (native SegWit, m/84'/0'/0'/1/0 to 1/" + last + "):\n" + rows(1) + "\n\nFirst Taproot address (m/86'/0'/0'/0/0): " + tr.first};
+}
+// One share as numbered words, three to a line.
+function s39mShowWords(m){
+  const w = m.split(" "), rows = [];
+  for(let i = 0; i < w.length; i += 3) rows.push(w.slice(i, i + 3).map((x, j) => (String(i + j + 1).padStart(2, " ") + ". " + x).padEnd(13)).join("").trimEnd());
+  return rows.join("\n");
+}
+function s39mShareName(c, g, j){
+  const n = c.o.groups[g][1];
+  return (c.o.groups.length > 1 ? "GROUP " + (g + 1) + " OF " + c.o.groups.length + ", " : "") + "SHARE " + (j + 1) + " OF " + n;
+}
+function s39mRule(c, g){
+  const [t, n] = c.o.groups[g], G = c.o.groups.length;
+  const inGroup = t === n ? (n === 1 ? "is complete with its one share" : "needs all " + n + " of its shares") : "needs any " + t + " of its " + n + " shares";
+  if(G === 1) return t === 1 ? "This one share opens the wallet on its own, like seed words." : t === n ? "All " + n + " shares are needed to open the wallet; fewer reveal nothing." : "Any " + t + " of the " + n + " shares open the wallet; fewer reveal nothing.";
+  return "Group " + (g + 1) + " " + inGroup + ". The wallet opens with " + c.o.groupThreshold + " of the " + G + " groups complete; fewer reveal nothing.";
+}
+async function s39mUi(){
+  if(!gateOk()) return;
+  s39mWipe();
+  const run = s39mRun, st = document.getElementById("s39mStatus"), say = (cls, t) => { st.className = "status " + cls; st.textContent = t; };
+  const o = s39mOptions(); if(o.error) return say("bad", "Not made: " + o.error);
+  if(o.passphrase !== document.getElementById("s39mPass2").value) return say("bad", "Not made: the two passphrases do not match. Type the same passphrase in both boxes (or leave both empty).");
+  say("", "Making the shares and checking them...");
+  const r = await slip39Make(document.getElementById("s39mRolls").value, o);
+  if(run !== s39mRun){ if(r.masterSecret) r.masterSecret.fill(0); return; }
+  if(!r.ok) return say("bad", "Not made: " + r.error);
+  let w; try { w = await s39mWalletText(r.masterSecret); } finally { r.masterSecret.fill(0); }
+  if(run !== s39mRun) return;
+  const c = {groups: r.groups, o, fp: w.fp, pass: !!o.passphrase, total: r.groups.reduce((a, g) => a + g.length, 0)};
+  s39mCtx = c;
+  const parts = [];
+  r.groups.forEach((g, gi) => g.forEach((m, j) => parts.push(s39mShareName(c, gi, j) + (j === 0 ? "  (" + s39mRule(c, gi) + ")" : "") + "\n" + s39mShowWords(m))));
+  const out = document.getElementById("s39mOut"); out.textContent = parts.join("\n\n"); out.style.display = "";
+  const info = document.getElementById("s39mInfo"); info.textContent = w.text; info.style.display = "";
+  document.getElementById("s39mPrintRow").style.display = "";
+  const first = r.groups[0][0].split(" ").slice(0, 2).join(" "), G = o.groups.length;
+  say("ok", c.total + (c.total === 1 ? " share" : " shares") + " made from your " + document.getElementById("s39mRolls").value.replace(/\s+/g, "").length + " rolls and checked: the page read every share back and combined them again " +
+    "(every share used at least once), and each time got the same wallet, master fingerprint " + w.fp + ". " +
+    (G === 1 ? s39mRule(c, 0) : "The wallet opens with " + o.groupThreshold + " of the " + G + " groups; each group says how many of its shares it needs.") +
+    " Every share of this backup begins with “" + first + "”. " + (c.pass ? "They open this wallet only with the passphrase you typed: keep it written down apart from the shares." : "No passphrase.") +
+    "\n\nWrite each share on its own paper (or print them), in order, and check every word against the screen. Keep the shares in different places. Then restore them in your wallet, or check them in “Check or combine shares”, and compare the fingerprint.");
+}
+function printS39Shares(){
+  const c = s39mCtx; if(!c) return alert("Make the shares first.");
+  if(!confirm("Printing sends the shares to a printer and its spooler. Only print on a trusted offline computer with a directly connected printer. Each share prints on its own page (" + c.total + (c.total === 1 ? " page" : " pages") + "); keep the pages in different places. Print now?")) return;
+  printSheet(add => {
+    c.groups.forEach((g, gi) => g.forEach((m, j) => {
+      const sheet = add("ps-part", "");
+      const a = (cls, t, parent) => { const d = document.createElement("div"); d.className = cls; d.textContent = t; (parent || sheet).appendChild(d); return d; };
+      a("ps-title", "VOIDFORGE SLIP39 " + s39mShareName(c, gi, j));
+      a("ps-sub", "SECRET. One share of a SLIP39 (Shamir) backup. " + s39mRule(c, gi) + " Keep it apart from the other shares.");
+      const words = m.split(" "), grid = a("ps-grid ps-" + (words.length === 20 ? "20" : "33"), "");
+      words.forEach((wd, k) => { const x = a("ps-cell", "", grid); a("ps-n", String(k + 1).padStart(2, "0"), x); a("ps-w", wd, x); });
+      a("ps-info", "Master fingerprint of the wallet: " + c.fp + "\nPassphrase: " + (c.pass ? "YES (not printed here)" : "none") +
+        "\nTo restore: a wallet that reads SLIP39 shares. To check: VOIDFORGE EXTRA TOOLS, SLIP39 shares.");
+      a("ps-warn", "Anyone who gets enough shares can take the coins. Never photograph this page.");
+    }));
+  });
+}
 // Card sheet (v2.9.0): numbered boxes to write the cards down as they are dealt: 25 for 12 words, or a whole deck and then
 // 6 more from a new shuffle for 24 words (see cdBits).
 function printCardSheet(){
@@ -8647,6 +8977,7 @@ function wipeSeed(){
   kcClear();   // v2.9.0: the wallet file check
   lbClear();   // v2.9.0: the label file (private)
   clearXor();   // v2.9.0: Seed XOR parts (secret)
+  s39mClear();   // v2.10.0: SLIP39 shares made from dice (secret)
   seedSig = null; passKey = null; exCtx = null;   // fixes release: these held the rolls and the passphrases after a wipe (found by tests/memory.test.mjs)
   clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo(); clearMsx();   // fixes release: public but private data (xpubs, descriptors, addresses, amounts)
   for(const id of ["wpIn", "payA", "payB", "dlPaste"]){ const e = document.getElementById(id); if(e) e.value = ""; }
@@ -8662,7 +8993,7 @@ function wipeSeed(){
 }
 
 // Auto-clear (v1.34.0): optional, off at every page load, nothing stored. Wipes the secrets without asking after idle time or when the tab is hidden.
-const AUTO_FIELDS = ["pkIn", "rolls", "passphrase", "passphrase2", "note", "phrase", "verifyPass", "verifyRecorded", "checkAddr", "drillWords", "drillPass", "prInput", "reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "wdWords", "wdFlips", "wdFind", "cdCards", "cdHex", "s39In", "s39Pass", "dpRolls", "dcRolls"];
+const AUTO_FIELDS = ["pkIn", "rolls", "passphrase", "passphrase2", "note", "phrase", "verifyPass", "verifyRecorded", "checkAddr", "drillWords", "drillPass", "prInput", "reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "wdWords", "wdFlips", "wdFind", "cdCards", "cdHex", "s39In", "s39Pass", "dpRolls", "dcRolls", "s39mRolls", "s39mPass", "s39mPass2"];
 let autoLast = Date.now(), autoTimer = null;
 function autoTouch(){ autoLast = Date.now(); }
 ["keydown", "pointerdown", "input", "touchstart", "wheel"].forEach(e => document.addEventListener(e, autoTouch, {capture: true, passive: true}));
@@ -10183,6 +10514,7 @@ for(const id of ["msxIn", "msxHeight"]) document.getElementById(id).addEventList
 document.getElementById("typoIn").addEventListener("input", () => { typoRun++; const st = document.getElementById("typoStatus"); st.textContent = ""; st.className = "status"; });
 for(const id of ["xorIn", "xorRolls", "xorN", "xorFrom"]) document.getElementById(id).addEventListener(id === "xorN" || id === "xorFrom" ? "change" : "input", xorWipe);
 for(const id of ["s39In", "s39Pass"]) document.getElementById(id).addEventListener("input", () => { s39Run++; s39Wipe(); });
+for(const id of ["s39mRolls", "s39mPass", "s39mPass2", "s39mGroups", "s39mBits", "s39mT", "s39mN", "s39mGT", "s39mExt", "s39mExp"]) document.getElementById(id).addEventListener(/^(s39mRolls|s39mPass|s39mPass2|s39mGroups)$/.test(id) ? "input" : "change", s39mWipe);   // v2.10.0: a result never stays next to settings that did not make it
 document.getElementById("reuseIn").addEventListener("input", () => { const st = document.getElementById("reuseStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wpIn").addEventListener("input", () => { if(wvCtx && wvCtx.kind === "pub" && !wvCtx.secret) clearWalletView(); const st = document.getElementById("wpStatus"); st.textContent = ""; st.className = "status"; });
 document.getElementById("wType").addEventListener("change", refreshWatch);
@@ -10256,6 +10588,7 @@ function setGate(state, text, cls){
   if(!lbBusy) document.getElementById("lbBtn").disabled = !on;   // v2.9.0: Read a label file
   for(const id of ["xorSplitBtn", "xorCombineBtn"]) document.getElementById(id).disabled = !on;   // v2.9.0: Seed XOR
   document.getElementById("s39Btn").disabled = !on;   // v2.9.0: SLIP39
+  document.getElementById("s39mBtn").disabled = !on;   // v2.10.0: SLIP39 shares from dice
   document.getElementById("wpBtn").disabled = !on;
   document.getElementById("reuseBtn").disabled = !on;
   document.getElementById("childBtn").disabled = !on;
