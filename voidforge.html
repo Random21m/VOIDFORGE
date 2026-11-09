@@ -1300,7 +1300,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <summary>Watch-only wallet<span class="tag tag-public">PUBLIC KEYS ONLY</span><small>See balances on a phone without the seed. Cannot spend.</small></summary>
       <p class="hint" style="margin:8px 0;">A <span class="term" tabindex="0" data-tip="A wallet that holds only public keys: it can show addresses and balances but cannot spend. Safe to keep on a phone.">watch-only</span> wallet shows this wallet&rsquo;s addresses and balance on a phone or online computer <b>without the seed words</b>. It cannot spend. Anyone who gets it can see every address and balance of this wallet, so share it only with your own wallet app. If you used a passphrase, it belongs to this passphrase only.</p>
       <div style="display:flex; gap:6px; align-items:center; margin:6px 0;">
-        <select id="wType" aria-label="Address type" style="flex:1; min-width:0;"><option value="wpkh">Native SegWit (bc1q...), most wallets</option><option value="tr">Taproot (bc1p...)</option><option value="sh-wpkh">Nested SegWit (3...)</option><option value="pkh">Legacy (1...)</option><option value="ms-wsh">Multisig cosigner key, native SegWit (BIP48)</option><option value="ms-sh-wsh">Multisig cosigner key, nested SegWit (BIP48)</option></select>
+        <select id="wType" aria-label="Address type" style="flex:1; min-width:0;"><option value="wpkh">Native SegWit (bc1q...), most wallets</option><option value="tr">Taproot (bc1p...)</option><option value="sh-wpkh">Nested SegWit (3...)</option><option value="pkh">Legacy (1...)</option><option value="ms-wsh">Multisig cosigner key, native SegWit (BIP48)</option><option value="ms-sh-wsh">Multisig cosigner key, nested SegWit (BIP48)</option><option value="ms-tr">Multisig cosigner key, Taproot (m/48'/.../3', not in BIP48)</option></select>
         <select id="wNet" aria-label="Network" style="width:104px; flex:none;"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
         <input type="text" id="wAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number" style="width:64px; flex:none;">
       </div>
@@ -1876,9 +1876,16 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <div class="ms-pop">Popular: <button type="button" class="ms-preset" data-m="2" data-n="3">2-of-3 (most common)</button><button type="button" class="ms-preset" data-m="3" data-n="5">3-of-5 (more safety)</button><button type="button" class="ms-preset" data-m="2" data-n="2">2-of-2</button></div>
         <div class="hint" id="msMNote" style="margin:8px 0 6px;"></div>
         <div class="ms-row">
-          <label>Address type<select id="msType" aria-label="Multisig address type"><option value="ms-wsh" class="opt-rec">Native SegWit (bc1q...), recommended</option><option value="ms-sh-wsh">Nested SegWit (3...), older wallets</option></select></label>
+          <label>Address type<select id="msType" aria-label="Multisig address type"><option value="ms-wsh" class="opt-rec">Native SegWit (bc1q...), recommended</option><option value="ms-sh-wsh">Nested SegWit (3...), older wallets</option><option value="ms-tr">Taproot (bc1p...), script path, sortedmulti_a</option></select></label>
           <label>Network<select id="msNet" aria-label="Network"><option value="main">Mainnet</option><option value="test">Testnet</option></select></label>
           <label>Account<input type="text" id="msAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" style="width:64px;"></label>
+        </div>
+        <div class="ms-sub" id="msTrNote" style="display:none; font-size:13px; line-height:1.55;">
+          <p style="margin:0 0 6px;"><b>Taproot multisig: new, and few wallets can sign it.</b> The M-of-N rule sits in a hidden branch of a Taproot address (bc1p...), written <code>tr(key, sortedmulti_a(M, keys))</code> (BIP386, BIP387). Until coins are spent, the address looks like any other Taproot address.</p>
+          <p style="margin:0 0 6px;"><b>Every spend shows the rule.</b> A Taproot address can also be spent by one key alone (the key path). Here that key is made from BIP341&rsquo;s point H, which nobody can sign with, so the key path is shut: every spend uses the multisig branch and shows the M-of-N rule and its keys. The key is an xpub on H whose chain code comes from the cosigner keys (the rule Nunchuk uses), so each address gets a different key and nothing random is needed.</p>
+          <p style="margin:0 0 6px;"><b>Key path m/48&rsquo;/coin&rsquo;/account&rsquo;/3&rsquo;.</b> BIP48 defines only 1&rsquo; and 2&rsquo;; there is no standard path for Taproot multisig. 3&rsquo; is the one Coldcard&rsquo;s EDGE firmware uses. Nunchuk uses m/87&rsquo;/... (BIP87) instead, so keys exported from Nunchuk do not fit here.</p>
+          <p style="margin:0 0 6px;"><b>Wallets that can sign it</b> (checked in their source code and release notes): Bitcoin Core 24.0.1 or later (a descriptor wallet, through PSBT), and Coldcard Mk4 and Q with EDGE firmware 6.3.5X or later (Coinkite&rsquo;s preview firmware, which it recommends only for experimental use), which import the descriptor as a Miniscript wallet. Sparrow cannot use Taproot multisig yet. VOIDFORGE could not confirm other devices. Test with a small amount first.</p>
+          <p style="margin:0;">MuSig2 (BIP327), where the keys are combined into one key, is a different kind of Taproot multisig. VOIDFORGE does not make it.</p>
         </div>
         <div class="ms-bad" id="msErr"></div>
         <div class="btn-row"><button type="button" id="msStartBtn" onclick="msStart()" disabled>START MULTISIG SETUP</button></div>
@@ -1909,7 +1916,8 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
           </div>
           <div class="wlabel" style="margin-top:12px;">Animated QR for a signing device or wallet app</div>
           <div class="hint" style="margin:0 0 6px;">No one QR format reaches every device, so pick yours. Each is the same wallet, public keys only.</div>
-          <div class="btn-row"><button type="button" class="secondary small" onclick="msAnim('ur')">SPARROW, SEEDSIGNER, NUNCHUK</button><button type="button" class="secondary small" onclick="msAnim('bbqr')">COLDCARD Q</button><button type="button" class="secondary small" onclick="msAnim('cc')">KEYSTONE, PASSPORT</button></div>
+          <div class="btn-row"><button type="button" class="secondary small" id="msAnimUr" onclick="msAnim('ur')">SPARROW, SEEDSIGNER, NUNCHUK</button><button type="button" class="secondary small" onclick="msAnim('bbqr')">COLDCARD Q</button><button type="button" class="secondary small" id="msAnimCc" onclick="msAnim('cc')">KEYSTONE, PASSPORT</button></div>
+          <div class="hint" id="msAnimTr" style="display:none; margin:6px 0 0;">Taproot multisig: only COLDCARD Q with EDGE firmware is confirmed to read it by QR. Sparrow cannot use it yet, and VOIDFORGE could not confirm that SeedSigner, Nunchuk, Keystone or Passport read it, so those buttons are hidden.</div>
           <div id="msAnimBox" style="display:none; margin-top:10px; text-align:center;">
             <div id="msAnimCap" class="hint"></div>
             <div id="msAnimImg" style="width:min(100%,360px); margin:8px auto; background:#fff; line-height:0;"></div>
@@ -1917,6 +1925,15 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
             <div class="btn-row" style="justify-content:center;"><select id="msAnimSize" aria-label="Frame size" onchange="msAnimSet(this.value)" style="width:auto;"><option value="0">Small frames (easiest to scan)</option><option value="1" selected>Medium frames</option><option value="2">Large frames (fewest parts)</option></select><button type="button" class="secondary small" id="msAnimPause" onclick="animPause(this)">PAUSE</button><button type="button" class="secondary small" onclick="animHide('msAnim')">HIDE</button></div>
           </div>
           </div>
+          <details id="msCoreBox" class="ms-sub">
+          <summary style="cursor:pointer; font-weight:600;">Import this wallet into Bitcoin Core<span class="tag tag-note">ADVANCED</span></summary>
+          <p class="hint" style="margin:8px 0;">Bitcoin Core can watch this wallet without holding any private key. These two commands first make an empty watch-only wallet, then load the receive and change descriptors into it. Core then shows the balance and addresses but can never spend. Run them in Core&rsquo;s console or with <code>bitcoin-cli</code>. A Taproot multisig wallet needs Bitcoin Core 24.0.1 or later.</p>
+          <label for="msCoreWhen" style="font-weight:600; font-size: 13px;">Has this wallet been used before?</label>
+          <select id="msCoreWhen" aria-label="Has this multisig wallet been used before" style="width:100%; margin:4px 0 6px;"><option value="now">No, it is brand new (no scan needed)</option><option value="0">Yes, it already has history (scan the whole chain, slow)</option></select>
+          <div class="wval" id="msCoreCmd" style="white-space:pre-wrap;"></div>
+          <button type="button" class="secondary small" onclick="msCopy(this,'msCoreCmd')">COPY COMMANDS</button>
+          <div class="hint" style="margin:8px 0 0;">This is a template. Check it against your version with <code>bitcoin-cli help importdescriptors</code>. The first line makes the wallet called <code>voidforge-watch</code>; change the name if you like. Afterwards compare Core&rsquo;s first receive address with the first one listed below.</div>
+          </details>
           <div class="ms-sub">
           <div class="wlabel">Change descriptor (only if your app asks for it separately)</div>
           <div class="wval" id="msDescC"></div>
@@ -3410,12 +3427,15 @@ const SCRIPT_TYPES={
   pkh:{purpose:44, kname:"xpub", label:"Legacy (1...)"}
 };
 // Networks. coin = the coin type in the derivation path; hrp = bech32 prefix; pkh/sh = Base58 address version bytes; ver = extended public key versions per type.
+// v2.11.0: a Taproot multisig cosigner key ("ms-tr") has no SLIP132 prefix, so it is a plain xpub/tpub (listed last, so EXT_VERSIONS still reads xpub as "other").
 const NETS={
-  main:{coin:0, hrp:"bc", pkh:0x00, sh:0x05, ver:{wpkh:[0x04,0xb2,0x47,0x46], "sh-wpkh":[0x04,0x9d,0x7c,0xb2], other:XPUB_VER, "ms-wsh":[0x02,0xaa,0x7e,0xd3], "ms-sh-wsh":[0x02,0x95,0xb4,0x3f]}},
-  test:{coin:1, hrp:"tb", pkh:0x6f, sh:0xc4, ver:{wpkh:[0x04,0x5f,0x1c,0xf6], "sh-wpkh":[0x04,0x4a,0x52,0x62], other:[0x04,0x35,0x87,0xcf], "ms-wsh":[0x02,0x57,0x54,0x83], "ms-sh-wsh":[0x02,0x42,0x89,0xef]}}
+  main:{coin:0, hrp:"bc", pkh:0x00, sh:0x05, ver:{wpkh:[0x04,0xb2,0x47,0x46], "sh-wpkh":[0x04,0x9d,0x7c,0xb2], other:XPUB_VER, "ms-wsh":[0x02,0xaa,0x7e,0xd3], "ms-sh-wsh":[0x02,0x95,0xb4,0x3f], "ms-tr":XPUB_VER}},
+  test:{coin:1, hrp:"tb", pkh:0x6f, sh:0xc4, ver:{wpkh:[0x04,0x5f,0x1c,0xf6], "sh-wpkh":[0x04,0x4a,0x52,0x62], other:[0x04,0x35,0x87,0xcf], "ms-wsh":[0x02,0x57,0x54,0x83], "ms-sh-wsh":[0x02,0x42,0x89,0xef], "ms-tr":[0x04,0x35,0x87,0xcf]}}
 };
 // BIP48 multisig cosigner keys: m/48'/coin'/account'/script', script 2 = native SegWit (P2WSH), 1 = nested (P2SH-P2WSH). They have no address of their own.
-const MULTISIG={ "ms-wsh":{script:2, kname:"Zpub", label:"Multisig cosigner, native SegWit (BIP48)"}, "ms-sh-wsh":{script:1, kname:"Ypub", label:"Multisig cosigner, nested SegWit (BIP48)"} };
+// v2.11.0: script 3 = Taproot multisig, which BIP48 does not define; Coldcard EDGE uses it (see the Taproot multisig block below).
+const MULTISIG={ "ms-wsh":{script:2, kname:"Zpub", label:"Multisig cosigner, native SegWit (BIP48)"}, "ms-sh-wsh":{script:1, kname:"Ypub", label:"Multisig cosigner, nested SegWit (BIP48)"},
+  "ms-tr":{script:3, kname:"xpub", label:"Multisig cosigner, Taproot (m/48'/coin'/account'/3', not in BIP48)"} };   // v2.11.0: no SLIP132 prefix exists for it, so it is a plain xpub
 function validAccount(a){ return Number.isInteger(a) && a >= 0 && a <= 2147483647; }
 async function hash160(b){ return ripemd160(await sha256bytes(b)); }
 // The mainnet address of a private key for one address type.
@@ -3584,7 +3604,7 @@ async function ckdPub(pub, chain, index){
   return [pubFromPoint(C), I.slice(32)];
 }
 function cmpBytes(a,b){ for(let i=0;i<a.length&&i<b.length;i++) if(a[i]!==b[i]) return a[i]-b[i]; return a.length-b.length; }
-// Cosigner = {fp: 8 hex, path: "48h/0h/0h/2h", key: parsed extended key}. Multisig script type: "ms-wsh" (P2WSH) or "ms-sh-wsh" (P2SH-P2WSH).
+// Cosigner = {fp: 8 hex, path: "48h/0h/0h/2h", key: parsed extended key}. Multisig script type: "ms-wsh" (P2WSH), "ms-sh-wsh" (P2SH-P2WSH) or "ms-tr" (v2.11.0, Taproot).
 // The public keys at branch/index are sorted (BIP67), so the order cosigners were added in never changes an address.
 async function multisigScript(m, cosigners, branch, index){
   const n=cosigners.length;
@@ -3596,6 +3616,7 @@ async function multisigScript(m, cosigners, branch, index){
   return {script:Uint8Array.from(out), pubs};
 }
 async function multisigAddress(type, m, cosigners, branch, index, net){
+  if(type==="ms-tr") return msTrAddress(m, cosigners, branch, index, net);
   const N=NETS[net||"main"], {script}=await multisigScript(m,cosigners,branch,index), sh=await sha256bytes(script);
   if(type==="ms-wsh") return bech32Encode(N.hrp,0,sh);
   if(type==="ms-sh-wsh"){ const prog=await hash160(Uint8Array.from([0x00,0x20,...sh])); return base58check(Uint8Array.from([N.sh, ...prog])); }
@@ -3610,8 +3631,54 @@ async function multisigDescriptor(type, m, cosigners, branch){
     keys.push("[" + c.fp + "/" + c.path + "]" + xp + "/" + branch + "/*");
   }
   keys.sort();
+  if(type==="ms-tr") return descriptorChecksum("tr(" + await msTrNumsXpub(cosigners) + "/" + branch + "/*,sortedmulti_a(" + m + "," + keys.join(",") + "))");
   const inner="sortedmulti(" + m + "," + keys.join(",") + ")";
   return descriptorChecksum(type==="ms-sh-wsh" ? "sh(wsh(" + inner + "))" : "wsh(" + inner + ")");
+}
+// ===== v2.11.0 Taproot multisig: tr(unspendable internal key, sortedmulti_a(M, keys)) =====
+// tr() is BIP386 and sortedmulti_a() is BIP387 (bitcoin/bips a34f044bb8d5): the leaf is <x1> OP_CHECKSIG <x2> OP_CHECKSIGADD ...
+// <M> OP_NUMEQUAL with the x-only keys sorted after derivation, leaf version 0xc0, tweaked into a bc1p address (BIP341).
+// The internal key must be one nobody can sign with, so every spend uses the multisig leaf. It is an xpub whose key is BIP341's
+// point H (lift_x of 50929b74...) and whose chain code is SHA-256 of the cosigners' account public keys (33 bytes each, sorted,
+// repeats left out), depth 0, parent fingerprint 0, child 0: the rule Nunchuk uses (libnunchuk b3fae992 src/descriptor.cpp
+// GetUnspendableXpub). Nothing random is made. Each address then gets its own internal key H + tG (BIP32 public derivation), so the
+// key is not the bare H that Coldcard EDGE refuses since 6.3.5X ("Static internal keys disallowed"; Coldcard/firmware d84054db).
+// Key path m/48'/coin'/account'/3': BIP48 defines only 1' and 2'; 3' is what Coldcard EDGE uses (shared/chains.py MS_STD_DERIVATIONS).
+async function msTrNums(cosigners){
+  const pubs=[...new Map(cosigners.map(c => [hex(c.key.pub), c.key.pub])).values()].sort(cmpBytes);
+  return {pub: Uint8Array.from([0x02, ...fromHex(MS_NUMS)]), chain: await sha256bytes(concatBytes(...pubs))};
+}
+async function msTrNumsXpub(cosigners){
+  const nk=await msTrNums(cosigners), b=new Uint8Array(78);
+  b.set(NETS[cosigners[0].key.net].ver.other, 0); b.set(nk.chain, 13); b.set(nk.pub, 45);   // depth, parent fingerprint and child number stay 0
+  return base58check(b);
+}
+// The multisig leaf script from x-only keys (sorted here, as sortedmulti_a).
+function msTrLeaf(m, xonly){
+  const ks=[...xonly].sort(cmpBytes), out=[32, ...ks[0], 0xac];
+  for(let i=1;i<ks.length;i++) out.push(32, ...ks[i], 0xba);
+  out.push(0x50+m, 0x9c);
+  return Uint8Array.from(out);
+}
+async function msTrAddress(m, cosigners, branch, index, net){
+  const n=cosigners.length;
+  if(!(Number.isInteger(m) && m >= 1 && m <= n && n >= 2 && n <= 15)) throw new Error("bad M-of-N");
+  const xs=[];
+  for(const c of cosigners){ const [cp,cc]=await ckdPub(c.key.pub,c.key.chain,branch), [pk]=await ckdPub(cp,cc,index); xs.push(pk.slice(1)); }
+  const leaf=msTrLeaf(m, xs), leafHash=await taggedHash("TapLeaf", concatBytes(Uint8Array.of(0xc0), varintBytes(leaf.length), leaf));
+  const nk=await msTrNums(cosigners), [ib,ic]=await ckdPub(nk.pub,nk.chain,branch), [ik]=await ckdPub(ib,ic,index);
+  return b138TrAddress(ik.slice(1), leafHash, NETS[net||"main"].hrp);
+}
+// Is this key text (as written in a descriptor) the BIP341 point H, plain or as an xpub on it? Then nobody can sign with it.
+async function msIsNums(t){
+  const k=String(t||"").trim().replace(/^\[[^\]]*\]/, "").replace(/\/.*$/, "");
+  if(k.toLowerCase()===MS_NUMS) return true;
+  try { return hex((await parseExtendedKey(k)).pub.slice(1))===MS_NUMS; } catch(e) { return false; }
+}
+// Self-test known answers: the three self-test phrases' keys at m/48'/0'/0'/3', expected values from embit (tests/fixtures/gen_taproot_multisig.py).
+function msTrSelfTests(eq, katCos){
+  eq("Taproot multisig 2-of-3 (sortedmulti_a, unspendable internal key): first receive address (from embit)", async()=>multisigAddress("ms-tr", 2, await katCos("ms-tr", 3), 0, 0, "main"), "bc1p95rdnzesdusrfmhwwgjtalja3nxdcrfgzyevgxxzy2tuxwyvp77s2vjadc");
+  eq("Taproot multisig 2-of-3: change descriptor with its checksum (from embit)", async()=>multisigDescriptor("ms-tr", 2, await katCos("ms-tr", 3), 1), "tr(xpub661MyMwAqRbcEmPpBWNZQpWXoKW5owBmJDcCK54zR6yg8naxmC4MbDqWVboRGdMmXWCmjByzP4H23pQ55yoLNqKnkjwHFC7BGZRxBiuw6Px/1/*,sortedmulti_a(2,[28645006/48h/0h/0h/3h]xpub6DnEBNkSJKBYTnoyytZge4Sj1SeNWoBUL6dmzT7rR8j2B11cp71jQmAE1Z49Ef634j1mS2AmJiVNzN8wfP8bqsBzSuwSZ9ouGFiJ1N2778a/1/*,[73c5da0a/48h/0h/0h/3h]xpub6DkFAXWQ2dHxr7LX1ByDVebj6u3C5KSKTVXWkiVKb3tdYfh9t7FhXzvUVSxNSikoVTRb2bGjvYoW8PqYBReMeswi3megtqDwRCeVs3vxMeH/1/*,[b8688df1/48h/0h/0h/3h]xpub6FQya7zGhR92ncpoCAK5FfQDsubEZ8XbqdfypLqkUxYxvYasPSPEpJVT24S9A6YKp2sZVW4Xyskwjmmvxu9JPN1gphJaZTQ76x1pwRkGDrG/1/*))#7hcy7075");
 }
 // ================= Animated QR codes and pasted QR text (v2.6.0): UR, CBOR, BBQr =================
 // Written from the specifications (Blockchain Commons BCR-2020-005 UR, BCR-2020-012 Bytewords, BCR-2020-010 crypto-output, and the
@@ -3991,7 +4058,7 @@ const DICT = [
   ["BIP39", "The standard that turns random bytes into 12 or 24 words from a list of 2048, with a checksum. Any wallet that follows it can restore your seed from the words.", "The whole MAKE A SEED tab.", "Standards (BIPs)"],
   ["BIP44", "The standard path for single-key Legacy wallets (addresses starting with 1): m/44'/0'/0'.", "", "Standards (BIPs)"],
   ["BIP47", "A proposal for reusable payment codes, so a sender can pay a receiver's one code and still use new addresses.", "", "Standards (BIPs)"],
-  ["BIP48", "The standard for the key path of a multisig wallet (so different wallet apps agree on where each cosigner key lives).", "Multisig cosigner keys.", "Standards (BIPs)"],
+  ["BIP48", "The standard for the key path of a multisig wallet (so different wallet apps agree on where each cosigner key lives). It defines script types 1' (nested SegWit) and 2' (native SegWit), and none for Taproot.", "Multisig cosigner keys.", "Standards (BIPs)"],
   ["BIP49", "The standard path for single-key Nested SegWit wallets (addresses starting with 3): m/49'/0'/0'.", "", "Standards (BIPs)"],
   ["BIP84", "The standard path for single-key Native SegWit wallets (bc1q addresses): m/84'/0'/0'.", "Default watch-only export and first addresses.", "Standards (BIPs)"],
   ["BIP85", "A standard that makes new secrets from a parent seed: child seeds, keys, passwords or dice rolls, so one backup can recreate them all.", "EXTRA TOOLS: Child seed (BIP85).", "Standards (BIPs)"],
@@ -4027,6 +4094,9 @@ const DICT = [
   ["BIP370", "PSBT version 2: an updated format for partly signed transactions. Instead of one unsigned transaction it keeps the inputs and outputs as separate records. Bitcoin Core makes it by default from version 32.", "Inspect a transaction (PSBT) reads it.", "Standards (BIPs)"],
   ["BIP138 (encrypted descriptor backup)", "A standard for saving a wallet's descriptor encrypted, as a .bip138 file. It is locked with the wallet's own public keys: anyone who holds one of its keys (the words or just the xpub) can open it, and nobody else learns anything from it.", "SAVE ENCRYPTED DESCRIPTOR BACKUP (Multisig wallet and two descriptor boxes); CHECK A BACKUP, Open an encrypted descriptor backup.", "Standards (BIPs)"],
   ["BIP380 and the descriptor BIPs", "The standards that define output descriptors: the text that says how a wallet's keys and addresses are made.", "", "Standards (BIPs)"],
+  ["BIP386 and BIP387 (Taproot descriptors)", "BIP386 defines tr() descriptors for Taproot outputs. BIP387 defines multi_a() and sortedmulti_a(): an M-of-N multisig inside a Taproot script branch.", "MULTISIG WALLET card, Taproot type.", "Standards (BIPs)"],
+  ["BIP87", "A key path for multisig wallets, m/87'/coin'/account', with no script type in it. Nunchuk uses it for Taproot multisig.", "MULTISIG WALLET card, the note under the Taproot type.", "Standards (BIPs)"],
+  ["BIP327 (MuSig2)", "The standard for MuSig2: several public keys are combined into one key, and their signatures into one signature.", "MULTISIG WALLET card, the note under the Taproot type.", "Standards (BIPs)"],
   ["BIP388 (wallet policies)", "A standard for describing a wallet's spending rules in a compact way that hardware wallets can show and check.", "", "Standards (BIPs)"],
   ["Bit", "One binary digit, 0 or 1. Randomness is counted in bits: a 12-word seed holds 128 bits and a 24-word seed 256.", "", "Units & math"],
   ["Bitcoin", "The Bitcoin network and software (capital B), and the coin it keeps track of (bitcoin, lower case). No more than 21 million coins will ever exist.", "", "Basics"],
@@ -4162,6 +4232,7 @@ const DICT = [
   ["Mining pool", "A group of miners who share the work and split the rewards, so small miners get steadier payouts.", "", "Network & mining"],
   ["Miniscript", "A structured way to write Bitcoin scripts so software can check them and work out the spending conditions. Inheritance and recovery wallets such as Liana use it.", "EXTRA TOOLS: Explain an inheritance or timelock wallet.", "Addresses & scripts"],
   ["Mt. Gox", "An early exchange that collapsed in 2014 after losing a huge amount of customers' bitcoin. A famous lesson in leaving coins with a company.", "", "Culture & markets"],
+  ["multi_a and sortedmulti_a", "The descriptor words for an M-of-N multisig inside a Taproot script branch (BIP387). sortedmulti_a sorts the keys first, so the order they are listed in does not change the addresses.", "MULTISIG WALLET card, Taproot type.", "Addresses & scripts"],
   ["Multisig", "A wallet that needs several keys to spend, such as 2 of 3, so one lost or stolen key is not enough to lose or steal the coins.", "Multisig wallet card.", "Wallets & backups"],
   ["MuSig2", "A way for several people to make one combined key and one ordinary-looking signature, so a multi-party wallet can look like a single-key one.", "", "Addresses & scripts"],
   ["Native SegWit", "The modern address type, starting with bc1q. Lower fees than legacy and nested types.", "Default address type.", "Addresses & scripts"],
@@ -4170,6 +4241,7 @@ const DICT = [
   ["Non-custodial", "A wallet or service where only you hold the keys.", "", "Wallets & backups"],
   ["Nonce", "A number used only once. Miners change the nonce of a block over and over while searching for a hash that meets the difficulty target. Encryption also needs a new nonce each time; VOIDFORGE makes it from your dice rolls.", "SAVE ENCRYPTED DESCRIPTOR BACKUP (the dice rolls).", "Network & mining"],
   ["Not your keys, not your coins", "A saying: if someone else holds the keys, the coins are really theirs to control. It is the case for self-custody.", "", "Culture & markets"],
+  ["NUMS point (unspendable key)", "A public key that nobody has a private key for (NUMS: nothing up my sleeve). BIP341 gives one, called H. A Taproot wallet uses it, or an extended key built on it, as its key-path key when only its scripts should be able to spend.", "MULTISIG WALLET card, Taproot type; EXTRA TOOLS, Explain an inheritance or timelock wallet.", "Addresses & scripts"],
   ["On-chain and off-chain", "On-chain means recorded on the Bitcoin blockchain. Off-chain means handled elsewhere, such as in a Lightning channel.", "", "Lightning & layers"],
   ["OP_RETURN", "A way to attach a small data note to a transaction. The output carrying it can never be spent.", "Inspect a transaction (PSBT) shows these notes.", "Addresses & scripts"],
   ["Opcode", "One command in Bitcoin Script, such as OP_CHECKSIG. Scripts are lists of opcodes and data.", "", "Addresses & scripts"],
@@ -4262,6 +4334,7 @@ const DICT = [
   ["Stacking sats", "Slang for slowly collecting bitcoin, often in small regular amounts.", "", "Culture & markets"],
   ["Supply chain attack", "Tampering with software or hardware on its way to you, so it is already unsafe when you start using it.", "", "Privacy & security"],
   ["Taproot", "The 2021 Bitcoin upgrade behind bc1p addresses. It gives more privacy and flexibility.", "Taproot addresses.", "Addresses & scripts"],
+  ["Taproot multisig", "A multisig wallet with Taproot (bc1p...) addresses. In the MULTISIG WALLET card the M-of-N rule sits in a hidden script branch (sortedmulti_a) and the key path is shut with a NUMS key, so every spend shows the rule. MuSig2 is a different way, which combines the keys into one.", "MULTISIG WALLET card, Taproot type.", "Wallets & backups"],
   ["Tapscript", "The script rules used inside Taproot's hidden branches.", "", "Addresses & scripts"],
   ["Testnet", "A practice copy of Bitcoin whose coins are worthless, for learning without risk. Its SegWit addresses start with tb1. Testnet3, testnet4 and signet all use the same address and key forms, so the same TESTNET (practice coins only) setting works for each.", "The network menus; Practice mode in CHECK A BACKUP.", "Network & mining"],
   ["Threat model", "A plain list of who might attack you, how, and what you are protecting. It tells you how much protection is enough.", "", "Privacy & security"],
@@ -6038,6 +6111,7 @@ async function runSelfTests(auto){
   const katCos = async(type, s) => { const out = []; for(const m of KAT_M){ const sd = await mnemonicToSeed(m, ""), w0 = await watchOnlyFromSeed(sd, type, 0, "main"); out.push({fp: await fingerprintFromSeed(sd), path: "48h/0h/0h/" + s + "h", key: await parseExtendedKey(w0.xpub)}); } return out; };
   eq("Multisig 2-of-3 native SegWit (BIP48): first address", async()=>multisigAddress("ms-wsh", 2, await katCos("ms-wsh", 2), 0, 0, "main"), "bc1qm43n7nnev58aj3nrznz2xscgv98t7gxycq5pmp20a5vzfp5t0q2s7r6twa");
   eq("Multisig 2-of-3 nested SegWit (BIP48): first address", async()=>multisigAddress("ms-sh-wsh", 2, await katCos("ms-sh-wsh", 1), 0, 0, "main"), "354ZuUuwopSS5CsTjYzXwgQLxVeeN2eQFJ");
+  msTrSelfTests(eq, katCos);   // v2.11.0: Taproot multisig (embit)
   eq("Silent Payment address (BIP352 keys at m/352'/0'/0')", async()=>spAddressFromSeed(await mnemonicToSeed(KAT_M[0], ""), "main", 0), "sp1qqfqnnv8czppwysafq3uwgwvsc638hc8rx3hscuddh0xa2yd746s7xqh6yy9ncjnqhqxazct0fzh98w7lpkm5fvlepqec2yy0sxlq4j6ccc3h6t0g");
   eq("Every private key version (SLIP132) gives its prefix", async()=>{ const out = []; for(const v of EXT_PRIVATE) out.push((await base58check(Uint8Array.from([...fromHex(v), ...new Uint8Array(74)]))).slice(0, 4)); return out.join(","); }, "xprv,yprv,zprv,Yprv,Zprv,tprv,uprv,vprv,Uprv,Vprv");
   eq("coin flips 128 (1/0) -> 12 words", ()=>rollsToMnemonic(C128,12),"trigger soccer priority image feature romance whisper jar crush sleep super potato");
@@ -6739,8 +6813,8 @@ async function refreshWatch(){
   const w = await watchOnlyFromSeed(await mnemonicToSeed(watchCtx.mnemonic, watchCtx.pass), type, acct, net);
   if(mine !== watchSeq || !watchCtx) return;
   const kn = net === "test" ? ({zpub:"vpub", ypub:"upub", xpub:"tpub", Zpub:"Vpub", Ypub:"Upub"})[T.kname] : T.kname;
-  document.getElementById("wKeyLabel").textContent = "Extended public key (" + kn + ", m/" + (M ? "48'/" + coin + "'/" + acct + "'/" + M.script + "'" : T.purpose + "'/" + coin + "'/" + acct + "'") + (M ? "): add it as a cosigner in Sparrow, Specter, Nunchuk, Electrum" : "): Electrum, Blue Wallet, Sparrow");
-  document.getElementById("wDescLabelR").textContent = M ? "Cosigner key with origin, for a multisig descriptor: Sparrow, Nunchuk, Bitcoin Core" : "Descriptor, receive addresses: Sparrow, Nunchuk, Bitcoin Core";
+  document.getElementById("wKeyLabel").textContent = "Extended public key (" + kn + ", m/" + (M ? "48'/" + coin + "'/" + acct + "'/" + M.script + "'" : T.purpose + "'/" + coin + "'/" + acct + "'") + (M ? (type === "ms-tr" ? "): add it as a cosigner of a Taproot multisig wallet (VOIDFORGE's MULTISIG WALLET card, Coldcard EDGE, Bitcoin Core)" : "): add it as a cosigner in Sparrow, Specter, Nunchuk, Electrum") : "): Electrum, Blue Wallet, Sparrow");
+  document.getElementById("wDescLabelR").textContent = M ? (type === "ms-tr" ? "Cosigner key with origin, for a Taproot multisig descriptor: Bitcoin Core, Coldcard EDGE" : "Cosigner key with origin, for a multisig descriptor: Sparrow, Nunchuk, Bitcoin Core") : "Descriptor, receive addresses: Sparrow, Nunchuk, Bitcoin Core";
   document.getElementById("wDescGroupC").style.display = M ? "none" : "";
   document.getElementById("wSaveRow").style.display = M ? "none" : "";
   document.getElementById("wFirstGroup").style.display = M ? "none" : "";
@@ -7220,7 +7294,7 @@ function kcParse(text){
   const t = String(text || "").replace(/\r/g, "");
   if(!t.trim()) return {error: "Paste the wallet file first (a descriptor, a Coldcard multisig setup file, or a BSMS record), or choose the file."};
   if(new RegExp("[xyzYZtuvUV]prv[1-9A-HJ-NP-Za-km-z]{20,}").test(t)) return {error: "This file holds a PRIVATE key (xprv...). Never paste private keys here. Use the wallet's public (watch-only) file."};
-  const keys = []; let kind = "", m = null, n = null, format = "", firstAddr = "", desc = "";
+  const keys = []; let kind = "", m = null, n = null, format = "", firstAddr = "", desc = "", internal = null;
   if(/^\s*(Policy|Derivation|Format)\s*:/mi.test(t) && new RegExp("^\\s*[0-9A-Fa-f]{8}\\s*:\\s*" + KC_XPUB, "m").test(t)){
     kind = "Coldcard multisig setup file"; let path = null;
     for(const line of t.split("\n")){
@@ -7241,11 +7315,15 @@ function kcParse(text){
     const re = new RegExp("(\\[([0-9a-fA-F]{8})((?:/[0-9]+['hH]?)*)\\])?(" + KC_XPUB + ")", "g"); let mm;
     while((mm = re.exec(desc))) keys.push({fp: mm[2] ? mm[2].toLowerCase() : null, path: mm[2] ? "m" + (mm[3] || "").replace(/[hH]/g, "'") : null, key: mm[4]});
     const mt = /^(?:sh\()?wsh\((sorted)?multi\((\d+),/.exec(desc); if(mt){ m = +mt[2]; n = keys.length; }
+    // v2.11.0: Taproot multisig, tr(internal key, (sorted)multi_a(M, keys)): the internal key is not one of the M-of-N keys
+    let tl = null; try { const ta = /^tr\((.*)\)(#[^()]*)?$/s.exec(desc); tl = ta ? msSplitArgs(ta[1]) : null; } catch(e) { tl = null; }
+    const mta = tl && tl.length === 2 && /^(sorted)?multi_a\((\d+),/.exec(tl[1]);
+    if(mta){ internal = keys.length && tl[0].includes(keys[0].key) ? keys.shift() : {key: tl[0].trim(), fp: null}; m = +mta[2]; n = keys.length; }
     format = /^sh\(wsh\(/.test(desc) ? "P2SH-P2WSH" : /^wsh\(/.test(desc) ? "P2WSH" : /^sh\(wpkh\(/.test(desc) ? "P2SH-P2WPKH" : /^wpkh\(/.test(desc) ? "P2WPKH" : /^pkh\(/.test(desc) ? "P2PKH" : /^tr\(/.test(desc) ? "P2TR" : "";
   }
   if(!keys.length) return {error: "No extended public keys (xpub, Zpub...) were found in it."};
   if(m !== null && (m < 1 || m > keys.length || (n !== null && n !== keys.length))) return {error: "The file says " + m + " of " + n + ", but it lists " + keys.length + " keys. It is damaged or incomplete."};
-  return {kind, keys, m, n: m !== null ? keys.length : null, format, firstAddr, desc};
+  return {kind, keys, m, n: m !== null ? keys.length : null, format, firstAddr, desc, internal};
 }
 async function kcCheck(text, phrase, vp){
   const f = kcParse(text); if(f.error) return {state: "bad", text: f.error};
@@ -7256,6 +7334,10 @@ async function kcCheck(text, phrase, vp){
   const seeds = [];
   for(const [label, pass] of src.passes){ const seed = await mnemonicToSeed(src.mnemonic, pass); seeds.push({label, root: await masterFromSeed(seed), fp: await fingerprintFromSeed(seed)}); }
   const mine = [];
+  if(f.internal){   // v2.11.0: Taproot multisig
+    if(await msIsNums(f.internal.key)) lines.push("The Taproot internal key (key path): made from BIP341's unspendable point H, so nobody can sign with it. Every spend uses the " + f.m + "-of-" + f.n + " script.");
+    else lines.push("The Taproot internal key (key path)" + (f.internal.fp ? ", fingerprint " + f.internal.fp : "") + ": not an unspendable key, so its holder can spend alone. Only the " + f.n + " keys of the " + f.m + "-of-" + f.n + " script are checked below.");
+  }
   for(let i = 0; i < f.keys.length; i++){
     const k = f.keys[i], head = (f.keys.length > 1 ? "Key " + (i + 1) + " of " + f.keys.length : "The key") + (k.fp ? ", fingerprint " + k.fp : "") + (k.path ? ", " + k.path : "") + ": ";
     let parsed; try { parsed = await parseExtendedKey(k.key); } catch(e) { lines.push(head + "NOT A VALID KEY (" + e.message + ")."); continue; }
@@ -7273,6 +7355,9 @@ async function kcCheck(text, phrase, vp){
       const net = cos[0].key.net, a = await multisigAddress(type, f.m, cos, 0, 0, net);
       lines.push("The record's first address " + (a === f.firstAddr ? "matches" : "does NOT match") + " its descriptor (" + a + ").");
     } catch(e) { /* the address check is only for the common sortedmulti form */ }
+  }
+  if(f.firstAddr && f.m !== null && f.internal){   // v2.11.0: Taproot multisig, by the descriptor address engine
+    try { const net = await b138Net(f.desc), a = await b138Address(f.desc, 0, 0, net), same = a === f.firstAddr; lines.push("The record's first address " + (same ? "matches" : "does NOT match") + " its descriptor (" + a + ")."); } catch(e) { /* not every descriptor can be worked out here */ }
   }
   if(mine.length){
     const one = mine.length === 1, need = f.m !== null ? f.m - mine.length : 0;
@@ -10022,7 +10107,7 @@ document.addEventListener("visibilitychange", () => { if(document.hidden && docu
 
 // ---- Multisig wizard: collect M-of-N public keys one at a time, wiping each seed after its key is saved ----
 const msEl = (id) => document.getElementById(id);
-const msTypeName = (t) => t === "ms-sh-wsh" ? "Nested SegWit (3...)" : "Native SegWit (bc1q...)";
+const msTypeName = (t) => t === "ms-sh-wsh" ? "Nested SegWit (3...)" : t === "ms-tr" ? "Taproot (bc1p...), script path" : "Native SegWit (bc1q...)";
 const MS_MAX = 15;
 function msClamp(v, lo, hi){ v = parseInt(v, 10); return isNaN(v) ? lo : Math.min(hi, Math.max(lo, v)); }
 // N changed (typed, dragged or preset): keep M if it still fits, otherwise fall back to a majority.
@@ -10089,6 +10174,7 @@ function msUseMake(){ if(!ms) return; ms.mode = "make"; msRender(); }
 function msReset(){
   ms = null; msHideQr(); animHide("msAnim"); b138MakeClear("msb");
   for(const id of ["msDescR","msDescC","msAddrs","msChange","msSlots","msRunErr","msBanErr","msErr"]) msEl(id).textContent = "";
+  msEl("msCoreCmd").textContent = "";   // v2.11.0
   msEl("msPaste").value = ""; msEl("msPasteFp").value = "";
   msEl("msIntro").style.display = ""; msEl("msRun").style.display = "none"; msEl("msDone").style.display = "none"; msEl("msPasteBox").style.display = "none";
   msEl("msBanner").style.display = "none"; msEl("msBox").open = false;
@@ -10197,6 +10283,7 @@ async function msFinish(){
   msEl("msDescR").textContent = dr; msEl("msDescC").textContent = dc;
   for(const [id, list] of [["msAddrs", addrs], ["msChange", change]]){ const ol = msEl(id); ol.textContent = ""; list.forEach(a => { const li = document.createElement("li"); li.textContent = a; ol.appendChild(li); }); }
   msEl("msOneDev").style.display = ms.keys.every(k => k.src === "made") ? "" : "none";
+  msTrDone();   // v2.11.0: what the Taproot type can and cannot export, and the Bitcoin Core commands
   msEl("msDone").style.display = "";
   reveal(msEl("msDone"));
   msBanner();
@@ -10207,13 +10294,14 @@ let msAnimKind = "ur";
 async function msAnim(kind){
   if(!ms.done) return;
   if(kind) msAnimKind = kind;
+  if(ms.type === "ms-tr" && msAnimKind !== "bbqr") return;   // v2.11.0: only the descriptor as text (Coldcard Q, EDGE firmware) is confirmed for Taproot multisig
   const cos = ms.keys.map(k => ({fp: k.fp, path: k.path, key: k.key})), sz = parseInt(document.getElementById("msAnimSize").value, 10) || 0;
   const test = ms.net === "test" ? " Testnet wallet." : "";
   let parts, cap, rate = 200;
   if(msAnimKind === "ur"){ parts = urEncode("crypto-output", cryptoOutputMultisig(ms.type, ms.m, cos, ms.net), ANIM_SIZES.ur[sz]); cap = "For Sparrow, SeedSigner and Nunchuk (UR crypto-output)." + test; }
   else if(msAnimKind === "bbqr"){
     const d = descriptorChecksum(ms.descR.replace(/#[a-z0-9]{8}$/, "").split("/0/*").join("/<0;1>/*"));
-    parts = bbqrEncode("U", new TextEncoder().encode(d), ANIM_SIZES.bbqr[sz]); cap = "For Coldcard Q (BBQr): the wallet descriptor as text." + test; rate = 250;
+    parts = bbqrEncode("U", new TextEncoder().encode(d), ANIM_SIZES.bbqr[sz]); cap = "For Coldcard Q (BBQr): the wallet descriptor as text." + (ms.type === "ms-tr" ? " A Taproot multisig wallet needs Coldcard's EDGE firmware 6.3.5QX or later." : "") + test; rate = 250;
   } else {
     const t = await coldcardMultisigText(ms.type, ms.m, cos);
     parts = urEncode("bytes", CB.bytes(Array.from(new TextEncoder().encode(t))), ANIM_SIZES.ur[sz]);
@@ -10249,8 +10337,23 @@ function msPrint(){
   const title = "VOIDFORGE MULTISIG RECOVERY SHEET" + (ms.net === "test" ? " (TESTNET)" : "");
   const addrs = "FIRST 10 RECEIVE AND FIRST 10 CHANGE ADDRESSES (your app must show exactly these):\n" + addrSheetLines(ms.addrs, ms.change, 70);
   let q; try { q = qrMatrix(ms.descR); } catch(e) { return printSqSheet(title, "", "pq-ms", "The descriptor is too long for one QR code: copy it from the text below.\n\n" + msSheetText(false), "", addrs); }
-  printSqSheet(title, qrSvg(q.rows), ms.n >= 9 ? "pq-ms pq-ms-l pq-ms-xl" : ms.n >= 5 ? "pq-ms pq-ms-l" : "pq-ms", msSheetText(false), "", addrs);
+  const nq = ms.n + (ms.type === "ms-tr" ? 1 : 0);   // v2.11.0: a Taproot descriptor holds one more xpub (the unspendable internal key)
+  printSqSheet(title, qrSvg(q.rows), nq >= 9 ? "pq-ms pq-ms-l pq-ms-xl" : nq >= 5 ? "pq-ms pq-ms-l" : "pq-ms", msSheetText(false), "", addrs);
 }
+// ===== v2.11.0 Taproot multisig: the wizard's parts (the address and descriptor code is next to multisigDescriptor) =====
+function msTrNoteShow(){ msEl("msTrNote").style.display = msEl("msType").value === "ms-tr" ? "" : "none"; }
+msEl("msType").addEventListener("change", msTrNoteShow);
+msTrNoteShow();
+// The finished wallet: the exports that fit its type, and Bitcoin Core's import commands (a watch-only wallet, any type).
+function msTrDone(){
+  const tr = ms.type === "ms-tr";
+  msEl("msDescLabel").textContent = tr ? "Descriptor (public, safe to keep): import it in Bitcoin Core (24.0.1 or later) or a Coldcard with EDGE firmware" : "Descriptor (public, safe to keep): import it in Sparrow, Nunchuk or Bitcoin Core";
+  for(const id of ["msAnimUr", "msAnimCc"]) msEl(id).style.display = tr ? "none" : "";
+  msEl("msAnimTr").style.display = tr ? "" : "none";
+  msCoreSet();
+}
+function msCoreSet(){ msEl("msCoreCmd").textContent = ms && ms.done ? coreImportText(ms.descR, ms.descC, msEl("msCoreWhen").value) : ""; }
+msEl("msCoreWhen").addEventListener("change", msCoreSet);
 
 // ===== Wallet view (v2.1.0): any valid 12, 15, 18, 21 or 24 word phrase typed in the Check tab, with the passphrase box next to it =====
 // It only lists addresses (public) and, for 12 and 24 words, offers the SeedQR formats (secret). Nothing is stored; it is wiped when the words change.
@@ -11375,14 +11478,14 @@ async function msExplain(raw, height, phrase, vp){
   if(/[xyzYZtuvUV]prv[1-9A-HJ-NP-Za-km-z]{20,}/.test(t)) return {state: "bad", text: "This holds a PRIVATE key (xprv...). Never paste private keys here; use the wallet's public descriptor."};
   const hashAt = t.lastIndexOf("#"), body = hashAt < 0 ? t : t.slice(0, hashAt);
   if(hashAt >= 0 && descriptorChecksum(body) !== t) return {state: "bad", text: "The descriptor's checksum (after #) does not match, so it was changed or mistyped. Use Find a typo in a descriptor first."};
-  let paths, kind, keyPath = null;
+  let paths, kind, keyPath = null, shut = false;
   try {
     let m;
     if((m = /^wsh\((.*)\)$/s.exec(body))) { kind = "P2WSH (bc1q..., long)"; paths = msPaths(msParse(m[1])); }
     else if((m = /^sh\(wsh\((.*)\)\)$/s.exec(body))) { kind = "P2SH-P2WSH (3...)"; paths = msPaths(msParse(m[1])); }
     else if((m = /^tr\((.*)\)$/s.exec(body))) {
       const parts = msSplitArgs(m[1]); kind = "Taproot (bc1p...)";
-      const ik = parts[0].trim(); keyPath = ik.replace(/^\[[^\]]*\]/, "").toLowerCase() === MS_NUMS ? null : ik;
+      const ik = parts[0].trim(); shut = await msIsNums(ik); keyPath = shut ? null : ik;   // v2.11.0: an xpub on H (Taproot multisig, Liana, Nunchuk) is shut too
       paths = keyPath ? [[{t: "key", key: keyPath, keyPath: true}]] : [];
       if(parts.length > 1) for(const leaf of msTreeLeaves(parts.slice(1).join(","))) paths = paths.concat(msPaths(msParse(leaf)));
     } else return {state: "bad", text: "This explains wsh(...), sh(wsh(...)) and tr(...) descriptors, as inheritance and recovery wallets use. For a plain single-key or multisig wallet, see Is this seed in my wallet file? in CHECK A BACKUP."};
@@ -11405,7 +11508,7 @@ async function msExplain(raw, height, phrase, vp){
   });
   const keyList = [...names.entries()].map(([b, x]) => "Key " + x.n + ": " + (x.fp ? "fingerprint " + x.fp : "no fingerprint given") + (fpMine && x.fp === fpMine ? "  ← made by the words typed in CHECK A BACKUP" : ""));
   const relative = paths.some(p => p.some(c => c.t === "older")), fixed = paths.some(p => p.some(c => c.t === "after"));
-  return {state: "ok", text: "This " + kind + " wallet can be spent in " + paths.length + " way" + (paths.length === 1 ? "" : "s") + ":\n" + lines.join("\n") + "\n\n" + keyList.join("\n") + (relative ? "\n\nA waiting time “after each deposit” starts again whenever coins are moved: sending them to a new address of the same wallet before the time is up keeps the later paths closed (Liana calls this refreshing the coins)." : "") + (fixed ? "\n\nA fixed block or date does not restart: once it has passed, that path stays open for good." : "") + (paths.some(p => p.some(c => c.t === "hash")) ? "\n\nA path that needs a secret (a hash preimage) can only be used by someone who knows that secret." : "")};
+  return {state: "ok", text: "This " + kind + " wallet can be spent in " + paths.length + " way" + (paths.length === 1 ? "" : "s") + ":\n" + lines.join("\n") + "\n\n" + keyList.join("\n") + (relative ? "\n\nA waiting time “after each deposit” starts again whenever coins are moved: sending them to a new address of the same wallet before the time is up keeps the later paths closed (Liana calls this refreshing the coins)." : "") + (fixed ? "\n\nA fixed block or date does not restart: once it has passed, that path stays open for good." : "") + (paths.some(p => p.some(c => c.t === "hash")) ? "\n\nA path that needs a secret (a hash preimage) can only be used by someone who knows that secret." : "") + (shut ? "\n\nNobody can spend with the Taproot internal key alone: it is BIP341's unspendable point H (or an extended key built on it), so every spend uses one of the ways above." : "")};
 }
 let msxRun = 0;
 function msxWipe(){ msxRun++; const st = document.getElementById("msxStatus"); st.textContent = ""; st.className = "status"; }   // review: the result belongs to the inputs that made it

@@ -693,6 +693,26 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
     }
   }
   R.ok(mbad === 0, `${mn2} multisig addresses (P2WSH and P2SH-P2WSH, 1-of-2 to 15-of-15) match @scure/btc-signer, in any cosigner order (${mbad} mismatches)`);
+  // v2.11.0: Taproot multisig, tr(unspendable xpub, sortedmulti_a): the internal key is worked out here (BIP341's H from btc-signer as
+  // the key, Node's SHA-256 of the sorted account keys as the chain code, as libnunchuk's GetUnspendableXpub), the leaf by p2tr_ms
+  { let tbad = 0, tn = 0;
+    for (const [m, cnt, net] of [[2, 3, 'main'], [1, 2, 'test'], [3, 5, 'main'], [2, 2, 'test'], [8, 15, 'main'], [15, 15, 'test']]) {
+      const coin = net === 'test' ? 1 : 0, keys = [], cos = [];
+      for (let i = 0; i < cnt; i++) {
+        const root = HDKey.fromMasterSeed(mnemonicToSeedSync(entropyToMnemonic(nc.randomBytes(16), wordlist)), net === 'test' ? { private: 0x04358394, public: 0x043587cf } : undefined);
+        const acct = root.derive(`m/48'/${coin}'/0'/3'`); keys.push(acct);
+        cos.push({ fp: root.fingerprint.toString(16).padStart(8, '0'), path: `48h/${coin}h/0h/3h`, key: await w.parseExtendedKey(acct.publicExtendedKey) });
+      }
+      const cc = nc.createHash('sha256').update(Buffer.concat(keys.map((k) => Buffer.from(k.publicKey)).sort(Buffer.compare))).digest();
+      const nums = new HDKey({ publicKey: Uint8Array.from([2, ...btc.TAPROOT_UNSPENDABLE_KEY]), chainCode: cc });
+      for (const branch of [0, 1]) for (const idx of [0, 1, 7, 500]) {
+        const xs = keys.map((k) => k.deriveChild(branch).deriveChild(idx).publicKey.slice(1)).sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
+        const o = btc.p2tr(nums.deriveChild(branch).deriveChild(idx).publicKey.slice(1), { script: btc.p2tr_ms(m, xs).script }, net === 'test' ? btc.TEST_NETWORK : btc.NETWORK);
+        tn++;
+        if (await w.multisigAddress('ms-tr', m, cos, branch, idx, net) !== o.address || await w.multisigAddress('ms-tr', m, [...cos].reverse(), branch, idx, net) !== o.address) { tbad++; console.log('MISMATCH Taproot multisig', m, cnt, net, branch, idx); }
+      }
+    }
+    R.ok(tbad === 0, `${tn} Taproot multisig addresses (sortedmulti_a, 1-of-2 to 15-of-15, mainnet and testnet) match @scure/btc-signer, in any cosigner order (${tbad} mismatches)`); }
   const fx = JSON.parse(readFileSync(new URL('./fixtures/multisig.json', import.meta.url)));
   let fbad = 0, fn = 0;
   for (const r of fx) {
