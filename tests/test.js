@@ -2239,6 +2239,64 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(/\["BIP138 \(encrypted descriptor backup\)"/.test(html)&&/\["ChaCha20-Poly1305"/.test(html)&&/Encryption also needs a new nonce/.test(html),'dictionary: BIP138, ChaCha20-Poly1305, and Nonce for encryption');
     ok(r.errors.length===0,'BIP138: no page errors '+JSON.stringify(r.errors));
     r.w.close(); }
+  // v2.10.0: Check a Coldcard seed mix (expected words: Coinkite's formula worked out here with Node's SHA-256, then @scure) and Was my seed made by a flawed device?
+  { const {entropyToMnemonic,mnemonicToSeedSync}=require('@scure/bip39'); const {wordlist}=require('@scure/bip39/wordlists/english'); const {HDKey}=require('@scure/bip32'); const btc=require('@scure/btc-signer');
+    const r=load(); await r.ready(); const w=r.w, $=r.$, sleep=ms=>new Promise(res=>setTimeout(res,ms));
+    const H=(...p)=>nc.createHash('sha256').update(Buffer.concat(p.map(x=>Buffer.from(x)))).digest();
+    const mix=(trng,s,m,pur,n)=>H(H('CC\x01S'+pur+m,trng,H('CC\x01'+m,s))).subarray(0,n===12?16:32);
+    const a0=(mn,net)=>btc.p2wpkh(HDKey.fromMasterSeed(mnemonicToSeedSync(mn,'')).derive(net==='test'?"m/84'/1'/0'/0/0":"m/84'/0'/0'/0/0").publicKey,net==='test'?btc.TEST_NETWORK:undefined).address;
+    const Z24='abandon '.repeat(23)+'art', D50='123456'.repeat(8)+'12';
+    const set=(trng,meth,len,pur,rolls)=>{ $('cmxTrng').value=trng; $('cmxMethod').value=meth; $('cmxLen').value=String(len); $('cmxPurpose').value=pur; $('cmxRolls').value=rolls; };
+    const shown=()=>[...$('cmxOut').textContent.matchAll(/\d+\. ([a-z]+)/g)].map(m=>m[1]).join(' ');
+    const hx=b=>Buffer.from(b).toString('hex');
+    eq(hx(await w.coldcardMixEntropy(new Uint8Array(32),D50,'D','M',12)),'67c8b6d836d47f88dfb88a1bb5a534cf','Coldcard mix: Coinkite\'s dice vector, 12 words (firmware testing/test_rolls.py)');
+    eq(hx(await w.coldcardMixEntropy(new Uint8Array(32),'01'.repeat(64),'C','M',24)),'8216d06056e31315bec14171d1f09345eef5cbba16fdd3498354951dd3356dab','Coldcard mix: Coinkite\'s coin vector, 24 words');
+    ok(!$('cmxBtn').disabled&&$('cmxBox').querySelector('summary .tag-secret')&&!$('cmxBox').querySelector('button[onclick*="opy"]')&&/#cmxOut \{ -webkit-user-select: none; user-select: none; \}/.test(html),'Coldcard mix: on after the self-test, marked SECRET, no copy button, and its result cannot be selected');
+    let s; do { s=rnd(61); } while(w.coldcardMixRefusal('D',s));
+    const trng=nc.randomBytes(32), tw=entropyToMnemonic(trng,wordlist), want=entropyToMnemonic(mix(trng,s,'D','T',24),wordlist);
+    set(tw,'D',24,'T',s.replace(/(.{5})/g,'$1 ')); await w.cmxCheck();
+    ok(shown()===want&&/Temporary Seed/.test($('cmxOut').textContent)&&/^SECRET/.test($('cmxOut').textContent)&&/ok/.test($('cmxStatus').className),'Coldcard mix: random TRNG words + 61 rolls (with spaces), Temporary Seed, 24 words: the words of Coinkite\'s formula');
+    ok($('cmxOut').textContent.includes(a0(want,'main'))&&$('cmxOut').textContent.includes('Master fingerprint: '+HDKey.fromMasterSeed(mnemonicToSeedSync(want,'')).fingerprint.toString(16).padStart(8,'0')),'Coldcard mix: the fingerprint and first receive address match @scure');
+    $('cmxRolls').dispatchEvent(new w.Event('input')); ok(!$('cmxOut').textContent&&!$('cmxStatus').textContent,'Coldcard mix: typing in the rolls box clears the old result');
+    await w.cmxCheck(); $('cmxPurpose').value='M'; $('cmxPurpose').dispatchEvent(new w.Event('change')); ok(!$('cmxOut').textContent,'Coldcard mix: changing the kind of seed clears the old result');
+    await w.cmxCheck(); ok(shown()===entropyToMnemonic(mix(trng,s,'D','M',24),wordlist)&&shown()!==want,'Coldcard mix: New Seed Words (purpose M) gives other words than a Temporary Seed (T)');
+    $('cmxTrng').value=tw.split(' ').map(x=>x.slice(0,4)).join(' '); $('cmxLen').value='12'; await w.cmxCheck(); ok(shown()===entropyToMnemonic(mix(trng,s,'D','M',12),wordlist),'Coldcard mix: 12 words are the first 16 bytes, and TRNG words typed as their first 4 letters work');
+    let f; do { f=rnd(130,2); } while(w.coldcardMixRefusal('C',f));
+    set(tw,'C',12,'M',f); await w.cmxCheck(); ok(shown()===entropyToMnemonic(mix(trng,f,'C','M',12),wordlist),'Coldcard mix: 130 coin flips, 12 words');
+    const refuse=async(meth,rolls,re,m,trngW=Z24)=>{ set(trngW,meth,12,'M',rolls); await w.cmxCheck(); ok(re.test($('cmxStatus').textContent)&&/bad/.test($('cmxStatus').className)&&!$('cmxOut').textContent,m); };
+    await refuse('D',D50.slice(0,49),/at least 50 dice rolls and does not finish with fewer \(49 typed\)/,'Coldcard mix: 49 rolls are refused, as the Coldcard does');
+    await refuse('C','01'.repeat(63)+'1',/at least 128 coin flips/,'Coldcard mix: 127 flips are refused');
+    await refuse('D','1'.repeat(16)+'23456'.repeat(6)+'23456'.slice(0,4),/refuses these dice rolls: 1 is 16 of the 50, more than 30%/,'Coldcard mix: 16 of 50 rolls on one face (32%) are refused, as the Coldcard does');
+    set(Z24,'D',12,'M','1'.repeat(15)+'23456'.repeat(7)); await w.cmxCheck(); ok(!!$('cmxOut').textContent,'Coldcard mix: 15 of 50 on one face (30%) is still accepted (the limit is more than 30%)');
+    await refuse('C','1'.repeat(84)+'0'.repeat(44),/more than 65%/,'Coldcard mix: 84 of 128 flips on one side (66%) are refused');
+    set(Z24,'C',12,'M','1'.repeat(83)+'0'.repeat(45)); await w.cmxCheck(); ok(!!$('cmxOut').textContent,'Coldcard mix: 83 of 128 flips on one side (65%) are accepted');
+    await refuse('D',D50.replace('3','7'),/“7” is not one of the dice rolls/,'Coldcard mix: a roll that is not 1 to 6 is named, not dropped');
+    await refuse('D',D50,/shows 24 words, even for a 12-word seed/,'Coldcard mix: 12 TRNG words are refused (the device shows 24)','abandon '.repeat(11)+'about');
+    await refuse('D',D50,/^TRNG words: Checksum failed/,'Coldcard mix: TRNG words with a bad checksum are refused','abandon '.repeat(24));
+    set(Z24,'D',12,'M',D50); await w.cmxCheck(); w.practiceMode(true); await sleep(30); ok(!$('cmxOut').textContent,'Coldcard mix: practice mode clears a mainnet result');
+    await w.cmxCheck(); ok($('cmxOut').textContent.includes(a0(entropyToMnemonic(mix(new Uint8Array(32),D50,'D','M',12),wordlist),'test'))&&/TESTNET/.test($('cmxOut').textContent),'Coldcard mix: in practice mode the address is on the test network'); w.practiceMode(false);
+    ok(w.eval('AUTO_FIELDS').includes('cmxTrng')&&w.eval('AUTO_FIELDS').includes('cmxRolls'),'Coldcard mix: auto-clear wipes the TRNG words and the rolls');
+    await w.cmxCheck(); w.clearAll(); ok(!$('cmxTrng').value&&!$('cmxRolls').value&&!$('cmxOut').textContent,'Coldcard mix: CLEAR ALL wipes the TRNG words, the rolls and the words');
+    set(Z24,'D',12,'M',D50); w.eval('selfTestState = "fail"'); r.st.alerts.length=0; await w.cmxCheck(); ok(r.st.alerts.length===1&&!$('cmxOut').textContent,'Coldcard mix: with a failed self-test it refuses'); w.eval('selfTestState = "pass"'); w.cmxClear();
+    // Was my seed made by a flawed device?
+    const A=(d,v,dt,dice)=>w.flwAssess(d,v||'',dt||'',dice||'none'), L=(d,v,dt,dice)=>A(d,v,dt,dice).level;
+    ok(L('ccq','1.4.1Q')==='weak'&&L('ccq','1.5.0Q')==='ok'&&L('ccq','1.5.3Q')==='ok'&&L('ccmk4','5.5.1')==='weak'&&L('ccmk4','5.6.0')==='ok'&&L('ccmk4','5.10.0')==='ok','flawed device: Coldcard Q before 1.5.0Q and Mk4 before 5.6.0 are weak; the fix versions and later are not (compared as numbers)');
+    ok(L('ccmk3','4.1.9')==='weak'&&L('ccmk3','4.2.0')==='ok'&&/first notes named 4\.0\.1 or later/.test(A('ccmk3','3.9.0').text)&&!/first notes/.test(A('ccmk3','4.0.1').text),'flawed device: Coldcard Mk3 before 4.2.0 is weak, and below 4.0.1 the page says Coinkite\'s notes differ');
+    ok(L('ccmk4','6.5.0X')==='weak'&&L('ccq','6.6.0QX')==='ok'&&L('ccedge','6.5.1X')==='weak'&&L('ccedge','6.6.0X')==='ok','flawed device: Edge versions (ending in X) use the Edge fix, 6.6.0');
+    ok(L('ccmk4','1.4.1Q')==='input'&&/is not a version of the Coldcard Mk4 or Mk5/.test(A('ccmk4','1.4.1Q').text)&&L('ccq','abc')==='input'&&L('ccq','','May')==='input','flawed device: a version of another model, or text that is not a version or date, asks again');
+    ok(L('ccq','','2026-07')==='weak'&&L('ccq','','2025')==='weak'&&L('ccq','','2026-07-30')==='weak'&&L('ccq','','2026-07-31')==='unknown'&&L('ccq','','2026-08')==='unknown'&&L('ccq','','2026')==='unknown'&&L('ccq')==='unknown','flawed device: without a version, a date before 31 July 2026 means weak; later or unclear dates ask for the version');
+    ok(/may have helped/.test(A('ccq','1.4.1Q','','mixed').text)&&L('ccq','1.4.1Q','','mixed')==='weak','flawed device: dice added to a flawed Coldcard\'s words: still move, as Coinkite says');
+    ok(L('ccq','1.4.1Q','','only')==='ok'&&/do not depend on the device's random number generator/.test(A('ccq','1.4.1Q','','only').text)&&/do not depend on any random number generator/.test(A('vf').text),'flawed device: a seed set by your dice alone (on the device or in VOIDFORGE) does not depend on its random numbers');
+    ok(L('bx','3.0.0')==='weak'&&L('bx','3.6.0')==='weak'&&L('bx','3.6.1')==='ok'&&L('bx','2.9.9')==='ok'&&L('bx')==='unknown'&&/CVE-2023-39910/.test(A('bx','3.2.0').text),'flawed device: Libbitcoin Explorer bx seed 3.0.0 to 3.6.0 (Milk Sad, CVE-2023-39910)');
+    ok(L('trust','0.0.172')==='weak'&&L('trust','0.0.182')==='weak'&&L('trust','0.0.183')==='ok'&&L('trust','0.0.171')==='ok'&&/CVE-2023-31290/.test(A('trust','0.0.180').text),'flawed device: Trust Wallet browser extension 0.0.172 to 0.0.182 (CVE-2023-31290)');
+    ok(L('other')==='ok'&&/^No known flaw for this\. We only know these: Coldcard Mk4 and Mk5 before 5\.6\.0; .*Trust Wallet browser extension 0\.0\.172 to 0\.0\.182\./.test(A('other').text),'flawed device: another device: "No known flaw for this", with the list of the flaws known');
+    $('flwDev').value='ccq'; $('flwVer').value='1.4.1Q'; w.flwUi();
+    ok(/^Your seed may be weak: move the funds to a new seed\./.test($('flwStatus').textContent)&&/bad/.test($('flwStatus').className)&&/1\. On your offline computer, make a new seed from your own dice/.test($('flwOut').textContent)&&/Inspect a transaction \(PSBT\)/.test($('flwOut').textContent),'flawed device: a weak answer shows the calm move checklist with VOIDFORGE\'s tools');
+    $('flwVer').value='1.5.0Q'; $('flwVer').dispatchEvent(new w.Event('input')); ok(!$('flwStatus').textContent&&!$('flwOut').textContent,'flawed device: editing an answer clears the old result');
+    w.flwUi(); ok(/^No known flaw for this version/.test($('flwStatus').textContent)&&$('flwOut').style.display==='none','flawed device: a fixed version shows no checklist');
+    w.clearAll(); ok(!$('flwVer').value&&!$('flwStatus').textContent,'flawed device: CLEAR ALL empties the answers');
+    ok(/\["Seed mix \(dice plus device\)"/.test(html)&&/\["TRNG \(true random number generator\)"/.test(html)&&/\["Weak seed"/.test(html),'dictionary: Seed mix, TRNG and Weak seed');
+    r.w.close(); }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
 

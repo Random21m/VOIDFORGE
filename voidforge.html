@@ -496,6 +496,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   html.js body:not(.js-ok) .container { visibility: hidden; }
   /* v2.5.0: secrets on the screen cannot be highlighted, so they are never copied to the clipboard by accident (there is no copy button for them either) */
   #wordGrid, #genResult, #wvAbbrGrid, #childOut, #exOut, #reforgeOut, #dpOut { -webkit-user-select: none; user-select: none; }
+  #cmxOut { -webkit-user-select: none; user-select: none; }   /* v2.10.0: the Coldcard seed mix check (secret) */
   .pass-warn { color: var(--warn-text); font-weight: 600; font-size: 13px; margin: 6px 0 0; }
   .pass-warn:empty { display: none; }
   #practiceBan { display: none; }
@@ -1570,6 +1571,44 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       </div>
       <div class="status" id="dcStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <pre id="dcOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+    </details>
+    <!-- v2.10.0: Check a Coldcard seed mix, and Was my seed made by a flawed device? -->
+    <details id="cmxBox">
+      <summary>Check a Coldcard seed mix<span class="tag tag-secret">SECRET</span><small>New Coldcard seeds mix your dice or coin flips with the device&rsquo;s own random numbers. See that the mix is right.</small></summary>
+      <p class="hint" style="margin:8px 0;">Since firmware 1.5.1Q (Coldcard Q) and 5.6.1 (Mk4 and Mk5), a new Coldcard seed needs your own dice rolls, coin flips or key presses, and the device mixes them with its own random numbers (its TRNG words). From 1.5.2Q, 5.6.2 and Edge 6.6.1, <b>View TRNG Words</b> in that menu shows the device&rsquo;s part as 24 words before you add yours. Type those 24 words and every roll or flip here: VOIDFORGE works out the words the Coldcard must show, by the formula in Coinkite&rsquo;s published code. Key presses (Mash Keys) cannot be checked: they use the timing of the presses. A Coldcard dice-only seed (no device random numbers) is checked with <i>Check your device&rsquo;s dice</i>, above.</p>
+      <p class="hint" style="margin:0 0 8px;"><b>The TRNG words and your rolls together make the seed.</b> Check a real seed only on your offline computer. Or practice first with a throwaway seed, then delete it on the Coldcard, because its words are no longer secret. Nothing here is saved, and CLEAR wipes it.</p>
+      <textarea id="cmxTrng" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The 24 TRNG words the Coldcard showed" placeholder="The 24 TRNG words the Coldcard showed (View TRNG Words)" oninput="cmxClear(true)"></textarea>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
+        <select id="cmxMethod" aria-label="What you added" onchange="cmxClear(true)" style="flex:1 1 100%; min-width:0;"><option value="D">Dice Rolls (1 to 6)</option><option value="C">Coin Flips (1 = heads, 0 = tails)</option></select>
+        <select id="cmxLen" aria-label="Seed length" onchange="cmxClear(true)" style="flex:none; width:auto;"><option value="12">12 words</option><option value="24">24 words</option></select>
+        <select id="cmxPurpose" aria-label="Which seed" onchange="cmxClear(true)" style="flex:none; width:auto;"><option value="M">New Seed Words</option><option value="T">Temporary Seed</option></select>
+      </div>
+      <textarea id="cmxRolls" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Every roll or flip you typed on the Coldcard" placeholder="Every roll or flip you typed on the Coldcard, in order" oninput="cmxClear(true)" style="margin-top:6px;"></textarea>
+      <div id="cmxCount" aria-live="polite" style="font-size: 13px; color:var(--muted); font-weight:600; margin-top:4px;">0 / 50 rolls (at least 50 for the Coldcard)</div>
+      <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+        <button type="button" id="cmxBtn" onclick="cmxCheck()" disabled>SHOW THE COLDCARD WORDS</button>
+        <button type="button" class="btn-clear small" onclick="cmxClear()">CLEAR</button>
+      </div>
+      <div class="status" id="cmxStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+      <pre id="cmxOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+    </details>
+    <details id="flwBox">
+      <summary>Was my seed made by a flawed device?<span class="tag tag-ro">NO KEYS NEEDED</span><small>Some devices and apps made weak seeds. Four questions; never type your words here.</small></summary>
+      <p class="hint" style="margin:8px 0;">A few devices and apps have had a flaw in the random numbers they used to make seeds. A seed made that way stays weak after an update: the fix only helps seeds made later. Answer the questions below. VOIDFORGE knows only the flaws its answer lists, so &ldquo;no known flaw&rdquo; is not a promise that a device is safe.</p>
+      <label for="flwDev" style="display:block; font-size:13px; color:var(--muted);">Which device or app made the words?</label>
+      <select id="flwDev" onchange="flwClear()" style="width:100%;"><option value="ccmk4">Coldcard Mk4 or Mk5</option><option value="ccq">Coldcard Q</option><option value="ccmk3">Coldcard Mk3 (or an older Coldcard)</option><option value="ccedge">Coldcard with Edge firmware (version ends in X)</option><option value="bx">Libbitcoin Explorer (the bx seed command)</option><option value="trust">Trust Wallet browser extension</option><option value="vf">VOIDFORGE, from my own dice or coin flips</option><option value="other">Another device or app</option></select>
+      <label for="flwVer" style="display:block; font-size:13px; color:var(--muted); margin-top:6px;">Its firmware or app version at the time, if you know it</label>
+      <input type="text" id="flwVer" spellcheck="false" autocomplete="off" autocapitalize="off" oninput="flwClear()" placeholder="Like 5.5.1, 1.4.1Q or 0.0.180">
+      <label for="flwDate" style="display:block; font-size:13px; color:var(--muted); margin-top:6px;">When was the seed made, if you know?</label>
+      <input type="text" id="flwDate" spellcheck="false" autocomplete="off" autocapitalize="off" oninput="flwClear()" placeholder="Like 2024-05 or 2024">
+      <label for="flwDice" style="display:block; font-size:13px; color:var(--muted); margin-top:6px;">Did your own dice go in?</label>
+      <select id="flwDice" onchange="flwClear()" style="width:100%;"><option value="none">No, the device made the words</option><option value="mixed">I added dice to the device&rsquo;s words</option><option value="only">Only my dice set the words</option></select>
+      <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+        <button type="button" id="flwBtn" onclick="flwUi()">CHECK MY ANSWERS</button>
+        <button type="button" class="btn-clear small" onclick="flwClear(true)">CLEAR</button>
+      </div>
+      <div class="status" id="flwStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+      <pre id="flwOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:inherit; font-size:14px; margin:8px 0 0;"></pre>
     </details>
     <details id="psbtBox">
       <summary>Inspect a transaction (PSBT)<span class="tag tag-ro">READ ONLY</span><small>See where the money goes and the fee before signing.</small></summary>
@@ -4044,7 +4083,10 @@ const DICT = [
   ["Public key hash (HASH160)", "The short fingerprint of a public key (SHA-256 then RIPEMD-160) that old address types are made from.", "", "Addresses & scripts"],
   ["QR code", "A square picture that holds text. VOIDFORGE draws QR codes on screen, and reads them with the camera only when you press a SCAN button (the camera stops as soon as the code is read).", "Watch-only QR, SeedQR, address QR, Support this project. PRINT THIS QR prints them; the SCAN buttons read them.", "Basics"],
   ["Quorum", "How many keys must sign in a multisig wallet, such as 2 of a 3-key wallet.", "", "Wallets & backups"],
-  ["Random number generator (RNG)", "A source of random numbers. Computer ones can be flawed, which is why VOIDFORGE uses physical dice and coins.", "", "Keys & seeds"],
+  ["Random number generator (RNG)", "A source of random numbers. Computer ones can be flawed, which is why VOIDFORGE uses physical dice and coins. A seed made by a flawed one stays weak after an update; only moving the funds to a new seed helps.", "EXTRA TOOLS: Was my seed made by a flawed device?", "Keys & seeds"],
+  ["Seed mix (dice plus device)", "A seed made from two parts hashed together: the device's own random numbers and your dice rolls or coin flips. New Coldcard seeds are made this way. If either part is truly random and secret, the seed is strong.", "EXTRA TOOLS: Check a Coldcard seed mix.", "Keys & seeds"],
+  ["TRNG (true random number generator)", "A chip that makes random numbers from physical noise. Hardware wallets use one to make seeds. A Coldcard's View TRNG Words shows its part of a new seed as 24 words, so the mix with your dice can be checked.", "EXTRA TOOLS: Check a Coldcard seed mix.", "Keys & seeds"],
+  ["Weak seed", "A seed made from too little randomness, for example by a flawed random number generator, so a computer can search for it. It looks like any other seed. The fix is to make a new seed and move the funds.", "EXTRA TOOLS: Was my seed made by a flawed device?", "Keys & seeds"],
   ["Raw transaction", "The transaction as bytes, usually shown in hex, exactly as it is sent to the network.", "Inspect a transaction (PSBT) reads raw transactions.", "Transactions"],
   ["RBF (replace-by-fee)", "A transaction can be marked so it may be replaced by a version that pays a higher fee while it waits to be mined.", "Inspect a transaction (PSBT).", "Transactions"],
   ["Receive address", "An address your wallet gives you to be paid at. A wallet makes a fresh one for each payment, numbered 0, 1, 2 and so on on the first chain of the account (the 0 in m/84'/0'/0'/0/index).", "First 10 receive and 10 change addresses; Open this wallet: the Receive choice.", "Addresses & scripts"],
@@ -5455,7 +5497,7 @@ function practiceMode(on){
   detClear(true);   // v2.8.0: a Detective search or list belongs to the old network
   // fixes release: VERIFY's lines, the child seed, the device dice check and the two transaction tools showed addresses of the old network
   verifySeq++; { const v = document.getElementById("verifyStatus"); if(v.textContent){ v.className = "status"; v.textContent = "Practice mode was turned " + (on ? "on" : "off") + ": press VERIFY again."; } const m = document.getElementById("verifyMatch"); m.textContent = ""; m.className = "status"; clearVerifyIcons(); }
-  clearChild(); dcClear(true); clearPsbt(false); clearCompare(false);
+  clearChild(); dcClear(true); cmxClear(true); clearPsbt(false); clearCompare(false);
   if(!on) practiceWalletClose();
   reshowSeed();
 }
@@ -5706,6 +5748,9 @@ async function runSelfTests(auto){
   eq("checkPhrase accepts valid", async()=>(await checkPhrase("abandon ".repeat(11)+"about")).ok, true);
   eq("checkPhrase rejects bad checksum", async()=>(await checkPhrase("abandon ".repeat(12))).ok, false);
   eq("checkPhrase rejects unknown word", async()=>(await checkPhrase("abandon ".repeat(11)+"zzzz")).ok, false);
+  // v2.10.0: Coldcard's seed mix (TRNG words + dice or coin flips), Coinkite's own vectors (firmware testing/test_rolls.py at release 1.5.3Q)
+  eq("Coldcard seed mix: all-zero TRNG words + 50 dice rolls, 24 words (Coinkite's test vector)", async()=>hex(await coldcardMixEntropy(new Uint8Array(32), "123456".repeat(8)+"12", "D", "M", 24)), "67c8b6d836d47f88dfb88a1bb5a534cf28b437cd345e8c7fa59f1982f9248da5");
+  eq("Coldcard seed mix: all-zero TRNG words + 128 coin flips, 12 words (Coinkite's test vector)", async()=>hex(await coldcardMixEntropy(new Uint8Array(32), "01".repeat(64), "C", "M", 12)), "8216d06056e31315bec14171d1f09345");
   let pass=0, lines=[];
   for(const t of T){
     let got, err="";
@@ -7735,6 +7780,183 @@ async function printDiceCard(){
   });
 }
 
+// ===== v2.10.0 Check a Coldcard seed mix =====
+// Since 1.5.1Q (Q) and 5.6.1 (Mk4, Mk5), a new Coldcard seed (New Seed Words, or a Temporary Seed) needs the user's dice rolls,
+// coin flips or key mashing, mixed with the device's 32-byte TRNG seed; View TRNG Words (1.5.2Q, 5.6.2, Edge 6.6.1) shows that
+// seed as 24 words. The formula, from Coldcard/firmware shared/seed.py at release 1.5.3Q (commit 4e5ba883e0bf8756036f8a84fdbc4b067aa7ad05,
+// the same file as Mk4/Mk5 5.6.3), checked against Coinkite's own docs/verify_seed_mix.py and testing/test_rolls.py at that commit:
+//   rolls hash = SHA-256("CC" 0x01 + method + the rolls as typed, "1" to "6", or "1" heads / "0" tails), method "D" dice, "C" coin
+//   seed = SHA-256(SHA-256("CC" 0x01 "S" + purpose + method + TRNG seed + rolls hash)), purpose "M" New Seed Words, "T" temporary
+//   12 words use the first 16 bytes of the seed, 24 words all 32.
+// The Coldcard refuses fewer than 50 rolls or 128 flips, and refuses when one face is more than 30% of the rolls (65% for a coin
+// side), so then it shows no words at all. Key mashing hashes press timing, which cannot be typed, so it cannot be checked.
+const CMX = {
+  D: {name: "rolls", what: "dice rolls", alphabet: "123456", min: 50, maxFreq: 0.30, unit: "1 to 6"},
+  C: {name: "flips", what: "coin flips", alphabet: "10", min: 128, maxFreq: 0.65, unit: "1 (heads) or 0 (tails)"}
+};
+const cmxSymbols = (s) => String(s || "").replace(/[\s,]+/g, "");
+// Why the Coldcard would not make words from these rolls or flips (null when it would).
+function coldcardMixRefusal(method, symbols){
+  const m = CMX[method];
+  if(!m) return "Choose Dice Rolls or Coin Flips.";
+  const badCh = [...symbols].find(ch => !m.alphabet.includes(ch));
+  if(badCh !== undefined) return "“" + badCh + "” is not one of the " + m.what + ": the Coldcard takes only " + m.unit + ". Check what you typed.";
+  if(symbols.length < m.min) return "The Coldcard asks for at least " + m.min + " " + m.what + " and does not finish with fewer (" + symbols.length + " typed). Type every " + (method === "D" ? "roll" : "flip") + ", in order.";
+  const top = [...m.alphabet].map(f => [f, symbols.split(f).length - 1]).sort((a, b) => b[1] - a[1])[0];
+  if(top[1] / symbols.length > m.maxFreq) return "The Coldcard refuses these " + m.what + ": " + top[0] + " is " + top[1] + " of the " + symbols.length + ", more than " + Math.round(m.maxFreq * 100) + "%, so it says they are not random and makes no words. Check what you typed.";
+  return null;
+}
+// The seed entropy the Coldcard makes (16 bytes for 12 words, 32 for 24) from its 32-byte TRNG seed and the typed rolls or flips.
+async function coldcardMixEntropy(trng, symbols, method, purpose, wc){
+  if(!trng || trng.length !== 32) throw new Error("the TRNG seed is 32 bytes (24 words)");
+  if(!CMX[method] || !["M", "T"].includes(purpose) || ![12, 24].includes(wc)) throw new Error("unknown method, seed or length");
+  const te = (s) => new TextEncoder().encode(s);
+  const user = await sha256bytes(concatBytes(te("CC\x01" + method), te(symbols)));
+  const seed = await sha256bytes(await sha256bytes(concatBytes(te("CC\x01S" + purpose + method), trng, user)));
+  return seed.slice(0, wc === 12 ? 16 : 32);
+}
+let cmxSeq = 0;
+function cmxCountUpdate(){
+  const m = CMX[document.getElementById("cmxMethod").value] || CMX.D, k = cmxSymbols(document.getElementById("cmxRolls").value).length;
+  document.getElementById("cmxCount").textContent = k + " / " + m.min + " " + m.name + " (at least " + m.min + " for the Coldcard)";
+}
+function cmxClear(keepInput){
+  cmxSeq++;
+  if(!keepInput) for(const id of ["cmxTrng", "cmxRolls"]) document.getElementById(id).value = "";
+  const o = document.getElementById("cmxOut"); o.textContent = ""; o.style.display = "none";
+  const st = document.getElementById("cmxStatus"); st.className = "status"; st.textContent = "";
+  cmxCountUpdate();
+}
+async function cmxCheck(){
+  if(!gateOk()) return;
+  const my = ++cmxSeq, method = document.getElementById("cmxMethod").value, wc = +document.getElementById("cmxLen").value, purpose = document.getElementById("cmxPurpose").value;
+  const st = document.getElementById("cmxStatus"), say = (cls, t) => { st.className = "status " + cls; st.textContent = t; };
+  const o = document.getElementById("cmxOut"); o.textContent = ""; o.style.display = "none";
+  const text = document.getElementById("cmxTrng").value, symbols = cmxSymbols(document.getElementById("cmxRolls").value);
+  if(!text.trim()) return say("bad", "Type the 24 TRNG words first: on the Coldcard, New Seed Words, then View TRNG Words, before you add your rolls.");
+  const r = await checkPhrase(text);
+  if(my !== cmxSeq) return;
+  if(!r.ok) return say("bad", "TRNG words: " + r.msg);
+  if(r.mnemonic.split(" ").length !== 24) return say("bad", "View TRNG Words shows 24 words, even for a 12-word seed (all 256 bits of the device's part are used). Type all 24.");
+  const why = coldcardMixRefusal(method, symbols);
+  if(why) return say("bad", why);
+  const net = practiceOn ? "test" : "main";
+  const ent = await coldcardMixEntropy(xorEntropy(r.mnemonic), symbols, method, purpose, wc);
+  const m = await entropyToMnemonic(ent), fpx = await mnemonicFingerprint(m, ""), a0 = await firstAddressOn(net, m, "");
+  if(my !== cmxSeq) return;
+  const label = purpose === "T" ? "Temporary Seed" : "New Seed Words";
+  o.textContent = "SECRET: these are seed words. Never type them on a phone or online.\n\nThe Coldcard must show these " + wc + " words (" + label + ", from the TRNG words and " + symbols.length + " " + CMX[method].what + "):\n" + dcRows(m.split(" "), 2) + "\n\nMaster fingerprint: " + fpx + "\n" + dcAddrLabel(net) + ":\n" + a0;
+  o.style.display = "";
+  say("ok", "Compare every word with the Coldcard's screen: they must be the same, in the same order. If any word differs, first check that you typed the same 24 TRNG words, every " + (method === "D" ? "roll" : "flip") + " in order, and chose the same method, number of words and kind of seed (" + label + "). If it still differs, the Coldcard did not mix your " + CMX[method].what + " the way its published code says: do not put money on those words, and tell Coinkite. The fingerprint and address are for the words with no passphrase. These are the rules of Coinkite's published code at firmware 1.5.3Q and 5.6.3; a later firmware could change them.");
+}
+
+// ===== v2.10.0 Was my seed made by a flawed device? =====
+// A short questionnaire about where a seed came from. It takes no keys and makes nothing. Every row below is a randomness flaw
+// confirmed from the maker's own release notes and code, or from the public CVE record; anything not confirmed is left out.
+// Versions are compared as numbers (5.10.0 is later than 5.9.0). A seed made only from the user's own dice does not depend on the
+// device's random numbers at all, so these flaws do not weaken it.
+const FLAW_FIX_DATE = "2026-07-31";   // the date of Coinkite's hotfix releases (tags 2026-07-31T0517-v1.5.0Q, 2026-07-31T0519-v5.6.0, 2026-07-31T1248-v4.2.0, 2026-07-31T1609-v6.6.0X)
+const FLAWS = {
+  // Source: Coinkite, github.com/Coldcard/firmware, releases/ChangeLog.md at tag 2026-09-30T2026-v5.6.3, "July 2026 Security Advisory":
+  // "Versions from 2021 to July 2026 had a bug which produced poor entropy", "funds moved on chain immediately", master seeds trusted
+  // from "5.6.0 (Mk4, MK5)". Hotfix notes at tag 2026-07-31T0519-v5.6.0: "On Mk4, Mk5 and Q entropy may be as low as ~72 bits".
+  // The fix, commit ca72463709f4e3f8964952039d5caf955f566a87 ("fixes rng"), is in 5.6.0 and not in 5.5.1.
+  ccmk4: {name: "Coldcard Mk4 or Mk5", list: "Coldcard Mk4 and Mk5 before 5.6.0", coldcard: true, major: [5], fixed: [5, 6, 0], fixedText: "5.6.0", example: "5.5.1", bits: "about 72 bits"},
+  // Source: the same advisory ("1.5.0Q (Q1)") and the hotfix notes at tag 2026-07-31T0517-v1.5.0Q; the fix commit is in 1.5.0Q, not in 1.4.1Q.
+  ccq: {name: "Coldcard Q", list: "Coldcard Q before 1.5.0Q", coldcard: true, major: [1], fixed: [1, 5, 0], fixedText: "1.5.0Q", example: "1.4.1Q", bits: "about 72 bits"},
+  // Source: the same advisory ("4.2.0 (Mk3)"); releases/ChangeLog.md at tag 2026-07-31T1248-v4.2.0: "Mk3 users must regenerate any seeds
+  // made on earlier versions as their entropy is critically low at just ~40 bits"; History-Mk3.md: "4.2.0 - July 31, 2026, Hotfix to
+  // correct entropy bug". The first hotfix notes (tag 2026-07-31T0517-v1.5.0Q) said instead "made on version 4.0.1 or later" (from:).
+  ccmk3: {name: "Coldcard Mk3 (or an older Coldcard)", list: "Coldcard Mk3 before 4.2.0", coldcard: true, major: [1, 2, 3, 4], fixed: [4, 2, 0], fixedText: "4.2.0", from: [4, 0, 1], fromText: "4.0.1", example: "4.1.9", bits: "about 40 bits"},
+  // Source: the same advisory ("6.6.0 (Edge Mk/Q)"); the fix is in tags 2026-07-31T1609-v6.6.0X and 2026-07-31T1605-v6.6.0QX, not in 6.5.0X.
+  ccedge: {name: "Coldcard with Edge firmware", list: "Coldcard Edge firmware before 6.6.0", coldcard: true, major: [6], fixed: [6, 6, 0], fixedText: "6.6.0X or 6.6.0QX", example: "6.5.0X", bits: "about 72 bits"},
+  // Source: CVE-2023-39910 (the CVE record at cve.org, published 2023-08-09): "Libbitcoin Explorer 3.0.0 through 3.6.0 is weak, aka the
+  // Milk Sad issue", "restricts the internal entropy to 32 bits", "bx seed", "exploited in the wild in June and July 2023",
+  // "Affected users need to move funds to a secure new cryptocurrency wallet".
+  bx: {name: "Libbitcoin Explorer (bx seed)", list: "Libbitcoin Explorer bx seed 3.0.0 to 3.6.0", from: [3, 0, 0], to: [3, 6, 0], fromText: "3.0.0", toText: "3.6.0", example: "3.2.0",
+    why: "The bx seed command of Libbitcoin Explorer 3.0.0 to 3.6.0 made only 32 bits of randomness, which a computer can search quickly (the “Milk Sad” flaw, CVE-2023-39910, published 9 August 2023). Wallets made with it were robbed in June and July 2023."},
+  // Source: CVE-2023-31290 (the CVE record at cve.org, published 2023-04-27): "Trust Wallet Core before 3.1.1, as used in the Trust
+  // Wallet browser extension before 0.0.183", "The affected versions of the browser extension are 0.0.172 through 0.0.182", "the entropy
+  // is 32 bits", "exploited in the wild in December 2022 and March 2023", "move funds to a new wallet address".
+  trust: {name: "Trust Wallet browser extension", list: "Trust Wallet browser extension 0.0.172 to 0.0.182", from: [0, 0, 172], to: [0, 0, 182], fromText: "0.0.172", toText: "0.0.182", example: "0.0.180",
+    why: "The Trust Wallet browser extension 0.0.172 to 0.0.182 made seeds from only 32 bits of randomness, which a computer can search quickly (CVE-2023-31290, published 27 April 2023). Wallets made with it were robbed in December 2022 and March 2023."}
+};
+const flawKnownList = () => Object.values(FLAWS).map(f => f.list).join("; ");
+function flwVersion(s){
+  const m = String(s || "").trim().match(/^v?(\d{1,4})\.(\d{1,4})(?:\.(\d{1,4}))?\s*([a-z]{0,3})$/i);
+  return m ? {nums: [+m[1], +m[2], +(m[3] || 0)], suffix: m[4].toUpperCase()} : null;
+}
+const flwCmp = (a, b) => { for(let i = 0; i < 3; i++) if(a[i] !== b[i]) return a[i] < b[i] ? -1 : 1; return 0; };
+// "2024", "2024-05" or "2024-05-17" -> {y, m, d} (m, d null when not given); null when it is not such a date.
+function flwDate(s){
+  const m = String(s || "").trim().match(/^(\d{4})(?:[-/.](\d{1,2})(?:[-/.](\d{1,2}))?)?$/);
+  if(!m) return null;
+  const y = +m[1], mo = m[2] ? +m[2] : null, d = m[3] ? +m[3] : null;
+  if(y < 2009 || (mo !== null && (mo < 1 || mo > 12)) || (d !== null && (d < 1 || d > 31))) return null;
+  return {y, m: mo, d};
+}
+// Was the seed made before Coinkite's fix existed? true, false, or null when the date does not say.
+function flwBeforeFix(dt){
+  const [fy, fm, fd] = FLAW_FIX_DATE.split("-").map(Number);
+  if(dt.y !== fy) return dt.y < fy;
+  if(dt.m === null) return null;
+  if(dt.m !== fm) return dt.m < fm;
+  if(dt.d === null) return true;   // July 2026: every day but the 31st is before the fix, so the safe answer
+  return dt.d < fd;
+}
+const FLAW_MOVE = [
+  "How to move to a new seed, calmly. Move soon, but do not rush any step:",
+  "1. On your offline computer, make a new seed from your own dice in MAKE A SEED (Dice: at least 50 rolls for 12 words, 99 for 24), then press FORGE SEED. A seed made from your own dice does not depend on any device's random numbers.",
+  "2. Write the new words on paper. Do the restore drill, then check them in CHECK A BACKUP (VERIFY), and compare the first 10 receive and 10 change addresses with your wallet app or a second tool.",
+  "3. Set up the new wallet in your wallet app (the watch-only export, or restore the words on a hardware wallet) and send a small amount to it first, to see that it arrives.",
+  "4. Then send everything from the old wallet to an address of the new wallet, using the old wallet's app. Check the address on the signing device's screen, and check the transaction with Inspect a transaction (PSBT) in EXTRA TOOLS before you sign.",
+  "5. Once it is confirmed, stop using the old words: never receive money there again. Move wallets with a passphrase on the old words, and child seeds (BIP85) made from them, the same way."
+].join("\n");
+// The answer for one set of questions: {level: "weak" | "ok" | "unknown" | "input", text}.
+function flwAssess(dev, verText, dateText, dice){
+  const known = "We only know these: " + flawKnownList() + ".";
+  if(dev === "vf") return {level: "ok", text: "No known flaw for this. VOIDFORGE makes the words only from the dice rolls or coin flips you type, so they do not depend on any random number generator. They are as strong as your rolls: at least 50 rolls for 12 words (99 for 24), from real dice that nobody else saw. " + known};
+  if(dice === "only") return {level: "ok", text: "No known flaw for this. Your words came only from your own dice, so they do not depend on the device's random number generator, and a flaw in it does not make them weak" + (FLAWS[dev] && FLAWS[dev].coldcard ? " (a Coldcard's dice-only seed is the SHA-256 of your rolls alone, in its published code)" : "") + ". They are as strong as your rolls: at least 50 rolls for 12 words (99 for 24), from real dice that nobody else saw. If you are not sure the dice alone set the words, answer “No” to the dice question instead. " + known};
+  if(dev === "other" || !FLAWS[dev]) return {level: "ok", text: "No known flaw for this. " + known + " That does not prove a device is safe: a seed made from your own dice is the one kind that does not depend on it."};
+  let f = FLAWS[dev];
+  const v = verText.trim() ? flwVersion(verText) : null;
+  if(verText.trim() && !v) return {level: "input", text: "Type the version as numbers with dots, like " + f.example + ", or leave it empty if you do not know it."};
+  const dt = dateText.trim() ? flwDate(dateText) : null;
+  if(dateText.trim() && !dt) return {level: "input", text: "Type the date as a year and month, like 2024-05, or just the year, or leave it empty."};
+  if(f.coldcard){
+    if(v && v.suffix.includes("X")) f = FLAWS.ccedge;   // an Edge version (6.5.0X, 6.5.0QX) on any model
+    if(v && !f.major.includes(v.nums[0])) return {level: "input", text: v.nums.join(".") + v.suffix + " is not a version of the " + f.name + " (its versions look like " + f.example + "). Check the model and the version."};
+    const mixed = dice === "mixed" ? " You added dice rolls, which may have helped, but the device's own part was weak, VOIDFORGE cannot tell how many rolls went in, and Coinkite asks to replace every seed made on these versions." : "";
+    const weak = (how) => ({level: "weak", text: "Your seed may be weak: move the funds to a new seed. " + how + " Coinkite's own security advisory says COLDCARD firmware from 2021 to July 2026 had a bug that made poor random numbers (for the " + f.name + " as little as " + f.bits + ", where 128 is the aim), and that any seed made on it should be replaced and the funds moved. Updating the firmware does not fix a seed that was already made." + mixed});
+    if(v){
+      if(flwCmp(v.nums, f.fixed) >= 0) return {level: "ok", text: "No known flaw for this version: " + v.nums.join(".") + v.suffix + " has Coinkite's fix (" + f.fixedText + " or later). " + known};
+      return weak("It was made on " + v.nums.join(".") + v.suffix + ", before the fix in " + f.fixedText + "." + (f.from && flwCmp(v.nums, f.from) < 0 ? " (Coinkite's first notes named " + f.fromText + " or later for the Mk3; its later notes say every earlier version, so treat this one as weak too.)" : ""));
+    }
+    if(dt){
+      const before = flwBeforeFix(dt);
+      if(before === true) return weak("It was made before Coinkite's fix came out on 31 July 2026.");
+      if(before === false) return {level: "unknown", text: "We cannot tell from the date alone. The seed was made after Coinkite's fix came out on 31 July 2026, but the device may not have been updated yet. Find the firmware version it had then (" + f.fixedText + " or later is fixed). If you cannot, moving to a new seed is the safe choice."};
+    }
+    return {level: "unknown", text: "We cannot tell without the firmware version (" + f.fixedText + " or later is fixed) or the date the seed was made (before 31 July 2026 means weak). If you cannot find either, moving to a new seed is the safe choice."};
+  }
+  if(v){
+    if(flwCmp(v.nums, f.from) >= 0 && flwCmp(v.nums, f.to) <= 0) return {level: "weak", text: "Your seed may be weak: move the funds to a new seed. " + f.why};
+    return {level: "ok", text: "No known flaw for this version: " + v.nums.join(".") + " is not one of the flawed versions (" + f.fromText + " to " + f.toText + "). " + known};
+  }
+  return {level: "unknown", text: "We cannot tell without the version. The flawed versions are " + f.fromText + " to " + f.toText + ". If you cannot find the version you used then, moving to a new seed is the safe choice."};
+}
+function flwClear(all){
+  if(all){ document.getElementById("flwVer").value = ""; document.getElementById("flwDate").value = ""; for(const id of ["flwDev", "flwDice"]) document.getElementById(id).selectedIndex = 0; }
+  const st = document.getElementById("flwStatus"); st.className = "status"; st.textContent = "";
+  const o = document.getElementById("flwOut"); o.textContent = ""; o.style.display = "none";
+}
+function flwUi(){
+  const r = flwAssess(document.getElementById("flwDev").value, document.getElementById("flwVer").value, document.getElementById("flwDate").value, document.getElementById("flwDice").value);
+  const st = document.getElementById("flwStatus"), o = document.getElementById("flwOut");
+  st.className = "status " + {weak: "bad", ok: "ok", unknown: "warn", input: "bad"}[r.level]; st.textContent = r.text;
+  o.textContent = r.level === "weak" || r.level === "unknown" ? FLAW_MOVE : ""; o.style.display = o.textContent ? "" : "none";
+}
+
 function togglePassphrase(btn){
   const el = document.getElementById("passphrase"), el2 = document.getElementById("passphrase2");
   const show = el.type === "password";
@@ -9032,6 +9254,7 @@ function wipeSeed(){
   lbClear();   // v2.9.0: the label file (private)
   clearXor();   // v2.9.0: Seed XOR parts (secret)
   s39mClear();   // v2.10.0: SLIP39 shares made from dice (secret)
+  cmxClear(); flwClear(true);   // v2.10.0: the Coldcard seed mix check (secret) and the flawed-device questions
   seedSig = null; passKey = null; exCtx = null;   // fixes release: these held the rolls and the passphrases after a wipe (found by tests/memory.test.mjs)
   clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo(); clearMsx();   // fixes release: public but private data (xpubs, descriptors, addresses, amounts)
   for(const id of ["wpIn", "payA", "payB", "dlPaste"]){ const e = document.getElementById(id); if(e) e.value = ""; }
@@ -9047,7 +9270,7 @@ function wipeSeed(){
 }
 
 // Auto-clear (v1.34.0): optional, off at every page load, nothing stored. Wipes the secrets without asking after idle time or when the tab is hidden.
-const AUTO_FIELDS = ["pkIn", "rolls", "passphrase", "passphrase2", "note", "phrase", "verifyPass", "verifyRecorded", "checkAddr", "drillWords", "drillPass", "prInput", "reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "wdWords", "wdFlips", "wdFind", "cdCards", "cdHex", "s39In", "s39Pass", "dpRolls", "dcRolls", "s39mRolls", "s39mPass", "s39mPass2"];
+const AUTO_FIELDS = ["pkIn", "rolls", "passphrase", "passphrase2", "note", "phrase", "verifyPass", "verifyRecorded", "checkAddr", "drillWords", "drillPass", "prInput", "reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "wdWords", "wdFlips", "wdFind", "cdCards", "cdHex", "s39In", "s39Pass", "dpRolls", "dcRolls", "s39mRolls", "s39mPass", "s39mPass2", "cmxTrng", "cmxRolls"];
 let autoLast = Date.now(), autoTimer = null;
 function autoTouch(){ autoLast = Date.now(); }
 ["keydown", "pointerdown", "input", "touchstart", "wheel"].forEach(e => document.addEventListener(e, autoTouch, {capture: true, passive: true}));
@@ -11266,6 +11489,7 @@ function setGate(state, text, cls){
   for(const id of ["xorSplitBtn", "xorCombineBtn"]) document.getElementById(id).disabled = !on;   // v2.9.0: Seed XOR
   document.getElementById("s39Btn").disabled = !on;   // v2.9.0: SLIP39
   document.getElementById("s39mBtn").disabled = !on;   // v2.10.0: SLIP39 shares from dice
+  document.getElementById("cmxBtn").disabled = !on;   // v2.10.0: Check a Coldcard seed mix
   document.getElementById("wpBtn").disabled = !on;
   document.getElementById("reuseBtn").disabled = !on;
   document.getElementById("childBtn").disabled = !on;
