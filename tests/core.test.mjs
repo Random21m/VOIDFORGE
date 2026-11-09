@@ -2,7 +2,7 @@
 // what the page makes and checks that Core agrees, with real coins on that network:
 // - the watch-only descriptors of every address type (checksum, the addresses they give, the page's "Import into Bitcoin
 //   Core" commands run as written, and a payment to the page's first address shows up in that watch-only wallet);
-// - a multisig descriptor (checksum and addresses);
+// - a multisig descriptor (checksum and addresses), native and nested SegWit and (v2.11.0) Taproot, which is also imported and paid;
 // - a transaction (PSBT) made by Core: the page's inspector shows the same outputs and fee;
 // - a message signed by Core: the page says the signature is valid, and not valid for a changed message.
 // Regtest uses the testnet address versions; its SegWit addresses start with bcrt1 where testnet's start with tb1, so those are
@@ -118,15 +118,28 @@ try {
   // ---- 3. a multisig descriptor (2 of 3, native and nested SegWit) ----
   { const cos = [];
     for (let i = 0; i < 3; i++) { const root = HDKey.fromMasterSeed(mnemonicToSeedSync(entropyToMnemonic(nc.randomBytes(16), wordlist), ''), { private: 0x04358394, public: 0x043587cf });   // testnet versions (tprv/tpub)
-      for (const [type, s] of [['ms-wsh', 2], ['ms-sh-wsh', 1]]) { const k = root.derive("m/48'/1'/0'/" + s + "'"), fp = root.fingerprint.toString(16).padStart(8, '0');
+      for (const [type, s] of [['ms-wsh', 2], ['ms-sh-wsh', 1], ['ms-tr', 3]]) { const k = root.derive("m/48'/1'/0'/" + s + "'"), fp = root.fingerprint.toString(16).padStart(8, '0');
         (cos[type] = cos[type] || []).push({ fp, path: "48h/1h/0h/" + s + 'h', key: await w.parseExtendedKey(k.publicExtendedKey) }); } }
-    for (const type of ['ms-wsh', 'ms-sh-wsh']) {
+    for (const type of ['ms-wsh', 'ms-sh-wsh', 'ms-tr']) {
       const d = await w.multisigDescriptor(type, 2, cos[type], 0), info = await rpc('getdescriptorinfo', [d]);
       R.ok(d.endsWith('#' + info.checksum), type + ': Core gives the same descriptor checksum');
       const ca = await rpc('deriveaddresses', [d, [0, 4]]), pa = [];
       for (let i = 0; i < 5; i++) pa.push(await w.multisigAddress(type, 2, cos[type], 0, i, 'test'));
       R.ok(ca.every((a, i) => same(a, pa[i])), type + ': Core derives the same first 5 addresses');
-    } }
+    }
+    // v2.11.0: the Taproot multisig wallet (tr(unspendable xpub, sortedmulti_a)): the change descriptor, the page's Import into
+    // Bitcoin Core commands run as written, and a payment to its first address shows in the watch-only wallet
+    { const dr = await w.multisigDescriptor('ms-tr', 2, cos['ms-tr'], 0), dc = await w.multisigDescriptor('ms-tr', 2, cos['ms-tr'], 1), ic = await rpc('getdescriptorinfo', [dc]);
+      const cc = await rpc('deriveaddresses', [dc, [0, 4]]), pc = []; for (let i = 0; i < 5; i++) pc.push(await w.multisigAddress('ms-tr', 2, cos['ms-tr'], 1, i, 'test'));
+      R.ok(dc.endsWith('#' + ic.checksum) && cc.every((a, i) => same(a, pc[i])), 'ms-tr: Core gives the same change descriptor checksum and first 5 change addresses');
+      const lines = w.coreImportText(dr, dc, 'now').split('\n'), cw = lines[0].match(/^bitcoin-cli createwallet "voidforge-watch" (.*)$/), im = lines[1].match(/^bitcoin-cli -rpcwallet=voidforge-watch importdescriptors '(.*)'$/);
+      await rpc('createwallet', ['watch-ms-tr', ...cw[1].split(' ').map((x) => x === 'true' ? true : x === 'false' ? false : x === '""' ? '' : x)]);
+      const res = await rpc('importdescriptors', [JSON.parse(im[1])], 'watch-ms-tr');
+      R.ok(res.length === 2 && res.every((x) => x.success), 'ms-tr: Core imports the Taproot multisig descriptors from the page\'s command');
+      const first = await rpc('getnewaddress', ['', 'bech32m'], 'watch-ms-tr'), pa0 = await w.multisigAddress('ms-tr', 2, cos['ms-tr'], 0, 0, 'test');
+      R.ok(same(first, pa0), 'ms-tr: the watch-only wallet\'s first new address is the page\'s first address');
+      await rpc('sendtoaddress', [first, 0.5], 'miner'); await mine(1);
+      R.ok(Math.abs((await rpc('getbalances', [], 'watch-ms-tr')).mine.trusted - 0.5) < 1e-8, 'ms-tr: a payment to the page\'s first Taproot multisig address shows in the watch-only wallet'); } }
 
   // ---- 4. a message signed by Core (legacy address, the classic BIP-137 format) ----
   { const a = await rpc('getnewaddress', ['', 'legacy'], 'miner'), msg = 'VOIDFORGE test ' + nc.randomBytes(4).toString('hex') + '\nsecond line', sig = await rpc('signmessage', [a, msg], 'miner');

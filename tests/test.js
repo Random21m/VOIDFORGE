@@ -853,7 +853,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
         ok(pairs.every(([k,b2])=>cr(hex(tok(blk,k)),b2)>=4.5)&&cr(hex(tok(blk,'--btntx')),hex(tok(blk,'--btn')))>=4.5,'colors ('+nm+'): text, gray text, gold, red and green words and the gold button label all keep contrast >= 4.5:1'); }
       ok(/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(css)&&/\.tag-rec, body\.light \.tag-rec \{ color: var\(--warn-text\); background: none; \}/.test(css)&&/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(css),'labels: RECOMMENDED, SECRET, PUBLIC and the gray ones are plain colored words (no pill, border or fill)');
       { const notes=[...t.w.document.querySelectorAll('.tag-note')], ros=[...t.w.document.querySelectorAll('.tag-ro')];
-        ok(notes.length===2&&notes.every(e=>/^ADVANCED$/.test(e.textContent))&&![...t.w.document.querySelectorAll('summary')].some(e=>/\((demo only|advanced)/i.test(e.textContent)),'tags: ADVANCED is a gray label, not plain (brackets) in the headings');
+        ok(notes.length===3&&notes.every(e=>/^ADVANCED$/.test(e.textContent))&&![...t.w.document.querySelectorAll('summary')].some(e=>/\((demo only|advanced)/i.test(e.textContent)),'tags: ADVANCED is a gray label, not plain (brackets) in the headings');
         ok(ros.filter(e=>e.textContent==='NEW').length===2,'tags: every "NEW" badge (Multisig header and Silent Payment address) looks the same -- the same gray tag-ro style, not two different colors for the same word');
  }
     }
@@ -2683,6 +2683,100 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     $('c32mRolls').value=R; await w.c32mUi(); mode('combine'); ok($('c32mRolls').value===''&&!w.eval('c32mCtx')&&$('c32MakePanel').style.display==='none','codex32 make: switching back to Check or combine strings wipes the made shares');
     ok(/\["Codex32", "A way \(BIP93\)/.test(html)&&/\["Volvelle", /.test(html)&&/\["BIP93 \(Codex32\)", "The standard for codex32/.test(html)&&/SLIP39 shares \(Shamir backup\) and Codex32 shares \(BIP93\)\.", "Keys & seeds"\]/.test(html),'dictionary: Codex32, Volvelle, BIP93 (Codex32) and Shamir\'s Secret Sharing updated');
     ok(r.errors.length===0,'codex32: no page errors '+JSON.stringify(r.errors));
+    r.w.close(); }
+  // v2.11.0: Taproot multisig, tr(unspendable xpub, sortedmulti_a(M, keys at m/48'/coin'/0'/3')). Expected values from embit
+  // (tests/fixtures/gen_taproot_multisig.py), @scure/bip32 + @scure/btc-signer (p2tr with a p2tr_ms leaf), and BIP387's own vectors.
+  { const {mnemonicToSeedSync}=require('@scure/bip39'); const {HDKey}=require('@scure/bip32'); const btc=require('@scure/btc-signer'); const {bech32m}=require('@scure/base');
+    const r=load(); await r.ready(); const $=r.$, w=r.w, HX=(b)=>Buffer.from(b).toString('hex');
+    const F=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures','taproot-multisig','wallets.json'),'utf8')), NUMS='50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0';
+    // 1. every fixture wallet (mainnet and testnet, 1-of-2, 2-of-3, 3-of-5): descriptors with checksums and 10+10 addresses equal embit's
+    { let bad=0, n=0; for(const v of F.wallets){ const cos=[]; for(const k of v.keys) cos.push({fp:k.fp, path:k.path, key:await w.parseExtendedKey(k.xpub)});
+        if(await w.multisigDescriptor('ms-tr',v.m,cos,0)!==v.receive_desc||await w.multisigDescriptor('ms-tr',v.m,cos,1)!==v.change_desc) bad++;
+        for(let i=0;i<10;i++){ n+=2; if(await w.multisigAddress('ms-tr',v.m,cos,0,i,v.net)!==v.receive[i]) bad++; if(await w.multisigAddress('ms-tr',v.m,cos,1,i,v.net)!==v.change[i]) bad++; }
+        if(await w.b138Address(v.multipath_desc,1,9,v.net)!==v.change[9]) bad++; }
+      ok(bad===0&&F.wallets.length===5&&n===100,'Taproot multisig: '+F.wallets.length+' wallets, descriptors (with checksums) and '+n+' addresses equal embit\'s ('+F.source+')'); }
+    // 2. @scure: random seeds; the internal key worked out apart from the page (H from btc-signer, chain code from Node's SHA-256)
+    const trScure=(m,roots,net,b,i)=>{ const coin=net==='test'?1:0, acct=roots.map(rt=>rt.derive(`m/48'/${coin}'/0'/3'`)), cc=nc.createHash('sha256').update(Buffer.concat(acct.map(a=>Buffer.from(a.publicKey)).sort(Buffer.compare))).digest();
+      const ik=new HDKey({publicKey:Uint8Array.from([2,...btc.TAPROOT_UNSPENDABLE_KEY]), chainCode:cc}).deriveChild(b).deriveChild(i).publicKey.slice(1);
+      const xs=acct.map(a=>a.deriveChild(b).deriveChild(i).publicKey.slice(1)).sort((x,y)=>Buffer.compare(Buffer.from(x),Buffer.from(y)));
+      return btc.p2tr(ik,{script:btc.p2tr_ms(m,xs).script},net==='test'?btc.TEST_NETWORK:btc.NETWORK).address; };
+    ok(HX(btc.TAPROOT_UNSPENDABLE_KEY)===NUMS,'Taproot multisig: btc-signer\'s unspendable key is BIP341\'s H, the one the page uses');
+    { let bad=0; for(const [m,n,net] of [[2,3,'main'],[3,4,'test'],[2,2,'main']]){ const roots=Array.from({length:n},()=>HDKey.fromMasterSeed(nc.randomBytes(32))), coin=net==='test'?1:0, cos=[];
+        for(const rt of roots){ const a=rt.derive(`m/48'/${coin}'/0'/3'`); cos.push({fp:rt.fingerprint.toString(16).padStart(8,'0'), path:`48h/${coin}h/0h/3h`, key:await w.parseExtendedKey(a.publicExtendedKey)}); }
+        if(net==='test') for(const c of cos){ const raw=await w.base58decode(c.key.str); c.key=await w.parseExtendedKey(await w.base58check(Uint8Array.from([0x04,0x35,0x87,0xcf,...raw.slice(4)]))); }
+        for(const [b,i] of [[0,0],[0,7],[1,2]]) if(await w.multisigAddress('ms-tr',m,cos,b,i,net)!==trScure(m,roots,net,b,i)) bad++; }
+      ok(bad===0,'Taproot multisig: random 2-of-3, 3-of-4 (testnet) and 2-of-2 wallets give the addresses @scure/btc-signer gives (p2tr with a sorted p2tr_ms leaf)'); }
+    // 3. BIP387's official sortedmulti_a vector (bitcoin/bips a34f044): the leaf script and the address engine
+    { const D='tr('+NUMS+',sortedmulti_a(2,xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL/*,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0/0/*))';
+      const want=['abd47468515223f58a1a18edfde709a7a2aab2b696d59ecf8c34f0ba274ef772','fe62e7ed20705bd1d3678e072bc999acb014f07795fa02cb8f25a7aa787e8cbd','1311093750f459039adaa2a5ed23b0f7a8ae2c2ffb07c5390ea37e2fb1050b41'].map(h=>bech32m.encode('bc',[1,...bech32m.toWords(Buffer.from(h,'hex'))]));
+      const k1=HDKey.fromExtendedKey('xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL'), k2=HDKey.fromExtendedKey('xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y');
+      let bad=0; for(let i=0;i<3;i++){ const leaf=w.msTrLeaf(2,[k1.deriveChild(i).publicKey.slice(1),k2.deriveChild(0).deriveChild(0).deriveChild(i).publicKey.slice(1)]), lh=await w.taggedHash('TapLeaf',w.concatBytes(Uint8Array.of(0xc0),w.varintBytes(leaf.length),leaf));
+        if(await w.b138TrAddress(Buffer.from(NUMS,'hex'),lh,'bc')!==want[i]||await w.b138Address(D,0,i,'main')!==want[i]) bad++; }
+      ok(bad===0,'Taproot multisig: BIP387\'s sortedmulti_a test vector (scripts 0, 1 and 2) from the page\'s leaf script and its descriptor reader'); }
+    // 4. the wizard: Taproot type, keys pasted from other devices (fixture wallet 0), the exports that fit it
+    const v0=F.wallets[0]; w.msReset(); $('msN').value='3'; $('msM').value='2'; w.msUpdateM(); $('msAcct').value='0'; $('msNet').value='main';
+    $('msType').value='ms-wsh'; $('msType').dispatchEvent(new w.Event('change')); ok($('msTrNote').style.display==='none','Taproot multisig: the note is hidden for native SegWit');
+    $('msType').value='ms-tr'; $('msType').dispatchEvent(new w.Event('change')); const note=$('msTrNote').textContent;
+    ok($('msTrNote').style.display===''&&/BIP48 defines only 1’ and 2’; there is no standard path for Taproot multisig/.test(note)&&/Bitcoin Core 24\.0\.1 or later/.test(note)&&/EDGE firmware 6\.3\.5X or later/.test(note)&&/Sparrow cannot use Taproot multisig yet/.test(note)&&/the key path is shut/.test(note)&&/MuSig2/.test(note),'Taproot multisig: choosing it shows the plain-language note (no standard path, the key path is shut, confirmed wallets only)');
+    eq([...$('msType').options].map(o=>o.textContent).join(' | '),'Native SegWit (bc1q...), recommended | Nested SegWit (3...), older wallets | Taproot (bc1p...), script path, sortedmulti_a','Taproot multisig: the address type choice');
+    w.msStart(); w.msUsePaste(); const paste=async(t)=>{ $('msPaste').value=t; $('msPasteFp').value=''; await w.msAddPasted(); return $('msRunErr').textContent; };
+    const AB='abandon '.repeat(11)+'about', rtA=HDKey.fromMasterSeed(mnemonicToSeedSync(AB,'')), fpA='73c5da0a';
+    { const zp=HDKey.fromMasterSeed(mnemonicToSeedSync(AB,''),{private:0x02aa7a99,public:0x02aa7ed3}).derive("m/48'/0'/0'/2'").publicExtendedKey;
+      ok(/different multisig script type/.test(await paste('['+fpA+'/48h/0h/0h/2h]'+zp)),'Taproot multisig paste: a native SegWit cosigner key (Zpub) is refused');
+      ok(/not at the expected place in the key tree \(m\/48'\/0'\/0'\/3'\)/.test(await paste('['+fpA+'/48h/0h/0h/2h]'+rtA.derive("m/48'/0'/0'/2'").publicExtendedKey)),'Taproot multisig paste: an xpub from the native SegWit path 2\' is refused');
+      ok(/not the one this wallet uses \(48h\/0h\/0h\/3h\)/.test(await paste('['+fpA+'/48h/0h/0h/2h]'+rtA.derive("m/48'/0'/0'/3'").publicExtendedKey)),'Taproot multisig paste: a line whose path says 2\' is refused, even with the right key');
+      ok(/single-signature/.test(await paste('['+fpA+"/84h/0h/0h]"+HDKey.fromMasterSeed(mnemonicToSeedSync(AB,''),{private:0x04b2430c,public:0x04b24746}).derive("m/84'/0'/0'").publicExtendedKey)),'Taproot multisig paste: a single-signature zpub is refused');
+      ok(w.eval('ms.keys.length')===0,'Taproot multisig paste: nothing was added by the refused keys'); }
+    for(const k of v0.keys) ok(await paste('['+k.fp+"/48'/0'/0'/3']"+k.xpub+'/<0;1>/*')==='','Taproot multisig paste: cosigner '+k.fp+' at m/48\'/0\'/0\'/3\' is accepted');
+    ok(w.eval('ms.done')&&$('msDescR').textContent===v0.receive_desc&&$('msDescC').textContent===v0.change_desc,'Taproot multisig: the wallet\'s receive and change descriptors (with checksums) equal embit\'s');
+    ok([...$('msAddrs').children].map(li=>li.textContent).join()===v0.receive.join()&&[...$('msChange').children].map(li=>li.textContent).join()===v0.change.join(),'Taproot multisig: the first 10 receive and 10 change addresses (bc1p...) equal embit\'s');
+    ok(/^2-of-3 multisig, Taproot \(bc1p\.\.\.\), script path, account 0$/.test($('msRunTitle').textContent)&&/Bitcoin Core \(24\.0\.1 or later\) or a Coldcard with EDGE firmware/.test($('msDescLabel').textContent),'Taproot multisig: the title and the descriptor label name the type and the wallets that import it');
+    ok($('msAnimUr').style.display==='none'&&$('msAnimCc').style.display==='none'&&$('msAnimTr').style.display==='','Taproot multisig: the UR (Sparrow, SeedSigner, Nunchuk) and Keystone/Passport QR buttons are hidden, and the reason is shown');
+    w.animStop(); await w.msAnim('ur'); ok(!w.eval('animCtx'),'Taproot multisig: the UR export does nothing for this type');
+    await w.msAnim('bbqr'); { const d=w.bbqrDecodeFrames(w.eval('animCtx.parts')), txt=new TextDecoder().decode(d.bytes); ok(txt===v0.multipath_desc&&/EDGE firmware 6\.3\.5QX/.test($('msAnimCap').textContent),'Taproot multisig: the COLDCARD Q (BBQr) export is the receive-and-change descriptor embit reads, and it names the EDGE firmware'); }
+    w.animHide('msAnim');
+    { const c=$('msCoreCmd').textContent.split('\n'), im=c[1]&&c[1].match(/^bitcoin-cli -rpcwallet=voidforge-watch importdescriptors '(.*)'$/), req=im?JSON.parse(im[1]):[];
+      ok(/^bitcoin-cli createwallet "voidforge-watch" true true "" false true$/.test(c[0])&&req.length===2&&req[0].desc===v0.receive_desc&&req[1].desc===v0.change_desc&&!req[0].internal&&req[1].internal&&req[0].timestamp==='now','Taproot multisig: Import into Bitcoin Core gives createwallet and importdescriptors with both descriptors');
+      $('msCoreWhen').value='0'; $('msCoreWhen').dispatchEvent(new w.Event('change')); ok(JSON.parse($('msCoreCmd').textContent.split('\n')[1].match(/'(.*)'$/)[1])[0].timestamp===0,'Taproot multisig: the "used before" choice scans from the start'); $('msCoreWhen').value='now'; }
+    w.msPrint(); { const pq=r.d.getElementById('printQr').textContent; ok(r.st.printed>=1&&pq.includes(v0.receive_desc)&&/Taproot \(bc1p\.\.\.\), script path/.test(pq)&&/path m\/48'\/0'\/0'\/3'/.test(pq)&&pq.includes(v0.receive[9])&&pq.includes(v0.change[9]),'Taproot multisig: the recovery sheet prints the tr() descriptor, the 3\' paths and 10+10 addresses'); r.w.dispatchEvent(new r.w.Event('afterprint')); }
+    // 5. SAVE ENCRYPTED DESCRIPTOR BACKUP (BIP138) with the tr() descriptor; one cosigner's words open it
+    { const R50='16354216535241263542163542165432163542165342165432'; $('msbRolls').value=R50; r.st.blob=null; await w.b138MakeUi('msb');
+      const st=$('msbStatus').textContent, f=w.b138Parse(Uint8Array.from(Buffer.from($('msbText').textContent,'base64')));
+      ok(/^SAVED: voidforge-descriptor-backup\.bip138 .*Any one of these 3 keys opens it/.test(st)&&/KEYS THAT CANNOT OPEN IT:\nThe key xpub661MyMwA… is the BIP341 unspendable key/.test(st)&&!!r.st.blob,'Taproot multisig backup: saved; the 3 cosigners open it, and the unspendable internal key is named as one that cannot');
+      ok(f.paths.length===1&&w.b138PathText(f.paths[0])==="m/48'/0'/0'/3'",'Taproot multisig backup: the 3\' path, which is not a common BIP48 path, is written in the file so a reader knows where to look');
+      $('b138In').value=$('msbText').textContent; $('phrase').value='letter advice cage absurd amount doctor acoustic avoid letter advice cage above'; $('verifyPass').value=''; $('b138Pub').value=''; await w.b138OpenUi();
+      const out=$('b138Out').textContent; ok(/^OPENED with the words typed above, without a passphrase: the key at m\/48'\/0'\/0'\/3'/.test($('b138Status').textContent)&&out.includes(v0.multipath_desc)&&v0.receive.every((a,i)=>out.includes('  '+i+': '+a))&&v0.change.every((a,i)=>out.includes('  '+i+': '+a)),'Taproot multisig backup: one cosigner\'s words open it, and it shows the descriptor and the same 10+10 addresses');
+      w.b138OpenClear(); $('phrase').value=''; }
+    // 6. the other descriptor tools read the tr(...sortedmulti_a...) form
+    { const x=await w.msExplain(v0.multipath_desc,null,'',''); ok(x.state==='ok'&&/^This Taproot \(bc1p\.\.\.\) wallet can be spent in 1 way:\n1\. 2 of Key 1 \(fingerprint 28645006\), Key 2 \(fingerprint 73c5da0a\), Key 3 \(fingerprint b8688df1\), at any time\./.test(x.text)&&/Nobody can spend with the Taproot internal key alone/.test(x.text)&&!/key path/.test(x.text),'Explain a wallet: a Taproot multisig is 2 of its 3 keys, and its xpub-on-H internal key is called shut, not a key'); }
+    { const x=await w.msExplain('tr('+NUMS+',sortedmulti_a(2,'+v0.keys.map(k=>'['+k.fp+'/48h/0h/0h/3h]'+k.xpub+'/0/*').join(',')+'))',null,'',''); ok(x.state==='ok'&&/can be spent in 1 way/.test(x.text)&&/internal key alone/.test(x.text),'Explain a wallet: the plain H internal key is shut too'); }
+    { const x=await w.kcCheck(v0.receive_desc,AB,''); ok(x.state==='ok'&&/^THIS SEED IS IN THIS WALLET: it is key 2 of 3\. Spending needs 1 more of the other keys\./.test(x.text)&&/Wallet file: descriptor, 2 of 3 multisig, P2TR\./.test(x.text)&&/The Taproot internal key \(key path\): made from BIP341's unspendable point H/.test(x.text)&&!/does not say which seed/.test(x.text),'Is this seed in my wallet file?: a Taproot multisig descriptor; the seed is key 2 of 3, and the internal key is named as unspendable');
+      const y=await w.kcCheck(v0.receive_desc,'zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong',''); ok(y.state==='bad'&&/^NOT IN THIS WALLET/.test(y.text),'Is this seed in my wallet file?: another seed is not in the Taproot multisig wallet'); }
+    { const d=v0.receive_desc, i=d.indexOf('sortedmulti_a')+3, bad=d.slice(0,i)+'x'+d.slice(i+1), x=await w.descTypoFind(bad); ok(x.state==='ok'&&/^FOUND: one change makes everything match: character \d+: “x” should be “t”/.test(x.text)&&x.text.includes(d.replace(/#.*$/,'')),'Find a typo: a typo in a Taproot multisig descriptor is found and fixed'); }
+    // 7. Inspect a transaction: a Taproot multisig change output is said to hold this wallet's key among several, NOT checked
+    { const H=0x80000000, kk=(p)=>rtA.derive(p).publicKey, mine=kk("m/48'/0'/0'/3'/1/0").slice(1), other=HDKey.fromMasterSeed(nc.randomBytes(32)).derive('m/0/0').publicKey.slice(1);
+      const leaf=btc.p2tr_ms(2,[mine,other].sort((a,b)=>Buffer.compare(Buffer.from(a),Buffer.from(b)))), pay=btc.p2tr(btc.TAPROOT_UNSPENDABLE_KEY,{script:leaf.script});
+      const lh=await w.taggedHash('TapLeaf',w.concatBytes(Uint8Array.of(0xc0),w.varintBytes(leaf.script.length),leaf.script));
+      const t=new btc.Transaction(); t.addInput({txid:nc.randomBytes(32), index:0, witnessUtxo:{script:btc.p2wpkh(kk("m/84'/0'/0'/0/0")).script, amount:150000n}});
+      t.addOutput({script:pay.script, amount:70000n, tapBip32Derivation:[[mine,{hashes:[lh], der:{fingerprint:rtA.fingerprint, path:[48+H,H,H,3+H,1,0]}}]]});
+      $('phrase').value=AB; $('verifyPass').value=''; $('psbtInput').value=Buffer.from(t.toPSBT(0)).toString('base64'); $('psbtNet').value='main'; await w.runPsbt(); const o=$('psbtOut').textContent;
+      ok(/said to hold this wallet's key at m\/48'\/0'\/0'\/3'\/1\/0 among several keys \(a multisig or script output\)\. NOT checked/.test(o)&&/NO CLEAN VERDICT/.test(o)&&!/CHANGE, CHECKED/.test(o),'Inspect a transaction: a Taproot multisig change output is said to be not checked (this page cannot check multisig change)'); $('phrase').value=''; $('psbtInput').value=''; }
+    // 8. made here, in practice mode: TESTNET (practice coins only), tpub keys at m/48'/1'/0'/3', tb1p addresses (expected from @scure)
+    { w.msReset(); w.practiceMode(true); ok($('msNet').value==='test'&&$('msNet').disabled,'Taproot multisig: practice mode puts the wizard on testnet');
+      $('msN').value='2'; w.msUpdateM(); $('msType').value='ms-tr'; w.msStart(); ok($('msTestBan').style.display===''&&/TESTNET/.test($('msBanTitle').textContent),'Taproot multisig: the testnet banner shows');
+      const S=[[AB.replace(/ about$/,''),'0000000'],['legal winner thank year wave sausage worth useful legal winner thank','1111111']];
+      for(const [w0,f0] of S){ $('wdLen').value='12'; $('wdWords').value=w0; $('wdFlips').value=f0; w.wdUpdate(); await w.wdGenerate(); await new Promise(x=>setTimeout(x,1200)); await w.msAddMade(); }
+      const roots=[AB,'legal winner thank year wave sausage worth useful legal winner thank yellow'].map(m=>HDKey.fromMasterSeed(mnemonicToSeedSync(m,'')));
+      ok(w.eval('ms.done')&&/^tr\(tpub[1-9A-HJ-NP-Za-km-z]+\/0\/\*,sortedmulti_a\(2,\[[0-9a-f]{8}\/48h\/1h\/0h\/3h\]tpub/.test($('msDescR').textContent)&&$('msAddrs').children[0].textContent===trScure(2,roots,'test',0,0)&&$('msChange').children[9].textContent===trScure(2,roots,'test',1,9),'Taproot multisig: 2-of-2 made here in practice mode: tpub keys at m/48\'/1\'/0\'/3\', and tb1p addresses equal @scure\'s');
+      ok(!w.hasSeed()&&$('msOneDev').style.display==='','Taproot multisig: each seed is wiped after its key is kept, and the one-device warning shows');
+      w.msReset(); w.practiceMode(false); }
+    // 9. the watch-only box offers the Taproot cosigner key (made here, to paste into another device's wizard)
+    { $('phrase').value=''; const sd=await w.mnemonicToSeed(AB,''), wx=await w.watchOnlyFromSeed(sd,'ms-tr',0,'main');
+      ok(wx.key===rtA.derive("m/48'/0'/0'/3'").publicExtendedKey&&wx.receive==='['+fpA+"/48h/0h/0h/3h]"+wx.key,'Taproot multisig: the cosigner key at m/48\'/0\'/0\'/3\' is a plain xpub (no SLIP132 prefix exists for it), equal to @scure\'s');
+      ok([...$('wType').options].some(o=>o.value==='ms-tr'&&/Taproot \(m\/48'\/\.\.\.\/3', not in BIP48\)/.test(o.textContent)),'Taproot multisig: the watch-only box offers the Taproot cosigner key'); }
+    ok(/\["Taproot multisig"/.test(html)&&/\["multi_a and sortedmulti_a"/.test(html)&&/\["NUMS point \(unspendable key\)"/.test(html),'dictionary: Taproot multisig, multi_a and sortedmulti_a, NUMS point');
+    w.setGate('fail','SELF-TEST FAILED','bad'); ok($('msStartBtn').disabled,'Taproot multisig: START MULTISIG SETUP waits for the self-test'); w.setGate('pass','SELF-TEST PASSED','good');
+    ok(r.errors.length===0,'Taproot multisig: no page errors '+JSON.stringify(r.errors));
     r.w.close(); }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');

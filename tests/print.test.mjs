@@ -277,6 +277,16 @@ for (const [m, n] of [[2, 2], [2, 3], [3, 5], [5, 7], [6, 9], [7, 10], [15, 15]]
   }, [m, n, cos]);
   await sheet('multisig ' + m + '-of-' + n, () => msPrint());
 }
+// v2.11.0: Taproot multisig sheets (the tr() descriptor holds one more xpub, the unspendable internal key), up to and past the largest QR code.
+const cosT = cos.map((c, i) => ({ fp: c.fp, xpub: HDKey.fromMasterSeed(Buffer.alloc(32, i + 1)).derive("m/48'/0'/0'/3'").publicExtendedKey }));
+for (const [m, n] of [[2, 3], [3, 5], [4, 7], [5, 8], [6, 9], [15, 15]]) {
+  await p.evaluate(async ([m, n, cos]) => {
+    msReset(); ms = { m, n, type: 'ms-tr', net: 'main', account: 0, keys: [], mode: 'paste', busy: false, done: false };
+    for (const c of cos.slice(0, n)) ms.keys.push({ fp: c.fp, path: '48h/0h/0h/3h', key: await parseExtendedKey(c.xpub), xpub: c.xpub, src: 'pasted' });
+    await msFinish();
+  }, [m, n, cosT]);
+  await sheet('Taproot multisig ' + m + '-of-' + n, () => msPrint());
+}
 await p.evaluate(() => msReset());   // practice mode (8b) can only change with no multisig wallet open
 
 // 7. Light theme, and the CHECK A BACKUP sheets with a passphrase.

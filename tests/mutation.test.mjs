@@ -549,6 +549,40 @@ async function probe(w, mutated, fast, only, hooks) {
   w.confirm = oc; w.c32Combine = realC; w.c32Parse = realP; w.c32Make = realM; w.c32WalletText = realW;
   w.practiceMode(false); w.wipeSeed(); r = await run('dice', 12, D50);
   }
+  // v2.11.0: Taproot multisig, after the v2.10.0 sections; it leaves no wallet open, and section 0's seed is never touched.
+  if (SEC(70, "v2.11.0 Taproot multisig (descriptors and addresses from embit, keys from @scure)")) {
+  try {
+    const F = JSON.parse(fs.readFileSync(new URL('./fixtures/taproot-multisig/wallets.json', import.meta.url), 'utf8')), v0 = F.wallets[0], vt = F.wallets[1];
+    const AB = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', rtA = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, ''));
+    const cosOf = async (v, rev) => { const ks = rev ? [...v.keys].reverse() : v.keys, out = []; for (const k of ks) out.push({ fp: k.fp, path: k.path, key: await w.parseExtendedKey(k.xpub) }); return out; };
+    for (const v of [v0, vt]) for (const rev of [false, true]) { const cos = await cosOf(v, rev);
+      if (await w.multisigDescriptor('ms-tr', v.m, cos, 0) !== v.receive_desc || await w.multisigDescriptor('ms-tr', v.m, cos, 1) !== v.change_desc) { fails.push('taproot multisig: descriptors equal embit\'s, whatever order the keys came in (' + v.net + ')'); break; }
+      if (await w.multisigAddress('ms-tr', v.m, cos, 0, 3, v.net) !== v.receive[3] || await w.multisigAddress('ms-tr', v.m, cos, 1, 8, v.net) !== v.change[8]) { fails.push('taproot multisig: addresses equal embit\'s, whatever order the keys came in (' + v.net + ')'); break; } }
+    if ((await w.watchOnlyFromSeed(await w.mnemonicToSeed(AB, ''), 'ms-tr', 0, 'main')).key !== rtA.derive("m/48'/0'/0'/3'").publicExtendedKey) fails.push('taproot multisig: the cosigner key at m/48\'/0\'/0\'/3\' is a plain xpub');
+    // the wizard: the note, refused keys, the exports that fit the type
+    w.msReset(); $('msType').value = 'ms-wsh'; $('msType').dispatchEvent(new w.Event('change')); const hid = $('msTrNote').style.display === 'none';
+    $('msType').value = 'ms-tr'; $('msType').dispatchEvent(new w.Event('change'));
+    if (!hid || $('msTrNote').style.display !== '') fails.push('taproot multisig: the note shows only for the Taproot type');
+    $('msN').value = '3'; $('msM').value = '2'; w.msUpdateM(); $('msAcct').value = '0'; $('msNet').value = 'main'; w.msStart(); w.msUsePaste();
+    const paste = async (t) => { $('msPaste').value = t; $('msPasteFp').value = ''; await w.msAddPasted(); return $('msRunErr').textContent; };
+    if (!/not at the expected place/.test(await paste('[73c5da0a/48h/0h/0h/2h]' + rtA.derive("m/48'/0'/0'/2'").publicExtendedKey)) || !/not the one this wallet uses/.test(await paste('[73c5da0a/48h/0h/0h/2h]' + rtA.derive("m/48'/0'/0'/3'").publicExtendedKey))) fails.push('taproot multisig: keys from the 2\' path are refused');
+    for (const k of [...v0.keys].reverse()) await paste('[' + k.fp + '/48h/0h/0h/3h]' + k.xpub);
+    if (!w.eval('ms && ms.done') || $('msDescR').textContent !== v0.receive_desc || $('msDescC').textContent !== v0.change_desc || $('msAddrs').children[9].textContent !== v0.receive[9] || $('msChange').children[9].textContent !== v0.change[9]) fails.push('taproot multisig: the wizard shows embit\'s descriptors and 10+10 addresses');
+    if ($('msAnimUr').style.display !== 'none' || $('msAnimCc').style.display !== 'none' || $('msAnimTr').style.display !== '') fails.push('taproot multisig: the unconfirmed QR exports are hidden');
+    w.animStop(); await w.msAnim('ur'); if (w.eval('animCtx')) fails.push('taproot multisig: the UR export does nothing for this type');
+    await w.msAnim('bbqr'); if (new w.TextDecoder().decode(w.bbqrDecodeFrames(w.eval('animCtx.parts')).bytes) !== v0.multipath_desc) fails.push('taproot multisig: the Coldcard Q export is the receive-and-change descriptor'); w.animHide('msAnim');
+    { const l = $('msCoreCmd').textContent.split('\n')[1] || '', q = JSON.parse((l.match(/'(.*)'$/) || [0, '[]'])[1]); if (q.length !== 2 || q[0].desc !== v0.receive_desc || q[1].desc !== v0.change_desc) fails.push('taproot multisig: Bitcoin Core\'s import commands hold the receive and change descriptors'); }
+    // the other descriptor tools
+    { const x = await w.msExplain(v0.multipath_desc, null, '', ''); if (!/can be spent in 1 way/.test(x.text) || !/Nobody can spend with the Taproot internal key alone/.test(x.text) || /key path/.test(x.text)) fails.push('taproot multisig: Explain a wallet calls the xpub on H shut, not a key'); }
+    { const x = await w.kcCheck(v0.receive_desc, AB, ''); if (!/^THIS SEED IS IN THIS WALLET: it is key 2 of 3\./.test(x.text) || !/unspendable point H/.test(x.text)) fails.push('taproot multisig: Is this seed in my wallet file? reads it as 2 of 3 and names the internal key'); }
+    // an 8-key recovery sheet uses the largest print size (its descriptor holds 9 xpubs)
+    { w.msReset(); w.eval("ms = {m: 5, n: 8, type: 'ms-tr', net: 'main', account: 0, keys: [], mode: 'paste', busy: false, done: false}");
+      for (let i = 0; i < 8; i++) { const rt = HDKey.fromMasterSeed(new Uint8Array(32).fill(i + 1)); w.eval('ms').keys.push({ fp: rt.fingerprint.toString(16).padStart(8, '0'), path: '48h/0h/0h/3h', key: await w.parseExtendedKey(rt.derive("m/48'/0'/0'/3'").publicExtendedKey), src: 'pasted' }); }
+      await w.msFinish(); const op = w.print; let cls = ''; w.print = () => { const im = $('printQr').querySelector('.pq-img'); cls = im ? im.className : ''; }; w.msPrint(); w.dispatchEvent(new w.Event('afterprint')); w.print = op;
+      if (!/pq-ms-xl/.test(cls)) fails.push('taproot multisig: an 8-key recovery sheet uses the largest print size'); }
+  } catch (e) { fails.push('taproot multisig: the probe crashed: ' + e.message); }
+  w.msReset(); $('msType').value = 'ms-wsh'; $('msType').dispatchEvent(new w.Event('change'));
+  }
   if (SEC(1, "{ const wo = watch(expect.d50, ''), z = $('wZpub').textConte")) {
   { const wo = watch(expect.d50, ''), z = $('wZpub').textContent, dr = $('wDescR').textContent, dc = $('wDescC').textContent;
     if (z !== wo.zpub) fails.push('watch-only zpub');
@@ -1553,7 +1587,7 @@ async function probe(w, mutated, fast, only, hooks) {
       const labels = [...doc.querySelectorAll('summary, option')].filter((e) => /recommended/i.test(e.textContent));
       if (doc.querySelectorAll('.tag-rec').length !== 2 || doc.querySelectorAll('option.opt-rec').length !== 1 || labels.length !== 3 || !labels.every((e) => e.querySelector('.tag-rec') || e.classList.contains('opt-rec'))) fails.push('recommended: every label is a gold word or a gold option');
       const notes = [...doc.querySelectorAll('.tag-note')], ros = [...doc.querySelectorAll('.tag-ro')];
-      if (notes.length !== 2 || !notes.every((e) => /^ADVANCED$/.test(e.textContent)) || [...doc.querySelectorAll('summary')].some((e) => /\((demo only|advanced)/i.test(e.textContent))) fails.push('tags: ADVANCED is a gray label, not plain (brackets)');
+      if (notes.length !== 3 || !notes.every((e) => /^ADVANCED$/.test(e.textContent)) || [...doc.querySelectorAll('summary')].some((e) => /\((demo only|advanced)/i.test(e.textContent))) fails.push('tags: ADVANCED is a gray label, not plain (brackets)');
       if (ros.filter((e) => e.textContent === 'NEW').length !== 2) fails.push('tags: every "NEW" label is the same gray tag-ro style');
       const sheet = mutated.match(/<style>[\s\S]*?<\/style>/)[0];
       if (!/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(sheet) || !/\.tag-rec, body\.light \.tag-rec \{ color: var\(--warn-text\); background: none; \}/.test(sheet) || !/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(sheet)) fails.push('recommended: gold words, no pill');
@@ -4466,7 +4500,7 @@ const M = [
   ["multisig: recovery sheet leaves out the addresses", "\"FIRST 10 RECEIVE ADDRESSES:\", ...ms.addrs, \"\",", "\"FIRST 10 RECEIVE ADDRESSES:\", \"\","],
   ['multisig: recovery sheet testnet label missing', '(ms.net === "test" ? ", TESTNET (practice coins only)" : ", mainnet")', '", mainnet"'],
   ['multisig: sheet title testnet label missing', '"VOIDFORGE MULTISIG RECOVERY SHEET" + (ms.net === "test" ? " (TESTNET)" : "")', '"VOIDFORGE MULTISIG RECOVERY SHEET"'],
-  ['multisig: sheet QR size switch (layout only)', 'ms.n >= 5 ? "pq-ms pq-ms-l" : "pq-ms"', 'ms.n >= 6 ? "pq-ms pq-ms-l" : "pq-ms"', true],
+  ['multisig: sheet QR size switch (layout only)', 'nq >= 5 ? "pq-ms pq-ms-l" : "pq-ms"', 'nq >= 6 ? "pq-ms pq-ms-l" : "pq-ms"', true],   // v2.11.0: nq is the number of xpubs in the descriptor
   ['multisig: CLEAR ALL keeps the setup', 'msReset(); wipeSeed(); planClear(); camStop();\n}', 'wipeSeed(); planClear(); camStop();\n}'],
   ['CLEAR ALL: backup plan kept', 'msReset(); wipeSeed(); planClear(); camStop();\n}', 'msReset(); wipeSeed(); camStop();\n}'],
   ["multisig: reset leaves the descriptor on screen", "for(const id of [\"msDescR\",\"msDescC\",\"msAddrs\",\"msChange\",\"msSlots\",\"msRunErr\",\"msBanErr\",\"msErr\"])", "for(const id of [\"msDescC\",\"msAddrs\",\"msChange\",\"msSlots\",\"msRunErr\",\"msBanErr\",\"msErr\"])"],
@@ -5525,7 +5559,7 @@ const M = [
   ["timelock: time-based older read as blocks", "if(n & (1 << 22)){ const s = (n & 0xffff) * 512;", "if(false){ const s = (n & 0xffff) * 512;"],
   ["timelock: dates read as blocks", "if(n >= 500000000) return \"from \" + new Date(n * 1000)", "if(false) return \"from \" + new Date(n * 1000)"],
   ["timelock: a past block called future", "if(n <= height) return \"from block \" + n + \", which is already past\";", ""],
-  ["timelock: the unspendable key path listed", "keyPath = ik.replace(/^\\[[^\\]]*\\]/, \"\").toLowerCase() === MS_NUMS ? null : ik;", "keyPath = ik;"],
+  ["timelock: the unspendable key path listed", "keyPath = shut ? null : ik;", "keyPath = ik;"],   // v2.11.0: shut comes from msIsNums (plain H or an xpub on H)
   ["timelock: the typed words never named", "(fpMine && x.fp === fpMine ? \"  \u2190 made by the words typed in CHECK A BACKUP\" : \"\")", "\"\""],
   ["timelock: the checksum not checked", "if(hashAt >= 0 && descriptorChecksum(body) !== t) return {state: \"bad\", text: \"The descriptor's checksum (after #) does not match, so it was changed or mistyped. Use Find a typo in a descriptor first.\"};", ""],
   ["timelock: the restart note always shown", "(relative ? \"\\n\\nA waiting time", "(true ? \"\\n\\nA waiting time"],
@@ -6016,6 +6050,25 @@ const M = [
   ["codex32: practice addresses of coin type 0", "for(const [i, h] of [[84, true], [1, true], [0, true]]) [k, c] = await ckdPriv(k, c, i, h);", "for(const [i, h] of [[84, true], [0, true], [0, true]]) [k, c] = await ckdPriv(k, c, i, h);"],
   ["codex32: practice Taproot address on mainnet", "const tr = await watchOnlyFromSeed(seed, \"tr\", 0, \"test\")", "const tr = await watchOnlyFromSeed(seed, \"tr\", 0, \"main\")"],
   ["codex32: practice change addresses from the receive chain", "for(const ch of [0, 1]){ const [k2, c2] = await ckdPriv(k, c, ch, false);", "for(const ch of [0, 1]){ const [k2, c2] = await ckdPriv(k, c, 0, false);"],
+  // v2.11.0 Taproot multisig (section 70)
+  ["taproot multisig: leaf keys not sorted", "const ks=[...xonly].sort(cmpBytes), out=[32, ...ks[0], 0xac];", "const ks=[...xonly], out=[32, ...ks[0], 0xac];"],
+  ["taproot multisig: CHECKSIGADD written as CHECKSIG", "for(let i=1;i<ks.length;i++) out.push(32, ...ks[i], 0xba);", "for(let i=1;i<ks.length;i++) out.push(32, ...ks[i], 0xac);"],
+  ["taproot multisig: NUMEQUALVERIFY instead of NUMEQUAL", "out.push(0x50+m, 0x9c);", "out.push(0x50+m, 0x9d);"],
+  ["taproot multisig: internal key chain code from unsorted keys", "const pubs=[...new Map(cosigners.map(c => [hex(c.key.pub), c.key.pub])).values()].sort(cmpBytes);", "const pubs=[...new Map(cosigners.map(c => [hex(c.key.pub), c.key.pub])).values()];"],
+  ["taproot multisig: internal key is bare H", "return b138TrAddress(ik.slice(1), leafHash, NETS[net||\"main\"].hrp);", "return b138TrAddress(nk.pub.slice(1), leafHash, NETS[net||\"main\"].hrp);"],
+  ["taproot multisig: internal key always on the receive branch", "\"/\" + branch + \"/*,sortedmulti_a(\"", "\"/0/*,sortedmulti_a(\""],
+  ["taproot multisig: internal xpub always mainnet", "b.set(NETS[cosigners[0].key.net].ver.other, 0);", "b.set(NETS.main.ver.other, 0);"],
+  ["taproot multisig: keys at script type 2'", "\"ms-tr\":{script:3, kname:\"xpub\"", "\"ms-tr\":{script:2, kname:\"xpub\""],
+  ["taproot multisig: address made with the P2WSH engine", "  if(type===\"ms-tr\") return msTrAddress(m, cosigners, branch, index, net);\n", ""],
+  ["taproot multisig: cosigner key gets a zpub version", "\"ms-sh-wsh\":[0x02,0x95,0xb4,0x3f], \"ms-tr\":XPUB_VER}", "\"ms-sh-wsh\":[0x02,0x95,0xb4,0x3f], \"ms-tr\":[0x04,0xb2,0x47,0x46]}"],
+  ["taproot multisig: UR export not blocked", "  if(ms.type === \"ms-tr\" && msAnimKind !== \"bbqr\") return;", ""],
+  ["taproot multisig: unconfirmed QR buttons shown", "for(const id of [\"msAnimUr\", \"msAnimCc\"]) msEl(id).style.display = tr ? \"none\" : \"\";", "for(const id of [\"msAnimUr\", \"msAnimCc\"]) msEl(id).style.display = \"\";"],
+  ["taproot multisig: note never shown", "msEl(\"msTrNote\").style.display = msEl(\"msType\").value === \"ms-tr\" ? \"\" : \"none\";", "msEl(\"msTrNote\").style.display = \"none\";"],
+  ["taproot multisig: Core commands import the receive descriptor twice", "coreImportText(ms.descR, ms.descC, msEl(\"msCoreWhen\").value)", "coreImportText(ms.descR, ms.descR, msEl(\"msCoreWhen\").value)"],
+  ["taproot multisig: explain never calls the internal key shut", "shut = await msIsNums(ik);", "shut = false;"],
+  ["taproot multisig: an xpub on H is not recognized", "try { return hex((await parseExtendedKey(k)).pub.slice(1))===MS_NUMS; } catch(e) { return false; }", "return false;"],
+  ["taproot multisig: wallet file counts the internal key as a cosigner", "internal = keys.length && tl[0].includes(keys[0].key) ? keys.shift() : {key: tl[0].trim(), fp: null};", "internal = {key: tl[0].trim(), fp: null};"],
+  ["taproot multisig: recovery sheet size ignores the internal key", "const nq = ms.n + (ms.type === \"ms-tr\" ? 1 : 0);", "const nq = ms.n;"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
