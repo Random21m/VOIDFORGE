@@ -1797,7 +1797,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const r=load(); await r.ready(); const $=r.$, w=r.w, AB='abandon '.repeat(11)+'about';
     const EL_STD='cycle rocket west magnet parrot shuffle foot correct salt library feed song', EL_SW='bitter grass shiver impose acquire brush forget axis eager alone wine silver';
     const DF=async(words,pass,addr)=>{ $('phrase').value=words; $('verifyPass').value=pass; $('detAddr').value=addr; await w.detFind(); return {st:$('detStatus').textContent, cls:$('detStatus').className, out:$('detOut').textContent, shown:$('detOut').style.display!=='none'}; };
-    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.10.0','v2.10.0: the footer shows the new version');
+    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.11.0','v2.11.0: the footer shows the new version');
     ok(html.indexOf('<li><b>2.8.0</b>')>0&&html.indexOf('<li><b>2.8.0</b>')<html.indexOf('<li><b>2.7.0</b>'),'v2.8.0: the changelog lists 2.8.0 first');
     // --- Wallet Detective ---
     ok(!$('detBtn').disabled&&!$('detListBtn').disabled&&$('detStop').disabled&&$('detBtn').className===''&&$('detListBtn').className==='secondary small','Wallet Detective: FIND MY WALLET is the gold main button, enabled after the self-test; LIST and STOP are gray');
