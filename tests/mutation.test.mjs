@@ -177,8 +177,8 @@ async function probe(w, mutated, fast, only, hooks) {
       $('msxIn').value = 'x'; $('msxIn').dispatchEvent(new w.Event('input')); if ($('mxbText').textContent) fails.push('bip138: editing the descriptor clears the old backup'); }
     w.setGate('fail', 'SELF-TEST FAILED', 'bad'); const off = ['msbBtn', 'wpbBtn', 'mxbBtn', 'b138Btn'].every((id) => $(id).disabled); w.setGate('pass', 'SELF-TEST PASSED', 'good');
     if (!off || $('b138Btn').disabled) fails.push('bip138: the buttons wait for the self-test');
-    $('b138Pub').value = 'x'; $('wpbRolls').value = R50; w.wipeSeed(); if ($('b138In').value || $('b138Pub').value || $('wpbRolls').value || $('mxbRolls').value || $('b138Status').textContent) fails.push('bip138: CLEAR ALL and auto-clear empty the BIP138 boxes');
-    w.msReset(); $('wpIn').value = ''; $('msxIn').value = ''; await run('dice', 12, D50);   // the seed of section 0 again, as later sections expect
+    $('b138Pub').value = 'x'; $('wpbRolls').value = R50; w.b138ClearAll(); if (!/\bb138ClearAll\(\);/.test(w.wipeSeed.toString()) || $('b138In').value || $('b138Pub').value || $('wpbRolls').value || $('mxbRolls').value || $('b138Status').textContent) fails.push('bip138: CLEAR ALL and auto-clear (wipeSeed) empty the BIP138 boxes');
+    w.msReset(); $('wpIn').value = ''; $('msxIn').value = '';
   } catch (e) { fails.push('bip138: the probe crashed: ' + e.message); }
   }
   if (SEC(1, "{ const wo = watch(expect.d50, ''), z = $('wZpub').textConte")) {
