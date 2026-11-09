@@ -1,6 +1,6 @@
 #!/bin/sh
 # Fetches only the dice files of SeedSigner, Coldcard and Keystone at pinned commits into tests/vendor/src (not committed).
-# Used by tests/vendor.test.mjs. Change a commit here on purpose only, after reading what changed in that file.
+# Used by tests/vendor.test.mjs. v2.10.0: also Electrum's old-seed files, for tests/fixtures/gen_old_electrum.py. Change a commit here on purpose only, after reading what changed in that file.
 set -eu
 cd "$(dirname "$0")"
 mkdir -p src
@@ -14,3 +14,4 @@ get() { # name, repository, commit, files...
 get seedsigner https://github.com/SeedSigner/seedsigner 995ce5c65df4bd333f61cd3dd992b39a49138a1d src/seedsigner/helpers/mnemonic_generation.py
 get coldcard https://github.com/Coldcard/firmware 09766a1473246f0abe7d853b3635c0a03be125a7 shared/seed.py
 get keystone https://github.com/KeystoneHQ/keystone3-firmware 3690bf1f36cb9e817f9a2412a9fc7560c08953f0 src/ui/gui_widgets/gui_dice_rolls_widgets.c src/ui/gui_model/gui_model.c src/ui/gui_widgets/gui_single_phrase_widgets.c
+get electrum https://github.com/spesmilo/electrum 54ff65dfe1b77ef6e00f00f296a557d86c454ca0 electrum/old_mnemonic.py electrum/mnemonic.py electrum/keystore.py tests/test_mnemonic.py tests/test_wallet_vertical.py

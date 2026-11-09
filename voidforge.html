@@ -494,6 +494,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   html.js body:not(.js-ok) .container { visibility: hidden; }
   /* v2.5.0: secrets on the screen cannot be highlighted, so they are never copied to the clipboard by accident (there is no copy button for them either) */
   #wordGrid, #genResult, #wvAbbrGrid, #childOut, #exOut, #reforgeOut, #dpOut { -webkit-user-select: none; user-select: none; }
+  #oeSeed { -webkit-user-select: none; user-select: none; }   /* v2.10.0: an old Electrum seed in hex is as secret as the words */
   .pass-warn { color: var(--warn-text); font-weight: 600; font-size: 13px; margin: 6px 0 0; }
   .pass-warn:empty { display: none; }
   #practiceBan { display: none; }
@@ -953,6 +954,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
           <li><b>12 or 24 words</b> (sometimes 15, 18 or 21): a seed phrase, also called a recovery phrase. The words are the wallet.</li>
           <li><b>Words plus another word or sentence</b>, called a passphrase or 25th word: both are needed, exactly as written (capital letters and spaces count).</li>
           <li><b>A metal plate or cards</b> with words or their first letters: the same words, stamped so they survive fire and water.</li>
+          <li><b>12 words from an Electrum wallet made before version 2.0</b>: an old Electrum seed. Some of its words are not on the usual list. VERIFY recognizes it and shows its addresses; it opens in Electrum.</li>
           <li><b>A small device</b> (Trezor, Ledger, Coldcard, BitBox, Jade and others): a hardware wallet. It needs its PIN; the words written for it open the wallet without the device.</li>
           <li><b>Several sets of words, or a note like &ldquo;2 of 3&rdquo; or &ldquo;multisig&rdquo;</b>: a multisig wallet. It needs more than one set of words plus the wallet&rsquo;s setup file (a descriptor). Set up a multisig wallet, in EXTRA TOOLS, explains it.</li>
           <li><b>A long code starting with xpub, ypub or zpub</b>: a watch-only key. It shows the balance but cannot spend.</li>
@@ -961,7 +963,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
           <li><b>A VOIDFORGE BACKUP PLAN sheet</b>: it says where the copies are, what wallet app was used and who can help. It holds no words.</li>
         </ul>
       </li>
-      <li><b>Check that the words are complete and right.</b> VERIFY says whether they make a valid backup, and its fingerprint is the wallet&rsquo;s name tag. If a word is missing, wrong or hard to read, Reforge (in EXTRA TOOLS) can often find it.
+      <li><b>Check that the words are complete and right.</b> VERIFY says whether they make a valid backup, and its fingerprint is the wallet&rsquo;s name tag. If a word is missing, wrong or hard to read, Reforge (in EXTRA TOOLS) can often find it: for a burned or rusted word, type the letters you can read with ? for each one you cannot.
         <div class="btn-row"><button type="button" onclick="heirGo('check', 'phrase')">CHECK THE WORDS</button></div></li>
       <li><b>Find the wallet.</b> If the right words open an empty wallet, the app may be looking in the wrong place. If you know one address the wallet used (from old emails, statements or exchange withdrawals), the Wallet Detective finds which app made it and how to open it.
         <div class="btn-row"><button type="button" onclick="heirGo('check', 'detBlock')">OPEN THE WALLET DETECTIVE</button></div></li>
@@ -1388,6 +1390,13 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </div>
     <div class="status" id="verifyStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-all;"></div>
     <div class="status" id="verifyMatch" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+    <div class="sec-block" id="oeBlock" style="display:none;">
+      <h3 class="sec">Old Electrum seed<span class="tag tag-secret">SECRET</span></h3>
+      <p class="hint" style="margin:0 0 6px;">Electrum before version 2.0 made seeds of 12 words from its own old list of 1626 words, not BIP39. They have no checksum and no passphrase. VOIDFORGE works out the wallet the way Electrum does: the words give the seed below, 100,000 rounds of SHA-256 turn it into the key, and the master public key gives every address. The seed is as secret as the words; the master public key and the addresses are public.</p>
+      <p class="hint" id="oeNote" style="margin:0 0 6px;"></p>
+      <div id="oeSeed" style="word-break:break-all; font-family:'Courier New',monospace; font-size:15px; margin-top:6px;"></div>
+      <pre id="oeOut" style="white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+    </div>
     <div class="sec-block" id="wpBlock">
       <h3 class="sec">Or open a watch-only wallet<span class="tag tag-public">PUBLIC KEYS ONLY</span></h3>
       <p class="hint" style="margin:0 0 6px;">Paste an account public key (xpub, ypub, zpub, or tpub, upub, vpub for testnet) or a single-key descriptor such as <code>wpkh([fingerprint/84h/0h/0h]xpub.../0/*)</code>. It shows the same addresses without any seed words. It can never spend.</p>
@@ -1502,7 +1511,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <label><input type="radio" name="reforgeMode" value="pass" onchange="reforgeModeChange()"><span>Passphrase</span></label>
       </div>
       <div id="reforgeWordsPanel">
-        <p class="hint" style="margin:0 0 8px;">Type your words in order, with <code>?</code> for each word you do not have. Reforge picks the search from what you type: with one or two <code>?</code> it tries every word in those places; with all the words it tries every swap of two words and every single word replaced; with one word fewer (11, 14, 17, 20 or 23) it tries the missing word at every place. A word that is not on the BIP39 list counts as <code>?</code>, and the first 4 letters of a word are enough. To list the words that could be last, type all but the last word, then <code>?</code>. Two <code>?</code> on a 12-word phrase can take a long time; an account xpub/zpub is by far the fastest thing to check against (a fingerprint or an address is several times slower), the page shows progress, and STOP ends the search.</p>
+        <p class="hint" style="margin:0 0 8px;">Type your words in order, with <code>?</code> for each word you do not have. Reforge picks the search from what you type: with one or two <code>?</code> it tries every word in those places; with all the words it tries every swap of two words and every single word replaced; with one word fewer (11, 14, 17, 20 or 23) it tries the missing word at every place. A word that is not on the BIP39 list counts as <code>?</code>, and the first 4 letters of a word are enough. <b>Damaged backup:</b> inside a word, <code>?</code> is one letter you cannot read and <code>*</code> any number of them, so <code>ch?ir</code> is chair and <code>ab*</code> is any word that starts with ab (4 readable letters are enough: <code>c?ar</code> fits charge and clarify); Reforge says how many words fit each one and refuses more than 4,194,304 phrases. To list the words that could be last, type all but the last word, then <code>?</code>. Two <code>?</code> on a 12-word phrase can take a long time; an account xpub/zpub is by far the fastest thing to check against (a fingerprint or an address is several times slower), the page shows progress, and STOP ends the search.</p>
         <textarea id="reforgeWordsInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Your words in order, with ? for each unknown word" placeholder="word1 word2 ? word4 ... (? for each word you do not have)"></textarea>
         <input type="text" id="reforgeWordsCheck" spellcheck="false" autocomplete="off" autocapitalize="off" style="margin-top:6px;" aria-label="Master fingerprint, address or account xpub to check against" placeholder="Check against: master fingerprint (like 73c5da0a), an address, or an account xpub/zpub">
         <input type="password" id="reforgeWordsPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" style="margin-top:6px;" aria-label="Passphrase, only if your wallet uses one" placeholder="Passphrase (only if your wallet uses one)">
@@ -1904,7 +1913,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <details>
       <summary>What SELF-TEST checks</summary>
-      <p>It runs automatically every time the page loads; if any test fails, seed generation is disabled and a red banner appears. Press SELF-TEST to see the full list. It checks: the BIP39 wordlist hash; official BIP39 entropy vectors (12 to 24 words); SeedSigner&rsquo;s published 50- and 99-roll dice examples and 50-roll fingerprint; coin-flip vectors from an independent reference implementation of SeedSigner&rsquo;s method; the <code>abandon&hellip;about</code> fingerprints (with and without the <code>TREZOR</code> passphrase); BIP32 test vector 1; the first receive address (the published BIP84 vector, a second vector from two independent libraries, and the BIP173 bech32 example); the watch-only zpub (published BIP84 vector and an independent-library vector), the descriptor checksum, a QR code matrix checked against an independent QR library, and the fingerprint picture checked against independent LifeHash code and Sparrow Wallet; passphrase normalization; RIPEMD-160 vectors; the phrase checker; and, added since, Keystone dice rules, the dice passphrase, coin-flip and word-draw helpers, Electrum seeds, every address type and its account keys on mainnet and testnet, Taproot (BIP86 and the BIP350 example), multisig cosigner keys and addresses (BIP48), Silent Payment addresses (BIP352), private key versions (SLIP132), BIP85 child seeds, keys and passwords (published vectors), SeedQR and CompactSeedQR, signed messages (BIP137 and BIP322 vectors), the transaction inspector on a known PSBT, Reforge, Ed25519 signatures (RFC 8032 vectors) and the release key&rsquo;s fingerprint, a playing-card seed (as Ian Coleman&rsquo;s BIP39 tool makes it) and SLIP39 shares (an official test vector). If any test fails, do not use that copy for real funds.</p>
+      <p>It runs automatically every time the page loads; if any test fails, seed generation is disabled and a red banner appears. Press SELF-TEST to see the full list. It checks: the BIP39 wordlist hash; official BIP39 entropy vectors (12 to 24 words); SeedSigner&rsquo;s published 50- and 99-roll dice examples and 50-roll fingerprint; coin-flip vectors from an independent reference implementation of SeedSigner&rsquo;s method; the <code>abandon&hellip;about</code> fingerprints (with and without the <code>TREZOR</code> passphrase); BIP32 test vector 1; the first receive address (the published BIP84 vector, a second vector from two independent libraries, and the BIP173 bech32 example); the watch-only zpub (published BIP84 vector and an independent-library vector), the descriptor checksum, a QR code matrix checked against an independent QR library, and the fingerprint picture checked against independent LifeHash code and Sparrow Wallet; passphrase normalization; RIPEMD-160 vectors; the phrase checker; and, added since, Keystone dice rules, the dice passphrase, coin-flip and word-draw helpers, Electrum seeds, every address type and its account keys on mainnet and testnet, Taproot (BIP86 and the BIP350 example), multisig cosigner keys and addresses (BIP48), Silent Payment addresses (BIP352), private key versions (SLIP132), BIP85 child seeds, keys and passwords (published vectors), SeedQR and CompactSeedQR, signed messages (BIP137 and BIP322 vectors), the transaction inspector on a known PSBT, Reforge, Ed25519 signatures (RFC 8032 vectors) and the release key&rsquo;s fingerprint, a playing-card seed (as Ian Coleman&rsquo;s BIP39 tool makes it), SLIP39 shares (an official test vector), old Electrum seeds (the old word list&rsquo;s hash and Electrum&rsquo;s own test wallets) and Reforge&rsquo;s damaged-word patterns. If any test fails, do not use that copy for real funds.</p>
       <p><b>What the self-test cannot catch:</b> it only runs known answers through this same file, so it can miss a bug on inputs it does not cover, and a tampered file could simply fake a pass. It does not replace checking the file&rsquo;s SHA256 against the release, and it does not replace comparing your words and fingerprint in a second independent tool. The network tag at the top reads the browser&rsquo;s online flag only; it cannot prove the machine is air-gapped.</p>
     </details>
     <details>
@@ -3855,7 +3864,11 @@ const DICT = [
   ["WIF (Wallet Import Format)", "A text way to write one private key (starting with 5, K or L) so it can be imported into a wallet. One key, not a whole wallet.", "BIP85 in Child seed; Or open a private key, read only, in CHECK A BACKUP.", "Keys & seeds"],
   ["Witness", "The part of a SegWit transaction that holds the signatures and unlocking data, kept apart from the rest.", "", "Transactions"],
   ["Wordlist", "The fixed list of 2048 words BIP39 uses. Every word is unique by its first four letters.", "SHOW FIRST 4 LETTERS; VERIFY and Reforge read 4-letter forms.", "Keys & seeds"],
-  ["Wrench attack", "Physical force used to make someone hand over their keys. It is one reason to think about decoy wallets and multisig.", "", "Privacy & security"]
+  ["Wrench attack", "Physical force used to make someone hand over their keys. It is one reason to think about decoy wallets and multisig.", "", "Privacy & security"],
+  // v2.10.0
+  ["Old Electrum seed", "The 12 words of an Electrum wallet made before version 2.0, from Electrum's own old list of 1626 words, not BIP39. It has no checksum and no passphrase, and its addresses are legacy ones with uncompressed keys. Electrum still opens it.", "VERIFY shows its seed, master public key and addresses; the Wallet Detective finds its addresses; Heir mode.", "Keys & seeds"],
+  ["Master public key (old Electrum)", "The public key of an old Electrum wallet (before version 2.0), 128 hex characters. Every address of the wallet comes from it, so it shows them all, but it cannot spend.", "VERIFY, for an old Electrum seed.", "Keys & seeds"],
+  ["Damaged word", "A seed word that can only partly be read, as on a burned, rusted or smudged backup. In Reforge, ? stands for one letter that cannot be read and * for any number of them; the first 4 letters of a BIP39 word are enough.", "Reforge (EXTRA TOOLS), Missing or wrong words.", "Keys & seeds"]
 ];
 let dictCat = "All";
 function buildDict(){
@@ -4108,6 +4121,101 @@ async function electrumNote(phrase){
   let k = null; try { k = await electrumSeedType(phrase); } catch(e) { k = null; }
   return k ? " This looks like an Electrum seed (" + k + " type), not a BIP39 phrase. Restore it in Electrum and choose \u201cElectrum seed\u201d, not BIP39; other wallets may not accept it." : "";
 }
+// ===== v2.10.0 Old Electrum seeds =====
+// Electrum before version 2.0 made seeds of 12 words from its own list of 1626 words, not BIP39. Read from Electrum's source
+// (spesmilo/electrum on GitHub, commit 54ff65dfe1b77ef6e00f00f296a557d86c454ca0): electrum/old_mnemonic.py (the list and
+// mn_decode), electrum/mnemonic.py (is_old_seed, calc_seed_type) and electrum/keystore.py (Old_KeyStore). The self-test checks
+// the list's SHA-256 and Electrum's own test wallets (tests/test_mnemonic.py and tests/test_wallet_vertical.py).
+const OLD_EL_WORDS = ["like","just","love","know","never","want","time","out","there","make","look","eye","down","only","think","heart","back","then","into","about","more","away","still","them","take","thing","even","through","long","always","world","too","friend","tell","try","hand","thought","over","here","other","need","smile","again","much","cry","been","night","ever","little","said","end","some","those","around","mind","people","girl","leave","dream","left","turn","myself","give","nothing","really","off","before","something","find","walk","wish","good","once","place","ask","stop","keep","watch","seem","everything","wait","got","yet","made","remember","start","alone","run","hope","maybe","believe","body","hate","after","close","talk","stand","own","each","hurt","help","home","god","soul","new","many","two","inside","should","true","first","fear","mean","better","play","another","gone","change","use","wonder","someone","hair","cold","open","best","any","behind","happen","water","dark","laugh","stay","forever","name","work","show","sky","break","came","deep","door","put","black","together","upon","happy","such","great","white","matter","fill","past","please","burn","cause","enough","touch","moment","soon","voice","scream","anything","stare","sound","red","everyone","hide","kiss","truth","death","beautiful","mine","blood","broken","very","pass","next","forget","tree","wrong","air","mother","understand","lip","hit","wall","memory","sleep","free","high","realize","school","might","skin","sweet","perfect","blue","kill","breath","dance","against","fly","between","grow","strong","under","listen","bring","sometimes","speak","pull","person","become","family","begin","ground","real","small","father","sure","feet","rest","young","finally","land","across","today","different","guy","line","fire","reason","reach","second","slowly","write","eat","smell","mouth","step","learn","three","floor","promise","breathe","darkness","push","earth","guess","save","song","above","along","both","color","house","almost","sorry","anymore","brother","okay","dear","game","fade","already","apart","warm","beauty","heard","notice","question","shine","began","piece","whole","shadow","secret","street","within","finger","point","morning","whisper","child","moon","green","story","glass","kid","silence","since","soft","yourself","empty","shall","angel","answer","baby","bright","dad","path","worry","hour","drop","follow","power","war","half","flow","heaven","act","chance","fact","least","tired","children","near","quite","afraid","rise","sea","taste","window","cover","nice","trust","lot","sad","cool","force","peace","return","blind","easy","ready","roll","rose","drive","held","music","beneath","hang","mom","paint","emotion","quiet","clear","cloud","few","pretty","bird","outside","paper","picture","front","rock","simple","anyone","meant","reality","road","sense","waste","bit","leaf","thank","happiness","meet","men","smoke","truly","decide","self","age","book","form","alive","carry","escape","damn","instead","able","ice","minute","throw","catch","leg","ring","course","goodbye","lead","poem","sick","corner","desire","known","problem","remind","shoulder","suppose","toward","wave","drink","jump","woman","pretend","sister","week","human","joy","crack","grey","pray","surprise","dry","knee","less","search","bleed","caught","clean","embrace","future","king","son","sorrow","chest","hug","remain","sat","worth","blow","daddy","final","parent","tight","also","create","lonely","safe","cross","dress","evil","silent","bone","fate","perhaps","anger","class","scar","snow","tiny","tonight","continue","control","dog","edge","mirror","month","suddenly","comfort","given","loud","quickly","gaze","plan","rush","stone","town","battle","ignore","spirit","stood","stupid","yours","brown","build","dust","hey","kept","pay","phone","twist","although","ball","beyond","hidden","nose","taken","fail","float","pure","somehow","wash","wrap","angry","cheek","creature","forgotten","heat","rip","single","space","special","weak","whatever","yell","anyway","blame","job","choose","country","curse","drift","echo","figure","grew","laughter","neck","suffer","worse","yeah","disappear","foot","forward","knife","mess","somewhere","stomach","storm","beg","idea","lift","offer","breeze","field","five","often","simply","stuck","win","allow","confuse","enjoy","except","flower","seek","strength","calm","grin","gun","heavy","hill","large","ocean","shoe","sigh","straight","summer","tongue","accept","crazy","everyday","exist","grass","mistake","sent","shut","surround","table","ache","brain","destroy","heal","nature","shout","sign","stain","choice","doubt","glance","glow","mountain","queen","stranger","throat","tomorrow","city","either","fish","flame","rather","shape","spin","spread","ash","distance","finish","image","imagine","important","nobody","shatter","warmth","became","feed","flesh","funny","lust","shirt","trouble","yellow","attention","bare","bite","money","protect","amaze","appear","born","choke","completely","daughter","fresh","friendship","gentle","probably","six","deserve","expect","grab","middle","nightmare","river","thousand","weight","worst","wound","barely","bottle","cream","regret","relationship","stick","test","crush","endless","fault","itself","rule","spill","art","circle","join","kick","mask","master","passion","quick","raise","smooth","unless","wander","actually","broke","chair","deal","favorite","gift","note","number","sweat","box","chill","clothes","lady","mark","park","poor","sadness","tie","animal","belong","brush","consume","dawn","forest","innocent","pen","pride","stream","thick","clay","complete","count","draw","faith","press","silver","struggle","surface","taught","teach","wet","bless","chase","climb","enter","letter","melt","metal","movie","stretch","swing","vision","wife","beside","crash","forgot","guide","haunt","joke","knock","plant","pour","prove","reveal","steal","stuff","trip","wood","wrist","bother","bottom","crawl","crowd","fix","forgive","frown","grace","loose","lucky","party","release","surely","survive","teacher","gently","grip","speed","suicide","travel","treat","vein","written","cage","chain","conversation","date","enemy","however","interest","million","page","pink","proud","sway","themselves","winter","church","cruel","cup","demon","experience","freedom","pair","pop","purpose","respect","shoot","softly","state","strange","bar","birth","curl","dirt","excuse","lord","lovely","monster","order","pack","pants","pool","scene","seven","shame","slide","ugly","among","blade","blonde","closet","creek","deny","drug","eternity","gain","grade","handle","key","linger","pale","prepare","swallow","swim","tremble","wheel","won","cast","cigarette","claim","college","direction","dirty","gather","ghost","hundred","loss","lung","orange","present","swear","swirl","twice","wild","bitter","blanket","doctor","everywhere","flash","grown","knowledge","numb","pressure","radio","repeat","ruin","spend","unknown","buy","clock","devil","early","false","fantasy","pound","precious","refuse","sheet","teeth","welcome","add","ahead","block","bury","caress","content","depth","despite","distant","marry","purple","threw","whenever","bomb","dull","easily","grasp","hospital","innocence","normal","receive","reply","rhyme","shade","someday","sword","toe","visit","asleep","bought","center","consider","flat","hero","history","ink","insane","muscle","mystery","pocket","reflection","shove","silently","smart","soldier","spot","stress","train","type","view","whether","bus","energy","explain","holy","hunger","inch","magic","mix","noise","nowhere","prayer","presence","shock","snap","spider","study","thunder","trail","admit","agree","bag","bang","bound","butterfly","cute","exactly","explode","familiar","fold","further","pierce","reflect","scent","selfish","sharp","sink","spring","stumble","universe","weep","women","wonderful","action","ancient","attempt","avoid","birthday","branch","chocolate","core","depress","drunk","especially","focus","fruit","honest","match","palm","perfectly","pillow","pity","poison","roar","shift","slightly","thump","truck","tune","twenty","unable","wipe","wrote","coat","constant","dinner","drove","egg","eternal","flight","flood","frame","freak","gasp","glad","hollow","motion","peer","plastic","root","screen","season","sting","strike","team","unlike","victim","volume","warn","weird","attack","await","awake","built","charm","crave","despair","fought","grant","grief","horse","limit","message","ripple","sanity","scatter","serve","split","string","trick","annoy","blur","boat","brave","clearly","cling","connect","fist","forth","imagination","iron","jock","judge","lesson","milk","misery","nail","naked","ourselves","poet","possible","princess","sail","size","snake","society","stroke","torture","toss","trace","wise","bloom","bullet","cell","check","cost","darling","during","footstep","fragile","hallway","hardly","horizon","invisible","journey","midnight","mud","nod","pause","relax","shiver","sudden","value","youth","abuse","admire","blink","breast","bruise","constantly","couple","creep","curve","difference","dumb","emptiness","gotta","honor","plain","planet","recall","rub","ship","slam","soar","somebody","tightly","weather","adore","approach","bond","bread","burst","candle","coffee","cousin","crime","desert","flutter","frozen","grand","heel","hello","language","level","movement","pleasure","powerful","random","rhythm","settle","silly","slap","sort","spoken","steel","threaten","tumble","upset","aside","awkward","bee","blank","board","button","card","carefully","complain","crap","deeply","discover","drag","dread","effort","entire","fairy","giant","gotten","greet","illusion","jeans","leap","liquid","march","mend","nervous","nine","replace","rope","spine","stole","terror","accident","apple","balance","boom","childhood","collect","demand","depression","eventually","faint","glare","goal","group","honey","kitchen","laid","limb","machine","mere","mold","murder","nerve","painful","poetry","prince","rabbit","shelter","shore","shower","soothe","stair","steady","sunlight","tangle","tease","treasure","uncle","begun","bliss","canvas","cheer","claw","clutch","commit","crimson","crystal","delight","doll","existence","express","fog","football","gay","goose","guard","hatred","illuminate","mass","math","mourn","rich","rough","skip","stir","student","style","support","thorn","tough","yard","yearn","yesterday","advice","appreciate","autumn","bank","beam","bowl","capture","carve","collapse","confusion","creation","dove","feather","girlfriend","glory","government","harsh","hop","inner","loser","moonlight","neighbor","neither","peach","pig","praise","screw","shield","shimmer","sneak","stab","subject","throughout","thrown","tower","twirl","wow","army","arrive","bathroom","bump","cease","cookie","couch","courage","dim","guilt","howl","hum","husband","insult","led","lunch","mock","mostly","natural","nearly","needle","nerd","peaceful","perfection","pile","price","remove","roam","sanctuary","serious","shiny","shook","sob","stolen","tap","vain","void","warrior","wrinkle","affection","apologize","blossom","bounce","bridge","cheap","crumble","decision","descend","desperately","dig","dot","flip","frighten","heartbeat","huge","lazy","lick","odd","opinion","process","puzzle","quietly","retreat","score","sentence","separate","situation","skill","soak","square","stray","taint","task","tide","underneath","veil","whistle","anywhere","bedroom","bid","bloody","burden","careful","compare","concern","curtain","decay","defeat","describe","double","dreamer","driver","dwell","evening","flare","flicker","grandma","guitar","harm","horrible","hungry","indeed","lace","melody","monkey","nation","object","obviously","rainbow","salt","scratch","shown","shy","stage","stun","third","tickle","useless","weakness","worship","worthless","afternoon","beard","boyfriend","bubble","busy","certain","chin","concrete","desk","diamond","doom","drawn","due","felicity","freeze","frost","garden","glide","harmony","hopefully","hunt","jealous","lightning","mama","mercy","peel","physical","position","pulse","punch","quit","rant","respond","salty","sane","satisfy","savior","sheep","slept","social","sport","tuck","utter","valley","wolf","aim","alas","alter","arrow","awaken","beaten","belief","brand","ceiling","cheese","clue","confidence","connection","daily","disguise","eager","erase","essence","everytime","expression","fan","flag","flirt","foul","fur","giggle","glorious","ignorance","law","lifeless","measure","mighty","muse","north","opposite","paradise","patience","patient","pencil","petal","plate","ponder","possibly","practice","slice","spell","stock","strife","strip","suffocate","suit","tender","tool","trade","velvet","verse","waist","witch","aunt","bench","bold","cap","certainly","click","companion","creator","dart","delicate","determine","dish","dragon","drama","drum","dude","everybody","feast","forehead","former","fright","fully","gas","hook","hurl","invite","juice","manage","moral","possess","raw","rebel","royal","scale","scary","several","slight","stubborn","swell","talent","tea","terrible","thread","torment","trickle","usually","vast","violence","weave","acid","agony","ashamed","awe","belly","blend","blush","character","cheat","common","company","coward","creak","danger","deadly","defense","define","depend","desperate","destination","dew","duck","dusty","embarrass","engine","example","explore","foe","freely","frustrate","generation","glove","guilty","health","hurry","idiot","impossible","inhale","jaw","kingdom","mention","mist","moan","mumble","mutter","observe","ode","pathetic","pattern","pie","prefer","puff","rape","rare","revenge","rude","scrape","spiral","squeeze","strain","sunset","suspend","sympathy","thigh","throne","total","unseen","weapon","weary"];
+const OLD_EL_MAP = new Map(OLD_EL_WORDS.map((w, i) => [w, i]));
+// mn_decode: every 3 words give x = w1 + n*((w2 - w1) mod n) + n*n*((w3 - w2) mod n), n = 1626, written as 8 hex digits. A few
+// hand-picked word triples go past 2^32 and give 9 digits; Electrum keeps those as they are (its issue 3149), and so does this.
+function oldElDecode(words){
+  const n = OLD_EL_WORDS.length, m = (a) => ((a % n) + n) % n; let out = "";
+  for(let i = 0; i + 3 <= words.length; i += 3){
+    const w1 = OLD_EL_MAP.get(words[i]), w2 = OLD_EL_MAP.get(words[i + 1]), w3 = OLD_EL_MAP.get(words[i + 2]);
+    out += (w1 + n * m(w2 - w1) + n * n * m(w3 - w2)).toString(16).padStart(8, "0");
+  }
+  return out;
+}
+// is_old_seed, for words: after Electrum's normalize_text, 12 or 24 words, every one on the old list. Old seeds have no checksum,
+// so this is all Electrum checks. Returns {words, hex} or null. (Electrum also takes the seed as 32 or 64 hex digits; this page
+// reads hex as CompactSeedQR, so it does not.)
+function oldElSeed(text){
+  const words = electrumNorm(text).split(" ").filter(Boolean);
+  if(!(words.length === 12 || words.length === 24) || !words.every(w => OLD_EL_MAP.has(w))) return null;
+  return {words, hex: oldElDecode(words)};
+}
+// SHA-256 without waiting (FIPS 180-4), for the 100,000 rounds of the key stretch: the browser's own SHA-256 can only be awaited
+// one round at a time, which takes seconds. The self-test checks it through Electrum's test wallets.
+const OLD_EL_K = (() => { const k = [], p = []; for(let c = 2; p.length < 64; c++) if(p.every(q => c % q)) p.push(c);
+  for(const q of p) k.push((Math.cbrt(q) % 1) * 4294967296 | 0); return Int32Array.from(k); })();
+const OLD_EL_W = new Int32Array(64);   // the message schedule, reused (the function never runs twice at once)
+function oldElSha256(m){
+  const L = m.length, nb = ((L + 9 + 63) >> 6) << 6, b = new Uint8Array(nb); b.set(m); b[L] = 0x80;
+  const bits = L * 8; b[nb - 4] = bits >>> 24; b[nb - 3] = (bits >>> 16) & 255; b[nb - 2] = (bits >>> 8) & 255; b[nb - 1] = bits & 255;
+  const K = OLD_EL_K, w = OLD_EL_W;
+  let h0 = 0x6a09e667, h1 = 0xbb67ae85 | 0, h2 = 0x3c6ef372, h3 = 0xa54ff53a | 0, h4 = 0x510e527f, h5 = 0x9b05688c | 0, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
+  for(let o = 0; o < nb; o += 64){
+    for(let i = 0; i < 16; i++){ const q = o + 4 * i; w[i] = (b[q] << 24) | (b[q + 1] << 16) | (b[q + 2] << 8) | b[q + 3]; }
+    for(let i = 16; i < 64; i++){ const a = w[i - 15], c = w[i - 2];
+      w[i] = (w[i - 16] + (((a >>> 7) | (a << 25)) ^ ((a >>> 18) | (a << 14)) ^ (a >>> 3)) + w[i - 7] + (((c >>> 17) | (c << 15)) ^ ((c >>> 19) | (c << 13)) ^ (c >>> 10))) | 0; }
+    let A = h0, B = h1, C = h2, D = h3, E = h4, F = h5, G = h6, H = h7;
+    for(let i = 0; i < 64; i++){
+      const t1 = (H + (((E >>> 6) | (E << 26)) ^ ((E >>> 11) | (E << 21)) ^ ((E >>> 25) | (E << 7))) + ((E & F) ^ (~E & G)) + K[i] + w[i]) | 0;
+      const t2 = ((((A >>> 2) | (A << 30)) ^ ((A >>> 13) | (A << 19)) ^ ((A >>> 22) | (A << 10))) + ((A & B) ^ (A & C) ^ (B & C))) | 0;
+      H = G; G = F; F = E; E = (D + t1) | 0; D = C; C = B; B = A; A = (t1 + t2) | 0;
+    }
+    h0 = (h0 + A) | 0; h1 = (h1 + B) | 0; h2 = (h2 + C) | 0; h3 = (h3 + D) | 0; h4 = (h4 + E) | 0; h5 = (h5 + F) | 0; h6 = (h6 + G) | 0; h7 = (h7 + H) | 0;
+  }
+  const out = new Uint8Array(32), hs = [h0, h1, h2, h3, h4, h5, h6, h7];
+  for(let i = 0; i < 8; i++){ out[4 * i] = hs[i] >>> 24; out[4 * i + 1] = (hs[i] >>> 16) & 255; out[4 * i + 2] = (hs[i] >>> 8) & 255; out[4 * i + 3] = hs[i] & 255; }
+  return out;
+}
+const OLD_EL_ROUNDS = 100000;
+// Old_KeyStore.stretch_key: x = the hex seed as text; 100,000 times x = SHA-256(x + the hex seed as text); the key is x as a number.
+// The master public key (mpk) is that key's public point, x and y (64 bytes, uncompressed without the 04 in front).
+function oldElKeys(hexSeed){
+  const s = new TextEncoder().encode(hexSeed), buf = new Uint8Array(32 + s.length); buf.set(s, 32);
+  let x = oldElSha256(concatBytes(s, s));
+  for(let i = 1; i < OLD_EL_ROUNDS; i++){ buf.set(x, 0); x = oldElSha256(buf); }
+  const k = BigInt("0x" + hex(x));
+  if(k === 0n || k >= SN) throw new Error("this seed gives an invalid key");
+  const P = emul(k, SG), be = (v) => fromHex(v.toString(16).padStart(64, "0"));
+  return {P, mpk: concatBytes(be(P[0]), be(P[1]))};
+}
+// Old_KeyStore.get_pubkey_from_mpk: the key of address n on chain c (0 receive, 1 change) is mpk + z*G, with
+// z = SHA-256(SHA-256("n:c:" + mpk)). Old Electrum wallets use legacy addresses (1...) of uncompressed keys.
+async function oldElAddr(K, chain, n, net){
+  const z = BigInt("0x" + hex(oldElSha256(oldElSha256(concatBytes(new TextEncoder().encode(n + ":" + chain + ":"), K.mpk)))));
+  const Q = eadd(K.P, emul(z, SG)), be = (v) => fromHex(v.toString(16).padStart(64, "0"));
+  return base58check(Uint8Array.of(NETS[net || "main"].pkh, ...await hash160(concatBytes(Uint8Array.of(4), be(Q[0]), be(Q[1])))));
+}
+async function oldElAddresses(K, chain, from, count, net){ const out = []; for(let i = from; i < from + count; i++) out.push(await oldElAddr(K, chain, i, net)); return out; }
+const OLD_EL_HOWTO = "Open it in Electrum: File, New/Restore, type a wallet name, Next, Standard wallet, I already have a seed, and type the words. Electrum shows “Seed Type: old” under them and opens the old wallet.";
+// What checkPhrase says about old Electrum words that are not a BIP39 phrase.
+function oldElResult(oe){
+  return {ok:false, oldElectrum:oe, msg:"Old Electrum seed: these " + oe.words.length + " words are from the old word list of Electrum before version 2.0, not a BIP39 phrase. Most other wallet apps cannot open it. " + OLD_EL_HOWTO + " VERIFY shows its master public key and its first addresses."};
+}
+// The old Electrum part of CHECK A BACKUP: after VERIFY, the hex seed (secret), the master public key and 10+10 addresses.
+let oeSeq = 0;
+function oeClear(){ oeSeq++; for(const id of ["oeSeed", "oeOut", "oeNote"]) document.getElementById(id).textContent = ""; document.getElementById("oeBlock").style.display = "none"; }
+async function oeShow(oe, both, vp){
+  const my = ++oeSeq, net = practiceOn ? "test" : "main", $ = (id) => document.getElementById(id);
+  $("oeNote").textContent = (both ? "These words are BOTH a valid BIP39 phrase and an old Electrum seed. Electrum reads them as an old Electrum seed (\u201cSeed Type: old\u201d) unless you choose BIP39 seed in its Options; other wallet apps read them as BIP39. The two are different wallets: the BIP39 one is above, the old Electrum one is here. Check which one holds the money. " : "")
+    + (vp ? "Old Electrum seeds have no passphrase (Electrum does not accept one for them), so the passphrase box is not used here. " : "") + OLD_EL_HOWTO;
+  $("oeOut").textContent = "Working out the old Electrum wallet (100,000 rounds of SHA-256)...";
+  $("oeBlock").style.display = "";
+  await new Promise(r => setTimeout(r, 0));
+  if(my !== oeSeq) return;
+  try {
+    const K = oldElKeys(oe.hex), rec = await oldElAddresses(K, 0, 0, ADDR_SHOWN, net), chg = await oldElAddresses(K, 1, 0, ADDR_SHOWN, net);
+    if(my !== oeSeq) return;
+    const list = (a) => a.map((x, i) => String(i).padStart(3) + ":  " + x).join("\n");
+    $("oeSeed").textContent = "Seed (hex): " + oe.hex + (oe.hex.length % 8 ? " (" + oe.hex.length + " digits: some words were picked by hand. Electrum still opens them, but cannot show them as words again.)" : "");
+    $("oeOut").textContent = "Master public key (mpk): it shows every address of the wallet but cannot spend.\n" + hex(K.mpk) + "\n\n" + (net === "test" ? "TESTNET (practice coins only). " : "") + "Receive addresses (legacy 1..., uncompressed keys):\n" + list(rec) + "\n\nChange addresses:\n" + list(chg) + "\n\nCompare them with the wallet's history, or look one up on another device. The Wallet Detective below can also find an old Electrum address.";
+  } catch(e) { if(my === oeSeq) $("oeOut").textContent = "Could not work out the old Electrum wallet: " + e.message; }
+}
 // Explain an address (v2.4.0): what a pasted address is (type, network, typo or not) and what someone can do with it. It needs
 // no seed and uses only the text. Keys, seed words, Lightning invoices and descriptors pasted by mistake are recognized too.
 const EXPLAIN_NET = {bc: "Bitcoin mainnet (real money)", tb: "testnet or signet (practice coins, worthless)", bcrt: "regtest (a private test network)"};
@@ -4119,7 +4227,7 @@ async function explainAddress(text){
   t = t.replace(/\s+/g, "");
   const pub = " What someone can do with it: send bitcoin to it, and look up its payments on a block explorer. Nobody can spend from it with the address alone.";
   // Secrets pasted by mistake come first: seed words (also numbered, or as 4-letter forms), SeedQR digits, raw hex.
-  const toks = String(text).toLowerCase().split(/[^a-z]+/).filter(Boolean), known = toks.filter(x => Object.prototype.hasOwnProperty.call(WORD_MAP, x) || wordFromPrefix(x)).length;
+  const toks = String(text).toLowerCase().split(/[^a-z]+/).filter(Boolean), known = toks.filter(x => Object.prototype.hasOwnProperty.call(WORD_MAP, x) || wordFromPrefix(x) || OLD_EL_MAP.has(x)).length;   // v2.10.0: old Electrum words too
   if(known >= 6 && known >= toks.length * 0.8) return {level: "bad", text: "These look like SEED WORDS, not an address. Anyone who has them controls the funds: never paste them into a website or a connected device.", terms: ["Seed (seed phrase, recovery phrase, mnemonic)"]};
   if(/^\d{48,96}$/.test(t) && t.length % 12 === 0) return {level: "bad", text: "These look like SeedQR digits, not an address: they are seed words written as numbers. Anyone who has them controls the funds.", terms: ["SeedQR"]};
   if(/^[0-9a-f]+$/i.test(t) && [32, 40, 48, 56, 64, 128].includes(t.length)) return {level: "bad", text: "This is " + t.length + " hex characters, not an address. It could be a SECRET (" + (t.length === 128 ? "a BIP39 seed, which opens the whole wallet" : "a private key, or seed words written as hex, such as a CompactSeedQR") + ") or something public such as a transaction ID or a hash. Treat it as secret unless you know what it is.", terms: ["Hex", "Private key", "CompactSeedQR"]};
@@ -4288,19 +4396,22 @@ async function checkPhrase(phrase){
   const pc = await phraseFromCode(phrase);
   if(pc && pc.error) return {ok:false, msg:pc.error};
   if(pc) phrase = pc.words;
+  const oe = pc ? null : oldElSeed(phrase);   // v2.10.0: old Electrum words (Electrum checks for them first, as calc_seed_type does)
   const words = phrase.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if(![12,15,18,21,24].includes(words.length)) return {ok:false, msg:"Invalid length" + await electrumNote(phrase)};
   const bad = [], readAs = []; let read = 0;
   words.forEach((w, i) => { if(Object.prototype.hasOwnProperty.call(WORD_MAP, w)) return; const f = wordFromPrefix(w); if(f){ readAs.push("word " + (i + 1) + " '" + w + "' as '" + f + "'"); words[i] = f; read++; } else bad.push(i); });
-  if(bad.length) return {ok:false, msg:unknownWordsMsg(words, bad)};
+  if(bad.length) return oe ? oldElResult(oe) : {ok:false, msg:unknownWordsMsg(words, bad)};
   const bits = words.map(w=>WORD_MAP[w].toString(2).padStart(11,"0")).join("");
   const cLen = Math.floor((words.length*11)/32);
   const eBits = bits.length - cLen;
   const eBytes = new Uint8Array(eBits/8);
   for(let i=0;i<eBytes.length;i++) eBytes[i]=parseInt(bits.slice(i*8,(i+1)*8),2);
   const h = new Uint8Array(await crypto.subtle.digest("SHA-256", eBytes));
+  if(oe && bits.slice(eBits)!==bytesToBits(h).slice(0,cLen)) return oldElResult(oe);   // v2.10.0
   if(bits.slice(eBits)!==bytesToBits(h).slice(0,cLen)){ const en = await electrumNote(phrase); return {ok:false, msg:"Checksum failed" + (en || ". Every word is a BIP39 word, so one is probably wrong, missing or out of order: Reforge in EXTRA TOOLS can search for it." + (read ? " Some were read from their first letters (" + readAs.slice(0, 3).join(", ") + (read > 3 ? " and " + (read - 3) + " more" : "") + "); check those first." : ""))}; }
-  return {ok:true, msg:"Valid "+words.length+"-word BIP39 phrase"+(pc ? " (read from "+pc.kind+")" : "")+(read ? " (" + read + " word" + (read > 1 ? "s" : "") + " read from the first letters)" : ""), mnemonic:words.join(" "), fromCode:!!pc, expanded: read > 0};
+  if(oe && read) return oldElResult(oe);   // valid BIP39 only with words read from their first letters: Electrum reads the old words as typed
+  return {ok:true, msg:"Valid "+words.length+"-word BIP39 phrase"+(pc ? " (read from "+pc.kind+")" : "")+(read ? " (" + read + " word" + (read > 1 ? "s" : "") + " read from the first letters)" : "") + (oe ? ", and also an old Electrum seed (see below)" : ""), mnemonic:words.join(" "), fromCode:!!pc, expanded: read > 0, oldElectrum: oe};
 }
 
 // ================= Reforge (v1.28.0): recover missing or wrong seed words =================
@@ -4318,10 +4429,18 @@ const reforgeHas = (w) => Object.prototype.hasOwnProperty.call(WORD_MAP, w);
 // Read the typed words. "?" is an unknown word. A BIP39 word is used as is. 4 or more letters that start exactly one BIP39
 // word (backups on steel often keep only the first 4 letters) are read as that word. Anything else becomes an unknown word.
 function reforgeParseWords(text){
-  const toks = String(text || "").trim().toLowerCase().split(/\s+/).filter(Boolean), idx = [], notes = [], read = [];
+  const toks = String(text || "").trim().toLowerCase().split(/\s+/).filter(Boolean), idx = [], notes = [], read = [], sets = [], pats = [];
   toks.forEach((t, i) => {
     if(t === "?"){ idx.push(-1); return; }
     if(reforgeHas(t)){ idx.push(WORD_MAP[t]); return; }
+    if(/^[a-z?*]+$/.test(t) && /[?*]/.test(t)){   // v2.10.0: a damaged word, with ? or * for the letters that cannot be read
+      const m = reforgePatternWords(t);
+      if(m.length === 1){ read.push("word " + (i + 1) + " '" + t + "' as '" + m[0] + "'"); idx.push(WORD_MAP[m[0]]); return; }
+      idx.push(-1);
+      if(!m.length){ notes.push("word " + (i + 1) + " '" + t + "' fits no BIP39 word, so it is treated as unknown"); return; }
+      if(m.length < 2048){ sets[i] = Uint16Array.from(m, w => WORD_MAP[w]); pats[i] = t; notes.push("word " + (i + 1) + " '" + t + "' fits " + m.length + " words" + (m.length <= 6 ? " (" + m.join(", ") + ")" : "")); }
+      return;
+    }
     if(/^[a-z]{4,8}$/.test(t)){
       const m = WORDLIST.filter(w => w.startsWith(t));
       if(m.length === 1){ idx.push(WORD_MAP[m[0]]); read.push("word " + (i + 1) + " '" + t + "' as '" + m[0] + "'"); return; }
@@ -4329,7 +4448,15 @@ function reforgeParseWords(text){
     idx.push(-1); notes.push("word " + (i + 1) + " '" + t + "' is not a BIP39 word, so it is treated as unknown");
   });
   if(read.length) notes.unshift(read.length > 3 ? read.length + " words were read from their first letters (for example " + read[0] + ")" : "read " + read.join(", "));
-  return {idx, notes};
+  return {idx, notes, sets, pats};
+}
+// v2.10.0 damaged backups (burned, rusted or smudged): in a word, ? is one letter that cannot be read and * is any number of them
+// (also none). The pattern is the whole word, but as every BIP39 word is known by its first 4 letters, a pattern of 4 or more
+// characters without * also fits the longer words it starts: c?ar fits charge and clarify, ab* the 10 words that start with ab.
+const REFORGE_COMBOS = 2048 * 2048;   // at most as many phrases as two unknown words
+function reforgePatternWords(t){
+  const re = t.replace(/\?/g, "[a-z]").replace(/\*/g, "[a-z]*"), whole = new RegExp("^" + re + "$"), start = !t.includes("*") && t.length >= 4 ? new RegExp("^" + re) : null;
+  return WORDLIST.filter(w => whole.test(w) || (start !== null && start.test(w)));
 }
 // True if these word numbers (0 to 2047; 12, 15, 18, 21 or 24 of them) have a valid BIP39 checksum.
 async function reforgeChecksumOk(idx){
@@ -4345,9 +4472,10 @@ async function reforgeChecksumOk(idx){
   return acc === (h[0] >>> (8 - cLen));
 }
 // Choose what to search from the typed words. Throws (with the reason) when Reforge cannot search it.
-function reforgePlan(idx){
+function reforgePlan(idx, sets){
   const n = idx.length, unk = [];
   idx.forEach((v, i) => { if(v < 0) unk.push(i); });
+  if(sets && sets.some(Boolean)) return reforgePatternPlan(idx, sets, unk);   // v2.10.0
   if(REFORGE_LENS.includes(n)){
     if(unk.length > 2) throw new Error("Reforge can fill at most 2 unknown words, and " + unk.length + " are unknown (" + unk.map(i => i + 1).join(", ") + "). A search for 3 is too large to run in a browser.");
     if(unk.length){
@@ -4376,6 +4504,26 @@ function reforgePlan(idx){
           const c = new Uint16Array(n + 1); c.set(idx.slice(0, p), 0); c[p] = w; c.set(idx.slice(p), p + 1); yield c; } }};
   }
   throw new Error("Type 12, 15, 18, 21 or 24 words (with ? for each unknown word), or 11, 14, 17, 20 or 23 words if one word is missing and you do not know where. You typed " + n + ".");
+}
+// v2.10.0: the plan for damaged words. Every combination of the words that fit each unknown place (2048 for a plain ?), counted
+// before it runs and refused above REFORGE_COMBOS. With one unknown place and nothing to check against, the words that fit are
+// listed; with more, the phrases that pass the checksum are listed if there are at most REFORGE_FEW of them.
+const REFORGE_FEW = 20;
+function reforgePatternPlan(idx, sets, unk){
+  const n = idx.length, all = Uint16Array.from({length: 2048}, (_, i) => i), cand = unk.map(i => sets[i] || all);
+  if(!REFORGE_LENS.includes(n)) throw new Error("A damaged word (with ? or * inside it) can be searched only with all the words in place: type 12, 15, 18, 21 or 24 words, with ? for each word you do not have. You typed " + n + ".");
+  const total = cand.reduce((a, c) => a * c.length, 1), each = unk.map((i, k) => "word " + (i + 1) + ": " + cand[k].length).join(", ");
+  if(total > REFORGE_COMBOS) throw new Error("That is " + total.toLocaleString("en-US") + " phrases to try (" + each + "). Reforge tries at most " + REFORGE_COMBOS.toLocaleString("en-US") + " (as many as two unknown words), so this search is too large for a browser. Read one more letter of a damaged word, or mark fewer words unknown.");
+  return {kind:"fill", pattern:true, n, unk, total, each, listable: unk.length === 1,
+    desc: "every combination of the words that fit: " + unk.map((i, k) => cand[k].length + (cand[k].length === 1 ? " word" : " words") + " for word " + (i + 1)).join(", "),
+    *gen(){ const c = Uint16Array.from(idx, v => v < 0 ? 0 : v), pos = unk.map(() => 0);
+      unk.forEach((p, k) => { c[p] = cand[k][0]; });
+      for(;;){
+        yield c.slice();
+        let k = unk.length - 1;
+        for(; k >= 0; k--){ if(++pos[k] < cand[k].length){ c[unk[k]] = cand[k][pos[k]]; break; } pos[k] = 0; c[unk[k]] = cand[k][0]; }
+        if(k < 0) return;
+      } }};
 }
 // Full bech32 / bech32m checksum check (BIP173, BIP350) of a lowercase SegWit address.
 function reforgeBech32Ok(a){
@@ -4455,10 +4603,10 @@ function reforgeNeedTarget(plan){
 }
 // The search itself. hooks: {progress(step, done, total, found), stop()}. Returns
 // {plan, tried, valid (phrases passing the checksum), list (no target: words that fit), matches, checked, stopped}.
-async function reforgeSearch(idx, target, passphrase, hooks){
+async function reforgeSearch(idx, target, passphrase, hooks, sets){
   hooks = hooks || {};
-  const plan = reforgePlan(idx), stop = () => !!(hooks.stop && hooks.stop()), progress = hooks.progress || (() => {});
-  if(!target && !plan.listable) throw new Error(reforgeNeedTarget(plan));
+  const plan = reforgePlan(idx, sets), stop = () => !!(hooks.stop && hooks.stop()), progress = hooks.progress || (() => {});
+  if(!target && !plan.listable && !plan.pattern) throw new Error(reforgeNeedTarget(plan));
   const res = {plan, step:"checksum", tried:0, valid:[], list:null, matches:[], checked:0, stopped:false};
   let batch = [];
   const flush = async () => {
@@ -4477,7 +4625,11 @@ async function reforgeSearch(idx, target, passphrase, hooks){
   if(batch.length) await flush();
   progress("checksum", res.tried, plan.total, 0);
   res.step = "verify";
-  if(!target){ res.list = res.valid.map(c => WORDLIST[c[plan.unk[0]]]); return res; }
+  if(!target){
+    if(plan.listable) res.list = res.valid.map(c => WORDLIST[c[plan.unk[0]]]);
+    else res.phrases = res.valid.length <= REFORGE_FEW ? res.valid.map(c => Array.from(c, v => WORDLIST[v])) : null;   // v2.10.0
+    return res;
+  }
   const pw = passphrase || "";
   for(let i = 0; i < res.valid.length; i += 8){
     const group = res.valid.slice(i, i + 8);
@@ -4593,13 +4745,13 @@ async function reforgeWords(){
   const notes = parsed.notes.length ? " Note: " + parsed.notes.join("; ") + "." : "";
   let target, plan;
   try {
-    plan = reforgePlan(parsed.idx);
+    plan = reforgePlan(parsed.idx, parsed.sets);
     target = await reforgeTarget(document.getElementById("reforgeWordsCheck").value);
     if(!target && plan.kind === "complete"){
       const valid = await reforgeChecksumOk(Uint16Array.from(parsed.idx));
       return say("bad", "Your " + plan.n + " words as typed " + (valid ? "have a valid checksum (that alone does not prove they are your words)" : "do NOT have a valid checksum, so at least one word is wrong or out of place") + ". " + reforgeNeedTarget(plan) + notes);
     }
-    if(!target && !plan.listable) return say("bad", reforgeNeedTarget(plan) + notes);
+    if(!target && !plan.listable && !plan.pattern) return say("bad", reforgeNeedTarget(plan) + notes);
   } catch(e) { return say("bad", e.message + notes); }
   reforgeBusy(true);
   const t0 = Date.now();
@@ -4610,16 +4762,23 @@ async function reforgeWords(){
       progress: (step, done, total, found) => {
         const pct = Math.floor(100 * done / Math.max(1, total)), sec = (Date.now() - t0) / 1000, left = done ? sec * (total - done) / done : 0;
         say("", (step === "checksum" ? "Step 1 of 2: checking " : "Step 2 of 2: comparing with the " + target.label + ": ") + done.toLocaleString("en-US") + " of " + total.toLocaleString("en-US") + " (" + pct + "%)" + (done && pct < 100 ? ", about " + reforgeTime(left) + " left" : "") + (found ? ". " + found + " match so far" : "") + ". STOP ends the search.");
-      }});
+      }}, parsed.sets);
     if(!live()) return;
     const pwText = pw ? "with the passphrase you typed" : "without a passphrase";
-    if(!target){
-      say("ok", res.list.length + " words fit at position " + (plan.unk[0] + 1) + " of this " + plan.n + "-word phrase. Each gives a valid checksum, but only your own backup (or something to check against) tells you which one is yours." + notes);
+    if(!target && !res.stopped && !plan.listable){   // v2.10.0: damaged words in more than one place, nothing to check against
+      if(!res.phrases) return say("bad", res.valid.length.toLocaleString("en-US") + " of the " + plan.total.toLocaleString("en-US") + " combinations (" + plan.each + ") pass the checksum: too many to list (more than " + REFORGE_FEW + "). Add a master fingerprint, an address or an account xpub to check them against, or read more letters." + notes);
+      say(res.phrases.length ? "ok" : "bad", res.phrases.length ? res.phrases.length + (res.phrases.length === 1 ? " phrase fits" : " phrases fit") + " the letters you read and pass the checksum (of " + plan.total.toLocaleString("en-US") + " combinations). The checksum alone does not prove which one is yours: check each with something you know, such as an address, in CHECK A BACKUP." + notes
+        : "NOT FOUND. None of the " + plan.total.toLocaleString("en-US") + " combinations of the words that fit passes the checksum. A letter may be read wrong, or a word may be in the wrong place: mark it with ? or * instead." + notes);
+      if(res.phrases.length){ o.textContent = res.phrases.map((p, k) => "Phrase " + (k + 1) + ":\n" + p.map((w, i) => (i + 1) + ".\u00a0" + w).join("   ")).join("\n\n"); o.style.display = "block"; }
+      return;
+    }
+    if(!target && !res.stopped){
+      say("ok", res.list.length + (res.list.length === 1 ? " word fits" : " words fit") + " at position " + (plan.unk[0] + 1) + " of this " + plan.n + "-word phrase. Each gives a valid checksum, but only your own backup (or something to check against) tells you which one is yours." + notes);
       o.textContent = res.list.join("  "); o.style.display = "block"; return;
     }
     const lines = res.matches.map((m, k) => {
       const ch = [];
-      m.words.forEach((w, i) => { if(plan.kind !== "insert" && parsed.idx[i] !== WORD_MAP[w]) ch.push("word " + (i + 1) + (parsed.idx[i] < 0 ? " (unknown)" : " (" + WORDLIST[parsed.idx[i]] + ")") + " is " + w); });
+      m.words.forEach((w, i) => { if(plan.kind !== "insert" && parsed.idx[i] !== WORD_MAP[w]) ch.push("word " + (i + 1) + (parsed.idx[i] < 0 ? (parsed.pats[i] ? " (" + parsed.pats[i] + ")" : " (unknown)") : " (" + WORDLIST[parsed.idx[i]] + ")") + " is " + w); });
       if(plan.kind === "insert") for(let i = 0; i < m.words.length; i++){ const rest = m.words.slice(0, i).concat(m.words.slice(i + 1)); if(rest.every((w, j) => WORD_MAP[w] === parsed.idx[j])){ ch.push("the missing word is word " + (i + 1) + ", " + m.words[i]); break; } }
       return (res.matches.length > 1 ? "Match " + (k + 1) + ": " : "") + "matches the " + m.how + ". " + (ch.length ? "Changed: " + ch.join("; ") + "." : "Your words were right as typed.") + "\n" + m.words.map((w, i) => (i + 1) + ".\u00a0" + w).join("   ");
     });
@@ -5177,7 +5336,7 @@ function practiceMode(on){
   detClear(true);   // v2.8.0: a Detective search or list belongs to the old network
   // fixes release: VERIFY's lines, the child seed, the device dice check and the two transaction tools showed addresses of the old network
   verifySeq++; { const v = document.getElementById("verifyStatus"); if(v.textContent){ v.className = "status"; v.textContent = "Practice mode was turned " + (on ? "on" : "off") + ": press VERIFY again."; } const m = document.getElementById("verifyMatch"); m.textContent = ""; m.className = "status"; clearVerifyIcons(); }
-  clearChild(); dcClear(true); clearPsbt(false); clearCompare(false);
+  clearChild(); dcClear(true); clearPsbt(false); clearCompare(false); oeClear();
   if(!on) practiceWalletClose();
   reshowSeed();
 }
@@ -5413,6 +5572,14 @@ async function runSelfTests(auto){
   eq("checkPhrase accepts valid", async()=>(await checkPhrase("abandon ".repeat(11)+"about")).ok, true);
   eq("checkPhrase rejects bad checksum", async()=>(await checkPhrase("abandon ".repeat(12))).ok, false);
   eq("checkPhrase rejects unknown word", async()=>(await checkPhrase("abandon ".repeat(11)+"zzzz")).ok, false);
+  // v2.10.0: old Electrum seeds (Electrum's old_mnemonic.py, test_mnemonic.py and test_wallet_vertical.py, commit 54ff65d) and damaged words in Reforge
+  eq("Old Electrum wordlist SHA256 (1626 words of Electrum's old_mnemonic.py)", async()=>OLD_EL_WORDS.length+" "+hex(await sha256bytes(new TextEncoder().encode(OLD_EL_WORDS.join("\n")+"\n"))), "1626 c8da327d316f8ee758b790068e618077ac271a89fd77ec1250c59ae40e7b599e");
+  eq("Old Electrum words -> hex seed (Electrum's own test vector)", ()=>oldElSeed("hardly point goal hallway patience key stone difference ready caught listen fact").hex, "8edad31a95e7d59f8837667510d75a4d");
+  eq("Old Electrum hand-picked words -> 33 hex digits, kept as Electrum does (Electrum's own test vector)", ()=>oldElSeed("early given garden bond decay curtain companion random storm chair learn lust").hex, "976741d01001ab4b7a17d6ce83a1bca93");
+  { let oeK=null; const oeKeys=()=>oeK||(oeK=oldElKeys(oldElSeed("powerful random nobody notice nothing important anyway look away hidden message over").hex));
+    eq("Old Electrum master public key after 100,000 rounds of SHA-256 (Electrum's test wallet)", ()=>hex(oeKeys().mpk), "e9d4b7866dd1e91c862aebf62a49548c7dbf7bcc6e4b7b8c9da820c7737968df9c09d5a3e271dc814a29981f81b3faaf2737b551ef5dcc6189cf0f8252c442b3");
+    eq("Old Electrum first receive and change address (Electrum's test wallet)", async()=>(await oldElAddr(oeKeys(),0,0,"main"))+" "+(await oldElAddr(oeKeys(),1,0,"main")), "1FJEEB8ihPMbzs2SkLmr37dHyRFzakqUmo 1KRW8pH6HFHZh889VDq6fEKvmrsmApwNfe"); }
+  eq("Reforge damaged word: ab* as word 12 of abandon x11 fits 10 words, and only 'about' passes the checksum", async()=>{ const p=reforgeParseWords("abandon ".repeat(11)+"ab*"); return p.sets[11].length+" "+(await reforgeSearch(p.idx,null,"",{},p.sets)).list.join(" "); }, "10 about");
   let pass=0, lines=[];
   for(const t of T){
     let got, err="";
@@ -6302,7 +6469,8 @@ const DET_PATHS = [
   {id:"ric49", seed:"bip39", steps:c => [[49, true], [c, true], [2147483647, true]], types:["sh-wpkh"], accts:false, name:"Ricochet (BIP49)"},
   {id:"ric44", seed:"bip39", steps:c => [[44, true], [c, true], [2147483647, true]], types:["pkh"], accts:false, name:"Ricochet (BIP44)"},
   {id:"el-standard", seed:"electrum-standard", steps:() => [], types:["pkh"], accts:false, name:"Electrum seed, standard"},
-  {id:"el-segwit", seed:"electrum-segwit", steps:() => [[0, true]], types:["wpkh"], accts:false, name:"Electrum seed, SegWit"}
+  {id:"el-segwit", seed:"electrum-segwit", steps:() => [[0, true]], types:["wpkh"], accts:false, name:"Electrum seed, SegWit"},
+  {id:"el-old", seed:"electrum-old", steps:() => [], types:["pkh"], accts:false, name:"Old Electrum seed"}   // v2.10.0: not BIP32 (see oldElAddr)
 ];
 const DET_ACCTS = 9, DET_TYPE_NAME = {wpkh:"native SegWit (bc1q...)", tr:"Taproot (bc1p...)", "sh-wpkh":"nested SegWit (3...)", pkh:"legacy (1...)"};
 function detPathStr(steps){ return "m" + steps.map(([i, h]) => "/" + i + (h ? "'" : "")).join(""); }
@@ -6311,13 +6479,14 @@ function detPathStr(steps){ return "m" + steps.map(([i, h]) => "/" + i + (h ? "'
 async function detSource(text, vp){
   const r = await checkPhrase(text);
   let el = null; try { el = await electrumSeedType(text); } catch(e) { el = null; }
+  if(r.oldElectrum) el = null;   // v2.10.0: Electrum reads old words first (calc_seed_type), whatever their hash says
   if(el && el !== "standard" && el !== "SegWit") return {error:"This is an Electrum two-factor (2FA) seed. Only Electrum can open it: File, New/Restore, a wallet name, Wallet with two-factor authentication, I already have a seed, and type the words. On the page Restore 2FA wallet, Disable opens it without the TrustedCoin service. This page cannot search it."};
-  if(!r.ok && !el){
+  if(!r.ok && !el && !r.oldElectrum){
     const n = String(text || "").trim().split(/\s+/).filter(Boolean).length;
     if(n === 20 || n === 33) return {error:"These look like a SLIP39 (Shamir) share of " + n + " words, as newer Trezor devices make. Restore them with a Trezor (or another app that reads SLIP39). This page cannot open them."};
     return {error:"First type the seed words in the box at the top of CHECK A BACKUP. " + r.msg + (n ? " (Other word formats this page cannot open: SLIP39 shares of 20 or 33 words, and the 24-word aezeed phrases of LND wallets such as older Zeus.)" : "")};
   }
-  return {mnemonic:r.ok ? r.mnemonic : null, electrum:el === "standard" ? "standard" : el === "SegWit" ? "segwit" : null, text,
+  return {mnemonic:r.ok ? r.mnemonic : null, electrum:el === "standard" ? "standard" : el === "SegWit" ? "segwit" : r.oldElectrum ? "old" : null, old:r.oldElectrum || null, text,
     passes:vp ? [["with the passphrase", vp], ["without a passphrase", ""]] : [["without a passphrase", ""]]};
 }
 // The address the person knows was used. Throws with a plain reason when it cannot be searched for.
@@ -6336,7 +6505,8 @@ function detRawDiffers(pw){ return !!pw && electrumNorm(pw) !== pw.normalize("NF
 async function detRoots(src, pw){
   const roots = {};
   if(src.mnemonic) roots.bip39 = [{root: await masterFromSeed(await mnemonicToSeed(src.mnemonic, pw)), asTyped: false}];
-  if(src.electrum){
+  if(src.electrum === "old") roots["electrum-old"] = [{old: src.oldK || (src.oldK = oldElKeys(src.old.hex)), asTyped: false}];   // v2.10.0 (no passphrase: see detSearch)
+  else if(src.electrum){
     const list = [{root: await masterFromSeed(await electrumToSeed(src.text, pw)), asTyped: false}];
     if(detRawDiffers(pw)) list.push({root: await masterFromSeed(await electrumToSeed(src.text, pw, true)), asTyped: true});
     roots["electrum-" + src.electrum] = list;
@@ -6357,11 +6527,21 @@ function detPlan(src, T){
 // The search. hooks: {progress(done, total, label), stop()}. Returns {found, done, total, stopped}.
 async function detSearch(src, T, hooks){
   const jobs = detPlan(src, T), coin = NETS[T.net].coin;
-  const total = src.passes.reduce((sum, [, pw]) => sum + jobs.reduce((s, j) => s + 2 * j.n * (j.P.seed !== "bip39" && detRawDiffers(pw) ? 2 : 1), 0), 0);
+  const total = src.passes.reduce((sum, [, pw]) => sum + jobs.reduce((s, j) => s + 2 * j.n * (j.P.seed === "electrum-old" ? (pw ? 0 : 1) : j.P.seed !== "bip39" && detRawDiffers(pw) ? 2 : 1), 0), 0);
   let done = 0;
   for(const [label, pw] of src.passes){
     const roots = await detRoots(src, pw);
     for(const j of jobs) for(const R of roots[j.P.seed] || []){
+      if(R.old){   // v2.10.0: an old Electrum seed, receive and change addresses from its master public key; it has no passphrase
+        if(pw) continue;
+        for(const chain of [0, 1]) for(let i = j.from; i < j.from + j.n; i++){
+          if(hooks.stop()) return {found:null, done, total, stopped:true};
+          if(await oldElAddr(R.old, chain, i, T.net) === T.addr) return {found:{P:j.P, acct:0, chain, index:i, pass:label, asTyped:false, usual:T.type === "pkh", account:"m", path:"m/" + chain + "/" + i, type:T.type}, done, total};
+          done++;
+          const y = reforgeYield(); if(y){ hooks.progress(done, total, label); await y; }
+        }
+        continue;
+      }
       const steps = j.P.steps(coin, j.acct);
       let [k, c] = R.root;
       for(const [i, h] of steps) [k, c] = await ckdPriv(k, c, i, h);
@@ -6397,7 +6577,8 @@ const DET_APPS = {
   "wbad-wpkh": "Samourai Wallet and Ashigaru (Whirlpool bad bank) and Sparrow (Whirlpool).",
   "ric84-wpkh": "Samourai Wallet and Ashigaru (Ricochet).", "ric49-sh-wpkh": "Samourai Wallet and Ashigaru (Ricochet).", "ric44-pkh": "Samourai Wallet and Ashigaru (Ricochet).",
   "el-standard-pkh": "Electrum (a standard Electrum seed); BlueWallet can also import it.",
-  "el-segwit-wpkh": "Electrum (a SegWit Electrum seed); BlueWallet can also import it, and SeedSigner (12 words, with its Electrum setting on)."
+  "el-segwit-wpkh": "Electrum (a SegWit Electrum seed); BlueWallet can also import it, and SeedSigner (12 words, with its Electrum setting on).",
+  "el-old-pkh": "Electrum (an old Electrum seed, made before Electrum 2.0; Electrum still opens it)."
 };
 const DET_SPARROW_TYPE = {wpkh:"Native Segwit (P2WPKH)", tr:"Taproot (P2TR)", "sh-wpkh":"Nested Segwit (P2SH-P2WPKH)", pkh:"Legacy (P2PKH)"};
 function detApps(P, type){ return DET_APPS[P.id + "-" + type] || ""; }
@@ -6406,6 +6587,7 @@ function detHowTo(f, withPass, net){
   const tn = net === "test" ? " This is a test-network address, so switch the app to testnet first (its own documentation says how)." : "";
   if(f.asTyped) return "Electrum itself cannot open it from these words, because it ignores capital letters and accents in the passphrase. The app that made this wallet keeps them (Sparrow, for one, reads Electrum wallet files that way): open it in that app, or from the Electrum wallet file if you have it." + tn;
   if(!f.P.steps(0, 0).length && f.P.seed === "bip39") return "Old Edge (Airbitz) wallets keep their addresses straight under the root key (m/0/0, m/0/1, ...): open it in Edge. Other apps, Sparrow among them, may not accept the root path m as a derivation." + tn;
+  if(f.P.seed === "electrum-old") return OLD_EL_HOWTO + " Old Electrum seeds have no passphrase, so Electrum does not ask for one." + tn;   // v2.10.0
   if(f.P.seed !== "bip39") return "To open it in Electrum (Sparrow and most other apps cannot open Electrum seeds): File, New/Restore, type a wallet name, Next, Standard wallet, I already have a seed, and type the words." + (withPass ? " Before Next, press Options, tick \u201cExtend this seed with custom words\u201d and press OK; type the passphrase on the Seed Extension page (Electrum ignores capital letters in it)." : "") + tn;
   return "To open it in Sparrow (it can use any of these settings): File, New Wallet, type a name, Create Wallet. Set Script Type to " + DET_SPARROW_TYPE[f.type] + ". Press New or Imported Software Wallet, then Mnemonic Words (BIP39); pick the number of words, type them" + (withPass ? ", tick Use passphrase? and type the passphrase" : "") + ", and press Create Keystore. Check the Derivation path: if it is not " + f.account + ", change it to " + f.account + " and press Import Custom Derivation Keystore; if it already is, press Import Keystore. Then press Apply." + tn;
 }
@@ -6413,7 +6595,7 @@ function detReport(f, T){
   const withPass = f.pass === "with the passphrase", lines = [];
   lines.push("FOUND: " + T.addr + " is " + (f.chain ? "change" : "receive") + " address #" + f.index + " (" + f.path + ") of these words, " + f.pass + ".");
   lines.push("");
-  lines.push("Settings: " + (f.P.seed === "bip39" ? "BIP39 seed words" : "an Electrum seed (not BIP39)") + (withPass ? " with the passphrase" : "") + ", address type " + DET_TYPE_NAME[f.type] + ", " + (f.P.seed === "bip39" ? "derivation path " + f.account : "Electrum's own derivation") + ".");
+  lines.push("Settings: " + (f.P.seed === "bip39" ? "BIP39 seed words" : f.P.seed === "electrum-old" ? "an old Electrum seed (made before Electrum 2.0, not BIP39)" : "an Electrum seed (not BIP39)") + (withPass ? " with the passphrase" : "") + ", address type " + DET_TYPE_NAME[f.type] + (f.P.seed === "electrum-old" ? " with uncompressed keys" : "") + ", " + (f.P.seed === "bip39" ? "derivation path " + f.account : f.P.seed === "electrum-old" ? "the old Electrum derivation (from the master public key, not BIP32)" : "Electrum's own derivation") + ".");
   const apps = detApps(f.P, f.type);
   if(f.usual && apps) lines.push("Apps that use these settings: " + apps);
   if(!f.usual) lines.push("This is an unusual mix: a " + DET_TYPE_NAME[f.type] + " address on the " + f.P.name + " path. Few apps do this, so most apps will not find it unless you set the path yourself.");
@@ -6621,13 +6803,13 @@ async function detFind(){
     if(my !== detSeq) return;
     if(r.stopped) return detSay("", "Stopped. Nothing was found before you stopped it.");
     if(r.found){ detSay("ok", "FOUND: the app and settings are below."); detShow(detReport(r.found, T)); return; }
-    const what = (src.mnemonic ? ["BIP39 paths: accounts 0 to " + DET_ACCTS + " and the first 100 addresses of account 0 where apps use this address type, the first 20 elsewhere"] : []).concat(src.electrum ? ["Electrum's own path: the first 100 addresses"] : []);
+    const what = (src.mnemonic ? ["BIP39 paths: accounts 0 to " + DET_ACCTS + " and the first 100 addresses of account 0 where apps use this address type, the first 20 elsewhere"] : []).concat(src.electrum === "old" ? ["the old Electrum wallet: the first 100 receive and change addresses"] : src.electrum ? ["Electrum's own path: the first 100 addresses"] : []);
     detSay("bad", "NOT FOUND in the settings of the well-known wallet apps (" + what.join("; ") + "; " + src.passes.map(p => p[0]).join(" and ") + "). Things to check: the address (one wrong character changes everything; is it from this wallet, not an exchange or another wallet?), the words and their order, the passphrase (case, spaces and spelling count), and whether this wallet was a multisig wallet (then no one seed opens it) or came from an app this page does not know. A 3... address can also be a multisig address. Some wallets cannot be opened from their words with standard settings at all: Muun, Bitkey, Blockstream Green's two-factor (multisig) accounts, and Lightning wallets such as Phoenix, Zeus and Breez (only an on-chain part follows these settings). Use that app's own recovery.");
   } catch(e) { if(my === detSeq) detSay("bad", "Could not search: " + e.message); }
   finally { detStopFlag = false; detBusyUi(false); }
 }
 // No address known: the first receive address of each common setting, to look up somewhere else (this page is offline).
-const DET_LIST = [["bip84", "wpkh"], ["bip86", "tr"], ["bip49", "sh-wpkh"], ["bip44", "pkh"], ["bip44", "wpkh"], ["m0h", "pkh"], ["m0h", "wpkh"], ["root", "pkh"], ["el-standard", "pkh"], ["el-segwit", "wpkh"]];
+const DET_LIST = [["bip84", "wpkh"], ["bip86", "tr"], ["bip49", "sh-wpkh"], ["bip44", "pkh"], ["bip44", "wpkh"], ["m0h", "pkh"], ["m0h", "wpkh"], ["root", "pkh"], ["el-standard", "pkh"], ["el-segwit", "wpkh"], ["el-old", "pkh"]];
 async function detList(){
   if(!gateOk() || detBusy) return;
   const my = ++detSeq; detShow("");
@@ -6642,9 +6824,9 @@ async function detList(){
     for(const [id, type] of DET_LIST){
       const P = DET_PATHS.find(p => p.id === id);
       if(!roots[P.seed]) continue;
-      const steps = P.steps(coin, 0), a = (await walletAddressesFrom(roots[P.seed][0].root, steps, type, net, 0, 0, 1))[0];
+      const steps = P.steps(coin, 0), a = roots[P.seed][0].old ? {path: "m/0/0", address: await oldElAddr(roots[P.seed][0].old, 0, 0, net)} : (await walletAddressesFrom(roots[P.seed][0].root, steps, type, net, 0, 0, 1))[0];
       if(my !== detSeq) return;
-      lines.push(P.name + ", " + DET_TYPE_NAME[type] + ", " + a.path + "\n  " + a.address + "\n  Used by: " + detApps(P, type));
+      lines.push(P.name + ", " + DET_TYPE_NAME[type] + ", " + a.path + (roots[P.seed][0].old ? " (uncompressed keys; old Electrum seeds have no passphrase)" : "") + "\n  " + a.address + "\n  Used by: " + detApps(P, type));
     }
     detSay("ok", "The first receive address of each common setting, " + pass[0] + (net === "test" ? ", on the test network (practice mode)" : "") + ". Look them up on another device, for example in a block explorer. The one that shows a history is your wallet's setting; then type it above and press FIND MY WALLET for the steps to open it.");
     detShow(lines.join("\n\n") + "\n\nLooking an address up on a website tells that website you are interested in it. A watch-only wallet in Sparrow connected to your own node is more private.");
@@ -8625,6 +8807,7 @@ function wipeSeed(){
   kcClear();   // v2.9.0: the wallet file check
   lbClear();   // v2.9.0: the label file (private)
   clearXor();   // v2.9.0: Seed XOR parts (secret)
+  oeClear();   // v2.10.0: the old Electrum seed (secret)
   seedSig = null; passKey = null; exCtx = null;   // fixes release: these held the rolls and the passphrases after a wipe (found by tests/memory.test.mjs)
   clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo(); clearMsx();   // fixes release: public but private data (xpubs, descriptors, addresses, amounts)
   for(const id of ["wpIn", "payA", "payB", "dlPaste"]){ const e = document.getElementById(id); if(e) e.value = ""; }
@@ -9684,10 +9867,12 @@ async function verify(){
   const my = ++verifySeq;   // v2.4.0: a wipe or an edit while this works makes it stop without writing anything
   const r = await checkPhrase(document.getElementById("phrase").value);
   if(my !== verifySeq) return;
-  st.className = "status " + (r.ok ? "ok" : "bad");
+  st.className = "status " + (r.ok || r.oldElectrum ? "ok" : "bad");
   st.textContent = r.msg;
   if(r.ok && (r.fromCode || r.expanded)) document.getElementById("phrase").value = r.mnemonic;
   document.getElementById("verifyMatch").textContent = ""; document.getElementById("verifyMatch").className = "status";
+  oeClear();
+  if(!r.ok && r.oldElectrum){ await oeShow(r.oldElectrum, false, document.getElementById("verifyPass").value); return; }   // v2.10.0
   if(r.ok){
     const vp = document.getElementById("verifyPass").value, lines = [r.msg];
     let fp0, a0, fp1, a1;
@@ -9716,6 +9901,7 @@ async function verify(){
     const mt = document.getElementById("verifyMatch"), m = matchRecorded(rawRec, fp0, c0, fp1, c1, !!vp, ids0, ids1);
     mt.className = "status " + (m ? (m.ok ? "ok" : "bad") : ""); mt.textContent = m ? m.text : "";
     openWalletView(r.mnemonic, vp);
+    if(r.oldElectrum) await oeShow(r.oldElectrum, true, vp);   // v2.10.0: valid both ways
   }
 }
 
@@ -9730,6 +9916,7 @@ for(const id of ["checkAddr","checkAcct","phrase","verifyPass"]) document.getEle
 document.getElementById("verifyRecorded").addEventListener("input", () => { const m = document.getElementById("verifyMatch"); m.textContent = ""; m.className = "status"; });   // fixes release: an old MATCH never stays
 for(const id of ["phrase","verifyPass","childWords","childIndex","childLen","childSides","childRolls"]) document.getElementById(id).addEventListener("input", clearChild);
 for(const id of ["phrase","verifyPass"]) document.getElementById(id).addEventListener("input", () => { verifySeq++; if(wvCtx && wvCtx.mnemonic) clearWalletView(); if(childCtx || document.getElementById("childOut").textContent) clearChild(); });
+for(const id of ["phrase", "verifyPass"]) document.getElementById(id).addEventListener("input", oeClear);   // v2.10.0: the old Electrum result belongs to the old words
 document.getElementById("verifyPass").addEventListener("input", passWarnUpdate);
 for(const id of ["phrase", "verifyPass"]) document.getElementById(id).addEventListener("input", () => { detClear(true); kcClear(true); lbClear(true); msxWipe(); if(xorCtx && document.querySelector('input[name=xorMode]:checked').value === "split") clearXor(); });   // v2.8.0: the Detective result belongs to the old words
 // review (v2.9.0): a result never stays on screen next to inputs that did not make it
