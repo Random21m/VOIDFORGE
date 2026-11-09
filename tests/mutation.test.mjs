@@ -310,6 +310,67 @@ async function probe(w, mutated, fast, only, hooks) {
     closePage(t);
   } catch (e) { fails.push('v2.10.0 plates and inheritance: the probe crashed: ' + e.message); }
   }
+  // v2.10.0 old Electrum seeds and Reforge damaged words. Placed early so its mutants are caught without the whole probe; it leaves
+  // the page as section 0 made it (the FORGE seed is made again after the wipe check).
+  if (SEC(63, "v2.10.0 old Electrum seeds and damaged words (expected values from Electrum's source and tests, tests/fixtures/old-electrum.json)")) {
+  try {
+    const OE = JSON.parse(fs.readFileSync(new URL('./fixtures/old-electrum.json', import.meta.url), 'utf8')), OW = OE.words, n = OW.length;
+    const enc = (h) => { const out = []; for (let i = 0; i < h.length; i += 8) { const x = parseInt(h.slice(i, i + 8), 16), w1 = x % n, w2 = (Math.floor(x / n) + w1) % n, w3 = (Math.floor(x / n / n) + w2) % n; out.push(OW[w1], OW[w2], OW[w3]); } return out.join(' '); };   // Electrum's mn_encode
+    const OLD = OE.wallets[0].words, BOTH = 'like just love know never want time there make eye only eye';
+    const lead0 = '0000000a' + '00ffffff' + '0abcdef1' + '00000001';
+    if (w.oldElSeed(enc(lead0)).hex !== lead0) fails.push('old electrum: hex groups below 0x10000000 keep their leading zeros');
+    if (!w.oldElSeed(OE.cases[5].words) || w.oldElSeed(OE.cases[5].words).hex !== OE.cases[5].hex) fails.push('old electrum: 24 words are an old seed too');
+    if (w.oldElSeed(Array(18).fill('like').join(' '))) fails.push('old electrum: 18 words are not an old seed');
+    if (!w.oldElSeed(OE.seed_types[4][0])) fails.push('old electrum: capitals and extra spaces are ignored, as Electrum normalizes');
+    { const c = await w.checkPhrase(OLD); if (c.ok || !c.oldElectrum || !/^Old Electrum seed/.test(c.msg)) fails.push('old electrum: words off the BIP39 list are named an old Electrum seed'); }
+    { const c = await w.checkPhrase('like just love know never want time there make eye only like'); if (c.ok || !c.oldElectrum) fails.push('old electrum: BIP39 words with a bad BIP39 checksum are named an old Electrum seed'); }
+    { const c = await w.checkPhrase('them always world friend tell try hand thought over other need know'); if (c.ok || !c.oldElectrum) fails.push('old electrum: BIP39 only through a word read from its first letters: an old seed'); }
+    const st = () => $('verifyStatus');
+    $('verifyPass').value = 'pw'; $('phrase').value = OLD; await w.verify();
+    if (!/ok/.test(st().className)) fails.push('old electrum: VERIFY shows an old seed in green');
+    if ($('oeSeed').textContent !== 'Seed (hex): ' + OE.wallets[0].hex || !$('oeOut').textContent.includes(OE.wallets[0].change0) || !$('oeOut').textContent.includes(OE.wallets[0].mpk)) fails.push('old electrum: VERIFY shows the hex seed, mpk and addresses');
+    if (!/no passphrase \(Electrum does not accept one/.test($('oeNote').textContent)) fails.push('old electrum: a typed passphrase is said to be unused');
+    if (w.getComputedStyle($('oeSeed')).userSelect !== 'none') fails.push('old electrum: the hex seed cannot be selected');
+    $('phrase').dispatchEvent(new w.Event('input')); if ($('oeSeed').textContent !== '') fails.push('old electrum: editing the words clears the result');
+    $('verifyPass').value = ''; await w.verify(); w.practiceMode(true); if ($('oeSeed').textContent !== '') fails.push('old electrum: practice mode clears the result');
+    $('phrase').value = OE.testnet.words; await w.verify(); if (!$('oeOut').textContent.includes(OE.testnet.receive[3]) || !/TESTNET \(practice coins only\)/.test($('oeOut').textContent)) fails.push('old electrum: testnet addresses in practice mode');
+    w.practiceMode(false);
+    $('phrase').value = BOTH; await w.verify();
+    if (!/fingerprint/.test(st().textContent) || !/also an old Electrum seed/.test(st().textContent) || !/BOTH a valid BIP39 phrase/.test($('oeNote').textContent) || !/^Seed \(hex\)/.test($('oeSeed').textContent)) fails.push('old electrum: words valid both ways show both wallets');
+    { const ex = await w.explainAddress(OLD); if (!ex || !/SEED WORDS/.test(ex.text)) fails.push('old electrum: explain calls old words seed words'); }
+    // Wallet Detective
+    $('phrase').value = OLD; $('verifyPass').value = 'pw';
+    { const K = w.oldElKeys(OE.wallets[0].hex); $('detAddr').value = await w.oldElAddr(K, 0, 30, 'main'); await w.detFind(); const o = $('detOut').textContent;
+      if (!/receive address #30 \(m\/0\/30\) of these words, without a passphrase/.test(o)) fails.push('old electrum: the Detective finds old receive #30 without the typed passphrase');
+      if (!/Seed Type: old/.test(o) || !/an old Electrum seed \(made before Electrum 2\.0/.test(o)) fails.push('old electrum: the Detective says how to open an old seed');
+      $('verifyPass').value = ''; await w.detList(); if (!$('detOut').textContent.includes(OE.wallets[0].receive0)) fails.push('old electrum: LIST FIRST ADDRESSES includes the old wallet'); }
+    $('phrase').value = ''; $('detAddr').value = ''; w.detClear(); w.oeClear();
+    // Reforge damaged words
+    const pw = (p) => [...w.reforgePatternWords(p)].join(' ');
+    if (pw('a?t') !== 'act art' || pw('c?ar') !== 'charge clarify' || !pw('c*ar*').split(' ').includes('car') || pw('ab*t') !== 'about absent abstract') fails.push('reforge: ? is one letter, * any number (also none), 4 letters without * fit longer words');
+    { const p = w.reforgeParseWords('ch?ir ab* zz?x ' + 'abandon '.repeat(9));
+      if (p.idx[0] !== wordlist.indexOf('chair') || !p.notes.some((x) => /'ch\?ir' as 'chair'/.test(x))) fails.push('reforge: a pattern with one fit is read as that word');
+      if (!p.sets[1] || p.sets[1].length !== 10 || !p.notes.some((x) => /word 2 'ab\*' fits 10 words$/.test(x))) fails.push('reforge: a * pattern counts its words');
+      if (!p.notes.some((x) => /'zz\?x' fits no BIP39 word/.test(x))) fails.push('reforge: a pattern with no fit is unknown'); }
+    if (!w.reforgeParseWords('abandon '.repeat(11) + 'c?ar').notes.some((x) => /fits 2 words \(charge, clarify\)/.test(x))) fails.push('reforge: up to 6 fitting words are named');
+    { const p = w.reforgeParseWords('abandon '.repeat(9) + 'ab* c?ar a?t'), pl = w.reforgePlan(p.idx, p.sets); let k = 0; const seen = new Set(); for (const c of pl.gen()) { k++; seen.add(c.join(',')); }
+      if (pl.total !== 40 || k !== 40 || seen.size !== 40) fails.push('reforge: every combination of the fitting words exactly once'); }
+    { const p = w.reforgeParseWords('abandon '.repeat(9) + '? ? ab*'); let msg = ''; try { w.reforgePlan(p.idx, p.sets); } catch (e) { msg = e.message; } if (!/^That is 41,943,040 phrases to try/.test(msg)) fails.push('reforge: more than 4,194,304 combinations are refused before searching'); }
+    const RF = async (x, chk) => { $('reforgeWordsInput').value = x; $('reforgeWordsCheck').value = chk || ''; $('reforgeWordsPass').value = ''; await w.reforgeWords(); return [$('reforgeStatus').textContent, $('reforgeOut').textContent]; };
+    { const p = w.reforgeParseWords('abandon '.repeat(8) + 'ab?ndon aban*on a?a* ab*'); const r0 = await w.reforgeSearch(p.idx, null, '', {}, p.sets); if (!r0.phrases || !r0.phrases.length) fails.push('reforge: the search lists a few phrases with nothing to check against'); }
+    { const [s0, o0] = await RF('abandon '.repeat(8) + 'ab?ndon aban*on a?a* ab*'); if (!/pass the checksum \(of 110 combinations\)/.test(s0) || !/Phrase 1:/.test(o0)) fails.push('reforge: the page lists a few phrases with nothing to check against'); }
+    { const [s0, o0] = await RF('ab* ' + 'abandon '.repeat(10) + 'about', '73c5da0a'); if (!/Changed: word 1 \(ab\*\) is abandon/.test(o0) || !/^FOUND/.test(s0)) fails.push('reforge: a damaged word is found by its fingerprint and shown as typed'); }
+    { const [s0] = await RF('abandon '.repeat(10) + 'ab*'); if (!/^A damaged word \(with \? or \* inside it\) can be searched only with all the words in place/.test(s0)) fails.push('reforge: a damaged word with a word missing is refused'); }
+    { $('reforgeWordsInput').value = '???? ? ' + 'abandon '.repeat(10); $('reforgeWordsCheck').value = '';
+      const run = w.reforgeWords(); await new Promise((r2) => setTimeout(r2, 300)); w.reforgeStop(); await run;
+      if (!/^STOPPED in step 1 after checking [\d,]+ of 3,983,360 phrases/.test($('reforgeStatus').textContent)) fails.push('reforge: STOP ends a damaged-word search with nothing to check against'); }
+    w.reforgeClear();
+    if (!/is one letter you cannot read/.test($('reforgeWordsPanel').textContent) || !/12 words from an Electrum wallet made before version 2\.0/.test($('heirCard').textContent)) fails.push('reforge and heir mode: the help lines are there');
+    // CLEAR ALL wipes the old Electrum seed; then the FORGE seed of section 0 is made again
+    $('phrase').value = OLD; await w.verify(); w.wipeSeed(); if ($('oeSeed').textContent !== '') fails.push('old electrum: CLEAR ALL wipes the hex seed');
+    await run('dice', 12, D50);
+  } catch (e) { fails.push('v2.10.0 old Electrum and damaged words: the probe crashed: ' + e.message); }
+  }
   if (SEC(1, "{ const wo = watch(expect.d50, ''), z = $('wZpub').textConte")) {
   { const wo = watch(expect.d50, ''), z = $('wZpub').textContent, dr = $('wDescR').textContent, dc = $('wDescC').textContent;
     if (z !== wo.zpub) fails.push('watch-only zpub');
@@ -5611,6 +5672,61 @@ const M = [
   ["inheritance: heir steps leave out the passphrase", "(hasPass ? \", with the passphrase (\" + P.replace(/^Yes, /, \"kept \") + \")\" : \"\")", "\"\""],
   ["inheritance: bag log forgets the copies", "const rows = st.copies.map((c, i) =>", "const rows = [].map((c, i) =>"],
   ["inheritance: plan CLEAR keeps the new boxes", "PLAN_IDS.push(...IH_IDS);", ""],
+  // v2.10.0 old Electrum seeds (probe section 63)
+  ["old electrum: word list changed", "const OLD_EL_WORDS = [\"like\",\"just\",\"love\",", "const OLD_EL_WORDS = [\"like\",\"just\",\"lover\","],
+  ["old electrum: decode without mod n", "out += (w1 + n * m(w2 - w1) + n * n * m(w3 - w2))", "out += (w1 + n * (w2 - w1) + n * n * m(w3 - w2))"],
+  ["old electrum: hex groups not padded", ".toString(16).padStart(8, \"0\");\n  }\n  return out;", ".toString(16);\n  }\n  return out;"],
+  ["old electrum: 24 words refused", "if(!(words.length === 12 || words.length === 24) ||", "if(!(words.length === 12) ||"],
+  ["old electrum: 18 words accepted", "if(!(words.length === 12 || words.length === 24) || !words.every", "if(!(words.length % 6 === 0) || !words.every"],
+  ["old electrum: words not normalized", "const words = electrumNorm(text).split(\" \").filter(Boolean);", "const words = String(text).split(\" \").filter(Boolean);"],
+  ["old electrum: 99,999 rounds", "const OLD_EL_ROUNDS = 100000;", "const OLD_EL_ROUNDS = 99999;"],
+  ["old electrum: stretch without the seed", "  let x = oldElSha256(concatBytes(s, s));", "  let x = oldElSha256(s);"],
+  ["old electrum: SHA-256 padding byte", "b.set(m); b[L] = 0x80;", "b.set(m); b[L] = 0x01;"],
+  ["old electrum: sequence n and chain swapped", "encode(n + \":\" + chain + \":\")", "encode(chain + \":\" + n + \":\")"],
+  ["old electrum: sequence hashed once", "oldElSha256(oldElSha256(concatBytes(new TextEncoder()", "(oldElSha256(concatBytes(new TextEncoder()"],
+  ["old electrum: compressed keys", "await hash160(concatBytes(Uint8Array.of(4), be(Q[0]), be(Q[1])))", "await hash160(pubFromPoint(Q))"],
+  ["old electrum: testnet ignored", "base58check(Uint8Array.of(NETS[net || \"main\"].pkh, ...await hash160(concatBytes(", "base58check(Uint8Array.of(NETS.main.pkh, ...await hash160(concatBytes("],
+  ["old electrum: not checked for unknown words", "if(bad.length) return oe ? oldElResult(oe) :", "if(bad.length) return false ? oldElResult(oe) :"],
+  ["old electrum: not checked for a bad checksum", "  if(oe && bits.slice(eBits)!==bytesToBits(h).slice(0,cLen)) return oldElResult(oe);", "  if(false) return oldElResult(oe);"],
+  ["old electrum: first-letter BIP39 wins", "  if(oe && read) return oldElResult(oe);", "  if(false) return oldElResult(oe);"],
+  ["old electrum: both ways not marked", "expanded: read > 0, oldElectrum: oe};", "expanded: read > 0, oldElectrum: null};"],
+  ["old electrum: VERIFY shows no wallet", "if(!r.ok && r.oldElectrum){ await oeShow(", "if(false){ await oeShow("],
+  ["old electrum: VERIFY in red", "st.className = \"status \" + (r.ok || r.oldElectrum ? \"ok\" : \"bad\");", "st.className = \"status \" + (r.ok ? \"ok\" : \"bad\");"],
+  ["old electrum: both ways shows one wallet", "    if(r.oldElectrum) await oeShow(r.oldElectrum, true, vp);", "    if(false) await oeShow(r.oldElectrum, true, vp);"],
+  ["old electrum: both ways not explained", "(both ? \"These words are BOTH", "(false ? \"These words are BOTH"],
+  ["old electrum: passphrase not explained", "(vp ? \"Old Electrum seeds have no passphrase", "(false ? \"Old Electrum seeds have no passphrase"],
+  ["old electrum: hex seed selectable", "  #oeSeed { -webkit-user-select: none; user-select: none; }", "  #oeSeedX { -webkit-user-select: none; user-select: none; }"],
+  ["old electrum: result stays after an edit", "document.getElementById(id).addEventListener(\"input\", oeClear);", "document.getElementById(id).addEventListener(\"input\", () => {});"],
+  ["old electrum: CLEAR ALL keeps the hex seed", "  oeClear();   // v2.10.0: the old Electrum seed (secret)", "  // v2.10.0: the old Electrum seed (secret)"],
+  ["old electrum: practice mode keeps the old network", "clearCompare(false); oeClear();", "clearCompare(false);"],
+  ["old electrum: Detective ignores old seeds", "electrum:el === \"standard\" ? \"standard\" : el === \"SegWit\" ? \"segwit\" : r.oldElectrum ? \"old\" : null", "electrum:el === \"standard\" ? \"standard\" : el === \"SegWit\" ? \"segwit\" : null"],
+  ["old electrum: Detective refuses old seeds", "  if(!r.ok && !el && !r.oldElectrum){", "  if(!r.ok && !el){"],
+  ["old electrum: Detective uses the passphrase", "        if(pw) continue;\n", "        if(false) continue;\n"],
+  ["old electrum: Detective looks at 20 addresses only", "{id:\"el-old\", seed:\"electrum-old\", steps:() => [], types:[\"pkh\"]", "{id:\"el-old\", seed:\"electrum-old\", steps:() => [], types:[\"wpkh\"]"],
+  ["old electrum: Detective gives the new-seed steps", "  if(f.P.seed === \"electrum-old\") return OLD_EL_HOWTO", "  if(false) return OLD_EL_HOWTO"],
+  ["old electrum: Detective names the wrong seed type", "f.P.seed === \"electrum-old\" ? \"an old Electrum seed (made before Electrum 2.0, not BIP39)\"", "false ? \"an old Electrum seed (made before Electrum 2.0, not BIP39)\""],
+  ["old electrum: not in LIST FIRST ADDRESSES", "[\"el-segwit\", \"wpkh\"], [\"el-old\", \"pkh\"]];", "[\"el-segwit\", \"wpkh\"]];"],
+  ["old electrum: explain misses old words", "|| wordFromPrefix(x) || OLD_EL_MAP.has(x)).length;", "|| wordFromPrefix(x)).length;"],
+  ["old electrum: heir mode line lost", "<li><b>12 words from an Electrum wallet made before version 2.0</b>", "<li><b>12 words from an Electrum wallet</b>"],
+  // v2.10.0 Reforge damaged words (probe section 63)
+  ["reforge: ? as one letter or none", "t.replace(/\\?/g, \"[a-z]\").replace(", "t.replace(/\\?/g, \"[a-z]?\").replace("],
+  ["reforge: * as one letter or more", ".replace(/\\*/g, \"[a-z]*\"), whole", ".replace(/\\*/g, \"[a-z]+\"), whole"],
+  ["reforge: 3 letters fit longer words", "!t.includes(\"*\") && t.length >= 4 ? new RegExp", "!t.includes(\"*\") && t.length >= 3 ? new RegExp"],
+  ["reforge: * patterns fit longer words", "!t.includes(\"*\") && t.length >= 4 ? new RegExp", "t.length >= 4 ? new RegExp"],
+  ["reforge: one fit not read as the word", "if(m.length === 1){ read.push(\"word \" + (i + 1)", "if(false){ read.push(\"word \" + (i + 1)"],
+  ["reforge: no fit not named", "if(!m.length){ notes.push(\"word \" + (i + 1) + \" '\" + t + \"' fits no BIP39 word", "if(false){ notes.push(\"word \" + (i + 1) + \" '\" + t + \"' fits no BIP39 word"],
+  ["reforge: * not a pattern", "if(/^[a-z?*]+$/.test(t) && /[?*]/.test(t)){", "if(/^[a-z?]+$/.test(t) && /[?*]/.test(t)){"],
+  ["reforge: fitting words never named", "(m.length <= 6 ? \" (\" + m.join(\", \") + \")\" : \"\")", "(m.length <= 0 ? \" (\" + m.join(\", \") + \")\" : \"\")"],
+  ["reforge: patterns not planned", "  if(sets && sets.some(Boolean)) return reforgePatternPlan(idx, sets, unk);", "  if(false) return reforgePatternPlan(idx, sets, unk);"],
+  ["reforge: limit not checked", "  if(total > REFORGE_COMBOS) throw new Error(\"That is \"", "  if(total > REFORGE_COMBOS * 16) throw new Error(\"That is \""],
+  ["reforge: damaged word with a word missing", "  if(!REFORGE_LENS.includes(n)) throw new Error(\"A damaged word", "  if(false) throw new Error(\"A damaged word"],
+  ["reforge: combinations skipped", "if(++pos[k] < cand[k].length){ c[unk[k]] = cand[k][pos[k]]; break; }", "if((pos[k] += 2) < cand[k].length){ c[unk[k]] = cand[k][pos[k]]; break; }"],
+  ["reforge: search refuses patterns without a target", "if(!target && !plan.listable && !plan.pattern) throw", "if(!target && !plan.listable) throw"],
+  ["reforge: page refuses patterns without a target", "if(!target && !plan.listable && !plan.pattern) return say(", "if(!target && !plan.listable) return say("],
+  ["reforge: a few phrases never listed", "res.phrases = res.valid.length <= REFORGE_FEW ?", "res.phrases = res.valid.length < 0 ?"],
+  ["reforge: STOP without a target reported as done", "if(!target && !res.stopped && !plan.listable){", "if(!target && !plan.listable){"],
+  ["reforge: damaged word shown as unknown", "(parsed.pats[i] ? \" (\" + parsed.pats[i] + \")\" : \" (unknown)\")", "(false ? \" (\" + parsed.pats[i] + \")\" : \" (unknown)\")"],
+  ["reforge: help line lost", "<b>Damaged backup:</b> inside a word, <code>?</code> is one letter you cannot read", "<b>Damaged backup:</b> inside a word, <code>?</code> is a letter"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
