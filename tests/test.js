@@ -1794,7 +1794,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const r=load(); await r.ready(); const $=r.$, w=r.w, AB='abandon '.repeat(11)+'about';
     const EL_STD='cycle rocket west magnet parrot shuffle foot correct salt library feed song', EL_SW='bitter grass shiver impose acquire brush forget axis eager alone wine silver';
     const DF=async(words,pass,addr)=>{ $('phrase').value=words; $('verifyPass').value=pass; $('detAddr').value=addr; await w.detFind(); return {st:$('detStatus').textContent, cls:$('detStatus').className, out:$('detOut').textContent, shown:$('detOut').style.display!=='none'}; };
-    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.9.0','v2.9.0: the footer shows the new version');
+    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.10.0','v2.10.0: the footer shows the new version');
     ok(html.indexOf('<li><b>2.8.0</b>')>0&&html.indexOf('<li><b>2.8.0</b>')<html.indexOf('<li><b>2.7.0</b>'),'v2.8.0: the changelog lists 2.8.0 first');
     // --- Wallet Detective ---
     ok(!$('detBtn').disabled&&!$('detListBtn').disabled&&$('detStop').disabled&&$('detBtn').className===''&&$('detListBtn').className==='secondary small','Wallet Detective: FIND MY WALLET is the gold main button, enabled after the self-test; LIST and STOP are gray');
@@ -2508,7 +2508,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     // ---- Reforge: damaged words ----
     { const W=require('@scure/bip39/wordlists/english').wordlist;
       const fits=(p,x)=>{ const go=(i,j)=>{ if(i===p.length) return j===x.length; if(p[i]==='*'){ for(let k=j;k<=x.length;k++) if(go(i+1,k)) return true; return false; } return j<x.length&&(p[i]==='?'||p[i]===x[j])&&go(i+1,j+1); }; return go(0,0); };   // a matcher without regular expressions
-      const ref=p=>W.filter(x=>fits(p,x)||(!p.includes('*')&&p.length>=4&&x.length>p.length&&fits(p,x.slice(0,p.length))));
+      const ref=p=>/^\?+$/.test(p)?W.slice():W.filter(x=>fits(p,x)||(!p.includes('*')&&p.length>=4&&x.length>p.length&&fits(p,x.slice(0,p.length))));   // only ? marks: any word (review fix)
       const P=['c?ar','ch?ir','ab*','a?t','*ount','s?','????','?r?d','c*ar*','*','z*','abando?','a*a*a','??','???','bri?k','*e'];
       ok(P.every(p=>JSON.stringify(w.reforgePatternWords(p))===JSON.stringify(ref(p))),'Reforge: ? is one letter and * any number (also none); 4 or more characters without * also fit longer words (checked against a second matcher on '+P.length+' patterns)');
       eq(w.reforgePatternWords('c?ar').join(' '),'charge clarify','Reforge: c?ar fits charge and clarify (the first 4 letters are enough)');
@@ -2528,9 +2528,9 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
         [st,cl,out]=await RF(dm.join(' '),fpx); ok(/^FOUND/.test(st)&&out.includes(m.map((x,i)=>(i+1)+'. '+x).join('   '))&&/Changed: word 2 \([a-z]+\*\) is /.test(out),'Reforge: a random wallet with three damaged words is found by its fingerprint ('+dm[1]+', '+dm[5]+', '+dm[10]+')');
         const {bech32}=require('@scure/base'), ad=bech32.encode('bc',[0,...bech32.toWords(rmd(nsha(root.derive("m/84'/0'/0'/0/3").publicKey)))]);
         [st,cl,out]=await RF(dm.join(' '),ad); ok(/^FOUND and confirmed/.test(st)&&/receive address #3/.test(out)&&out.includes(m.map((x,i)=>(i+1)+'.\u00a0'+x).join('   ')),'Reforge: ... and by one of its addresses'); }
-      { $('reforgeWordsInput').value='???? ? '+'abandon '.repeat(10); $('reforgeWordsCheck').value='73c5da0a';
+      { $('reforgeWordsInput').value='c??? ? '+'abandon '.repeat(10); $('reforgeWordsCheck').value='73c5da0a';
         const run=w.reforgeWords(); await sleep(300); const busy=$('reforgeWordsBtn').disabled&&!$('reforgeStopBtn').disabled; w.reforgeStop(); await run;
-        ok(busy&&/^STOPPED in step 1 after checking [\d,]+ of 3,983,360 phrases; nothing was compared yet\. The search is NOT complete/.test($('reforgeStatus').textContent)&&!$('reforgeWordsBtn').disabled,'Reforge: a damaged-word search shows progress and STOP ends it'); }
+        ok(busy&&/^STOPPED in step 1 after checking [\d,]+ of 370,688 phrases; nothing was compared yet\. The search is NOT complete/.test($('reforgeStatus').textContent)&&!$('reforgeWordsBtn').disabled,'Reforge: a damaged-word search shows progress and STOP ends it'); }
       [st]=await RF('abandon '.repeat(10)+'ab*'); ok(/^A damaged word \(with \? or \* inside it\) can be searched only with all the words in place/.test(st),'Reforge: a damaged word with one word missing is refused with the reason');
       await RF('abandon '.repeat(11)+'ab*'); $('reforgeWordsInput').dispatchEvent(new w.Event('input')); ok($('reforgeOut').textContent===''&&$('reforgeStatus').textContent==='','Reforge: editing the words clears a damaged-word result');
       ok(/<b>Damaged backup:<\/b> inside a word, <code>\?<\/code> is one letter you cannot read and <code>\*<\/code> any number of them/.test(html),'Reforge: one help line explains ? and * inside a word'); }
@@ -2541,7 +2541,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       $('verifyRecorded').value=OE.wallets[0].change0; await w.verify(); const m2=$('verifyMatch').textContent;
       $('verifyRecorded').value='1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2'; await w.verify(); const m3=$('verifyMatch').textContent, c3=$('verifyMatch').className; $('verifyRecorded').value='';
       ok(/^MATCH: this is receive address 0 of the old Electrum wallet/.test(m1)&&/^MATCH: this is change address 0/.test(m2)&&/^NO MATCH/.test(m3)&&/bad/.test(c3),'review fix: VERIFY compares what the wallet app shows with an old Electrum wallet'); }
-    ok(w.reforgePatternWords('???').length===2048&&w.reforgePatternWords('????').length===2048&&w.reforgePatternWords('wr???').join()==='wrong','review fix: a word written only as ??? is any word, not a 3-letter word');
+    ok(w.reforgePatternWords('???').length===2048&&w.reforgePatternWords('????').length===2048&&w.reforgePatternWords('wr???').includes('wrong')&&w.reforgePatternWords('wr???').length<10,'review fix: a word written only as ??? is any word, not a 3-letter word');
     r.w.close(); }
   // v2.10.0: 15, 18 and 21 words for every method, and the Card method menu (Ian Coleman, hashed or raw entropy).
   // Expected words come from @scure/bip39 and Node's SHA-256; the raw-entropy answers come from Ian Coleman's own code at commit

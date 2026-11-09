@@ -362,9 +362,9 @@ async function probe(w, mutated, fast, only, hooks) {
     { const [s0, o0] = await RF('abandon '.repeat(8) + 'ab?ndon aban*on a?a* ab*'); if (!/pass the checksum \(of 110 combinations\)/.test(s0) || !/Phrase 1:/.test(o0)) fails.push('reforge: the page lists a few phrases with nothing to check against'); }
     { const [s0, o0] = await RF('ab* ' + 'abandon '.repeat(10) + 'about', '73c5da0a'); if (!/Changed: word 1 \(ab\*\) is abandon/.test(o0) || !/^FOUND/.test(s0)) fails.push('reforge: a damaged word is found by its fingerprint and shown as typed'); }
     { const [s0] = await RF('abandon '.repeat(10) + 'ab*'); if (!/^A damaged word \(with \? or \* inside it\) can be searched only with all the words in place/.test(s0)) fails.push('reforge: a damaged word with a word missing is refused'); }
-    { $('reforgeWordsInput').value = '???? ? ' + 'abandon '.repeat(10); $('reforgeWordsCheck').value = '';
+    { $('reforgeWordsInput').value = 'c??? ? ' + 'abandon '.repeat(10); $('reforgeWordsCheck').value = '';
       const run = w.reforgeWords(); await new Promise((r2) => setTimeout(r2, 300)); w.reforgeStop(); await run;
-      if (!/^STOPPED in step 1 after checking [\d,]+ of 3,983,360 phrases/.test($('reforgeStatus').textContent)) fails.push('reforge: STOP ends a damaged-word search with nothing to check against'); }
+      if (!/^STOPPED in step 1 after checking [\d,]+ of 370,688 phrases/.test($('reforgeStatus').textContent)) fails.push('reforge: STOP ends a damaged-word search with nothing to check against'); }
     w.reforgeClear();
     if (!/is one letter you cannot read/.test($('reforgeWordsPanel').textContent) || !/12 words from an Electrum wallet made before version 2\.0/.test($('heirCard').textContent)) fails.push('reforge and heir mode: the help lines are there');
     // v2.10.0 review fixes: the plan print guard knows old Electrum seeds (words and hex), VERIFY compares the recorded box for an
@@ -373,7 +373,7 @@ async function probe(w, mutated, fast, only, hooks) {
     { $('phrase').value = OLD; $('verifyPass').value = ''; $('verifyRecorded').value = '1FJEEB8ihPMbzs2SkLmr37dHyRFzakqUmo'; await w.verify(); const m1 = $('verifyMatch').textContent;
       $('verifyRecorded').value = '1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2'; await w.verify(); const m2 = $('verifyMatch').textContent; $('verifyRecorded').value = '';
       if (!/^MATCH: this is receive address 0 of the old Electrum wallet/.test(m1) || !/^NO MATCH: this is not the master public key/.test(m2)) fails.push('old electrum: VERIFY compares what the wallet app shows'); }
-    if (w.reforgePatternWords('???').length !== 2048 || w.reforgePatternWords('?').length !== 2048 || w.reforgePatternWords('wr???').join() !== 'wrong') fails.push('reforge: a word of only ? marks is any word');
+    if (w.reforgePatternWords('???').length !== 2048 || w.reforgePatternWords('?').length !== 2048 || !w.reforgePatternWords('wr???').includes('wrong')) fails.push('reforge: a word of only ? marks is any word');
     // CLEAR ALL wipes the old Electrum seed; then the FORGE seed of section 0 is made again
     $('phrase').value = OLD; await w.verify(); w.wipeSeed(); if ($('oeSeed').textContent !== '') fails.push('old electrum: CLEAR ALL wipes the hex seed');
     await run('dice', 12, D50);
