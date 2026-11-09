@@ -103,6 +103,84 @@ async function probe(w, mutated, fast, only, hooks) {
   if (adOf() !== addr(expect.d50, '')) fails.push('first receive address');
   }
   if (hooks && hooks.afterBase) await hooks.afterBase();
+  if (SEC(68, "v2.10.0 BIP138 encrypted descriptor backups (official vectors from bitcoin/bips, addresses from embit, keys from @scure)")) {
+  try {
+    const FX = (n) => JSON.parse(fs.readFileSync(new URL('./fixtures/bip138/' + n, import.meta.url), 'utf8'));
+    const U = (h) => Uint8Array.from(Buffer.from(h, 'hex')), H = (b) => Buffer.from(b).toString('hex'), te = (s) => new w.TextEncoder().encode(s), td = (b) => new w.TextDecoder().decode(b);
+    const pp = (s) => s.split('/').slice(1).map((c) => (/'$/.test(c) ? parseInt(c, 10) + 0x80000000 : parseInt(c, 10)));
+    if (!w.URL.createObjectURL) { w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {}; }   // the file save, as tests/test.js does
+    const thr = async (f) => { try { await f(); return null; } catch (e) { return e.message; } };
+    // official whole-backup vectors: made byte for byte, opened with every key, trailing bytes ignored, an all-zero nonce refused
+    for (const v of FX('encrypted_backup.json')) {
+      if (v.valid === false) { if (!/nonce is all zeros/.test(await thr(() => w.b138Parse(U(v.expected))))) fails.push('bip138: a backup with an all-zero nonce is refused'); continue; }
+      const keys = v.keys.map((k) => U(k).slice(1)), items = [[v.content, v.plaintext], ...(v.extra || []).map((e) => [e.content, e.plaintext])];
+      const b = await w.b138Encode(keys, v.derivation_paths.map(pp), w.concatBytes(...items.map(([c, p]) => w.b138Item(U(c), te(p)))), U(v.nonce), v.decoy_individual_secrets.map(U));
+      if (H(b) !== v.expected) { fails.push('bip138: the official backups are made byte for byte (' + v.description + ')'); break; }
+      const f = w.b138Parse(U(v.expected + (v.trailing || '')));
+      for (const k of keys) { const o = await w.b138TryKeys(f, [{ xonly: k }]), it = o ? w.b138Items(o.pt) : []; if (it.length !== items.length || it.some((x, i) => td(x.data) !== items[i][1])) { fails.push('bip138: each official backup opens with each key (' + v.description + ')'); break; } }
+    }
+    { let n = 0; const cv = FX('content_type.json'); for (const v of cv) { let okv; try { w.b138Ctype(U(v.content), 0); okv = true; } catch (e) { okv = false; } if (okv === v.valid) n++; }
+      if (n !== cv.length) fails.push('bip138: content types are read or refused as the official vectors say');
+      const pv = FX('payload.json'), a = w.b138Items(U(pv[0].payload)); if (a.length !== 1 || H(a[0].data) !== '61' || !(await thr(() => w.b138Items(U(pv[1].payload))))) fails.push('bip138: a payload ends at 0x00 and an empty one is refused'); }
+    { let n = 0; const dv = FX('derivation_path.json'); for (const v of dv) { let got; try { got = H(w.b138PathsBytes(v.paths.map(pp))); } catch (e) { got = null; } if (got === v.expected) n++; }
+      let m = 0; const sv = FX('individual_secrets.json'); for (const v of sv) { let got; try { got = H(w.b138SecretsBytes(v.secrets.map(U))); } catch (e) { got = null; } if (got === v.expected) m++; }
+      if (n !== dv.length || m !== sv.length) fails.push('bip138: derivation paths and individual secrets are written as the official vectors say'); }
+    { let n = 0; const kv = FX('recipient_keys.json'); for (const v of kv) { const o = await w.b138Recipients(v.descriptors), got = o.keys.length ? o.keys.map(H) : null; if (JSON.stringify(got) === JSON.stringify(v.expected_keys)) n++; }
+      if (n !== kv.length) fails.push('bip138: the keys that can open a backup are chosen as the official vectors say'); }
+    { // an xpub whose key is the BIP341 NUMS point (as Liana's unspendable key) opens nothing
+      const nx = b58c.encode(Uint8Array.from([0x04, 0x35, 0x87, 0xcf, 3, 0, 0, 0, 0, 0, 0, 0, 0, ...new Uint8Array(32).fill(9), 2, ...U('50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0')]));
+      const o = await w.b138Recipients(['tr(' + nx + '/<0;1>/*,pk(tpubDEPBvXvhta3pjVaKokqC3eeMQnszj9ehFaA2zD5nSdkaccwGAizu8jVB2NeSpvmP2P52MBoZvNCixqXRJnTyXx51FQzARR63tjxQSyP3Btw/<0;1>/*))']);
+      if (o.keys.length !== 1 || H(o.keys[0]) !== 'ebd252ca0877aae09b9d058219682775aa3cbcd049c12f07832f2cf6a3b51708' || !o.notes.some((x) => /unspendable/.test(x))) fails.push('bip138: an xpub on the NUMS point is left out and named'); }
+    if ([1, 5, 6, 11, 40, 200].map((n) => w.b138Bucket(n)).join() !== '5,5,10,20,40,255') fails.push('bip138: the decoy buckets are 5, 10, 20... up to 255');
+    { const A = FX('addresses.json'); for (const v of A.vectors) { const r0 = await w.b138Address(v.desc, 0, 1, v.net), c0 = v.change.length ? await w.b138Address(v.desc, 1, 0, v.net) : null;
+        if (r0 !== v.receive[1] || (v.change.length && c0 !== v.change[0])) { fails.push('bip138: descriptor addresses equal embit\'s (' + v.desc.slice(0, 40) + ')'); break; } } }
+    // making and opening, on the page
+    const M3 = ['abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', 'legal winner thank year wave sausage worth useful legal winner thank yellow', 'letter advice cage absurd amount doctor acoustic avoid letter advice cage above'];
+    const cos = M3.map((m) => { const rt = HDKey.fromMasterSeed(mnemonicToSeedSync(m, '')); return { fp: rt.fingerprint.toString(16).padStart(8, '0'), x: rt.derive("m/48'/0'/0'/2'").publicExtendedKey, rt }; });
+    const R50 = '16354216535241263542163542165432163542165342165432';
+    const open = async (text, words, pub) => { $('b138In').value = text; $('phrase').value = words || ''; $('verifyPass').value = ''; $('b138Pub').value = pub || ''; await w.b138OpenUi(); return [$('b138Status').textContent, $('b138Out').textContent]; };
+    w.msReset(); $('msN').value = '3'; $('msM').value = '2'; w.msUpdateM(); $('msAcct').value = '0'; $('msType').value = 'ms-wsh'; $('msNet').value = 'main'; w.msStart(); w.msUsePaste();
+    for (const c of cos) { $('msPaste').value = '[' + c.fp + '/48h/0h/0h/2h]' + c.x; $('msPasteFp').value = ''; await w.msAddPasted(); }
+    $('msbRolls').value = R50.slice(0, 49); await w.b138MakeUi('msb'); if (!/at least 50 times/.test($('msbStatus').textContent) || $('msbText').textContent) fails.push('bip138: 49 dice rolls are not enough');
+    $('msbRolls').value = R50; await w.b138MakeUi('msb'); const b64 = $('msbText').textContent, file = Uint8Array.from(Buffer.from(b64, 'base64'));
+    const want = w.descriptorChecksum(w.eval('ms.descR').replace(/#[a-z0-9]{8}$/, '').split('/0/*').join('/<0;1>/*'));
+    { const f = w.b138Parse(file), o = await w.b138TryKeys(f, [{ xonly: cos[1].rt.derive("m/48'/0'/0'/2'").publicKey.slice(1) }]);
+      if (!o || td(w.b138Items(o.pt)[0].data) !== want || w.b138Items(o.pt)[0].bip !== 380) fails.push('bip138: the multisig backup holds its receive-and-change descriptor (BIP380 content)');
+      if (f.secrets.length !== 5 || f.paths.length !== 0 || !/The file lists 5 entries/.test($('msbStatus').textContent)) fails.push('bip138: 3 keys get 2 decoys, and the common BIP48 path is not written'); }
+    $('msbRolls').value = R50.replace(/^1/, '2'); await w.b138MakeUi('msb'); const other = $('msbText').textContent;
+    $('msbRolls').value = R50; await w.b138MakeUi('msb');
+    if ($('msbText').textContent !== b64 || other === b64 || other.slice(0, 200) !== b64.slice(0, 200)) fails.push('bip138: the nonce comes from the dice rolls (same rolls, same file; other rolls, another nonce, same decoys)');
+    let [st, out] = await open(b64, M3[2]);
+    if (!/^OPENED with the words typed above, without a passphrase: the key at m\/48'\/0'\/0'\/2'/.test(st) || !/In the descriptor it is key \d of 3/.test(st)) fails.push('bip138: one cosigner\'s words open the backup and it says which key');
+    if (!out.includes(want) || !out.includes('Checksum: #' + want.slice(-8) + ', correct.') || !w.eval('ms.addrs').every((a, i) => out.includes('  ' + i + ': ' + a)) || !w.eval('ms.change').every((a, i) => out.includes('  ' + i + ': ' + a))) fails.push('bip138: the reader shows the descriptor, its checksum and the 10 receive and 10 change addresses');
+    $('phrase').value += ' '; $('phrase').dispatchEvent(new w.Event('input')); if ($('b138Status').textContent || $('b138Out').style.display !== 'none') fails.push('bip138: editing the words clears the old result');
+    const rd = async (b, words, pub) => { try { const r = await w.b138Read(b, words || '', '', pub || ''); return 'OPENED ' + r.hit.cand.how; } catch (e) { return e.message; } };
+    if (!/^OPENED the public key you pasted/.test(await rd(file, '', cos[0].x))) fails.push('bip138: one cosigner\'s xpub opens the backup');
+    if (!/^NOT OPENED/.test(await rd(file, 'zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong'))) fails.push('bip138: another wallet\'s words do not open the backup');
+    { const bad = Uint8Array.from(file); bad[bad.length - 3] ^= 1; if (!/^NOT OPENED: .*changed or damaged/.test(await rd(bad, '', cos[1].x))) fails.push('bip138: a changed byte is refused');
+      const v2 = Uint8Array.from(file); v2[6] = 2; if (!/version 2, which VOIDFORGE cannot read/.test(await rd(v2, '', cos[1].x))) fails.push('bip138: another BIP138 version is refused');
+      if (!/^The file is cut short or damaged/.test(await rd(file.slice(0, 100), '', cos[1].x))) fails.push('bip138: a cut-short file is refused');
+      if (!/^OPENED/.test(await rd(Uint8Array.from([...file, 7, 7]), '', cos[1].x))) fails.push('bip138: bytes after the end of the backup are ignored'); }
+    { // a backup whose descriptor checksum was changed: named, and no addresses
+      const k = cos.map((c) => c.rt.derive("m/48'/0'/0'/2'").publicKey.slice(1)), bad = want.slice(0, -1) + (want.endsWith('q') ? 'p' : 'q');
+      const b = await w.b138Encode(k, [], w.b138Item(U('01017c'), te(bad)), U('0102030405060708090a0b0c'), []);
+      [st, out] = await open(w.base64Encode(b), M3[0]); if (!/is WRONG/.test(out) || /RECEIVE ADDRESSES/.test(out)) fails.push('bip138: a wrong checksum inside a backup is named, and no addresses are listed'); }
+    $('msbRolls').dispatchEvent(new w.Event('input')); if ($('msbText').textContent || $('msbStatus').textContent) fails.push('bip138: editing the rolls clears the old backup');
+    { // a pasted descriptor: a WIF key in it is refused; an inheritance wallet with a custom heir path
+      const wif = b58c.encode(Uint8Array.from([0x80, ...new Uint8Array(32).fill(1), 1]));
+      $('wpIn').value = 'wsh(or_d(pk(' + wif + '),pk([' + cos[0].fp + '/48h/0h/0h/2h]' + cos[0].x + '/<0;1>/*)))'; $('wpbRolls').value = R50; await w.b138MakeUi('wpb');
+      if (!/PRIVATE key/.test($('wpbStatus').textContent) || $('wpbText').textContent) fails.push('bip138: a descriptor with a private key (WIF) is refused');
+      const heir = cos[2].rt.derive("m/48'/0'/12'/2'"), L = 'wsh(or_d(pk([' + cos[0].fp + '/48h/0h/0h/2h]' + cos[0].x + '/<0;1>/*),and_v(v:pkh([' + cos[2].fp + "/48'/0'/12'/2']" + heir.publicExtendedKey + '/<0;1>/*),older(52560))))';
+      $('msxIn').value = L; $('mxbRolls').value = R50; await w.b138MakeUi('mxb');
+      const mb = $('mxbText').textContent; [st, out] = await open(mb, M3[2]);
+      if (!/key at m\/48'\/0'\/12'\/2'/.test(st) || !out.includes(await w.b138Address(L, 1, 9, 'main'))) fails.push('bip138: an heir\'s words open an inheritance backup at the custom path written in it');
+      $('msxIn').value = 'x'; $('msxIn').dispatchEvent(new w.Event('input')); if ($('mxbText').textContent) fails.push('bip138: editing the descriptor clears the old backup'); }
+    w.setGate('fail', 'SELF-TEST FAILED', 'bad'); const off = ['msbBtn', 'wpbBtn', 'mxbBtn', 'b138Btn'].every((id) => $(id).disabled); w.setGate('pass', 'SELF-TEST PASSED', 'good');
+    if (!off || $('b138Btn').disabled) fails.push('bip138: the buttons wait for the self-test');
+    $('b138Pub').value = 'x'; $('wpbRolls').value = R50; w.wipeSeed(); if ($('b138In').value || $('b138Pub').value || $('wpbRolls').value || $('mxbRolls').value || $('b138Status').textContent) fails.push('bip138: CLEAR ALL and auto-clear empty the BIP138 boxes');
+    w.msReset(); $('wpIn').value = ''; $('msxIn').value = ''; await run('dice', 12, D50);   // the seed of section 0 again, as later sections expect
+  } catch (e) { fails.push('bip138: the probe crashed: ' + e.message); }
+  }
   if (SEC(1, "{ const wo = watch(expect.d50, ''), z = $('wZpub').textConte")) {
   { const wo = watch(expect.d50, ''), z = $('wZpub').textContent, dr = $('wDescR').textContent, dc = $('wDescC').textContent;
     if (z !== wo.zpub) fails.push('watch-only zpub');
@@ -4983,6 +5061,56 @@ const M = [
   ["review: typo result written after an edit", "const r = await descTypoFind(document.getElementById(\"typoIn\").value); if(run !== typoRun) return;", "const r = await descTypoFind(document.getElementById(\"typoIn\").value);"],
   ["review: one part of several taken as whole", "if(r.partial){ camMsg(", "if(false){ camMsg("],
   ["review: going online leaves a SeedQR scan on", "window.addEventListener(\"online\", () => { if(cam && CAM_TARGETS[cam.id].secret) camStop(", "window.addEventListener(\"online\", () => { if(false) camStop("],
+  // v2.10.0 BIP138 encrypted descriptor backups (probe section 68)
+  ["bip138: ChaCha20 rotation 12 -> 11", "x[b] = x[b] << 12 | x[b] >>> 20;", "x[b] = x[b] << 11 | x[b] >>> 21;"],
+  ["bip138: ChaCha20 constant wrong", "s[3] = 0x6b206574;", "s[3] = 0x6b206575;"],
+  ["bip138: encryption starts at block 0", "const ks = b138Block(key, 1 + j / 64, nonce);", "const ks = b138Block(key, j / 64, nonce);"],
+  ["bip138: Poly1305 clamp wrong", "0x0ffffffc0ffffffc0ffffffc0fffffffn", "0x0ffffffc0ffffffc0ffffffc0ffffffcn"],
+  ["bip138: Poly1305 high bit missing", "(1n << BigInt(8 * c.length))", "(1n << BigInt(8 * c.length - 1))"],
+  ["bip138: tag without the length block", "m[ct.length + pad + 8 + i] = n % 256;", "m[ct.length + pad + i] = n % 256;"],
+  ["bip138: a wrong tag still opens", "return d === 0 ? b138Stream(key, nonce, ct) : null;", "return b138Stream(key, nonce, ct);"],
+  ["bip138: decryption secret tag wrong", "taggedHash(\"BIP138_DECRYPTION_SECRET\", concatBytes(...ks))", "taggedHash(\"BIP138_DECRYPTION_SECRET \", concatBytes(...ks))"],
+  ["bip138: keys not sorted", "const ks = [...new Set(keys.map(k => hex(k)))].sort().map(fromHex);", "const ks = [...new Set(keys.map(k => hex(k)))].map(fromHex);"],
+  ["bip138: individual secrets not sorted", "const all = [...new Set(list.map(x => hex(x)))].sort();", "const all = [...new Set(list.map(x => hex(x)))];"],
+  ["bip138: common paths written into the file", "b138PathsBytes(paths.filter(p => !b138IsCommon(p)))", "b138PathsBytes(paths)"],
+  ["bip138: paths not sorted", "for(const p of [...paths].sort(b138PathCmp))", "for(const p of [...paths])"],
+  ["bip138: an all-zero nonce is read", "if(nonce.every(x => x === 0)) throw new Error(\"The file is damaged: its nonce is all zeros", "if(false) throw new Error(\"The file is damaged: its nonce is all zeros"],
+  ["bip138: another version is read", "if(b[6] !== 0x01) throw", "if(false) throw"],
+  ["bip138: bytes after the end refused", "i += l[1]; if(i + l[0] > b.length) throw cut(", "i += l[1]; if(i + l[0] !== b.length) throw cut("],
+  ["bip138: content type 0x80 and up read", "if(t >= 0x80) throw new Error(\"it holds a kind of content", "if(false) throw new Error(\"it holds a kind of content"],
+  ["bip138: a text item with type data read", "if(t === 0x03 && meta.length) throw", "if(false) throw"],
+  ["bip138: 0x00 does not end the items", "while(i < pt.length && pt[i] !== 0x00){", "while(i < pt.length){"],
+  ["bip138: a bare xpub locks the backup", "if(k.musig || e.steps.length || e.wild){", "if(true){"],
+  ["bip138: MuSig participants left out", "if(k.musig || e.steps.length || e.wild){", "if(e.steps.length || e.wild){"],
+  ["bip138: exposed roots kept", "    if(exposed.has(x)){ if(!notes.some(", "    if(false){ if(!notes.some("],
+  ["bip138: the NUMS key kept", "if(x === B138_NUMS){ notes.push(", "if(false){ notes.push("],
+  ["bip138: 49 dice rolls accepted", "const B138_ROLLS = 50;", "const B138_ROLLS = 49;"],
+  ["bip138: the nonce ignores the dice", "new TextEncoder().encode(\"VOIDFORGE BIP138 nonce \" + R + \" \")", "new TextEncoder().encode(\"VOIDFORGE BIP138 nonce \")"],
+  ["bip138: no decoys", "for(let j = 0; decoys.length < b138Bucket(cs.length) - cs.length; j++)", "for(let j = 0; decoys.length < 0; j++)"],
+  ["bip138: decoy buckets grow by 5", "let b = 5; while(b < n) b *= 2;", "let b = 5; while(b < n) b += 5;"],
+  ["bip138: decoys depend on the dice", "taggedHash(\"VOIDFORGE/BIP138 decoy\", concatBytes(s, le32(j)))", "taggedHash(\"VOIDFORGE/BIP138 decoy\", concatBytes(new TextEncoder().encode(R), le32(j)))"],
+  ["bip138: a private key (WIF) is backed up", "if(await descriptorHasSecret(t)) throw new Error(\"This holds a PRIVATE key. A BIP138", "if(false) throw new Error(\"This holds a PRIVATE key. A BIP138"],
+  ["bip138: multisig backup holds only the receive descriptor", "descriptorChecksum(ms.descR.replace(/#[a-z0-9]{8}$/, \"\").split(\"/0/*\").join(\"/<0;1>/*\")) : \"\";", "ms.descR : \"\";"],
+  ["bip138: the paths in the file are not tried", "const paths = [[]].concat(f.paths, b138Common());", "const paths = [[]].concat(b138Common());"],
+  ["bip138: the common paths are not tried", "const paths = [[]].concat(f.paths, b138Common());", "const paths = [[]].concat(f.paths);"],
+  ["bip138: addresses of a changed descriptor listed", "    if(want && hashAt >= 0 && want !== d) continue;\n", ""],
+  ["bip138: change addresses from the receive branch", "if(multi) for(let i = 0; i < ADDR_SHOWN; i++) chg.push(await b138Address(body, 1, i, net));", "if(multi) for(let i = 0; i < ADDR_SHOWN; i++) chg.push(await b138Address(body, 0, i, net));"],
+  ["bip138: the words keep the old result", "for(const id of [\"b138In\", \"b138Pub\", \"phrase\", \"verifyPass\"]) document.getElementById(id).addEventListener(\"input\", b138OpenWipe);", "for(const id of [\"b138In\", \"b138Pub\"]) document.getElementById(id).addEventListener(\"input\", b138OpenWipe);"],
+  ["bip138: the rolls keep the old backup", "for(const P of B138_PANELS) document.getElementById(P + \"Rolls\").addEventListener(\"input\", () => b138MakeClear(P, true));", ""],
+  ["bip138: the inheritance descriptor keeps the old backup", "document.getElementById(\"msxIn\").addEventListener(\"input\", () => b138MakeClear(\"mxb\", true));", ""],
+  ["bip138: CLEAR ALL keeps the BIP138 boxes", "  b138ClearAll();   // v2.10.0: BIP138 backups (dice rolls, files, results)\n", ""],
+  ["bip138: the buttons skip the gate", "  for(const id of b138Gated()) document.getElementById(id).disabled = !on;   // v2.10.0: BIP138 descriptor backups\n", ""],
+  ["miniscript: or_d without IFDUP", "case \"or_d\": sc = [...await sub(0), 0x73, 0x64, ...await sub(1), 0x68]; break;", "case \"or_d\": sc = [...await sub(0), 0x64, ...await sub(1), 0x68]; break;"],
+  ["miniscript: VERIFY never folded", "else if(c === \"v\") sc = typeof last === \"number\" && fold[last] ?", "else if(c === \"v\") sc = false ?"],
+  ["miniscript: thresh without ADD", "for(let i = 2; i < a.length; i++) sc.push(...await sub(i), 0x93);", "for(let i = 2; i < a.length; i++) sc.push(...await sub(i));"],
+  ["miniscript: a: wrapper wrong", "if(c === \"a\") sc = [0x6b, ...sc, 0x6c];", "if(c === \"a\") sc = [0x7c, ...sc];"],
+  ["miniscript: andor branches swapped", "case \"andor\": sc = [...await sub(0), 0x64, ...await sub(2), 0x67, ...await sub(1), 0x68]; break;", "case \"andor\": sc = [...await sub(0), 0x64, ...await sub(1), 0x67, ...await sub(2), 0x68]; break;"],
+  ["miniscript: sortedmulti not sorted", "if(f === \"sortedmulti\") ks.sort(cmpBytes);", ""],
+  ["miniscript: multi_a without CHECKSIGADD", "for(let i = 1; i < ks.length; i++) sc.push(ks[i], 0xba);", "for(let i = 1; i < ks.length; i++) sc.push(ks[i], 0xac);"],
+  ["miniscript: number without its sign byte", "if(b[b.length - 1] & 0x80) b.push(0);", ""],
+  ["taproot: tree branches not sorted", "cmpBytes(a, b) <= 0 ? concatBytes(a, b) : concatBytes(b, a)", "concatBytes(a, b)"],
+  ["taproot: leaf version wrong", "concatBytes(Uint8Array.of(0xc0), varintBytes(sc.length), sc)", "concatBytes(Uint8Array.of(0xc1), varintBytes(sc.length), sc)"],
+  ["descriptor: sh(wsh()) read as sh()", "if(f === \"sh\" && im && im[1] === \"wsh\") return", "if(false) return"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

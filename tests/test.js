@@ -2011,6 +2011,139 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     $('cdHex').value='ab'; w.clearAll(); ok($('cdCards').value===''&&$('cdHex').value==='','CLEAR ALL empties the cards and hex boxes');
     ok(/\["Card entropy"/.test(html)&&/\["Hex entropy"/.test(html),'dictionary: Card entropy and Hex entropy');
     r.w.close(); }
+  // v2.10.0: BIP138 encrypted descriptor backups. Official test vectors from bitcoin/bips (pinned in tests/fixtures/bip138/SOURCE.json),
+  // addresses from embit (tests/fixtures/gen_bip138.py), ChaCha20-Poly1305 from Node's crypto, keys from @scure/bip32.
+  { const FX=path.join(__dirname,'fixtures','bip138'), SRC=JSON.parse(fs.readFileSync(path.join(FX,'SOURCE.json'),'utf8')), V=n=>JSON.parse(fs.readFileSync(path.join(FX,n),'utf8'));
+    const {HDKey}=require('@scure/bip32'); const {mnemonicToSeedSync}=require('@scure/bip39');
+    ok(SRC.commit==='346008db8943cb90c1e091eaac8277066d4dbee7'&&Object.keys(SRC.files).length===10&&Object.entries(SRC.files).every(([n,h])=>nc.createHash('sha256').update(fs.readFileSync(path.join(FX,n))).digest('hex')===h),'BIP138 vectors: all 10 files are the pinned bitcoin/bips ones (SHA-256 checked)');
+    const r=load(); await r.ready(); const w=r.w, $=r.$, U=h=>Uint8Array.from(Buffer.from(h,'hex')), H=b=>Buffer.from(b).toString('hex'), te=s=>new w.TextEncoder().encode(s);
+    const thr=async f=>{ try { await f(); return null; } catch(e) { return e.message; } };
+    const parsePath=s=>s.split('/').slice(1).map(c=>/'$/.test(c)?parseInt(c,10)+0x80000000:parseInt(c,10));
+    // ChaCha20-Poly1305
+    { const cv=V('chacha20poly1305_encryption.json'); let good=0, refused=0;
+      for(const v of cv){ if(v.ciphertext){ if(H(w.b138Seal(U(v.secret),U(v.nonce),U(v.plaintext)))===v.ciphertext) good++; } else if(await thr(()=>w.b138Encode([U('e6642fd69bd211f93f7f1f36ca51a26a5290eb2dd1b0d8279a87bb0d480c8443')],[],U(v.plaintext),U(v.nonce),[]))) refused++; }
+      ok(good===3&&refused===2,'BIP138 vectors: ChaCha20-Poly1305 (3 ciphertexts; an empty payload and an all-zero nonce are refused)');
+      let same=0; for(let i=0;i<40;i++){ const k=nc.randomBytes(32), n=nc.randomBytes(12), p=nc.randomBytes(i*13+1), c=nc.createCipheriv('chacha20-poly1305',k,n,{authTagLength:16}); const want=Buffer.concat([c.update(p),c.final(),c.getAuthTag()]);
+        const got=w.b138Seal(new Uint8Array(k),new Uint8Array(n),new Uint8Array(p)), back=w.b138Unseal(new Uint8Array(k),new Uint8Array(n),got); if(H(got)===want.toString('hex')&&back&&H(back)===p.toString('hex')) same++; }
+      ok(same===40,'ChaCha20-Poly1305: 40 random messages (1 to 508 bytes) match Node\'s crypto, and open again');
+      const k=new Uint8Array(32).fill(7), n=new Uint8Array(12).fill(1), s=w.b138Seal(k,n,te('descriptor')); const s2=Uint8Array.from(s); s2[3]^=1; const k2=Uint8Array.from(k); k2[0]^=1;
+      ok(w.b138Unseal(k,n,s2)===null&&w.b138Unseal(k2,n,s)===null&&w.b138Unseal(k,n,s.slice(0,10))===null,'ChaCha20-Poly1305: a changed byte, a wrong key or a cut-short text does not open'); }
+    // secrets, content types, payloads, paths, secret lists
+    { const ev=V('encryption_secret.json'); let n=0; for(const v of ev){ const o=await w.b138Secret(v.keys.map(k=>U(k).slice(1))); if(H(o.s)===v.decryption_secret&&JSON.stringify(o.cs.map(H))===JSON.stringify(v.individual_secrets)) n++; }
+      ok(n===ev.length,'BIP138 vectors: decryption secret and individual secrets ('+n+' of '+ev.length+', sorting, repeats and keys with one x coordinate)'); }
+    { const cv=V('content_type.json'); let n=0; for(const v of cv){ let okv; try { w.b138Ctype(U(v.content),0); okv=true; } catch(e) { okv=false; } if(okv===v.valid) n++; }
+      ok(n===cv.length,'BIP138 vectors: content types ('+n+' of '+cv.length+' valid or refused as they should be)');
+      const pv=V('payload.json'); const a=w.b138Items(U(pv[0].payload)); ok(a.length===1&&a[0].type===3&&H(a[0].data)==='61'&&!!(await thr(()=>w.b138Items(U(pv[1].payload)))),'BIP138 vectors: payloads (bytes after the 0x00 end are ignored; no item is refused)'); }
+    { const dv=V('derivation_path.json'); let n=0; for(const v of dv){ let got; try { got=H(w.b138PathsBytes(v.paths.map(parsePath))); } catch(e) { got=null; } if(got===v.expected) n++; }
+      ok(n===dv.length,'BIP138 vectors: derivation paths ('+n+' of '+dv.length+', sorted, without repeats, 255 at most)');
+      const sv=V('individual_secrets.json'); let m=0; for(const v of sv){ let got; try { got=H(w.b138SecretsBytes(v.secrets.map(U))); } catch(e) { got=null; } if(got===v.expected) m++; }
+      ok(m===sv.length,'BIP138 vectors: individual secret lists ('+m+' of '+sv.length+')'); }
+    // whole backups: encode, the Base64 text, parse, open with each key, trailing bytes, an all-zero nonce
+    { const bv=V('encrypted_backup.json'); let enc=0, b64=0, open=0, zero=0, trail=0;
+      for(const v of bv){
+        const keys=v.keys.map(k=>U(k).slice(1)), paths=v.derivation_paths.map(parsePath), dec=v.decoy_individual_secrets.map(U);
+        const items=[[v.content,v.plaintext],...(v.extra||[]).map(e=>[e.content,e.plaintext])];
+        const payload=w.concatBytes(...items.map(([c,p])=>w.b138Item(U(c),te(p))));
+        if(v.valid===false){ if(/nonce is all zeros/.test(await thr(()=>w.b138Parse(U(v.expected))))) zero++; continue; }
+        const b=await w.b138Encode(keys,paths,payload,U(v.nonce),dec); if(H(b)===v.expected) enc++; if(w.base64Encode(b)===v.expected_base64) b64++;
+        const f=w.b138Parse(U(v.expected+(v.trailing||''))); let all=true; for(const k of keys){ const o=await w.b138TryKeys(f,[{xonly:k}]); const it=o?w.b138Items(o.pt):[]; if(!o||it.length!==items.length||it.some((x,i)=>new w.TextDecoder().decode(x.data)!==items[i][1])) all=false; } if(all) open++;
+        if(v.trailing) trail++;
+      }
+      ok(enc===6&&b64===6,'BIP138 vectors: all 6 backups are made byte for byte (binary and Base64), with common paths left out');
+      ok(open===6&&trail===1,'BIP138 vectors: each backup opens with each of its keys and gives every content item back, bytes after the end ignored');
+      ok(zero===1,'BIP138 vectors: a backup with an all-zero nonce is refused'); }
+    // recipients (key selection), descriptor and policy documents
+    { const kv=V('recipient_keys.json'); let n=0; const bad=[];
+      for(const v of kv){ const o=await w.b138Recipients(v.descriptors); const got=o.keys.length?o.keys.map(H):null; if(JSON.stringify(got)===JSON.stringify(v.expected_keys)) n++; else bad.push(v.description); }
+      ok(n===kv.length,'BIP138 vectors: which keys can open a backup ('+n+' of '+kv.length+': bare xpubs, plain keys and exposed roots left out, MuSig participants kept)'+(bad.length?' '+bad.join('; '):''));
+      const o=await w.b138Recipients(['wsh(or_i(pk(tpubDEPBvXvhta3pjVaKokqC3eeMQnszj9ehFaA2zD5nSdkaccwGAizu8jVB2NeSpvmP2P52MBoZvNCixqXRJnTyXx51FQzARR63tjxQSyP3Btw/0/*),pk(tpubDEPBvXvhta3pjVaKokqC3eeMQnszj9ehFaA2zD5nSdkaccwGAizu8jVB2NeSpvmP2P52MBoZvNCixqXRJnTyXx51FQzARR63tjxQSyP3Btw)))']);
+      ok(o.keys.length===0&&o.notes.some(x=>/no derivation step/.test(x)),'BIP138: a left-out key is named, so its holder knows it cannot open the backup');
+      const dv=V('bip380_descriptor_backup.json'); let d=0; for(const v of dv){ const c=w.b138Content([{type:1,bip:380,data:te(JSON.stringify(v.document))}]); if(c.sets.length===1&&c.sets[0].desc===v.document.descriptor_sets[0].descriptor&&(c.sets[0].change||undefined)===v.document.descriptor_sets[0].change_descriptor) d++; }
+      ok(d===dv.length,'BIP138 vectors: BIP380 descriptor documents (with a change descriptor, multipath, receive only)');
+      const pv=V('bip388.json'); let p=0; for(const v of pv){ let okv; try { okv=w.b138Content([{type:1,bip:388,data:te(JSON.stringify(v.document))}]).sets.length>0; } catch(e) { okv=false; } if(okv===v.valid) p++; }
+      const one=w.b138Content([{type:1,bip:388,data:te(JSON.stringify(pv[0].document))}]).sets[0].desc;
+      ok(p===pv.length&&one===w.descriptorChecksum('pkh('+pv[0].document.keys[0]+'/<0;1>/*)'),'BIP138 vectors: BIP388 wallet policy documents (version, keys and policy checked; @0/** becomes /<0;1>/*)'); }
+    // descriptor addresses against embit
+    { const A=V('addresses.json'); let n=0, bad=0; for(const v of A.vectors){ for(let i=0;i<3;i++){ n++; if(await w.b138Address(v.desc,0,i,v.net)!==v.receive[i]) bad++; } for(let i=0;i<v.change.length;i++){ n++; if(await w.b138Address(v.desc,1,i,v.net)!==v.change[i]) bad++; } }
+      ok(bad===0&&A.vectors.length>=40,'descriptor addresses: '+n+' addresses of '+A.vectors.length+' descriptors (single key, multisig, miniscript, Taproot trees) equal embit\'s'); }
+    // the Multisig wallet card: SAVE ENCRYPTED DESCRIPTOR BACKUP, then CHECK A BACKUP opens it with any one key
+    const M3=['abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about','legal winner thank year wave sausage worth useful legal winner thank yellow','letter advice cage absurd amount doctor acoustic avoid letter advice cage above'];
+    const cos=M3.map(m=>{ const rt=HDKey.fromMasterSeed(mnemonicToSeedSync(m,'')); return {fp:rt.fingerprint.toString(16).padStart(8,'0'), x:rt.derive("m/48'/0'/0'/2'").publicExtendedKey}; });
+    $('msN').value='3'; $('msM').value='2'; w.msUpdateM(); $('msAcct').value='0'; $('msType').value='ms-wsh'; $('msNet').value='main'; w.msStart(); w.msUsePaste();
+    for(const c of cos){ $('msPaste').value='['+c.fp+'/48h/0h/0h/2h]'+c.x; $('msPasteFp').value=''; await w.msAddPasted(); }
+    ok(w.eval('ms.done')&&$('msbBox').offsetParent!==undefined&&$('msDone').style.display==='','multisig card: the finished wallet shows the encrypted backup panel');
+    ok($('msbBtn').textContent==='SAVE ENCRYPTED DESCRIPTOR BACKUP'&&!$('msbBtn').classList.contains('secondary'),'multisig card: SAVE ENCRYPTED DESCRIPTOR BACKUP is a gold main button');
+    r.st.blob=null; await w.b138MakeUi('msb'); ok(/Roll a die at least 50 times/.test($('msbStatus').textContent)&&!r.st.blob,'backup: without dice rolls nothing is made (VOIDFORGE never makes the nonce up)');
+    $('msbRolls').value='3'.repeat(49); await w.b138MakeUi('msb'); ok(/at least 50 times/.test($('msbStatus').textContent),'backup: 49 rolls are not enough');
+    const R50='16354216535241263542163542165432163542165342165432'; $('msbRolls').value=R50; await w.b138MakeUi('msb');
+    const file=await new Promise((res,rej)=>{ const fr=new w.FileReader(); fr.onload=()=>res(new Uint8Array(fr.result)); fr.onerror=rej; fr.readAsArrayBuffer(r.st.blob); }), b64=$('msbText').textContent;
+    ok(/^SAVED: voidforge-descriptor-backup\.bip138 \(\d+ bytes, BIP138\)\. Any one of these 3 keys opens it \(fingerprint /.test($('msbStatus').textContent)&&/The file lists 5 entries/.test($('msbStatus').textContent),'backup: 50 rolls save the .bip138 file; any one of the 3 keys opens it, and 5 entries hide the count');
+    ok(Buffer.from(file.slice(0,7)).toString('hex')==='424950313338'+'01'&&w.base64Encode(file)===b64&&/^QklQMTM4/.test(b64),'backup: the file starts with BIP138 version 1, and the text shown is its Base64');
+    { const f=w.b138Parse(file), want=w.descriptorChecksum(w.eval('ms.descR').replace(/#[a-z0-9]{8}$/,'').split('/0/*').join('/<0;1>/*'));
+      // an independent reader: s from Node's SHA-256 over the keys, then Node's ChaCha20-Poly1305
+      const tg=(t,m)=>{ const th=nc.createHash('sha256').update(t).digest(); return nc.createHash('sha256').update(Buffer.concat([th,th,m])).digest(); };
+      const xs=cos.map(c=>Buffer.from(HDKey.fromExtendedKey(c.x).publicKey.slice(1))).sort(Buffer.compare), s=tg('BIP138_DECRYPTION_SECRET',Buffer.concat(xs));
+      const d=nc.createDecipheriv('chacha20-poly1305',s,Buffer.from(f.nonce),{authTagLength:16}); d.setAuthTag(Buffer.from(f.sealed.slice(-16))); const pt=Buffer.concat([d.update(Buffer.from(f.sealed.slice(0,-16))),d.final()]);
+      const cs=xs.map(x=>{ const si=tg('BIP138_INDIVIDUAL_SECRET',x); return Buffer.from(s.map((b,i)=>b^si[i])).toString('hex'); });
+      const L=Buffer.byteLength(want), csz=L<253?Buffer.from([L]):Buffer.from([0xfd,L&255,L>>8]);
+      ok(pt.equals(Buffer.concat([Buffer.from('01017c','hex'),csz,Buffer.from(want)])),'backup: an independent reader (Node\'s SHA-256 and ChaCha20-Poly1305) gets the multipath descriptor back');
+      ok(cs.every(c=>f.secrets.some(x=>H(x)===c))&&f.paths.length===0&&f.secrets.map(H).join()===[...f.secrets.map(H)].sort().join(),'backup: the 3 real entries are there, sorted with 2 decoys; the common BIP48 path is not written'); }
+    $('msbRolls').value=R50; await w.b138MakeUi('msb'); const again=$('msbText').textContent; $('msbRolls').value=R50.replace(/^1/,'2'); await w.b138MakeUi('msb'); const other=$('msbText').textContent;
+    ok(again===b64&&other!==b64&&other.slice(0,200)===b64.slice(0,200),'backup: the same rolls make the same file; other rolls change only the nonce and ciphertext, not the decoys');
+    $('msbRolls').value=R50; await w.b138MakeUi('msb'); w.b138ShowQr('msb'); ok(/<rect|<path/.test($('msbQrImg').innerHTML)&&$('msbQrBox').style.display==='','backup: SHOW QR draws the text as a QR code');
+    // open it in CHECK A BACKUP
+    const open=async(text,words,pass,pub)=>{ $('b138In').value=text; $('phrase').value=words||''; $('verifyPass').value=pass||''; $('b138Pub').value=pub||''; await w.b138OpenUi(); return [$('b138Status').textContent,$('b138Out').textContent]; };
+    let [st,out]=await open(b64,M3[1]);
+    ok(/^OPENED with the words typed above, without a passphrase: the key at m\/48'\/0'\/0'\/2' \(fingerprint /.test(st)&&/In the descriptor it is key \d of 3 \(fingerprint /.test(st),'reader: the words of one cosigner open it, and it says which key opened it');
+    const desc=w.descriptorChecksum(w.eval('ms.descR').replace(/#[a-z0-9]{8}$/,'').split('/0/*').join('/<0;1>/*'));
+    ok(out.includes(desc)&&out.includes('Checksum: #'+desc.slice(-8)+', correct.'),'reader: it shows the descriptor and says its checksum is correct');
+    ok(w.eval('ms.addrs').every((a,i)=>out.includes('  '+i+': '+a))&&w.eval('ms.change').every((a,i)=>out.includes('  '+i+': '+a))&&/FIRST 10 RECEIVE ADDRESSES:/.test(out)&&/FIRST 10 CHANGE ADDRESSES:/.test(out),'reader: the first 10 receive and 10 change addresses equal the multisig card\'s');
+    [st,out]=await open(b64,'',null,cos[2].x); ok(/^OPENED with the public key you pasted/.test(st),'reader: one cosigner\'s xpub alone opens it (BIP138 is keyed by the public keys)');
+    [st,out]=await open(b64,'',null,'['+cos[0].fp+"/48'/0'/0'/2']"+cos[0].x+'/<0;1>/*'); ok(/^OPENED with the public key you pasted \(fingerprint /.test(st),'reader: the key may be pasted with its origin and derivation, as in a descriptor');
+    [st]=await open(b64,'zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong'); ok(/^NOT OPENED: the words typed above .*do not open this backup\. Either this is not one of the wallet's keys, or the file was changed or damaged/.test(st)&&!$('b138Out').textContent,'reader: the words of another wallet are refused, and nothing is shown');
+    [st]=await open(b64,M3[0],'TREZOR'); ok(/^OPENED with the words typed above, without a passphrase/.test(st),'reader: with a passphrase typed, the words are also tried without it');
+    [st]=await open(b64,''); ok(/^Type the words of one of the wallet's keys/.test(st),'reader: with no key at all, it says what to type');
+    { const bad=Uint8Array.from(file); bad[bad.length-5]^=1; [st]=await open(w.base64Encode(bad),M3[1]); ok(/^NOT OPENED: .*the file was changed or damaged/.test(st),'reader: a changed byte in the encrypted part is refused (the encryption check fails)');
+      const cut=file.slice(0,60); [st]=await open(w.base64Encode(cut),M3[1]); ok(/^The file is cut short or damaged: it ends inside the list of keys\./.test(st),'reader: a cut-short file says where it ends');
+      const v2=Uint8Array.from(file); v2[6]=2; [st]=await open(w.base64Encode(v2),M3[1]); ok(/uses BIP138 version 2, which VOIDFORGE cannot read/.test(st),'reader: another version is named, not guessed');
+      const nm=Uint8Array.from(file); nm[0]=0x43; [st]=await open(w.base64Encode(nm),M3[1]); ok(/^This is not a BIP138 backup/.test(st),'reader: a file that does not start with BIP138 is refused');
+      [st]=await open('QkVCAQ'+'A'.repeat(40),M3[1]); ok(/older Liana backup/.test(st),'reader: an old Liana .bed backup (BEB) is named');
+      [st]=await open('not base64 !!',M3[1]); ok(/not Base64/.test(st),'reader: text that is not Base64 is refused');
+      [st]=await open(w.base64Encode(Uint8Array.from([...file,1,2,3])),M3[1]); ok(/^OPENED/.test(st),'reader: bytes after the end of the backup are ignored, as BIP138 says'); }
+    // stale results, the file picker, the gate, CLEAR ALL
+    [st]=await open(b64,M3[1]); $('phrase').value+=' '; $('phrase').dispatchEvent(new w.Event('input')); ok(/^OPENED/.test(st)&&$('b138Status').textContent===''&&$('b138Out').style.display==='none','reader: editing the words clears the old result');
+    await open(b64,M3[1]); $('b138In').value+='A'; $('b138In').dispatchEvent(new w.Event('input')); ok($('b138Status').textContent==='','reader: editing the backup text clears the old result');
+    await open(b64,M3[1]); $('b138Pub').dispatchEvent(new w.Event('input')); ok($('b138Status').textContent==='','reader: editing the public key box clears the old result');
+    { $('b138In').value=''; const fi=$('b138File'); Object.defineProperty(fi,'files',{configurable:true,value:[new w.File([file],'wallet.bip138')]}); fi.dispatchEvent(new w.Event('change')); for(let i=0;i<100&&!$('b138In').value;i++) await new Promise(z=>setTimeout(z,10));
+      ok($('b138In').value===b64,'reader: choosing a .bip138 file puts its Base64 text in the box');
+      Object.defineProperty(fi,'files',{configurable:true,value:[new w.File([b64+'\n'],'wallet.txt')]}); $('b138In').value=''; fi.dispatchEvent(new w.Event('change')); for(let i=0;i<100&&!$('b138In').value;i++) await new Promise(z=>setTimeout(z,10));
+      ok($('b138In').value===b64,'reader: a .txt file with the Base64 text works too'); }
+    $('msbRolls').value='x'; $('msbRolls').dispatchEvent(new w.Event('input')); ok($('msbStatus').textContent===''&&$('msbOut').style.display==='none','backup: editing the rolls clears the old result');
+    w.setGate('fail','SELF-TEST FAILED','bad'); ok(['msbBtn','wpbBtn','mxbBtn','b138Btn'].every(id=>$(id).disabled),'gate: a failed self-test disables every BIP138 button'); w.setGate('pass','SELF-TEST PASSED','good'); ok(['msbBtn','wpbBtn','mxbBtn','b138Btn'].every(id=>!$(id).disabled),'gate: a passed self-test enables them');
+    // the descriptor boxes: Or open a watch-only wallet, and Explain an inheritance or timelock wallet
+    { const z=HDKey.fromMasterSeed(mnemonicToSeedSync(M3[0],'')), fp0=z.fingerprint.toString(16).padStart(8,'0'), sk=z.derive("m/84'/0'/0'");
+      $('wpIn').value='wpkh(['+fp0+'/84h/0h/0h]'+sk.publicExtendedKey+'/0/*)'; $('wpbRolls').value=R50; await w.b138MakeUi('wpb');
+      ok(/^SAVED: .*One key opens it \(fingerprint 73c5da0a\)/.test($('wpbStatus').textContent),'watch-only box: a pasted single-key descriptor is backed up');
+      [st,out]=await open($('wpbText').textContent,M3[0]); ok(/^OPENED with the words typed above, without a passphrase: the key at m\/84'\/0'\/0'/.test(st)&&/bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu/.test(out)&&/only a receive descriptor/.test(out),'watch-only box: its backup opens with the words (common path m/84\'/0\'/0\' tried), shows receive #0, and says it has no change descriptor');
+      $('wpIn').value=sk.publicExtendedKey; $('wpIn').dispatchEvent(new w.Event('input')); ok($('wpbStatus').textContent===''&&$('wpbRolls').value===R50,'watch-only box: editing the box clears the old backup (the rolls stay)');
+      await w.b138MakeUi('wpb'); ok(/This is not a descriptor/.test($('wpbStatus').textContent),'watch-only box: a plain xpub is not a descriptor');
+      $('wpIn').value='wpkh('+z.derive("m/84'/0'/0'").privateExtendedKey+'/0/*)'; await w.b138MakeUi('wpb'); ok(/PRIVATE key/.test($('wpbStatus').textContent),'watch-only box: a descriptor with a private key is refused');
+      $('wpIn').value='wpkh(['+fp0+'/84h/0h/0h]'+sk.publicExtendedKey+'/0/*)#aaaaaaaa'; await w.b138MakeUi('wpb'); ok(/checksum \(after #\) does not match/.test($('wpbStatus').textContent),'watch-only box: a wrong checksum is refused');
+      $('wpIn').value='wpkh('+sk.publicExtendedKey+')'; await w.b138MakeUi('wpb'); ok(/No key of this descriptor can lock a BIP138 backup/.test($('wpbStatus').textContent)&&/no derivation step/.test($('wpbStatus').textContent),'watch-only box: a bare xpub (its key shows on the blockchain) cannot lock a backup, and says why');
+      // an inheritance (Liana-style) wallet with a custom path for the heir's key: the path is written in the file, so the words find it
+      const heir=HDKey.fromMasterSeed(mnemonicToSeedSync(M3[2],'')), hp="m/48'/0'/12'/2'", hk=heir.derive(hp), hfp=heir.fingerprint.toString(16).padStart(8,'0');
+      const L='wsh(or_d(pk(['+cos[0].fp+'/48h/0h/0h/2h]'+cos[0].x+'/<0;1>/*),and_v(v:pkh(['+hfp+"/48'/0'/12'/2']"+hk.publicExtendedKey+'/<0;1>/*),older(52560))))';
+      $('msxIn').value=L; $('msxIn').dispatchEvent(new w.Event('input')); $('mxbRolls').value=R50; await w.b138MakeUi('mxb');
+      ok(/^SAVED: .*Any one of these 2 keys opens it/.test($('mxbStatus').textContent),'inheritance box: a miniscript descriptor is backed up for both keys');
+      const mf=w.b138Parse(Uint8Array.from(Buffer.from($('mxbText').textContent,'base64'))); ok(mf.paths.length===1&&w.b138PathText(mf.paths[0])===hp,'inheritance box: the heir\'s custom path is written in the file (the common one is not)');
+      [st,out]=await open($('mxbText').textContent,M3[2]); 
+      ok(/^OPENED with the words typed above, without a passphrase: the key at m\/48'\/0'\/12'\/2'/.test(st)&&/key 2 of 2/.test(st)&&out.includes(await w.b138Address(L,0,0,'main'))&&out.includes(await w.b138Address(L,1,9,'main')),'inheritance box: the heir\'s words open it at the custom path and the miniscript addresses are listed'); }
+    // CLEAR ALL
+    $('b138Pub').value='x'; $('b138In').value='x'; for(const P of ['msb','wpb','mxb']) $(P+'Rolls').value=R50; w.clearAll();
+    ok(['b138In','b138Pub','msbRolls','wpbRolls','mxbRolls'].every(id=>$(id).value==='')&&$('b138Status').textContent===''&&['wpbStatus','mxbStatus'].every(id=>$(id).textContent===''),'CLEAR ALL empties the BIP138 boxes, rolls and results');
+    ok(/\["BIP138 \(encrypted descriptor backup\)"/.test(html)&&/\["ChaCha20-Poly1305"/.test(html)&&/Encryption also needs a new nonce/.test(html),'dictionary: BIP138, ChaCha20-Poly1305, and Nonce for encryption');
+    ok(r.errors.length===0,'BIP138: no page errors '+JSON.stringify(r.errors));
+    r.w.close(); }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
 
