@@ -5589,7 +5589,7 @@ const M = [
   ["slip39 make: wallet shown after an edit", "  if(run !== s39mRun) return;\n  const c = {groups: r.groups", "  const c = {groups: r.groups"],
   ["slip39 make: master secret kept after use", "try { w = await s39mWalletText(r.masterSecret); } finally { r.masterSecret.fill(0); }", "try { w = await s39mWalletText(r.masterSecret); } finally { }"],
   ["slip39 make: CLEAR ALL keeps the shares", "  s39mClear();   // v2.10.0: SLIP39 shares made from dice (secret)\n", ""],
-  ["slip39 make: auto-clear does not see the rolls", "\"dcRolls\", \"s39mRolls\", \"s39mPass\", \"s39mPass2\"];", "\"dcRolls\"];"],
+  ["slip39 make: auto-clear does not see the rolls", "\"dcRolls\", \"s39mRolls\", \"s39mPass\", \"s39mPass2\",", "\"dcRolls\","],   // lead: AUTO_FIELDS now continues with the seed mix boxes
   ["slip39 make: switching mode keeps the shares", "  clearS39(); s39mClear();\n}", "  clearS39();\n}"],
   ["slip39 make: shares can be selected", "margin:8px 0 0; -webkit-user-select:none; user-select:none;\"></pre>", "margin:8px 0 0;\"></pre>"],
   ["slip39 make: print without asking", "if(!confirm(\"Printing sends the shares to a printer", "if(false && !confirm(\"Printing sends the shares to a printer"],
@@ -5664,7 +5664,7 @@ const M = [
   ["cmx: old result kept when the rolls change", "placeholder=\"Every roll or flip you typed on the Coldcard, in order\" oninput=\"cmxClear(true)\"", "placeholder=\"Every roll or flip you typed on the Coldcard, in order\""],
   ["cmx: button never enabled", "document.getElementById(\"cmxBtn\").disabled = !on;", "document.getElementById(\"cmxBtn\").disabled = true;"],
   ["cmx: CLEAR ALL keeps the TRNG words", "  cmxClear(); flwClear(true);   // v2.10.0", "  flwClear(true);   // v2.10.0"],
-  ["cmx: auto-clear keeps the TRNG words", "\"dcRolls\", \"cmxTrng\", \"cmxRolls\"];", "\"dcRolls\", \"cmxRolls\"];"],
+  ["cmx: auto-clear keeps the TRNG words", "\"s39mPass2\", \"cmxTrng\", \"cmxRolls\"];", "\"s39mPass2\", \"cmxRolls\"];"],
   ["cmx: practice mode keeps a mainnet result", "dcClear(true); cmxClear(true); clearPsbt(false);", "dcClear(true); clearPsbt(false);"],
   ["cmx: address always on mainnet", "const net = practiceOn ? \"test\" : \"main\";\n  const ent = await coldcardMixEntropy", "const net = \"main\";\n  const ent = await coldcardMixEntropy"],
   ["flaw: Coldcard Q fix version wrong", "fixed: [1, 5, 0], fixedText: \"1.5.0Q\"", "fixed: [1, 4, 0], fixedText: \"1.5.0Q\""],
