@@ -497,6 +497,10 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   /* v2.5.0: secrets on the screen cannot be highlighted, so they are never copied to the clipboard by accident (there is no copy button for them either) */
   #wordGrid, #genResult, #wvAbbrGrid, #childOut, #exOut, #reforgeOut, #dpOut { -webkit-user-select: none; user-select: none; }
   #cmxOut { -webkit-user-select: none; user-select: none; }   /* v2.10.0: the Coldcard seed mix check (secret) */
+  /* v2.10.0: the look-alike letter list shows parts of the words (SECRET): never selectable, hidden during the restore drill */
+  #smudgeNote, #vSmudge { -webkit-user-select: none; user-select: none; }
+  body.drill-on #smudgeNote { visibility: hidden; }
+  #forgePub:empty, #phrasePub:empty, #wvPub:empty, #detPub:empty, #smudgeNote:empty, #vSmudge:empty, #twiceNote:empty { display: none; }
   .pass-warn { color: var(--warn-text); font-weight: 600; font-size: 13px; margin: 6px 0 0; }
   .pass-warn:empty { display: none; }
   #practiceBan { display: none; }
@@ -1088,6 +1092,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <div id="entropyStatus" data-g="2" style="font-size: 13px; margin-top:4px; font-weight:600;"></div>
     <div id="bitsNote" data-g="2" style="font-size: 13px; margin-top:4px; color:var(--muted);"></div>
     <div id="countNote" data-g="2" class="hint" aria-live="polite" style="margin:4px 0 0;"></div>
+    <div id="twiceNote" data-g="2" aria-live="polite" style="font-size: 13px; margin-top:4px; font-weight:600; color:var(--warn-text);"></div>
     <div id="ignoredNote" data-g="2" style="font-size: 13px; margin-top:4px; font-weight:600; color:var(--danger);"></div>
     <details id="rollStats" data-g="2">
       <summary>Your rolls: history and fairness chart<small>See what you rolled and whether the faces came up evenly, or test your dice without making a seed.</small></summary>
@@ -1112,6 +1117,8 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <div id="pvNote" class="hint" data-g="3 4" aria-live="polite"></div>
     <div id="secretNote" data-g="3 4" class="hint" style="margin:8px 0 0;"><span class="tag tag-secret" style="margin-left:0;">SECRET</span> These words are your money. Write them on paper and never share them.</div>
     <div id="abbrNote" data-g="3 4" class="hint" aria-live="polite"></div>
+    <div id="forgePub" data-g="3 4" class="status bad" role="status" style="white-space:pre-wrap;"></div>
+    <div id="smudgeNote" data-g="3 4" class="hint" style="margin:6px 0 0;"></div>
     <div id="passNote" data-g="3 4"></div>
     <div id="nextStep" data-g="3 4" aria-live="polite"></div>
     <div class="result nores" id="genResult" data-g="3 4" role="status">—</div>
@@ -1374,6 +1381,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <h3 class="sec">Check your words</h3>
     <textarea id="phrase" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Type or paste your seed words to check..."></textarea>
+    <div class="status bad" id="phrasePub" role="status" style="word-break:break-word;"></div>
     <div class="hint" style="margin:4px 0 0;">Also accepts a SeedSigner SeedQR digit string (48 or 96 digits) or CompactSeedQR hex: type it in, or press SCAN SEEDQR on your offline computer. Never scan a real seed QR with a phone or any device that is online.</div>
     <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
       <input type="password" id="verifyPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Passphrase (if you used one)" style="flex:1; min-width:0;">
@@ -1391,6 +1399,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </div>
     <div class="status" id="verifyStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-all;"></div>
     <div class="status" id="verifyMatch" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+    <div class="hint" id="vSmudge" style="margin:6px 0 0;"></div>
     <div class="sec-block" id="wpBlock">
       <h3 class="sec">Or open a watch-only wallet<span class="tag tag-public">PUBLIC KEYS ONLY</span></h3>
       <p class="hint" style="margin:0 0 6px;">Paste an account public key (xpub, ypub, zpub, or tpub, upub, vpub for testnet) or a single-key descriptor such as <code>wpkh([fingerprint/84h/0h/0h]xpub.../0/*)</code>. It shows the same addresses without any seed words. It can never spend.</p>
@@ -1429,6 +1438,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <summary>Open this wallet<span class="tag tag-public">PUBLIC ADDRESSES</span><small>Addresses with QR codes, and paper backups of the words, for the words or key above.</small></summary>
       <p class="hint" id="wvWhy" style="margin:8px 0 0;">This lists the addresses your wallet app would show for these words, so you can compare them in the app. Pick the same address type and account number the app uses. The words are the same for every type.</p>
       <div id="wvBanner">Imported: these words were typed or scanned here, not made by this page. The same words and passphrase give the same wallet in any app.</div>
+      <div class="status bad" id="wvPub" role="status" style="word-break:break-word;"></div>
       <div id="wvFpRow"><div class="fp" id="wvFp"></div><div id="wvIcon" class="lh" title="Fingerprint picture (LifeHash) of this wallet"></div></div>
       <div id="wvDecoy" class="wv-decoy" style="display:none;">
         <div class="wv-dcol"><div class="wv-dh">Without the passphrase</div><div class="fp" id="wvD0"></div><div class="wv-da" id="wvD0a"></div></div>
@@ -1482,6 +1492,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <p class="hint" style="margin:0 0 6px;">When the right words open an empty wallet, the app is often looking in a different place: another address type, account or path, a passphrase, or an Electrum seed. Type the words (and the passphrase, if any) in the boxes at the top of this tab, then one address you know this wallet received to (from an old message, invoice or exchange withdrawal). FIND MY WALLET tries the settings of well-known wallet apps until that address matches, then names the apps that use them and how to open it. It never looks up a balance. A search can take a minute or two (longer with a passphrase); STOP ends it. No address? LIST FIRST ADDRESSES shows the first address of each common setting, to look up on another device.</p>
       <input type="text" id="detAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="An address this wallet received to" placeholder="An address this wallet received to (bc1q, bc1p, 3 or 1)" oninput="detClear(true)">
       <div class="btn-row" style="margin-top:8px;"><button type="button" id="detBtn" onclick="detFind()" disabled>FIND MY WALLET</button><button type="button" class="secondary small" id="detListBtn" onclick="detList()" disabled>LIST FIRST ADDRESSES</button><button type="button" class="secondary small" id="detStop" onclick="detStop()" disabled>STOP</button><button type="button" class="secondary small" onclick="detClear()">CLEAR</button></div>
+      <div class="status bad" id="detPub" role="status" style="word-break:break-word;"></div>
       <div class="status" id="detStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <pre id="detOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
     </div>
@@ -2999,6 +3010,7 @@ function updateCount(){
     ? "\u2248 " + Math.floor(bits) + " bits so far, IF every " + (isCoin ? "flip" : "roll") + " was fair (a 12-word seed needs 128, a 24-word seed 256). This check cannot prove your " + (isCoin ? "coin is" : "dice are") + " random."
     : "";
   document.getElementById("countNote").textContent = diceTestOn() ? "" : countNote(rolls.length, need, isCoin, keystoneOn());
+  document.getElementById("twiceNote").textContent = rollsTwiceText(rolls, isCoin);   // v2.10.0
   document.getElementById("diceTestNote").textContent = diceTestOn() ? diceTestText(rolls, isCoin) : "";
   if(diceTestOn()) document.getElementById("bitsNote").textContent = "";
   updateRollHistory(rolls);
@@ -4098,6 +4110,8 @@ const DICT = [
   ["Reproducible build", "Software built so that anyone gets the byte-for-byte same file from the source code, proving the published file matches the code.", "", "Privacy & security"],
   ["Rescan", "Making a wallet look back through old blocks to find its transactions again.", "", "Wallets & backups"],
   ["Restore drill", "VOIDFORGE's test that hides the words on screen and has you type them back from your paper, to prove the paper backup is correct.", "Restore drill card.", "VOIDFORGE"],
+  ["Public example phrase", "Seed words printed for everyone to see in standards, test files and guides, such as abandon ... about. Robots watch their wallets, so money sent to them is taken at once. Use them only for practice on the test network.", "FORGE SEED and CHECK A BACKUP warn when the words are one of them.", "Keys & seeds"],
+  ["Look-alike letters", "Letters that are easy to misread in handwriting, such as a and o, n and r, or cl and d. In a seed word they can make one word look like another, so write those letters with care.", "Write these clearly, under the words after FORGE SEED and VERIFY.", "Wallets & backups"],
   ["RIPEMD-160", "A hash function that makes 20-byte fingerprints. Bitcoin uses it after SHA-256 for old-style addresses.", "", "Keys & seeds"],
   ["Roll together", "Two or more people, or two or more dice, adding their rolls to one seed. Hashing mixes the rolls but cannot add randomness, so each die should roll the full count on its own (50 or 99); then one fair die rolled honestly is enough for random words. Everyone who sees all the rolls can make the seed again.", "Roll together, in MAKE A SEED.", "Keys & seeds"],
   ["Root key (m)", "The top of the key tree, written m in a path. Everything is derived from it.", "", "Keys & seeds"],
@@ -4616,6 +4630,122 @@ async function checkPhrase(phrase){
   const h = new Uint8Array(await crypto.subtle.digest("SHA-256", eBytes));
   if(bits.slice(eBits)!==bytesToBits(h).slice(0,cLen)){ const en = await electrumNote(phrase); return {ok:false, msg:"Checksum failed" + (en || ". Every word is a BIP39 word, so one is probably wrong, missing or out of order: Reforge in EXTRA TOOLS can search for it." + (read ? " Some were read from their first letters (" + readAs.slice(0, 3).join(", ") + (read > 3 ? " and " + (read - 3) + " more" : "") + "); check those first." : ""))}; }
   return {ok:true, msg:"Valid "+words.length+"-word BIP39 phrase"+(pc ? " (read from "+pc.kind+")" : "")+(read ? " (" + read + " word" + (read > 1 ? "s" : "") + " read from the first letters)" : ""), mnemonic:words.join(" "), fromCode:!!pc, expanded: read > 0};
+}
+
+// ===== v2.10.0 Known public phrases, look-alike letters and rolls typed twice =====
+// Known public phrases: seed words printed in standards, test suites and this page. Anyone can open their wallet, so money sent to
+// them is taken at once. Each is stored as its entropy in hex (the seed's random part, before the checksum word), the same form as
+// the published vectors, so each can be compared with its source by eye. Patterned entropy (one byte repeated, a short block
+// repeated, counting bytes) and patterned words (one word repeated, words in list order) are recognized by rule below.
+const KNOWN_PHRASES = [
+  // The official BIP39 test vectors, English, all 24: trezor/python-mnemonic vectors.json at commit b57a5ad77a981e743f4167ab2f7927a55c1e82a8
+  // (file SHA-256 fa3b937b7cff9c9b8ecd3aa011faeb8d6dd67993174b72326e83f4de8fdb30f8). They include "abandon x11 about" (00 x16), "abandon
+  // x23 art", "zoo x11 wrong", "zoo x23 vote", "legal winner thank year ... yellow" (7f x16) and "letter advice cage ... above" (80 x16).
+  // The BIP44, BIP49, BIP84 and BIP86 test vectors use "abandon x11 about" (BIP44 itself publishes no phrase).
+  ["one of the official BIP39 test phrases", "00000000000000000000000000000000 7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f 80808080808080808080808080808080 ffffffffffffffffffffffffffffffff 000000000000000000000000000000000000000000000000 7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f 808080808080808080808080808080808080808080808080 ffffffffffffffffffffffffffffffffffffffffffffffff 0000000000000000000000000000000000000000000000000000000000000000 7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f 8080808080808080808080808080808080808080808080808080808080808080 ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff 9e885d952ad362caeb4efe34a8e91bd2 6610b25967cdcca9d59875f5cb50b0ea75433311869e930b 68a79eaca2324873eacc50cb9c6eca8cc68ea5d936f98787c60c7ebc74e6ce7c c0ba5a8e914111210f2bd131f3d5e08d 6d9be1ee6ebd27a258115aad99b7317b9c8d28b6d76431c3 9f6a2878b2520799a44ef18bc7df394e7061a224d2c33cd015b157d746869863 23db8160a31d3e0dca3688ed941adbf3 8197a4a47f0425faeaa69deebc05ca29c0a5b5cc76ceacc0 066dca1a2bb7e8a1db2832148ce9933eea0f3ac9548d793112d9a95c9407efad f30f8c1da665478f49b001d94c5fc452 c10ec20dc3cd9f652c7fac2f1230f7a3c828389a14392f05 f585c11aec520db57dd353c69554b21a89b20fb0650966fa0a9d6f74fd989d8f"],
+  // The BIP85 test vectors (bitcoin/bips bip-0085.mediawiki, BIP39 application): the child phrases of 12, 18 and 24 words. The self-test checks them.
+  ["a published BIP85 test phrase", "6250b68daf746d12a24d58b4787a714b 938033ed8b12698449d4bbca3c853c66b293ea1b1ce9d9dc ae131e2312cdc61331542efe0d1077bac5ea803adf24b313a4f0e48e9c51f37f"],
+  // SeedSigner's published dice examples (docs/dice_verification.md: 50 rolls for 12 words, 99 for 24), as the self-test reproduces them.
+  // Coldcard hashes the rolls the same way, so it makes these words from these rolls too.
+  ["the dice example published by SeedSigner (Coldcard makes the same words from those rolls)", "6cb09af855050dcde6fe2adc3181c250 51531761ec7a738946e0b9f46bb11320a695495430e345c14f01ad8b3b898a6d"],
+  // This page's own examples: the self-test's 128 and 256 coin flips, its Keystone 50 and 100 rolls (6 as 0), and its cards A♠ 2♣ T♦.
+  ["an example in this page's self-test", "e899baabb8a543773ea3ba35196766d4 d9cf6a92fc19289e40cb758b0884e5f6e5cc022a2359cdec5088229930990e2a e29cc0185e9a19f26bdb3d9bde105dc3 0c1df8b60efd0df2e61edabc2ea1d8caea6de5dc8f0ab30725abeb9684d16013 487361395544bff8135d18c2d3370570"],
+  // The dice test card (DC_CARD_ROLLS): SeedSigner and Coldcard rules with 50 and 99 rolls, Keystone rules with 50 and 100 rolls.
+  ["made from the rolls on this page's dice test card", "d62386116ff35b8c95be90eea4afa1bf 3b3bc470f9adff233d3230ec9d2cbd25d2b3bafdd095e1d2a6617f41bd7cd2d8 a20a0f1ee657d8692a174c16df762ead 3047e7d55e459c4543580cbd8cae6fa07c3c12eb25e6a9243f8e24dbbd535973"]
+];
+// The entropy of a phrase of BIP39 words, in hex (the checksum bits are left out and not checked here), or null.
+function phraseEntropyHex(m){
+  const w = String(m || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if(![12, 15, 18, 21, 24].includes(w.length) || !w.every(x => Object.prototype.hasOwnProperty.call(WORD_MAP, x))) return null;
+  const bits = w.map(x => WORD_MAP[x].toString(2).padStart(11, "0")).join(""), n = w.length * 32 / 3;
+  let h = ""; for(let i = 0; i < n; i += 4) h += parseInt(bits.slice(i, i + 4), 2).toString(16);
+  return h;
+}
+// Where a public phrase comes from, in plain words, or null. Random words match a rule here with a chance of about 2^-64 at most
+// (two equal halves of a 12-word seed); every other rule is far less likely still.
+function knownPhrase(m){
+  const h = phraseEntropyHex(m); if(!h) return null;
+  for(const [label, list] of KNOWN_PHRASES) if(list.split(" ").includes(h)) return label;
+  if(PRACTICE_ENTROPY.includes(h)) return "one of this page's practice phrases";
+  const b = h.match(/../g).map(x => parseInt(x, 16)), ix = String(m).trim().toLowerCase().split(/\s+/).map(x => WORD_MAP[x]).slice(0, -1);
+  if(b.every(x => x === b[0])) return "made from one number repeated, not from real randomness";
+  for(const p of [2, 4, 8]) if(b.every((x, i) => x === b[i % p])) return "made from a short pattern repeated, not from real randomness";
+  for(const d of [1, 255]) if(b.every((x, i) => x === (b[0] + i * d) % 256)) return "made from counting numbers, not from real randomness";
+  if(ix.every(x => x === ix[0])) return "made from one word repeated, not from real randomness";
+  for(const d of [1, 2047]) if(ix.every((x, i) => x === (ix[0] + i * d) % 2048)) return "made from words in list order, not from real randomness";
+  return null;
+}
+// The warning line for a public phrase, or "". Practice mode (TESTNET) may use one, and says so.
+function knownPhraseText(m){
+  const k = knownPhrase(m); if(!k) return "";
+  return "PUBLIC EXAMPLE PHRASE: This phrase is a public example. Anyone can take money sent to it. It is " + k + "." + (practiceOn ? " Practice mode is on, so it is fine for TESTNET (practice coins only), never for real funds." : " Never use it for real money.");
+}
+function knownShow(id, m){ const el = document.getElementById(id), t = m ? knownPhraseText(m) : ""; el.textContent = t; el.className = "status " + (t && practiceOn ? "warn" : "bad"); }
+// The words box in CHECK A BACKUP: the warning follows what is typed (VERIFY, Heir mode, Wallet Detective and Open this wallet all read it).
+let knownSeq = 0;
+async function knownPhraseCheck(){
+  const my = ++knownSeq, v = document.getElementById("phrase").value;
+  if(!v.trim()){ knownShow("phrasePub", ""); return; }
+  let r = null; try { r = await checkPhrase(v); } catch(e) { r = null; }
+  if(my !== knownSeq) return;
+  knownShow("phrasePub", r && r.ok ? r.mnemonic : "");
+}
+document.getElementById("phrase").addEventListener("input", knownPhraseCheck);
+// Practice mode on or off changes the wording of both warnings.
+function knownRefresh(){ knownShow("forgePub", hasSeed() ? madeMnemonic : ""); knownShow("wvPub", wvCtx && wvCtx.mnemonic ? wvCtx.mnemonic : ""); knownPhraseCheck(); }
+
+// Look-alike letters (smudge check): which seed words could be misread as another BIP39 word when handwritten. Every BIP39 word
+// is known by its first 4 letters, so only a misread letter inside the first 4 matters, and only if the result starts another
+// word (its first 4 letters) or is a whole short word. The table is short on purpose: pairs of letters (or a letter pair) that
+// are often confused in handwriting, either way round, one change at a time. It lists only words already on screen, so it is
+// shown with the words (SECRET), never copied, and cleared with them.
+const SMUDGE_PAIRS = [["a", "o"], ["a", "u"], ["e", "c"], ["n", "u"], ["n", "r"], ["m", "n"], ["h", "n"], ["l", "i"], ["l", "t"], ["i", "j"], ["v", "u"], ["g", "q"], ["g", "y"], ["b", "h"], ["cl", "d"], ["rn", "m"]];
+// The first other BIP39 word that `w` could be read as, or null.
+function smudgeOf(w){
+  for(const [x, y] of SMUDGE_PAIRS) for(const [from, to] of [[x, y], [y, x]]){
+    for(let i = w.indexOf(from); i >= 0 && i < 4; i = w.indexOf(from, i + 1)){
+      const r = w.slice(0, i) + to + w.slice(i + from.length);
+      const hit = Object.prototype.hasOwnProperty.call(WORD_MAP, r) ? r : r.length >= 4 ? WORDLIST.find(v => v.startsWith(r.slice(0, 4))) : null;
+      if(hit && hit !== w) return hit;
+    }
+  }
+  return null;
+}
+function smudgeText(words){
+  const out = []; (words || []).forEach((w, i) => { const v = smudgeOf(w); if(v) out.push((i + 1) + " (" + w + " could look like " + v + ")"); });
+  return out.length ? "Write these clearly: " + out.join(", ") + "." : "";
+}
+function smudgeShow(id, words){
+  const el = document.getElementById(id), t = smudgeText(words); el.textContent = "";
+  if(!t) return;
+  const s = document.createElement("span"); s.className = "tag tag-secret"; s.style.marginLeft = "0"; s.textContent = "SECRET";
+  el.appendChild(s); el.appendChild(document.createTextNode(" " + t));
+}
+// Under the words after FORGE: the public phrase warning and the look-alike letters (cleared whenever the words go).
+function seedNotes(words){ knownShow("forgePub", words ? words.join(" ") : ""); smudgeShow("smudgeNote", words); }
+
+// Rolls typed twice: a long block of results that appears twice, as a copy-paste or retyping mistake leaves. It only warns and never
+// changes the rolls. A block is 12 dice rolls (31 bits) or 32 coin flips (32 bits), about the same amount of chance. For fair rolls,
+// the chance of a false warning is at most (number of non-overlapping block pairs) / 6^12 or / 2^32: 50 rolls 378 / 2.18e9 = 1.7e-7,
+// 99 rolls 1.3e-6, 100 rolls 1.4e-6, 256 rolls 1.3e-5 (1 in 80,000); 128 flips 2145 / 4.29e9 = 5.0e-7, 256 flips 4.4e-6. (24 flips
+// would give 1 in 765 at 256 flips, too noisy.) The two copies may not overlap; one long run of a single face is reported by the
+// fairness check instead.
+const TWICE_BLOCK = {dice: 12, coin: 32};
+function rollsTwice(rolls, isCoin){
+  const L = isCoin ? TWICE_BLOCK.coin : TWICE_BLOCK.dice, first = new Map();
+  for(let i = 0; i + L <= rolls.length; i++){
+    const k = rolls.substr(i, L);
+    if(!first.has(k)){ first.set(k, i); continue; }
+    const a = first.get(k); if(i - a < L) continue;
+    let n = L; while(i + n < rolls.length && a + n < i && rolls[a + n] === rolls[i + n]) n++;
+    return {a, b: i, n};
+  }
+  return null;
+}
+function rollsTwiceText(rolls, isCoin){
+  const t = rollsTwice(rolls, isCoin); if(!t) return "";
+  const u = isCoin ? "flips" : "rolls";
+  return "The same " + t.n + " " + u + " appear twice: " + u + " " + (t.a + 1) + " to " + (t.a + t.n) + " and " + u + " " + (t.b + 1) + " to " + (t.b + t.n) + ". By chance this almost never happens, so check that nothing was pasted or typed twice. Your " + u + " were not changed.";
 }
 
 // ================= Reforge (v1.28.0): recover missing or wrong seed words =================
@@ -5500,6 +5630,7 @@ function practiceMode(on){
   clearChild(); dcClear(true); cmxClear(true); clearPsbt(false); clearCompare(false);
   if(!on) practiceWalletClose();
   reshowSeed();
+  knownRefresh();   // v2.10.0: the public phrase warnings say whether practice mode is on
 }
 // Shows a made seed's fingerprint, addresses and watch-only box again (used when practice mode changes the network).
 function reshowSeed(){
@@ -5751,6 +5882,11 @@ async function runSelfTests(auto){
   // v2.10.0: Coldcard's seed mix (TRNG words + dice or coin flips), Coinkite's own vectors (firmware testing/test_rolls.py at release 1.5.3Q)
   eq("Coldcard seed mix: all-zero TRNG words + 50 dice rolls, 24 words (Coinkite's test vector)", async()=>hex(await coldcardMixEntropy(new Uint8Array(32), "123456".repeat(8)+"12", "D", "M", 24)), "67c8b6d836d47f88dfb88a1bb5a534cf28b437cd345e8c7fa59f1982f9248da5");
   eq("Coldcard seed mix: all-zero TRNG words + 128 coin flips, 12 words (Coinkite's test vector)", async()=>hex(await coldcardMixEntropy(new Uint8Array(32), "01".repeat(64), "C", "M", 12)), "8216d06056e31315bec14171d1f09345");
+  // v2.10.0: public example phrases (trezor/python-mnemonic vectors.json; SeedSigner's dice example), look-alike letters, rolls typed twice
+  eq("public phrase: entropy of 'legal winner ... yellow' (7f x16) and 'zoo x23 vote' (ff x32)", ()=>phraseEntropyHex("legal winner thank year wave sausage worth useful legal winner thank yellow")+" "+phraseEntropyHex("zoo ".repeat(23)+"vote"), "7f".repeat(16)+" "+"ff".repeat(32));
+  eq("public phrase: an official vector, counting bytes and SeedSigner's 50 rolls are named; other words are not", async()=>[knownPhrase("ozone drill grab fiber curtain grace pudding thank cruise elder eight picnic"), knownPhrase(await entropyToMnemonic(fromHex("000102030405060708090a0b0c0d0e0f"))), knownPhrase(await rollsToMnemonic(R50,12)), knownPhrase(await rollsToMnemonic(R50+"1",12))].join("|"), "one of the official BIP39 test phrases|made from counting numbers, not from real randomness|the dice example published by SeedSigner (Coldcard makes the same words from those rolls)|");
+  eq("look-alike letters: uncle/under (cl, d), tragic/tray (g, y), hole/hotel (l, t), none for abandon", ()=>["uncle","tragic","hole","abandon"].map(smudgeOf).join(","), "under,tray,hotel,");
+  eq("rolls typed twice: 12 rolls or 32 flips repeated are found, 11 rolls are not", ()=>JSON.stringify([rollsTwice("123456123456"+"55"+"123456123456",false), rollsTwice("12345612345"+"55"+"12345612345",false), rollsTwice(C128.slice(0,32)+"0"+C128.slice(0,32),true)]), '[{"a":0,"b":14,"n":12},null,{"a":0,"b":33,"n":32}]');
   let pass=0, lines=[];
   for(const t of T){
     let got, err="";
@@ -6738,6 +6874,8 @@ const DET_APPS = {
   "el-segwit-wpkh": "Electrum (a SegWit Electrum seed); BlueWallet can also import it, and SeedSigner (12 words, with its Electrum setting on)."
 };
 const DET_SPARROW_TYPE = {wpkh:"Native Segwit (P2WPKH)", tr:"Taproot (P2TR)", "sh-wpkh":"Nested Segwit (P2SH-P2WPKH)", pkh:"Legacy (P2PKH)"};
+// v2.10.0: a public example phrase is named above every Detective result (cleared with it)
+function detPub(src){ knownShow("detPub", src && src.mnemonic ? src.mnemonic : ""); }
 function detApps(P, type){ return DET_APPS[P.id + "-" + type] || ""; }
 // How to open what was found, in plain steps.
 function detHowTo(f, withPass, net){
@@ -6933,7 +7071,7 @@ function printLabels(){
 }
 function detClear(keepAddr){
   detSeq++; if(detBusy) detStopFlag = true;
-  detSay("", ""); detShow("");
+  detSay("", ""); detShow(""); knownShow("detPub", "");   // v2.10.0
   if(!keepAddr) document.getElementById("detAddr").value = "";
 }
 function detBusyUi(on){
@@ -6958,9 +7096,9 @@ async function detFind(){
     const r = await detSearch(src, T, {progress:(d, t, l) => { const pc = Math.floor(100 * d / t), msg = "Searching " + l + ": " + pc + "% done..."; if(my === detSeq && document.getElementById("detStatus").textContent !== msg) detSay("", msg); }, stop:() => detStopFlag || my !== detSeq});
     if(my !== detSeq) return;
     if(r.stopped) return detSay("", "Stopped. Nothing was found before you stopped it.");
-    if(r.found){ detSay("ok", "FOUND: the app and settings are below."); detShow(detReport(r.found, T)); return; }
+    if(r.found){ detPub(src); detSay("ok", "FOUND: the app and settings are below."); detShow(detReport(r.found, T)); return; }
     const what = (src.mnemonic ? ["BIP39 paths: accounts 0 to " + DET_ACCTS + " and the first 100 addresses of account 0 where apps use this address type, the first 20 elsewhere"] : []).concat(src.electrum ? ["Electrum's own path: the first 100 addresses"] : []);
-    detSay("bad", "NOT FOUND in the settings of the well-known wallet apps (" + what.join("; ") + "; " + src.passes.map(p => p[0]).join(" and ") + "). Things to check: the address (one wrong character changes everything; is it from this wallet, not an exchange or another wallet?), the words and their order, the passphrase (case, spaces and spelling count), and whether this wallet was a multisig wallet (then no one seed opens it) or came from an app this page does not know. A 3... address can also be a multisig address. Some wallets cannot be opened from their words with standard settings at all: Muun, Bitkey, Blockstream Green's two-factor (multisig) accounts, and Lightning wallets such as Phoenix, Zeus and Breez (only an on-chain part follows these settings). Use that app's own recovery.");
+    detPub(src); detSay("bad", "NOT FOUND in the settings of the well-known wallet apps (" + what.join("; ") + "; " + src.passes.map(p => p[0]).join(" and ") + "). Things to check: the address (one wrong character changes everything; is it from this wallet, not an exchange or another wallet?), the words and their order, the passphrase (case, spaces and spelling count), and whether this wallet was a multisig wallet (then no one seed opens it) or came from an app this page does not know. A 3... address can also be a multisig address. Some wallets cannot be opened from their words with standard settings at all: Muun, Bitkey, Blockstream Green's two-factor (multisig) accounts, and Lightning wallets such as Phoenix, Zeus and Breez (only an on-chain part follows these settings). Use that app's own recovery.");
   } catch(e) { if(my === detSeq) detSay("bad", "Could not search: " + e.message); }
   finally { detStopFlag = false; detBusyUi(false); }
 }
@@ -6985,7 +7123,7 @@ async function detList(){
       lines.push(P.name + ", " + DET_TYPE_NAME[type] + ", " + a.path + "\n  " + a.address + "\n  Used by: " + detApps(P, type));
     }
     detSay("ok", "The first receive address of each common setting, " + pass[0] + (net === "test" ? ", on the test network (practice mode)" : "") + ". Look them up on another device, for example in a block explorer. The one that shows a history is your wallet's setting; then type it above and press FIND MY WALLET for the steps to open it.");
-    detShow(lines.join("\n\n") + "\n\nLooking an address up on a website tells that website you are interested in it. A watch-only wallet in Sparrow connected to your own node is more private.");
+    detPub(src); detShow(lines.join("\n\n") + "\n\nLooking an address up on a website tells that website you are interested in it. A watch-only wallet in Sparrow connected to your own node is more private.");
   } catch(e) { if(my === detSeq) detSay("bad", "Could not list: " + e.message); }
   finally { detBusyUi(false); }
 }
@@ -7428,7 +7566,8 @@ async function seedXorUi(mode){
       xorCtx = {parts: r.parts, result: r.mnemonic, fp};
       out.textContent = "THE COMBINED SEED (" + r.mnemonic.split(" ").length + " words)\n" + xorShowWords(r.mnemonic) + "\n\nCHECK BY HAND\n" + xorWorksheet(r.parts, r.mnemonic);
       out.style.display = "";
-      say(r.zero ? "warn" : "ok", (r.zero ? "WARNING: the parts combine to all zeros, which is the public test phrase \u201cabandon ... about\u201d and never a real seed. A part may be missing or wrong. " : "") + "Combined " + r.parts.length + " parts. Master fingerprint (no passphrase): " + fp + ". If the wallet also has a passphrase, it is added to these combined words as usual. If the fingerprint is not the one you expect, a part is wrong or missing.");
+      const pubX = !r.zero && knownPhrase(r.mnemonic) ? "WARNING: the parts combine to a public example phrase. " + knownPhraseText(r.mnemonic) + " A part may be missing or wrong. " : "";   // v2.10.0
+      say(r.zero || pubX ? "warn" : "ok", pubX + (r.zero ? "WARNING: the parts combine to all zeros, which is the public test phrase \u201cabandon ... about\u201d and never a real seed. A part may be missing or wrong. " : "") + "Combined " + r.parts.length + " parts. Master fingerprint (no passphrase): " + fp + ". If the wallet also has a passphrase, it is added to these combined words as usual. If the fingerprint is not the one you expect, a part is wrong or missing.");
     }
   } catch(e) { say("bad", "Could not do it: " + e.message); }
 }
@@ -7540,6 +7679,7 @@ function setResult(text, words){
   g.textContent = text; g.classList.toggle("nores", text === "\u2014"); grid.textContent = "";
   hideExplain(); { const eb = document.getElementById("explainBox"); eb.style.display = (words && [12,24].includes(words.length)) ? "" : "none"; eb.open = false; }
   hideSeedQr(); { const sq = document.getElementById("seedQrBox"); sq.style.display = (words && [12,24].includes(words.length)) ? "" : "none"; sq.open = false; }
+  seedNotes(words);   // v2.10.0: public phrase warning and look-alike letters, set and cleared with the words
   if(words){
     g.dataset.seed = "1"; g.classList.add("sr");
     words.forEach((w, i) => { const c = document.createElement("div"); c.className = "wcell"; const n = document.createElement("b"); n.textContent = (i + 1) + "."; c.appendChild(n); const ws = document.createElement("span"); ws.className = "wtxt"; ws.dataset.w = w; ws.textContent = abbrOn ? w.slice(0, 4) : w; c.appendChild(ws); grid.appendChild(c); });
@@ -9255,6 +9395,7 @@ function wipeSeed(){
   clearXor();   // v2.9.0: Seed XOR parts (secret)
   s39mClear();   // v2.10.0: SLIP39 shares made from dice (secret)
   cmxClear(); flwClear(true);   // v2.10.0: the Coldcard seed mix check (secret) and the flawed-device questions
+  smudgeShow("vSmudge", null); knownSeq++; knownShow("phrasePub", "");   // v2.10.0
   seedSig = null; passKey = null; exCtx = null;   // fixes release: these held the rolls and the passphrases after a wipe (found by tests/memory.test.mjs)
   clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo(); clearMsx();   // fixes release: public but private data (xpubs, descriptors, addresses, amounts)
   for(const id of ["wpIn", "payA", "payB", "dlPaste"]){ const e = document.getElementById(id); if(e) e.value = ""; }
@@ -9591,6 +9732,7 @@ function clearWalletView(){
   wvAbbr(false);
   wvCtx = null; wvFrom = 0; wvSeq++; document.getElementById("wvBorn").value = "";
   document.getElementById("wvList").textContent = ""; document.getElementById("wvFp").textContent = ""; document.getElementById("wvIcon").textContent = "";
+  knownShow("wvPub", "");   // v2.10.0
   document.getElementById("wvErr").textContent = ""; document.getElementById("wvPath").textContent = "";
   hideAddrQr("wvq"); wvSeedQrHide(); wvDecoyHide();
   for(const id of ["wvType","wvNet","wvAcct"]) document.getElementById(id).disabled = false;
@@ -10696,6 +10838,7 @@ function clearReuse(){ document.getElementById("reuseIn").value = ""; const st =
 async function openWalletView(mnemonic, pass){
   clearWalletView();
   wvCtx = {mnemonic, pass}; const mine = wvSeq;
+  knownShow("wvPub", mnemonic);   // v2.10.0: a public example phrase is named in Open this wallet too
   if(sumCtx && sumCtx.date && hasSeed() && mnemonic === madeMnemonic && pass === document.getElementById("passphrase").value) document.getElementById("wvBorn").value = sumCtx.date;
   const n = mnemonic.split(" ").length, sq = document.getElementById("wvSqNote"), btns = document.getElementById("wvSqBtns");
   if(n === 12 || n === 24){ sq.textContent = "A SeedQR holds these " + n + " words for a SeedSigner or similar offline device. Anyone who scans it controls the funds."; btns.style.display = ""; }
@@ -10734,7 +10877,7 @@ let verifySeq = 0;
 async function verify(){
   if(!gateOk()) return;
   const st = document.getElementById("verifyStatus");
-  clearVerifyIcons(); clearWalletView();
+  clearVerifyIcons(); clearWalletView(); smudgeShow("vSmudge", null); knownPhraseCheck();   // v2.10.0
   const my = ++verifySeq;   // v2.4.0: a wipe or an edit while this works makes it stop without writing anything
   const r = await checkPhrase(document.getElementById("phrase").value);
   if(my !== verifySeq) return;
@@ -10746,6 +10889,7 @@ async function verify(){
     const vp = document.getElementById("verifyPass").value, lines = [r.msg];
     let fp0, a0, fp1, a1;
     if(await isPracticePhrase(r.mnemonic)) lines.push("PUBLIC PRACTICE PHRASE: these words are a published test phrase (BIP39 test vectors). Anyone can spend what is sent to them. Use them for practice only, never for real money.");
+    else if(knownPhrase(r.mnemonic)) lines.push(knownPhraseText(r.mnemonic));   // v2.10.0: every other public example phrase
     try { fp0 = await mnemonicFingerprint(r.mnemonic, ""); a0 = await shownFirstAddress(r.mnemonic, ""); lines.push("Without passphrase: fingerprint " + fp0 + " | first address " + a0 + (practiceOn ? " (test network)" : "")); showFpIcon("vIcon0", fp0, "vFig0"); }
     catch(e) { lines.push("Without passphrase: unavailable (" + e.message + ")"); }
     if(vp){
@@ -10769,6 +10913,7 @@ async function verify(){
     if(my !== verifySeq) return;
     const mt = document.getElementById("verifyMatch"), m = matchRecorded(rawRec, fp0, c0, fp1, c1, !!vp, ids0, ids1);
     mt.className = "status " + (m ? (m.ok ? "ok" : "bad") : ""); mt.textContent = m ? m.text : "";
+    smudgeShow("vSmudge", r.mnemonic.split(" "));   // v2.10.0: SECRET, cleared with the words
     openWalletView(r.mnemonic, vp);
   }
 }
@@ -10784,6 +10929,7 @@ for(const id of ["checkAddr","checkAcct","phrase","verifyPass"]) document.getEle
 document.getElementById("verifyRecorded").addEventListener("input", () => { const m = document.getElementById("verifyMatch"); m.textContent = ""; m.className = "status"; });   // fixes release: an old MATCH never stays
 for(const id of ["phrase","verifyPass","childWords","childIndex","childLen","childSides","childRolls"]) document.getElementById(id).addEventListener("input", clearChild);
 for(const id of ["phrase","verifyPass"]) document.getElementById(id).addEventListener("input", () => { verifySeq++; if(wvCtx && wvCtx.mnemonic) clearWalletView(); if(childCtx || document.getElementById("childOut").textContent) clearChild(); });
+document.getElementById("phrase").addEventListener("input", () => smudgeShow("vSmudge", null));   // v2.10.0: the look-alike list belongs to the words that made it
 document.getElementById("verifyPass").addEventListener("input", passWarnUpdate);
 for(const id of ["phrase", "verifyPass"]) document.getElementById(id).addEventListener("input", () => { detClear(true); kcClear(true); lbClear(true); msxWipe(); if(xorCtx && document.querySelector('input[name=xorMode]:checked').value === "split") clearXor(); });   // v2.8.0: the Detective result belongs to the old words
 // review (v2.9.0): a result never stays on screen next to inputs that did not make it

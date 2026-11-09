@@ -225,6 +225,54 @@ async function probe(w, mutated, fast, only, hooks) {
     w.msReset(); $('wpIn').value = ''; $('msxIn').value = '';
   } catch (e) { fails.push('bip138: the probe crashed: ' + e.message); }
   }
+  if (SEC(62, "v2.10.0 public example phrases, look-alike letters, rolls typed twice (official vectors from trezor/python-mnemonic; words from @scure)")) {
+  try {
+    const sl = (ms) => new Promise((r2) => setTimeout(r2, ms)), E = (h) => entropyToMnemonic(Uint8Array.from(Buffer.from(h, 'hex')), wordlist), OFF = 'one of the official BIP39 test phrases';
+    const VX = JSON.parse(fs.readFileSync(new URL('./fixtures/bip39-vectors-english.json', import.meta.url), 'utf8')).english;
+    if (!VX.every(([e, m]) => w.knownPhrase(m) === OFF)) fails.push('public phrase: every official BIP39 vector is named as one');
+    if (w.knownPhrase(E('6610b25967cdcca9d59875f5cb50b0ea')) !== "one of this page's practice phrases") fails.push('public phrase: a practice phrase that is not an official vector is named');
+    const pat = [E('a5'.repeat(16)), E('00ff'.repeat(16)), E([...Array(16)].map((_, i) => (250 - i).toString(16).padStart(2, '0')).join('')), 'test '.repeat(11) + 'junk'].map((m) => String(w.knownPhrase(m)));
+    if (!/one number repeated/.test(pat[0])) fails.push('public phrase: one byte repeated is named');
+    if (!/short pattern repeated/.test(pat[1])) fails.push('public phrase: a 2-byte block repeated is named');
+    if (!/counting numbers/.test(pat[2])) fails.push('public phrase: bytes counting down are named');
+    if (!/one word repeated/.test(pat[3])) fails.push('public phrase: test x11 junk (one word repeated) is named');
+    { let seq = null; for (const last of wordlist) { const m = wordlist.slice(100, 111).join(' ') + ' ' + last; if (validateMnemonic(m, wordlist)) { seq = m; break; } } if (!/words in list order/.test(String(w.knownPhrase(seq)))) fails.push('public phrase: words in list order are named'); }
+    if (w.knownPhrase(E(Buffer.from(sha('voidforge probe 62')).toString('hex').slice(0, 32)))) fails.push('public phrase: other words are not named');
+    w.showTab('check'); const typed = async (v, f) => { $('phrase').value = v; $('phrase').dispatchEvent(new w.Event('input')); await until(f || (() => false), f ? 8000 : 40); };   // f: what to wait for (the check is async; a busy computer is slow)
+    await typed('zoo '.repeat(11) + 'wrong', () => $('phrasePub').textContent); if (!/^PUBLIC EXAMPLE PHRASE: This phrase is a public example\. Anyone can take money sent to it\./.test($('phrasePub').textContent)) fails.push('public phrase: the words box warns as the words are typed');
+    w.practiceMode(true); await until(() => /TESTNET/.test($('phrasePub').textContent), 8000); if (!/TESTNET \(practice coins only\)/.test($('phrasePub').textContent) || $('phrasePub').className !== 'status warn') fails.push('public phrase: practice mode says TESTNET (practice coins only)'); w.practiceMode(false); await until(() => $('phrasePub').className === 'status bad', 8000);
+    $('verifyPass').value = ''; await typed('abandon '.repeat(11) + 'about', () => $('phrasePub').textContent); await w.verify(); await until(() => $('wvFp').textContent, 8000);
+    if (!/PUBLIC EXAMPLE PHRASE/.test($('verifyStatus').textContent)) fails.push('public phrase: VERIFY names abandon ... about');
+    if (!/This phrase is a public example/.test($('wvPub').textContent)) fails.push('public phrase: Open this wallet names it');
+    if (!/^SECRET Write these clearly: .*12 \(about could look like above\)\.$/.test($('vSmudge').textContent) || $('vSmudge').firstChild.className !== 'tag tag-secret') fails.push('look-alike: VERIFY lists about/above (u read as v), marked SECRET');
+    await w.detList(); if (!/^PUBLIC EXAMPLE PHRASE/.test($('detPub').textContent) || !$('detOut').textContent) fails.push('public phrase: Wallet Detective names it above its result');
+    await typed('abandon '.repeat(11) + 'abou'); if ($('vSmudge').textContent !== '') fails.push('look-alike: editing the words clears the VERIFY list');
+    await typed('abandon '.repeat(11) + 'about', () => $('phrasePub').textContent); await w.verify(); w.clearAll(); await sl(30);
+    if ($('vSmudge').textContent !== '' || $('phrasePub').textContent !== '') fails.push('look-alike: CLEAR ALL clears the list and the public phrase warning');
+    w.document.querySelector('input[name=xorMode][value=combine]').checked = true; w.xorModeChange(); $('xorIn').value = [E('0f'.repeat(16)), E('70'.repeat(16))].join('\n'); await w.seedXorUi('combine');
+    if (!/combine to a public example phrase/.test($('xorStatus').textContent)) fails.push('public phrase: Seed XOR warns when the parts combine to one'); w.clearAll(); await sl(20);
+    const sm = ['uncle', 'tragic', 'hole', 'about', 'fan', 'abandon'].map((x) => w.smudgeOf(x)).join(',');
+    if (sm !== 'under,tray,hotel,above,fun,') fails.push('look-alike: uncle/under, tragic/tray, hole/hotel, about/above, fan/fun [' + sm + ']');
+    if (!/#smudgeNote, #vSmudge \{ -webkit-user-select: none; user-select: none; \}/.test(mutated) || !/body\.drill-on #smudgeNote \{ visibility: hidden; \}/.test(mutated)) fails.push('look-alike: the list cannot be selected and the restore drill hides it');
+    w.showTab('make'); w.setMethod('dice');
+    const R50 = '65515223131652132161133154444123616466443112153441', got = await run('dice', 12, R50);
+    if (!/published by SeedSigner/.test($('forgePub').textContent)) fails.push('public phrase: FORGE names SeedSigner\'s example rolls');
+    if ($('smudgeNote').textContent !== 'SECRET ' + w.smudgeText(got.split(' '))) fails.push('look-alike: FORGE lists the words under the grid');
+    w.practiceMode(true); await sl(30); if ($('forgePub').className !== 'status warn') fails.push('public phrase: FORGE follows practice mode'); w.practiceMode(false); await sl(20);
+    // rolls typed twice: expected positions worked out by hand
+    const B = '123456654321', T = (s, coin) => { mode(coin ? 'coin' : 'dice'); $('rolls').value = s; $('rolls').oninput(); return $('twiceNote').textContent; };
+    if (!/^The same 12 rolls appear twice: rolls 1 to 12 and rolls 16 to 27\./.test(T(B + '555' + B))) fails.push('twice: 12 repeated rolls are found');
+    if (!/^The same 14 rolls appear twice: rolls 1 to 14 and rolls 16 to 29\./.test(T(B + '55' + '5' + B + '55'))) fails.push('twice: the repeat is measured to its full length');
+    if (!/^The same 12 rolls appear twice: rolls 1 to 12 and rolls 13 to 24\./.test(T(B + B + B))) fails.push('twice: the first copy stops where the second begins');
+    if (T('123'.repeat(5)) !== '') fails.push('twice: overlapping copies are not a repeat');
+    const F = '01101001100101101001011001101001', G = F.slice(0, 31);
+    if (!/^The same 32 flips appear twice: flips 1 to 32 and flips 34 to 65\./.test(T(F + '1' + F, true))) fails.push('twice: 32 repeated flips are found');
+    if (T(G + '1' + G, true) !== '') fails.push('twice: 31 repeated flips are not enough');
+    mode('dice'); $('rolls').value = ''; $('rolls').oninput(); w.clearAll(); await sl(20);
+  } catch (e) { fails.push('v2.10.0 public phrases: the probe crashed: ' + e.message); }
+  // it runs early, so a break in its code is caught in seconds: put the page back as section 0 left it
+  w.document.querySelector('input[name=xorMode][value=split]').checked = true; w.xorModeChange(); w.showTab('make'); w.setMethod('dice'); r = await run('dice', 12, D50);
+  }
   if (SEC(1, "{ const wo = watch(expect.d50, ''), z = $('wZpub').textConte")) {
   { const wo = watch(expect.d50, ''), z = $('wZpub').textContent, dr = $('wDescR').textContent, dc = $('wDescC').textContent;
     if (z !== wo.zpub) fails.push('watch-only zpub');
@@ -5471,6 +5519,38 @@ const M = [
   ["flaw: no checklist for a weak seed", "o.textContent = r.level === \"weak\" || r.level === \"unknown\" ? FLAW_MOVE", "o.textContent = r.level === \"unknown\" ? FLAW_MOVE"],
   ["flaw: old answer kept when the version changes", "oninput=\"flwClear()\" placeholder=\"Like 5.5.1", "placeholder=\"Like 5.5.1"],
   ["flaw: CLEAR ALL keeps the answers", "if(all){ document.getElementById(\"flwVer\").value = \"\";", "if(false){ document.getElementById(\"flwVer\").value = \"\";"],
+  ["v2.10 public: official vectors not listed", "for(const [label, list] of KNOWN_PHRASES) if(list.split(\" \").includes(h)) return label;", ""],
+  ["v2.10 public: practice phrases not named", "if(PRACTICE_ENTROPY.includes(h)) return \"one of this page's practice phrases\";", ""],
+  ["v2.10 public: one byte repeated not seen", "if(b.every(x => x === b[0])) return", "if(false) return"],
+  ["v2.10 public: short blocks not seen", "for(const p of [2, 4, 8]) if(b.every(", "for(const p of []) if(b.every("],
+  ["v2.10 public: counting down not seen", "for(const d of [1, 255]) if(b.every(", "for(const d of [1]) if(b.every("],
+  ["v2.10 public: one word repeated not seen", "if(ix.every(x => x === ix[0])) return", "if(false) return"],
+  ["v2.10 public: words in list order not seen", "for(const d of [1, 2047]) if(ix.every(", "for(const d of []) if(ix.every("],
+  ["v2.10 public: words box not checked", "document.getElementById(\"phrase\").addEventListener(\"input\", knownPhraseCheck);", ""],
+  ["v2.10 public: practice mode not said", "+ \".\" + (practiceOn ? \" Practice mode is on", "+ \".\" + (false ? \" Practice mode is on"],
+  ["v2.10 public: VERIFY line missing", "    else if(knownPhrase(r.mnemonic)) lines.push(knownPhraseText(r.mnemonic));", ""],
+  ["v2.10 public: FORGE not warned", "function seedNotes(words){ knownShow(\"forgePub\", words ? words.join(\" \") : \"\");", "function seedNotes(words){ knownShow(\"forgePub\", \"\");"],
+  ["v2.10 public: CLEAR ALL keeps the warning and list", "  smudgeShow(\"vSmudge\", null); knownSeq++; knownShow(\"phrasePub\", \"\");   // v2.10.0\n", ""],
+  ["v2.10 public: Detective not warned", "function detPub(src){ knownShow(\"detPub\", src && src.mnemonic ? src.mnemonic : \"\"); }", "function detPub(src){ }"],
+  ["v2.10 public: Open this wallet not warned", "knownShow(\"wvPub\", mnemonic);", "knownShow(\"wvPub\", \"\");"],
+  ["v2.10 public: Seed XOR not warned", "const pubX = !r.zero && knownPhrase(r.mnemonic) ?", "const pubX = false ?"],
+  ["v2.10 public: practice switch not followed", "  knownRefresh();   // v2.10.0: the public phrase warnings say whether practice mode is on\n", ""],
+  ["v2.10 look-alike: cl/d missing", ", [\"cl\", \"d\"]", ""],
+  ["v2.10 look-alike: one direction only", "for(const [from, to] of [[x, y], [y, x]])", "for(const [from, to] of [[x, y]])"],
+  ["v2.10 look-alike: 4th letter ignored", "i >= 0 && i < 4; i = w.indexOf(from, i + 1)", "i >= 0 && i < 3; i = w.indexOf(from, i + 1)"],
+  ["v2.10 look-alike: short whole words not matched", "const hit = Object.prototype.hasOwnProperty.call(WORD_MAP, r) ? r :", "const hit = false ? r :"],
+  ["v2.10 look-alike: VERIFY list missing", "    smudgeShow(\"vSmudge\", r.mnemonic.split(\" \"));   // v2.10.0: SECRET, cleared with the words\n", ""],
+  ["v2.10 look-alike: FORGE list missing", "smudgeShow(\"smudgeNote\", words); }", "smudgeShow(\"smudgeNote\", null); }"],
+  ["v2.10 look-alike: not marked SECRET", "s.className = \"tag tag-secret\"; s.style.marginLeft = \"0\"; s.textContent = \"SECRET\";", "s.style.marginLeft = \"0\";"],
+  ["v2.10 look-alike: kept after editing the words", "document.getElementById(\"phrase\").addEventListener(\"input\", () => smudgeShow(\"vSmudge\", null));", ""],
+  ["v2.10 look-alike: selectable", "  #smudgeNote, #vSmudge { -webkit-user-select: none; user-select: none; }\n", ""],
+  ["v2.10 look-alike: shown in the restore drill", "  body.drill-on #smudgeNote { visibility: hidden; }\n", ""],
+  ["v2.10 twice: dice block 13", "const TWICE_BLOCK = {dice: 12, coin: 32};", "const TWICE_BLOCK = {dice: 13, coin: 32};"],
+  ["v2.10 twice: coin block 31", "const TWICE_BLOCK = {dice: 12, coin: 32};", "const TWICE_BLOCK = {dice: 12, coin: 31};"],
+  ["v2.10 twice: overlapping copies counted", "const a = first.get(k); if(i - a < L) continue;", "const a = first.get(k);"],
+  ["v2.10 twice: length not measured", "let n = L; while(i + n < rolls.length && a + n < i && rolls[a + n] === rolls[i + n]) n++;", "let n = L;"],
+  ["v2.10 twice: first copy runs into the second", "while(i + n < rolls.length && a + n < i && rolls[a + n]", "while(i + n < rolls.length && rolls[a + n]"],
+  ["v2.10 twice: note not shown", "  document.getElementById(\"twiceNote\").textContent = rollsTwiceText(rolls, isCoin);   // v2.10.0\n", ""],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
