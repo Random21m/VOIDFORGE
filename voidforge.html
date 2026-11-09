@@ -1611,7 +1611,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <label><input type="radio" name="reforgeMode" value="pass" onchange="reforgeModeChange()"><span>Passphrase</span></label>
       </div>
       <div id="reforgeWordsPanel">
-        <p class="hint" style="margin:0 0 8px;">Type your words in order, with <code>?</code> for each word you do not have. Reforge picks the search from what you type: with one or two <code>?</code> it tries every word in those places; with all the words it tries every swap of two words and every single word replaced; with one word fewer (11, 14, 17, 20 or 23) it tries the missing word at every place. A word that is not on the BIP39 list counts as <code>?</code>, and the first 4 letters of a word are enough. <b>Damaged backup:</b> inside a word, <code>?</code> is one letter you cannot read and <code>*</code> any number of them, so <code>ch?ir</code> is chair and <code>ab*</code> is any word that starts with ab (4 readable letters are enough: <code>c?ar</code> fits charge and clarify); Reforge says how many words fit each one and refuses more than 4,194,304 phrases. To list the words that could be last, type all but the last word, then <code>?</code>. Two <code>?</code> on a 12-word phrase can take a long time; an account xpub/zpub is by far the fastest thing to check against (a fingerprint or an address is several times slower), the page shows progress, and STOP ends the search.</p>
+        <p class="hint" style="margin:0 0 8px;">Type your words in order, with <code>?</code> for each word you do not have. Reforge picks the search from what you type: with one or two <code>?</code> it tries every word in those places; with all the words it tries every swap of two words and every single word replaced; with one word fewer (11, 14, 17, 20 or 23) it tries the missing word at every place. A word that is not on the BIP39 list counts as <code>?</code>, and the first 4 letters of a word are enough. <b>Damaged backup:</b> inside a word, <code>?</code> is one letter you cannot read and <code>*</code> any number of them, so <code>ch?ir</code> is chair and <code>ab*</code> is any word that starts with ab (4 readable letters are enough: <code>c?ar</code> fits charge and clarify), and a word written only as <code>???</code> counts as one you cannot read at all. Reforge says how many words fit each one and refuses more than 4,194,304 phrases. To list the words that could be last, type all but the last word, then <code>?</code>. Two <code>?</code> on a 12-word phrase can take a long time; an account xpub/zpub is by far the fastest thing to check against (a fingerprint or an address is several times slower), the page shows progress, and STOP ends the search.</p>
         <textarea id="reforgeWordsInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Your words in order, with ? for each unknown word" placeholder="word1 word2 ? word4 ... (? for each word you do not have)"></textarea>
         <input type="text" id="reforgeWordsCheck" spellcheck="false" autocomplete="off" autocapitalize="off" style="margin-top:6px;" aria-label="Master fingerprint, address or account xpub to check against" placeholder="Check against: master fingerprint (like 73c5da0a), an address, or an account xpub/zpub">
         <input type="password" id="reforgeWordsPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" style="margin-top:6px;" aria-label="Passphrase, only if your wallet uses one" placeholder="Passphrase (only if your wallet uses one)">
@@ -2131,7 +2131,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details>
       <summary>Changelog</summary>
       <ul>
-        <li><b>2.10.0</b> &mdash; <b>Sixteen ways to make, check and keep a seed better.</b> (1) MAKE A SEED: a <b>Card method</b> menu (Ian Coleman, hashed, as before, or Ian Coleman, raw entropy, his tool&rsquo;s Use Raw Entropy choice, shown with an honest at-most strength), and <b>12, 15, 18, 21 or 24 words</b> for every method (15, 18 and 21-word dice and coin seeds do not match SeedSigner, Coldcard or Keystone, and SeedQR stays 12 and 24 words). (2) Warnings: a <b>public example phrase</b> (official test phrases, this page&rsquo;s own examples, or patterned numbers and words) is named wherever words are made or typed; <b>Write these clearly</b> lists words whose letters could be misread as another word; rolls or flips <b>typed twice</b> are pointed out. (3) CHECK A BACKUP: <b>Reforge</b> reads half-readable words (<code>?</code> is one letter, <code>*</code> any number); <b>old Electrum seeds</b> (Electrum before version 2.0) are recognized, with the first 10 receive and 10 change addresses; <b>punch plates</b> (a TinySeed-style binary grid, Stackbit 1248, or word numbers in decimal, hex and octal, counted from 1 as Krux does) to show, print and read back; <b>Open an encrypted descriptor backup</b> (BIP138, the format Liana writes). (4) Backup plan: a letter for the executor, steps for the heir, key details and trusted contacts, and a <b>tamper-evident bag log</b>. (5) EXTRA TOOLS: <b>Inspect a transaction</b> checks every signature (VALID, INVALID or NOT CHECKED); <b>Check a Coldcard seed mix</b>; <b>Was my seed made by a flawed device?</b> (the Coldcard randomness bug of 2021 to July 2026, Milk Sad and the Trust Wallet browser extension); <b>Make new SLIP39 shares from dice</b>; and SAVE ENCRYPTED DESCRIPTOR BACKUP for multisig and inheritance wallets. (6) The page says &ldquo;first ten receive and ten change addresses&rdquo; wherever it shows a wallet, and SLIP39 check and combine now lists them.</li>
+        <li><b>2.10.0</b> &mdash; <b>Sixteen ways to make, check and keep a seed better.</b> (1) MAKE A SEED: a <b>Card method</b> menu (Ian Coleman, hashed, as before, or Ian Coleman, raw entropy, his tool&rsquo;s Use Raw Entropy choice, shown with an honest at-most strength), and <b>12, 15, 18, 21 or 24 words</b> for every method (15, 18 and 21-word dice and coin seeds do not match SeedSigner, Coldcard or Keystone, and SeedQR stays 12 and 24 words). (2) Warnings: a <b>public example phrase</b> (official test phrases, this page&rsquo;s own examples, or patterned numbers and words) is named after FORGE SEED, in the CHECK A BACKUP words box, VERIFY, Open this wallet and the Wallet Detective, and in Seed XOR; <b>Write these clearly</b> lists words whose letters could be misread as another word; rolls or flips <b>typed twice</b> are pointed out. (3) CHECK A BACKUP: <b>Reforge</b> reads half-readable words (<code>?</code> is one letter, <code>*</code> any number); <b>old Electrum seeds</b> (Electrum before version 2.0) are recognized, with the first 10 receive and 10 change addresses; <b>punch plates</b> (a TinySeed-style binary grid, Stackbit 1248, or word numbers in decimal, hex and octal, counted from 1 as Krux does) to show, print and read back; <b>Open an encrypted descriptor backup</b> (BIP138, the format Liana writes). (4) Backup plan: a letter for the executor, steps for the heir, key details and trusted contacts, and a <b>tamper-evident bag log</b>. (5) EXTRA TOOLS: <b>Inspect a transaction</b> checks every signature (VALID, INVALID or NOT CHECKED); <b>Check a Coldcard seed mix</b>; <b>Was my seed made by a flawed device?</b> (the Coldcard randomness bug of 2021 to July 2026, Milk Sad and the Trust Wallet browser extension); <b>Make new SLIP39 shares from dice</b>; and SAVE ENCRYPTED DESCRIPTOR BACKUP for multisig and inheritance wallets. (6) The page says &ldquo;first ten receive and ten change addresses&rdquo; wherever it shows a wallet, and SLIP39 check and combine now lists them.</li>
         <li><b>2.9.0</b> &mdash; <b>More ways in, more ways to check.</b> (1) <b>Cards &amp; hex</b> in MAKE A SEED: tap real-looking cards in the order you dealt them (each one flips to the VOIDFORGE back once used), or type them; 25 cards make 12 words, a whole deck and 6 more make 24. The cards are hashed exactly as Ian Coleman&rsquo;s BIP39 tool and EntropyLab do, so either can check the words; PRINT CARD SHEET gives boxes to write them in. Or type 32 or 64 hex digits (a 16-sided die) used as they are. Every way to make a seed now has the same FORGE SEED button. (2) <b>SCAN</b> buttons read QR codes with the camera: a SeedQR (only while offline), a watch-only key, an address, or a transaction, including moving QR codes (UR and BBQr); a red CAMERA ON bar shows while it is on, and it stops as soon as a code is read. OPEN A PHOTO INSTEAD works without a camera. (3) EXTRA TOOLS: <b>Check a signed release</b> (as Sparrow does), <b>Seed XOR</b> (as Coldcard does), <b>SLIP39 shares</b> (check and combine a Trezor or Keystone Shamir backup), <b>Find a typo in a descriptor</b> and <b>Explain an inheritance or timelock wallet</b>. CHECK A BACKUP: <b>Is this seed in my wallet file?</b> and <b>Read a label file</b> (BIP329). The transaction inspector finds this wallet&rsquo;s change even when it is not marked. (4) The dictionary names signet next to testnet, and THREAT_MODEL.md says what VOIDFORGE protects and what it cannot.</li>
         <li><b>2.8.1</b> &mdash; <b>Fixes from a full review and the new tests.</b> (1) <b>Inspect a transaction</b>: an output marked as change is no longer trusted. The mark is written by whoever made the PSBT and a fingerprint is public, so with the wallet&rsquo;s words typed in CHECK A BACKUP the page now makes the key at the given path and checks that the output really pays it (&ldquo;CHANGE, CHECKED&rdquo;); a mark that names this wallet but pays someone else says &ldquo;Do not sign&rdquo; and fails the verdict; without the words a mark is called unchecked. PSBT version 2 (Bitcoin Core&rsquo;s default from version 32) is read, and a full previous transaction that is not the one being spent is caught. (2) CLEAR ALL and auto-clear also wipe the roll string and passphrases the page kept to notice edits, and the transaction, signature, descriptor and pay-check boxes. (3) Checking a signed message and setting up a multisig wallet wait for the self-test like everything else, and the self-test has new checks for watch-only keys, multisig, Silent Payments and key versions. (4) An old FOUND or MATCH is cleared when the address, words or recorded value change; turning practice mode on or off clears VERIFY&rsquo;s lines, the child seed, the device dice check and the transaction tools. (5) <b>Check your device&rsquo;s dice</b> says that a Coldcard refuses rolls where one face is more than 30% of them (Keystone only warns). (6) VERIFY recognizes testnet values (tb1p, 2&hellip;, m&hellip;, n&hellip;, tpub, upub, vpub); Uprv keys are known as private keys; a roll typed while FORGE works clears the new words at once; the made words are kept in memory, not read back from the screen. (7) <b>Addresses: the same 10 + 10 everywhere.</b> After FORGE, in the Watch-only box, on the summary sheet and on the recovery sheet, the page now lists the first 10 receive and the first 10 change addresses (Taproot too after FORGE), as Open this wallet already showed 10 at a time. VERIFY&rsquo;s MATCH also accepts any of those 20 addresses, for every address type (before, a bc1q address had to be the first address, and other types the first 5 receive addresses). (8) The online demo no longer warns that the page is shown inside another page: it is its own official page that does that. Any other site that shows VOIDFORGE in a frame still gets the warning. (9) <b>One way of saying things.</b> A full consistency pass: multisig setup also lists 10 receive and 10 change addresses; the address list labels show the test-network paths in practice mode, and the summary sheet title says TESTNET; testnet is written &ldquo;TESTNET (practice coins only)&rdquo; everywhere; buttons and tabs are named as on screen (CLEAR ALL, SEND TO CHECK, ABOUT &amp; HELP, IS ANYTHING WATCHING THIS PAGE?); OPEN A PRACTICE WALLET and the multisig ADD THIS KEY are gold main buttons; American spelling throughout; phones are for learning and practice only, never for real funds; outdated hints, dictionary pointers and the self-test description are corrected. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
         <li><b>2.8.0</b> &mdash; <b>Find a wallet, spot a watcher, help an heir.</b> (1) <b>Wallet Detective</b> (CHECK A BACKUP, My wallet shows zero): when the right words open an empty wallet, type one address the wallet received to and FIND MY WALLET tries the settings of well-known wallet apps (BIP84, BIP86, BIP49 and BIP44 with accounts 0 to 9, older m/0&#39; and m/ paths, Samourai&rsquo;s Whirlpool and Ricochet accounts, mixed address types some apps use, Electrum&rsquo;s own seeds, with and without the passphrase) until it matches, then names the apps that use those settings and the steps to open it in Sparrow or Electrum. LIST FIRST ADDRESSES shows the first address of each setting, to look up on another device. It never looks up a balance. (2) <b>Is anything watching this page?</b> (ABOUT &amp; HELP and MENU): looks for the signs browser extensions, translators and other scripts leave on the page while it runs, and shows a warning at the top when it finds one. Some extensions act before the page can look, and many leave no sign, so it says &ldquo;no sign found&rdquo;, never &ldquo;safe&rdquo;. (3) <b>Heir mode</b> (I FOUND A BITCOIN BACKUP, under the title): calm, step-by-step help in large text for someone who found a Bitcoin backup: what each kind of backup is, checking the words, finding the wallet, seeing the balance without risk, moving it later, and the scams that target heirs. The printed backup plan points family to it. New dictionary entries: Browser extension, Heir mode and Wallet Detective. Seed words, fingerprints, addresses, keys and descriptors are unchanged.</li>
@@ -2686,7 +2686,9 @@ async function slip39Combine(mnemonics, passphrase){
 // apart from every other use of the hash (the master secret is the hash itself, never a stream block), and the counter makes
 // every block different. Because the settings are in the label, other groups or another flag give another identifier, so a
 // non-extendable set (flag 0) is never made twice with one identifier and one encrypted secret, which the spec asks to avoid.
-// The same rolls and settings always give the same shares; a different passphrase gives the same identifier but other values.
+// A SLIP39 passphrase, when there is one, is in the label too (as its SHA-256), so the same rolls with another passphrase give a
+// set that shares no value with the first: reused share values would let one share of each set show how the two encrypted
+// secrets differ (found by the v2.10.0 review). The same rolls, settings and passphrase always give the same shares.
 const S39M_ROLLS = {128: 50, 256: 99};   // dice rolls needed, as for 12 and 24 words in MAKE A SEED
 const S39M_LABEL = "VOIDFORGE SLIP39 shares v1";
 const S39M_EXP_DEFAULT = 1;   // the reference's default iteration exponent (20,000 PBKDF2 iterations in all)
@@ -2793,7 +2795,7 @@ async function slip39Make(rolls, opts){
 
   const h = await sha256(typed), ms = h.slice(0, o.bits / 8);
   out.settings = s39mSettings(o);
-  const take = await s39mStream(h, out.settings);
+  const take = await s39mStream(h, out.settings + (pass ? " p" + hex(await sha256(pass)) : ""));   // the passphrase keeps two sets apart (see above)
   h.fill(0);
   const idb = await take(2), identifier = ((idb[0] << 8) | idb[1]) & 0x7fff;
   const ems = await s39Encrypt(ms, new TextEncoder().encode(pass), o.iterationExponent, identifier, o.extendable);
@@ -2813,8 +2815,8 @@ async function slip39Make(rolls, opts){
 }
 
 // Reads every share back with slip39Parse and combines them again with slip39Combine, the same code CHECK AND COMBINE uses.
-// Round k takes groups k, k+1, ... (as many as needed) and in each group shares k, k+1, ... (wrapping around), so every share and
-// every group is used at least once. Each round must give back the master secret. Returns a problem as a sentence, or "".
+// Round k takes groups k, k+1, ... (as many as needed); each group gives its next shares in turn (wrapping around), and the rounds
+// go on until every group and every share has been used at least once. Each round must give back the master secret. Returns a problem as a sentence, or "".
 async function s39mSelfCheck(groups, o, identifier, ms, pass){
   const G = groups.length, words = o.bits === 128 ? 20 : 33;
   for(let g = 0; g < G; g++){
@@ -2827,12 +2829,14 @@ async function s39mSelfCheck(groups, o, identifier, ms, pass){
         return "share " + (j + 1) + (G > 1 ? " of group " + (g + 1) : "") + " does not hold the settings it was made with.";
     }
   }
-  const rounds = Math.max(G, ...o.groups.map(x => x[1]));
-  for(let k = 0; k < rounds; k++){
+  const used = o.groups.map(x => new Array(x[1]).fill(false)), next = o.groups.map(() => 0);
+  for(let k = 0; k < G || used.some(u => u.includes(false)); k++){
+    if(k > 4096) return "the self-check did not finish.";
     const pick = [];
     for(let a = 0; a < o.groupThreshold; a++){
       const g = (k + a) % G, [t, n] = o.groups[g];
-      for(let b = 0; b < t; b++) pick.push(groups[g][(k + b) % n]);
+      for(let b = 0; b < t; b++){ const j = (next[g] + b) % n; used[g][j] = true; pick.push(groups[g][j]); }
+      next[g] = (next[g] + t) % n;
     }
     const r = await slip39Combine(pick, pass);
     const same = r.ok && r.masterSecret.length === ms.length && r.masterSecret.every((x, i) => x === ms[i]);
@@ -2873,6 +2877,7 @@ function getMode(){
 
 let lastMode = "dice", method = "dice";
 // The three ways to make a seed (v2.1.0): Dice, Coin, Word draw. The dice/coin radio buttons and the 12/24 radio buttons are kept (hidden) as the single source of truth; the tabs and the length menu drive them.
+let ksWanted = false;   // Keystone rules were chosen, then set aside for a 15, 18 or 21-word seed
 function syncMethodUi(){
   const wc = +document.querySelector('input[name="words"]:checked').value, coin = getMode() === "coin";
   if(method !== "words" && method !== "cards") method = getMode();
@@ -2882,7 +2887,8 @@ function syncMethodUi(){
   const n = wdNeeds(wc), odd = wc !== 12 && wc !== 24;
   // v2.10.0: Keystone dice rules exist for 12 and 24 words only (its firmware takes 16 or 32 bytes of the hash)
   const dr = document.getElementById("diceRules"), ksOpt = dr.querySelector('option[value="keystone"]');
-  ksOpt.disabled = odd; if(odd && dr.value === "keystone") dr.value = "std";
+  ksOpt.disabled = odd; if(odd && dr.value === "keystone"){ dr.value = "std"; ksWanted = true; }
+  else if(!odd && ksWanted){ dr.value = "keystone"; ksWanted = false; }   // v2.10.0 review: the Keystone choice comes back at 12 or 24 words
   document.getElementById("lenNote").textContent = (method === "words" ? n.words + " words from your tiles, then " + n.flips + " coin flips" : method === "cards" ? cdLenNote(wc) : (keystoneOn() ? getNeeded(wc) + " to " + KEYSTONE_MAX + " dice rolls" : getNeeded(wc) + (coin ? " coin flips" : " dice rolls") + " or more"))
     + (odd ? ". Some wallets take only 12 or 24 words: check that yours takes " + wc + " before you use it." : "");
   if(method === "words") document.getElementById("wdBox").open = true;
@@ -4633,6 +4639,15 @@ async function oeShow(oe, both, vp){
     const list = (a) => a.map((x, i) => String(i).padStart(3) + ":  " + x).join("\n");
     $("oeSeed").textContent = "Seed (hex): " + oe.hex + (oe.hex.length % 8 ? " (" + oe.hex.length + " digits: some words were picked by hand. Electrum still opens them, but cannot show them as words again.)" : "");
     $("oeOut").textContent = "Master public key (mpk): it shows every address of the wallet but cannot spend.\n" + hex(K.mpk) + "\n\n" + (net === "test" ? "TESTNET (practice coins only). " : "") + "Receive addresses (legacy 1..., uncompressed keys):\n" + list(rec) + "\n\nChange addresses:\n" + list(chg) + "\n\nCompare them with the wallet's history, or look one up on another device. The Wallet Detective below can also find an old Electrum address.";
+    // v2.10.0 review: "What your wallet app shows" is compared here too (an old seed has no BIP39 wallet to compare with)
+    const said = $("verifyRecorded").value.trim(), m = $("verifyMatch");
+    if(!both && said){
+      const r = rec.indexOf(said), c = chg.indexOf(said), isMpk = said.toLowerCase() === hex(K.mpk);
+      m.className = "status " + (r >= 0 || c >= 0 || isMpk ? "ok" : "bad");
+      m.textContent = r >= 0 ? "MATCH: this is receive address " + r + " of the old Electrum wallet." : c >= 0 ? "MATCH: this is change address " + c + " of the old Electrum wallet."
+        : isMpk ? "MATCH: this is the master public key of the old Electrum wallet."
+        : "NO MATCH: this is not the master public key or one of the first " + ADDR_SHOWN + " receive and " + ADDR_SHOWN + " change addresses of the old Electrum wallet. Check the words and their order.";
+    }
   } catch(e) { if(my === oeSeq) $("oeOut").textContent = "Could not work out the old Electrum wallet: " + e.message; }
 }
 // Explain an address (v2.4.0): what a pasted address is (type, network, typo or not) and what someone can do with it. It needs
@@ -4929,13 +4944,14 @@ function seedNotes(words){ knownShow("forgePub", words ? words.join(" ") : ""); 
 // changes the rolls. A block is 12 dice rolls (31 bits) or 32 coin flips (32 bits), about the same amount of chance. For fair rolls,
 // the chance of a false warning is at most (number of non-overlapping block pairs) / 6^12 or / 2^32: 50 rolls 378 / 2.18e9 = 1.7e-7,
 // 99 rolls 1.3e-6, 100 rolls 1.4e-6, 256 rolls 1.3e-5 (1 in 80,000); 128 flips 2145 / 4.29e9 = 5.0e-7, 256 flips 4.4e-6. (24 flips
-// would give 1 in 765 at 256 flips, too noisy.) The two copies may not overlap; one long run of a single face is reported by the
-// fairness check instead.
+// would give 1 in 765 at 256 flips, too noisy.) The two copies may not overlap; a block of one face only is skipped here, because the
+// fairness check reports a long run of a single face.
 const TWICE_BLOCK = {dice: 12, coin: 32};
 function rollsTwice(rolls, isCoin){
   const L = isCoin ? TWICE_BLOCK.coin : TWICE_BLOCK.dice, first = new Map();
   for(let i = 0; i + L <= rolls.length; i++){
     const k = rolls.substr(i, L);
+    if(k === k[0].repeat(L)) continue;   // one face only (as 111...): the fairness check speaks for that, not this one
     if(!first.has(k)){ first.set(k, i); continue; }
     const a = first.get(k); if(i - a < L) continue;
     let n = L; while(i + n < rolls.length && a + n < i && rolls[a + n] === rolls[i + n]) n++;
@@ -4990,6 +5006,7 @@ function reforgeParseWords(text){
 // characters without * also fits the longer words it starts: c?ar fits charge and clarify, ab* the 10 words that start with ab.
 const REFORGE_COMBOS = 2048 * 2048;   // at most as many phrases as two unknown words
 function reforgePatternWords(t){
+  if(/^\?+$/.test(t)) return WORDLIST.slice();   // v2.10.0 review: only ? marks (???) is a word that cannot be read at all, like a lone ?
   const re = t.replace(/\?/g, "[a-z]").replace(/\*/g, "[a-z]*"), whole = new RegExp("^" + re + "$"), start = !t.includes("*") && t.length >= 4 ? new RegExp("^" + re) : null;
   return WORDLIST.filter(w => whole.test(w) || (start !== null && start.test(w)));
 }
@@ -6403,8 +6420,10 @@ function planRender(){
 async function planSecret(text){
   const raw = String(text || "");
   if(/\b(pass\s*phrase|password|passwort|pin)\s*[:=]\s*\S/i.test(raw)) return "a passphrase or password";
-  let run = 0, miss = 0;
-  for(const t of raw.toLowerCase().split(/[^a-z]+/).filter(x => x.length >= 3)){
+  let run = 0, miss = 0, oldRun = 0;
+  for(const t of raw.toLowerCase().split(/[^a-z]+/).filter(Boolean)){   // v2.10.0: also 12 words in a row from old Electrum's list
+    oldRun = OLD_EL_MAP.has(t) ? oldRun + 1 : 0; if(oldRun >= 12) return "seed words";
+    if(t.length < 3) continue;
     const word = Object.prototype.hasOwnProperty.call(WORD_MAP, t) || (t.length === 4 && wordFromPrefix(t)) || (t.length >= 5 && closestWords(t, 1).some(w => wordDistance(t, w, 1) <= 1));
     if(word){ run++; if(run >= 12) return "seed words"; }
     else if(run && !miss){ miss = 1; }
@@ -6412,6 +6431,7 @@ async function planSecret(text){
   }
   const joined = raw.replace(/([0-9a-fA-F])[\s.\-]+(?=[0-9a-fA-F])/g, "$1");
   if(/\d{48,}/.test(joined) || /[0-9a-fA-F]{64,}/.test(joined)) return "SeedQR digits or a key written as numbers";
+  if((joined.match(/[0-9a-fA-F]{32,}/g) || []).some(h => (h.match(/\d/g) || []).length >= 6)) return "a seed written as hex (an old Electrum seed is 32 hex digits)";   // v2.10.0
   for(const t of raw.split(/\s+/)){
     if(!(/^[1-9A-HJ-NP-Za-km-z]{22,}$/.test(t) || /^[a-z]{2,12}\(.+\)/i.test(t))) continue;   // only what could be a key or a descriptor
     const e = await explainAddress(t);
@@ -10791,6 +10811,7 @@ function svScriptCode(s){
   return svCat([varintBytes(s.length - n), ...seg]);
 }
 async function svSighashLegacy(ctx, i, script, ht){
+  (ctx.legacy || (ctx.legacy = new Set())).add(i);   // v2.10.0 review: this hash does not cover the amount
   const tx = ctx.tx, base = ht & 0x1f, acp = (ht & 0x80) !== 0;
   if(base === 3 && i >= tx.outs.length){ const one = new Uint8Array(32); one[0] = 1; return one; }   // the SIGHASH_SINGLE quirk: the "hash" is the number 1
   const p = [le32(tx.version)], ins = acp ? [i] : tx.ins.map((_, j) => j);
@@ -11098,7 +11119,7 @@ async function svCoins(res){
       } catch(e){ why = "the previous transaction in the PSBT is damaged"; } }
     if(wu){ try { const q = psbtReader(wu.val), w = {amount: q.i64(), script: q.bytes(q.varint())};
         if(coin && (coin.amount !== w.amount || !eqBytes(coin.script, w.script))){ coin = null; why = "the PSBT describes the coin it spends in two different ways (amount or script), so a wrong amount could be hidden"; out.clash.push(i); }
-        else if(!coin && !why) coin = w;
+        else if(!coin && !why){ coin = w; coin.fromWu = true; }   // only the short coin record: a legacy signature does not cover its amount
       } catch(e){ if(!coin && !why) why = "the coin record in the PSBT is damaged"; } }
     out.coins.push(coin); out.why.push(why);
   }
@@ -11120,6 +11141,8 @@ async function psbtSigCheck(res, other){
         if(f7 || f8){ tx.ins[i].ss = f7 ? f7.val : new Uint8Array(0); tx.ins[i].wit = f8 ? witnessParse(f8.val) : []; R = await svFinal(ctx, i); }
         else R = await svPartial(ctx, i, m); }
     } catch(e){ if(e === SV_OVER){ ctx.over = true; R = svNa(svRes(), over); } else R = svNa(svRes(), "its signature data is damaged"); }
+    if(R.state === "valid" && !res.raw && ctx.legacy && ctx.legacy.has(i) && coins[i] && coins[i].fromWu){   // v2.10.0 review
+      R.amountOpen = true; R.info.add("a legacy signature does not cover the amount, and this PSBT has no full previous transaction, so the amount shown for this input is not checked"); }
     res.ins[i].sv = R;
   }
   return res;
@@ -11141,6 +11164,8 @@ function svChecks(res, add){
   if(bad.length) add(false, "INVALID SIGNATURE on " + svList(bad) + ". Do not broadcast: this signature does not match.", true);
   if(!bad.length && !na.length){ const n = S.reduce((a, o) => a + o.R.n, 0); add(true, "Every signature found was checked and is valid (" + n + " signature" + (n === 1 ? "" : "s") + ")."); }
   if(na.length) add(false, "The signatures of " + svList(na) + " were NOT CHECKED (see " + (na.length === 1 ? "that input" : "those inputs") + " above" + (res.raw ? "; a raw transaction does not carry the coins it spends" : "") + ").", false);
+  const open = S.filter(o => o.R.amountOpen);   // v2.10.0 review
+  if(open.length) add(false, svList(open).replace(/^i/, "I") + ": the signature is valid, but it is a legacy signature, which does not cover the amount, and the PSBT has no full previous transaction, so the amount and the fee are not checked. Ask the wallet for a PSBT with the full previous transaction.", false);
   if(pol.length) add(false, svList(pol).replace(/^i/, "I") + ": the signatures are valid, but most nodes will not pass the transaction on (" + [...new Set(pol.flatMap(o => [...o.R.policy]))].join("; ") + "). That is a relay rule, not a consensus rule.", false);
 }
 // Shows a report and colors the word after "signatures...:" (VALID green, INVALID red, NOT CHECKED gray).
@@ -12317,7 +12342,7 @@ document.getElementById("methodTabs").addEventListener("keydown", e => {
   const order = ["dice", "coin", "words", "cards"]; if(e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
   const i = (order.indexOf(method) + (e.key === "ArrowRight" ? 1 : 3)) % 4; e.preventDefault(); setMethod(order[i]); document.getElementById("mt-" + order[i]).focus();
 });
-document.getElementById("diceRules").addEventListener("change", updateLabels);
+document.getElementById("diceRules").addEventListener("change", () => { ksWanted = false; updateLabels(); });
 document.getElementById("cdMethod").addEventListener("change", () => { cdUpdate(); syncMethodUi(); });   // v2.10.0
 document.getElementById("wordSel").addEventListener("change", () => {
   const v = document.getElementById("wordSel").value, r = document.querySelector('input[name="words"][value="' + v + '"]');

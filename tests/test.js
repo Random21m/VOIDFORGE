@@ -2054,6 +2054,13 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     // the self-test gate and CLEAR
     w.setGate('fail','SELF-TEST FAILED','bad'); $('psbtOut').textContent=''; $('psbtInput').value=part; await w.runPsbt(); ok($('psbtOut').textContent==='','signature check: nothing runs before the self-test passes'); w.setGate('pass','SELF-TEST PASSED','good');
     await inspect(part); w.clearPsbt(true); ok($('psbtOut').textContent===''&&$('psbtInput').value==='','signature check: CLEAR empties the result and the box');
+    { // review fix: a legacy (P2PKH) signature with only the short coin record is valid, but its amount is not covered: said so
+      const priv=new Uint8Array(32); priv[31]=77; const pub=secp256k1.getPublicKey(priv,true), sp=btc.p2pkh(pub), wpk=btc.p2wpkh(pub);
+      const prev=new btc.Transaction({allowLegacyWitnessUtxo:true}); prev.addInput({txid:new Uint8Array(32).fill(0xbb),index:0}); prev.addOutput({script:sp.script,amount:50000n}); const prevBytes=prev.toBytes(true,false);
+      const mkL=(full)=>{ const q=new btc.Transaction({allowLegacyWitnessUtxo:true}); q.addInput(full?{txid:prev.id,index:0,nonWitnessUtxo:prevBytes}:{txid:prev.id,index:0,witnessUtxo:{script:sp.script,amount:50000n}}); q.addOutput({script:wpk.script,amount:40000n}); q.signIdx(priv,0); return q.toPSBT(0); };
+      const chk=async(b)=>{ const res=await w.inspectPsbt(w.Uint8Array.from(b),'main'); await w.psbtSigCheck(res); return res.ins[0].sv; };
+      const R1=await chk(mkL(false)), R2=await chk(mkL(true));
+      ok(R1.state==='valid'&&R1.amountOpen&&/does not cover the amount/.test(w.svText(R1))&&R2.state==='valid'&&!R2.amountOpen,'signature check: a legacy signature with only the short coin record is VALID but says its amount is not checked (review fix)'); }
     ok(/whether each signature is <b>valid<\/b>/.test(html)&&/\["Signature hash \(digest\)"/.test(html)&&/\["Low-S rule"/.test(html)&&/\["Strict DER"/.test(html)&&/\["NULLDUMMY"/.test(html)&&/\["BIP143"/.test(html),'signature check: the help text and the dictionary (Signature hash, Low-S rule, Strict DER, NULLDUMMY, BIP143)');
     r.w.close(); }
   // v2.10.0: Make new SLIP39 shares from dice (expected wallet from @scure/bip32 and btc-signer; the words themselves are checked
@@ -2527,6 +2534,14 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       [st]=await RF('abandon '.repeat(10)+'ab*'); ok(/^A damaged word \(with \? or \* inside it\) can be searched only with all the words in place/.test(st),'Reforge: a damaged word with one word missing is refused with the reason');
       await RF('abandon '.repeat(11)+'ab*'); $('reforgeWordsInput').dispatchEvent(new w.Event('input')); ok($('reforgeOut').textContent===''&&$('reforgeStatus').textContent==='','Reforge: editing the words clears a damaged-word result');
       ok(/<b>Damaged backup:<\/b> inside a word, <code>\?<\/code> is one letter you cannot read and <code>\*<\/code> any number of them/.test(html),'Reforge: one help line explains ? and * inside a word'); }
+    // fixes from the v2.10.0 review
+    eq(await w.planSecret('Kept with the lawyer: '+OLD),'seed words','review fix: the plan print guard refuses an old Electrum seed in words');
+    ok(/hex/.test(await w.planSecret('seed '+OE.wallets[0].hex))&&await w.planSecret('In the top drawer of the desk at home; ask my sister Ann for the key.')==='','review fix: and its 32 hex digits, but not ordinary text');
+    { $('phrase').value=OLD; $('verifyPass').value=''; $('verifyRecorded').value=OE.wallets[0].receive0; await w.verify(); const m1=$('verifyMatch').textContent;
+      $('verifyRecorded').value=OE.wallets[0].change0; await w.verify(); const m2=$('verifyMatch').textContent;
+      $('verifyRecorded').value='1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2'; await w.verify(); const m3=$('verifyMatch').textContent, c3=$('verifyMatch').className; $('verifyRecorded').value='';
+      ok(/^MATCH: this is receive address 0 of the old Electrum wallet/.test(m1)&&/^MATCH: this is change address 0/.test(m2)&&/^NO MATCH/.test(m3)&&/bad/.test(c3),'review fix: VERIFY compares what the wallet app shows with an old Electrum wallet'); }
+    ok(w.reforgePatternWords('???').length===2048&&w.reforgePatternWords('????').length===2048&&w.reforgePatternWords('wr???').join()==='wrong','review fix: a word written only as ??? is any word, not a 3-letter word');
     r.w.close(); }
   // v2.10.0: 15, 18 and 21 words for every method, and the Card method menu (Ian Coleman, hashed or raw entropy).
   // Expected words come from @scure/bip39 and Node's SHA-256; the raw-entropy answers come from Ian Coleman's own code at commit
@@ -2581,7 +2596,9 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     // Keystone dice rules only for 12 and 24 words
     w.setMethod('dice'); len(24); $('diceRules').value='keystone'; $('diceRules').dispatchEvent(new w.Event('change')); eq(w.getNeeded(24),100,'lengths: Keystone rules still ask 100 rolls for 24 words');
     len(18); ok($('diceRules').value==='std'&&$('diceRules').querySelector('option[value=keystone]').disabled&&!w.keystoneOn(),'lengths: 18 words turn the Keystone dice rules off (Keystone makes 12 or 24 words)');
-    len(12); ok(!$('diceRules').querySelector('option[value=keystone]').disabled,'lengths: back at 12 words, the Keystone rules can be chosen again');
+    len(12); ok(!$('diceRules').querySelector('option[value=keystone]').disabled&&$('diceRules').value==='keystone','lengths: back at 12 words, the Keystone rules come back as they were chosen (review fix)');
+    len(21); $('diceRules').value='std'; $('diceRules').dispatchEvent(new w.Event('change')); len(24); ok($('diceRules').value==='std','lengths: a rules choice made at 21 words is kept at 24');
+    $('diceRules').value='std'; $('diceRules').dispatchEvent(new w.Event('change'));
     // Card method: raw entropy, known answers from Ian Coleman's own code
     const KS30='KS 3D 9H AC TC 5S JD 2H 8C QS 4D 7H 6C AH TS 9D 3C KH 5D JS 2S 8H QC 4H 7S AD 2D 3H 4C 5C';
     w.setMethod('cards'); len(12); ok($('cdRulesRow').style.display===''&&$('rulesRow').style.display==='none'&&$('cdMethod').value==='hash','card method: the menu shows on the Cards & hex tab, hashed by default');

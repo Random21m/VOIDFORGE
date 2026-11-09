@@ -358,7 +358,8 @@ const REF = (() => {
   };
   return {refGenerate, refCombine, stream, parse};
 })();
-const settingsOf = (c) => c.bits + " " + c.gt + " " + c.groups.map(g => g[0] + "of" + g[1]).join(",") + " ext" + (c.ext ? 1 : 0) + " e" + c.e;
+const settingsOf = (c) => c.bits + " " + c.gt + " " + c.groups.map(g => g[0] + "of" + g[1]).join(",") + " ext" + (c.ext ? 1 : 0) + " e" + c.e +
+  (c.passphrase ? " p" + createHash("sha256").update(c.passphrase, "utf8").digest("hex") : "");   // a passphrase is in the label too (v2.10.0 review fix)
 const expectFromRef = (c) => { const h = createHash("sha256").update(c.rolls).digest(); return {ms:h.subarray(0, c.bits / 8), groups:REF.refGenerate(c.gt, c.groups, h.subarray(0, c.bits / 8), c.passphrase, c.ext, c.e, REF.stream(h, settingsOf(c)))}; };
 const makePage = (c) => lib.slip39Make(c.rolls, {bits:c.bits, groupThreshold:c.gt, groups:c.groups, passphrase:c.passphrase, extendable:c.ext, iterationExponent:c.e});
 // A random set that should open the wallet: gt random groups, t random shares of each, shuffled.
@@ -377,9 +378,9 @@ const MAKE_CASES = [];
   const wantA = [["clogs premium academic acid depend penalty graduate echo pancake echo remind chew lend epidemic unusual jury museum story crystal deal",
     "clogs premium academic agency alien lips guilt evoke demand axle nervous coastal climate cinema tadpole lawsuit floral miracle rival credit",
     "clogs premium academic always carbon thumb axis equation emperor teammate nail cover machine ordinary meaning impact amuse scroll snapshot spew"]];
-  const wantB = [["grief merchant acrobat easy actress become petition unknown maximum helpful ending training mother shelter justice adorn famous emperor provide system morning salary huge minister impact ting exclude inmate shadow herald cargo award satoshi"],
-    ["grief merchant beard echo amount nuclear salary surface change wine minister coding spit rebuild spelling teammate rebuild carve involve victim have hesitate glasses survive scandal dilemma swing scene leaf educate peasant express volume",
-     "grief merchant beard email already peasant evoke club alien false havoc trip smell being short finger dance deadline adequate exact cover hush fancy estate username forward entrance skin justice advance union segment chemical"]];
+  const wantB = [["install lunch acrobat easy adult lizard phantom sweater biology peanut afraid true ordinary umbrella syndrome corner leader marathon snake jerky twice airport similar elite simple liquid legend deliver taxi amount overall epidemic genius"],
+    ["install lunch beard echo adult response fishing exotic unfair plastic pupal jacket bishop pink industry sugar carpet shame should guard texture finance average ambition prize society alarm tofu sack amazing funding tofu criminal",
+     "install lunch beard email august paper gather hybrid inherit triumph weapon firm editor blessing object include duration salt academic painting discuss change lunch forward juice screw dismiss graduate either amount reward language amount"]];
   for(const [c, want, label] of [[KA, wantA, "54 rolls, 2 of 3, no passphrase, defaults (extendable, e=1)"], [KB, wantB, "99 rolls, 256 bits, 2 of 2 groups [1 of 1, 2 of 2], TREZOR, not extendable, e=0"]]){
     const r = await makePage(c), r2 = await makePage(c);
     check("make: known answer, " + label + ": the same words as the reference", r.ok && JSON.stringify(r.groups) === JSON.stringify(want), r.ok ? JSON.stringify(r.groups) : r.error);
@@ -444,7 +445,7 @@ const MAKE_CASES = [];
   const other = await makePage({...base, groups:[[2, 4]]}), p2 = await makePage({...base, passphrase:"TREZOR"}), a = await makePage(base);
   check("make: other settings give another identifier (so sets are not mixed by mistake)", other.ok && other.identifier !== a.identifier, a.identifier + " / " + other.identifier);
   check("make: same rolls with ext=1 and other settings open the same wallet (an extended set)", hex((await lib.slip39Combine(other.groups[0].slice(1, 3), "")).masterSecret) === hex(a.masterSecret));
-  check("make: another passphrase: same identifier, other shares, same wallet only with that passphrase", p2.identifier === a.identifier && p2.groups[0][0] !== a.groups[0][0] &&
+  check("make: another passphrase: another identifier and no share in common (no value reused between the two sets), same wallet only with that passphrase", p2.identifier !== a.identifier && p2.groups[0].every(s => !a.groups[0].includes(s)) &&
     hex((await lib.slip39Combine(p2.groups[0].slice(0, 2), "TREZOR")).masterSecret) === hex(a.masterSecret) && hex((await lib.slip39Combine(p2.groups[0].slice(0, 2), "")).masterSecret) !== hex(a.masterSecret));
   const ne = await makePage({...base, ext:false}), ne2 = await makePage({...base, ext:false, groups:[[3, 5]]});
   check("make: not extendable: another identifier and another encrypted secret for other groups", ne.ok && ne2.ok && ne.identifier !== ne2.identifier && lib.slip39Parse(ne.groups[0][0]).share.extendable === false);

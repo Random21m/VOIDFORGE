@@ -9,7 +9,8 @@ Reads JSON on stdin: {"make": [...], "combine": [...]} and prints {"make": [...]
 - make: {"rolls", "bits", "gt", "groups": [[T, N], ...], "passphrase", "ext", "e"}. The master secret is the first
   bits/8 bytes of SHA-256 of the rolls; the reference's random source (RANDOM_BYTES, which its own comment says can be
   replaced for deterministic testing) is replaced by VOIDFORGE's stream, worked out here on its own from its description:
-  block c = HMAC-SHA256(key = SHA-256(rolls), msg = "VOIDFORGE SLIP39 shares v1 " + settings + b"\\0" + c as 4 bytes).
+  block c = HMAC-SHA256(key = SHA-256(rolls), msg = "VOIDFORGE SLIP39 shares v1 " + settings + b"\\0" + c as 4 bytes), where settings ends with
+  " p" + SHA-256(passphrase) in hex when there is a passphrase.
   Then generate_mnemonics makes the shares. Gives the groups of words, or {"error": ...}.
 - combine: {"mnemonics": [...], "passphrase"}. Gives combine_mnemonics' master secret in hex, or {"error": ...}.
 Run with python3 -I (isolated: nothing from the current directory or the user's site-packages is loaded).
@@ -60,6 +61,8 @@ def make(c):
     try:
         h = hashlib.sha256(c["rolls"].encode()).digest()
         settings = "%d %d %s ext%d e%d" % (c["bits"], c["gt"], ",".join("%dof%d" % (t, n) for t, n in c["groups"]), 1 if c["ext"] else 0, c["e"])
+        if c["passphrase"]:  # v2.10.0 review fix: a passphrase is in the label too, as " p" + its SHA-256 in hex
+            settings += " p" + hashlib.sha256(c["passphrase"].encode()).hexdigest()
         ref.RANDOM_BYTES = stream(h, settings)
         groups = shamir_mnemonic.generate_mnemonics(c["gt"], [tuple(g) for g in c["groups"]], h[:c["bits"] // 8],
                                                     c["passphrase"].encode(), c["ext"], c["e"])

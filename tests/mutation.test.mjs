@@ -230,6 +230,7 @@ async function probe(w, mutated, fast, only, hooks) {
     const sl = (ms) => new Promise((r2) => setTimeout(r2, ms)), E = (h) => entropyToMnemonic(Uint8Array.from(Buffer.from(h, 'hex')), wordlist), OFF = 'one of the official BIP39 test phrases';
     const VX = JSON.parse(fs.readFileSync(new URL('./fixtures/bip39-vectors-english.json', import.meta.url), 'utf8')).english;
     if (!VX.every(([e, m]) => w.knownPhrase(m) === OFF)) fails.push('public phrase: every official BIP39 vector is named as one');
+    if (w.rollsTwice('1'.repeat(50), false) !== null || w.rollsTwice('0'.repeat(128), true) !== null || !w.rollsTwice('123456123456' + '5' + '123456123456', false)) fails.push('v2.10 twice: a run of one face is left to the fairness check (review fix)');
     if (w.knownPhrase(E('6610b25967cdcca9d59875f5cb50b0ea')) !== "one of this page's practice phrases") fails.push('public phrase: a practice phrase that is not an official vector is named');
     const pat = [E('a5'.repeat(16)), E('00ff'.repeat(16)), E([...Array(16)].map((_, i) => (250 - i).toString(16).padStart(2, '0')).join('')), 'test '.repeat(11) + 'junk'].map((m) => String(w.knownPhrase(m)));
     if (!/one number repeated/.test(pat[0])) fails.push('public phrase: one byte repeated is named');
@@ -366,6 +367,13 @@ async function probe(w, mutated, fast, only, hooks) {
       if (!/^STOPPED in step 1 after checking [\d,]+ of 3,983,360 phrases/.test($('reforgeStatus').textContent)) fails.push('reforge: STOP ends a damaged-word search with nothing to check against'); }
     w.reforgeClear();
     if (!/is one letter you cannot read/.test($('reforgeWordsPanel').textContent) || !/12 words from an Electrum wallet made before version 2\.0/.test($('heirCard').textContent)) fails.push('reforge and heir mode: the help lines are there');
+    // v2.10.0 review fixes: the plan print guard knows old Electrum seeds (words and hex), VERIFY compares the recorded box for an
+    // old seed, and a word written only as ??? is any word
+    if (await w.planSecret('kept with ' + OLD) !== 'seed words' || !(await w.planSecret('seed acb740e454c3134901d7c8f16497cc1c')) || await w.planSecret('In the top drawer of the desk; ask my sister Ann.') !== '') fails.push('old electrum: the plan print guard refuses an old Electrum seed (words or hex), and only that');
+    { $('phrase').value = OLD; $('verifyPass').value = ''; $('verifyRecorded').value = '1FJEEB8ihPMbzs2SkLmr37dHyRFzakqUmo'; await w.verify(); const m1 = $('verifyMatch').textContent;
+      $('verifyRecorded').value = '1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2'; await w.verify(); const m2 = $('verifyMatch').textContent; $('verifyRecorded').value = '';
+      if (!/^MATCH: this is receive address 0 of the old Electrum wallet/.test(m1) || !/^NO MATCH: this is not the master public key/.test(m2)) fails.push('old electrum: VERIFY compares what the wallet app shows'); }
+    if (w.reforgePatternWords('???').length !== 2048 || w.reforgePatternWords('?').length !== 2048 || w.reforgePatternWords('wr???').join() !== 'wrong') fails.push('reforge: a word of only ? marks is any word');
     // CLEAR ALL wipes the old Electrum seed; then the FORGE seed of section 0 is made again
     $('phrase').value = OLD; await w.verify(); w.wipeSeed(); if ($('oeSeed').textContent !== '') fails.push('old electrum: CLEAR ALL wipes the hex seed');
     await run('dice', 12, D50);
@@ -398,6 +406,8 @@ async function probe(w, mutated, fast, only, hooks) {
     $('rsExtra').value = '10'; printed(() => w.printRollSheet()); if (cells.length !== 85 || !/12 or 24 words only, so they will not make these words/.test(txt) || /same words as SeedSigner/.test(txt)) fails.push('lengths: the 18-word roll sheet: 75 boxes and 10 extra, no device claim');
     { const dr = $('diceRules'); len(24); dr.value = 'keystone'; dr.dispatchEvent(new w.Event('change')); len(21);
       if (dr.value !== 'std' || !dr.querySelector('option[value=keystone]').disabled || w.getNeeded(21) !== 87) fails.push('lengths: 21 words turn the Keystone rules off');
+      len(24); if (dr.value !== 'keystone') fails.push('lengths: back at 24 words the Keystone rules come back');
+      len(21); dr.value = 'std'; dr.dispatchEvent(new w.Event('change')); len(24); if (dr.value !== 'std') fails.push('lengths: a rules choice made at 21 words is kept at 24');
       len(12); dr.value = 'std'; dr.dispatchEvent(new w.Event('change')); }
     mode('coin'); w.setMethod('coin'); len(15); { const F = D50.replace(/[1-3]/g, '0').replace(/[4-6]/g, '1').repeat(4).slice(0, 160); $('rolls').value = F; $('rolls').oninput(); await w.generate();
       if (first() !== entropyToMnemonic(sha(F).slice(0, 20), wordlist) || !/SeedSigner's coin-flip code makes only 12 or 24 words/.test($('countNote').textContent)) fails.push('lengths: 15-word coin seed and its note'); }
@@ -3247,6 +3257,13 @@ async function probe(w, mutated, fast, only, hooks) {
     const FXS = (f) => new URL('./fixtures/sigcheck/' + f, import.meta.url), hb = (h) => w.Uint8Array.from(Buffer.from(h, 'hex')), hx = (b) => Buffer.from(b).toString('hex'), U = (b) => w.Uint8Array.from(b);
     const ctxOf = (tx, coins) => w.svCtx(tx, coins.map((c) => c && { amount: BigInt(c.amount), script: U(c.script) }));
     const st = (rs) => rs.map((x) => x.state).join(',');
+    { // review fix: a legacy signature with only the short coin record says its amount is not checked
+      const pk = new Uint8Array(32); pk[31] = 77; const pub = secp256k1.getPublicKey(pk, true), sp = btc.p2pkh(pub), wpk = btc.p2wpkh(pub);
+      const prev = new btc.Transaction({ allowLegacyWitnessUtxo: true }); prev.addInput({ txid: new Uint8Array(32).fill(0xbb), index: 0 }); prev.addOutput({ script: sp.script, amount: 50000n }); const pb = prev.toBytes(true, false);
+      const mkL = (full) => { const q = new btc.Transaction({ allowLegacyWitnessUtxo: true }); q.addInput(full ? { txid: prev.id, index: 0, nonWitnessUtxo: pb } : { txid: prev.id, index: 0, witnessUtxo: { script: sp.script, amount: 50000n } }); q.addOutput({ script: wpk.script, amount: 40000n }); q.signIdx(pk, 0); return q.toPSBT(0); };
+      const chk = async (b) => { const res = await w.inspectPsbt(w.Uint8Array.from(b), 'main'); await w.psbtSigCheck(res); const L = []; w.svChecks(res, (okk, t) => L.push(t)); return [res.ins[0].sv, L.join(' ')]; };
+      const [R1, L1] = await chk(mkL(false)), [R2, L2] = await chk(mkL(true));
+      if (R1.state !== 'valid' || !R1.amountOpen || !/does not cover the amount/.test(w.svText(R1)) || !/the amount and the fee are not checked/.test(L1) || R2.state !== 'valid' || R2.amountOpen || /not checked/.test(L2)) fails.push('sigcheck: a legacy signature with only the short coin record says its amount is not checked'); }
     { // Bitcoin Core sighash.json: legacy hashes (SINGLE quirk, NONE, ANYONECANPAY, OP_CODESEPARATOR)
       const V = JSON.parse(fs.readFileSync(FXS('core-sighash.json'), 'utf8')).filter((v) => v.length === 5); let bad = 0;
       for (const [tx, sc, i, ht, want] of V) if (hx((await w.svSighashLegacy(ctxOf(w.svTxModel(hb(tx)), []), i, hb(sc), ht)).slice().reverse()) !== want) bad++;
@@ -3354,9 +3371,9 @@ async function probe(w, mutated, fast, only, hooks) {
     const KA = ['clogs premium academic acid depend penalty graduate echo pancake echo remind chew lend epidemic unusual jury museum story crystal deal',
       'clogs premium academic agency alien lips guilt evoke demand axle nervous coastal climate cinema tadpole lawsuit floral miracle rival credit',
       'clogs premium academic always carbon thumb axis equation emperor teammate nail cover machine ordinary meaning impact amuse scroll snapshot spew'];
-    const KB = [['grief merchant acrobat easy actress become petition unknown maximum helpful ending training mother shelter justice adorn famous emperor provide system morning salary huge minister impact ting exclude inmate shadow herald cargo award satoshi'],
-      ['grief merchant beard echo amount nuclear salary surface change wine minister coding spit rebuild spelling teammate rebuild carve involve victim have hesitate glasses survive scandal dilemma swing scene leaf educate peasant express volume',
-       'grief merchant beard email already peasant evoke club alien false havoc trip smell being short finger dance deadline adequate exact cover hush fancy estate username forward entrance skin justice advance union segment chemical']];
+    const KB = [['install lunch acrobat easy adult lizard phantom sweater biology peanut afraid true ordinary umbrella syndrome corner leader marathon snake jerky twice airport similar elite simple liquid legend deliver taxi amount overall epidemic genius'],
+      ['install lunch beard echo adult response fishing exotic unfair plastic pupal jacket bishop pink industry sugar carpet shame should guard texture finance average ambition prize society alarm tofu sack amazing funding tofu criminal',
+       'install lunch beard email august paper gather hybrid inherit triumph weapon firm editor blessing object include duration salt academic painting discuss change lunch forward juice screw dismiss graduate either amount reward language amount']];   // with passphrase TREZOR (in the stream label since the v2.10.0 review)
     const RA = '123456'.repeat(9), RB = '654321'.repeat(16) + '654', hx = (b) => Buffer.from(b).toString('hex');
     const msA = nc.createHash('sha256').update(RA).digest().subarray(0, 16), msB = nc.createHash('sha256').update(RB).digest();
     const mk = (rolls, o) => w.slip39Make(rolls, o);
@@ -3381,6 +3398,11 @@ async function probe(w, mutated, fast, only, hooks) {
     w.slip39Combine = async (m, p) => (m.includes(KA[2]) ? { ok: false, error: 'last share', masterSecret: null } : realCombine(m, p));
     a = await mk(RA, { bits: 128, groupThreshold: 1, groups: [[2, 3]] }); if (a.ok || !/\(last share\)/.test(a.error)) fails.push('slip39 make: every share is combined again in the self-check');
     w.slip39Combine = realCombine;
+    { // groups 2 of 5, three times, 1 group needed: every share of every group must still be combined (v2.10.0 review)
+      const o3 = { bits: 128, groupThreshold: 1, groups: [[2, 5], [2, 5], [2, 5]] }, full = await mk(RA, o3), late = full.ok ? [full.groups[0][2], full.groups[1][3], full.groups[2][4]] : [];
+      w.slip39Combine = async (m, p) => (late.some((s) => m.includes(s)) ? { ok: false, error: 'late share', masterSecret: null } : realCombine(m, p));
+      const r3 = await mk(RA, o3); if (!full.ok || r3.ok || !/\(late share\)/.test(r3.error)) fails.push('slip39 make: with groups, every share of every group is combined again in the self-check');
+      w.slip39Combine = realCombine; }
     w.slip39Parse = (m) => { const p = realParse(m); if (p.ok) p.share.memberThreshold++; return p; };
     a = await mk(RA, { bits: 128, groupThreshold: 1, groups: [[2, 3]] }); if (a.ok || !/does not hold the settings/.test(a.error)) fails.push('slip39 make: a share that reads back with other settings is not shown');
     w.slip39Parse = (m) => { const p = realParse(m); if (p.ok) p.share.memberIndex = 0; return p; };
@@ -4702,7 +4724,8 @@ const M = [
   ['Keystone: FORGE ignores the rules', 'const mnemonic = await rollsToMnemonic(hashInput(rolls), wc);', 'const mnemonic = await rollsToMnemonic(rolls, wc);'],
   ['Keystone: preview ignores the rules', 'const words = (await rollsToMnemonic(hashInput(rolls), wc)).split(" ");', 'const words = (await rollsToMnemonic(rolls, wc)).split(" ");'],
   ['Keystone: rules not part of the input signature', '(keystoneOn() ? "keystone" : "std") + "|" +', '"" +'],
-  ['Keystone: menu change does nothing', 'document.getElementById("diceRules").addEventListener("change", updateLabels);\n', ''],
+  ['Keystone: menu change does nothing', 'document.getElementById("diceRules").addEventListener("change", () => { ksWanted = false; updateLabels(); });\n', ''],
+  ['lengths: a rules choice at 21 words is overridden later', 'addEventListener("change", () => { ksWanted = false; updateLabels(); });', 'addEventListener("change", () => { updateLabels(); });'],
   ['Keystone: menu shown for coins', 'document.getElementById("rulesRow").style.display = method === "dice" ? "" : "none";', 'document.getElementById("rulesRow").style.display = "";'],
   ['Keystone: menu note missing', 'document.getElementById("rulesNote").textContent = keystoneOn() ?', 'document.getElementById("rulesNote").textContent = false ?'],
   ['Keystone: over the maximum still counts as enough', 'met = n >= need && !over,', 'met = n >= need,'],
@@ -4994,7 +5017,7 @@ const M = [
   ["backup plan: 4-letter forms not counted", "(t.length === 4 && wordFromPrefix(t))", "false"],
   ["backup plan: a misspelt word breaks the run", "(t.length >= 5 && closestWords(t, 1).some(w => wordDistance(t, w, 1) <= 1))", "false"],
   ["backup plan: one other word breaks the run", "else if(run && !miss){ miss = 1; }", "else if(false){ miss = 1; }"],
-  ["backup plan: short labels break the run", ".filter(x => x.length >= 3)){", ".filter(x => x.length >= 1)){"],
+  ["backup plan: short labels break the run", "    if(t.length < 3) continue;", ""],
   ["backup plan: a passphrase label is printed", "if(/\\b(pass\\s*phrase|password|passwort|pin)\\s*[:=]\\s*\\S/i.test(raw)) return", "if(false) return"],
   ["backup plan: grouped digits not joined", "const joined = raw.replace(/([0-9a-fA-F])[\\s.\\-]+(?=[0-9a-fA-F])/g, \"$1\");", "const joined = raw;"],
   ["backup plan: SeedQR digits printed", "if(/\\d{48,}/.test(joined) || ", "if(false || "],
@@ -5577,8 +5600,10 @@ const M = [
   ["slip39 make: not extendable by default", "extendable:opts.extendable !== false,", "extendable:opts.extendable === true,"],
   ["slip39 make: self-check result ignored", "  if(problem){ ms.fill(0); return fail(", "  if(false){ ms.fill(0); return fail("],
   ["slip39 make: self-check does not compare the secret", "const same = r.ok && r.masterSecret.length === ms.length && r.masterSecret.every((x, i) => x === ms[i]);", "const same = r.ok;"],
-  ["slip39 make: self-check combines once", "const rounds = Math.max(G, ...o.groups.map(x => x[1]));", "const rounds = 1;"],
-  ["slip39 make: self-check always the first shares", "for(let b = 0; b < t; b++) pick.push(groups[g][(k + b) % n]);", "for(let b = 0; b < t; b++) pick.push(groups[g][b % n]);"],
+  ["slip39 make: self-check combines once", "for(let k = 0; k < G || used.some(u => u.includes(false)); k++){", "for(let k = 0; k < 1; k++){"],
+  ["slip39 make: self-check stops before every share is used", "for(let k = 0; k < G || used.some(u => u.includes(false)); k++){", "for(let k = 0; k < G; k++){"],
+  ["slip39 make: self-check always the first shares", "      next[g] = (next[g] + t) % n;", "      next[g] = 0;"],
+  ["slip39 make: passphrase not in the share stream", "await s39mStream(h, out.settings + (pass ? \" p\" + hex(await sha256(pass)) : \"\"));", "await s39mStream(h, out.settings);"],
   ["slip39 make: self-check skips member thresholds", " || s.memberThreshold !== o.groups[g][0])", ")"],
   ["slip39 make: self-check skips member numbers", "s.groupCount !== G || s.memberIndex !== j ||", "s.groupCount !== G ||"],
   ["slip39 make: button never turned on", "  document.getElementById(\"s39mBtn\").disabled = !on;   // v2.10.0: SLIP39 shares from dice\n", ""],
@@ -5796,12 +5821,21 @@ const M = [
   ["reforge: a few phrases never listed", "res.phrases = res.valid.length <= REFORGE_FEW ?", "res.phrases = res.valid.length < 0 ?"],
   ["reforge: STOP without a target reported as done", "if(!target && !res.stopped && !plan.listable){", "if(!target && !plan.listable){"],
   ["reforge: damaged word shown as unknown", "(parsed.pats[i] ? \" (\" + parsed.pats[i] + \")\" : \" (unknown)\")", "(false ? \" (\" + parsed.pats[i] + \")\" : \" (unknown)\")"],
+  ["old electrum: plan print guard misses old words", "oldRun = OLD_EL_MAP.has(t) ? oldRun + 1 : 0; if(oldRun >= 12) return \"seed words\";", "oldRun = 0;"],
+  ["old electrum: plan print guard misses a hex seed", "some(h => (h.match(/\\d/g) || []).length >= 6)) return \"a seed written as hex", "some(h => false)) return \"a seed written as hex"],
+  ["old electrum: VERIFY ignores the recorded box", "    if(!both && said){", "    if(false){"],
+  ["reforge: ??? read as a 3-letter word", "  if(/^\\?+$/.test(t)) return WORDLIST.slice();", ""],
+  ["lengths: the Keystone choice is lost after 21 words", "  else if(!odd && ksWanted){ dr.value = \"keystone\"; ksWanted = false; }", ""],
+  ["sigcheck: legacy amount left open not marked", "      R.amountOpen = true; R.info.add(", "      R.amountOpen = false; R.info.add("],
+  ["sigcheck: legacy amount warning not in CHECKS", "  if(open.length) add(false,", "  if(false) add(false,"],
+  ["sigcheck: short coin record not marked", "{ coin = w; coin.fromWu = true; }", "{ coin = w; }"],
+  ["v2.10 twice: a run of one face is reported as typed twice", "    if(k === k[0].repeat(L)) continue;", ""],
   ["reforge: help line lost", "<b>Damaged backup:</b> inside a word, <code>?</code> is one letter you cannot read", "<b>Damaged backup:</b> inside a word, <code>?</code> is a letter"],
   // v2.10.0 card method and seed lengths (probe section 61)
   ["lengths: 15 words take 61 rolls", "return {12:50,15:62,18:75,21:87,24:99}[wc];", "return {12:50,15:61,18:75,21:87,24:99}[wc];"],
   ["lengths: 18 words take 191 flips", "if(mode===\"coin\") return {12:128,15:160,18:192,21:224,24:256}[wc];", "if(mode===\"coin\") return {12:128,15:160,18:191,21:224,24:256}[wc];"],
   ["lengths: 21-word dice seed hashed to 24 bytes", "async function rollsToMnemonic(rolls, wc){\n  const entLen = {12:16,15:20,18:24,21:28,24:32}[wc];", "async function rollsToMnemonic(rolls, wc){\n  const entLen = {12:16,15:20,18:24,21:24,24:32}[wc];"],
-  ["lengths: Keystone rules kept for 21 words", "ksOpt.disabled = odd; if(odd && dr.value === \"keystone\") dr.value = \"std\";", "ksOpt.disabled = false;"],
+  ["lengths: Keystone rules kept for 21 words", "ksOpt.disabled = odd; if(odd && dr.value === \"keystone\"){ dr.value = \"std\"; ksWanted = true; }", "ksOpt.disabled = false; if(false){ dr.value = \"std\"; ksWanted = true; }"],
   ["lengths: device claims for 18 rolls", "  if(wc !== 12 && wc !== 24) return \"Every \"", "  if(false) return \"Every \""],
   ["lengths: no dice rules note for 18 words", ": odd ? \"SeedSigner, Coldcard and Keystone make dice seeds of 12 or 24 words only, so \"", ": false ? \"SeedSigner, Coldcard and Keystone make dice seeds of 12 or 24 words only, so \""],
   ["lengths: no wallet note for 18 words", "    + (odd ? \". Some wallets take only 12 or 24 words", "    + (false ? \". Some wallets take only 12 or 24 words"],
