@@ -172,6 +172,42 @@ await child('password base85 80', { childApp: 'pwd85', childLen: '80' });
 await child('1000 rolls of a 6-sided die', { childApp: 'dice', childSides: '6', childRolls: '1000' });
 await child('1000 rolls of the largest die', { childApp: 'dice', childSides: '2147483647', childRolls: '1000' });
 
+// 5b. v2.10.0: SLIP39 shares made from dice. Each share is one sheet: N shares must print as exactly N pages, so no share runs
+// onto a second page (20 and 33 words, one group and several, a passphrase, the light theme and TEXT A+).
+for (const [label, setup, want] of [
+  ['2 of 3, 20 words', { s39mBits: '128', s39mT: '2', s39mN: '3', rolls: '123456'.repeat(9) }, 3],
+  ['16 of 16, 33 words', { s39mBits: '256', s39mT: '16', s39mN: '16', rolls: '6'.repeat(99) }, 16],
+  ['groups 1 of 1, 3 of 5, 2 of 6; passphrase', { s39mBits: '256', adv: '1 of 1\n3 of 5\n2 of 6', gt: '2', pass: 'TREZOR', rolls: '654321'.repeat(17) }, 12],
+]) {
+  for (const theme of ['dark', 'light', 'big']) {
+    if (theme === 'light') await p.evaluate(() => toggleTheme());
+    if (theme === 'big') await p.evaluate(() => toggleSize());
+    for (const format of ['Letter', 'A4']) {
+      const made = await p.evaluate(async (s) => {
+        document.querySelector('input[name=s39Mode][value=make]').checked = true; s39ModeChange();
+        for (const id of ['s39mBits', 's39mT', 's39mN']) if (s[id]) document.getElementById(id).value = s[id];
+        document.getElementById('s39mAdv').checked = !!s.adv; s39mAdvChange();
+        if (s.adv) { document.getElementById('s39mGroups').value = s.adv; document.getElementById('s39mGT').value = s.gt; }
+        document.getElementById('s39mPass').value = s.pass || ''; document.getElementById('s39mPass2').value = s.pass || '';
+        document.getElementById('s39mRolls').value = s.rolls; await s39mUi(); printS39Shares();
+        return { parts: document.querySelectorAll('#printOnly .ps-part').length, seed: document.body.classList.contains('print-seed') };
+      }, setup);
+      if (!made.seed) { ok(false, 'SLIP39 shares ' + label + ' (' + theme + ', ' + format + '): no sheet was made'); continue; }
+      await p.emulateMedia({ media: 'print' });
+      const shown = await p.evaluate(() => [...document.body.children].filter((e) => e.id !== 'printOnly' && getComputedStyle(e).display !== 'none').map((e) => e.id || e.className || e.tagName));
+      await p.emulateMedia({ media: null });
+      ok(shown.length === 0, 'SLIP39 shares ' + label + ' (' + theme + ', ' + format + '): only the sheets are laid out when printing (also shown: ' + shown.join(', ') + ')');
+      const n = pages(await p.pdf({ format }));
+      ok(made.parts === want && n === want, 'SLIP39 shares ' + label + ' (' + theme + ', ' + format + '): ' + want + ' shares print on exactly ' + want + ' pages, one each (got ' + made.parts + ' sheets, ' + n + ' pages)');
+      await p.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+      ok(await p.evaluate(() => !document.body.classList.contains('print-seed') && !document.getElementById('printOnly').textContent), 'SLIP39 shares ' + label + ': sheets wiped after printing');
+    }
+    if (theme === 'light') await p.evaluate(() => toggleTheme());
+    if (theme === 'big') await p.evaluate(() => toggleSize());
+  }
+}
+await p.evaluate(() => { s39mClear(); document.querySelector('input[name=s39Mode][value=combine]').checked = true; s39ModeChange(); });
+
 // 6. Multisig recovery sheets, from 2-of-2 up to the largest QR code (6-of-9) and past it (15 keys, no QR code).
 const cos = Array.from({ length: 15 }, () => { const m = HDKey.fromMasterSeed(randomBytes(32)); return { fp: m.fingerprint.toString(16).padStart(8, '0'), xpub: m.derive("m/48'/0'/0'/2'").publicExtendedKey }; });
 for (const [m, n] of [[2, 2], [2, 3], [3, 5], [5, 7], [6, 9], [7, 10], [15, 15]]) {

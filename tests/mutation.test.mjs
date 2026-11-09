@@ -2904,6 +2904,82 @@ async function probe(w, mutated, fast, only, hooks) {
       if (!two.ok || Buffer.from(two.masterSecret).toString('hex') !== V[3][2] || three.ok || !/Remove 1 of them/.test(three.error)) fails.push('slip39: a third share works with one other, and all three together are refused (exactly the threshold)'); }
   } catch (e) { fails.push('release-run checks: the probe crashed: ' + e.message); }
   }
+  if (SEC(67, "v2.10.0 SLIP39 shares made from dice (words from python-shamir-mnemonic; wallet from @scure)")) {
+  const oc = w.confirm, realCombine = w.slip39Combine, realParse = w.slip39Parse, realMake = w.slip39Make;
+  try {
+    // The words python-shamir-mnemonic (commit 9fcb9c8) makes from these rolls when given the page's stream (tests/vendor/slip39_ref.py).
+    const KA = ['clogs premium academic acid depend penalty graduate echo pancake echo remind chew lend epidemic unusual jury museum story crystal deal',
+      'clogs premium academic agency alien lips guilt evoke demand axle nervous coastal climate cinema tadpole lawsuit floral miracle rival credit',
+      'clogs premium academic always carbon thumb axis equation emperor teammate nail cover machine ordinary meaning impact amuse scroll snapshot spew'];
+    const KB = [['grief merchant acrobat easy actress become petition unknown maximum helpful ending training mother shelter justice adorn famous emperor provide system morning salary huge minister impact ting exclude inmate shadow herald cargo award satoshi'],
+      ['grief merchant beard echo amount nuclear salary surface change wine minister coding spit rebuild spelling teammate rebuild carve involve victim have hesitate glasses survive scandal dilemma swing scene leaf educate peasant express volume',
+       'grief merchant beard email already peasant evoke club alien false havoc trip smell being short finger dance deadline adequate exact cover hush fancy estate username forward entrance skin justice advance union segment chemical']];
+    const RA = '123456'.repeat(9), RB = '654321'.repeat(16) + '654', hx = (b) => Buffer.from(b).toString('hex');
+    const msA = nc.createHash('sha256').update(RA).digest().subarray(0, 16), msB = nc.createHash('sha256').update(RB).digest();
+    const mk = (rolls, o) => w.slip39Make(rolls, o);
+    let a = await mk(RA, { bits: 128, groupThreshold: 1, groups: [[2, 3]], passphrase: '' });
+    if (!a.ok || JSON.stringify(a.groups) !== JSON.stringify([KA]) || hx(a.masterSecret) !== hx(msA) || a.identifier !== 4821) fails.push('slip39 make: fixed rolls give the reference words (defaults: extendable, exponent 1)');
+    const b = await mk(RB, { bits: 256, groupThreshold: 2, groups: [[1, 1], [2, 2]], passphrase: 'TREZOR', extendable: false, iterationExponent: 0 });
+    if (!b.ok || JSON.stringify(b.groups) !== JSON.stringify(KB) || hx(b.masterSecret) !== hx(msB)) fails.push('slip39 make: groups, passphrase, not extendable, exponent 0 give the reference words');
+    { const s = realParse(KA[0]).share; if (!s || s.extendable !== true || s.iterationExponent !== 1 || s.memberThreshold !== 2 || s.groupCount !== 1) fails.push('slip39 make: the reference words read back as 2 of 3, extendable, exponent 1'); }
+    for (const [rolls, o, re, label] of [
+      ['1'.repeat(49), { bits: 128, groupThreshold: 1, groups: [[2, 3]] }, /^Roll a die at least 50 times/, '49 rolls'],
+      ['1'.repeat(98), { bits: 256, groupThreshold: 1, groups: [[2, 3]] }, /^Roll a die at least 99 times/, '98 rolls for 256 bits'],
+      ['0'.repeat(60), { bits: 128, groupThreshold: 1, groups: [[2, 3]] }, /only be the numbers 1 to 6 \("0" was typed\)/, 'a 0 in the rolls'],
+      [RA, { bits: 128, groupThreshold: 1, groups: [[1, 3]] }, /make just 1 share \(1 of 1\)/, '1 of 3'],
+      [RA, { bits: 128, groupThreshold: 1, groups: [[4, 3]] }, /from 1 to the number of shares \(3\)/, '4 of 3'],
+      [RA, { bits: 128, groupThreshold: 1, groups: [[2, 17]] }, /1 to 16 shares/, '17 shares'],
+      [RA, { bits: 128, groupThreshold: 3, groups: [[1, 1], [2, 2]] }, /groups needed must be from 1 to the number of groups \(2\)/, '3 of 2 groups'],
+      [RA, { bits: 128, groupThreshold: 1, groups: [[2, 3]], passphrase: 'café' }, /printable ASCII/, 'a non-ASCII passphrase'],
+    ]) { const r2 = await mk(rolls, o); if (r2.ok || !re.test(r2.error) || r2.groups.length) fails.push('slip39 make: refuses ' + label + ' (' + r2.error + ')'); }
+    // The self-check: a combine that gives another secret, a combine that fails only for the last share, a share that reads back wrongly.
+    w.slip39Combine = async (m, p) => { const r2 = await realCombine(m, p); if (r2.masterSecret) r2.masterSecret[0] ^= 1; return r2; };
+    a = await mk(RA, { bits: 128, groupThreshold: 1, groups: [[2, 3]] }); if (a.ok || a.groups.length || !/^The self-check failed/.test(a.error)) fails.push('slip39 make: shares that combine to another secret are not shown');
+    w.slip39Combine = async (m, p) => (m.includes(KA[2]) ? { ok: false, error: 'last share', masterSecret: null } : realCombine(m, p));
+    a = await mk(RA, { bits: 128, groupThreshold: 1, groups: [[2, 3]] }); if (a.ok || !/\(last share\)/.test(a.error)) fails.push('slip39 make: every share is combined again in the self-check');
+    w.slip39Combine = realCombine;
+    w.slip39Parse = (m) => { const p = realParse(m); if (p.ok) p.share.memberThreshold++; return p; };
+    a = await mk(RA, { bits: 128, groupThreshold: 1, groups: [[2, 3]] }); if (a.ok || !/does not hold the settings/.test(a.error)) fails.push('slip39 make: a share that reads back with other settings is not shown');
+    w.slip39Parse = (m) => { const p = realParse(m); if (p.ok) p.share.memberIndex = 0; return p; };
+    a = await mk(RA, { bits: 128, groupThreshold: 1, groups: [[2, 3]] }); if (a.ok) fails.push('slip39 make: a share that reads back with another number is not shown');
+    w.slip39Parse = realParse;
+    // The page: gate, defaults, result, the wallet (fingerprint and 10 + 10 addresses from @scure), wipes, print.
+    const typed = (id, v) => { $(id).value = v; $(id).dispatchEvent(new w.Event(/^(s39mRolls|s39mPass|s39mPass2|s39mGroups)$/.test(id) ? 'input' : 'change', { bubbles: true })); };
+    w.document.querySelector('input[name=s39Mode][value=make]').checked = true; w.s39ModeChange();
+    if ($('s39mBtn').disabled) fails.push('slip39 make: MAKE THE SHARES is on once the self-test passes');
+    w.eval('selfTestState = "fail"'); $('s39mRolls').value = RA; await w.s39mUi(); w.eval('selfTestState = "pass"'); if ($('s39mOut').textContent !== '') fails.push('slip39 make: waits for the self-test');
+    let got = null; w.slip39Make = async (x, o) => { got = await realMake(x, o); return got; };
+    $('s39mRolls').value = RA; $('s39mPass').value = ''; $('s39mPass2').value = ''; await w.s39mUi();
+    const out = $('s39mOut').textContent.split('\n\n').map((t) => t.split('\n').slice(1).join(' ').replace(/\s*\d+\.\s+/g, ' ').trim());
+    if (out.join('|') !== KA.join('|')) fails.push('slip39 make: the page shows the reference words');
+    if (!got || !got.masterSecret || got.masterSecret.some((x) => x !== 0)) fails.push('slip39 make: the master secret is wiped once the wallet is shown');
+    w.slip39Make = realMake;
+    { const root = HDKey.fromMasterSeed(msA), at = (p) => btc.p2wpkh(root.derive(p).publicKey).address, info = $('s39mInfo').textContent;
+      const lines = info.split('\n').filter((l) => /^[01]\/\d+ +bc1q/.test(l)).map((l) => l.split(/ +/));
+      const want = [0, 1].flatMap((ch) => Array.from({ length: 10 }, (_, i) => [ch + '/' + i, at(`m/84'/0'/0'/${ch}/${i}`)]));
+      if (JSON.stringify(lines) !== JSON.stringify(want) || !info.startsWith('Master fingerprint: ' + root.fingerprint.toString(16).padStart(8, '0') + '\n') ||
+        !info.endsWith(btc.p2tr(root.derive("m/86'/0'/0'/0/0").publicKey.slice(1)).address)) fails.push('slip39 make: fingerprint and 10 receive and 10 change addresses as @scure gives');
+      if (!/Any 2 of the 3 shares open the wallet/.test($('s39mStatus').textContent)) fails.push('slip39 make: the status says how many shares are needed'); }
+    if (!/user-select:\s*none/.test($('s39mOut').getAttribute('style') || '')) fails.push('slip39 make: the shares cannot be selected');
+    for (const id of ['s39mRolls', 's39mPass', 's39mPass2', 's39mGroups', 's39mBits', 's39mT', 's39mN', 's39mGT', 's39mExt', 's39mExp']) {
+      await w.s39mUi(); typed(id, $(id).value); if ($('s39mOut').textContent !== '' || $('s39mPrintRow').style.display !== 'none') fails.push('slip39 make: editing ' + id + ' clears the shares'); }
+    { const p = w.s39mUi(); typed('s39mRolls', RA); await p; if ($('s39mOut').textContent !== '') fails.push('slip39 make: an edit while it works leaves no old shares'); }
+    $('s39mPass').value = 'abc'; $('s39mPass2').value = 'abd'; await w.s39mUi(); if ($('s39mOut').textContent !== '' || !/do not match/.test($('s39mStatus').textContent)) fails.push('slip39 make: the passphrases must match');
+    $('s39mPass').value = ''; $('s39mPass2').value = '';
+    $('s39mAdv').checked = true; w.s39mAdvChange(); $('s39mGroups').value = '1 of 1\n3 of 5\n2/6'; $('s39mGT').value = '2'; await w.s39mUi();
+    { const g = await realMake(RA, { bits: 128, groupThreshold: 2, groups: [[1, 1], [3, 5], [2, 6]] });
+      const shown = $('s39mOut').textContent.split('\n\n').map((t) => t.split('\n').slice(1).join(' ').replace(/\s*\d+\.\s+/g, ' ').trim());
+      if (!g.ok || shown.join('|') !== g.groups.flat().join('|') || !/The wallet opens with 2 of the 3 groups/.test($('s39mStatus').textContent)) fails.push('slip39 make: advanced groups (2 of 1 of 1, 3 of 5, 2/6)'); }
+    let asked = 0; w.confirm = () => { asked++; return false; }; { let n = 0; const op = w.print; w.print = () => { n++; }; w.printS39Shares(); if (asked !== 1 || n !== 0) fails.push('slip39 make: PRINT asks first'); w.confirm = () => true; w.printS39Shares(); const parts = $('printOnly').querySelectorAll('.ps-part').length, txt = $('printOnly').textContent; w.dispatchEvent(new w.Event('afterprint')); w.print = op;
+      if (n !== 1 || parts !== 12 || !/^VOIDFORGE SLIP39 GROUP 1 OF 3, SHARE 1 OF 1SECRET\./.test(txt)) fails.push('slip39 make: each share prints on its own page'); }
+    $('s39mAdv').checked = false; w.s39mAdvChange();
+    await w.s39mUi(); w.clearAll(); if ($('s39mRolls').value !== '' || $('s39mOut').textContent !== '' || w.eval('s39mCtx')) fails.push('slip39 make: CLEAR ALL wipes the rolls and the shares');
+    $('s39mRolls').value = RA; if (!w.eval('autoHasSecrets()')) fails.push('slip39 make: auto-clear sees the rolls'); $('s39mRolls').value = '';
+    $('s39mRolls').value = RA; await w.s39mUi(); w.document.querySelector('input[name=s39Mode][value=combine]').checked = true; w.s39ModeChange();
+    if ($('s39mRolls').value !== '' || w.eval('s39mCtx')) fails.push('slip39 make: switching to Check or combine shares wipes the made shares');
+  } catch (e) { fails.push('slip39 make: the probe crashed: ' + e.message); }
+  w.confirm = oc; w.slip39Combine = realCombine; w.slip39Parse = realParse; w.slip39Make = realMake;
+  }
   if (SEC(54, "const meta = w.document.querySelector('meta[http-equiv=\"Cont")) {
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
@@ -4983,6 +5059,67 @@ const M = [
   ["review: typo result written after an edit", "const r = await descTypoFind(document.getElementById(\"typoIn\").value); if(run !== typoRun) return;", "const r = await descTypoFind(document.getElementById(\"typoIn\").value);"],
   ["review: one part of several taken as whole", "if(r.partial){ camMsg(", "if(false){ camMsg("],
   ["review: going online leaves a SeedQR scan on", "window.addEventListener(\"online\", () => { if(cam && CAM_TARGETS[cam.id].secret) camStop(", "window.addEventListener(\"online\", () => { if(false) camStop("],
+  // v2.10.0: SLIP39 shares made from dice (probe section 67)
+  ["slip39 make: master secret not the first bytes of the hash", "const h = await sha256(typed), ms = h.slice(0, o.bits / 8);", "const h = await sha256(typed), ms = h.slice(1, o.bits / 8 + 1);"],
+  ["slip39 make: rolls not hashed as typed", "const typed = String(rolls == null ? \"\" : rolls).replace(/\\s+/g, \"\")", "const typed = String(rolls == null ? \"\" : rolls).replace(/\\s+/g, \"\").replace(/6/g, \"0\")"],
+  ["slip39 make: identifier bytes swapped", "identifier = ((idb[0] << 8) | idb[1]) & 0x7fff;", "identifier = ((idb[1] << 8) | idb[0]) & 0x7fff;"],
+  ["slip39 make: identifier always 0", "identifier = ((idb[0] << 8) | idb[1]) & 0x7fff;", "identifier = ((idb[0] << 8) | idb[1]) & 0;"],
+  ["slip39 make: stream label changed", "const S39M_LABEL = \"VOIDFORGE SLIP39 shares v1\";", "const S39M_LABEL = \"VOIDFORGE SLIP39 shares v2\";"],
+  ["slip39 make: settings left out of the stream", "new TextEncoder().encode(S39M_LABEL + \" \" + settings);", "new TextEncoder().encode(S39M_LABEL + \" \");"],
+  ["slip39 make: extendable flag left out of the settings", "\" ext\" + (o.extendable ? 1 : 0) + \" e\" + o.iterationExponent;", "\" ext1\" + \" e\" + o.iterationExponent;"],
+  ["slip39 make: stream separator byte changed", "      m.set(msg); m[msg.length] = 0;\n", "      m.set(msg); m[msg.length] = 1;\n"],
+  ["slip39 make: stream counter never moves", "      c++;\n      buf = s39Concat(buf,", "      buf = s39Concat(buf,"],
+  ["slip39 make: stream counter little-endian", "m.set([(c >>> 24) & 255, (c >>> 16) & 255, (c >>> 8) & 255, c & 255], msg.length + 1);", "m.set([c & 255, (c >>> 8) & 255, (c >>> 16) & 255, (c >>> 24) & 255], msg.length + 1);"],
+  ["slip39 make: stream bytes reused", "const out = buf.slice(0, n); buf = buf.slice(n);", "const out = buf.slice(0, n);"],
+  ["slip39 make: encryption with 3 rounds", "  for(let i = 0; i < S39_ROUNDS; i++){\n    const f = await s39Round(i, passBytes, e, saltPrefix, r);", "  for(let i = 0; i < S39_ROUNDS - 1; i++){\n    const f = await s39Round(i, passBytes, e, saltPrefix, r);"],
+  ["slip39 make: encryption ignores the salt rule", "const saltPrefix = !extendable ? s39Concat(", "const saltPrefix = false ? s39Concat("],
+  ["slip39 make: encryption halves joined the wrong way", "  return s39Concat(r, l);   // EMS = R || L\n", "  return s39Concat(l, r);   // EMS = R || L\n"],
+  ["slip39 make: passphrase not used to encrypt", "const ems = await s39Encrypt(ms, new TextEncoder().encode(pass), o.iterationExponent,", "const ems = await s39Encrypt(ms, new TextEncoder().encode(\"\"), o.iterationExponent,"],
+  ["slip39 make: exponent not used to encrypt", "new TextEncoder().encode(pass), o.iterationExponent, identifier, o.extendable);", "new TextEncoder().encode(pass), 0, identifier, o.extendable);"],
+  ["slip39 make: digest with key and message swapped", "const d = s39Concat((await s39HmacSha256(r, secret)).slice(0, S39_DIGEST_BYTES), r);", "const d = s39Concat((await s39HmacSha256(secret, r)).slice(0, S39_DIGEST_BYTES), r);"],
+  ["slip39 make: digest random part left out", "const base = shares.concat([{x:S39_DIGEST_INDEX, y:d}, {x:S39_SECRET_INDEX, y:secret}]);", "const base = shares.concat([{x:S39_SECRET_INDEX, y:secret}]);"],
+  ["slip39 make: one random share too few", "  for(let i = 0; i < threshold - 2; i++) shares.push({x:i, y:await take(secret.length)});", "  for(let i = 0; i < threshold - 3; i++) shares.push({x:i, y:await take(secret.length)});"],
+  ["slip39 make: threshold 1 split like the others", "  if(threshold === 1) return Array.from({length:count}, (_, i) => ({x:i, y:secret.slice()}));", "  if(threshold === 0) return Array.from({length:count}, (_, i) => ({x:i, y:secret.slice()}));"],
+  ["slip39 make: shares interpolated at the wrong index", "  for(let i = threshold - 2; i < count; i++) shares.push({x:i, y:s39Interpolate(base, i)});", "  for(let i = threshold - 2; i < count; i++) shares.push({x:i, y:s39Interpolate(base, i + 1)});"],
+  ["slip39 make: group index field shifted", "const p = (f.groupIndex << 16) | ((f.groupThreshold - 1) << 12)", "const p = (f.groupIndex << 15) | ((f.groupThreshold - 1) << 12)"],
+  ["slip39 make: group threshold stored as is", "| ((f.groupThreshold - 1) << 12) | ((f.groupCount - 1) << 8)", "| ((f.groupThreshold) << 12) | ((f.groupCount - 1) << 8)"],
+  ["slip39 make: group count stored as is", "| ((f.groupCount - 1) << 8) | (f.memberIndex << 4)", "| ((f.groupCount) << 8) | (f.memberIndex << 4)"],
+  ["slip39 make: member threshold stored as is", "| (f.memberIndex << 4) | (f.memberThreshold - 1);", "| (f.memberIndex << 4) | (f.memberThreshold);"],
+  ["slip39 make: extendable bit always set", "const idExp = (f.identifier << 5) | ((f.extendable ? 1 : 0) << 4) | f.iterationExponent;", "const idExp = (f.identifier << 5) | (1 << 4) | f.iterationExponent;"],
+  ["slip39 make: checksum not finished", "const pm = s39Polymod(values.concat(data, [0, 0, 0])) ^ 1;", "const pm = s39Polymod(values.concat(data, [0, 0, 0]));"],
+  ["slip39 make: padding put after the value", "const bits = \"0\".repeat(nWords * 10 - value.length * 8) + Array.from(value, b => b.toString(2).padStart(8, \"0\")).join(\"\");", "const bits = Array.from(value, b => b.toString(2).padStart(8, \"0\")).join(\"\") + \"0\".repeat(nWords * 10 - value.length * 8);"],
+  ["slip39 make: 1 of N allowed", "if(t === 1 && n > 1) return name", "if(false) return name"],
+  ["slip39 make: more needed than made allowed", "if(t < 1 || t > n) return name", "if(t < 1) return name"],
+  ["slip39 make: 17 shares allowed", "if(!Number.isInteger(t) || !Number.isInteger(n) || n < 1 || n > 16)", "if(!Number.isInteger(t) || !Number.isInteger(n) || n < 1 || n > 17)"],
+  ["slip39 make: more groups needed than made allowed", "o.groupThreshold < 1 || o.groupThreshold > G) return", "o.groupThreshold < 1) return"],
+  ["slip39 make: 49 rolls enough", "const S39M_ROLLS = {128: 50, 256: 99};", "const S39M_ROLLS = {128: 49, 256: 99};"],
+  ["slip39 make: 98 rolls enough for 256 bits", "const S39M_ROLLS = {128: 50, 256: 99};", "const S39M_ROLLS = {128: 50, 256: 98};"],
+  ["slip39 make: 0 accepted as a roll", "const bad = typed.match(/[^1-6]/);", "const bad = typed.match(/[^0-6]/);"],
+  ["slip39 make: passphrase rules skipped", "  if(passErr) return fail(passErr);\n  const typed", "  const typed"],
+  ["slip39 make: default exponent 0", "const S39M_EXP_DEFAULT = 1;", "const S39M_EXP_DEFAULT = 0;"],
+  ["slip39 make: not extendable by default", "extendable:opts.extendable !== false,", "extendable:opts.extendable === true,"],
+  ["slip39 make: self-check result ignored", "  if(problem){ ms.fill(0); return fail(", "  if(false){ ms.fill(0); return fail("],
+  ["slip39 make: self-check does not compare the secret", "const same = r.ok && r.masterSecret.length === ms.length && r.masterSecret.every((x, i) => x === ms[i]);", "const same = r.ok;"],
+  ["slip39 make: self-check combines once", "const rounds = Math.max(G, ...o.groups.map(x => x[1]));", "const rounds = 1;"],
+  ["slip39 make: self-check always the first shares", "for(let b = 0; b < t; b++) pick.push(groups[g][(k + b) % n]);", "for(let b = 0; b < t; b++) pick.push(groups[g][b % n]);"],
+  ["slip39 make: self-check skips member thresholds", " || s.memberThreshold !== o.groups[g][0])", ")"],
+  ["slip39 make: self-check skips member numbers", "s.groupCount !== G || s.memberIndex !== j ||", "s.groupCount !== G ||"],
+  ["slip39 make: button never turned on", "  document.getElementById(\"s39mBtn\").disabled = !on;   // v2.10.0: SLIP39 shares from dice\n", ""],
+  ["slip39 make: works before the self-test passes", "async function s39mUi(){\n  if(!gateOk()) return;", "async function s39mUi(){"],
+  ["slip39 make: passphrase boxes not compared", "if(o.passphrase !== document.getElementById(\"s39mPass2\").value) return say(", "if(false) return say("],
+  ["slip39 make: exponent change keeps the shares", "\"s39mExt\", \"s39mExp\"]) document.getElementById(id).addEventListener(", "\"s39mExt\"]) document.getElementById(id).addEventListener("],
+  ["slip39 make: shares written after an edit", "if(run !== s39mRun){ if(r.masterSecret) r.masterSecret.fill(0); return; }", "if(false){ if(r.masterSecret) r.masterSecret.fill(0); return; }"],
+  ["slip39 make: master secret kept after use", "try { w = await s39mWalletText(r.masterSecret); } finally { r.masterSecret.fill(0); }", "try { w = await s39mWalletText(r.masterSecret); } finally { }"],
+  ["slip39 make: CLEAR ALL keeps the shares", "  s39mClear();   // v2.10.0: SLIP39 shares made from dice (secret)\n", ""],
+  ["slip39 make: auto-clear does not see the rolls", "\"dcRolls\", \"s39mRolls\", \"s39mPass\", \"s39mPass2\"];", "\"dcRolls\"];"],
+  ["slip39 make: switching mode keeps the shares", "  clearS39(); s39mClear();\n}", "  clearS39();\n}"],
+  ["slip39 make: shares can be selected", "margin:8px 0 0; -webkit-user-select:none; user-select:none;\"></pre>", "margin:8px 0 0;\"></pre>"],
+  ["slip39 make: print without asking", "if(!confirm(\"Printing sends the shares to a printer", "if(false && !confirm(\"Printing sends the shares to a printer"],
+  ["slip39 make: shares not printed on separate pages", "const sheet = add(\"ps-part\", \"\");", "const sheet = add(\"\", \"\");"],
+  ["slip39 make: change addresses from the receive chain", "for(const chain of [0, 1]){ const [k2, c2] = await ckdPriv(k, c, chain, false);", "for(const chain of [0, 1]){ const [k2, c2] = await ckdPriv(k, c, 0, false);"],
+  ["slip39 make: addresses of account 1 listed", "for(const [i, h] of [[84, true], [0, true], [0, true]]) [k, c] = await ckdPriv(k, c, i, h);", "for(const [i, h] of [[84, true], [0, true], [1, true]]) [k, c] = await ckdPriv(k, c, i, h);"],
+  ["slip39 make: groups needed not read", "groups = g.groups; gt = parseInt(v(\"s39mGT\"), 10); }", "groups = g.groups; gt = 1; }"],
+  ["slip39 make: 2/6 not read as a group", "const m = items[i].match(/^(\\d{1,2})\\s*(?:of|\\/)\\s*(\\d{1,2})$/i);", "const m = items[i].match(/^(\\d{1,2})\\s*(?:of)\\s*(\\d{1,2})$/i);"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
