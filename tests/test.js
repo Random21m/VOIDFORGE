@@ -2011,6 +2011,51 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     $('cdHex').value='ab'; w.clearAll(); ok($('cdCards').value===''&&$('cdHex').value==='','CLEAR ALL empties the cards and hex boxes');
     ok(/\["Card entropy"/.test(html)&&/\["Hex entropy"/.test(html),'dictionary: Card entropy and Hex entropy');
     r.w.close(); }
+  // v2.10.0: signature checks in Inspect a transaction and Compare two transactions (PSBTs signed by @scure/btc-signer)
+  { const btc=require('@scure/btc-signer'); const {secp256k1}=require('@noble/curves/secp256k1');
+    const r=load(); await r.ready(); const w=r.w, $=r.$, sleep=ms=>new Promise(z=>setTimeout(z,ms));
+    const k=nc.createHash('sha256').update('v2.10.0 unit').digest(), pub=secp256k1.getPublicKey(k,true), p=btc.p2wpkh(pub);
+    const mk=()=>{ const tx=new btc.Transaction(); tx.addInput({txid:new Uint8Array(32).fill(9),index:0,witnessUtxo:{script:p.script,amount:100000n}}); tx.addOutput({script:btc.p2wpkh(secp256k1.getPublicKey(nc.createHash('sha256').update('pay').digest(),true)).script,amount:99000n}); return tx; };
+    const t1=mk(); t1.signIdx(k,0); const part=Buffer.from(t1.toPSBT(0)).toString('base64');
+    const inspect=async(v)=>{ $('psbtInput').value=v; $('psbtNet').value='main'; await w.runPsbt(); return $('psbtOut').textContent; };
+    let out=await inspect(part);
+    ok(/\n   signatures: VALID: the signature matches this transaction and the coin it spends\./.test(out)&&/OK    Every signature found was checked and is valid \(1 signature\)\./.test(out),'signature check: a partly signed PSBT says VALID for its input and OK in the checks');
+    ok(/VERDICT: no problems found/.test(out),'signature check: a valid signature and nothing else wrong give a clean verdict');
+    const sp=[...$('psbtOut').querySelectorAll('span')]; ok(sp.length===1&&sp[0].className==='sv-ok'&&sp[0].textContent==='VALID','signature check: the word VALID is shown in green (class sv-ok)');
+    // one byte of the signature changed: INVALID, red, a FAIL that blocks the verdict
+    { const t=btc.Transaction.fromPSBT(t1.toPSBT(0)), ps=t.getInput(0).partialSig[0], s2=Uint8Array.from(ps[1]); s2[10]^=1; t.updateInput(0,{partialSig:undefined},true); t.updateInput(0,{partialSig:[[ps[0],s2]]},true);
+      out=await inspect(Buffer.from(t.toPSBT(0)).toString('base64'));
+      ok(/signatures: INVALID\. Do not broadcast: this signature does not match/.test(out)&&/FAIL  INVALID SIGNATURE on input 0\. Do not broadcast: this signature does not match\./.test(out)&&/NO CLEAN VERDICT/.test(out),'signature check: a changed signature is INVALID, with a FAIL and NO CLEAN VERDICT');
+      ok($('psbtOut').querySelector('span.sv-bad').textContent==='INVALID','signature check: the word INVALID is shown in red (class sv-bad)'); }
+    // the coin described two ways: a wrong amount could be hidden
+    { const fund=btc.RawTx.encode({version:2,segwitFlag:false,inputs:[{txid:new Uint8Array(32).fill(1),index:0,finalScriptSig:new Uint8Array(0),sequence:0xffffffff}],outputs:[{amount:100000n,script:p.script}],witnesses:[],lockTime:0});
+      const id=nc.createHash('sha256').update(nc.createHash('sha256').update(fund).digest()).digest().reverse();
+      const t=new btc.Transaction(); t.addInput({txid:id,index:0,witnessUtxo:{script:p.script,amount:100001n}}); t.addOutput({script:p.script,amount:90000n}); t.signIdx(k,0);
+      // btc-signer refuses to write a PSBT whose two coin records disagree, so this one is written by hand: the full previous
+      // transaction (100000 sats) and a short record that says 100001 sats, with the signature made for 100001
+      const vi=n=>n<0xfd?[n]:[0xfd,n&255,n>>8], kv=(k2,v)=>[...vi(k2.length),...k2,...vi(v.length),...v], [ppub,psig]=t.getInput(0).partialSig[0], wu=[0xa1,0x86,1,0,0,0,0,0,p.script.length,...p.script];
+      out=await inspect(Buffer.from(Uint8Array.from([0x70,0x73,0x62,0x74,0xff,...kv([0],t.unsignedTx),0,...kv([0],fund),...kv([1],wu),...kv([2,...ppub],psig),0,0])).toString('base64'));
+      ok(/FAIL  Input 0: the PSBT describes the coin being spent in two different ways \(amount or script\)\. A wrong amount could be hidden: do not sign\./.test(out)&&/signatures: NOT CHECKED: the PSBT describes the coin it spends in two different ways/.test(out),'signature check: a short coin record that disagrees with the full previous transaction is caught (a wrong amount could be hidden)'); }
+    // a raw signed transaction alone: NOT CHECKED in gray; with the PSBT it came from in Compare: VALID
+    const t2=mk(); t2.signIdx(k,0); t2.finalize(); const raw=t2.hex;
+    out=await inspect(raw);
+    ok(/signatures: NOT CHECKED: cannot check without the coins it spends\./.test(out)&&/NOTE  The signatures of input 0 were NOT CHECKED .*a raw transaction does not carry the coins it spends/.test(out)&&$('psbtOut').querySelector('span.sv-na').textContent==='NOT CHECKED','signature check: a raw transaction alone is NOT CHECKED (gray, with why)');
+    $('cmpA').value=part; $('cmpB').value=raw; $('cmpNet').value='main'; await w.runCompare(); const c=$('cmpOut').textContent;
+    ok(/  signatures \(first, input 0\): VALID/.test(c)&&/  signatures \(second, input 0\): VALID/.test(c)&&$('cmpOut').querySelectorAll('span.sv-ok').length===2,'signature check: Compare checks the raw transaction with the coin named in the PSBT');
+    { const t=btc.Transaction.fromRaw(t2.extract()), o=t.getOutput(0); t.updateOutput(0,{amount:o.amount-1n},true); $('cmpB').value=t.hex; await w.runCompare();
+      ok(/  signatures \(second, input 0\): INVALID/.test($('cmpOut').textContent)&&/^INVALID SIGNATURE FOUND: do not broadcast\. /m.test($('cmpOut').textContent),'signature check: Compare says INVALID SIGNATURE FOUND when the second transaction\'s signature does not match'); }
+    // a stale result is never shown: the input changes while the check runs
+    { $('psbtInput').value=part; const run=w.runPsbt(); await sleep(0); $('psbtInput').value='x'; $('psbtInput').dispatchEvent(new w.Event('input')); await run;
+      ok($('psbtOut').textContent===''&&$('psbtOut').style.display==='none'&&!/VALID/.test($('psbtStatus').textContent),'signature check: editing the PSBT while signatures are checked drops the old result'); }
+    { $('cmpA').value=part; $('cmpB').value=raw; const run=w.runCompare(); await sleep(0); $('cmpB').value='y'; $('cmpB').dispatchEvent(new w.Event('input')); await run;
+      ok($('cmpOut').textContent==='','signature check: editing Compare while signatures are checked drops the old result'); }
+    // an unsigned PSBT: no signature line, no signature check line
+    out=await inspect(Buffer.from(mk().toPSBT(0)).toString('base64')); ok(!/signatures:/.test(out)&&!/Every signature found/.test(out),'signature check: an unsigned PSBT gets no signature lines');
+    // the self-test gate and CLEAR
+    w.setGate('fail','SELF-TEST FAILED','bad'); $('psbtOut').textContent=''; $('psbtInput').value=part; await w.runPsbt(); ok($('psbtOut').textContent==='','signature check: nothing runs before the self-test passes'); w.setGate('pass','SELF-TEST PASSED','good');
+    await inspect(part); w.clearPsbt(true); ok($('psbtOut').textContent===''&&$('psbtInput').value==='','signature check: CLEAR empties the result and the box');
+    ok(/whether each signature is <b>valid<\/b>/.test(html)&&/\["Signature hash \(digest\)"/.test(html)&&/\["Low-S rule"/.test(html)&&/\["Strict DER"/.test(html)&&/\["NULLDUMMY"/.test(html)&&/\["BIP143"/.test(html),'signature check: the help text and the dictionary (Signature hash, Low-S rule, Strict DER, NULLDUMMY, BIP143)');
+    r.w.close(); }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
 

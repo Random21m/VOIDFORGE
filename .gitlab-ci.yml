@@ -29,7 +29,7 @@ test-unit:
 
 test-oracle:
   <<: *test
-  script: [node tests/oracle.test.mjs]
+  script: [node tests/oracle.test.mjs, node tests/sigcheck.test.mjs]
 
 test-fuzz:
   <<: *test

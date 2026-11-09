@@ -253,6 +253,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   body.light { --ok-text: #06683a; }
   .status.ok { color: var(--success); }
   .status.bad { color: var(--danger); }
+  .sv-ok { color: var(--ok-text); font-weight: 700; } .sv-bad { color: var(--bad-text); font-weight: 700; } .sv-na { color: var(--muted); font-weight: 700; }
   .status.warn { color: var(--warn-text); }
   .entropy-bar {
     height: 6px;
@@ -1547,7 +1548,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <details id="psbtBox">
       <summary>Inspect a transaction (PSBT)<span class="tag tag-ro">READ ONLY</span><small>See where the money goes and the fee before signing.</small></summary>
-      <p class="hint" style="margin:8px 0;">Shows what a partly signed Bitcoin transaction (PSBT) from a wallet app would do: where the money comes from, where it goes, and the fee, so you can check it before signing on your hardware wallet. <b>This only reads and displays. It cannot sign, never uses your seed words, and sends nothing.</b> Paste the PSBT (base64 or hex) or choose the .psbt file. If you typed your words in the CHECK A BACKUP tab, outputs that carry this wallet&rsquo;s key information are marked. It also checks any signatures it finds: whether two of them share a <b>nonce</b> (a repeated secret number that lets anyone work out the private key) and whether a signature covers the whole transaction.</p>
+      <p class="hint" style="margin:8px 0;">Shows what a partly signed Bitcoin transaction (PSBT) from a wallet app would do: where the money comes from, where it goes, and the fee, so you can check it before signing on your hardware wallet. <b>This only reads and displays. It cannot sign, never uses your seed words, and sends nothing.</b> Paste the PSBT (base64 or hex) or choose the .psbt file. If you typed your words in the CHECK A BACKUP tab, outputs that carry this wallet&rsquo;s key information are marked. It also checks any signatures it finds: whether two of them share a <b>nonce</b> (a repeated secret number that lets anyone work out the private key), whether a signature covers the whole transaction, and whether each signature is <b>valid</b> (it matches the transaction and the coin it spends). Each input says VALID, INVALID or NOT CHECKED (with why). A raw transaction does not carry the coins it spends, so its signatures can be checked only in Compare two transactions, next to the PSBT it came from.</p>
       <textarea id="psbtInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="PSBT (base64 or hex, or animated QR text)" placeholder="Paste the PSBT here (starts with cHNidP8 or 70736274ff), or the text of an animated QR: UR or BBQr parts, one per line"></textarea>
       <div style="display:flex; gap:6px; align-items:center; margin-top:6px; flex-wrap:wrap;">
         <input type="file" id="psbtFile" accept=".psbt,application/octet-stream" aria-label="Choose a PSBT file" style="flex:1; min-width:0;">
@@ -1562,7 +1563,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <details id="cmpBox">
       <summary>Compare two transactions<span class="tag tag-ro">READ ONLY</span><small>Did the signer change anything? Is a fee bump a plain fee bump?</small></summary>
-      <p class="hint" style="margin:8px 0;">Paste the transaction you <b>sent</b> and the one that <b>came back</b> (from your signer or wallet). Or paste an original and its fee-bump replacement. This lists every difference in plain words. <b>It only reads and compares. It cannot sign and sends nothing anywhere.</b></p>
+      <p class="hint" style="margin:8px 0;">Paste the transaction you <b>sent</b> and the one that <b>came back</b> (from your signer or wallet). Or paste an original and its fee-bump replacement. This lists every difference in plain words, and checks every signature it can (for a raw transaction, with the coins named in the other one if that is a PSBT). <b>It only reads and compares. It cannot sign and sends nothing anywhere.</b></p>
       <label style="display:block; font-size:13px; color:var(--muted);">First (the original, or what you sent)</label>
       <textarea id="cmpA" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="First transaction (PSBT or raw hex)" placeholder="PSBT (base64 or hex) or raw transaction hex"></textarea>
       <label style="display:block; font-size:13px; color:var(--muted); margin-top:6px;">Second (the replacement, or what came back)</label>
@@ -3588,6 +3589,7 @@ const DICT = [
   ["BIP125", "The standard for replace-by-fee: how a transaction signals that it may be replaced by one with a higher fee.", "", "Standards (BIPs)"],
   ["BIP137", "The classic way to sign a message with a Bitcoin key: 65 bytes, written in base64, from which the public key can be worked out. Its first byte names the address type. Bitcoin Core, Electrum, Sparrow, Trezor and Coldcard make it.", "EXTRA TOOLS: Verify a signed message.", "Standards (BIPs)"],
   ["BIP141 (SegWit)", "The rule change that created SegWit.", "", "Standards (BIPs)"],
+  ["BIP143", "The SegWit way to work out what a signature signs. It covers the amount of the coin being spent, so a signer told a wrong amount makes a signature the network refuses.", "Inspect a transaction (PSBT) checks these signatures.", "Standards (BIPs)"],
   ["BIP173", "The standard that defines bech32 addresses (bc1q).", "", "Standards (BIPs)"],
   ["BIP174", "The standard for PSBT, the file format for passing partly signed transactions.", "", "Standards (BIPs)"],
   ["Animated QR", "A QR code that changes several times a second. Each frame carries one part of something too big for a single code, such as a multisig wallet or a PSBT, and the scanning device joins the parts. The two common formats are UR and BBQr.", "Multisig wallet, Animated QR for a signing device or wallet app. The Inspect a transaction (PSBT) reads pasted UR and BBQr parts.", "Wallets & backups"],
@@ -3811,7 +3813,11 @@ const DICT = [
   ["Shamir's Secret Sharing", "Splitting a secret into shares so that a chosen number of them rebuild it and fewer reveal nothing. SLIP39 and Codex32 use it.", "EXTRA TOOLS: SLIP39 shares (Shamir backup).", "Keys & seeds"],
   ["Side channel", "A leak of secrets through things like timing, power use, sound or light instead of through the data itself.", "", "Privacy & security"],
   ["Sidechain", "A separate blockchain linked to Bitcoin, with its own rules, where coins can be moved to and from.", "", "Lightning & layers"],
-  ["Sighash", "A flag on a signature saying which parts of the transaction it covers. The usual one (SIGHASH_ALL) covers every input and output.", "", "Transactions"],
+  ["Sighash", "A flag on a signature saying which parts of the transaction it covers. The usual one (SIGHASH_ALL) covers every input and output.", "Inspect a transaction (PSBT) names it and checks the signature with it.", "Transactions"],
+  ["Signature hash (digest)", "The 32-byte summary of a transaction that a signature really signs. Legacy coins, SegWit (BIP143) and Taproot (BIP341, BIP342) each work it out in their own way, and the sighash flag picks which parts go in.", "Inspect a transaction (PSBT) works it out to check that each signature is VALID.", "Transactions"],
+  ["Low-S rule", "Every ECDSA signature has a twin with a different S value that is just as valid. Nodes pass on only the one with the low S, so nobody can change a signature while it travels. It is a relay rule, not a consensus rule.", "Inspect a transaction (PSBT) notes a high S.", "Transactions"],
+  ["Strict DER", "The one exact byte layout an ECDSA signature must use. Since BIP66 (2015) the network refuses a signature written in any looser layout.", "Inspect a transaction (PSBT) checks it.", "Transactions"],
+  ["NULLDUMMY", "OP_CHECKMULTISIG takes one extra item from the stack that it never uses. Since SegWit (BIP147) that item must be empty, or the network refuses the transaction.", "Inspect a transaction (PSBT) checks it.", "Addresses & scripts"],
   ["Signature", "The proof, made with a private key, that lets a coin be spent. Bitcoin uses ECDSA and, for Taproot, Schnorr signatures.", "", "Transactions"],
   ["Signed message", "Text signed with the key of an address, to show that whoever holds that key agrees with it, for example to prove an address is yours. Anyone can check it with the address alone. It does not show who holds the key, or that any coins are still there.", "EXTRA TOOLS: Verify a signed message.", "Keys & seeds"],
   ["Signer", "A device or program that holds the keys and signs transactions, such as a hardware wallet.", "", "Wallets & backups"],
@@ -4796,7 +4802,7 @@ function nonceReuse(sigs){ // groups of different signatures that share the same
 function sighashName(k,h){ const base=h&0x1f, ac=(h&0x80)?" + ANYONECANPAY":""; return (k==="Schnorr"&&h===0) ? "ALL (default)" : (base===1?"ALL":base===2?"NONE":base===3?"SINGLE":"unknown (0x"+h.toString(16)+")")+ac; }
 function sighashOdd(k,h){ return !(h===1 || (k==="Schnorr" && h===0)); }
 async function inspectRawTx(bytes, net){
-  const r=psbtReader(bytes), res={raw:true, ins:[], outs:[], sigs:[]}; res.version=r.u32();
+  const r=psbtReader(bytes), res={raw:true, bytes, ins:[], outs:[], sigs:[]}; res.version=r.u32();
   let seg=false, n=r.varint(); if(n===0){ if(r.byte()!==1) throw new Error("not a transaction"); seg=true; n=r.varint(); }
   if(n===0 || n>100000) throw new Error("not a transaction");
   const bodyStart=seg?6:4;
@@ -4868,7 +4874,7 @@ async function inspectPsbt(bytes, net){
     inMaps=tx.ins.map(()=>psbtReadMap(r)); outMaps=tx.outs.map(()=>psbtReadMap(r));
   } else if(pver===2){ tx=psbtV2Tx(glob, r); inMaps=tx.inMaps; outMaps=tx.outMaps; txBytes=psbtV2Serialize(tx); }   // fixes release: BIP370
   else throw new Error("PSBT version " + pver + " is not supported by this inspector.");
-  const res={version:tx.version, locktime:tx.locktime, psbtVersion:pver, ins:[], outs:[], sigs:[]};
+  const res={version:tx.version, locktime:tx.locktime, psbtVersion:pver, ins:[], outs:[], sigs:[], maps:inMaps};
   res.txid=hex((await sha256bytes(await sha256bytes(txBytes))).reverse());
   for(let i=0;i<tx.ins.length;i++){
     const m=inMaps[i], inp={txid:tx.ins[i].txid, vout:tx.ins[i].vout, seq:tx.ins[i].seq, amount:null, sigs:m.filter(x=>x.type===2).length, final:m.some(x=>x.type===7||x.type===8)};
@@ -4993,6 +4999,7 @@ function psbtChecks(res, fpWallet){
   const oddSig=sg.filter(x=>sighashOdd(x.kind,x.sighash)), oddReq=res.ins.map((x,i)=>({x,i})).filter(o=>o.x.sighashReq!==undefined && o.x.sighashReq!==1 && o.x.sighashReq!==0);
   if(sg.length || oddReq.length){ const bad=oddSig.length+oddReq.length;
     add(bad===0, bad===0 ? "Every signature covers the whole transaction (sighash ALL)." : bad + " signature" + (bad===1?"":"s") + " or signing request" + (bad===1?"":"s") + " use a sighash type other than ALL (" + [...new Set(oddSig.map(x=>"input " + x.input + ": " + sighashName(x.kind,x.sighash)).concat(oddReq.map(o=>"input " + o.i + " asks for " + sighashName("ECDSA",o.x.sighashReq))))].join("; ") + "). That lets other people change parts of the transaction after it is signed. Continue only if you set this up on purpose.", true); }
+  svChecks(res, add);   // v2.10.0: is each signature valid?
   const chg=(s)=>res.outs.filter(x=>x.fps.length && (x.change||"unverified")===s).length, nForged=chg("forged"), nVer=chg("verified"), nUnv=chg("unverified"), nOther=chg("other"), nMs=chg("multisig");
   if(nForged) add(false, nForged + " output" + (nForged===1?" claims":"s claim") + " to be this wallet's change but " + (nForged===1?"is":"are") + " NOT paid to this wallet's key at the path given. Do not sign: the change mark is forged (or the words or passphrase above belong to another wallet).", true);
   if(nVer) add(true, nVer + " output" + (nVer===1?" is":"s are") + " checked as this wallet's own change: paid to its key at the path given, made from the words above.");
@@ -5031,7 +5038,7 @@ function psbtReport(res, fpWallet){
   const L=[];
   L.push((res.psbtVersion===2 ? "PSBT version 2. " : "") + "Transaction version " + res.version + ", locktime " + res.locktime + ", " + res.ins.length + " input" + (res.ins.length===1?"":"s") + ", " + res.outs.length + " output" + (res.outs.length===1?"":"s") + ".");
   L.push("");
-  res.ins.forEach((x,i)=>{ L.push("INPUT " + i + ": " + (x.amount===null ? (x.prevMismatch ? "amount NOT trusted (the previous transaction included is not the one this input spends)" : "amount unknown (the PSBT does not include the coin being spent)") : btcText(x.amount)) + (x.address ? "\n   from " + x.address : "") + "\n   coin " + x.txid + ":" + x.vout + "\n   " + (x.final ? "finalized" : x.sigs + " signature" + (x.sigs===1?"":"s") + " so far")); });
+  res.ins.forEach((x,i)=>{ L.push("INPUT " + i + ": " + (x.amount===null ? (x.prevMismatch ? "amount NOT trusted (the previous transaction included is not the one this input spends)" : "amount unknown (the PSBT does not include the coin being spent)") : btcText(x.amount)) + (x.address ? "\n   from " + x.address : "") + "\n   coin " + x.txid + ":" + x.vout + "\n   " + (x.final ? "finalized" : x.sigs + " signature" + (x.sigs===1?"":"s") + " so far") + (x.sv && x.sv.state!=="none" ? "\n   signatures: " + svText(x.sv) : "")); });
   L.push("");
   res.outs.forEach((x,i)=>{ L.push("OUTPUT " + i + ": " + btcText(x.amount) + "\n   to " + x.address + (x.script && x.script[0]===0x6a ? "\n   data note: " + opReturnText(x.script) + "\n   (this output carries data, not money, and cannot be spent)" : "") + (x.fps.length ? psbtChangeLine(x) : (x.script && x.script[0]===0x6a ? "" : psbtUnmarkedLine(x, res.searched)))); });
   L.push("");
@@ -5074,6 +5081,7 @@ function compareTx(a, b){
   const sigDiff=[]; a.ins.forEach(x=>{ const y=b.ins.find(z=>cmpCoin(z)===cmpCoin(x)); if(y && sa(x)!==sa(y)) sigDiff.push("  " + cmpCoin(x) + ": " + sa(x) + " -> " + sa(y)); });
   L.push("SIGNATURES: " + (sigDiff.length ? "" : "same state on every shared input."));
   sigDiff.forEach(x=>L.push(x));
+  [[a,"first"],[b,"second"]].forEach(([t,w])=>t.ins.forEach((x,i)=>{ if(x.sv && x.sv.state!=="none") L.push("  signatures (" + w + ", input " + i + "): " + svText(x.sv)); }));   // v2.10.0
   L.push("");
   let verdict;
   if(sameId){
@@ -5107,10 +5115,12 @@ function compareTx(a, b){
     if(nr.length){ L.push("NONCE CHECK: FAIL. " + nr.length + " nonce value" + (nr.length===1?" is":"s are") + " shared by different signatures across the two transactions. That leaks a private key. Do not use the keys again and move the funds."); verdict="NONCE REUSE FOUND. " + verdict; }
     else L.push("NONCE CHECK: OK. No two different signatures across the " + allS.length + " found share a nonce (R value).");
   }
+  if([a,b].some(t=>t.ins.some(x=>x.sv && x.sv.state==="invalid"))) verdict="INVALID SIGNATURE FOUND: do not broadcast. " + verdict;   // v2.10.0
   L.push(verdict);
   return L.join("\n");
 }
 function clearCompare(all){
+  svCmpRun++;   // v2.10.0: a signature check still running for the old boxes is dropped
   const o=document.getElementById("cmpOut"); o.textContent=""; o.style.display="none";
   const t=document.getElementById("cmpStatus"); t.textContent=""; t.className="status";
   if(all){ document.getElementById("cmpA").value=""; document.getElementById("cmpB").value=""; }
@@ -5118,14 +5128,15 @@ function clearCompare(all){
 async function runCompare(){
   if(!gateOk()) return;
   clearCompare(false);
-  const st=document.getElementById("cmpStatus"), o=document.getElementById("cmpOut"), net=document.getElementById("cmpNet").value;
+  const st=document.getElementById("cmpStatus"), o=document.getElementById("cmpOut"), net=document.getElementById("cmpNet").value, run=svCmpRun;   // v2.10.0: run, to drop a stale result
   const one=async(id,label)=>{ try { return await inspectPsbt(psbtFromText(document.getElementById(id).value), net); } catch(e){ throw new Error(label + ": " + e.message); } };
   try { const a=await one("cmpA","First transaction"), b=await one("cmpB","Second transaction");
     // fixes release (review): change marks are checked against the wallet typed in CHECK A BACKUP, as in the inspector, never trusted
     let fpw=null, root=null; const r=await checkPhrase(document.getElementById("phrase").value);
     if(r.ok){ const sd=await mnemonicToSeed(r.mnemonic, document.getElementById("verifyPass").value); fpw=await fingerprintFromSeed(sd); root=await masterFromSeed(sd); }
     await psbtCheckChange(a, root, fpw, net); await psbtCheckChange(b, root, fpw, net);
-    st.className="status ok"; st.textContent="Compared. Read the result below."; o.textContent=compareTx(a,b); o.style.display="block"; }
+    if(run!==svCmpRun) return; st.textContent="Checking the signatures..."; await psbtSigCheck(a, b); await psbtSigCheck(b, a); if(run!==svCmpRun) return;   // v2.10.0
+    st.className="status ok"; st.textContent="Compared. Read the result below."; svPaint(o, compareTx(a,b)); o.style.display="block"; }
   catch(e){ st.className="status bad"; st.textContent=e.message; }
 }
 // ================= Backup practice (no real keys): a public test phrase to write down, hide, and check =================
@@ -5237,6 +5248,7 @@ function practiceClear(){
 }
 function jumpTo(id){ reveal(document.getElementById(id)); }
 function clearPsbt(all){
+  svRun++;   // v2.10.0: a signature check still running for the old input is dropped
   const o=document.getElementById("psbtOut"); o.textContent=""; o.style.display="none";
   const t=document.getElementById("psbtStatus"); t.textContent=""; t.className="status";
   if(all){ document.getElementById("psbtInput").value=""; document.getElementById("psbtFile").value=""; }
@@ -5244,14 +5256,16 @@ function clearPsbt(all){
 async function showPsbt(bytes){
   const st=document.getElementById("psbtStatus"), o=document.getElementById("psbtOut");
   clearPsbt(false);
+  const run=svRun;   // v2.10.0: an edit while this runs (clearPsbt) makes the result stale
   try {
     const net=document.getElementById("psbtNet").value, res=await inspectPsbt(bytes, net);
     let fpw=null, root=null; const r=await checkPhrase(document.getElementById("phrase").value);
     if(r.ok){ const sd=await mnemonicToSeed(r.mnemonic, document.getElementById("verifyPass").value); fpw=await fingerprintFromSeed(sd); root=await masterFromSeed(sd); }
     await psbtCheckChange(res, root, fpw, net);   // fixes release: a change mark is checked against the wallet's own key, never trusted
     await psbtFindUnmarked(res, root, net);   // v2.9.0: this wallet's change without a mark
+    if(run!==svRun) return; st.textContent="Checking the signatures..."; await psbtSigCheck(res); if(run!==svRun) return;   // v2.10.0: is each signature valid?
     st.className="status ok"; st.textContent="Read OK. Check every address and amount below against what you expect.";
-    o.textContent=psbtReport(res, fpw); o.style.display="block";
+    svPaint(o, psbtReport(res, fpw)); o.style.display="block";
   } catch(e){ st.className="status bad"; st.textContent=e.message; }
 }
 async function runPsbt(){
@@ -5369,6 +5383,14 @@ async function runSelfTests(auto){
   eq("Reforge: an unknown word is found and confirmed by the first address (published vector)", async()=>{ const r=await reforgeSearch(reforgeParseWords("abandon ".repeat(10)+"? about").idx, await reforgeTarget("bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu"), ""); return r.matches.length+" "+r.matches[0].words.join(" ")+" | "+r.matches[0].how; }, "1 "+"abandon ".repeat(11)+"about | receive address #0 (m/84'/0'/0'/0/0)");
   eq("last-word helper: 11 x zoo gives 'wrong' among 128 (published test vector)", async()=>{ const c=await lastWordCandidates(Array(11).fill("zoo")); return c.length+" "+c.includes("wrong"); }, "128 true");
   eq("PSBT inspector: fee, amounts and output address of a known PSBT (built by an independent library)", async()=>{ const r=await inspectPsbt(psbtFromText("cHNidP8BAHECAAAAAaurq6urq6urq6urq6urq6urq6urq6urq6urq6urq6urAgAAAAD/////AqCGAQAAAAAAFgAU1L4sXWjQfnhBc67qrnReNudrsjoIRgIAAAAAABYAFKPGse5KSdnyrzs4ApdHRPupJBZKAAAAAAABAR+Q0AMAAAAAABYAFJ1pVHSjA6xtdNF5bTdS8HiVkYvSAAAiAgKYnAt2y1Y5cf3JvvMewGw1YPMknW7p5dg8V2JVluBfbxhPv3VmVAAAgAAAAIAAAACAAQAAAAMAAAAA")); return r.fee+" "+r.ins[0].amount+" "+r.outs[0].amount+" "+r.outs[0].address+" "+r.outs[1].fps.join(); }, "1000 250000 100000 bc1q6jlzchtg6pl8sstn4m42uaz7xmnkhv369ud973 4fbf7566");
+  // v2.10.0: signature checks. One known signature hash of each kind (Bitcoin Core's sighash.json, the BIP143 and BIP341 published
+  // vectors, a tapscript hash from @scure/btc-signer), and a whole signed BIP143 example checked against its coin.
+  eq("legacy signature hash with OP_CODESEPARATOR and an odd hash type (Bitcoin Core sighash.json)", async()=>hex((await svSighashLegacy(svCtx(svTxModel(fromHex("24f24cd90132b2162f938f1c22d3ca5e7daa83515883f31a61a5177aebf99d7db6bdfc398c010000000163ffffffff01d5562d0100000000016300000000")),[]),0,fromHex("5265ac5165ac5252ab"),1055129103)).reverse()), "5eeb03e03806cd7bfd44bbba69c30f84c2c5120df9e68cd8facc605fcfbc9693");
+  eq("BIP143 signature hash, native P2WPKH (published BIP143 example)", async()=>hex(await svSighashV0(svCtx(svTxModel(fromHex("0100000002fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f0000000000eeffffffef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a0100000000ffffffff02202cb206000000001976a9148280b37df378db99f66f85c95a783a76ac7a6d5988ac9093510d000000001976a9143bde42dbee7e4dbe6a21b2d50ce2f0167faa815988ac11000000")),[]),1,fromHex("76a9141d0f172a0ecb48aee1be1f2687d2963ae33f71a188ac"),600000000n,1)), "c37af31116d1b27caf68aae9e3ac82f1477929014d5b917657d0eb49478cb670");
+  eq("BIP341 key-path signature hash, SINGLE|ANYONECANPAY (published BIP341 wallet test vector)", async()=>hex(await svSighashTr(svCtx(svTxModel(fromHex("02000000097de20cbff686da83a54981d2b9bab3586f4ca7e48f57f5b55963115f3b334e9c010000000000000000d7b7cab57b1393ace2d064f4d4a2cb8af6def61273e127517d44759b6dafdd990000000000fffffffff8e1f583384333689228c5d28eac13366be082dc57441760d957275419a418420000000000fffffffff0689180aa63b30cb162a73c6d2a38b7eeda2a83ece74310fda0843ad604853b0100000000feffffffaa5202bdf6d8ccd2ee0f0202afbbb7461d9264a25e5bfd3c5a52ee1239e0ba6c0000000000feffffff956149bdc66faa968eb2be2d2faa29718acbfe3941215893a2a3446d32acd050000000000000000000e664b9773b88c09c32cb70a2a3e4da0ced63b7ba3b22f848531bbb1d5d5f4c94010000000000000000e9aa6b8e6c9de67619e6a3924ae25696bb7b694bb677a632a74ef7eadfd4eabf0000000000ffffffffa778eb6a263dc090464cd125c466b5a99667720b1c110468831d058aa1b82af10100000000ffffffff0200ca9a3b000000001976a91406afd46bcdfd22ef94ac122aa11f241244a37ecc88ac807840cb0000000020ac9a87f5594be208f8532db38cff670c450ed2fea8fcdefcc9a663f78bab962b0065cd1d")),[null,{amount:462000000n,script:fromHex("5120147c9c57132f6e7ecddba9800bb0c4449251c92a1e60371ee77557b6620f3ea3")}]),1,0x83,{})), "325a644af47e8a5a2591cda0ab0723978537318f10e6a63d4eed783b96a71a4d");
+  eq("BIP342 tapscript signature hash, <key> OP_CHECKSIG leaf (independent library @scure/btc-signer)", async()=>{ const sc=fromHex("202d08316ff5f201a37f316701dc626a68d0e6d317a9635adc4adb21dc02f381feac"); return hex(await svSighashTr(svCtx(svTxModel(fromHex("020000000111111111111111111111111111111111111111111111111111111111111111110100000000fdffffff01905f01000000000016001443116e46a9e1356f09bcde12386ca2af54d559eb00000000")),[{amount:100000n,script:fromHex("5120ba80962ec661b9d2345ee24b8e88ffc43817e0f238be06c9764fb0ae2351bc89")}]),0,0,{leaf:await svTapLeafHash(0xc0,sc)})); }, "4f5d65200b5a82a48c9ae5ceaccba6f9028f55ed135abe34f0a42b4bffe5cc1b");
+  eq("signature check: the signed P2SH-P2WPKH BIP143 example is VALID, and with 1 sat less in its coin INVALID", async()=>{ const t=fromHex("01000000000101db6b1b20aa0fd7b23880be2ecbd4a98130974cf4748fb66092ac4d3ceb1a5477010000001716001479091972186c449eb1ded22b78e40d009bdf0089feffffff02b8b4eb0b000000001976a914a457b684d7f0d539a46a45bbc043f35b59d0d96388ac0008af2f000000001976a914fd270b1ee6abcaea97fea7ad0402e8bd8ad6d77c88ac02473044022047ac8e878352d3ebbde1c94ce3a10d057c24175747116f8288e5d794d12d482f0220217f36a485cae903c713331d877c1f64677e3622ad4010726870540656fe9dcb012103ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a2687392040000"), spk=fromHex("a9144733f37cf4db86fbc2efed2500b4f4e49f31202387");
+    return (await svCheckRaw(t,[{amount:1000000000n,script:spk}]))[0].state+" "+(await svCheckRaw(t,[{amount:999999999n,script:spk}]))[0].state; }, "valid invalid");
   eq("Taproot BIP86 first two receive addresses 'abandon..about' (published BIP86 vectors)", async()=>(await mnemonicTaproot("abandon ".repeat(11)+"about","",2)).join(" "),"bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr bc1p4qhjn9zdvkux4e44uhx8tc55attvtyu358kutcqkudyccelu0was9fqzwh");
   eq("Taproot BIP86 first change address 'abandon..about' (published BIP86 vector)", async()=>taprootChangeFirstFromSeed(await mnemonicToSeed("abandon ".repeat(11)+"about","")),"bc1p3qkhfews2uk44qtvauqyr2ttdsw7svhkl9nkm9s9c3x4ax5h60wqwruhk7");
   // v2.9.0: the signed-release check. Ed25519 vectors 1 to 3 of RFC 8032 (a changed message must fail), and the built-in key's fingerprint.
@@ -9406,6 +9428,430 @@ async function verifyMessageUi(){
 }
 function clearSig(){ sigRun++; for(const id of ["sigAddr", "sigMsg", "sigSig"]) document.getElementById(id).value = ""; const st = document.getElementById("sigStatus"); st.textContent = ""; st.className = "status"; }
 ["sigAddr", "sigMsg", "sigSig"].forEach(id => document.getElementById(id).addEventListener("input", () => { sigRun++; const st = document.getElementById("sigStatus"); st.textContent = ""; st.className = "status"; }));
+// ===== v2.10.0 signature checks (read only: nothing is signed or changed) =====
+// Every signature in a PSBT, or in a signed transaction whose coins are known, is checked with this page's own ecdsaVerify and
+// schnorrVerify (the BIP322 code above) over the signature hash the network uses: legacy (before SegWit), BIP143 (SegWit version 0),
+// BIP341 (Taproot key path) and BIP342 (tapscript), for every sighash type. Only the common forms are read: one key (P2PK, P2PKH,
+// P2WPKH, P2SH-P2WPKH, Taproot key path, a <key> OP_CHECKSIG leaf) and multisig (bare, P2SH, P2WSH, P2SH-P2WSH, multi_a leaves).
+// Anything else is NOT CHECKED with the reason, never VALID. Consensus rules make an input INVALID: strict DER (BIP66), NULLDUMMY
+// (BIP147), the 520-byte push limit, a push-only P2SH unlocking script, wrapped SegWit as exactly one plain push, the key that matches
+// the key hash, multisig signatures in key order, Taproot sighash types, commitments and the signature budget. Relay rules (low S,
+// defined ECDSA sighash types, compressed keys in SegWit, minimal pushes, the annex) only add a note. A work budget (a number of
+// signature checks and of bytes hashed) stops a huge transaction from freezing the page.
+const SV_MAX_CHECKS = 120, SV_MAX_BYTES = 8000000, SV_OVER = {over: true};
+const SV_TR_TYPES = [0x00, 0x01, 0x02, 0x03, 0x81, 0x82, 0x83];
+let svRun = 0, svCmpRun = 0;
+function svCat(parts){ let n = 0; for(const x of parts) n += x.length; const o = new Uint8Array(n); let i = 0; for(const x of parts){ o.set(x, i); i += x.length; } return o; }
+function svLe64(v){ let x = BigInt.asUintN(64, BigInt(v)); const o = new Uint8Array(8); for(let i = 0; i < 8; i++){ o[i] = Number(x & 255n); x >>= 8n; } return o; }
+const svOut = (o) => svCat([svLe64(o.amount), varintBytes(o.script.length), o.script]);
+const svYield = () => new Promise(r => setTimeout(r, 0));
+function svWork(ctx, checks, bytes){ ctx.left -= checks; ctx.bytes += bytes; if(ctx.left < 0 || ctx.bytes > SV_MAX_BYTES) throw SV_OVER; }
+async function svHash2(ctx, b){ svWork(ctx, 0, b.length); return dsha256(b); }
+async function svHash1(ctx, b){ svWork(ctx, 0, b.length); return sha256bytes(b); }
+// A whole transaction (with or without witness data), as the signature checks need it.
+function svTxModel(bytes){
+  const r = psbtReader(bytes), tx = {version: r.u32(), ins: [], outs: []}; let n = r.varint(), seg = false;
+  if(n === 0){ if(r.byte() !== 1) throw new Error("not a transaction"); seg = true; n = r.varint(); }
+  for(let i = 0; i < n; i++){ const prev = r.bytes(32), vout = r.u32(), ss = r.bytes(r.varint()); tx.ins.push({prev, vout, ss, seq: r.u32(), wit: []}); }
+  n = r.varint(); for(let i = 0; i < n; i++){ const amount = r.i64(); tx.outs.push({amount, script: r.bytes(r.varint())}); }
+  if(seg) for(const x of tx.ins){ const k = r.varint(); for(let j = 0; j < k; j++) x.wit.push(r.bytes(r.varint())); }
+  tx.locktime = r.u32(); if(!r.done) throw new Error("not a transaction");
+  return tx;
+}
+// coins: per input {amount, script} or null; why: per input, the reason a coin is missing.
+function svCtx(tx, coins, why){ return {tx, coins, why: why || [], all: coins.length === tx.ins.length && coins.every(Boolean), left: SV_MAX_CHECKS, bytes: 0, cache: {}}; }
+// ---- signature hashes ----
+// The script code as a legacy signature hash writes it: every OP_CODESEPARATOR left out, exactly as Bitcoin Core does
+// (also for a script whose last push is cut short: the length still counts all bytes, and the bytes stop where reading stopped).
+function svScriptCode(s){
+  const seg = []; let pc = 0, from = 0, n = 0;
+  while(pc < s.length){
+    const op = s[pc++]; let size = 0, ok = true;
+    if(op <= 0x4e){
+      if(op < 0x4c) size = op;
+      else if(op === 0x4c){ if(pc + 1 > s.length) ok = false; else { size = s[pc]; pc += 1; } }
+      else if(op === 0x4d){ if(pc + 2 > s.length) ok = false; else { size = s[pc] | (s[pc + 1] << 8); pc += 2; } }
+      else { if(pc + 4 > s.length) ok = false; else { size = (s[pc] | (s[pc + 1] << 8) | (s[pc + 2] << 16) | (s[pc + 3] << 24)) >>> 0; pc += 4; } }
+      if(ok && s.length - pc < size) ok = false;
+      if(!ok) break;
+      pc += size;
+    }
+    if(op === 0xab){ seg.push(s.slice(from, pc - 1)); from = pc; n++; }
+  }
+  if(from !== s.length) seg.push(s.slice(from, pc));
+  return svCat([varintBytes(s.length - n), ...seg]);
+}
+async function svSighashLegacy(ctx, i, script, ht){
+  const tx = ctx.tx, base = ht & 0x1f, acp = (ht & 0x80) !== 0;
+  if(base === 3 && i >= tx.outs.length){ const one = new Uint8Array(32); one[0] = 1; return one; }   // the SIGHASH_SINGLE quirk: the "hash" is the number 1
+  const p = [le32(tx.version)], ins = acp ? [i] : tx.ins.map((_, j) => j);
+  p.push(varintBytes(ins.length));
+  for(const j of ins){ const x = tx.ins[j]; p.push(x.prev, le32(x.vout), j === i ? svScriptCode(script) : Uint8Array.of(0), le32(j !== i && (base === 2 || base === 3) ? 0 : x.seq)); }
+  if(base === 2) p.push(Uint8Array.of(0));
+  else if(base === 3){ p.push(varintBytes(i + 1)); for(let j = 0; j < i; j++) p.push(new Uint8Array(8).fill(255), Uint8Array.of(0)); p.push(svOut(tx.outs[i])); }
+  else { p.push(varintBytes(tx.outs.length)); for(const o of tx.outs) p.push(svOut(o)); }
+  p.push(le32(tx.locktime), le32(ht));
+  return svHash2(ctx, svCat(p));
+}
+async function svSighashV0(ctx, i, scriptCode, amount, ht){   // BIP143
+  const tx = ctx.tx, c = ctx.cache, base = ht & 0x1f, acp = (ht & 0x80) !== 0, z = new Uint8Array(32), x = tx.ins[i];
+  if(!acp && !c.v0p) c.v0p = await svHash2(ctx, svCat(tx.ins.flatMap(y => [y.prev, le32(y.vout)])));
+  if(!acp && base !== 2 && base !== 3 && !c.v0s) c.v0s = await svHash2(ctx, svCat(tx.ins.map(y => le32(y.seq))));
+  if(base !== 2 && base !== 3 && !c.v0o) c.v0o = await svHash2(ctx, svCat(tx.outs.map(svOut)));
+  const ho = (base !== 2 && base !== 3) ? c.v0o : (base === 3 && i < tx.outs.length) ? await svHash2(ctx, svOut(tx.outs[i])) : z;
+  return svHash2(ctx, svCat([le32(tx.version), acp ? z : c.v0p, (acp || base === 2 || base === 3) ? z : c.v0s, x.prev, le32(x.vout),
+    varintBytes(scriptCode.length), scriptCode, svLe64(amount), le32(x.seq), ho, le32(tx.locktime), le32(ht)]));
+}
+// BIP341 (and BIP342 when ext.leaf is given): null when the hash type is not defined, or SINGLE has no output of its own.
+async function svSighashTr(ctx, i, ht, ext){
+  const tx = ctx.tx, c = ctx.cache, out = ht === 0 ? 1 : ht & 3, acp = (ht & 0x80) !== 0, e = ext || {};
+  if(!SV_TR_TYPES.includes(ht) || (out === 3 && i >= tx.outs.length)) return null;
+  const p = [Uint8Array.of(0x00, ht), le32(tx.version), le32(tx.locktime)];
+  if(!acp){
+    if(!c.trp){ c.trp = await svHash1(ctx, svCat(tx.ins.flatMap(y => [y.prev, le32(y.vout)]))); c.tra = await svHash1(ctx, svCat(ctx.coins.map(k => svLe64(k.amount))));
+      c.trs = await svHash1(ctx, svCat(ctx.coins.flatMap(k => [varintBytes(k.script.length), k.script]))); c.trq = await svHash1(ctx, svCat(tx.ins.map(y => le32(y.seq)))); }
+    p.push(c.trp, c.tra, c.trs, c.trq);
+  }
+  if(out === 1){ if(!c.tro) c.tro = await svHash1(ctx, svCat(tx.outs.map(svOut))); p.push(c.tro); }
+  p.push(Uint8Array.of((e.leaf ? 2 : 0) + (e.annex ? 1 : 0)));
+  if(acp){ const x = tx.ins[i], k = ctx.coins[i]; p.push(x.prev, le32(x.vout), svLe64(k.amount), varintBytes(k.script.length), k.script, le32(x.seq)); }
+  else p.push(le32(i));
+  if(e.annex) p.push(await svHash1(ctx, svCat([varintBytes(e.annex.length), e.annex])));
+  if(out === 3) p.push(await svHash1(ctx, svOut(tx.outs[i])));
+  if(e.leaf) p.push(e.leaf, Uint8Array.of(0x00), le32(e.codesep === undefined ? 0xffffffff : e.codesep));
+  const msg = svCat(p); svWork(ctx, 0, msg.length);
+  return taggedHash("TapSighash", msg);
+}
+function svDg(f){ const memo = new Map(); return async (ht) => { if(!memo.has(ht)) memo.set(ht, await f(ht)); return memo.get(ht); }; }
+// ---- scripts ----
+function svPush(d){ // the plain (minimal) push of d
+  if(d.length === 0) return Uint8Array.of(0);
+  if(d.length === 1 && d[0] >= 1 && d[0] <= 16) return Uint8Array.of(0x50 + d[0]);
+  if(d.length === 1 && d[0] === 0x81) return Uint8Array.of(0x4f);
+  if(d.length <= 75) return svCat([Uint8Array.of(d.length), d]);
+  if(d.length <= 255) return svCat([Uint8Array.of(0x4c, d.length), d]);
+  return svCat([Uint8Array.of(0x4d, d.length & 255, d.length >>> 8), d]);
+}
+function svPushList(s){ // {items, minimal} for a script that only pushes data, or null
+  const items = []; let i = 0, minimal = true;
+  while(i < s.length){
+    const at = i, op = s[i++]; let n;
+    if(op === 0 || op === 0x4f || (op >= 0x51 && op <= 0x60)){ items.push(op === 0 ? new Uint8Array(0) : Uint8Array.of(op === 0x4f ? 0x81 : op - 0x50)); continue; }
+    if(op <= 75) n = op;
+    else if(op === 0x4c){ if(i + 1 > s.length) return null; n = s[i]; i += 1; }
+    else if(op === 0x4d){ if(i + 2 > s.length) return null; n = s[i] | (s[i + 1] << 8); i += 2; }
+    else if(op === 0x4e){ if(i + 4 > s.length) return null; n = (s[i] | (s[i + 1] << 8) | (s[i + 2] << 16) | (s[i + 3] << 24)) >>> 0; i += 4; }
+    else return null;
+    if(i + n > s.length) return null;
+    const d = s.slice(i, i + n); i += n; items.push(d);
+    if(!eqBytes(svPush(d), s.slice(at, i))) minimal = false;
+  }
+  return {items, minimal};
+}
+function svHasCodesep(s){ let i = 0; while(i < s.length){ const op = s[i++]; if(op === 0xab) return true; if(op >= 1 && op <= 75) i += op; else if(op === 0x4c) i += 1 + (s[i] || 0); else if(op === 0x4d) i += 2 + ((s[i] || 0) | ((s[i + 1] || 0) << 8)); else if(op === 0x4e) return true; } return false; }
+const svIsP2pkh = (s) => s.length === 25 && s[0] === 0x76 && s[1] === 0xa9 && s[2] === 20 && s[23] === 0x88 && s[24] === 0xac;
+const svIsP2sh = (s) => s.length === 23 && s[0] === 0xa9 && s[1] === 20 && s[22] === 0x87;
+function svWitProg(s){ if(s.length < 4 || s.length > 42 || (s[0] !== 0 && (s[0] < 0x51 || s[0] > 0x60)) || s[1] + 2 !== s.length) return null; return {ver: s[0] ? s[0] - 0x50 : 0, prog: s.slice(2)}; }
+function svP2pk(s){ return ((s.length === 35 && s[0] === 33) || (s.length === 67 && s[0] === 65)) && s[s.length - 1] === 0xac ? s.slice(1, -1) : null; }
+function svMultisig(s){ // m <keys> n OP_CHECKMULTISIG, keys of 33 or 65 bytes, m and n from 1 to 16
+  if(s.length < 3 || s[s.length - 1] !== 0xae) return null;
+  const m = s[0] - 0x50, n = s[s.length - 2] - 0x50; if(m < 1 || m > 16 || n < 1 || n > 16 || m > n) return null;
+  const keys = []; let i = 1;
+  while(i < s.length - 2){ const l = s[i]; if((l !== 33 && l !== 65) || i + 1 + l > s.length - 2) return null; keys.push(s.slice(i + 1, i + 1 + l)); i += 1 + l; }
+  return keys.length === n ? {m, keys} : null;
+}
+const svPkhScript = (h) => svCat([Uint8Array.of(0x76, 0xa9, 20), h, Uint8Array.of(0x88, 0xac)]);
+function svTapLeaf(s){ // <key> OP_CHECKSIG, or multi_a: <key1> OP_CHECKSIG <key2> OP_CHECKSIGADD ... <m> OP_NUMEQUAL
+  if(s.length === 34 && s[0] === 32 && s[33] === 0xac) return {m: 1, keys: [s.slice(1, 33)], single: true};
+  const keys = []; let i = 0;
+  while(i + 34 <= s.length && s[i] === 32 && s[i + 33] === (keys.length ? 0xba : 0xac)){ keys.push(s.slice(i + 1, i + 33)); i += 34; }
+  const r = s.slice(i); let m = 0;
+  if(r.length === 2 && r[0] >= 0x51 && r[0] <= 0x60) m = r[0] - 0x50;
+  else if(r.length === 3 && r[0] === 1 && r[1] > 16 && r[1] < 0x80) m = r[1];
+  else if(r.length === 4 && r[0] === 2 && r[2] < 0x80 && (r[2] > 0 || r[1] >= 0x80)) m = r[1] | (r[2] << 8);
+  return keys.length && m >= 1 && m <= keys.length && r[r.length - 1] === 0x9c ? {m, keys, single: false} : null;
+}
+const svLess = (a, b) => { for(let i = 0; i < 32; i++) if(a[i] !== b[i]) return a[i] < b[i]; return false; };
+async function svTapLeafHash(lv, script){ return taggedHash("TapLeaf", svCat([Uint8Array.of(lv), varintBytes(script.length), script])); }
+async function svTapCommit(control, script, outKey){ // does this script, with this control block, belong to the Taproot output key?
+  const P = liftX(bigOf(control.slice(1, 33)), false); if(!P) return {ok: false};
+  const leaf = await svTapLeafHash(control[0] & 0xfe, script); let k = leaf;
+  for(let j = 33; j < control.length; j += 32){ const e = control.slice(j, j + 32); k = await taggedHash("TapBranch", svLess(k, e) ? svCat([k, e]) : svCat([e, k])); }
+  const t = bigOf(await taggedHash("TapTweak", svCat([control.slice(1, 33), k]))); if(t >= SN) return {ok: false};
+  const Q = eadd(P, emul(t, SG));
+  return {ok: !!Q && Q[0] === bigOf(outKey) && Number(Q[1] & 1n) === (control[0] & 1), leaf};
+}
+function svWitSize(w){ let n = varintBytes(w.length).length; for(const x of w) n += varintBytes(x.length).length + x.length; return n; }
+function svHasKey(script, key, h160){ return scriptPushes(script).some(d => eqBytes(d, key) || (h160 && eqBytes(d, h160))); }
+// ---- one signature ----
+function svPoint(pub){
+  if(pub.length === 33 && (pub[0] === 2 || pub[0] === 3)) return liftX(bigOf(pub.slice(1)), pub[0] === 3);
+  if(pub.length === 65 && (pub[0] === 4 || pub[0] === 6 || pub[0] === 7)){
+    const x = bigOf(pub.slice(1, 33)), y = bigOf(pub.slice(33));
+    if(x >= SP || y >= SP || emod(y * y - x * x * x - 7n) !== 0n || (pub[0] !== 4 && Number(y & 1n) !== (pub[0] & 1))) return null;
+    return [x, y];
+  }
+  return null;
+}
+const svRes = () => ({state: "none", why: "", n: 0, policy: new Set(), info: new Set()});
+const svBad = (R, why) => { R.state = "invalid"; R.why = why; return R; };
+const svNa = (R, why) => { R.state = "unchecked"; R.why = why; return R; };
+const svValid = (R) => { R.state = "valid"; return R; };
+const svOne = (R, r) => r.na ? svNa(R, r.na) : !r.ok ? svBad(R, r.why) : (R.n++, svValid(R));
+// One ECDSA signature (strict DER plus one sighash byte) and one public key; dg(ht) gives the signature hash. {ok} or {ok:false, why, enc}
+// (enc: the signature itself is badly made, which fails the whole script). seg: SegWit, where only compressed keys are standard.
+async function svEcdsa(ctx, sig, pub, dg, R, seg){
+  if(!sig.length) return {ok: false, why: "a signature is missing (empty)"};
+  const d = derParse(sig.slice(0, -1)); if(!d) return {ok: false, enc: true, why: "a signature is not in strict DER form (a consensus rule since BIP66)"};
+  const P = svPoint(pub); if(!P) return {ok: false, why: "a public key is not a valid key"};
+  svWork(ctx, 1, 0); await svYield();
+  const ht = sig[sig.length - 1];
+  if(!ecdsaVerify(bigOf(await dg(ht)), d.r, d.s, P)) return {ok: false, why: "the signature does not match this transaction and this key"};
+  if(d.s > SN / 2n) R.policy.add("its S value is high (the low-S rule)");
+  if(![1, 2, 3, 0x81, 0x82, 0x83].includes(ht)) R.policy.add("it uses an undefined sighash type (0x" + ht.toString(16) + ")");
+  if(seg && pub.length !== 33) R.policy.add("it uses an uncompressed key, which SegWit does not relay");
+  if(pub[0] === 6 || pub[0] === 7) R.policy.add("it uses an unusual (hybrid) key");
+  return {ok: true};
+}
+async function svSchnorr(ctx, sig, x32, dg){
+  if(sig.length !== 64 && sig.length !== 65) return {ok: false, enc: true, why: "a Taproot signature must be 64 or 65 bytes"};
+  const ht = sig.length === 65 ? sig[64] : 0;
+  if(sig.length === 65 && ht === 0) return {ok: false, enc: true, why: "a 65-byte Taproot signature may not end in sighash type 0"};
+  if(!SV_TR_TYPES.includes(ht)) return {ok: false, enc: true, why: "a Taproot signature uses an undefined sighash type (0x" + ht.toString(16) + ")"};
+  if(!(ht & 0x80) && !ctx.all) return {na: "a Taproot signature covers every coin the transaction spends, and not all of them are known"};
+  const m = await dg(ht); if(!m) return {ok: false, enc: true, why: "it signs with SIGHASH_SINGLE, but there is no output with the same number as this input"};
+  svWork(ctx, 1, 0); await svYield();
+  return (await schnorrVerify(m, x32, sig.slice(0, 64))) ? {ok: true} : {ok: false, why: "the signature does not match this transaction and this key"};
+}
+// OP_CHECKMULTISIG as Bitcoin Core runs it: each signature is tried against the keys in order, and a key that does not match is
+// passed for good, so the signatures must come in the order of the keys in the script.
+async function svMulti(ctx, ms, sigs, dg, R, seg){
+  let k = 0, s = 0;
+  while(s < sigs.length && ms.keys.length - k >= sigs.length - s){
+    if(!sigs[s].length) return {ok: false, why: "a signature is missing (empty)"};
+    const r = await svEcdsa(ctx, sigs[s], ms.keys[k], dg, R, seg);
+    if(r.enc) return r;
+    if(r.ok) s++;
+    k++;
+  }
+  if(s === sigs.length) return {ok: true};
+  for(const sg of sigs){ let any = false; for(const key of ms.keys) if((await svEcdsa(ctx, sg, key, dg, svRes(), seg)).ok){ any = true; break; } if(!any) return {ok: false, why: "a signature matches none of the keys of this coin"}; }
+  return {ok: false, why: "the signatures are not in the order of the keys in the script (or one key signed twice)"};
+}
+// ---- one input ----
+// P2PKH, P2PK and multisig scripts with their pushed items (legacy, or a SegWit version 0 witness script when seg is true).
+async function svSpendScript(ctx, sc, items, dg, R, seg){
+  const pk = svP2pk(sc), ms = svMultisig(sc), need = svIsP2pkh(sc) ? 2 : pk ? 1 : ms ? ms.m + 1 : 0;
+  if(!need) return svNa(R, "it uses a script this page does not read");
+  if(items.length < need) return svBad(R, "it has fewer items than the script needs");
+  if(items.length > need) return seg ? svBad(R, "its witness has extra items, which the network refuses in SegWit") : svNa(R, "its unlocking script has extra items, which this page does not read");
+  if(svIsP2pkh(sc)){
+    if(hex(await hash160(items[1])) !== hex(sc.slice(3, 23))) return svBad(R, "the public key given is not the one whose hash this coin names");
+    return svOne(R, await svEcdsa(ctx, items[0], items[1], dg, R, seg));
+  }
+  if(pk) return svOne(R, await svEcdsa(ctx, items[0], pk, dg, R, seg));
+  if(items[0].length) return svBad(R, "the unused first item of a multisig unlocking must be empty (NULLDUMMY, a consensus rule since SegWit)");
+  const r = await svMulti(ctx, ms, items.slice(1), dg, R, seg);
+  if(!r.ok) return svBad(R, r.why);
+  R.n += ms.m; return svValid(R);
+}
+async function svTaproot(ctx, i, outKey, wit, R){
+  const items = wit.slice(); let annex = null;
+  if(!items.length) return svBad(R, "its witness is empty");
+  if(items.length >= 2 && items[items.length - 1].length && items[items.length - 1][0] === 0x50){ annex = items.pop(); R.policy.add("it carries an annex"); }
+  if(items.length === 1) return svOne(R, await svSchnorr(ctx, items[0], outKey, svDg(ht => svSighashTr(ctx, i, ht, {annex}))));
+  const control = items.pop(), script = items.pop();
+  if(control.length < 33 || (control.length - 33) % 32 || control.length > 33 + 128 * 32) return svBad(R, "its control block has a wrong size");
+  svWork(ctx, 1, script.length);
+  const c = await svTapCommit(control, script, outKey);
+  if(!c.ok) return svBad(R, "the script it uses is not part of this coin (the control block does not match)");
+  if((control[0] & 0xfe) !== 0xc0) return svNa(R, "it uses a Taproot script version this page does not know");
+  if(items.some(d => d.length > 520)) return svBad(R, "a witness item is longer than 520 bytes (a consensus limit)");
+  const lf = svTapLeaf(script); if(!lf) return svNa(R, "it uses a Taproot script this page does not read (the script does belong to this coin)");
+  if(items.length !== lf.keys.length) return svBad(R, "the number of witness items does not fit its script");
+  const dg = svDg(ht => svSighashTr(ctx, i, ht, {annex, leaf: c.leaf}));
+  let budget = 50 + svWitSize(wit), good = 0;
+  for(let j = 0; j < lf.keys.length; j++){
+    const sig = items[items.length - 1 - j]; if(!sig.length) continue;
+    budget -= 50; if(budget < 0) return svBad(R, "it has more signatures than its size allows (the BIP342 signature budget)");
+    const r = await svSchnorr(ctx, sig, lf.keys[j], dg); if(r.na) return svNa(R, r.na); if(!r.ok) return svBad(R, r.why); good++;
+  }
+  if(good !== lf.m) return svBad(R, lf.single ? "the signature is missing" : good + " of the " + lf.m + " signatures the script needs are there");
+  R.n += good; return svValid(R);
+}
+async function svWitness(ctx, i, wp, wit, coin, R, wrapped){
+  if(wp.ver === 0 && wp.prog.length === 20){
+    if(wit.length !== 2) return svBad(R, "a P2WPKH spend needs exactly a signature and a public key");
+    if(hex(await hash160(wit[1])) !== hex(wp.prog)) return svBad(R, "the public key given is not the one whose hash this coin names");
+    const sc = svPkhScript(wp.prog);
+    return svOne(R, await svEcdsa(ctx, wit[0], wit[1], svDg(ht => svSighashV0(ctx, i, sc, coin.amount, ht)), R, true));
+  }
+  if(wp.ver === 0 && wp.prog.length === 32){
+    if(!wit.length) return svBad(R, "its witness is empty");
+    const ws = wit[wit.length - 1], items = wit.slice(0, -1);
+    if(ws.length > 10000) return svBad(R, "its witness script is longer than 10,000 bytes (a consensus limit)");
+    if(hex(await svHash1(ctx, ws)) !== hex(wp.prog)) return svBad(R, "the witness script is not the one this coin was locked to");
+    if(items.some(d => d.length > 520)) return svBad(R, "a witness item is longer than 520 bytes (a consensus limit)");
+    if(ws.length > 3600) R.policy.add("its witness script is longer than 3,600 bytes");
+    return svSpendScript(ctx, ws, items, svDg(ht => svSighashV0(ctx, i, ws, coin.amount, ht)), R, true);
+  }
+  if(wp.ver === 0) return svBad(R, "a SegWit version 0 program must be 20 or 32 bytes");
+  if(wp.ver === 1 && wp.prog.length === 32 && !wrapped) return svTaproot(ctx, i, wp.prog, wit, R);
+  return svNa(R, "it spends a SegWit version this page does not know");
+}
+// A signed input (raw transaction, or a finalized PSBT input): its unlocking script and witness are run through the rules above.
+async function svFinal(ctx, i){
+  const x = ctx.tx.ins[i], ss = x.ss, wit = x.wit, coin = ctx.coins[i], R = svRes();
+  if(!ss.length && !wit.length) return R;
+  if(!coin) return svNa(R, ctx.why[i] || "cannot check without the coins it spends");
+  const spk = coin.script, wp = svWitProg(spk);
+  if(wp){ if(ss.length) return svBad(R, "a SegWit coin needs an empty unlocking script (scriptSig)"); return svWitness(ctx, i, wp, wit, coin, R, false); }
+  const P = svPushList(ss);
+  if(svIsP2sh(spk)){
+    if(!P) return svBad(R, "the unlocking script of a P2SH coin may only push data");
+    if(!P.items.length) return svBad(R, "its unlocking script is empty");
+    if(P.items.some(d => d.length > 520)) return svBad(R, "it pushes more than 520 bytes at once (a consensus limit)");
+    const rs = P.items[P.items.length - 1];
+    if(hex(await hash160(rs)) !== hex(spk.slice(2, 22))) return svBad(R, "the script it reveals is not the one this coin was locked to");
+    const w2 = svWitProg(rs);
+    if(w2){ if(!eqBytes(ss, svPush(rs))) return svBad(R, "a wrapped SegWit unlocking script must be exactly one plain push of the SegWit script"); return svWitness(ctx, i, w2, wit, coin, R, true); }
+    if(wit.length) return svBad(R, "it has witness data, but the coin is not SegWit");
+    if(!P.minimal) R.policy.add("its unlocking script does not use the shortest pushes");
+    if(svHasCodesep(rs)) return svNa(R, "its script uses OP_CODESEPARATOR, which this page does not follow");
+    return svSpendScript(ctx, rs, P.items.slice(0, -1), svDg(ht => svSighashLegacy(ctx, i, rs, ht)), R, false);
+  }
+  if(wit.length) return svBad(R, "it has witness data, but the coin is not SegWit");
+  if(!P) return svNa(R, "its unlocking script does more than push data");
+  if(P.items.some(d => d.length > 520)) return svBad(R, "it pushes more than 520 bytes at once (a consensus limit)");
+  if(!P.minimal) R.policy.add("its unlocking script does not use the shortest pushes");
+  return svSpendScript(ctx, spk, P.items, svDg(ht => svSighashLegacy(ctx, i, spk, ht)), R, false);
+}
+// A PSBT input that is not finalized: each partial signature (ECDSA), Taproot key-path and script-path signature.
+async function svPartial(ctx, i, m){
+  const R = svRes(), coin = ctx.coins[i], f = (t) => m.find(x => x.type === t && x.key.length === 0);
+  const ps = m.filter(x => x.type === 2), tk = f(0x13), ts = m.filter(x => x.type === 0x14 && x.key.length === 64), leaves = m.filter(x => x.type === 0x15);
+  if(!ps.length && !tk && !ts.length) return R;
+  if(!coin) return svNa(R, ctx.why[i] || "the PSBT does not include the coin it spends");
+  const spk = coin.script, wp = svWitProg(spk), req = f(0x03), want = req && req.val.length === 4 ? req.val[0] : null;
+  if(tk || ts.length){
+    if(!(wp && wp.ver === 1 && wp.prog.length === 32)) return svBad(R, "it has Taproot signatures, but the coin is not a Taproot coin");
+    if(tk){ const r = await svSchnorr(ctx, tk.val, wp.prog, svDg(ht => svSighashTr(ctx, i, ht, {}))); if(r.na) return svNa(R, r.na); if(!r.ok) return svBad(R, r.why); R.n++; }
+    for(const s of ts){
+      const x32 = s.key.slice(0, 32), leaf = s.key.slice(32); let found = null;
+      for(const l of leaves){ if(!l.val.length || l.key.length < 33) continue; const sc = l.val.slice(0, -1); if(eqBytes(await svTapLeafHash(l.val[l.val.length - 1], sc), leaf)){ found = {control: l.key, script: sc}; break; } }
+      if(found){
+        svWork(ctx, 1, found.script.length);
+        if(!(await svTapCommit(found.control, found.script, wp.prog)).ok) return svBad(R, "the script it signs is not part of this coin");
+        if(!svHasKey(found.script, x32)) return svBad(R, "its key is not in the script it signs");
+      } else R.info.add("the script of a script-path signature is not in the PSBT, so only the signature itself was checked");
+      const r = await svSchnorr(ctx, s.val, x32, svDg(ht => svSighashTr(ctx, i, ht, {leaf}))); if(r.na) return svNa(R, r.na); if(!r.ok) return svBad(R, r.why); R.n++;
+    }
+    if(!ps.length) return svValid(R);
+  }
+  // where the ECDSA signatures go: the script code, whether it is SegWit, and which keys belong to it
+  const rs = f(0x04), ws = f(0x05);
+  let sc = null, seg = false, hashed = null;
+  const useWs = async (prog) => { if(!ws) return "the PSBT does not include the witness script of this coin"; if(ws.val.length > 10000 || hex(await svHash1(ctx, ws.val)) !== hex(prog)) return "bad"; sc = ws.val; seg = true; return ""; };
+  if(svIsP2pkh(spk)){ sc = spk; hashed = spk.slice(3, 23); }
+  else if(wp && wp.ver === 0 && wp.prog.length === 20){ sc = svPkhScript(wp.prog); seg = true; hashed = wp.prog; }
+  else if(wp && wp.ver === 0 && wp.prog.length === 32){ const e = await useWs(wp.prog); if(e === "bad") return svBad(R, "the witness script in the PSBT is not the one this coin was locked to"); if(e) return svNa(R, e); }
+  else if(wp) return wp.ver === 1 ? svBad(R, "it has an ECDSA signature, but a Taproot coin needs Schnorr signatures") : svNa(R, "it spends a SegWit version this page does not know");
+  else if(svIsP2sh(spk)){
+    if(!rs) return svNa(R, "the PSBT does not include the redeem script of this coin");
+    if(hex(await hash160(rs.val)) !== hex(spk.slice(2, 22))) return svBad(R, "the redeem script in the PSBT is not the one this coin was locked to");
+    const w2 = svWitProg(rs.val);
+    if(w2 && w2.ver === 0 && w2.prog.length === 20){ sc = svPkhScript(w2.prog); seg = true; hashed = w2.prog; }
+    else if(w2 && w2.ver === 0 && w2.prog.length === 32){ const e = await useWs(w2.prog); if(e === "bad") return svBad(R, "the witness script in the PSBT is not the one this coin was locked to"); if(e) return svNa(R, e); }
+    else if(w2) return svNa(R, "it spends a SegWit version this page does not know");
+    else { if(rs.val.length > 520) return svBad(R, "its redeem script is longer than 520 bytes, so the coin cannot be spent (a consensus limit)"); sc = rs.val; }
+  } else sc = spk;
+  if(svHasCodesep(sc)) return svNa(R, "its script uses OP_CODESEPARATOR, which this page does not follow");
+  const dg = svDg(ht => seg ? svSighashV0(ctx, i, sc, coin.amount, ht) : svSighashLegacy(ctx, i, sc, ht));
+  for(const p of ps){
+    const h = await hash160(p.key);
+    if(hashed ? !eqBytes(h, hashed) : !svHasKey(sc, p.key, h)) return svBad(R, "a signature's key is not one this coin needs");
+    const r = await svEcdsa(ctx, p.val, p.key, dg, R, seg); if(!r.ok) return svBad(R, r.why); R.n++;
+    if(want !== null && p.val.length && p.val[p.val.length - 1] !== want) R.info.add("a signature uses another sighash type than the PSBT asks for");
+  }
+  return svValid(R);
+}
+// The coin each input of a PSBT spends, from its records (the full previous transaction must be the one spent, and agree with the
+// short record when both are given; otherwise a wrong amount could be hidden).
+async function svCoins(res){
+  if(res.svCoins) return res.svCoins;
+  const out = {coins: [], why: [], clash: []};
+  for(let i = 0; i < res.ins.length; i++){
+    const m = res.maps ? res.maps[i] : [], g = (t) => m.find(x => x.type === t && x.key.length === 0), wu = g(1), nw = g(0), x = res.ins[i];
+    let coin = null, why = "";
+    if(nw){ try { const id = hex((await dsha256(psbtStripWitness(nw.val))).reverse());
+        if(id !== x.txid) why = "the full previous transaction in the PSBT is not the one this input spends, so a wrong amount could be hidden";
+        else { const o = psbtParseTxOutputs(nw.val)[x.vout]; if(o) coin = {amount: o.value, script: o.script}; else why = "the previous transaction in the PSBT has no output " + x.vout; }
+      } catch(e){ why = "the previous transaction in the PSBT is damaged"; } }
+    if(wu){ try { const q = psbtReader(wu.val), w = {amount: q.i64(), script: q.bytes(q.varint())};
+        if(coin && (coin.amount !== w.amount || !eqBytes(coin.script, w.script))){ coin = null; why = "the PSBT describes the coin it spends in two different ways (amount or script), so a wrong amount could be hidden"; out.clash.push(i); }
+        else if(!coin && !why) coin = w;
+      } catch(e){ if(!coin && !why) why = "the coin record in the PSBT is damaged"; } }
+    out.coins.push(coin); out.why.push(why);
+  }
+  return res.svCoins = out;
+}
+// Checks every input of an inspected transaction (res from inspectPsbt) and puts the result in res.ins[i].sv and res.sv.
+// other: a second inspected transaction (Compare two transactions) whose coin records may fill in coins for the same inputs.
+async function psbtSigCheck(res, other){
+  const own = await svCoins(res), coins = own.coins.slice(), why = own.why.slice();
+  if(other){ const oc = await svCoins(other); res.ins.forEach((y, i) => { if(coins[i] || why[i]) return; const j = other.ins.findIndex(x => x.txid === y.txid && x.vout === y.vout); if(j >= 0 && oc.coins[j]) coins[i] = oc.coins[j]; }); }
+  const tx = res.raw ? svTxModel(res.bytes) : {version: res.version, locktime: res.locktime, ins: res.ins.map(x => ({prev: fromHex(x.txid).reverse(), vout: x.vout, seq: x.seq, ss: new Uint8Array(0), wit: []})), outs: res.outs.map(o => ({amount: o.amount, script: o.script}))};
+  const ctx = svCtx(tx, coins, why), over = "this page stops after " + SV_MAX_CHECKS + " signature checks in one transaction, so a very large one cannot freeze it";
+  for(let i = 0; i < res.ins.length; i++){
+    let R;
+    try {
+      if(ctx.over) R = svNa(svRes(), over);
+      else if(res.raw) R = await svFinal(ctx, i);
+      else { const m = res.maps[i], f7 = m.find(x => x.type === 7 && !x.key.length), f8 = m.find(x => x.type === 8 && !x.key.length);
+        if(f7 || f8){ tx.ins[i].ss = f7 ? f7.val : new Uint8Array(0); tx.ins[i].wit = f8 ? witnessParse(f8.val) : []; R = await svFinal(ctx, i); }
+        else R = await svPartial(ctx, i, m); }
+    } catch(e){ if(e === SV_OVER){ ctx.over = true; R = svNa(svRes(), over); } else R = svNa(svRes(), "its signature data is damaged"); }
+    res.ins[i].sv = R;
+  }
+  return res;
+}
+function svText(R){
+  if(R.state === "valid") return "VALID: " + (R.n === 1 ? "the signature matches" : "the " + R.n + " signatures match") + " this transaction and the coin it spends" + (R.info.size ? " (" + [...R.info].join("; ") + ")" : "") + "." +
+    (R.policy.size ? " But most nodes will not pass it on: " + [...R.policy].join("; ") + ". That is a relay rule, not a consensus rule." : "");
+  if(R.state === "invalid") return "INVALID. Do not broadcast: this signature does not match (" + R.why + ").";
+  return "NOT CHECKED: " + R.why + ".";
+}
+const svList = (a) => (a.length === 1 ? "input " : "inputs ") + a.map(o => o.i).join(", ");
+// The lines this adds to the inspector's CHECKS.
+function svChecks(res, add){
+  const clash = res.svCoins ? res.svCoins.clash : [];
+  if(clash.length) add(false, svList(clash.map(i => ({i}))).replace(/^i/, "I") + ": the PSBT describes the coin being spent in two different ways (amount or script). A wrong amount could be hidden: do not sign.", true);
+  const S = res.ins.map((x, i) => ({i, R: x.sv})).filter(o => o.R && o.R.state !== "none");
+  if(!S.length) return;
+  const bad = S.filter(o => o.R.state === "invalid"), na = S.filter(o => o.R.state === "unchecked"), pol = S.filter(o => o.R.state === "valid" && o.R.policy.size);
+  if(bad.length) add(false, "INVALID SIGNATURE on " + svList(bad) + ". Do not broadcast: this signature does not match.", true);
+  if(!bad.length && !na.length){ const n = S.reduce((a, o) => a + o.R.n, 0); add(true, "Every signature found was checked and is valid (" + n + " signature" + (n === 1 ? "" : "s") + ")."); }
+  if(na.length) add(false, "The signatures of " + svList(na) + " were NOT CHECKED (see " + (na.length === 1 ? "that input" : "those inputs") + " above" + (res.raw ? "; a raw transaction does not carry the coins it spends" : "") + ").", false);
+  if(pol.length) add(false, svList(pol).replace(/^i/, "I") + ": the signatures are valid, but most nodes will not pass the transaction on (" + [...new Set(pol.flatMap(o => [...o.R.policy]))].join("; ") + "). That is a relay rule, not a consensus rule.", false);
+}
+// Shows a report and colors the word after "signatures...:" (VALID green, INVALID red, NOT CHECKED gray).
+function svPaint(el, text){
+  el.textContent = "";
+  const re = /^( *signatures[^:\n]*: )(VALID|INVALID|NOT CHECKED)/gm; let last = 0, m;
+  while((m = re.exec(text))){
+    const at = m.index + m[1].length, s = document.createElement("span");
+    el.appendChild(document.createTextNode(text.slice(last, at)));
+    s.className = m[2] === "VALID" ? "sv-ok" : m[2] === "INVALID" ? "sv-bad" : "sv-na"; s.textContent = m[2]; el.appendChild(s);
+    last = at + m[2].length;
+  }
+  el.appendChild(document.createTextNode(text.slice(last)));
+}
+// A raw transaction checked against the coins it spends (used by the self-test and the tests): the result of each input.
+async function svCheckRaw(bytes, coins){
+  const tx = svTxModel(bytes), ctx = svCtx(tx, coins), out = [];
+  for(let i = 0; i < tx.ins.length; i++){ try { out.push(ctx.over ? svNa(svRes(), "budget") : await svFinal(ctx, i)); } catch(e){ if(e === SV_OVER) ctx.over = true; out.push(svNa(svRes(), e === SV_OVER ? "budget" : "damaged")); } }
+  return out;
+}
 // ===== Find a typo in a descriptor (v2.9.0). Public keys only. =====
 // The descriptor checksum (the 8 characters after #) is a BCH code: one wrong character always changes it, so a checksum that does not
 // match tells that the text was changed. This finds which single change (one character replaced, two neighbors swapped, one character

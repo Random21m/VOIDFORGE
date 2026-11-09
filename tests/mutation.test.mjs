@@ -2904,6 +2904,111 @@ async function probe(w, mutated, fast, only, hooks) {
       if (!two.ok || Buffer.from(two.masterSecret).toString('hex') !== V[3][2] || three.ok || !/Remove 1 of them/.test(three.error)) fails.push('slip39: a third share works with one other, and all three together are refused (exactly the threshold)'); }
   } catch (e) { fails.push('release-run checks: the probe crashed: ' + e.message); }
   }
+  if (SEC(65, "v2.10.0 signature checks (official vectors, Bitcoin Core data, PSBTs signed by btc-signer)")) {
+  try {
+    const FXS = (f) => new URL('./fixtures/sigcheck/' + f, import.meta.url), hb = (h) => w.Uint8Array.from(Buffer.from(h, 'hex')), hx = (b) => Buffer.from(b).toString('hex'), U = (b) => w.Uint8Array.from(b);
+    const ctxOf = (tx, coins) => w.svCtx(tx, coins.map((c) => c && { amount: BigInt(c.amount), script: U(c.script) }));
+    const st = (rs) => rs.map((x) => x.state).join(',');
+    { // Bitcoin Core sighash.json: legacy hashes (SINGLE quirk, NONE, ANYONECANPAY, OP_CODESEPARATOR)
+      const V = JSON.parse(fs.readFileSync(FXS('core-sighash.json'), 'utf8')).filter((v) => v.length === 5); let bad = 0;
+      for (const [tx, sc, i, ht, want] of V) if (hx((await w.svSighashLegacy(ctxOf(w.svTxModel(hb(tx)), []), i, hb(sc), ht)).slice().reverse()) !== want) bad++;
+      if (bad) fails.push('sigcheck: Bitcoin Core sighash.json legacy hashes match (' + bad + ' differ)');
+      const q = new btc.Transaction({ allowUnknownOutputs: true, disableScriptCheck: true }), sc = btc.p2pkh(secp256k1.getPublicKey(nc.createHash('sha256').update('q').digest(), true)).script;   // SIGHASH_SINGLE, input 1, one output: the hash is the number 1
+      for (const j of [1, 2]) q.addInput({ txid: new Uint8Array(32).fill(j), index: 0 }); q.addOutput({ script: sc, amount: 1000n });
+      for (const ht of [3, 0x83]) if (hx(await w.svSighashLegacy(ctxOf(w.svTxModel(U(q.unsignedTx)), []), 1, U(sc), ht)) !== hx(q.preimageLegacy(1, sc, ht))) fails.push('sigcheck: legacy SIGHASH_SINGLE without a matching output gives the hash 1, as btc-signer and Bitcoin Core'); }
+    { // BIP143: the six sighash types of the P2SH-P2WSH example
+      const t = w.svTxModel(hb('010000000136641869ca081e70f394c6948e8af409e18b619df2ed74aa106c1ca29787b96e0100000000ffffffff0200e9a435000000001976a914389ffce9cd9ae88dcc0631e88a821ffdbe9bfe2688acc0832f05000000001976a9147480a33f950689af511e6e84c138dbbd3c3ee41588ac00000000'));
+      const ws = hb('56210307b8ae49ac90a048e9b53357a2354b3334e9c8bee813ecb98e99a7e07e8c3ba32103b28f0c28bfab54554ae8c658ac5c3e0ce6e79ad336331f78c428dd43eea8449b21034b8113d703413d57761b8b9781957b8c0ac1dfe69f492580ca4195f50376ba4a21033400f6afecb833092a9a21cfdf1ed1376e58c5d1f47de74683123987e967a8f42103a6d48b1131e94ba04d9737d61acdaa1322008af9602b3b14862c07a1789aac162102d8b661b0b3302ee2f162b09e07a55ad5dfbe673a9f01d9f0c19617681024306b56ae');
+      const want = { 1: '185c0be5263dce5b4bb50a047973c1b6272bfbd0103a89444597dc40b248ee7c', 2: 'e9733bc60ea13c95c6527066bb975a2ff29a925e80aa14c213f686cbae5d2f36', 3: '1e1f1c303dc025bd664acb72e583e933fae4cff9148bf78c157d1e8f78530aea', 0x81: '2a67f03e63a6a422125878b40b82da593be8d4efaafe88ee528af6e5a9955c6e', 0x82: '781ba15f3779d5542ce8ecb5c18716733a5ee42a6f51488ec96154934e2c890a', 0x83: '511e8e52ed574121fc1b654970395502128263f62662e076dc6baf05c2e6a99b' };
+      for (const [ht, h] of Object.entries(want)) if (hx(await w.svSighashV0(ctxOf(t, []), 0, ws, 987654321n, +ht)) !== h) fails.push('sigcheck: BIP143 P2SH-P2WSH hash type 0x' + (+ht).toString(16) + ' matches the published sigHash'); }
+    { // BIP341 wallet vectors (every hash type), and an annex (signed here with @noble over btc-signer's hash)
+      const V = JSON.parse(fs.readFileSync(FXS('bip341-wallet-test-vectors.json'), 'utf8')).keyPathSpending[0], coins = V.given.utxosSpent.map((u) => ({ amount: u.amountSats, script: hb(u.scriptPubKey) }));
+      for (const s of V.inputSpending) if (hx(await w.svSighashTr(ctxOf(w.svTxModel(hb(V.given.rawUnsignedTx)), coins), s.given.txinIndex, s.given.hashType, {})) !== s.intermediary.sigHash) fails.push('sigcheck: BIP341 key-path hash, input ' + s.given.txinIndex + ' (hash type ' + s.given.hashType + ')'); }
+    const K = (s) => nc.createHash('sha256').update('mut65 ' + s).digest(), pub = (k) => secp256k1.getPublicKey(k, true), xo = (k) => schnorr.getPublicKey(k);
+    const fundOf = (scripts) => { const raw = btc.RawTx.encode({ version: 2, segwitFlag: false, inputs: [{ txid: new Uint8Array(32).fill(5), index: 0, finalScriptSig: new Uint8Array(0), sequence: 0xffffffff }], outputs: scripts.map((s, i) => ({ amount: 60000n + BigInt(i), script: s })), witnesses: [], lockTime: 0 });
+      return { raw, id: nc.createHash('sha256').update(nc.createHash('sha256').update(raw).digest()).digest().reverse() }; };
+    const make = (pay, keys, opt = {}) => { const f = fundOf([pay.script]), tx = new btc.Transaction({ allowUnknownOutputs: true, disableScriptCheck: true });
+      const inp = { ...pay, txid: f.id, index: 0, witnessUtxo: { script: pay.script, amount: 60000n }, sighashType: opt.ht }; delete inp.script; delete inp.type; delete inp.address; if (opt.legacy) { delete inp.witnessUtxo; inp.nonWitnessUtxo = f.raw; }
+      tx.addInput(inp); tx.addOutput({ script: btc.p2wpkh(pub(K('out'))).script, amount: 50000n }); tx.addOutput({ script: btc.p2wpkh(pub(K('out2'))).script, amount: 1000n });
+      for (const k of keys) tx.signIdx(k, 0, opt.ht !== undefined ? [opt.ht] : undefined); return { tx, coins: [{ amount: 60000n, script: U(pay.script) }] }; };
+    const fin = (b) => { b.tx.finalize(); return b.tx.extract(); };
+    const chk = async (raw, coins, f) => { const t = w.svTxModel(U(raw)); if (f) f(t); return w.svFinal(w.svCtx(t, coins), 0); };
+    { // P2WSH 2-of-3: NULLDUMMY, signature order, the 520-byte limit, the low-S note
+      const ks = [K('a'), K('b'), K('c')], b = make(btc.p2wsh(btc.p2ms(2, ks.map(pub))), [ks[0], ks[1]]), raw = fin(b);
+      const r0 = await chk(raw, b.coins); if (r0.state !== 'valid' || r0.n !== 2 || r0.policy.size) fails.push('sigcheck: a P2WSH 2-of-3 from btc-signer is VALID (2 signatures, no note) [' + r0.state + ' ' + r0.why + ']');
+      const r1 = await chk(raw, b.coins, (t) => { t.ins[0].wit[0] = U([1]); }); if (r1.state !== 'invalid' || !/NULLDUMMY/.test(r1.why)) fails.push('sigcheck: a dummy item that is not empty is INVALID (NULLDUMMY)');
+      const r2 = await chk(raw, b.coins, (t) => { const a = t.ins[0].wit[1]; t.ins[0].wit[1] = t.ins[0].wit[2]; t.ins[0].wit[2] = a; }); if (r2.state !== 'invalid' || !/order of the keys/.test(r2.why)) fails.push('sigcheck: multisig signatures out of key order are INVALID');
+      const r3 = await chk(raw, b.coins, (t) => { t.ins[0].wit.splice(1, 0, U(new Uint8Array(521))); }); if (r3.state !== 'invalid' || !/520 bytes/.test(r3.why)) fails.push('sigcheck: a witness item over 520 bytes is INVALID');
+      const r4 = await chk(raw, b.coins, (t) => { const s = t.ins[0].wit[1], sg = secp256k1.Signature.fromDER(s.slice(0, -1)), hi = new secp256k1.Signature(sg.r, secp256k1.CURVE.n - sg.s); t.ins[0].wit[1] = U([...hi.toDERRawBytes(), s[s.length - 1]]); });
+      if (r4.state !== 'valid' || ![...r4.policy].some((x) => /low-S/.test(x))) fails.push('sigcheck: a high-S signature is VALID with the low-S relay note');
+      // a partial signature by a key that is not in the script (signed with @noble over btc-signer's own hash)
+      const b2 = make(btc.p2wsh(btc.p2ms(2, ks.map(pub))), [ks[0]]), o = K('outsider'), ws = btc.p2wsh(btc.p2ms(2, ks.map(pub))).witnessScript;
+      const sig = secp256k1.sign(b2.tx.preimageWitnessV0(0, ws, 1, 60000n), o).toDERRawBytes(); b2.tx.updateInput(0, { partialSig: [[pub(o), Uint8Array.from([...sig, 1])]] });
+      const res = await w.inspectPsbt(U(b2.tx.toPSBT(0)), 'main'); await w.psbtSigCheck(res);
+      if (res.ins[0].sv.state !== 'invalid' || !/key is not one this coin needs/.test(res.ins[0].sv.why)) fails.push('sigcheck: a partial signature by a key outside the script is INVALID'); }
+    { // P2SH-P2WPKH: the one plain push, the key of the key hash; P2PKH with witness data; a P2SH unlocking script that does more than push
+      const k = K('w'), b = make(btc.p2sh(btc.p2wpkh(pub(k))), [k]), raw = fin(b);
+      const r1 = await chk(raw, b.coins, (t) => { t.ins[0].ss = U([0x4c, ...t.ins[0].ss]); }); if (r1.state !== 'invalid' || !/exactly one plain push/.test(r1.why)) fails.push('sigcheck: wrapped SegWit must be one plain push');
+      const r2 = await chk(raw, b.coins, (t) => { t.ins[0].wit[1] = U(pub(K('x'))); }); if (r2.state !== 'invalid' || !/hash this coin names/.test(r2.why)) fails.push('sigcheck: a public key that is not the one of the key hash is INVALID');
+      const r3 = await chk(raw, b.coins, (t) => { t.ins[0].ss = U([0x61, ...t.ins[0].ss]); }); if (r3.state !== 'invalid' || !/only push data/.test(r3.why)) fails.push('sigcheck: a P2SH unlocking script that runs an opcode is INVALID');
+      const bl = make(btc.p2pkh(pub(k)), [k], { legacy: true }), rawl = fin(bl);
+      const r4 = await chk(rawl, bl.coins); if (r4.state !== 'valid') fails.push('sigcheck: P2PKH from btc-signer is VALID');
+      const r5 = await chk(rawl, bl.coins, (t) => { t.ins[0].wit = [U([1])]; }); if (r5.state !== 'invalid' || !/not SegWit/.test(r5.why)) fails.push('sigcheck: P2PKH with witness data is INVALID');
+      const rr = await w.svCheckRaw(U(rawl), [null]); if (rr[0].state !== 'unchecked' || rr[0].why !== 'cannot check without the coins it spends') fails.push('sigcheck: without its coin a signed input is NOT CHECKED: cannot check without the coins it spends'); }
+    { // Taproot: multi_a order, a control block with the wrong parity, an undefined hash type, a coin missing, an annex
+      const ks = [K('t0'), K('t1'), K('t2')], b = make(btc.p2tr(xo(K('ti')), [btc.p2tr_ms(2, ks.map(xo))], undefined, true), [ks[0], ks[2]]), raw = fin(b);
+      const r0 = await chk(raw, b.coins); if (r0.state !== 'valid' || r0.n !== 2) fails.push('sigcheck: a Taproot 2-of-3 multi_a leaf from btc-signer is VALID [' + r0.state + ' ' + r0.why + ']');
+      const r1 = await chk(raw, b.coins, (t) => { const n = t.ins[0].wit.length, it = t.ins[0].wit.slice(0, n - 2).reverse(); t.ins[0].wit = [...it, ...t.ins[0].wit.slice(n - 2)]; }); if (r1.state !== 'invalid') fails.push('sigcheck: multi_a signatures in the wrong order are INVALID');
+      const r2 = await chk(raw, b.coins, (t) => { const c = t.ins[0].wit[t.ins[0].wit.length - 1]; c[0] ^= 1; }); if (r2.state !== 'invalid' || !/not part of this coin/.test(r2.why)) fails.push('sigcheck: a control block with the wrong parity is INVALID');
+      const bk = make(btc.p2tr(xo(K('kp'))), [K('kp')]), rawk = fin(bk);
+      const r3 = await chk(rawk, bk.coins, (t) => { t.ins[0].wit[0] = U([...t.ins[0].wit[0].slice(0, 64), 4]); }); if (r3.state !== 'invalid' || !/undefined sighash type/.test(r3.why)) fails.push('sigcheck: a Taproot sighash byte 0x04 is INVALID');
+      const t4 = w.svTxModel(U(rawk)), r4 = await w.svFinal(w.svCtx(t4, [null]), 0); if (r4.state !== 'unchecked') fails.push('sigcheck: a Taproot signature without its coin is NOT CHECKED');
+      const two = new btc.Transaction({ allowUnknownOutputs: true, disableScriptCheck: true }), p0 = btc.p2tr(xo(K('kp')));
+      two.addInput({ txid: new Uint8Array(32).fill(1), index: 0, witnessUtxo: { script: p0.script, amount: 1000n }, tapInternalKey: xo(K('kp')) }); two.addInput({ txid: new Uint8Array(32).fill(2), index: 0, witnessUtxo: { script: p0.script, amount: 2000n }, tapInternalKey: xo(K('kp')) });
+      two.addOutput({ script: p0.script, amount: 2500n }); two.signIdx(K('kp'), 0); two.finalizeIdx(0);
+      const tm = w.svTxModel(U(two.unsignedTx)); tm.ins[0].wit = two.getInput(0).finalScriptWitness.map(U); const r5 = await w.svFinal(w.svCtx(tm, [{ amount: 1000n, script: U(p0.script) }, null]), 0);
+      if (r5.state !== 'unchecked' || !/not all of them are known/.test(r5.why)) fails.push('sigcheck: a Taproot signature (not ANYONECANPAY) with another input\'s coin missing is NOT CHECKED');
+      // an annex: the spend type has the annex bit (signature made with @noble over btc-signer's hash with that annex)
+      const an = Uint8Array.from([0x50, 1, 2, 3]), tw = btc.p2tr(xo(K('kp'))), tweaked = (() => { const n = secp256k1.CURVE.n, d0 = BigInt('0x' + hx(K('kp'))), P = secp256k1.ProjectivePoint.BASE.multiply(d0), d = P.toAffine().y & 1n ? n - d0 : d0;
+        const t = BigInt('0x' + hx(schnorr.utils.taggedHash('TapTweak', xo(K('kp'))))); return Uint8Array.from(Buffer.from(((d + t) % n).toString(16).padStart(64, '0'), 'hex')); })();
+      const t5 = new btc.Transaction({ allowUnknownOutputs: true, disableScriptCheck: true }); t5.addInput({ txid: new Uint8Array(32).fill(3), index: 0, witnessUtxo: { script: tw.script, amount: 5000n } }); t5.addOutput({ script: tw.script, amount: 4000n });
+      const h5 = t5.preimageWitnessV1(0, [tw.script], 0, [5000n], undefined, undefined, undefined, an), s5 = schnorr.sign(h5, tweaked, new Uint8Array(32));
+      const tm5 = w.svTxModel(U(t5.unsignedTx)); tm5.ins[0].wit = [U(s5), U(an)]; const r6 = await w.svFinal(w.svCtx(tm5, [{ amount: 5000n, script: U(tw.script) }]), 0);
+      if (r6.state !== 'valid' || ![...r6.policy].some((x) => /annex/.test(x))) fails.push('sigcheck: a Taproot key-path signature with an annex is VALID, with a relay note [' + r6.state + ' ' + r6.why + ']'); }
+    { // PSBT records: a previous transaction that is not the one spent; two different descriptions of the coin
+      const k = K('n'), p = btc.p2wpkh(pub(k)), f = fundOf([p.script]), g = fundOf([p.script, p.script]);
+      const a = new btc.Transaction({ allowUnknownOutputs: true, disableScriptCheck: true }); a.addInput({ txid: f.id, index: 0, witnessUtxo: { script: p.script, amount: 60000n } }); a.addOutput({ script: p.script, amount: 50000n }); a.signIdx(k, 0);
+      const vi = (n) => n < 0xfd ? [n] : [0xfd, n & 255, n >> 8], kv = (k, v) => [...vi(k.length), ...k, ...vi(v.length), ...v], [ppub, psig] = a.getInput(0).partialSig[0];
+      const hand = Uint8Array.from([0x70, 0x73, 0x62, 0x74, 0xff, ...kv([0], a.unsignedTx), 0, ...kv([0], g.raw), ...kv([2, ...ppub], psig), 0, 0]);   // btc-signer refuses to write this
+      const ra = await w.inspectPsbt(U(hand), 'main'); await w.psbtSigCheck(ra);
+      if (ra.ins[0].sv.state !== 'unchecked' || !/not the one this input spends/.test(ra.ins[0].sv.why)) fails.push('sigcheck: a full previous transaction that is not the one spent: NOT CHECKED, a wrong amount could be hidden');
+      const c = new btc.Transaction({ allowUnknownOutputs: true, disableScriptCheck: true }); c.addInput({ txid: f.id, index: 0, witnessUtxo: { script: p.script, amount: 60001n } }); c.addOutput({ script: p.script, amount: 50000n }); c.signIdx(k, 0);
+      const [cpub, csig] = c.getInput(0).partialSig[0], wu = [0x61, 0xea, 0, 0, 0, 0, 0, 0, p.script.length, ...p.script];   // 60001 sats; the full transaction says 60000
+      const hand2 = Uint8Array.from([0x70, 0x73, 0x62, 0x74, 0xff, ...kv([0], c.unsignedTx), 0, ...kv([0], f.raw), ...kv([1], wu), ...kv([2, ...cpub], csig), 0, 0]);
+      const rc = await w.inspectPsbt(U(hand2), 'main'); await w.psbtSigCheck(rc);
+      if (rc.ins[0].sv.state !== 'unchecked' || !/two different ways/.test(rc.ins[0].sv.why) || !w.psbtChecks(rc, null).some((x) => !x.ok && x.blocking && /two different ways/.test(x.text))) fails.push('sigcheck: a short coin record that disagrees with the full previous transaction is caught (blocking)'); }
+    { // the inspector and Compare on the page: colors, the blocking FAIL, coins from the other transaction, no stale result
+      const k = K('ui'), p = btc.p2wpkh(pub(k)), mk = () => { const t = new btc.Transaction(); t.addInput({ txid: new Uint8Array(32).fill(8), index: 0, witnessUtxo: { script: p.script, amount: 70000n } }); t.addOutput({ script: p.script, amount: 69000n }); t.signIdx(k, 0); return t; };
+      const part = Buffer.from(mk().toPSBT(0)).toString('base64'), t2 = mk(); t2.finalize(); const raw = t2.hex;
+      $('psbtInput').value = part; $('psbtNet').value = 'main'; await w.runPsbt();
+      if (!/VERDICT: no problems found/.test($('psbtOut').textContent)) fails.push('sigcheck: a PSBT with a VALID signature and nothing else wrong gets a clean verdict');
+      const sp = $('psbtOut').querySelector('span'); if (!sp || sp.className !== 'sv-ok' || sp.textContent !== 'VALID') fails.push('sigcheck: the inspector shows VALID in green');
+      const bad = btc.Transaction.fromPSBT(mk().toPSBT(0)), ps = bad.getInput(0).partialSig[0], s2 = Uint8Array.from(ps[1]); s2[12] ^= 1; bad.updateInput(0, { partialSig: undefined }, true); bad.updateInput(0, { partialSig: [[ps[0], s2]] }, true);
+      $('psbtInput').value = Buffer.from(bad.toPSBT(0)).toString('base64'); await w.runPsbt();
+      if (!/INVALID SIGNATURE on input 0/.test($('psbtOut').textContent) || !/VERDICT: NO CLEAN VERDICT/.test($('psbtOut').textContent) || !$('psbtOut').querySelector('span.sv-bad')) fails.push('sigcheck: a changed signature is INVALID (red) and blocks the verdict');
+      $('psbtInput').value = part; const run = w.runPsbt(); await new Promise((z) => setTimeout(z, 0)); $('psbtInput').value = 'x'; $('psbtInput').dispatchEvent(new w.Event('input')); await run;
+      if ($('psbtOut').textContent !== '') fails.push('sigcheck: editing the PSBT while signatures are checked drops the old result');
+      $('cmpA').value = part; $('cmpB').value = raw; $('cmpNet').value = 'main'; await w.runCompare();
+      if (!/signatures \(second, input 0\): VALID/.test($('cmpOut').textContent)) fails.push('sigcheck: Compare checks a raw transaction with the coins of the PSBT');
+      $('cmpA').value = $('cmpB').value = ''; $('psbtInput').value = ''; w.clearPsbt(true); w.clearCompare(true); }
+    { // the work budget: 121 signatures, the last one NOT CHECKED
+      const k = K('many'), p = btc.p2wpkh(pub(k)), t = new btc.Transaction({ allowUnknownOutputs: true, disableScriptCheck: true }), coins = [];
+      for (let i = 0; i < 121; i++) { t.addInput({ txid: new Uint8Array(32).fill(i + 1), index: 0, witnessUtxo: { script: p.script, amount: 1000n } }); coins.push({ amount: 1000n, script: U(p.script) }); }
+      t.addOutput({ script: p.script, amount: 1000n }); for (let i = 0; i < 121; i++) t.signIdx(k, i); t.finalize();
+      const rs = await w.svCheckRaw(U(t.extract()), coins);
+      if (rs[119].state !== 'valid' || rs[120].state !== 'unchecked') fails.push('sigcheck: the work budget stops after 120 signature checks'); }
+  } catch (e) { fails.push('sigcheck: the probe crashed: ' + e.message); }
+  }
   if (SEC(54, "const meta = w.document.querySelector('meta[http-equiv=\"Cont")) {
   const meta = w.document.querySelector('meta[http-equiv="Content-Security-Policy"]');
   if (!meta || !/default-src 'none'/.test(meta.content)) fails.push('CSP present');
@@ -4982,7 +5087,38 @@ const M = [
   ["QR reader: version info polynomial wrong", "(r>>>11)*0x1f25", "(r>>>11)*0x1f24", true],  // behaviorally equivalent: the reader also counts the timing patterns to find the size, so wrong version words change nothing it decodes
   ["review: typo result written after an edit", "const r = await descTypoFind(document.getElementById(\"typoIn\").value); if(run !== typoRun) return;", "const r = await descTypoFind(document.getElementById(\"typoIn\").value);"],
   ["review: one part of several taken as whole", "if(r.partial){ camMsg(", "if(false){ camMsg("],
-  ["review: going online leaves a SeedQR scan on", "window.addEventListener(\"online\", () => { if(cam && CAM_TARGETS[cam.id].secret) camStop(", "window.addEventListener(\"online\", () => { if(false) camStop("],
+  ["review: going online leaves a SeedQR scan on", "window.addEventListener(\"online\", () => { if(cam && CAM_TARGETS[cam.id].secret) camStop(", "window.addEventListener(\"online\", () => { if(false) camStop("],  // v2.10.0 signature checks (probe section 65)
+  ["sigcheck: SIGHASH_SINGLE quirk (hash 1) lost", "if(base === 3 && i >= tx.outs.length){ const one = new Uint8Array(32); one[0] = 1; return one; }", "if(false){ const one = new Uint8Array(32); one[0] = 1; return one; }"],
+  ["sigcheck: OP_CODESEPARATOR kept in the legacy script code", "if(op === 0xab){ seg.push(s.slice(from, pc - 1)); from = pc; n++; }", "if(false){ seg.push(s.slice(from, pc - 1)); from = pc; n++; }"],
+  ["sigcheck: legacy NONE/SINGLE keep other sequences", "le32(j !== i && (base === 2 || base === 3) ? 0 : x.seq)", "le32(x.seq)"],
+  ["sigcheck: legacy ANYONECANPAY keeps every input", "ins = acp ? [i] : tx.ins.map((_, j) => j);", "ins = tx.ins.map((_, j) => j);"],
+  ["sigcheck: BIP143 amount left out", "svLe64(amount), le32(x.seq), ho,", "svLe64(0), le32(x.seq), ho,"],
+  ["sigcheck: BIP143 SINGLE output hash dropped", "(base === 3 && i < tx.outs.length) ? await svHash2(ctx, svOut(tx.outs[i])) : z;", "z;"],
+  ["sigcheck: BIP341 annex bit dropped", "p.push(Uint8Array.of((e.leaf ? 2 : 0) + (e.annex ? 1 : 0)));", "p.push(Uint8Array.of((e.leaf ? 2 : 0)));"],
+  ["sigcheck: BIP342 leaf hash left out", "if(e.leaf) p.push(e.leaf, Uint8Array.of(0x00),", "if(false) p.push(e.leaf, Uint8Array.of(0x00),"],
+  ["sigcheck: BIP341 SINGLE output index wrong", "if(out === 3) p.push(await svHash1(ctx, svOut(tx.outs[i])));", "if(out === 3) p.push(await svHash1(ctx, svOut(tx.outs[0])));"],
+  ["sigcheck: Taproot sighash 0x04 accepted", "const SV_TR_TYPES = [0x00, 0x01, 0x02, 0x03, 0x81, 0x82, 0x83];", "const SV_TR_TYPES = [0x00, 0x01, 0x02, 0x03, 0x04, 0x81, 0x82, 0x83];"],
+  ["sigcheck: high S not noted", "if(d.s > SN / 2n) R.policy.add(", "if(false) R.policy.add("],
+  ["sigcheck: NULLDUMMY not required", "if(items[0].length) return svBad(R, \"the unused first item", "if(false) return svBad(R, \"the unused first item"],
+  ["sigcheck: multisig order not required", "    if(r.ok) s++;\n    k++;", "    if(r.ok){ s++; k = -1; }\n    k++;"],
+  ["sigcheck: 520-byte witness item allowed", "if(items.some(d => d.length > 520)) return svBad(R, \"a witness item is longer than 520 bytes (a consensus limit)\");\n    if(ws.length > 3600)", "if(items.some(d => d.length > 5200)) return svBad(R, \"a witness item is longer than 520 bytes (a consensus limit)\");\n    if(ws.length > 3600)"],
+  ["sigcheck: wrapped SegWit push not checked", "if(!eqBytes(ss, svPush(rs))) return svBad(", "if(false) return svBad("],
+  ["sigcheck: P2WPKH key hash not checked", "if(hex(await hash160(wit[1])) !== hex(wp.prog)) return svBad(", "if(false) return svBad("],
+  ["sigcheck: P2SH push-only not checked", "if(!P) return svBad(R, \"the unlocking script of a P2SH coin may only push data\");", "if(false) return svBad(R, \"the unlocking script of a P2SH coin may only push data\");"],
+  ["sigcheck: witness on a legacy coin allowed", "if(wit.length) return svBad(R, \"it has witness data, but the coin is not SegWit\");\n  if(!P)", "if(false) return svBad(R, \"it has witness data, but the coin is not SegWit\");\n  if(!P)"],
+  ["sigcheck: partial signature key not checked", "if(hashed ? !eqBytes(h, hashed) : !svHasKey(sc, p.key, h)) return svBad(", "if(false) return svBad("],
+  ["sigcheck: Taproot needs every coin, not checked", "if(!(ht & 0x80) && !ctx.all) return {na:", "if(false) return {na:"],
+  ["sigcheck: multi_a signatures read in key order", "const sig = items[items.length - 1 - j]; if(!sig.length) continue;", "const sig = items[j]; if(!sig.length) continue;"],
+  ["sigcheck: control block parity ignored", "Number(Q[1] & 1n) === (control[0] & 1), leaf};", "true, leaf};"],
+  ["sigcheck: previous transaction id not checked", "if(id !== x.txid) why = \"the full previous transaction in the PSBT is not the one this input spends", "if(false) why = \"the full previous transaction in the PSBT is not the one this input spends"],
+  ["sigcheck: two coin records that disagree not caught", "if(coin && (coin.amount !== w.amount || !eqBytes(coin.script, w.script))){", "if(false){"],
+  ["sigcheck: coins of the other transaction not used in Compare", "if(j >= 0 && oc.coins[j]) coins[i] = oc.coins[j];", "if(false) coins[i] = oc.coins[j];"],
+  ["sigcheck: no work budget", "const SV_MAX_CHECKS = 120,", "const SV_MAX_CHECKS = 100000,"],
+  ["sigcheck: raw input without coins says something else", "ctx.why[i] || \"cannot check without the coins it spends\"", "ctx.why[i] || \"the coin is unknown\""],
+  ["sigcheck: an INVALID signature does not block the verdict", "add(false, \"INVALID SIGNATURE on \" + svList(bad) + \". Do not broadcast: this signature does not match.\", true);", "add(false, \"INVALID SIGNATURE on \" + svList(bad) + \". Do not broadcast: this signature does not match.\", false);"],
+  ["sigcheck: VALID not green", "s.className = m[2] === \"VALID\" ? \"sv-ok\"", "s.className = m[2] === \"VALID\" ? \"sv-na\""],
+  ["sigcheck: stale inspector result shown", "if(run!==svRun) return; st.textContent=\"Checking the signatures...\"; await psbtSigCheck(res); if(run!==svRun) return;", "st.textContent=\"Checking the signatures...\"; await psbtSigCheck(res);"],
+  ["sigcheck: a wrong amount is not a mismatch", "svLe64(k.amount), varintBytes(k.script.length), k.script, le32(x.seq)); }", "svLe64(0), varintBytes(k.script.length), k.script, le32(x.seq)); }"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
