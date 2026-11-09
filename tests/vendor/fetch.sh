@@ -1,9 +1,9 @@
 #!/bin/sh
-# Fetches only the dice files of SeedSigner, Coldcard and Keystone (and Coldcard's seed mix files), and the punch plate files of Krux,
-# at pinned commits into tests/vendor/src (not committed). Used by tests/vendor.test.mjs and tests/krux.test.mjs. v2.10.0: also the
-# library files of python-shamir-mnemonic (the SLIP39 reference), used by tests/slip39.test.mjs through tests/vendor/slip39_ref.py,
-# which checks each file's SHA-256 before using it, and Electrum's old-seed files, for tests/fixtures/gen_old_electrum.py.
-# Change a commit here on purpose only, after reading what changed in that file.
+# Fetches only the dice files of SeedSigner, Coldcard and Keystone (and Coldcard's seed mix files), the punch plate files of Krux and
+# Ian Coleman's BIP39 entropy files, at pinned commits into tests/vendor/src (not committed). Used by tests/vendor.test.mjs,
+# tests/krux.test.mjs and tests/coleman.test.mjs. v2.10.0: also the library files of python-shamir-mnemonic (the SLIP39 reference),
+# used by tests/slip39.test.mjs through tests/vendor/slip39_ref.py, which checks each file's SHA-256 before using it, and Electrum's
+# old-seed files, for tests/fixtures/gen_old_electrum.py. Change a commit here on purpose only, after reading what changed in that file.
 set -eu
 cd "$(dirname "$0")"
 mkdir -p src
@@ -23,3 +23,4 @@ get shamir https://github.com/trezor/python-shamir-mnemonic 9fcb9c807c185e06d626
 get coldcard-mix https://github.com/Coldcard/firmware 4e5ba883e0bf8756036f8a84fdbc4b067aa7ad05 shared/seed.py docs/verify_seed_mix.py testing/test_rolls.py testing/test_ux.py
 get krux https://github.com/selfcustody/krux 28d14c216006e278fd263afead3357becb83aa43 src/krux/pages/tiny_seed.py src/krux/pages/stack_1248.py src/krux/pages/utils.py src/krux/pages/mnemonic_loader.py
 get electrum https://github.com/spesmilo/electrum 54ff65dfe1b77ef6e00f00f296a557d86c454ca0 electrum/old_mnemonic.py electrum/mnemonic.py electrum/keystore.py tests/test_mnemonic.py tests/test_wallet_vertical.py
+get iancoleman https://github.com/iancoleman/bip39 de71c22328b24e0848bbe1bd12ac8974ca83b5b8 src/js/entropy.js src/js/index.js src/js/jsbip39.js

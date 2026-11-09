@@ -73,8 +73,8 @@ await prop('VERIFY: a phrase with one word changed is valid exactly when @scure 
   async ([m, pos, wi]) => { const a = m.split(' '); a[pos % a.length] = wordlist[wi]; const t = a.join(' '); return (await w.checkPhrase(t)).ok === validateMnemonic(t, wordlist) || 'disagree on: ' + t; });
 
 // 5. Dice and coin rolls: words = BIP39 of the first 16 or 32 bytes of SHA-256 of the roll string.
-await prop('Rolls: words from any roll string are BIP39 of SHA-256 of the rolls', fc.tuple(fc.stringMatching(/^[1-6]{1,300}$/), fc.constantFrom(12, 24)),
-  async ([r, wc]) => (await w.rollsToMnemonic(r, wc)) === entropyToMnemonic(nc.createHash('sha256').update(r).digest().subarray(0, wc === 12 ? 16 : 32), wordlist) || 'rolls ' + r);
+await prop('Rolls: words from any roll string are BIP39 of SHA-256 of the rolls', fc.tuple(fc.stringMatching(/^[1-6]{1,300}$/), fc.constantFrom(12, 15, 18, 21, 24)),
+  async ([r, wc]) => (await w.rollsToMnemonic(r, wc)) === entropyToMnemonic(nc.createHash('sha256').update(r).digest().subarray(0, wc * 4 / 3), wordlist) || 'rolls ' + r);   // v2.10.0: all five lengths
 
 // 6. Dice passphrase: word i is bits 11i to 11i+10 of SHA-256 of the rolls.
 await prop('Dice passphrase: words from any rolls follow SHA-256, 11 bits a word', fc.tuple(fc.stringMatching(/^[1-6]{20,80}$/), fc.constantFrom(6, 8)),

@@ -39,8 +39,9 @@ R.ok(w.document.getElementById('selfTestBadge').textContent.includes('PASSED'), 
 
 // 1. dice and coin rolls -> mnemonic and master fingerprint
 let bad = 0, n = 0;
-for (const [kind, len, bytes, words] of [['dice', 50, 16, 12], ['dice', 99, 32, 24], ['coin', 128, 16, 12], ['coin', 256, 32, 24]]) {
-  for (let i = 0; i < 75; i++) {
+// v2.10.0: also 15, 18 and 21 words (62, 75, 87 rolls; 160, 192, 224 flips), the first 20, 24 or 28 bytes of the hash
+for (const [kind, len, bytes, words] of [['dice', 50, 16, 12], ['dice', 99, 32, 24], ['coin', 128, 16, 12], ['coin', 256, 32, 24], ['dice', 62, 20, 15], ['dice', 75, 24, 18], ['dice', 87, 28, 21], ['coin', 160, 20, 15], ['coin', 192, 24, 18], ['coin', 224, 28, 21]]) {
+  for (let i = 0; i < (words % 12 ? 25 : 75); i++) {
     const rolls = rnd(len, kind === 'dice' ? 6 : 2), pw = PASS[nc.randomInt(PASS.length)];
     const want = entropyToMnemonic(sha(rolls).slice(0, bytes), wordlist);
     const got = await w.rollsToMnemonic(rolls, words);
@@ -657,8 +658,8 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
 // built from the same bits (no hashing), with the typed words as the first words and the last word from the flips + checksum.
 {
   let n = 0, bad = 0;
-  for (const wc of [12, 24]) for (let i = 0; i < 50; i++) {
-    const nw = wc === 24 ? 23 : 11, nf = wc === 24 ? 3 : 7;
+  for (const wc of [12, 15, 18, 21, 24]) for (let i = 0; i < (wc % 12 ? 20 : 50); i++) {   // v2.10.0: all five lengths
+    const nw = wc - 1, nf = 11 - wc / 3;
     const idx = Array.from({ length: nw }, () => nc.randomInt(2048)), flips = Array.from({ length: nf }, () => String(nc.randomInt(2))).join('');
     const bits = idx.map((k) => k.toString(2).padStart(11, '0')).join('') + flips;
     const ent = Uint8Array.from(bits.match(/.{8}/g).map((b) => parseInt(b, 2)));
@@ -668,7 +669,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
     const pr = w.wdParse(idx.map((k) => wordlist[k].slice(0, 4)).join(' '));
     n++; if (st.mnemonic !== want.join(' ') || want.slice(0, nw).join() !== idx.map((k) => wordlist[k]).join() || st.lastWord !== want[wc - 1] || pr.idx.join() !== idx.join() || pr.bad.length) { bad++; console.log('word draw mismatch', wc, flips); }
   }
-  R.ok(bad === 0, `${n} random word draws (12 and 24 words): the mnemonic, last word and four-letter typing equal the independent code`);
+  R.ok(bad === 0, `${n} random word draws (12, 15, 18, 21 and 24 words): the mnemonic, last word and four-letter typing equal the independent code`);
 }
 
 // 2k. Multisig: random cosigner sets (keys made by @scure/bip32), addresses vs @scure/btc-signer p2ms/p2wsh/p2sh,

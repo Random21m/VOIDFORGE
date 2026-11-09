@@ -784,8 +784,8 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .mk-len select { flex: 0 0 auto; width: auto; min-width: 120px; }
   .mk-len span { color: var(--muted); font-size: 13px; }
   #lenRow label, #rulesRow label { min-width: 6.6em; }
-  @media (min-width: 560px) { #wordSel, #diceRules { width: 18.5em; } }
-  @media (max-width: 559px) { #lenRow label, #rulesRow label { flex-basis: 100%; } #wordSel, #diceRules { flex: 1 1 100%; width: 100%; } }
+  @media (min-width: 560px) { #wordSel, #diceRules, #cdMethod { width: 18.5em; } }
+  @media (max-width: 559px) { #lenRow label, #rulesRow label, #cdRulesRow label { flex-basis: 100%; } #wordSel, #diceRules, #cdMethod { flex: 1 1 100%; width: 100%; } }
   .legacy-radios { display: none; }
   #wdBox > summary { display: none; }
   body:not(.m-words) #wdBox { display: none; }
@@ -1041,7 +1041,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div class="gtop"><div class="gtitle" id="gTitle">Step 1 of 5</div><button type="button" class="secondary small" id="gExit" onclick="toggleGuide()">EXIT GUIDE</button></div>
       <div class="gdots" id="gDots"><i></i><i></i><i></i><i></i><i></i></div>
       <div class="gstep" data-gs="1"><h3>Choose how your seed is made</h3>
-        <p>Your wallet starts as a very large random number. Real dice (or a coin) are how you create it yourself, instead of trusting a computer to pick it. First choose the length: <b>12 words</b> is strong enough for almost everyone and needs about 50 dice rolls. <b>24 words</b> is the longest option and needs about 99 rolls. Then choose <b>dice</b> (easier for most people) or <b>coin</b> (many more flips). If you have physical word tiles, use the <b>Word draw</b> box instead. <b>Making real keys?</b> First read &ldquo;Before you make real keys&rdquo; (the <b>Read before real keys</b> link near the top of the page).</p></div>
+        <p>Your wallet starts as a very large random number. Real dice (or a coin) are how you create it yourself, instead of trusting a computer to pick it. First choose the length: <b>12 words</b> is strong enough for almost everyone and needs about 50 dice rolls. <b>24 words</b> is the longest option and needs about 99 rolls. (15, 18 and 21 words are there too, for wallets that take them.) Then choose <b>dice</b> (easier for most people) or <b>coin</b> (many more flips). If you have physical word tiles, use the <b>Word draw</b> box instead. <b>Making real keys?</b> First read &ldquo;Before you make real keys&rdquo; (the <b>Read before real keys</b> link near the top of the page).</p></div>
       <div class="gstep" data-gs="2"><h3>Roll your dice</h3>
         <p>Roll a real die, then tap the number it shows. Do not make numbers up: people are bad at being random, and the whole point is that nobody could guess your rolls. You need at least <b id="gNeed">50</b> <span id="gUnit">rolls</span>; more are fine, and every one counts. The bar fills as you go, and NEXT unlocks when you have enough. The gray words below change with every roll, so you can see how one roll changes every word. Make sure nobody can see your screen.</p></div>
       <div class="gstep" data-gs="3"><h3>Forge the seed and write it down</h3>
@@ -1058,13 +1058,14 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <button type="button" role="tab" id="mt-words" data-method="words" aria-selected="false">Word draw</button>
       <button type="button" role="tab" id="mt-cards" data-method="cards" aria-selected="false">Cards &amp; hex</button>
     </div>
-    <div class="mk-len" id="lenRow" data-g="1"><label for="wordSel">Seed length</label><select id="wordSel" aria-label="Seed length"><option value="12">12 words</option><option value="24">24 words</option></select><span id="lenNote" aria-live="polite"></span></div>
+    <div class="mk-len" id="lenRow" data-g="1"><label for="wordSel">Seed length</label><select id="wordSel" aria-label="Seed length"><option value="12">12 words</option><option value="15">15 words</option><option value="18">18 words</option><option value="21">21 words</option><option value="24">24 words</option></select><span id="lenNote" aria-live="polite"></span></div>
     <div class="mk-len" id="rulesRow" data-g="1"><label for="diceRules">Dice rules</label><select id="diceRules" aria-label="Dice rules"><option value="std">SeedSigner and Coldcard</option><option value="keystone">Keystone</option></select><span id="rulesNote" aria-live="polite"></span></div>
+    <div class="mk-len" id="cdRulesRow" data-g="1" style="display:none;"><label for="cdMethod">Card method</label><select id="cdMethod" aria-label="Card method"><option value="hash">Ian Coleman, hashed (every card counts)</option><option value="raw">Ian Coleman, raw entropy</option></select><span id="cdMethodNote" aria-live="polite"></span></div>
     <details id="wdBox" data-g="1">
       <summary>Word draw: made your words with physical tiles?<span class="tag tag-secret">SECRET</span><small>Type words drawn from word tiles (such as SeedSigner&rsquo;s SeedPills) or picked with dice (such as BitBox02&rsquo;s diceware table), plus a few coin flips.</small></summary>
-      <details class="wd-how"><summary>How Word draw works</summary>      <p class="hint" style="margin:6px 0 0;">Word tiles let you pick the words by hand: mix them in a bag, draw one without looking, flip it to choose a face, write the word down and <b>put the tile back</b> before the next draw. Each word is 11 random bits. A 12-word seed needs 11 drawn words and 7 coin flips; a 24-word seed needs 23 words and 3 flips. The flips are needed because part of the last word is a <span class="term" tabindex="0" data-tip="A few extra bits, calculated from all the others, that let wallets catch typing mistakes. The last word of a seed is partly made of them.">checksum</span>. Type your words (the first four letters of each are enough) and your flips; VOIDFORGE finishes the last word the standard BIP39 way, with no hashing, so any BIP39 wallet reads the result. Repeated words are fine, because every draw goes back in the bag. It never fills in the flips for you. Typed words are secret: use it only where nobody can see your screen.</p></details>
+      <details class="wd-how"><summary>How Word draw works</summary>      <p class="hint" style="margin:6px 0 0;">Word tiles let you pick the words by hand: mix them in a bag, draw one without looking, flip it to choose a face, write the word down and <b>put the tile back</b> before the next draw. Each word is 11 random bits. A 12-word seed needs 11 drawn words and 7 coin flips; a 24-word seed needs 23 words and 3 flips (15 words: 14 and 6; 18 words: 17 and 5; 21 words: 20 and 4). The flips are needed because part of the last word is a <span class="term" tabindex="0" data-tip="A few extra bits, calculated from all the others, that let wallets catch typing mistakes. The last word of a seed is partly made of them.">checksum</span>. Type your words (the first four letters of each are enough) and your flips; VOIDFORGE finishes the last word the standard BIP39 way, with no hashing, so any BIP39 wallet reads the result. Repeated words are fine, because every draw goes back in the bag. It never fills in the flips for you. Typed words are secret: use it only where nobody can see your screen.</p></details>
 
-      <div style="display:none;"><label for="wdLen" style="font-weight:600;">Seed length</label><select id="wdLen" aria-label="Seed length" style="flex:1; min-width:0;" onchange="wdUpdate()"><option value="12">12 words (draw 11 + 7 flips)</option><option value="24">24 words (draw 23 + 3 flips)</option></select></div>
+      <div style="display:none;"><label for="wdLen" style="font-weight:600;">Seed length</label><select id="wdLen" aria-label="Seed length" style="flex:1; min-width:0;" onchange="wdUpdate()"><option value="12">12 words (draw 11 + 7 flips)</option><option value="15">15 words (draw 14 + 6 flips)</option><option value="18">18 words (draw 17 + 5 flips)</option><option value="21">21 words (draw 20 + 4 flips)</option><option value="24">24 words (draw 23 + 3 flips)</option></select></div>
       <textarea id="wdWords" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The words you drew" placeholder="Type the words you drew, in order (first four letters are enough)" oninput="wdUpdate()" style="margin-top:8px;"></textarea>
       <input type="text" id="wdFlips" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Your coin flips as 1 and 0" placeholder="Your coin flips as 1 and 0" oninput="wdUpdate()" style="margin-top:6px;">
       <div style="margin-top:8px;">
@@ -1087,14 +1088,14 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <details id="cdBox" data-g="1">
       <summary>Cards and hex<span class="tag tag-secret">SECRET</span></summary>
-      <details class="wd-how"><summary>How cards work</summary><p class="hint" style="margin:6px 0 0;">Use a full deck of 52 cards with the jokers taken out. Shuffle it well (at least seven riffle shuffles), lay the cards out face up and type them in order, such as <b>AS 10H QD 2C</b>: the rank (A, 2 to 10, J, Q, K) and then the suit (C, D, H or S; &spades; &hearts; &diams; &clubs; work too). A 12-word seed needs <b>25 cards</b>. A 24-word seed needs <b>the whole deck and then 6 more</b> from a new shuffle. VOIDFORGE writes the cards as A&spades; 2&clubs; T&diams; and so on and hashes that text with SHA-256, as Ian Coleman&rsquo;s BIP39 tool does (choose Cards and the number of words there, not raw entropy, and type T for a 10) and EntropyLab&rsquo;s Coleman symbols option, so you can check the words with either.</p></details>
+      <details class="wd-how"><summary>How cards work</summary><p class="hint" style="margin:6px 0 0;">Use a full deck of 52 cards with the jokers taken out. Shuffle it well (at least seven riffle shuffles), lay the cards out face up and type them in order, such as <b>AS 10H QD 2C</b>: the rank (A, 2 to 10, J, Q, K) and then the suit (C, D, H or S; &spades; &hearts; &diams; &clubs; work too). The <b>Card method</b> menu above decides how the cards become the seed. Both match Ian Coleman&rsquo;s BIP39 tool, so you can check the words there (tick Use Entropy and type the cards with T for a 10, such as <b>AS TH QD 2C</b>).</p><p class="hint" style="margin:6px 0 0;"><b>Ian Coleman, hashed (every card counts)</b>, the default: VOIDFORGE writes the cards as A&spades; 2&clubs; T&diams; and so on and hashes that text with SHA-256. In his tool, set Mnemonic Length to the <b>same number of words</b> (not Use Raw Entropy). EntropyLab&rsquo;s Coleman symbols option makes the same words. A 12-word seed needs <b>25 cards</b>, 15 words 31, 18 words 39 and 21 words 50; a 24-word seed needs <b>the whole deck and then 6 more</b> from a new shuffle.</p><p class="hint" style="margin:6px 0 0;"><b>Ian Coleman, raw entropy</b>: no hashing. Each card is turned into 5, 4 or 2 bits by his table, and the words are made from the last whole blocks of 32 bits (3 words per block); the first bits that do not fill a block are dropped. In his tool, leave Mnemonic Length on <b>Use Raw Entropy (3 words per 32 bits)</b>, his first choice. The number of words follows from the cards, so deal until VOIDFORGE says enough. His tool counts each card as if it were put back in the deck; cards dealt from one deck hold less (his own notes: a full deck gives 225 bits, not 232), so VOIDFORGE shows the strength as &ldquo;at most&rdquo;. A whole deck makes 21 words.</p></details>
       <div id="cdGrid" class="cd-grid" role="group" aria-label="Tap the cards in the order they lie"></div>
       <textarea id="cdCards" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Your cards in order" placeholder="Your cards in order, such as AS 10H QD 2C" oninput="cdUpdate()"></textarea>
       <div id="cdCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
       <div class="btn-row" style="margin-top:8px;"><button type="button" id="cdBtn" onclick="cdGenerate()" disabled>FORGE SEED</button><button type="button" class="secondary small" id="cdUndoBtn" onclick="cdUndo()">UNDO LAST CARD</button><button type="button" class="secondary small" id="cdSheetBtn" onclick="printCardSheet()">PRINT CARD SHEET</button></div>
       <details class="wd-how" id="cdHexBox" style="margin-top:12px;"><summary>Or hex: a 16-sided die, or checking another tool</summary>
-        <p class="hint" style="margin:6px 0 0;">Type exactly <b>32</b> hex digits (0 to 9 and a to f) for 12 words, or <b>64</b> for 24 words. They are used <b>directly</b> as the seed&rsquo;s randomness, with no hashing, as in Ian Coleman&rsquo;s tool with Hexadecimal and raw entropy chosen. For a real seed, roll a 16-sided die yourself (one digit per roll). Never use hex that a website or a program made for you.</p>
-        <input type="text" id="cdHex" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Hex digits" placeholder="32 or 64 hex digits" oninput="cdUpdate()" style="margin-top:6px;">
+        <p class="hint" style="margin:6px 0 0;">Type exactly <b>32</b> hex digits (0 to 9 and a to f) for 12 words, 40 for 15 words, 48 for 18 words, 56 for 21 words or <b>64</b> for 24 words. They are used <b>directly</b> as the seed&rsquo;s randomness, with no hashing, as in Ian Coleman&rsquo;s tool with Hexadecimal and raw entropy chosen. For a real seed, roll a 16-sided die yourself (one digit per roll). Never use hex that a website or a program made for you.</p>
+        <input type="text" id="cdHex" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Hex digits" placeholder="32 to 64 hex digits" oninput="cdUpdate()" style="margin-top:6px;">
         <div id="cdHexCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
         <div class="btn-row" style="margin-top:8px;"><button type="button" id="cdHexBtn" onclick="cdHexGenerate()" disabled>FORGE SEED</button></div>
       </details>
@@ -1104,6 +1105,9 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <div class="radio-group legacy-radios" id="wordRadios" data-g="1">
       <label><input type="radio" name="words" value="12" checked onchange="updateLabels()"><span id="lbl12">12 (50)</span></label>
+      <label><input type="radio" name="words" value="15" onchange="updateLabels()"><span id="lbl15">15 (62)</span></label>
+      <label><input type="radio" name="words" value="18" onchange="updateLabels()"><span id="lbl18">18 (75)</span></label>
+      <label><input type="radio" name="words" value="21" onchange="updateLabels()"><span id="lbl21">21 (87)</span></label>
       <label><input type="radio" name="words" value="24" onchange="updateLabels()"><span id="lbl24">24 (99)</span></label>
     </div>
 
@@ -1261,6 +1265,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       </div>
       <div id="exOut" style="display:none;"></div>
     </details>
+    <div id="sqNone" class="hint" data-g="5" style="display:none; margin-top:10px;"></div>
     <details id="seedQrBox" data-g="5" style="display:none; margin-top:10px;">
       <summary>Paper backup as a SeedQR<span class="tag tag-secret">SECRET</span><small>For SeedSigner and similar offline devices. Print it or copy it by hand.</small></summary>
       <p class="hint" style="margin:8px 0 0;">A SeedQR is your seed words as a QR code, so <b>anyone who can scan it controls the funds</b>: treat it exactly like the written words. Scan it only with an offline device such as a SeedSigner, never with a phone camera app. It does not contain the passphrase. <b>SeedQR</b> is the digit format (25&times;25 squares for 12 words, 29&times;29 for 24). <b>CompactSeedQR</b> is smaller (21&times;21 or 25&times;25). SeedSigner reads both.</p>
@@ -2835,17 +2840,28 @@ async function s39mSelfCheck(groups, o, identifier, ms, pass){
   }
   return "";
 }
+// Seed lengths (v2.10.0): 12, 15, 18, 21 or 24 words for every method. BIP39 entropy is 32 x words / 3 bits (128, 160, 192, 224
+// or 256); hashed methods keep the first that many bits of SHA-256, as BIP39 tools do (Ian Coleman's tool: "Truncate hash to suit
+// number of words"). Minimum rolls and flips: a coin flip is 1 bit, so the flips equal the bits. A die roll is log2(6) = 2.585 bits,
+// and the page asks for the fewest rolls whose bits reach the seed's bits, rounded up (as XOR_ROLLS and dpNeed do):
+//   128 / 2.585 = 49.52 -> 50   160 / 2.585 = 61.90 -> 62   192 / 2.585 = 74.28 -> 75   224 / 2.585 = 86.66 -> 87
+// The one exception is 24 words: 256 / 2.585 = 99.03, and 99 is kept because SeedSigner and Coldcard ask for exactly 99
+// (99 rolls are 255.9 bits, and the hash still fills all 256). Keystone asks for 100. SeedSigner, Coldcard and Keystone make dice
+// seeds of 12 or 24 words only, so 15, 18 and 21-word dice seeds cannot match them, and the Keystone rules are offered only for 12 and 24.
+const SEED_LENS = [12, 15, 18, 21, 24];
+function seedBits(wc){ return 32 * wc / 3; }
+function aWords(wc){ return (+wc === 18 ? "an " : "a ") + wc + "-word"; }   // "a 12-word", "an 18-word"
 function getNeeded(wc){
   const mode = document.querySelector('input[name="mode"]:checked')?.value || "dice";
-  if(mode==="coin") return {12:128,24:256}[wc];
+  if(mode==="coin") return {12:128,15:160,18:192,21:224,24:256}[wc];
   if(keystoneOn()) return {12:50,24:100}[wc];
-  return {12:50,24:99}[wc];
+  return {12:50,15:62,18:75,21:87,24:99}[wc];
 }
 // Keystone dice rules (v2.3.0), from Keystone's own firmware (keystone3-firmware, the dice rolls screen): the rolls are typed 1 to 6,
 // every 6 is written as 0, the digit string is hashed with SHA-256 and the first 16 bytes (12 words) or 32 bytes (24 words) are used,
 // as here. Keystone asks for at least 50 rolls (12 words) or 100 (24 words, not 99) and takes at most 256.
 const KEYSTONE_MAX = 256;
-function keystoneOn(){ const e = document.getElementById("diceRules"); return !!e && e.value === "keystone" && (document.querySelector('input[name="mode"]:checked')?.value || "dice") === "dice"; }
+function keystoneOn(){ const e = document.getElementById("diceRules"), wc = document.querySelector('input[name="words"]:checked'); return !!e && e.value === "keystone" && (document.querySelector('input[name="mode"]:checked')?.value || "dice") === "dice" && (!wc || wc.value === "12" || wc.value === "24"); }
 function hashInput(rolls){ return keystoneOn() ? rolls.replace(/6/g, "0") : rolls; }
 
 // Snapshot of the page before any input exists; DOWNLOAD FOR USB saves this, never the live page.
@@ -2862,12 +2878,18 @@ function syncMethodUi(){
   document.body.classList.toggle("m-words", method === "words"); document.body.classList.toggle("m-cards", method === "cards");
   ["dice", "coin", "words", "cards"].forEach(k => { const b = document.getElementById("mt-" + k); b.setAttribute("aria-selected", k === method ? "true" : "false"); b.tabIndex = k === method ? 0 : -1; });
   document.getElementById("wordSel").value = String(wc); document.getElementById("wdLen").value = String(wc);
-  const n = wdNeeds(wc);
-  document.getElementById("lenNote").textContent = method === "words" ? n.words + " words from your tiles, then " + n.flips + " coin flips" : method === "cards" ? (wc === 24 ? "a whole shuffled deck, then 6 more cards; or 64 hex digits" : "25 cards from a shuffled deck; or 32 hex digits") : (keystoneOn() ? getNeeded(wc) + " to " + KEYSTONE_MAX + " dice rolls" : getNeeded(wc) + (coin ? " coin flips" : " dice rolls") + " or more");
+  const n = wdNeeds(wc), odd = wc !== 12 && wc !== 24;
+  // v2.10.0: Keystone dice rules exist for 12 and 24 words only (its firmware takes 16 or 32 bytes of the hash)
+  const dr = document.getElementById("diceRules"), ksOpt = dr.querySelector('option[value="keystone"]');
+  ksOpt.disabled = odd; if(odd && dr.value === "keystone") dr.value = "std";
+  document.getElementById("lenNote").textContent = (method === "words" ? n.words + " words from your tiles, then " + n.flips + " coin flips" : method === "cards" ? cdLenNote(wc) : (keystoneOn() ? getNeeded(wc) + " to " + KEYSTONE_MAX + " dice rolls" : getNeeded(wc) + (coin ? " coin flips" : " dice rolls") + " or more"))
+    + (odd ? ". Some wallets take only 12 or 24 words: check that yours takes " + wc + " before you use it." : "");
   if(method === "words") document.getElementById("wdBox").open = true;
   if(method === "cards"){ document.getElementById("cdBox").open = true; cdUpdate(); }
   document.getElementById("rulesRow").style.display = method === "dice" ? "" : "none";
-  document.getElementById("rulesNote").textContent = keystoneOn() ? "each 6 counts as 0; " + getNeeded(wc) + " to " + KEYSTONE_MAX + " rolls" : "";
+  document.getElementById("cdRulesRow").style.display = method === "cards" ? "" : "none";
+  document.getElementById("cdMethodNote").textContent = cdRawOn() ? "no hashing; the number of words follows from the cards (hex is not affected)" : "";
+  document.getElementById("rulesNote").textContent = keystoneOn() ? "each 6 counts as 0; " + getNeeded(wc) + " to " + KEYSTONE_MAX + " rolls" : odd ? "SeedSigner, Coldcard and Keystone make dice seeds of 12 or 24 words only, so " + aWords(wc) + " dice seed will not match them" : "";
 }
 function setMethod(m){
   if(m === "words"){ method = "words"; syncMethodUi(); wdUpdate(); return; }
@@ -3011,7 +3033,7 @@ function inputSig(kind){
   const v = id => document.getElementById(id).value;
   // The passphrase is not part of the words (v2.1.0): changing it after FORGE re-works the fingerprint and addresses (rePass) instead of clearing the words.
   // A seed from the Word draw box depends on its words, flips and length, never on the rolls box (v2.3.0: editing them clears the seed).
-  if(kind === "cd") return "cd|" + document.querySelector('input[name="words"]:checked').value + "|" + cdParse(v("cdCards")).cards.join(" ");
+  if(kind === "cd") return "cd|" + (cdRawOn() ? "raw" : "hash") + "|" + document.querySelector('input[name="words"]:checked').value + "|" + cdParse(v("cdCards")).cards.join(" ");
   if(kind === "hex") return "hex|" + document.querySelector('input[name="words"]:checked').value + "|" + hexClean(v("cdHex"));
   if(kind === "wd") return "wd|" + document.querySelector('input[name="words"]:checked').value + "|" + wdParse(v("wdWords")).idx.join(",") + "|" + v("wdFlips").replace(/[^01]/g, "");
   return "rolls|" + getMode() + "|" + (keystoneOn() ? "keystone" : "std") + "|" + document.querySelector('input[name="words"]:checked').value + "|" + clean(v("rolls"));
@@ -3019,7 +3041,7 @@ function inputSig(kind){
 function staleCheck(){
   if(seedSig === null || !hasSeed() || inputSig(seedKind) === seedSig) return;
   seedSig = null; forgeRun++;
-  if(seedKind === "cd" || seedKind === "hex"){ setResult("You changed the cards, the hex digits or the word count after FORGE SEED. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again."); }
+  if(seedKind === "cd" || seedKind === "hex"){ setResult("You changed the cards, the card method, the hex digits or the word count after FORGE SEED. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again."); }
   else if(seedKind === "wd"){ setResult("You changed the words, the coin flips or the word count after FORGE SEED. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again."); }
   else setResult("You changed the rolls, the word count, the dice/coin choice or the dice rules after FORGE. The old words, fingerprint and address were cleared so they cannot be mixed up with your new entries. Press FORGE SEED again.");
   document.getElementById("fingerprint").textContent = ""; document.getElementById("address").textContent = "";
@@ -3029,6 +3051,9 @@ function staleCheck(){
 // same words there. More than twice the minimum is allowed too, with a gentle check for a double paste.
 function countNote(n, need, coin, ks){
   if(n < need) return "";
+  const wc = +document.querySelector('input[name="words"]:checked').value;
+  // v2.10.0: no device makes a 15, 18 or 21-word seed from dice or coin flips
+  if(wc !== 12 && wc !== 24) return "Every " + (coin ? "flip" : "roll") + " counts: all " + n + " are hashed with SHA-256, and the first " + seedBits(wc) + " bits make the " + wc + " words. " + (coin ? "SeedSigner's coin-flip code makes only 12 or 24 words" : "SeedSigner, Coldcard and Keystone make dice seeds of 12 or 24 words only") + ", so they will not make these words." + (n > 2 * need ? " That is more than twice the " + need + " needed: fine if you " + (coin ? "flipped all of them" : "rolled all of them") + ", but if you pasted them, check nothing went in twice." : "");
   if(ks && n > KEYSTONE_MAX) return "Keystone takes at most " + KEYSTONE_MAX + " rolls: remove " + (n - KEYSTONE_MAX) + ".";
   if(ks) return "Keystone rules: every 6 counts as 0 and all " + n + " rolls are hashed, so a Keystone wallet makes the same words from these rolls." + (n > 2 * need ? " That is more than twice the " + need + " needed: fine if you rolled them all, but if you pasted them, check nothing went in twice." : "");
   const one = coin ? "flip" : "roll";
@@ -3073,7 +3098,7 @@ function updateCount(){
   }
   const bits = isCoin ? rolls.length : rolls.length * Math.log2(6);
   document.getElementById("bitsNote").textContent = rolls.length
-    ? "\u2248 " + Math.floor(bits) + " bits so far, IF every " + (isCoin ? "flip" : "roll") + " was fair (a 12-word seed needs 128, a 24-word seed 256). This check cannot prove your " + (isCoin ? "coin is" : "dice are") + " random."
+    ? "\u2248 " + Math.floor(bits) + " bits so far, IF every " + (isCoin ? "flip" : "roll") + " was fair (" + aWords(+wc) + " seed needs " + seedBits(+wc) + "). This check cannot prove your " + (isCoin ? "coin is" : "dice are") + " random."
     : "";
   document.getElementById("countNote").textContent = diceTestOn() ? "" : countNote(rolls.length, need, isCoin, keystoneOn());
   document.getElementById("twiceNote").textContent = rollsTwiceText(rolls, isCoin);   // v2.10.0
@@ -4023,7 +4048,7 @@ const DICT = [
   ["Child seed", "A new seed derived from a parent seed (BIP85). The same parent, word count and index always give the same child.", "EXTRA TOOLS.", "Keys & seeds"],
   ["Clipboard", "Your computer's short-term copy memory. Some systems keep a history of it or sync it to other devices, so copying a secret can leak it.", "Browser safety checklist.", "Privacy & security"],
   ["Camera scanning", "Reading a QR code with the computer's camera instead of typing it. In VOIDFORGE the camera turns on only when you press a SCAN button, shows a red CAMERA ON bar, and stops as soon as the code is read; the picture never leaves the page. A seed QR is scanned only while the computer is offline.", "SCAN buttons in CHECK A BACKUP (SCAN SEEDQR, the watch-only key, Explain an address, the Wallet Detective) and EXTRA TOOLS (Inspect a transaction).", "VOIDFORGE"],
-  ["Card entropy", "Randomness from a well-shuffled deck of 52 playing cards, typed in the order they lie. Each card from one shuffle adds a little less than the one before, so 25 cards give a 12-word seed; 24 words need the whole deck and 6 more from a new shuffle. Hashed with SHA-256, as in Ian Coleman's BIP39 tool.", "MAKE A SEED: the Cards & hex tab.", "Keys & seeds"],
+  ["Card entropy", "Randomness from a well-shuffled deck of 52 playing cards, typed in the order they lie. Each card from one shuffle adds a little less than the one before, so 25 cards give a 12-word seed; 24 words need the whole deck and 6 more. Hashed with SHA-256 by default, or raw, as in Ian Coleman's BIP39 tool.", "MAKE A SEED: the Cards & hex tab.", "Keys & seeds"],
   ["Coin control", "A wallet feature that lets you pick exactly which coins to spend, mostly for privacy.", "", "Transactions"],
   ["Coin flip entropy", "Randomness taken from real coin tosses, written as 1 and 0. 128 flips give a 12-word seed and 256 give 24 words.", "MAKE A SEED: the Coin tab.", "Keys & seeds"],
   ["Coin selection", "How a wallet chooses which of your coins (UTXOs) to spend in a payment.", "", "Transactions"],
@@ -4047,7 +4072,7 @@ const DICT = [
   ["Device dice check", "Typing the same throwaway rolls into this page and into a hardware wallet, to see that the device makes its words from your dice as its rules say. If the words still differ when the rolls and the device's dice rules are the same, its dice seeds cannot be trusted. Test rolls are not secret, so reset the device afterwards.", "Check your device's dice, in EXTRA TOOLS, and PRINT TEST CARD.", "Wallets & backups"],
   ["Derivation path", "The route from the master key to one key, written like m/84'/0'/0'/0/0. Each number is a step down the tree.", "Watch-only export, Explain an address, or check that it is yours.", "Keys & seeds"],
   ["Descriptor", "A line of text that says exactly which keys and script type make a wallet's addresses. Wallet apps use it to rebuild the same addresses.", "Watch-only wallet box; CHECK A BACKUP, Check your words (the box for what your wallet app shows).", "Addresses & scripts"],
-  ["Dice entropy", "Randomness taken from real dice rolls. Each roll adds about 2.58 bits, so 50 rolls give about 129 bits (12 words) and 99 rolls about 256 bits (24 words). More rolls are fine: every roll is hashed, as Coldcard does.", "MAKE A SEED: the Dice tab and the roll counter.", "Keys & seeds"],
+  ["Dice entropy", "Randomness taken from real dice rolls. Each roll adds about 2.58 bits, so 50 rolls give about 129 bits (12 words) and 99 rolls about 256 bits (24 words); 15, 18 and 21 words take 62, 75 and 87 rolls. More rolls are fine: every roll is hashed, as Coldcard does.", "MAKE A SEED: the Dice tab and the roll counter.", "Keys & seeds"],
   ["Dice passphrase", "A passphrase made from new dice rolls instead of being made up: here, BIP39 words taken from the SHA-256 of the rolls, 11 bits per word, so 6 words hold about 66 bits. It must come from other rolls than the seed, and is kept apart from the seed words.", "Make a passphrase from dice, in Passphrase and note.", "Keys & seeds"],
   ["Dice rules (Keystone)", "Keystone wallets hash dice rolls like SeedSigner and Coldcard, but write each 6 as 0 first, and ask for at least 50 rolls (12 words) or 100 (24 words), at most 256. The same rolls give different words unless the same rules are used.", "MAKE A SEED: the Dice rules menu.", "Keys & seeds"],
   ["Diceware", "Picking words with dice and a printed table instead of a computer. BitBox02's table uses four dice for the row, then a fifth die and a coin for the column, every die re-rolled until it shows 1 to 4.", "Word draw: the word finder reads BitBox02 codes such as 2143 2 T.", "Keys & seeds"],
@@ -4091,7 +4116,7 @@ const DICT = [
   ["Hash rate", "The total number of hash calculations per second that miners are doing. A higher hash rate makes the network harder to attack.", "", "Network & mining"],
   ["HD wallet", "Hierarchical deterministic wallet: one seed makes a whole tree of keys (BIP32), so one backup covers every address.", "", "Keys & seeds"],
   ["Hex", "Base 16: numbers written with 0 to 9 and a to f. Hashes and keys are usually shown in hex.", "", "Units & math"],
-  ["Hex entropy", "Seed randomness typed as hex digits (0 to 9, a to f) and used as it is: 32 digits are the 128 bits of a 12-word seed and 64 digits the 256 bits of a 24-word seed. For a real seed it must come from a 16-sided die you rolled, never from a website or a program; it is also a way to check what another tool made.", "MAKE A SEED: the Cards & hex tab.", "Keys & seeds"],
+  ["Hex entropy", "Seed randomness typed as hex digits (0 to 9, a to f) and used as it is: 4 bits a digit, so 32 digits make 12 words, 40 make 15, 48 make 18, 56 make 21 and 64 make 24. For a real seed it must come from a 16-sided die you rolled, never from a website or a program; it is also a way to check what another tool made.", "MAKE A SEED: the Cards & hex tab.", "Keys & seeds"],
   ["HMAC", "A way to mix a secret key into a hash. Seeds and child keys are made with HMAC-SHA512 in BIP32.", "", "Keys & seeds"],
   ["HODL", "Slang for holding bitcoin instead of selling it. It began as a typo of the word hold.", "", "Culture & markets"],
   ["Hot wallet", "A wallet on a device that is online, such as a phone app. Handy for small amounts, riskier for large ones.", "", "Wallets & backups"],
@@ -4167,6 +4192,7 @@ const DICT = [
   ["QR code", "A square picture that holds text. VOIDFORGE draws QR codes on screen, and reads them with the camera only when you press a SCAN button (the camera stops as soon as the code is read).", "Watch-only QR, SeedQR, address QR, Support this project. PRINT THIS QR prints them; the SCAN buttons read them.", "Basics"],
   ["Quorum", "How many keys must sign in a multisig wallet, such as 2 of a 3-key wallet.", "", "Wallets & backups"],
   ["Random number generator (RNG)", "A source of random numbers. Computer ones can be flawed, which is why VOIDFORGE uses physical dice and coins. A seed made by a flawed one stays weak after an update; only moving the funds to a new seed helps.", "EXTRA TOOLS: Was my seed made by a flawed device?", "Keys & seeds"],
+  ["Raw entropy (cards)", "Ian Coleman's BIP39 tool's first choice for cards: no hashing. Each card is 5, 4 or 2 bits by his table, and the words come from the last whole blocks of 32 bits (3 words a block). It counts cards as if put back, so cards dealt from one deck hold less.", "MAKE A SEED: the Card method menu on the Cards & hex tab.", "Keys & seeds"],
   ["Seed mix (dice plus device)", "A seed made from two parts hashed together: the device's own random numbers and your dice rolls or coin flips. New Coldcard seeds are made this way. If either part is truly random and secret, the seed is strong.", "EXTRA TOOLS: Check a Coldcard seed mix.", "Keys & seeds"],
   ["TRNG (true random number generator)", "A chip that makes random numbers from physical noise. Hardware wallets use one to make seeds. A Coldcard's View TRNG Words shows its part of a new seed as 24 words, so the mix with your dice can be checked.", "EXTRA TOOLS: Check a Coldcard seed mix.", "Keys & seeds"],
   ["Weak seed", "A seed made from too little randomness, for example by a flawed random number generator, so a computer can search for it. It looks like any other seed. The fix is to make a new seed and move the funds.", "EXTRA TOOLS: Was my seed made by a flawed device?", "Keys & seeds"],
@@ -4194,7 +4220,8 @@ const DICT = [
   ["scriptPubKey (locking script)", "The script attached to a coin that says what is needed to spend it.", "", "Addresses & scripts"],
   ["scriptSig (unlocking script)", "The data supplied by the spender to satisfy a coin's locking script. In SegWit this moves into the witness.", "", "Addresses & scripts"],
   ["Second tool", "A different, independent wallet or device used to check your words give the same fingerprint and addresses.", "How to check this wallet in a second tool.", "VOIDFORGE"],
-  ["Seed (seed phrase, recovery phrase, mnemonic)", "The 12 or 24 words that make every key in your wallet. Anyone who has them controls the coins, and with them you can restore the wallet anywhere.", "Your seed panel.", "Keys & seeds"],
+  ["Seed (seed phrase, recovery phrase, mnemonic)", "The 12 to 24 words (most often 12 or 24) that make every key in your wallet. Anyone who has them controls the coins, and with them you can restore the wallet anywhere.", "Your seed panel.", "Keys & seeds"],
+  ["Seed length", "How many words a BIP39 seed has: 12, 15, 18, 21 or 24, holding 128, 160, 192, 224 or 256 bits. 12 words are strong enough for almost everyone. Some wallets and devices take only 12 or 24 words, and SeedQR covers only those two.", "MAKE A SEED: the Seed length menu.", "Keys & seeds"],
   ["Seed recovery", "Finding lost or mistyped seed words, or a forgotten passphrase, by trying the possibilities and checking each against something public from the wallet: its fingerprint, an address or its xpub. Each try needs the slow PBKDF2 step, so a browser can only do small searches; tools such as BTCRecover do bigger ones.", "Reforge in EXTRA TOOLS.", "Wallets & backups"],
   ["SeedQR", "SeedSigner's QR code for a seed: each word's number (0000 to 2047) written as four digits.", "Paper backup as a SeedQR.", "VOIDFORGE"],
   ["SeedSigner", "An open-source do-it-yourself hardware signer. VOIDFORGE uses the same dice method and can read and make its SeedQR codes.", "", "Wallets & backups"],
@@ -4429,16 +4456,16 @@ async function mnemonicFingerprint(mnemonic, passphrase){ return fingerprintFrom
 
 // Pure helpers shared by the UI and the self-test
 async function rollsToMnemonic(rolls, wc){
-  const entLen = {12:16,24:32}[wc];
-  if(!entLen) throw new Error("Only 12 and 24 words are supported");
+  const entLen = {12:16,15:20,18:24,21:28,24:32}[wc];
+  if(!entLen) throw new Error("Only 12, 15, 18, 21 and 24 words are supported");
   const digest = await sha256(rolls);
   return entropyToMnemonic(digest.slice(0, entLen));
 }
 // "How your seed was made": every step from the typed rolls to the words, with the same functions FORGE uses.
 // explainSteps returns plain data (no display); showExplain draws it with textContent only and checks it against the real words.
 async function explainSteps(rolls, wc){
-  const entLen = {12:16,24:32}[wc];
-  if(!entLen) throw new Error("Only 12 and 24 words are supported");
+  const entLen = {12:16,15:20,18:24,21:28,24:32}[wc];
+  if(!entLen) throw new Error("Only 12, 15, 18, 21 and 24 words are supported");
   const digest = await sha256(rolls);
   const entropy = digest.slice(0, entLen);
   const hash2 = await sha256bytes(entropy);
@@ -4465,7 +4492,7 @@ async function showExplain(){
   if(ks){ mk("div", "ex-text", "Keystone dice rules: every 6 is written as 0 before the next step, so this is the text that is hashed:", b1); mk("div", "ex-mono", exCtx.rolls.replace(/6/g, "0").split("").join(" "), b1); }
   const b2 = step(2, "Mixed into one number", "Your rolls are typed out as plain text and run through SHA-256, a scrambling function. It always gives 256 bits, and changing even one roll changes every bit. That is why the same rolls always give the same seed.");
   mk("div", "ex-mono", s.digestHex, b2);
-  const b3 = step(3, "Keep the first " + s.entropyBits + " bits", "A " + exCtx.words.length + "-word seed needs " + s.entropyBits + " bits, so we keep the first " + s.entropyBits / 8 + " bytes. This is the seed's raw entropy: the same thing a CompactSeedQR holds.");
+  const b3 = step(3, "Keep the first " + s.entropyBits + " bits", "A " + exCtx.words.length + "-word seed needs " + s.entropyBits + " bits, so we keep the first " + s.entropyBits / 8 + " bytes. This is the seed's raw entropy" + (s.entropyBits === 128 || s.entropyBits === 256 ? ": the same thing a CompactSeedQR holds." : "."));
   mk("div", "ex-mono", s.entropyHex, b3);
   const b4 = step(4, "Add a safety checksum", "SHA-256 is run once more on those bytes, and its first " + s.checkBits.length + " bits are added to the end. They let a wallet notice most typing mistakes in your backup.");
   const m4 = mk("div", "ex-mono", "", b4); mk("span", "", "…", m4); mk("span", "ex-cs", s.checkBits, m4); mk("span", "", "  \u2190 checksum", m4);
@@ -6089,6 +6116,14 @@ async function runSelfTests(auto){
     eq("SLIP39 make: 54 fixed rolls give fixed 2-of-3 shares (the words python-shamir-mnemonic makes from the same stream)", async()=>(await slip39Make("123456".repeat(9), {bits:128, groupThreshold:1, groups:[[2,3]], passphrase:""})).groups[0].join(" / "), "clogs premium academic acid depend penalty graduate echo pancake echo remind chew lend epidemic unusual jury museum story crystal deal / clogs premium academic agency alien lips guilt evoke demand axle nervous coastal climate cinema tadpole lawsuit floral miracle rival credit / clogs premium academic always carbon thumb axis equation emperor teammate nail cover machine ordinary meaning impact amuse scroll snapshot spew");
     eq("SLIP39 make: 99 fixed rolls, 2 of 2 groups, passphrase TREZOR, not extendable: the shares combine to SHA-256 of the rolls", async()=>{ const r=await slip39Make("654321".repeat(16)+"654", {bits:256, groupThreshold:2, groups:[[1,1],[2,2]], passphrase:"TREZOR", extendable:false, iterationExponent:0}); const c=await slip39Combine([r.groups[1][1], r.groups[0][0], r.groups[1][0]], "TREZOR"); return r.groups[0][0].split(" ").slice(0,4).join(" ")+" "+hex(c.masterSecret); }, "grief merchant acrobat easy f19bba2d22d685cdc31f1d381ba411cc53cde88b5176be6f4c21c79349d38dee");
     eq("SHAKE256 BIP85-DRNG, 80 bytes (published BIP85 vector)", ()=>hex(shake256Reader(fromHex("efecfbccffea313214232d29e71563d941229afb4338c21f9517c41aaa0d16f00b83d2a09ef747e7a64e8e2bd5a14869e693da66ce94ac2da570ab7ee48618f7")).read(80)),"b78b1ee6b345eae6836c2d53d33c64cdaf9a696487be81b03e822dc84b3f1cd883d7559e53d175f243e4c349e822a957bbff9224bc5dde9492ef54e8a439f6bc8c7355b87a925a37ee405a7502991111"); }
+  // v2.10.0: 15, 18 and 21 words, and Ian Coleman's raw card entropy (expected words from @scure/bip39 and from his own code at commit de71c22)
+  { const DECK=[]; for(const su of "CDHS") for(const r of CD_RANKS) DECK.push(r+su);
+    const rawW=async t=>{ const r=cdRaw(cdParse(t).cards); return r.words+" "+await entropyToMnemonic(r.bytes); };
+    eq("Dice, 15 words: SHA-256 of 62 rolls, first 160 bits (from @scure)", ()=>rollsToMnemonic(R50+"123456123456",15), "inner skirt slogan genuine crowd van roof skin stick grief warrior sunset install climb ski");
+    eq("Cards, hashed, 18 words: A\u2660 2\u2663 T\u2666, first 192 bits (Ian Coleman's tool, 18 words)", ()=>rollsToMnemonic(cdParse("as 2c 10d").cards.join(" "),18), "embody only exact pride episode winter estate perfect security often scout ticket lazy dynamic genius wasp volume twin");
+    eq("Cards, raw entropy: 30 cards give 131 bits, the last 128 make 12 words (Ian Coleman's tool, raw)", ()=>rawW("KS 3D 9H AC TC 5S JD 2H 8C QS 4D 7H 6C AH TS 9D 3C KH 5D JS 2S 8H QC 4H 7S AD 2D 3H 4C 5C"), "12 velvet beach salute key actual earn charge fix quick stove swing silk");
+    eq("Cards, raw entropy: a whole deck gives 232 bits, the last 224 make 21 words (Ian Coleman's tool, raw)", ()=>rawW(DECK.join(" ")), "21 during mouse crack lucky enter brain dignity million demise repeat various twin trash usage afraid hamster guide essence vibrant taste rude");
+    eq("Cards, raw entropy: a deck and 5 more give 257 bits, the last 256 make 24 words (Ian Coleman's tool, raw)", ()=>rawW(DECK.join(" ")+" AC 2C 3C 4C 5C"), "24 above drip apology brown enhance renew purpose three skill pistol hip border result jelly way emotion member joy sting dash toddler able canoe mushroom"); }
   eq("SeedQR digit string -> words ('abandon..about' = 0000 x11 + 0003)", async()=>(await checkPhrase("0000".repeat(11)+"0003")).mnemonic, "abandon ".repeat(11)+"about");
   eq("CompactSeedQR hex -> words (BIP39 vector 7f x16)", async()=>(await checkPhrase("7f".repeat(16))).mnemonic, "legal winner thank year wave sausage worth useful legal winner thank yellow");
   eq("words -> SeedQR digits ('abandon..about' = 0000 x11 + 0003)", ()=>seedQrData(("abandon ".repeat(11)+"about").split(" ")).digits, "0000".repeat(11)+"0003");
@@ -6175,7 +6210,7 @@ async function finishSeed(mnemonic, ctx, sig0, kind, info){
   seedSig = null; passKey = JSON.stringify([p1, p2]);
   setResult(mnemonic + "\n\n" + passPhraseLine(p1, p2), mnemonic.split(" "));
   exCtx = ctx; seedKind = kind || (ctx ? "rolls" : "wd"); seedSig = sig0 !== undefined ? sig0 : inputSig(seedKind);
-  sumCtx = ctx ? {count: ctx.rolls.length, coin: ctx.coin, keystone: ctx.keystone, words: ctx.words.length} : kind === "cd" ? {cd: info.cards, bits: info.bits, words: mnemonic.split(" ").length} : kind === "hex" ? {hex: true, words: mnemonic.split(" ").length} : {wd: true, words: mnemonic.split(" ").length};
+  sumCtx = ctx ? {count: ctx.rolls.length, coin: ctx.coin, keystone: ctx.keystone, words: ctx.words.length} : kind === "cd" ? {cd: info.cards, bits: info.bits, raw: info.raw || null, words: mnemonic.split(" ").length} : kind === "hex" ? {hex: true, words: mnemonic.split(" ").length} : {wd: true, words: mnemonic.split(" ").length};
   sumCtx.date = todayISO();   // v2.5.0: the wallet's birthday (a wallet app restoring it need not look at older blocks)
   staleCheck(); if(seedSig === null) return;   // fixes release: the boxes changed while the words were worked out
   await deriveShown(mnemonic, p1, p2, run);
@@ -6243,15 +6278,15 @@ const BK_IDS = ["bk1","bk2","bk3","bk4"];
 let sumCtx = null;
 function seedSummary(){
   if(!hasSeed() || !sumCtx || passMismatchQuiet()) return null;
-  const c = sumCtx, n = c.words, bits = n === 24 ? 256 : 128;
-  const made = c.wd ? "Word draw (" + (n === 24 ? "23 drawn words and 3" : "11 drawn words and 7") + " coin flips)"
-    : c.cd ? c.cd + " playing cards (SHA-256 of the card list, as in Ian Coleman's BIP39 tool)" : c.hex ? (n === 24 ? 64 : 32) + " hex digits, used directly as the randomness"
+  const c = sumCtx, n = c.words, bits = seedBits(n), wn = wdNeeds(n);
+  const made = c.wd ? "Word draw (" + wn.words + " drawn words and " + wn.flips + " coin flips)"
+    : c.cd ? c.cd + " playing cards (" + (c.raw ? "Ian Coleman's raw entropy: his card table, no hashing" : "SHA-256 of the card list, as in Ian Coleman's BIP39 tool") + ")" : c.hex ? bits / 4 + " hex digits, used directly as the randomness"
     : c.coin ? c.count + " coin flips" : c.count + " dice rolls, " + (c.keystone ? "Keystone dice rules (each 6 counts as 0)" : "SeedSigner and Coldcard dice rules");
   const typed = c.wd || c.hex ? 0 : Math.floor(c.cd ? c.bits : c.coin ? c.count : c.count * Math.log2(6));
   const used = /Passphrase: used/.test(document.getElementById("genResult").textContent);
   const fpT = document.getElementById("fingerprint").textContent, m = fpT.match(/^Master fingerprint: ([0-9a-f]{8})/);
   return {fp: m ? m[1] : "", used, short: n + " words from " + made + ", passphrase " + (used ? "used" : "none") + (m ? ", fingerprint " + m[1] : "") + ".",
-    lines: ["Seed length: " + n + " words", "Made from: " + made, "Strength: the words hold " + bits + " bits of randomness" + (typed ? " (about " + typed + " bits went in, " + (c.cd ? "if the deck was well shuffled" : "if every " + (c.coin ? "flip" : "roll") + " was fair") + ")" : ""),
+    lines: ["Seed length: " + n + " words", "Made from: " + made, c.raw ? "Strength: the words hold at most " + Math.floor(Math.min(c.raw.keep, c.bits)) + " bits of randomness (raw entropy keeps the last " + c.raw.keep + " of the " + c.raw.all + " bits Ian Coleman's table gives these cards, if the deck was well shuffled)" : "Strength: the words hold " + bits + " bits of randomness" + (typed ? " (about " + typed + " bits went in, " + (c.cd ? "if the deck was well shuffled" : "if every " + (c.coin ? "flip" : "roll") + " was fair") + ")" : ""),
       "Passphrase used: " + (used ? "YES (kept separately; it is not written here)" : "NO"), fpT, document.getElementById("address").textContent, c.date ? "Wallet made on: " + c.date + " (its birthday, by this computer's clock: a restore can start a day earlier to be safe)" : "", "Made with VOIDFORGE " + (document.querySelector("footer .ft-name span")?.textContent || "")]};
 }
 function sumUpdate(){ const S = seedSummary(), el = document.getElementById("sumLine"); if(el) el.textContent = S ? "This seed: " + S.short : ""; }
@@ -7926,9 +7961,10 @@ function setResult(text, words){
   wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body.classList.toggle("has-seed", !!words);
   const g = document.getElementById("genResult"), grid = document.getElementById("wordGrid");
   g.textContent = text; g.classList.toggle("nores", text === "\u2014"); grid.textContent = "";
-  hideExplain(); { const eb = document.getElementById("explainBox"); eb.style.display = (words && [12,24].includes(words.length)) ? "" : "none"; eb.open = false; }
+  hideExplain(); { const eb = document.getElementById("explainBox"); eb.style.display = (words && SEED_LENS.includes(words.length)) ? "" : "none"; eb.open = false; }
   hideSeedQr(); { const sq = document.getElementById("seedQrBox"); sq.style.display = (words && [12,24].includes(words.length)) ? "" : "none"; sq.open = false; }
   seedNotes(words);   // v2.10.0: public phrase warning and look-alike letters, set and cleared with the words
+  { const sn = document.getElementById("sqNone"), odd = !!words && [15, 18, 21].includes(words.length); sn.style.display = odd ? "" : "none"; sn.textContent = odd ? "No SeedQR exists for " + words.length + " words: the SeedQR formats cover only 12 and 24 words. Keep these words on paper (PRINT SEED or the stamp sheet)." : ""; }
   if(words){
     g.dataset.seed = "1"; g.classList.add("sr");
     words.forEach((w, i) => { const c = document.createElement("div"); c.className = "wcell"; const n = document.createElement("b"); n.textContent = (i + 1) + "."; c.appendChild(n); const ws = document.createElement("span"); ws.className = "wtxt"; ws.dataset.w = w; ws.textContent = abbrOn ? w.slice(0, 4) : w; c.appendChild(ws); grid.appendChild(c); });
@@ -8004,7 +8040,7 @@ async function previewRefresh(){
 }
 function renderSlots(){
   const grid = document.getElementById("wordGrid"); if(hasSeed()) return;
-  const n = parseInt(document.querySelector('input[name="words"]:checked').value, 10) === 24 ? 24 : 12;
+  const n = SEED_LENS.includes(+document.querySelector('input[name="words"]:checked').value) ? +document.querySelector('input[name="words"]:checked').value : 12;
   if(grid.classList.contains("slots") && grid.children.length === n && !grid.style.display) return;
   grid.textContent = ""; grid.style.display = ""; grid.classList.add("slots");
   for(let i = 0; i < n; i++){ const c = document.createElement("div"); c.className = "wcell empty"; const b = document.createElement("b"); b.textContent = (i + 1) + "."; const sp = document.createElement("span"); sp.textContent = "\u2014"; c.appendChild(b); c.appendChild(sp); grid.appendChild(c); }
@@ -8427,10 +8463,10 @@ function printSheet(build){
 }
 // Word draw sheet (v2.4.0): numbered boxes for the drawn words and the coin flips. Blank when printed.
 function printWordSheet(){
-  const wc = parseInt(document.getElementById("wdLen").value, 10) === 24 ? 24 : 12, need = wdNeeds(wc);
+  const wc = SEED_LENS.includes(+document.getElementById("wdLen").value) ? +document.getElementById("wdLen").value : 12, need = wdNeeds(wc);
   printSheet(add => {
     add("ps-title", "VOIDFORGE WORD DRAW SHEET");
-    add("ps-sub", "For a " + wc + "-word seed: draw (or roll) " + need.words + " words and write each one in the next box, in order. Put each tile back before the next draw. With BitBox02's diceware table, also write the roll (such as 2143 2 T) in the box.");
+    add("ps-sub", "For " + aWords(wc) + " seed: draw (or roll) " + need.words + " words and write each one in the next box, in order. Put each tile back before the next draw. With BitBox02's diceware table, also write the roll (such as 2143 2 T) in the box.");
     const g = add("ps-grid ps-" + wc, "");
     for(let i = 1; i <= need.words; i++){ const c = add("ps-cell", "", g); add("ps-n", String(i).padStart(2, "0"), c); }
     add("ps-sub ps-extra-sub", "Then flip a coin " + need.flips + " times for the last word. VOIDFORGE works out the last word from these flips and the words above.");
@@ -9444,21 +9480,22 @@ function printS39Shares(){
   });
 }
 // Card sheet (v2.9.0): numbered boxes to write the cards down as they are dealt: 25 for 12 words, or a whole deck and then
-// 6 more from a new shuffle for 24 words (see cdBits).
+// 6 more from a new shuffle for 24 words (see cdBits). v2.10.0: every seed length, and with raw entropy as many boxes as the
+// most cards that length can take (cdRawRange).
 function printCardSheet(){
-  const wc = +document.querySelector('input[name="words"]:checked').value === 24 ? 24 : 12, first = wc === 24 ? 52 : 25;
+  const wc = SEED_LENS.includes(cdWc()) ? cdWc() : 12, raw = cdRawOn(), rr = cdRawRange(wc), total = raw ? (wc === 21 ? 52 : rr[1]) : cdNeedCards(wc), first = Math.min(total, 52);
   printSheet(add => {
     add("ps-title", "VOIDFORGE CARD SHEET");
-    add("ps-sub", "For a " + wc + "-word seed: " + (wc === 24 ? "the whole deck (52 cards), then 6 more from a new shuffle." : "25 cards.") + " Take the jokers out of a full deck of 52 cards and shuffle it well (at least seven riffle shuffles). Deal the cards face up and write each one in the next box, in order: its rank (A, 2 to 10, J, Q, K) and suit (C clubs, D diamonds, H hearts, S spades), such as 10H.");
+    add("ps-sub", "For " + aWords(wc) + " seed" + (raw ? " (Ian Coleman, raw entropy)" : "") + ": " + (raw ? cdLenNote(wc).replace(/;.*$/, "") + ": stop when VOIDFORGE says enough." : total > 52 ? "the whole deck (52 cards), then " + (total - 52) + " more from a new shuffle." : total + " cards.") + " Take the jokers out of a full deck of 52 cards and shuffle it well (at least seven riffle shuffles). Deal the cards face up and write each one in the next box, in order: its rank (A, 2 to 10, J, Q, K) and suit (C clubs, D diamonds, H hearts, S spades), such as 10H.");
     const g = add("ps-grid ps-card", "");
     for(let i = 1; i <= first; i++){ const c = add("ps-cell", "", g); add("ps-n", String(i), c); }
-    if(wc === 24){
-      add("ps-sub ps-extra-sub", "Second shuffle: put all 52 cards back, shuffle well again, then deal 6 more and write them here.");
+    if(total > 52){
+      add("ps-sub ps-extra-sub", "Second shuffle: put all 52 cards back, shuffle well again, then deal " + (raw ? "up to " : "") + (total - 52) + " more and write them here.");
       const g2 = add("ps-grid ps-card", "");
-      for(let i = 53; i <= 58; i++){ const c = add("ps-cell", "", g2); add("ps-n", String(i), c); }
+      for(let i = 53; i <= total; i++){ const c = add("ps-cell", "", g2); add("ps-n", String(i), c); }
     }
     add("ps-rule", "");
-    add("ps-fields", "Date:       ____________\nTyped into VOIDFORGE and checked:  ____");
+    add("ps-fields", "Card method: " + (raw ? "Ian Coleman, raw entropy" : "Ian Coleman, hashed (every card counts)") + "\nDate:       ____________\nTyped into VOIDFORGE and checked:  ____");
     add("ps-rule", "");
     add("ps-warn", "Once filled in, this sheet is as secret as your seed: anyone who sees it can make your wallet.\nType it in on an offline computer, then shred it (or keep it only as a locked-away backup of the cards).\nNever photograph it.");
   });
@@ -9544,19 +9581,19 @@ function printRollSheet(){
   const po = document.getElementById("printOnly"); po.textContent = "";
   const add = (cls, text, parent) => { const d = document.createElement("div"); if(cls) d.className = cls; d.textContent = text; (parent || po).appendChild(d); return d; };
   add("ps-title", "VOIDFORGE " + (coin ? "COIN FLIP" : "DICE ROLL") + " SHEET");
-  add("ps-sub", need + " " + unit + " for a " + wc + "-word seed. " + (coin ? "Flip one coin and write 1 or 0 in the next box, in order. Decide which side is 1 and keep it the same for every flip." : "Roll one die and write its number (1 to 6) in the next box, in order. Do not re-roll, skip or reorder."));
+  add("ps-sub", need + " " + unit + " for " + aWords(+wc) + " seed. " + (coin ? "Flip one coin and write 1 or 0 in the next box, in order. Decide which side is 1 and keep it the same for every flip." : "Roll one die and write its number (1 to 6) in the next box, in order. Do not re-roll, skip or reorder."));
   const g = add("ps-grid ps-roll", "");
   for(let i = 1; i <= need; i++){ const c = add("ps-cell", "", g); add("ps-n", String(i), c); }
   // v2.3.0: dashed boxes for extra rolls. Optional: every one typed in counts. v2.4.0: how many is chosen next to the button.
   const ks = keystoneOn(), extra = rsExtraCount(need), wide = need + extra > 150;
   if(wide) g.classList.add("ps-roll20");
   if(extra > 0){
-  add("ps-sub ps-extra-sub", "Extra " + unit + " (optional). Every one you type in counts. " + (ks ? "Keystone dice rules (each 6 counts as 0, at most " + KEYSTONE_MAX + " rolls): a Keystone wallet makes the same words." : coin ? "Exactly " + need + " is the method in SeedSigner's coin-flip code; with more, that code makes different words." : "Exactly " + need + " gives the same words as SeedSigner and Coldcard; with more, only Coldcard makes the same words."));
+  add("ps-sub ps-extra-sub", "Extra " + unit + " (optional). Every one you type in counts. " + (+wc !== 12 && +wc !== 24 ? (coin ? "SeedSigner's coin-flip code makes only 12 or 24 words." : "SeedSigner, Coldcard and Keystone make dice seeds of 12 or 24 words only, so they will not make these words.") : ks ? "Keystone dice rules (each 6 counts as 0, at most " + KEYSTONE_MAX + " rolls): a Keystone wallet makes the same words." : coin ? "Exactly " + need + " is the method in SeedSigner's coin-flip code; with more, that code makes different words." : "Exactly " + need + " gives the same words as SeedSigner and Coldcard; with more, only Coldcard makes the same words."));
   const gx = add("ps-grid ps-roll" + (wide ? " ps-roll20" : ""), "");
   for(let i = need + 1; i <= need + extra; i++){ const c = add("ps-cell ps-extra", "", gx); add("ps-n", String(i), c); }
   }
   add("ps-rule", "");
-  add("ps-fields", (coin ? "1 means: ______   0 means: ______\n" : "Dice rules: " + (ks ? "Keystone (each 6 counts as 0)" : "SeedSigner and Coldcard") + "\n") + "Date:       ____________\nTyped into VOIDFORGE and checked:  ____");
+  add("ps-fields", (coin ? "1 means: ______   0 means: ______\n" : "Dice rules: " + (ks ? "Keystone (each 6 counts as 0)" : +wc !== 12 && +wc !== 24 ? "SHA-256 of every roll (no device makes " + wc + "-word dice seeds)" : "SeedSigner and Coldcard") + "\n") + "Date:       ____________\nTyped into VOIDFORGE and checked:  ____");
   add("ps-rule", "");
   add("ps-warn", "Once filled in, this sheet is as secret as your seed: anyone who sees it can make your wallet.\nType it in on an offline computer, then shred it (or keep it only as a locked-away backup of the rolls).\nNever photograph it.");
   document.body.classList.add("print-seed");
@@ -11505,7 +11542,7 @@ function downloadSeed() {
   // v2.6.0: a Word draw seed was not made from rolls, so never write whatever is in the rolls box as its input
   const wdFl = document.getElementById("wdFlips").value.replace(/[^01]/g, "");   // as wdGenerate reads them
   const input = seedKind === "wd" ? "Word draw (the words above were drawn by hand, not made from rolls)" + (wdFl ? "; coin flips for the last word: " + wdFl : "") : seedKind === "cd" ? "Playing cards: " + cdParse(document.getElementById("cdCards").value).cards.join(" ") : seedKind === "hex" ? "Hex entropy: " + hexClean(document.getElementById("cdHex").value) : rolls;
-  const full = text + "\n\n" + document.getElementById("fingerprint").textContent + "\n" + document.getElementById("address").textContent + "\n" + passLine("saved") + "\n\nInput: " + input + (exCtx && exCtx.keystone ? "\nDice rules: Keystone (each 6 counts as 0 before hashing)" : "");
+  const full = text + "\n\n" + document.getElementById("fingerprint").textContent + "\n" + document.getElementById("address").textContent + "\n" + passLine("saved") + "\n\nInput: " + input + (exCtx && exCtx.keystone ? "\nDice rules: Keystone (each 6 counts as 0 before hashing)" : "") + (seedKind === "cd" && sumCtx && sumCtx.raw ? "\nCard method: Ian Coleman, raw entropy (no hashing; in his tool, Use Raw Entropy)" : "");
   const blob = new Blob([full], {type: "text/plain"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -12263,7 +12300,7 @@ function updateLabels(){
   buildTapRow();
   const mode = document.querySelector('input[name="mode"]:checked')?.value || "dice";
   const ch = document.getElementById("coinHint"); if(ch) ch.style.display = mode === "coin" ? "block" : "none";
-  [12,24].forEach(w => {
+  SEED_LENS.forEach(w => {
     const el = document.getElementById("lbl"+w);
     if(el) el.textContent = w + " (" + getNeeded(w) + ")";
   });
@@ -12280,6 +12317,7 @@ document.getElementById("methodTabs").addEventListener("keydown", e => {
   const i = (order.indexOf(method) + (e.key === "ArrowRight" ? 1 : 3)) % 4; e.preventDefault(); setMethod(order[i]); document.getElementById("mt-" + order[i]).focus();
 });
 document.getElementById("diceRules").addEventListener("change", updateLabels);
+document.getElementById("cdMethod").addEventListener("change", () => { cdUpdate(); syncMethodUi(); });   // v2.10.0
 document.getElementById("wordSel").addEventListener("change", () => {
   const v = document.getElementById("wordSel").value, r = document.querySelector('input[name="words"][value="' + v + '"]');
   r.checked = true; r.dispatchEvent(new Event("change", {bubbles: true})); document.getElementById("wdLen").value = v; wdUpdate(); syncMethodUi();
@@ -12419,7 +12457,8 @@ function wdParse(text){
   toks.forEach((t, k) => { const n = wdResolve(t); if(n < 0) bad.push({n: k + 1, tok: t}); else idx.push(n); });
   return {idx, bad, count: toks.length};
 }
-function wdNeeds(wc){ return wc === 24 ? {words: 23, flips: 3} : {words: 11, flips: 7}; }
+// v2.10.0: words - 1 drawn words, and the entropy bits the last word still needs as coin flips: 11 - words / 3 (the rest is checksum)
+function wdNeeds(wc){ return {12: {words: 11, flips: 7}, 15: {words: 14, flips: 6}, 18: {words: 17, flips: 5}, 21: {words: 20, flips: 4}, 24: {words: 23, flips: 3}}[wc] || {words: 11, flips: 7}; }
 async function wdSteps(idx, flips, wc){
   const need = wdNeeds(wc);
   if(idx.length !== need.words || flips.length !== need.flips || /[^01]/.test(flips)) throw new Error("Wrong number of words or flips");
@@ -12459,42 +12498,86 @@ function cdBits(cards){
 function hexClean(s){ return String(s).trim().replace(/^0x/i, "").replace(/[\s:_-]/g, "").toLowerCase(); }
 function cdWc(){ return +document.querySelector('input[name="words"]:checked').value; }
 function cdUpdate(){
-  const wc = cdWc(), need = wc === 24 ? 256 : 128, pr = cdParse(document.getElementById("cdCards").value), b = cdBits(pr.cards);
+  const wc = cdWc(), need = seedBits(wc), pr = cdParse(document.getElementById("cdCards").value), b = cdBits(pr.cards), raw = cdRawOn();
   const hx = hexClean(document.getElementById("cdHex").value), hxNeed = need / 4;
   // in plain words: cards so far and cards still to go, counted exactly as cdBits counts (the bits stay the real test)
   const n = pr.cards.length; let left = 0, bb = b.bits, size = cdRunSet(pr.cards).size;
   while(bb < need){ bb += Math.log2(52 - size); size = (size + 1) % 52; left++; }
-  document.getElementById("cdCount").textContent = !n ? "" : !left ? "Enough cards: " + n + ". Press FORGE SEED." : n + " card" + (n === 1 ? "" : "s") + " so far. " + left + " more to go." + (b.again ? " (A card came up again before the deck ran out, so the count starts again there, as for a new shuffle.)" : "");
+  const rw = cdRaw(pr.cards), again = b.again ? " (A card came up again before the deck ran out, so the count starts again there, as for a new shuffle.)" : "";
+  document.getElementById("cdCount").textContent = !n ? "" : raw ? cdRawCount(rw, b, wc, n) + (rw.words === wc ? "" : again) : !left ? "Enough cards: " + n + ". Press FORGE SEED." : n + " card" + (n === 1 ? "" : "s") + " so far. " + left + " more to go." + again;
   document.getElementById("cdHexCount").textContent = hx ? hx.length + " of " + hxNeed + " hex digits" : "";
   let msg = "";
   if(pr.bad.length) msg = "\u201c" + pr.bad[0].trim() + "\u201d is not a card. Write each card as its rank (A, 2 to 10, J, Q, K) and then its suit (C, D, H or S), such as 10H.";
+  else if(raw && rw.words > wc) msg = rw.words > 24 ? "Too many cards: with raw entropy, Ian Coleman's tool would make " + rw.words + " words from these " + n + " cards, more than the 24 of any standard seed. Remove cards (UNDO LAST CARD)." : "Too many cards for " + wc + " words: with raw entropy, Ian Coleman's tool makes " + rw.words + " words from these " + n + " cards (" + rw.all + " bits). Remove cards (UNDO LAST CARD), or choose " + rw.words + " words above.";
   else if(/[^0-9a-f]/.test(hx)) msg = "Hex uses only the digits 0 to 9 and the letters a to f.";
-  else if(hx.length > hxNeed) msg = hx.length === 64 && wc === 12 ? "64 hex digits make a 24-word seed: choose 24 words above." : "Too many hex digits: a " + wc + "-word seed takes exactly " + hxNeed + ".";
+  else if(hx.length > hxNeed) msg = [32, 40, 48, 56, 64].includes(hx.length) ? hx.length + " hex digits make " + aWords(hx.length * 3 / 8) + " seed: choose " + hx.length * 3 / 8 + " words above." : "Too many hex digits: " + aWords(wc) + " seed takes exactly " + hxNeed + ".";
   document.getElementById("cdMsg").textContent = msg;
-  document.getElementById("cdBtn").disabled = !(selfTestState === "pass" && !pr.bad.length && b.bits >= need);
+  document.getElementById("cdBtn").disabled = !(selfTestState === "pass" && !pr.bad.length && (raw ? rw.words === wc : b.bits >= need));
   document.getElementById("cdHexBtn").disabled = !(selfTestState === "pass" && /^[0-9a-f]+$/.test(hx) && hx.length === hxNeed);
   cdGridSync(); staleCheck();
 }
 async function cdGenerate(){
   if(!gateOk()) return;
-  const wc = cdWc(), need = wc === 24 ? 256 : 128, pr = cdParse(document.getElementById("cdCards").value), b = cdBits(pr.cards);
-  if(pr.bad.length || b.bits < need){ cdUpdate(); return; }
+  const wc = cdWc(), need = seedBits(wc), pr = cdParse(document.getElementById("cdCards").value), b = cdBits(pr.cards), raw = cdRawOn(), rw = cdRaw(pr.cards);
+  if(pr.bad.length || (raw ? rw.words !== wc : b.bits < need)){ cdUpdate(); return; }
   const ix = pr.cards.map(c => CD_SUITS.indexOf(c[1]) * 13 + CD_RANKS.indexOf(c[0])), step = (d) => ix.every((v, i) => i === 0 || v - ix[i - 1] === d);
   if((step(1) || step(-1)) && !confirm("Your cards are in the order of a new, unshuffled deck. A seed made from them is weak. Make it anyway?")) return;
   if(b.again && !confirm("A card comes up twice before the deck ran out. That is right only if you shuffled the whole deck again in between; a card typed twice by mistake makes the seed weaker than counted. Make it anyway?")) return;
-  const sig0 = inputSig("cd"), mnemonic = await rollsToMnemonic(pr.cards.join(" "), wc);
-  await finishSeed(mnemonic, null, sig0, "cd", {cards: pr.cards.length, bits: b.bits});
+  const sig0 = inputSig("cd"), mnemonic = raw ? await entropyToMnemonic(rw.bytes) : await rollsToMnemonic(pr.cards.join(" "), wc);
+  await finishSeed(mnemonic, null, sig0, "cd", {cards: pr.cards.length, bits: b.bits, raw: raw ? {all: rw.all, keep: rw.keep} : null});
   if(hasSeed()) document.getElementById("explainBox").style.display = "none";   // the dice explainer does not apply
 }
 async function cdHexGenerate(){
   if(!gateOk()) return;
   const wc = cdWc(), hx = hexClean(document.getElementById("cdHex").value);
-  if(!/^[0-9a-f]+$/.test(hx) || hx.length !== (wc === 24 ? 64 : 32)){ cdUpdate(); return; }
+  if(!/^[0-9a-f]+$/.test(hx) || hx.length !== seedBits(wc) / 4){ cdUpdate(); return; }
   const kinds = new Set(hx).size;
   if(kinds < 6 && !confirm("Your hex digits look non-random (only " + kinds + " different digit" + (kinds === 1 ? "" : "s") + "). A seed made from them may be weak. Make it anyway?")) return;
   const sig0 = inputSig("hex"), mnemonic = await entropyToMnemonic(Uint8Array.from(hx.match(/../g).map(x => parseInt(x, 16))));
   await finishSeed(mnemonic, null, sig0, "hex", {});
   if(hasSeed()) document.getElementById("explainBox").style.display = "none";   // the dice explainer does not apply
+}
+// ===== v2.10.0 card method (Ian Coleman, raw entropy) =====
+// The second card method reproduces Ian Coleman's BIP39 tool with Mnemonic Length on its first choice, "Use Raw Entropy (3 words
+// per 32 bits)", read from his repository (iancoleman/bip39 on GitHub) at commit de71c22328b24e0848bbe1bd12ac8974ca83b5b8 (v0.5.6):
+// - src/js/entropy.js, eventBits "card": the cards in the order AC 2C ... KC, AD ... KD, AH ... KH, AS ... KS (index 0 to 51).
+//   Cards 0 to 31 (AC to 6H) are that number in 5 bits, cards 32 to 47 (7H to 9S) the number minus 32 in 4 bits, and the last
+//   4 (TS JS QS KS) the number minus 48 in 2 bits, so no value is more likely than another. Every card adds its bits, in order.
+// - src/js/index.js, setMnemonicFromEntropy: with raw entropy the bits are not hashed. "Discard trailing entropy": it keeps
+//   floor(bits / 32) * 32 bits, taken from the END (the first bits are dropped), and makes 3 words per 32 bits with the usual
+//   BIP39 checksum (jsbip39.js toMnemonic). So the number of words follows from the cards; VOIDFORGE asks for exactly the
+//   chosen length and refuses more than 24 words, which no standard seed has.
+// His tool counts each card as if it were put back (his notes: "a full deck with replacement generates 232 bits ... without
+// replacement 225"), so the strength shown is at most the bits kept and at most what the dealt cards hold (cdBits).
+function cdRawOn(){ const e = document.getElementById("cdMethod"); return !!e && e.value === "raw"; }
+function cdRawCode(c){
+  const i = CD_SUITS.indexOf(c[1]) * 13 + CD_RANKS.indexOf(c[0]);
+  return i < 32 ? i.toString(2).padStart(5, "0") : i < 48 ? (i - 32).toString(2).padStart(4, "0") : (i - 48).toString(2).padStart(2, "0");
+}
+function cdRaw(cards){
+  const bits = cards.map(cdRawCode).join(""), keep = Math.floor(bits.length / 32) * 32, kept = bits.slice(bits.length - keep), bytes = new Uint8Array(keep / 8);
+  for(let i = 0; i < bytes.length; i++) bytes[i] = parseInt(kept.slice(i * 8, i * 8 + 8), 2);
+  return {all: bits.length, keep, words: keep / 32 * 3, bytes};
+}
+function cdRawCount(rw, b, wc, n){
+  const cards = n + " card" + (n === 1 ? "" : "s");
+  if(rw.words < wc) return cards + " so far: " + rw.all + " of the " + seedBits(wc) + " bits " + wc + " words need, by Ian Coleman's count (each card gives 5, 4 or 2 bits). Keep dealing.";
+  if(rw.words > wc) return cards + ": " + rw.all + " bits, more than " + wc + " words take.";
+  return "Enough cards: " + n + ". Press FORGE SEED. Raw entropy keeps the last " + rw.keep + " of the " + rw.all + " bits these cards give" + (rw.all > rw.keep ? " (the first " + (rw.all - rw.keep) + " are dropped)" : "") + ", so the words hold at most " + Math.floor(Math.min(rw.keep, b.bits)) + " bits: his tool counts each card as if it were put back, and dealt from one deck these cards hold about " + Math.floor(b.bits) + ".";
+}
+// Cards needed for a seed length: hashed, as cdBits counts them; raw, the fewest and the most a shuffled deck can take
+// (its cards in the order with the most bits first, or the fewest first), dealing a new deck after 52 cards.
+function cdNeedCards(wc){ let n = 0, bb = 0, size = 0; while(bb < seedBits(wc)){ bb += Math.log2(52 - size); size = (size + 1) % 52; n++; } return n; }
+function cdRawRange(wc){
+  const deal = (up) => { const deck = []; for(let i = 0; i < 52; i++) deck.push(i < 32 ? 5 : i < 48 ? 4 : 2); deck.sort((x, y) => up ? x - y : y - x);
+    let n = 0, bb = 0; while(bb < seedBits(wc)){ bb += deck[n % 52]; n++; } return n; };
+  return [deal(false), deal(true)];
+}
+function cdLenNote(wc){
+  const hex = "; or " + seedBits(wc) / 4 + " hex digits";
+  if(cdRawOn()){ const r = cdRawRange(wc); return (r[0] > 52 ? "a whole shuffled deck, then " + (r[0] - 52) + " to " + (r[1] - 52) + " more cards" : wc === 21 ? r[0] + " to 52 cards from a shuffled deck (a whole deck makes 21 words)" : r[0] + " to " + r[1] + " cards from a shuffled deck") + ", depending on the cards" + hex; }
+  const k = cdNeedCards(wc);
+  return (k > 52 ? "a whole shuffled deck, then " + (k - 52) + " more cards" : k + " cards from a shuffled deck") + hex;
 }
 function cdClear(){
   document.getElementById("cdCards").value = ""; document.getElementById("cdHex").value = ""; cdUpdate();
@@ -12613,7 +12696,7 @@ function wdUpdate(){
   document.getElementById("wdCount").textContent = pr.count + " / " + need.words + " words, " + cleaned.length + " / " + need.flips + " flips";
   let msg = "";
   if(pr.bad.length) msg = "Word " + pr.bad[0].n + " (" + pr.bad[0].tok + ") is not a BIP39 word. Check the spelling or type more letters.";
-  else if(pr.count > need.words) msg = "Too many words: a " + wc + "-word seed needs " + need.words + " drawn words (the last word is worked out for you).";
+  else if(pr.count > need.words) msg = "Too many words: " + aWords(wc) + " seed needs " + need.words + " drawn words (the last word is worked out for you).";
   else if(cleaned.length > need.flips) msg = "Too many flips: you need " + need.flips + ".";
   document.getElementById("wdMsg").textContent = msg;
   document.getElementById("wdBtn").disabled = !(selfTestState === "pass" && !pr.bad.length && pr.count === need.words && cleaned.length === need.flips);
