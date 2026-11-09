@@ -118,7 +118,7 @@ async function probe(w, mutated, fast, only, hooks) {
     // reading back
     $t('pnRdFmt').value = 'num'; t.pnRdLayout(); $t('pnRdBase').value = '10'; $t('pnRdNums').value = N;
     await open(); cf.n = 0; t.pnReadUi(); if (cf.n !== 0 || $t('phrase').value !== LW) fails.push('read back: the same words fill the box without a question');
-    $t('pnRdNums').value = '1 1 1 1 1 1 1 1 1 1 1 3'; t.pnReadUi();
+    $t('pnRdNums').value = '1 1 1 1 1 1 1 1 1 1 1 4'; t.pnReadUi();   // about is word 4
     if (cf.n !== 1 || $t('phrase').value !== 'abandon '.repeat(11) + 'about') fails.push('read back: asks before replacing other words');
     if (t.document.getElementById('walletView').style.display !== 'none') fails.push('read back: new words in the box close the old wallet view');
     $t('pnRdNums').value = '9'; $t('pnRdNums').dispatchEvent(new t.Event('input')); if ($t('pnRdStatus').textContent !== '') fails.push('read back: an edit clears the old result');
