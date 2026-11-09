@@ -1,7 +1,8 @@
 #!/bin/sh
-# Fetches only the dice files of SeedSigner, Coldcard and Keystone (and Coldcard's seed mix files) at pinned commits into tests/vendor/src (not committed).
-# Used by tests/vendor.test.mjs. v2.10.0: also the library files of python-shamir-mnemonic (the SLIP39 reference), used by
-# tests/slip39.test.mjs through tests/vendor/slip39_ref.py, which checks each file's SHA-256 before using it. Change a commit here on purpose only, after reading what changed in that file.
+# Fetches only the dice files of SeedSigner, Coldcard and Keystone (and Coldcard's seed mix files), and the punch plate files of Krux,
+# at pinned commits into tests/vendor/src (not committed). Used by tests/vendor.test.mjs and tests/krux.test.mjs. v2.10.0: also the
+# library files of python-shamir-mnemonic (the SLIP39 reference), used by tests/slip39.test.mjs through tests/vendor/slip39_ref.py,
+# which checks each file's SHA-256 before using it. Change a commit here on purpose only, after reading what changed in that file.
 set -eu
 cd "$(dirname "$0")"
 mkdir -p src
@@ -19,3 +20,4 @@ get shamir https://github.com/trezor/python-shamir-mnemonic 9fcb9c807c185e06d626
 # v2.10.0: Coldcard's seed mix (dice or coin flips mixed with the device's TRNG words), at the commit of release 1.5.3Q (the
 # same shared/seed.py as Mk4/Mk5 5.6.3): the firmware code, Coinkite's own checker docs/verify_seed_mix.py and its tests.
 get coldcard-mix https://github.com/Coldcard/firmware 4e5ba883e0bf8756036f8a84fdbc4b067aa7ad05 shared/seed.py docs/verify_seed_mix.py testing/test_rolls.py testing/test_ux.py
+get krux https://github.com/selfcustody/krux 28d14c216006e278fd263afead3357becb83aa43 src/krux/pages/tiny_seed.py src/krux/pages/stack_1248.py src/krux/pages/utils.py src/krux/pages/mnemonic_loader.py

@@ -144,6 +144,20 @@ for (const bits of [128, 160, 192, 224, 256]) {
   await sheet('check: words ' + n, () => printSeed('check'));
   await sheet('check: stamp sheet ' + n, () => printStamp('check'));
   await sheet('check: recovery sheet ' + n, () => printRecoverySheet());
+  // v2.10.0: the punch plates of these words, and the blank plates, in all three layouts
+  for (const f of ['grid', 'stack', 'num']) {
+    await p.evaluate((f) => { document.getElementById('pnFmt').value = f; }, f);
+    await sheet('check: plate ' + f + ' ' + n, () => printPlate());
+    await sheet('check: blank plate ' + f + ' ' + n, () => printPlateBlank('check'));
+    await p.evaluate(([f, n]) => { document.getElementById('pnRdFmt').value = f; document.getElementById('pnRdLen').value = String(n); pnRdLayout(); }, [f, n]);
+    await sheet('read back: blank plate ' + f + ' ' + n, () => printPlateBlank('read'));
+  }
+  if (n === 24) {   // v2.10.0: the key details sheet at its longest (Taproot addresses, one list under the other)
+    await p.evaluate(async () => { document.getElementById('wvType').value = 'tr'; await wvRefresh(); });
+    await sheet('check: key details, Taproot, 24 words', () => printInherit('keys'));
+    await p.evaluate(async () => { document.getElementById('wvType').value = 'wpkh'; await wvRefresh(); });
+    await sheet('check: key details, Native SegWit, 24 words', () => printInherit('keys'));
+  }
   if (n === 12 || n === 24) {
     for (const k of ['seedqr', 'compact']) {
       await p.evaluate((k) => wvSeedQr(k), k);
@@ -255,8 +269,13 @@ await p.evaluate(() => {
   set('plHelp', fill(120)); set('plNote', fill(400)); planRender();
 });
 await sheet('backup plan, every box at its longest', () => printPlan());
+// v2.10.0: the inheritance documents and the bag log, with every box at its longest
+await p.evaluate(() => { const fill = (n) => ('Qwz plk dvn tyx ').repeat(40).slice(0, n); for (const id of ['plOwner', 'plHeir', 'plLawyer']) document.getElementById(id).value = fill(60); document.getElementById('plWhere').value = fill(80); });
+for (const k of ['letter', 'heir', 'keys', 'contacts', 'bags']) await sheet('inheritance: ' + k + ', every box at its longest', (k) => printInherit(k), k);
+ok(await p.evaluate(async () => { await printInherit('heir'); const t = document.getElementById('printOnly').textContent; window.dispatchEvent(new Event('afterprint')); return /RECOVERY STEPS FOR THE HEIR/.test(t) && getComputedStyle(document.body).display !== 'none'; }), 'inheritance: the heir\'s steps print');
 await p.evaluate(() => { for (const id of ['plM2', 'plM3']) document.getElementById(id).value = ''; for (const id of ['plApp', 'plHelp', 'plNote', 'plFp', 'plBorn']) document.getElementById(id).value = ''; document.getElementById('plPass').value = 'none'; planRender(); });
 await sheet('backup plan, short (one copy, worst case)', () => printPlan());
+for (const k of ['letter', 'heir', 'keys', 'contacts', 'bags']) await sheet('inheritance: ' + k + ', short', (k) => printInherit(k), k);
 ok(await p.evaluate(() => /backup plan/i.test(document.getElementById('planBox').textContent) && document.getElementById('plTest').children.length >= 5), 'backup plan: the stress test is on the page');
 await p.click('#tab-make');
 await p.evaluate(() => practiceMode(true));

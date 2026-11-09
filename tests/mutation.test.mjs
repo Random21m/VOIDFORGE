@@ -273,6 +273,43 @@ async function probe(w, mutated, fast, only, hooks) {
   // it runs early, so a break in its code is caught in seconds: put the page back as section 0 left it
   w.document.querySelector('input[name=xorMode][value=split]').checked = true; w.xorModeChange(); w.showTab('make'); w.setMethod('dice'); r = await run('dice', 12, D50);
   }
+  if (SEC(64, "v2.10.0 punch plates and inheritance documents (expected numbers worked out by hand; Krux's own code in tests/krux.test.mjs)")) {
+  try {
+    // A fresh copy of the page, so the seed made above stays for the sections after this one.
+    const t = loadPage(mutated, () => {}); await ready(t); const $t = (id) => t.document.getElementById(id), sl = (ms) => new Promise((r2) => setTimeout(r2, ms));
+    const pr = { n: 0, text: '' }, cf = { n: 0, v: true }; t.print = () => { pr.n++; pr.text = $t('printOnly').textContent; }; t.confirm = () => { cf.n++; return cf.v; }; t.alert = () => {};
+    const LW = 'legal winner thank year wave sausage worth useful legal winner thank yellow', N = '1020 2016 1791 2040 1984 1534 2032 1920 1020 2016 1791 2041';
+    const open = async () => { $t('phrase').value = LW; $t('verifyPass').value = ''; await t.verify(); for (let i = 0; i < 300 && !(t.eval('wvCtx') && t.eval('wvCtx.shown')); i++) await sl(20); };
+    await open();
+    $t('pnFmt').value = 'stack'; t.pnShow(true);
+    { const rw = [...$t('pnView').querySelectorAll('tr')]; if (rw.length !== 14 || [...rw[3].children].slice(1, 15).map((c) => (c.textContent ? 1 : 0)).join('') !== '01000010000110') fails.push('plates: the Stackbit plate of winner (2016) punches 2, 1, 2 + 4'); }
+    cf.n = 0; pr.n = 0; cf.v = false; t.printPlate(); if (cf.n !== 1 || pr.n !== 0) fails.push('plates: PRINT PLATE asks first, and a no prints nothing'); cf.v = true;
+    $t('phrase').value = LW + ' x'; $t('phrase').dispatchEvent(new t.Event('input')); if ($t('pnView').textContent !== '') fails.push('plates: editing the words removes the plate');
+    // reading back
+    $t('pnRdFmt').value = 'num'; t.pnRdLayout(); $t('pnRdBase').value = '10'; $t('pnRdNums').value = N;
+    await open(); cf.n = 0; t.pnReadUi(); if (cf.n !== 0 || $t('phrase').value !== LW) fails.push('read back: the same words fill the box without a question');
+    $t('pnRdNums').value = '1 1 1 1 1 1 1 1 1 1 1 4'; t.pnReadUi();   // about is word 4
+    if (cf.n !== 1 || $t('phrase').value !== 'abandon '.repeat(11) + 'about') fails.push('read back: asks before replacing other words');
+    if (t.document.getElementById('walletView').style.display !== 'none') fails.push('read back: new words in the box close the old wallet view');
+    $t('pnRdNums').value = '9'; $t('pnRdNums').dispatchEvent(new t.Event('input')); if ($t('pnRdStatus').textContent !== '') fails.push('read back: an edit clears the old result');
+    $t('pnRdNums').value = ''; t.pnRdSync(); $t('phrase').value = ''; $t('verifyPass').value = '';
+    $t('pnRdFmt').value = 'grid'; t.pnRdLayout(); const x = [...$t('pnRdGrid').querySelectorAll('input')].find((e) => e.pnRow === 2 && e.pnCol === 5); x.checked = true; x.dispatchEvent(new t.Event('change', { bubbles: true }));
+    if (!t.autoHasSecrets()) fails.push('auto-clear: a ticked hole counts as a secret');
+    $t('pnRdNums').value = '5'; if (!t.autoWipe('test') || $t('pnRdNums').value !== '' || $t('pnRdGrid').querySelector('input:checked')) fails.push('auto-clear: wipes the read-back boxes and ticks');
+    x.checked = true; $t('pnRdNums').value = '5'; $t('pnRdStatus').textContent = 'old'; t.clearAll(); await sl(20);
+    if ($t('pnRdNums').value !== '' || $t('pnRdGrid').querySelector('input:checked') || $t('pnRdStatus').textContent !== '') fails.push('CLEAR ALL: empties the read-back boxes, ticks and result');
+    // inheritance documents
+    const P = async (k) => { pr.n = 0; pr.text = ''; await t.printInherit(k); t.dispatchEvent(new t.Event('afterprint')); return pr.n ? pr.text : ''; };
+    $t('plFp').value = '73c5da0a'; $t('plPass').value = 'home'; $t('plW1').value = 'shoe box'; $t('plOwner').value = 'Ann';
+    if (!/with the passphrase \(kept on a separate note at home\)/.test(await P('heir'))) fails.push('inheritance: the heir\'s steps say how the passphrase is kept');
+    if (!/1\. PaperAt home: shoe box/.test(await P('bags'))) fails.push('bag log: a row for each copy of the plan');
+    $t('plOwner').value = LW; if (await P('letter') || !/seed words/.test($t('ihStatus').textContent)) fails.push('inheritance: refuses to print seed words typed in a box');
+    $t('plOwner').value = 'Ann'; $t('plFp').value = '73c5da0'; if (await P('contacts')) fails.push('inheritance: refuses a fingerprint that is not 8 hex digits');
+    $t('plFp').value = 'deadbeef'; await open(); if (!/another fingerprint than this plan/.test(await P('keys'))) fails.push('key details: a wallet with another fingerprint is left out');
+    t.planClear(); if ($t('plOwner').value !== '') fails.push('inheritance: the plan\'s CLEAR empties the new boxes');
+    closePage(t);
+  } catch (e) { fails.push('v2.10.0 plates and inheritance: the probe crashed: ' + e.message); }
+  }
   if (SEC(1, "{ const wo = watch(expect.d50, ''), z = $('wZpub').textConte")) {
   { const wo = watch(expect.d50, ''), z = $('wZpub').textContent, dr = $('wDescR').textContent, dc = $('wDescC').textContent;
     if (z !== wo.zpub) fails.push('watch-only zpub');
@@ -5551,6 +5588,29 @@ const M = [
   ["v2.10 twice: length not measured", "let n = L; while(i + n < rolls.length && a + n < i && rolls[a + n] === rolls[i + n]) n++;", "let n = L;"],
   ["v2.10 twice: first copy runs into the second", "while(i + n < rolls.length && a + n < i && rolls[a + n]", "while(i + n < rolls.length && rolls[a + n]"],
   ["v2.10 twice: note not shown", "  document.getElementById(\"twiceNote\").textContent = rollsTwiceText(rolls, isCoin);   // v2.10.0\n", ""],
+  // v2.10.0 punch plates and inheritance documents (probe section 64)
+  ["plates: words numbered from 0", "if(i === undefined) throw new Error(\"not a BIP39 word\"); return i + 1; }", "if(i === undefined) throw new Error(\"not a BIP39 word\"); return i; }"],
+  ["plates: binary grid columns reversed", "PN_COLS.map((c, k) => (n >> (11 - k)) & 1)", "PN_COLS.map((c, k) => (n >> k) & 1)"],
+  ["plates: Stackbit boxes wrong", ".filter(b => +x & b)", ".filter(b => +x > b)"],
+  ["plates: hex in lower case", "hex: n.toString(16).toUpperCase()", "hex: n.toString(16)"],
+  ["plates: read back takes 0", "if(!(n >= 1 && n <= 2048)) return {error: \"Number \"", "if(!(n <= 2048)) return {error: \"Number \""],
+  ["plates: read back takes 2049", "n <= 2048)) return {error: \"Number \"", "n <= 2049)) return {error: \"Number \""],
+  ["plates: grid row over 2048 taken", "if(n > 2048) return {error: \"Row \"", "if(n > 4095) return {error: \"Row \""],
+  ["plates: Stackbit digit over 9 taken", "if(d[0] > 2 || d.slice(1).some(x => x > 9)) return -1;", "if(d[0] > 2) return -1;"],
+  ["plates: printed without asking", "if(!confirm(\"Printing sends your seed (as a punch plate layout)", "if(false && !confirm(\"Printing sends your seed (as a punch plate layout)"],
+  ["plates: plate stays after the words change", "  pnShow(false);   // v2.10.0: the punch plate belongs", "  // v2.10.0: the punch plate belongs"],
+  ["plates: CLEAR ALL keeps the read-back boxes", "  pnClear();   // v2.10.0", "  // v2.10.0"],
+  ["plates: read-back result kept after an edit", "for(const id of [\"pnRdNums\", \"pnRdBase\", \"pnRdFmt\", \"pnRdLen\"]) document.getElementById(id).addEventListener(", "for(const id of []) document.getElementById(id).addEventListener("],
+  ["plates: auto-clear misses the read-back boxes", "AUTO_FIELDS.push(\"pnRdNums\", \"pnRdTicks\");", ""],
+  ["plates: ticks not counted as a secret", "document.getElementById(\"pnRdTicks\").value = n ? String(n) : \"\";", "document.getElementById(\"pnRdTicks\").value = \"\";"],
+  ["plates: words filled without an input event", "ph.value = text; ph.dispatchEvent(new Event(\"input\", {bubbles: true}));", "ph.value = text;"],
+  ["plates: other words replaced without asking", "if(ph.value.trim() && ph.value.trim() !== text && !confirm(", "if(false && !confirm("],
+  ["inheritance: new boxes not checked for secrets", "...st.copies.map(c => c.where), st.owner, st.heir, st.lawyer, st.where].join(\"\\n\")", "...st.copies.map(c => c.where)].join(\"\\n\")"],
+  ["inheritance: fingerprint not checked", "if(st.fp && !/^[0-9a-f]{8}$/.test(st.fp)){ ihSay(", "if(false){ ihSay("],
+  ["inheritance: key details from another wallet", "if(st.fp && fp !== st.fp) return {note:", "if(false) return {note:"],
+  ["inheritance: heir steps leave out the passphrase", "(hasPass ? \", with the passphrase (\" + P.replace(/^Yes, /, \"kept \") + \")\" : \"\")", "\"\""],
+  ["inheritance: bag log forgets the copies", "const rows = st.copies.map((c, i) =>", "const rows = [].map((c, i) =>"],
+  ["inheritance: plan CLEAR keeps the new boxes", "PLAN_IDS.push(...IH_IDS);", ""],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
