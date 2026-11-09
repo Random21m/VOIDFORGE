@@ -878,6 +878,9 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t.w.clearAll(); await new Promise(x=>setTimeout(x,30)); ok(t.$('wdWords').value===''&&t.$('wdFlips').value===''&&t.$('wdOut').textContent===''&&t.$('wdOut').style.display==='none','CLEAR wipes the word draw boxes and steps');
     t.$('passphrase').value=''; t.$('passphrase2').value=''; }
   { let threw=false; try{ await t.w.rollsToMnemonic('1'.repeat(62),13);}catch(e){threw=true;} ok(threw,'a 13-word seed (not a BIP39 length) is rejected'); }
+  { const {entropyToMnemonic:e2m}=require('@scure/bip39'), {wordlist:wl}=require('@scure/bip39/wordlists/english'), R='352614'.repeat(17), nc2=require('crypto');   // v2.10.0 release run: every length keeps the right number of hash bytes
+    const got=[]; for(const [n,b] of [[12,16],[15,20],[18,24],[21,28],[24,32]]) got.push((await t.w.rollsToMnemonic(R,n))===e2m(nc2.createHash('sha256').update(R).digest().subarray(0,b),wl));
+    ok(got.every(Boolean),'dice seeds of 12, 15, 18, 21 and 24 words are the first 128, 160, 192, 224 and 256 bits of SHA-256 of the rolls (checked with @scure)'); }
   ok(/Recovery notes/.test(html)&&/move the funds/.test(html),'changelog has recovery notes for removed modes');
   ok((await t.w.checkPhrase('abandon '.repeat(14)+'address')).ok,'VERIFY still accepts 15-word phrases from other tools');
   { const r=await t.w.checkPhrase('constructor '+'abandon '.repeat(10)+'about'); ok(!r.ok&&/^Unknown word: constructor \(word 1\): no BIP39 word is close\. /.test(r.msg),'VERIFY reports a JavaScript property name typed as a word as an unknown word (v1.28.0)'); }

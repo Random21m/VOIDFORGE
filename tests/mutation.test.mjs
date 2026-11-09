@@ -400,6 +400,7 @@ async function probe(w, mutated, fast, only, hooks) {
     if (!/Some wallets take only 12 or 24 words: check that yours takes 18/.test($('lenNote').textContent)) fails.push('lengths: 18 words: check that the wallet takes 18');
     if (!/\(an 18-word seed needs 192\)/.test($('bitsNote').textContent)) fails.push('lengths: the bits note says an 18-word seed needs 192');
     await w.generate(); if (first() !== entropyToMnemonic(sha(R75).slice(0, 24), wordlist)) fails.push('lengths: 18-word dice seed = first 192 bits of SHA-256');
+    for (const [n, b] of [[15, 20], [21, 28]]) { const R = (D50 + D50).slice(0, w.getNeeded(n)); if ((await w.rollsToMnemonic(R, n)) !== entropyToMnemonic(sha(R).slice(0, b), wordlist)) fails.push('lengths: ' + n + '-word dice seed = first ' + 8 * b + ' bits of SHA-256'); }   // found by the release run
     if ($('explainBox').style.display !== '' || $('seedQrBox').style.display !== 'none' || $('sqNone').style.display !== '' || !/No SeedQR exists for 18 words/.test($('sqNone').textContent)) fails.push('lengths: 18 words: steps shown, SeedQR explained as not existing');
     await w.showExplain(); if (/CompactSeedQR/.test($('exOut').textContent) || !/match the seed above/.test($('exOut').textContent)) fails.push('lengths: 18 words: the steps match and make no CompactSeedQR claim');
     if (!/192 bits of randomness/.test(w.seedSummary().lines[2])) fails.push('lengths: the summary says 192 bits for 18 words');
