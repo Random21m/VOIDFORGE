@@ -2050,7 +2050,8 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     { const all=w.eval('WORDLIST'); let bad=0; for(const x of all){ const v=w.smudgeOf(x); if(v&&(v===x||!all.includes(v))) bad++; } ok(bad===0,'look-alike letters: every suggestion is another BIP39 word'); }
     eq(w.smudgeText(['zoo','zoo']),'','look-alike letters: nothing is shown when no word has a look-alike');
     // Wallet Detective: the list names a public phrase first
-    await typed('abandon '.repeat(11)+'about'); await w.detList(); ok(/^PUBLIC EXAMPLE PHRASE/.test($('detOut').textContent),'Wallet Detective: a public phrase is named first in the list');
+    await typed('abandon '.repeat(11)+'about'); await w.detList(); ok(/^PUBLIC EXAMPLE PHRASE/.test($('detPub').textContent)&&!/PUBLIC EXAMPLE/.test($('detOut').textContent),'Wallet Detective: a public phrase is named above the list, which itself is unchanged');
+    w.detClear(true); ok($('detPub').textContent==='','Wallet Detective: the warning is cleared with the result');
     // Seed XOR: parts that combine to a public phrase
     w.document.querySelector('input[name=xorMode][value=combine]').checked=true; w.xorModeChange(); $('xorIn').value=[E('0f'.repeat(16)),E('70'.repeat(16))].join('\n'); await w.seedXorUi('combine');
     ok(/^WARNING: the parts combine to a public example phrase\. PUBLIC EXAMPLE PHRASE: This phrase is a public example/.test($('xorStatus').textContent)&&/warn/.test($('xorStatus').className),'Seed XOR: parts that combine to a public phrase (7f x16) are warned about');

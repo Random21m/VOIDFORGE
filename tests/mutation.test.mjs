@@ -123,7 +123,7 @@ async function probe(w, mutated, fast, only, hooks) {
     if (!/PUBLIC EXAMPLE PHRASE/.test($('verifyStatus').textContent)) fails.push('public phrase: VERIFY names abandon ... about');
     if (!/This phrase is a public example/.test($('wvPub').textContent)) fails.push('public phrase: Open this wallet names it');
     if (!/^SECRET Write these clearly: .*12 \(about could look like above\)\.$/.test($('vSmudge').textContent) || $('vSmudge').firstChild.className !== 'tag tag-secret') fails.push('look-alike: VERIFY lists about/above (u read as v), marked SECRET');
-    await w.detList(); if (!/^PUBLIC EXAMPLE PHRASE/.test($('detOut').textContent)) fails.push('public phrase: Wallet Detective names it first');
+    await w.detList(); if (!/^PUBLIC EXAMPLE PHRASE/.test($('detPub').textContent) || !$('detOut').textContent) fails.push('public phrase: Wallet Detective names it above its result');
     await typed('abandon '.repeat(11) + 'abou'); if ($('vSmudge').textContent !== '') fails.push('look-alike: editing the words clears the VERIFY list');
     await typed('abandon '.repeat(11) + 'about', () => $('phrasePub').textContent); await w.verify(); w.clearAll(); await sl(30);
     if ($('vSmudge').textContent !== '' || $('phrasePub').textContent !== '') fails.push('look-alike: CLEAR ALL clears the list and the public phrase warning');
@@ -5043,7 +5043,7 @@ const M = [
   ["v2.10 public: VERIFY line missing", "    else if(knownPhrase(r.mnemonic)) lines.push(knownPhraseText(r.mnemonic));", ""],
   ["v2.10 public: FORGE not warned", "function seedNotes(words){ knownShow(\"forgePub\", words ? words.join(\" \") : \"\");", "function seedNotes(words){ knownShow(\"forgePub\", \"\");"],
   ["v2.10 public: CLEAR ALL keeps the warning and list", "  smudgeShow(\"vSmudge\", null); knownSeq++; knownShow(\"phrasePub\", \"\");   // v2.10.0\n", ""],
-  ["v2.10 public: Detective not warned", "function detPubLine(src){ const t = src && src.mnemonic ? knownPhraseText(src.mnemonic) : \"\";", "function detPubLine(src){ const t = \"\";"],
+  ["v2.10 public: Detective not warned", "function detPub(src){ knownShow(\"detPub\", src && src.mnemonic ? src.mnemonic : \"\"); }", "function detPub(src){ }"],
   ["v2.10 public: Open this wallet not warned", "knownShow(\"wvPub\", mnemonic);", "knownShow(\"wvPub\", \"\");"],
   ["v2.10 public: Seed XOR not warned", "const pubX = !r.zero && knownPhrase(r.mnemonic) ?", "const pubX = false ?"],
   ["v2.10 public: practice switch not followed", "  knownRefresh();   // v2.10.0: the public phrase warnings say whether practice mode is on\n", ""],
