@@ -10188,7 +10188,7 @@ async function cdHexGenerate(){
 }
 // ===== v2.10.0 card method (Ian Coleman, raw entropy) =====
 // The second card method reproduces Ian Coleman's BIP39 tool with Mnemonic Length on its first choice, "Use Raw Entropy (3 words
-// per 32 bits)", read from https://github.com/iancoleman/bip39 at commit de71c22328b24e0848bbe1bd12ac8974ca83b5b8 (v0.5.6):
+// per 32 bits)", read from his repository (iancoleman/bip39 on GitHub) at commit de71c22328b24e0848bbe1bd12ac8974ca83b5b8 (v0.5.6):
 // - src/js/entropy.js, eventBits "card": the cards in the order AC 2C ... KC, AD ... KD, AH ... KH, AS ... KS (index 0 to 51).
 //   Cards 0 to 31 (AC to 6H) are that number in 5 bits, cards 32 to 47 (7H to 9S) the number minus 32 in 4 bits, and the last
 //   4 (TS JS QS KS) the number minus 48 in 2 bits, so no value is more likely than another. Every card adds its bits, in order.
