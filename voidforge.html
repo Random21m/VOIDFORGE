@@ -1396,6 +1396,19 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <textarea id="wpIn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Public key or descriptor" placeholder="xpub..., zpub... or wpkh([...]xpub.../0/*)"></textarea>
       <div class="btn-row" style="margin-top:6px;"><button type="button" id="wpBtn" onclick="openWatchOnly()">OPEN WATCH-ONLY</button></div>
       <div class="status" id="wpStatus" aria-live="polite" style="word-break:break-word; margin-top:6px;"></div>
+<details id="wpbBox" class="ms-sub" style="margin-top:10px;">
+<summary>Save an encrypted backup of this descriptor (BIP138)<small>For a descriptor pasted above: a .bip138 file that only one of the wallet&rsquo;s keys opens.</small></summary>
+<p class="hint" style="margin:8px 0 6px;">Paste the wallet&rsquo;s descriptor in the box above (any kind: single key, multisig or miniscript). This saves it encrypted as a .bip138 file, the format Liana writes: store copies anywhere, even online. It opens only with one of the wallet&rsquo;s keys (its words, or just its xpub). The encryption needs a number used only once (a nonce), and VOIDFORGE never makes randomness itself: roll a die at least 50 times and type the results.</p>
+<textarea id="wpbRolls" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Dice rolls for the backup" placeholder="New dice rolls 1-6, at least 50"></textarea>
+<div class="btn-row" style="margin-top:6px;"><button type="button" id="wpbBtn" onclick="b138MakeUi('wpb')" disabled>SAVE ENCRYPTED DESCRIPTOR BACKUP</button><button type="button" class="secondary small" onclick="b138MakeClear('wpb')">CLEAR</button></div>
+<div class="status" id="wpbStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+<div id="wpbOut" style="display:none; margin-top:8px;">
+  <div class="wlabel">The same backup as text (Base64)</div>
+  <div class="wval" id="wpbText"></div>
+  <div class="btn-row"><button type="button" class="secondary small" onclick="b138Copy(this,'wpb')">COPY TEXT</button><button type="button" class="secondary small" onclick="b138ShowQr('wpb')">SHOW QR</button></div>
+  <div id="wpbQrBox" style="display:none; margin-top:10px; text-align:center;"><div id="wpbQrCap" class="hint"></div><div id="wpbQrImg" style="width:min(100%,340px); margin:8px auto; background:#fff; line-height:0;"></div><button type="button" class="secondary small" onclick="b138HideQr('wpb')">HIDE QR</button></div>
+</div>
+</details>
 <div id="camBox" class="cam-box" style="display:none;">
   <div class="cam-ban">CAMERA ON: only this page sees the picture, and nothing is saved or sent. STOP CAMERA turns it off.</div>
   <video id="camVideo" playsinline muted aria-label="Camera picture"></video>
@@ -1478,6 +1491,17 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <input type="file" id="kcFileIn" accept=".txt,.bsms,.json,text/plain" aria-label="Choose the wallet file" onchange="kcFile()" style="width:100%; margin-top:6px;">
       <div class="btn-row" style="margin-top:8px;"><button type="button" id="kcBtn" onclick="kcUi()" disabled>CHECK THIS SEED</button><button type="button" class="secondary small" onclick="kcClear()">CLEAR</button></div>
       <div class="status" id="kcStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+    </div>
+    <div class="sec-block" id="b138Block">
+      <h3 class="sec">Open an encrypted descriptor backup (BIP138)<span class="tag tag-secret">USES THE WORDS ABOVE</span></h3>
+      <p class="hint" style="margin:0 0 6px;">A .bip138 file (made by Liana or by VOIDFORGE) holds a wallet&rsquo;s descriptor, encrypted with the wallet&rsquo;s own public keys. Choose the file or paste its text, then type the words of ONE of the wallet&rsquo;s keys in the boxes at the top of this tab (with its passphrase, if it has one), or paste one of the wallet&rsquo;s public keys (xpub) below: a public key opens it too. VOIDFORGE shows the descriptor, its checksum, the first 10 receive and 10 change addresses, and which key opened it.</p>
+      <textarea id="b138In" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The backup as text (Base64)" placeholder="The backup as text (it starts with QklQMTM4), or choose the file below"></textarea>
+      <input type="file" id="b138File" accept=".bip138,.txt,application/octet-stream,text/plain" aria-label="Choose the backup file" style="width:100%; margin-top:6px;">
+      <input type="text" id="b138Pub" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="One of the wallet's public keys (optional)" placeholder="Or one of the wallet's public keys: xpub..., tpub..., Zpub... (optional)" style="margin-top:6px;">
+      <div class="btn-row" style="margin-top:8px;"><button type="button" id="b138Btn" onclick="b138OpenUi()" disabled>OPEN BACKUP</button><button type="button" class="secondary small" onclick="b138OpenClear()">CLEAR</button></div>
+      <div class="status" id="b138Status" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+      <pre id="b138Out" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
+      <div class="btn-row" id="b138CopyRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" onclick="b138CopyDesc(this)">COPY DESCRIPTOR</button></div>
     </div>
     <div class="sec-block" id="lbBlock">
       <h3 class="sec">Read a label file (BIP329)<span class="tag tag-private">PRIVATE</span></h3>
@@ -1783,6 +1807,19 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
           <div class="wlabel">First 10 change addresses</div>
           <ol class="wval" id="msChange" style="padding-left:22px;"></ol>
           </div>
+<div class="ms-sub" id="msbBox">
+<div class="wlabel">Encrypted descriptor backup (BIP138)</div>
+<p class="hint" style="margin:0 0 6px;">Without the descriptor, the seeds alone cannot find this wallet&rsquo;s coins, so keep extra copies of it. This saves it encrypted as a .bip138 file, the format Liana writes: store copies anywhere, even online. It opens only with one of the wallet&rsquo;s keys (its words, or just its xpub), and on its own it shows nothing about the wallet. The encryption needs a number used only once (a nonce), and VOIDFORGE never makes randomness itself: roll a die at least 50 times and type the results.</p>
+<textarea id="msbRolls" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Dice rolls for the backup" placeholder="New dice rolls 1-6, at least 50"></textarea>
+<div class="btn-row" style="margin-top:6px;"><button type="button" id="msbBtn" onclick="b138MakeUi('msb')" disabled>SAVE ENCRYPTED DESCRIPTOR BACKUP</button><button type="button" class="secondary small" onclick="b138MakeClear('msb')">CLEAR</button></div>
+<div class="status" id="msbStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+<div id="msbOut" style="display:none; margin-top:8px;">
+  <div class="wlabel">The same backup as text (Base64)</div>
+  <div class="wval" id="msbText"></div>
+  <div class="btn-row"><button type="button" class="secondary small" onclick="b138Copy(this,'msb')">COPY TEXT</button><button type="button" class="secondary small" onclick="b138ShowQr('msb')">SHOW QR</button></div>
+  <div id="msbQrBox" style="display:none; margin-top:10px; text-align:center;"><div id="msbQrCap" class="hint"></div><div id="msbQrImg" style="width:min(100%,340px); margin:8px auto; background:#fff; line-height:0;"></div><button type="button" class="secondary small" onclick="b138HideQr('msb')">HIDE QR</button></div>
+</div>
+</div>
           <p class="hint" style="margin:8px 0;">The descriptor contains only public keys. It lets a wallet app watch the balance and make receiving addresses; it cannot spend. To spend you need M of the seeds, so keep every seed backup safe, and keep a copy of this descriptor (the recovery sheet) with them: without it, the seeds alone are not enough to find the funds.</p>
         </div>
         <div class="btn-row" style="margin-top:10px;"><button type="button" class="secondary small" onclick="msCancel()">START OVER</button></div>
@@ -1810,6 +1847,19 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <input type="text" id="msxHeight" inputmode="numeric" autocomplete="off" aria-label="Current block height (optional)" placeholder="Current block height (optional), such as 925000" style="margin-top:6px;">
       <div class="btn-row" style="margin-top:6px;"><button type="button" onclick="msExplainUi()">EXPLAIN</button><button type="button" class="secondary small" onclick="clearMsx()">CLEAR</button></div>
       <div class="status" id="msxStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+<details id="mxbBox" class="ms-sub" style="margin-top:10px;">
+<summary>Save an encrypted backup of this descriptor (BIP138)<small>Keep the inheritance wallet&rsquo;s descriptor safe: a .bip138 file that only one of its keys opens.</small></summary>
+<p class="hint" style="margin:8px 0 6px;">An heir needs the descriptor as well as a key: without it, the coins cannot be found. This saves the descriptor pasted above encrypted as a .bip138 file, the format Liana writes: store copies anywhere, even online. It opens only with one of the wallet&rsquo;s keys (its words, or just its xpub). The encryption needs a number used only once (a nonce), and VOIDFORGE never makes randomness itself: roll a die at least 50 times and type the results.</p>
+<textarea id="mxbRolls" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Dice rolls for the backup" placeholder="New dice rolls 1-6, at least 50"></textarea>
+<div class="btn-row" style="margin-top:6px;"><button type="button" id="mxbBtn" onclick="b138MakeUi('mxb')" disabled>SAVE ENCRYPTED DESCRIPTOR BACKUP</button><button type="button" class="secondary small" onclick="b138MakeClear('mxb')">CLEAR</button></div>
+<div class="status" id="mxbStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+<div id="mxbOut" style="display:none; margin-top:8px;">
+  <div class="wlabel">The same backup as text (Base64)</div>
+  <div class="wval" id="mxbText"></div>
+  <div class="btn-row"><button type="button" class="secondary small" onclick="b138Copy(this,'mxb')">COPY TEXT</button><button type="button" class="secondary small" onclick="b138ShowQr('mxb')">SHOW QR</button></div>
+  <div id="mxbQrBox" style="display:none; margin-top:10px; text-align:center;"><div id="mxbQrCap" class="hint"></div><div id="mxbQrImg" style="width:min(100%,340px); margin:8px auto; background:#fff; line-height:0;"></div><button type="button" class="secondary small" onclick="b138HideQr('mxb')">HIDE QR</button></div>
+</div>
+</details>
     </details>
   </div>
   </div>
@@ -3821,6 +3871,7 @@ const DICT = [
   ["Stamp sheet", "A printed page with each seed word cut to its first 4 letters in large capitals, as a guide for stamping a metal plate. It is as secret as the words.", "PRINT STAMP SHEET, after FORGE and in CHECK A BACKUP.", "VOIDFORGE"],
   ["BIP352 (Silent Payments)", "A way to receive payments to one reusable code while each payment still lands on a fresh address on the blockchain. Your wallet has to scan for them.", "Silent Payment address in the watch-only box.", "Standards (BIPs)"],
   ["BIP370", "PSBT version 2: an updated format for partly signed transactions. Instead of one unsigned transaction it keeps the inputs and outputs as separate records. Bitcoin Core makes it by default from version 32.", "Inspect a transaction (PSBT) reads it.", "Standards (BIPs)"],
+  ["BIP138 (encrypted descriptor backup)", "A standard for saving a wallet's descriptor encrypted, as a .bip138 file. It is locked with the wallet's own public keys: anyone who holds one of its keys (the words or just the xpub) can open it, and nobody else learns anything from it.", "SAVE ENCRYPTED DESCRIPTOR BACKUP (Multisig wallet and two descriptor boxes); CHECK A BACKUP, Open an encrypted descriptor backup.", "Standards (BIPs)"],
   ["BIP380 and the descriptor BIPs", "The standards that define output descriptors: the text that says how a wallet's keys and addresses are made.", "", "Standards (BIPs)"],
   ["BIP388 (wallet policies)", "A standard for describing a wallet's spending rules in a compact way that hardware wallets can show and check.", "", "Standards (BIPs)"],
   ["Bit", "One binary digit, 0 or 1. Randomness is counted in bits: a 12-word seed holds 128 bits and a 24-word seed 256.", "", "Units & math"],
@@ -3840,6 +3891,7 @@ const DICT = [
   ["Build attestation", "A signed statement by the build system saying which source code and process produced a file.", "Releases up to v2.3.0 (made on GitHub) have one; see RELEASING.md.", "Privacy & security"],
   ["Bull and bear market", "A bull market is a long rise in prices and a bear market is a long fall.", "", "Culture & markets"],
   ["Byte", "Eight bits. A SHA-256 hash is 32 bytes; a 12-word seed holds 16 bytes of entropy.", "", "Units & math"],
+  ["ChaCha20-Poly1305", "A common way to encrypt data so that any change to it is noticed: ChaCha20 scrambles the data and Poly1305 adds a 16-byte check. Bitcoin Core uses it for encrypted connections (BIP324), and BIP138 backups use it.", "Encrypted descriptor backups (BIP138).", "Privacy & security"],
   ["Chain analysis", "Companies and researchers following the blockchain to link addresses and payments to real people.", "", "Privacy & security"],
   ["Chain code", "An extra 32 bytes that travel with a key in BIP32, so child keys can be worked out safely.", "", "Keys & seeds"],
   ["Change", "The part of a payment that goes back to you. Spending part of a coin sends the rest to a change address of your own.", "Inspect a transaction (PSBT).", "Transactions"],
@@ -3962,7 +4014,7 @@ const DICT = [
   ["Nested SegWit", "SegWit wrapped to look like an older address, starting with 3. Made for wallets that could not yet pay to bc1 addresses.", "The address type menus (Watch-only wallet box, Open this wallet).", "Addresses & scripts"],
   ["Node", "A computer running Bitcoin software that checks every transaction and block itself.", "", "Network & mining"],
   ["Non-custodial", "A wallet or service where only you hold the keys.", "", "Wallets & backups"],
-  ["Nonce", "A number miners change over and over while searching for a hash that meets the difficulty target.", "", "Network & mining"],
+  ["Nonce", "A number used only once. Miners change the nonce of a block over and over while searching for a hash that meets the difficulty target. Encryption also needs a new nonce each time; VOIDFORGE makes it from your dice rolls.", "SAVE ENCRYPTED DESCRIPTOR BACKUP (the dice rolls).", "Network & mining"],
   ["Not your keys, not your coins", "A saying: if someone else holds the keys, the coins are really theirs to control. It is the case for self-custody.", "", "Culture & markets"],
   ["On-chain and off-chain", "On-chain means recorded on the Bitcoin blockchain. Off-chain means handled elsewhere, such as in a Lightning channel.", "", "Lightning & layers"],
   ["OP_RETURN", "A way to attach a small data note to a transaction. The output carrying it can never be spent.", "Inspect a transaction (PSBT) shows these notes.", "Addresses & scripts"],
@@ -5650,6 +5702,7 @@ async function runSelfTests(auto){
   const sqHash=async(k)=>hex(await sha256bytes(new TextEncoder().encode(seedQrMatrix(("abandon ".repeat(11)+"about").split(" "),k,0).rows.map(r=>r.map(x=>x?"1":"0").join("")).join(""))));
   eq("SeedQR code (25 x 25 squares) equals the independent qrcode library (mask 0)", ()=>sqHash("seedqr"), "9ccf42587b3d709c640e7305c8612a031e83c36f7bd795993d02bc97b476678b");
   eq("CompactSeedQR code (21 x 21 squares) equals the independent qrcode library (mask 0)", ()=>sqHash("compact"), "9bb4e6caab91bea9bfb4612b7f90ba3ee3dd2c0d6e56d9bbab36d7c93d927010");
+  b138SelfTests(eq);   // v2.10.0: BIP138 encrypted descriptor backups (official vectors) and descriptor addresses (embit)
   eq("checkPhrase accepts valid", async()=>(await checkPhrase("abandon ".repeat(11)+"about")).ok, true);
   eq("checkPhrase rejects bad checksum", async()=>(await checkPhrase("abandon ".repeat(12))).ok, false);
   eq("checkPhrase rejects unknown word", async()=>(await checkPhrase("abandon ".repeat(11)+"zzzz")).ok, false);
@@ -8975,6 +9028,7 @@ function wipeSeed(){
   dpClear(); dcClear();   // v2.7.0: the dice passphrase and the device dice check
   detClear();   // v2.8.0: the Wallet Detective
   kcClear();   // v2.9.0: the wallet file check
+  b138ClearAll();   // v2.10.0: BIP138 backups (dice rolls, files, results)
   lbClear();   // v2.9.0: the label file (private)
   clearXor();   // v2.9.0: Seed XOR parts (secret)
   s39mClear();   // v2.10.0: SLIP39 shares made from dice (secret)
@@ -9091,7 +9145,7 @@ function msCosigner(k){ return "[" + k.fp + "/" + k.path + "]" + k.xpub; }
 function msUsePaste(){ if(!ms || ms.keys.length >= ms.n) return; ms.mode = "paste"; msRender(); msEl("msBox").open = true; try { msEl("msPaste").focus(); } catch(e) {} }
 function msUseMake(){ if(!ms) return; ms.mode = "make"; msRender(); }
 function msReset(){
-  ms = null; msHideQr(); animHide("msAnim");
+  ms = null; msHideQr(); animHide("msAnim"); b138MakeClear("msb");
   for(const id of ["msDescR","msDescC","msAddrs","msChange","msSlots","msRunErr","msBanErr","msErr"]) msEl(id).textContent = "";
   msEl("msPaste").value = ""; msEl("msPasteFp").value = "";
   msEl("msIntro").style.display = ""; msEl("msRun").style.display = "none"; msEl("msDone").style.display = "none"; msEl("msPasteBox").style.display = "none";
@@ -10566,6 +10620,628 @@ function downloadSeed() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+// ===== v2.10.0 BIP138 encrypted descriptor backup =====
+// BIP138 (bitcoin/bips bip-0138.md, version 0.1.3, merged in September 2026; Liana v16 writes these .bip138 files) keeps a wallet's
+// descriptor encrypted, so a copy can sit anywhere, even with a cloud service, and only someone who holds one of the wallet's keys
+// (its words, or just its xpub) can read it. The key: s = tagged_hash("BIP138_DECRYPTION_SECRET", p1 | ... | pn), where p are the
+// distinct x-only root keys, in increasing order, of the xpubs that are followed by a derivation step or a wildcard (plain keys, bare
+// xpubs and the BIP341 NUMS key are left out: they show on the blockchain). For each key the file holds the individual secret
+// c = s XOR tagged_hash("BIP138_INDIVIDUAL_SECRET", p), padded with decoys, so the holder of any one key gets s back. Cipher:
+// ChaCha20-Poly1305 (RFC 8439), a 12-byte nonce, no associated data. File: "BIP138" | version 1 | paths | secrets | cipher 1 | nonce |
+// length | ciphertext. Payload: items of TYPE (TYPE_LENGTH) TYPE_PARAMS CONTENT_LENGTH CONTENT; 01 017c is a BIP380 descriptor.
+// VOIDFORGE never makes randomness: the nonce is SHA-256 (twice) of the user's dice rolls together with s and the payload, so the same
+// rolls can never give the same nonce for other content. The decoys are tagged hashes of s: to anyone without a key they look random,
+// and every backup of the same wallet gets the same ones, so comparing two backups does not show which entries are the real keys.
+const B138_ROLLS = 50;   // dice rolls for the 96-bit nonce (2.58 bits each, 129 bits in all)
+const B138_NUMS = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";   // BIP341 NUMS point: nobody holds its key
+function b138Rd32(b, i){ return (b[i] | b[i + 1] << 8 | b[i + 2] << 16 | b[i + 3] << 24) >>> 0; }
+// ChaCha20 block function (RFC 8439, section 2.3)
+function b138Block(key, counter, nonce){
+  const s = new Uint32Array(16), x = new Uint32Array(16);
+  s[0] = 0x61707865; s[1] = 0x3320646e; s[2] = 0x79622d32; s[3] = 0x6b206574;
+  for(let i = 0; i < 8; i++) s[4 + i] = b138Rd32(key, 4 * i);
+  s[12] = counter; for(let i = 0; i < 3; i++) s[13 + i] = b138Rd32(nonce, 4 * i);
+  x.set(s);
+  const qr = (a, b, c, d) => {
+    x[a] += x[b]; x[d] ^= x[a]; x[d] = x[d] << 16 | x[d] >>> 16;
+    x[c] += x[d]; x[b] ^= x[c]; x[b] = x[b] << 12 | x[b] >>> 20;
+    x[a] += x[b]; x[d] ^= x[a]; x[d] = x[d] << 8 | x[d] >>> 24;
+    x[c] += x[d]; x[b] ^= x[c]; x[b] = x[b] << 7 | x[b] >>> 25;
+  };
+  for(let i = 0; i < 10; i++){ qr(0, 4, 8, 12); qr(1, 5, 9, 13); qr(2, 6, 10, 14); qr(3, 7, 11, 15); qr(0, 5, 10, 15); qr(1, 6, 11, 12); qr(2, 7, 8, 13); qr(3, 4, 9, 14); }
+  const out = new Uint8Array(64);
+  for(let i = 0; i < 16; i++){ const v = (x[i] + s[i]) >>> 0; out[4 * i] = v & 255; out[4 * i + 1] = v >>> 8 & 255; out[4 * i + 2] = v >>> 16 & 255; out[4 * i + 3] = v >>> 24; }
+  return out;
+}
+// ChaCha20 encryption, starting at block counter 1 (RFC 8439, section 2.8; block 0 makes the Poly1305 key)
+function b138Stream(key, nonce, data){
+  const out = new Uint8Array(data.length);
+  for(let j = 0; j < data.length; j += 64){ const ks = b138Block(key, 1 + j / 64, nonce); for(let i = 0; i < 64 && j + i < data.length; i++) out[j + i] = data[j + i] ^ ks[i]; }
+  return out;
+}
+function b138Le(b){ let h = ""; for(let i = b.length - 1; i >= 0; i--) h += b[i].toString(16).padStart(2, "0"); return h ? BigInt("0x" + h) : 0n; }
+// Poly1305 (RFC 8439, section 2.5)
+function b138Poly(key, msg){
+  const P = (1n << 130n) - 5n, r = b138Le(key.subarray(0, 16)) & 0x0ffffffc0ffffffc0ffffffc0fffffffn, s = b138Le(key.subarray(16, 32));
+  let a = 0n;
+  for(let i = 0; i < msg.length; i += 16){ const c = msg.subarray(i, i + 16); a = (a + b138Le(c) + (1n << BigInt(8 * c.length))) * r % P; }
+  a = (a + s) & ((1n << 128n) - 1n);
+  const out = new Uint8Array(16); for(let i = 0; i < 16; i++){ out[i] = Number(a & 255n); a >>= 8n; }
+  return out;
+}
+// The tag with empty associated data (RFC 8439, section 2.8): the ciphertext padded to 16 bytes, then the associated data length (0)
+// and the ciphertext length, each 8 bytes little endian, under the one-time key from block 0.
+function b138Tag(key, nonce, ct){
+  const pad = (16 - ct.length % 16) % 16, m = new Uint8Array(ct.length + pad + 16); m.set(ct, 0);
+  let n = ct.length; for(let i = 0; i < 8; i++){ m[ct.length + pad + 8 + i] = n % 256; n = Math.floor(n / 256); }
+  return b138Poly(b138Block(key, 0, nonce).subarray(0, 32), m);
+}
+function b138Seal(key, nonce, pt){ const ct = b138Stream(key, nonce, pt); return concatBytes(ct, b138Tag(key, nonce, ct)); }
+// The plaintext, or null when the tag does not match (a wrong key, or a changed or damaged file: the two cannot be told apart).
+function b138Unseal(key, nonce, sealed){
+  if(sealed.length < 16) return null;
+  const ct = sealed.subarray(0, sealed.length - 16), tag = b138Tag(key, nonce, ct); let d = 0;
+  for(let i = 0; i < 16; i++) d |= tag[i] ^ sealed[ct.length + i];
+  return d === 0 ? b138Stream(key, nonce, ct) : null;
+}
+// Compact size at b[i]: [value, bytes used], or null when it is cut short or not written in its shortest form.
+function b138Cs(b, i){
+  if(i >= b.length) return null;
+  const f = b[i];
+  if(f < 0xfd) return [f, 1];
+  if(f === 0xfd){ if(i + 3 > b.length) return null; const v = b[i + 1] | b[i + 2] << 8; return v >= 0xfd ? [v, 3] : null; }
+  if(f === 0xfe){ if(i + 5 > b.length) return null; const v = b138Rd32(b, i + 1); return v >= 0x10000 ? [v, 5] : null; }
+  return null;   // 0xff: more than 4 GB, never a real backup
+}
+const B138_H = 0x80000000;
+function b138PathCmp(a, b){ for(let i = 0; i < a.length && i < b.length; i++) if(a[i] !== b[i]) return a[i] < b[i] ? -1 : 1; return a.length - b.length; }
+function b138PathText(p){ return "m" + p.map(c => "/" + (c >= B138_H ? (c - B138_H) + "'" : c)).join(""); }
+// DERIVATION_PATHS: COUNT, then for each path CHILD_COUNT and 4-byte big-endian children, in increasing order, without repeats.
+function b138PathsBytes(paths){
+  const u = []; for(const p of [...paths].sort(b138PathCmp)) if(!u.length || b138PathCmp(u[u.length - 1], p) !== 0) u.push(p);
+  if(u.length > 255) throw new Error("more than 255 derivation paths");
+  const out = [u.length];
+  for(const p of u){ if(!p.length || p.length > 255) throw new Error("a derivation path must have 1 to 255 steps"); out.push(p.length); for(const c of p) out.push(c >>> 24, c >>> 16 & 255, c >>> 8 & 255, c & 255); }
+  return Uint8Array.from(out);
+}
+// The account paths a reader tries by itself (BIP138, Derivation Paths), account 0 first. They are never written into a file.
+function b138Common(){
+  const out = [];
+  for(let a = 0; a <= 9; a++) for(const coin of [0, 1]){
+    out.push([48 + B138_H, coin + B138_H, a + B138_H, 2 + B138_H], [48 + B138_H, coin + B138_H, a + B138_H, 1 + B138_H]);
+    for(const p of [84, 86, 49, 44, 87]) out.push([p + B138_H, coin + B138_H, a + B138_H]);
+  }
+  return out;
+}
+function b138IsCommon(p){ return b138Common().some(c => b138PathCmp(c, p) === 0); }
+function b138Bucket(n){ let b = 5; while(b < n) b *= 2; return Math.min(b, 255); }   // 5, 10, 20, ... up to 255 entries
+// s and the individual secrets for a set of x-only keys (sorted and without repeats here, whatever order they come in).
+async function b138Secret(keys){
+  const ks = [...new Set(keys.map(k => hex(k)))].sort().map(fromHex);
+  const s = await taggedHash("BIP138_DECRYPTION_SECRET", concatBytes(...ks)), cs = [];
+  for(const p of ks) cs.push(xorBytes(s, await taggedHash("BIP138_INDIVIDUAL_SECRET", p)));
+  return {s, cs, keys: ks};
+}
+// One content item: CONTENT_TYPE bytes, CONTENT_LENGTH, CONTENT.
+function b138Item(type, data){ return concatBytes(type, varintBytes(data.length), data); }
+// INDIVIDUAL_SECRETS: COUNT (1 to 255), then the 32-byte secrets in increasing order, without repeats.
+function b138SecretsBytes(list){
+  const all = [...new Set(list.map(x => hex(x)))].sort();
+  if(!all.length || all.length > 255) throw new Error("a backup lists 1 to 255 keys");
+  return concatBytes(Uint8Array.of(all.length), ...all.map(fromHex));
+}
+// The whole file. Common paths are left out (a reader tries them anyway); the individual secrets and decoys are sorted.
+async function b138Encode(keys, paths, payload, nonce, decoys){
+  if(!keys.length) throw new Error("no key to encrypt to");
+  if(!payload.length) throw new Error("an empty payload cannot be backed up");
+  if(nonce.length !== 12 || nonce.every(x => x === 0)) throw new Error("the nonce must be 12 bytes and not all zero");
+  const {s, cs} = await b138Secret(keys), sealed = b138Seal(s, nonce, payload);
+  return concatBytes(Uint8Array.from([0x42, 0x49, 0x50, 0x31, 0x33, 0x38, 0x01]), b138PathsBytes(paths.filter(p => !b138IsCommon(p))),
+    b138SecretsBytes(cs.concat(decoys)), Uint8Array.of(0x01), nonce, varintBytes(sealed.length), sealed);
+}
+// Reads the file's frame (not the content): {paths, secrets, nonce, sealed}. Bytes after the ciphertext are ignored, as BIP138 says.
+function b138Parse(b){
+  const cut = (what) => new Error("The file is cut short or damaged: it ends inside " + what + ".");
+  const at = (s) => s.split("").every((c, i) => b[i] === c.charCodeAt(0));
+  if(b.length >= 3 && at("BEB")) throw new Error("This is an older Liana backup (from Liana 15 or earlier, before BIP138). VOIDFORGE reads only BIP138 files; open this one in Liana.");
+  if(b.length < 6 || !at("BIP138")) throw new Error("This is not a BIP138 backup: it does not start with BIP138.");
+  if(b.length < 7) throw cut("the version");
+  if(b[6] !== 0x01) throw new Error("This backup uses BIP138 version " + b[6] + ", which VOIDFORGE cannot read (it reads version 1).");
+  let i = 7;
+  if(i >= b.length) throw cut("the derivation paths");
+  const paths = [], np = b[i++];
+  for(let k = 0; k < np; k++){
+    if(i >= b.length) throw cut("the derivation paths");
+    const n = b[i++]; if(n === 0) throw new Error("The file is damaged: it has an empty derivation path.");
+    if(i + 4 * n > b.length) throw cut("the derivation paths");
+    const p = []; for(let j = 0; j < n; j++){ p.push((b[i] << 24 | b[i + 1] << 16 | b[i + 2] << 8 | b[i + 3]) >>> 0); i += 4; }
+    paths.push(p);
+  }
+  if(i >= b.length) throw cut("the list of keys");
+  const ns = b[i++]; if(ns === 0) throw new Error("The file is damaged: it lists no key at all.");
+  if(i + 32 * ns > b.length) throw cut("the list of keys");
+  const secrets = []; for(let k = 0; k < ns; k++){ secrets.push(b.slice(i, i + 32)); i += 32; }
+  if(i >= b.length) throw cut("the cipher number");
+  if(b[i] !== 0x01) throw new Error(b[i] === 0 ? "The file is damaged: its cipher number is 0, which BIP138 reserves." : "This backup uses cipher number " + b[i] + ", which VOIDFORGE cannot read (it reads 1, ChaCha20-Poly1305).");
+  i++;
+  if(i + 12 > b.length) throw cut("the nonce");
+  const nonce = b.slice(i, i + 12); i += 12;
+  if(nonce.every(x => x === 0)) throw new Error("The file is damaged: its nonce is all zeros, which BIP138 forbids.");
+  const l = b138Cs(b, i); if(!l) throw cut("the length of the encrypted part");
+  i += l[1]; if(i + l[0] > b.length) throw cut("the encrypted part");
+  return {paths, secrets, nonce, sealed: b.slice(i, i + l[0])};
+}
+// One CONTENT_TYPE at pt[i]: {t, bip, meta, next}; throws for a type that is cut short or made for a newer version.
+function b138Ctype(pt, i){
+  const t = pt[i];
+  if(t === undefined || t === 0x00) throw new Error("there is no content item here");
+  if(t === 0x01){ if(i + 3 > pt.length) throw new Error("a content type is cut short"); return {t, bip: pt[i + 1] << 8 | pt[i + 2], meta: null, next: i + 3}; }
+  if(t >= 0x80) throw new Error("it holds a kind of content (" + t + ") made for a newer version of BIP138");
+  const l = b138Cs(pt, i + 1); if(!l || i + 1 + l[1] + l[0] > pt.length) throw new Error("a content type is cut short");
+  const meta = pt.slice(i + 1 + l[1], i + 1 + l[1] + l[0]);
+  if(t === 0x03 && meta.length) throw new Error("a text item has type data it must not have");
+  return {t, bip: null, meta, next: i + 1 + l[1] + l[0]};
+}
+// The content items of a decrypted payload, up to the 0x00 that starts the padding.
+function b138Items(pt){
+  const items = []; let i = 0;
+  while(i < pt.length && pt[i] !== 0x00){
+    const c = b138Ctype(pt, i), l = b138Cs(pt, c.next);
+    if(!l || c.next + l[1] + l[0] > pt.length) throw new Error("a content item is cut short");
+    items.push({type: c.t, bip: c.bip, meta: c.meta, data: pt.slice(c.next + l[1], c.next + l[1] + l[0])}); i = c.next + l[1] + l[0];
+  }
+  if(!items.length) throw new Error("it holds no content");
+  return items;
+}
+// A key expression: [fingerprint/path], an xpub (any network or SLIP132 prefix) or a plain key (64 hex x-only, 66 compressed or
+// 130 uncompressed), then derivation steps (/0, /1h, /<0;1>) and a wildcard.
+const B138_KEY = /^(?:\[([0-9a-fA-F]{8})((?:\/[0-9]+[hH']?)*)\])?([1-9A-HJ-NP-Za-km-z]{100,112}|[0-9a-fA-F]{64}|0[23][0-9a-fA-F]{64}|04[0-9a-fA-F]{128})((?:\/(?:[0-9]+[hH']?|<[0-9]+[hH']?(?:;[0-9]+[hH']?)+>))*)(\/\*[hH']?)?$/;
+function b138Step(t){ const n = parseInt(t, 10); if(!(n >= 0 && n < B138_H)) throw new Error("a derivation step is out of range"); return /[hH']$/.test(t) ? n + B138_H : n; }
+async function b138KeyExpr(t){
+  const m = B138_KEY.exec(t); if(!m) return null;
+  const steps = (m[4] || "").split("/").slice(1).map(s => s[0] === "<" ? s.slice(1, -1).split(";").map(b138Step) : b138Step(s));
+  const e = {text: t, origin: m[1] ? {fp: m[1].toLowerCase(), path: (m[2] || "").split("/").slice(1).map(b138Step)} : null, steps, wild: !!m[5], hardWild: !!m[5] && m[5].length > 2};
+  if(/^[0-9a-fA-F]+$/.test(m[3])){
+    if(steps.length || e.wild) throw new Error("a plain public key cannot have derivation steps after it");
+    const b = fromHex(m[3].toLowerCase());
+    e.pub = b.length === 32 ? Uint8Array.of(2, ...b) : b; e.xonly = b.length === 32 ? b : b.slice(1, 33); e.lit = true;
+    if(!liftX(BigInt("0x" + hex(e.xonly)), false)) throw new Error("a plain public key is not on the curve");
+  } else { e.key = await parseExtendedKey(m[3]); e.pub = e.key.pub; e.xonly = e.key.pub.slice(1); e.lit = false; }
+  return e;
+}
+// Every key argument of a descriptor, with the fragment it sits in and whether it is inside musig().
+function b138KeyTokens(desc){
+  const out = [], stack = []; let tok = "";
+  const flush = (open) => {
+    const t = tok.trim(); tok = "";
+    if(!t) return;
+    if(open){ stack.push(t.replace(/^[a-z]+:/, "")); return; }
+    const fn = stack[stack.length - 1] || "";
+    if(t[0] === "/" || /^[0-9]+$/.test(t) || /^(sha256|hash256|ripemd160|hash160|older|after|raw|addr)$/.test(fn)) return;
+    out.push({t, fn, musig: stack.includes("musig")});
+  };
+  for(const ch of desc){
+    if(ch === "("){ flush(true); }
+    else if(ch === ")"){ flush(false); stack.pop(); }
+    else if(ch === "," || ch === "{" || ch === "}") flush(false);
+    else tok += ch;
+  }
+  flush(false);
+  return out;
+}
+// The keys that can open a backup of these descriptors (BIP138, Descriptor key requirements): {keys, notes, paths, exprs}.
+// notes names every key left out, as BIP138 requires, because its holder cannot open the backup with it.
+async function b138Recipients(descs){
+  const cand = new Map(), exposed = new Set(), notes = [], exprs = [];
+  const short = (e) => e.origin ? "fingerprint " + e.origin.fp : (e.text.replace(/^\[[^\]]*\]/, "").slice(0, 12) + "…");
+  for(const d of descs){
+    for(const k of b138KeyTokens(d.replace(/#[^#()]*$/, ""))){
+      const e = await b138KeyExpr(k.t); if(!e) continue;
+      exprs.push(e);
+      const x = hex(e.xonly);
+      if(x === B138_NUMS){ notes.push("The key " + short(e) + " is the BIP341 unspendable key: nobody holds it, so it opens nothing."); continue; }
+      if(e.lit){ if(!k.musig) exposed.add(x); notes.push("The plain public key " + x.slice(0, 12) + "… is left out: it shows on the blockchain when coins are spent, so it cannot lock the backup."); continue; }
+      if(k.musig || e.steps.length || e.wild){ if(!cand.has(x)) cand.set(x, []); cand.get(x).push(e); }
+      else { exposed.add(x); notes.push("The key " + short(e) + " is left out: it is used with no derivation step after it, so it shows on the blockchain when coins are spent."); }
+    }
+  }
+  const keys = [], paths = [];
+  for(const [x, es] of cand){
+    if(exposed.has(x)){ if(!notes.some(n => n.includes(x.slice(0, 12)))) notes.push("The key " + short(es[0]) + " is left out: the same key is also used with no derivation step (or as a plain key), so it shows on the blockchain."); continue; }
+    keys.push(x);
+    for(const e of es) if(e.origin && e.origin.path.length) paths.push(e.origin.path);
+  }
+  return {keys: keys.sort().map(fromHex), notes: [...new Set(notes)], paths, exprs};
+}
+// The compressed public key of a key expression at one address: branch picks from <a;b> steps (0 receive, 1 change), index fills *.
+const b138Branch = new Map();   // public keys only: the key at the end of the fixed steps, so each address needs one more step
+async function b138Derive(e, branch, index){
+  if(e.lit) return e.pub;
+  if(e.hardWild) throw new Error("a hardened wildcard (*h) cannot be worked out from public keys");
+  const id = e.text + "|" + branch;
+  if(!b138Branch.has(id)){
+    let pub = e.key.pub, ch = e.key.chain;
+    for(const s of e.steps){
+      const c = Array.isArray(s) ? s[branch] : s;
+      if(c === undefined) throw new Error("a <a;b> step has no entry for this branch");
+      if(c >= B138_H) throw new Error("a hardened step after an xpub cannot be worked out from public keys");
+      [pub, ch] = await ckdPub(pub, ch, c);
+    }
+    if(b138Branch.size > 500) b138Branch.clear();
+    b138Branch.set(id, [pub, ch]);
+  }
+  const [pub, ch] = b138Branch.get(id);
+  return e.wild ? (await ckdPub(pub, ch, index))[0] : pub;
+}
+// Script pieces: opcode numbers and Uint8Array data pushes, so VERIFY can be folded into the last opcode (never into data).
+function b138Num(n){ if(n === 0) return 0x00; if(n >= 1 && n <= 16) return 0x50 + n; const b = []; let v = n; while(v > 0){ b.push(v % 256); v = Math.floor(v / 256); } if(b[b.length - 1] & 0x80) b.push(0); return Uint8Array.from(b); }
+function b138Ser(items){
+  const out = [];
+  for(const it of items){ if(typeof it === "number"){ out.push(it); continue; } const l = it.length; if(l < 0x4c) out.push(l); else if(l < 256) out.push(0x4c, l); else out.push(0x4d, l & 255, l >> 8); out.push(...it); }
+  return Uint8Array.from(out);
+}
+// Miniscript to script (the miniscript fragment table): ctx "wsh", "sh" or "tap" (tapscript: x-only keys, multi_a). K(key text) gives
+// the key's bytes for the current address. Wrappers a s c t d v j n l u apply from the inside out.
+async function b138Ms(src, ctx, K){
+  let s = src.trim(), wrap = "";
+  const w = /^([asctdvjnlu]+):(.+)$/s.exec(s); if(w){ wrap = w[1]; s = w[2]; }
+  const m = /^([a-z_0-9]+)\((.*)\)$/s.exec(s);
+  let sc;
+  if(s === "0") sc = [0x00];
+  else if(s === "1") sc = [0x51];
+  else if(!m) throw new Error("“" + s.slice(0, 24) + "” is not something this page reads");
+  else {
+    const f = m[1], a = msSplitArgs(m[2]), sub = (i) => b138Ms(a[i], ctx, K), num = (i) => { const v = Number(a[i]); if(!Number.isInteger(v) || v < 0 || v > 0xffffffff) throw new Error(f + "() needs a whole number"); return v; };
+    const hashArg = (i, n) => { const h = a[i].trim(); if(!new RegExp("^[0-9a-fA-F]{" + 2 * n + "}$").test(h)) throw new Error(f + "() needs " + n + " bytes in hex"); return fromHex(h.toLowerCase()); };
+    switch(f){
+      case "pk_k": sc = [await K(a[0])]; break;
+      case "pk_h": sc = [0x76, 0xa9, await hash160(await K(a[0])), 0x88]; break;
+      case "pk": sc = [await K(a[0]), 0xac]; break;
+      case "pkh": sc = [0x76, 0xa9, await hash160(await K(a[0])), 0x88, 0xac]; break;
+      case "older": sc = [b138Num(num(0)), 0xb2]; break;
+      case "after": sc = [b138Num(num(0)), 0xb1]; break;
+      case "sha256": sc = [0x82, b138Num(32), 0x88, 0xa8, hashArg(0, 32), 0x87]; break;
+      case "hash256": sc = [0x82, b138Num(32), 0x88, 0xaa, hashArg(0, 32), 0x87]; break;
+      case "ripemd160": sc = [0x82, b138Num(32), 0x88, 0xa6, hashArg(0, 20), 0x87]; break;
+      case "hash160": sc = [0x82, b138Num(32), 0x88, 0xa9, hashArg(0, 20), 0x87]; break;
+      case "and_v": sc = [...await sub(0), ...await sub(1)]; break;
+      case "and_b": sc = [...await sub(0), ...await sub(1), 0x9a]; break;
+      case "and_n": sc = [...await sub(0), 0x64, 0x00, 0x67, ...await sub(1), 0x68]; break;
+      case "andor": sc = [...await sub(0), 0x64, ...await sub(2), 0x67, ...await sub(1), 0x68]; break;
+      case "or_b": sc = [...await sub(0), ...await sub(1), 0x9b]; break;
+      case "or_c": sc = [...await sub(0), 0x64, ...await sub(1), 0x68]; break;
+      case "or_d": sc = [...await sub(0), 0x73, 0x64, ...await sub(1), 0x68]; break;
+      case "or_i": sc = [0x63, ...await sub(0), 0x67, ...await sub(1), 0x68]; break;
+      case "thresh": { const k = num(0); if(k < 1 || k > a.length - 1) throw new Error("thresh() needs a number from 1 to the number of parts"); sc = [...await sub(1)]; for(let i = 2; i < a.length; i++) sc.push(...await sub(i), 0x93); sc.push(b138Num(k), 0x87); break; }
+      case "multi": case "sortedmulti": {
+        if(ctx === "tap") throw new Error(f + "() is not allowed in Taproot (use multi_a)");
+        const k = num(0), ks = []; for(let i = 1; i < a.length; i++) ks.push(await K(a[i]));
+        if(k < 1 || k > ks.length || ks.length > 20) throw new Error(f + "() needs 1 to 20 keys and a number up to that");
+        if(f === "sortedmulti") ks.sort(cmpBytes);
+        sc = [b138Num(k), ...ks, b138Num(ks.length), 0xae]; break;
+      }
+      case "multi_a": case "sortedmulti_a": {
+        if(ctx !== "tap") throw new Error(f + "() works only inside tr()");
+        const k = num(0), ks = []; for(let i = 1; i < a.length; i++) ks.push(await K(a[i]));
+        if(k < 1 || k > ks.length) throw new Error(f + "() needs a number from 1 to the number of keys");
+        if(f === "sortedmulti_a") ks.sort(cmpBytes);
+        sc = [ks[0], 0xac]; for(let i = 1; i < ks.length; i++) sc.push(ks[i], 0xba); sc.push(b138Num(k), 0x9c); break;
+      }
+      default: throw new Error("“" + f + "” is not something this page reads");
+    }
+  }
+  const fold = {0x87: 0x88, 0xac: 0xad, 0xae: 0xaf, 0x9c: 0x9d};
+  for(const c of wrap.split("").reverse()){
+    const last = sc[sc.length - 1];
+    if(c === "a") sc = [0x6b, ...sc, 0x6c];
+    else if(c === "s") sc = [0x7c, ...sc];
+    else if(c === "c") sc = [...sc, 0xac];
+    else if(c === "t") sc = [...sc, 0x51];
+    else if(c === "d") sc = [0x76, 0x63, ...sc, 0x68];
+    else if(c === "v") sc = typeof last === "number" && fold[last] ? [...sc.slice(0, -1), fold[last]] : [...sc, 0x69];
+    else if(c === "j") sc = [0x82, 0x92, 0x63, ...sc, 0x68];
+    else if(c === "n") sc = [...sc, 0x92];
+    else if(c === "l") sc = [0x63, 0x00, 0x67, ...sc, 0x68];
+    else if(c === "u") sc = [0x63, ...sc, 0x67, 0x00, 0x68];
+  }
+  return sc;
+}
+// A Taproot script tree {A,B}: the TapLeaf hash of each script (leaf version 0xc0) and TapBranch of each sorted pair (BIP341).
+async function b138TapNode(t, K){
+  t = t.trim();
+  if(t[0] === "{"){
+    if(t[t.length - 1] !== "}") throw new Error("the braces of the Taproot tree do not match");
+    const p = msSplitArgs(t.slice(1, -1)); if(p.length !== 2) throw new Error("a Taproot tree branch {A,B} needs two parts");
+    const a = await b138TapNode(p[0], K), b = await b138TapNode(p[1], K);
+    return taggedHash("TapBranch", cmpBytes(a, b) <= 0 ? concatBytes(a, b) : concatBytes(b, a));
+  }
+  const sc = b138Ser(await b138Ms(t, "tap", K));
+  return taggedHash("TapLeaf", concatBytes(Uint8Array.of(0xc0), varintBytes(sc.length), sc));
+}
+async function b138TrAddress(xonly, root, hrp){
+  const P = liftX(BigInt("0x" + hex(xonly)), false); if(!P) throw new Error("the Taproot key is not a valid key");
+  const t = BigInt("0x" + hex(await taggedHash("TapTweak", root ? concatBytes(xonly, root) : xonly))); if(t >= SN) throw new Error("Invalid tweak");
+  const Q = eadd(P, emul(t, SG)); if(!Q) throw new Error("Invalid output key");
+  return bech32Encode(hrp, 1, fromHex(Q[0].toString(16).padStart(64, "0")));
+}
+// The network of a descriptor's xpubs (tpub... is test); null when it mixes them.
+async function b138Net(desc){
+  const nets = new Set(); for(const k of b138KeyTokens(desc.replace(/#[^#()]*$/, ""))){ const e = await b138KeyExpr(k.t); if(e && e.key) nets.add(e.key.net); }
+  return nets.size > 1 ? null : nets.has("test") ? "test" : "main";
+}
+// The address of a descriptor at (branch, index): pkh, wpkh, sh(wpkh), sh(wsh(...)), sh(multi), wsh(miniscript), tr(key) and
+// tr(key, script tree). Anything else (such as musig()) throws, and the page says it cannot list the addresses.
+async function b138Address(desc, branch, index, net){
+  const body = desc.trim().replace(/#[^#()]*$/, ""), N = NETS[net], m = /^([a-z]+)\((.*)\)$/s.exec(body);
+  if(!m) throw new Error("this is not a descriptor");
+  const memo = new Map();
+  const K = (ctx) => async (t) => {
+    const key = t.trim(); if(!memo.has(key)){ const e = await b138KeyExpr(key); if(!e) throw new Error("“" + key.slice(0, 16) + "…” is not a key"); memo.set(key, await b138Derive(e, branch, index)); }
+    const p = memo.get(key); return ctx === "tap" ? p.slice(1, 33) : p;
+  };
+  const ws = async (ms) => sha256bytes(b138Ser(await b138Ms(ms, "wsh", K("wsh"))));
+  const [f, inner] = [m[1], m[2]], im = /^([a-z]+)\((.*)\)$/s.exec(inner.trim());
+  if(f === "pkh") return addressFromPub("pkh", await K("wsh")(inner), net);
+  if(f === "wpkh") return addressFromPub("wpkh", await K("wsh")(inner), net);
+  if(f === "wsh") return bech32Encode(N.hrp, 0, await ws(inner));
+  if(f === "sh" && im && im[1] === "wpkh") return addressFromPub("sh-wpkh", await K("wsh")(im[2]), net);
+  if(f === "sh" && im && im[1] === "wsh") return base58check(Uint8Array.of(N.sh, ...await hash160(Uint8Array.of(0x00, 0x20, ...await ws(im[2])))));
+  if(f === "sh") return base58check(Uint8Array.of(N.sh, ...await hash160(b138Ser(await b138Ms(inner, "sh", K("wsh"))))));
+  if(f === "tr"){
+    const a = msSplitArgs(inner); if(a.length > 2) throw new Error("tr() takes a key and at most one script tree");
+    if(/^musig\(/.test(a[0].trim())) throw new Error("VOIDFORGE cannot work out musig() keys");
+    return b138TrAddress(await K("tap")(a[0]), a.length === 2 ? await b138TapNode(a[1], K("tap")) : null, N.hrp);
+  }
+  throw new Error("VOIDFORGE cannot work out addresses for a " + f + "() descriptor");
+}
+// A BIP388 wallet policy as a descriptor: @i/** is key i with /<0;1>/*, @i/<a;b>/* is key i with that step.
+function b138Policy(keys, policy){
+  if(!Array.isArray(keys) || !keys.length || typeof policy !== "string" || !policy) throw new Error("the wallet policy needs keys and a policy");
+  const d = policy.replace(/#[^#()]*$/, "").replace(/@(\d+)(\/\*\*|\/<\d+;\d+>\/\*)/g, (all, i, end) => {
+    const k = keys[parseInt(i, 10)]; if(typeof k !== "string") throw new Error("the policy names key @" + i + ", which is not in its list");
+    return k + (end === "/**" ? "/<0;1>/*" : end);
+  });
+  if(/@\d/.test(d)) throw new Error("the policy has a key placeholder this page cannot read");
+  return descriptorChecksum(d);
+}
+// What a payload holds: {sets: [{desc, change}], notes, other}. BIP380 content is a bare descriptor or a JSON document; BIP388 is a
+// wallet policy document; type 0x03 is a text note. Anything else is named but not shown.
+function b138Content(items){
+  const sets = [], notes = [], other = [], dec = new TextDecoder("utf-8", {fatal: true}), txt = (d) => { try { return dec.decode(d); } catch(e) { throw new Error("its text is not valid UTF-8"); } };
+  for(const it of items){
+    if(it.type === 0x01 && it.bip === 380){
+      const t = txt(it.data).trim();
+      if(t[0] !== "{"){ sets.push({desc: t, change: null}); continue; }
+      let o; try { o = JSON.parse(t); } catch(e) { throw new Error("its descriptor document is not valid JSON"); }
+      if(!o || o.version !== 1 || !Array.isArray(o.descriptor_sets) || !o.descriptor_sets.length) throw new Error("its descriptor document is not version 1 with descriptor sets");
+      for(const ds of o.descriptor_sets){
+        if(!ds || typeof ds.descriptor !== "string") throw new Error("a descriptor set has no descriptor");
+        if(typeof ds.change_descriptor === "string" && /<\d+;\d+>/.test(ds.descriptor)) throw new Error("a descriptor set gives a change descriptor next to a receive-and-change one");
+        sets.push({desc: ds.descriptor, change: typeof ds.change_descriptor === "string" ? ds.change_descriptor : null, archived: ds.archived === true}); }
+    } else if(it.type === 0x01 && it.bip === 388){
+      let o; try { o = JSON.parse(txt(it.data)); } catch(e) { throw new Error("its wallet policy document is not valid JSON"); }
+      if(o && "policy_sets" in o && (o.version !== 1 || !Array.isArray(o.policy_sets) || !o.policy_sets.length)) throw new Error("its wallet policy document is not version 1 with policy sets");
+      const list = o && Array.isArray(o.policy_sets) ? o.policy_sets : [o];
+      for(const p of list) if(!p || !Array.isArray(p.keys) || !p.keys.length || !p.keys.every(k => typeof k === "string" && /^(\[[0-9a-fA-F]{8}(\/[0-9]+[hH']?)*\])?[1-9A-HJ-NP-Za-km-z]{100,112}$/.test(k))) throw new Error("a wallet policy needs a list of extended public keys");
+      for(const p of list) sets.push({desc: b138Policy(p && p.keys, p && p.policy), change: null, archived: !!(p && p.archived === true), policy: true});
+    } else if(it.type === 0x03) notes.push(txt(it.data));
+    else other.push(it.type === 0x01 ? (it.bip === 329 ? "BIP329 labels" : it.bip === 139 ? "BIP139 wallet backup details" : "BIP" + it.bip + " data") : it.type === 0x02 ? "data only the app that made it can read" : "a kind of content this page does not know");
+  }
+  return {sets, notes, other};
+}
+// Tries each candidate key (x-only) against each entry of the file: the first that opens it wins. {cand, pt} or null.
+async function b138TryKeys(f, cands){
+  for(const c of cands){
+    const si = await taggedHash("BIP138_INDIVIDUAL_SECRET", c.xonly);
+    for(const ci of f.secrets){ const pt = b138Unseal(xorBytes(si, ci), f.nonce, f.sealed); if(pt) return {cand: c, pt}; }
+  }
+  return null;
+}
+// Makes a backup of one descriptor. The nonce comes from the dice rolls (with s and the payload hashed in); see the top of this block.
+async function b138Make(raw, rolls){
+  const t = String(raw || "").replace(/\s+/g, "");
+  if(!t) throw new Error("There is no descriptor to back up yet.");
+  if(!/^(sh|wsh|wpkh|pkh|tr)\(/.test(t)) throw new Error("This is not a descriptor. A backup holds the wallet's output descriptor, which starts with wpkh(, sh(, wsh(, pkh( or tr(, not just a key.");
+  if(await descriptorHasSecret(t)) throw new Error("This holds a PRIVATE key. A BIP138 backup must hold only public keys: use the wallet's public descriptor.");
+  const hashAt = t.lastIndexOf("#"), body = hashAt < 0 ? t : t.slice(0, hashAt);
+  if(hashAt >= 0 && descriptorChecksum(body) !== t) throw new Error("The descriptor's checksum (after #) does not match, so it was changed or mistyped. Use Find a typo in a descriptor (EXTRA TOOLS) first.");
+  const desc = descriptorChecksum(body), r = await b138Recipients([desc]);
+  if(!r.keys.length) throw new Error("No key of this descriptor can lock a BIP138 backup: each one shows on the blockchain or is unspendable." + (r.notes.length ? "\n" + r.notes.join("\n") : ""));
+  const R = String(rolls || "").replace(/\s+/g, "");
+  if(!new RegExp("^[1-6]{" + B138_ROLLS + ",}$").test(R)) throw new Error("Roll a die at least " + B138_ROLLS + " times and type the results (1 to 6) in the rolls box. They make the backup's one-time number (its nonce); VOIDFORGE never makes one up itself.");
+  const payload = b138Item(Uint8Array.of(0x01, 0x01, 0x7c), new TextEncoder().encode(desc)), {s, cs} = await b138Secret(r.keys);
+  const nonce = (await sha256bytes(await sha256bytes(concatBytes(new TextEncoder().encode("VOIDFORGE BIP138 nonce " + R + " "), s, payload)))).slice(0, 12);
+  const decoys = [], seen = new Set(cs.map(x => hex(x)));
+  for(let j = 0; decoys.length < b138Bucket(cs.length) - cs.length; j++){ const d = await taggedHash("VOIDFORGE/BIP138 decoy", concatBytes(s, le32(j))); if(!seen.has(hex(d))){ seen.add(hex(d)); decoys.push(d); } }
+  const bytes = await b138Encode(r.keys, r.paths, payload, nonce, decoys), f = b138Parse(bytes);
+  for(const k of r.keys){ const o = await b138TryKeys(f, [{xonly: k}]); if(!o || hex(o.pt) !== hex(payload)) throw new Error("self-check failed: a key could not open the new backup"); }   // every key must open it
+  const fps = [...new Set(r.exprs.filter(e => e.origin && r.keys.some(k => hex(k) === hex(e.xonly))).map(e => e.origin.fp))];
+  return {bytes, desc, keys: r.keys, notes: r.notes, fps, slots: f.secrets.length, net: await b138Net(desc)};
+}
+// Reads a backup: bytes from the text box (Base64) or a chosen file. Tries a pasted public key, then the words typed at the top of
+// CHECK A BACKUP (with and without the passphrase) at the paths in the file and the common account paths.
+async function b138Read(bytes, phrase, vp, pubText){
+  const f = b138Parse(bytes), cands = [];
+  for(const t of String(pubText || "").split(/[\s,]+/).filter(Boolean)){
+    let e; try { e = await b138KeyExpr(t.replace(/\/\*$/, "").replace(/(\/[0-9]+[hH']?|\/<[^>]*>)+$/, "")); } catch(err) { throw new Error("The public key you pasted cannot be read: " + err.message); }
+    if(!e || e.lit) throw new Error("Paste the key as an extended public key (xpub, tpub, Zpub...), optionally with its [fingerprint/path].");
+    cands.push({xonly: e.xonly, how: "the public key you pasted" + (e.origin ? " (fingerprint " + e.origin.fp + ")" : "")});
+  }
+  let hit = cands.length ? await b138TryKeys(f, cands) : null, triedWords = false;
+  if(!hit && String(phrase || "").trim()){
+    const src = await detSource(phrase, vp); if(src.error) throw new Error(src.error);
+    if(!src.mnemonic) throw new Error("These are Electrum seed words. BIP138 backups are opened with BIP39 words, which multisig and inheritance wallets use.");
+    triedWords = true;
+    const paths = [[]].concat(f.paths, b138Common());
+    for(const [label, pass] of src.passes){
+      const seed = await mnemonicToSeed(src.mnemonic, pass), root = await masterFromSeed(seed), fp = await fingerprintFromSeed(seed), memo = new Map([["", root]]);
+      for(const p of paths){
+        let id = "", kc = root, ok = true;
+        for(const c of p){ const nid = id + "/" + c; if(!memo.has(nid)){ try { memo.set(nid, await ckdPriv(kc[0], kc[1], c >= B138_H ? c - B138_H : c, c >= B138_H)); } catch(e) { ok = false; break; } } kc = memo.get(nid); id = nid; }
+        if(!ok) continue;
+        hit = await b138TryKeys(f, [{xonly: pubkeyBytes(kc[0]).slice(1), how: "the words typed above, " + label + ": the key at " + b138PathText(p) + " (fingerprint " + fp + ")", fp, path: p}]);
+        if(hit) break;
+      }
+      if(hit) break;
+    }
+  }
+  if(!cands.length && !triedWords) throw new Error("Type the words of one of the wallet's keys in the box at the top of CHECK A BACKUP (and its passphrase, if it has one), or paste one of the wallet's public keys (xpub) in the key box, then press OPEN BACKUP again.");
+  if(!hit) throw new Error("NOT OPENED: " + (cands.length ? "the public key you pasted" + (triedWords ? " and " : "") : "") + (triedWords ? "the words typed above (" + (vp ? "with and without the passphrase, " : "") + "at the " + (f.paths.length ? f.paths.length + " path" + (f.paths.length === 1 ? "" : "s") + " in the file and the " : "") + "common account paths)" : "") + " do not open this backup. Either this is not one of the wallet's keys, or the file was changed or damaged: the encryption check fails for every key tried, and the two cannot be told apart. Try another key of the wallet, or another copy of the file.");
+  let c; try { c = b138Content(b138Items(hit.pt)); } catch(e) { throw new Error("The backup opened, but its content cannot be read: " + e.message + "."); }
+  return {f, hit, c};
+}
+// --- On the page. Three places make a backup (panel prefixes): msb = the finished Multisig wallet card, wpb = the descriptor pasted in
+// Or open a watch-only wallet, mxb = the descriptor pasted in Explain an inheritance or timelock wallet. b138 = the reader in CHECK A BACKUP.
+const B138_PANELS = ["msb", "wpb", "mxb"];
+function b138Gated(){ return ["msbBtn", "wpbBtn", "mxbBtn", "b138Btn"]; }   // read by setGate: they wait for the self-test
+const b138Ctx = {}, b138Seq = {};
+function b138Source(P){
+  if(P === "msb") return ms && ms.done ? descriptorChecksum(ms.descR.replace(/#[a-z0-9]{8}$/, "").split("/0/*").join("/<0;1>/*")) : "";   // receive and change in one (BIP389)
+  return document.getElementById(P === "wpb" ? "wpIn" : "msxIn").value;
+}
+function b138MakeClear(P, keepRolls){
+  b138Seq[P] = (b138Seq[P] || 0) + 1; b138Ctx[P] = null;
+  if(!keepRolls) document.getElementById(P + "Rolls").value = "";
+  const st = document.getElementById(P + "Status"); st.textContent = ""; st.className = "status";
+  document.getElementById(P + "Text").textContent = ""; document.getElementById(P + "Out").style.display = "none"; b138HideQr(P);
+}
+function b138Save(P){
+  const r = b138Ctx[P]; if(!r) return;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([r.bytes], {type: "application/octet-stream"}));
+  a.download = "voidforge-descriptor-backup" + (r.net === "test" ? "-testnet" : "") + ".bip138";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+async function b138MakeUi(P){
+  if(!gateOk()) return;
+  const mine = (b138Seq[P] = (b138Seq[P] || 0) + 1), st = document.getElementById(P + "Status");
+  b138Ctx[P] = null; document.getElementById(P + "Out").style.display = "none"; b138HideQr(P);
+  st.className = "status"; st.textContent = "Encrypting...";
+  let r;
+  try { r = await b138Make(b138Source(P), document.getElementById(P + "Rolls").value); }
+  catch(e) { if(mine !== b138Seq[P]) return; st.className = "status bad"; st.textContent = e.message; return; }
+  if(mine !== b138Seq[P]) return;
+  b138Ctx[P] = r; b138Save(P);
+  document.getElementById(P + "Text").textContent = base64Encode(r.bytes); document.getElementById(P + "Out").style.display = "";
+  const n = r.keys.length;
+  st.className = "status ok";
+  st.textContent = "SAVED: voidforge-descriptor-backup" + (r.net === "test" ? "-testnet" : "") + ".bip138 (" + r.bytes.length + " bytes, BIP138). " + (n === 1 ? "One key opens it" : "Any one of these " + n + " keys opens it") + (r.fps.length ? " (fingerprint " + r.fps.join(", ") + ")" : "") + ": its words, or just its xpub. The file lists " + r.slots + " entries, so it does not show how many keys there are." +
+    (r.notes.length ? "\n\nKEYS THAT CANNOT OPEN IT:\n" + r.notes.join("\n") : "") +
+    "\n\nKeep copies in several places (a USB stick, an email to yourself, a cloud folder): without one of the keys it shows nothing about the wallet. To read it, use Open an encrypted descriptor backup in CHECK A BACKUP, or Liana. Check it once now: open it there with one key's words.";
+}
+function b138Copy(btn, P){ const r = b138Ctx[P]; if(!r) return; safeCopy(base64Encode(r.bytes)).then(() => showCopied(btn)).catch(() => alert("Copy failed. Select the text and copy it manually.")); }
+function b138ShowQr(P){
+  const r = b138Ctx[P]; if(!r) return;
+  let q; try { q = qrMatrix(base64Encode(r.bytes)); } catch(e) { const st = document.getElementById(P + "Status"); st.textContent += "\n\nThis backup is too long for one QR code (" + e.message + "). Use the file or COPY TEXT instead."; return; }
+  document.getElementById(P + "QrImg").innerHTML = qrSvg(q.rows);
+  document.getElementById(P + "QrCap").textContent = "QR code of the backup as text (" + q.rows.length + " x " + q.rows.length + " squares). It is encrypted: it shows nothing without one of the wallet's keys.";
+  document.getElementById(P + "QrBox").style.display = ""; scrollQrIntoView(P + "QrBox");
+}
+function b138HideQr(P){ document.getElementById(P + "QrImg").textContent = ""; document.getElementById(P + "QrCap").textContent = ""; document.getElementById(P + "QrBox").style.display = "none"; }
+// The reader in CHECK A BACKUP.
+let b138Run = 0, b138Got = null;
+function b138OpenWipe(){ b138Run++; b138Got = null; const st = document.getElementById("b138Status"); st.textContent = ""; st.className = "status"; const o = document.getElementById("b138Out"); o.textContent = ""; o.style.display = "none"; document.getElementById("b138CopyRow").style.display = "none"; }
+function b138OpenClear(){ document.getElementById("b138In").value = ""; document.getElementById("b138Pub").value = ""; document.getElementById("b138File").value = ""; b138OpenWipe(); }
+function b138ClearAll(){ for(const P of B138_PANELS) b138MakeClear(P); b138OpenClear(); }   // CLEAR ALL, auto-clear
+function b138File(){
+  const inp = document.getElementById("b138File"), f = inp.files && inp.files[0]; if(!f) return;
+  if(f.size > 1024 * 1024) return alert("That file is larger than 1 MB, so it is not a descriptor backup.");
+  const r = new FileReader();
+  r.onload = () => {
+    const b = new Uint8Array(r.result), bin = b.length >= 3 && (b[0] === 0x42 && b[1] === 0x49 && b[2] === 0x50 || b[0] === 0x42 && b[1] === 0x45 && b[2] === 0x42);
+    document.getElementById("b138In").value = bin ? base64Encode(b) : new TextDecoder().decode(b).trim();   // a .bip138 file is shown as its Base64 text
+    b138OpenWipe();
+  };
+  r.readAsArrayBuffer(f);
+}
+// Bytes from the text box: Base64 (the BIP138 text form; spaces and line breaks are ignored).
+function b138Bytes(text){
+  const t = String(text || "").replace(/\s+/g, "");
+  if(!t) throw new Error("Choose the backup file (.bip138), or paste the backup as text (it starts with QklQMTM4).");
+  if(/^QkVC/.test(t)) throw new Error("This is an older Liana backup (from Liana 15 or earlier, before BIP138). VOIDFORGE reads only BIP138 files; open this one in Liana.");
+  const b = b64bytes(t); if(!b) throw new Error("This is not the text of a BIP138 backup: it is not Base64. Choose the .bip138 file instead, or copy the text again.");
+  return b;
+}
+async function b138Report(res){
+  const {f, hit, c} = res, lines = [];
+  let keyNote = "";
+  for(const [si, set] of c.sets.entries()){
+    const d = set.desc.trim(), hashAt = d.lastIndexOf("#"), body = hashAt < 0 ? d : d.slice(0, hashAt);
+    let want = null; try { want = descriptorChecksum(body); } catch(e) { want = null; }
+    const head = c.sets.length > 1 ? "DESCRIPTOR " + (si + 1) + " OF " + c.sets.length + (set.archived ? " (marked as archived: no longer used for new addresses)" : "") : "DESCRIPTOR" + (set.policy ? " (from a BIP388 wallet policy)" : "");
+    lines.push(head + " (public keys only):", want && hashAt < 0 ? want : d);
+    if(!want) lines.push("Checksum: this text cannot be read as a descriptor.");
+    else if(hashAt < 0) lines.push("Checksum: the backup gave none; VOIDFORGE worked it out: #" + want.slice(-8) + " (shown above).");
+    else lines.push(want === d ? "Checksum: #" + want.slice(-8) + ", correct." : "Checksum: #" + d.slice(hashAt + 1) + " is WRONG (it should be #" + want.slice(-8) + "). The descriptor inside the backup was changed: do not use it.");
+    if(!keyNote){
+      const r = await b138Recipients([body]).catch(() => null), list = r ? [...new Map(r.exprs.map(e => [hex(e.xonly), e])).values()] : [], at = list.findIndex(e => hex(e.xonly) === hex(hit.cand.xonly));
+      if(at >= 0) keyNote = "In the descriptor it is key " + (at + 1) + " of " + list.length + (list[at].origin ? " (fingerprint " + list[at].origin.fp + (list[at].origin.path.length ? ", " + b138PathText(list[at].origin.path) : "") + ")" : "") + ".";
+    }
+    if(want && hashAt >= 0 && want !== d) continue;
+    let net = null; try { net = await b138Net(body); } catch(e) { net = null; }
+    if(!net){ lines.push("Addresses: not shown, because the descriptor mixes mainnet and testnet keys."); continue; }
+    if(practiceOn && net !== "test"){ lines.push("Addresses: not shown. Practice mode is on, and this is a mainnet wallet; turn practice mode off to see them."); continue; }
+    const tn = net === "test" ? " (TESTNET (practice coins only))" : "";
+    try {
+      const rec = [], chg = [], multi = /<\d+;\d+>/.test(body);
+      for(let i = 0; i < ADDR_SHOWN; i++) rec.push(await b138Address(body, 0, i, net));
+      if(multi) for(let i = 0; i < ADDR_SHOWN; i++) chg.push(await b138Address(body, 1, i, net));
+      else if(set.change) for(let i = 0; i < ADDR_SHOWN; i++) chg.push(await b138Address(set.change, 0, i, net));
+      lines.push("FIRST 10 RECEIVE ADDRESSES" + tn + ":", ...rec.map((a, i) => "  " + i + ": " + a));
+      if(chg.length) lines.push("FIRST 10 CHANGE ADDRESSES" + tn + ":", ...chg.map((a, i) => "  " + i + ": " + a));
+      else lines.push("No change addresses: this backup holds only a receive descriptor.");
+    } catch(e) { lines.push("Addresses: VOIDFORGE cannot work them out for this descriptor (" + e.message + "). Import it in the wallet app that made it to see them."); }
+    lines.push("");
+  }
+  if(c.notes.length) lines.push("NOTE IN THE BACKUP:", ...c.notes, "");
+  if(c.other.length) lines.push("The backup also holds " + c.other.join(", ") + ", which VOIDFORGE does not show.", "");
+  lines.push("The file lists " + f.secrets.length + " key entr" + (f.secrets.length === 1 ? "y" : "ies") + " (some may be decoys, so the number of keys stays hidden)" + (f.paths.length ? " and these key paths: " + f.paths.map(b138PathText).join(", ") : "") + ".");
+  return {lines, keyNote};
+}
+async function b138OpenUi(){
+  if(!gateOk()) return;
+  const run = ++b138Run, st = document.getElementById("b138Status"), out = document.getElementById("b138Out");
+  b138Got = null; out.textContent = ""; out.style.display = "none"; document.getElementById("b138CopyRow").style.display = "none";
+  st.className = "status"; st.textContent = "Opening... (with words, VOIDFORGE tries many account paths; this can take a moment)";
+  try {
+    const res = await b138Read(b138Bytes(document.getElementById("b138In").value), document.getElementById("phrase").value, document.getElementById("verifyPass").value, document.getElementById("b138Pub").value);
+    if(run !== b138Run) return;
+    if(!res.c.sets.length){ st.className = "status bad"; st.textContent = "The backup opened with " + res.hit.cand.how + ", but it holds no descriptor or wallet policy." + (res.c.notes.length ? "\nNote in it: " + res.c.notes.join("\n") : ""); return; }
+    const rep = await b138Report(res); if(run !== b138Run) return;
+    b138Got = res;
+    st.className = "status ok"; st.textContent = "OPENED with " + res.hit.cand.how + ". " + rep.keyNote + " The descriptor, its checksum and the first addresses are below: check that your wallet app shows the same addresses.";
+    out.textContent = rep.lines.join("\n").trim(); out.style.display = ""; document.getElementById("b138CopyRow").style.display = "";
+  } catch(e) { if(run !== b138Run) return; st.className = "status bad"; st.textContent = e.message; }
+}
+function b138CopyDesc(btn){
+  if(!b138Got) return; const d = b138Got.c.sets[0].desc.trim(), t = d.includes("#") ? d : descriptorChecksum(d);
+  safeCopy(t).then(() => showCopied(btn)).catch(() => alert("Copy failed. Select the text and copy it manually."));
+}
+// The self-test's known answers (official BIP138 test vectors, and addresses from embit, an unrelated library).
+function b138SelfTests(eq){
+  const K1 = fromHex("e6642fd69bd211f93f7f1f36ca51a26a5290eb2dd1b0d8279a87bb0d480c8443"), K2 = fromHex("84526253c27c7aef56c7b71a5cd25bebb66dddda437826defc5b2568bde81f07");
+  const V1 = async () => b138Encode([K1], [], b138Item(fromHex("01017c"), new TextEncoder().encode("00")), fromHex("a1b2c3d4e5f607080910a1b2"), ["00".repeat(31) + "01", "c0" + "00".repeat(31), "c2" + "00".repeat(31), "ff".repeat(32)].map(fromHex));
+  eq("BIP138: ChaCha20-Poly1305 of “Hello” (BIP138 test vector)", () => hex(b138Seal(new Uint8Array(32), fromHex("000102030405060708090a0b"), new TextEncoder().encode("Hello"))), "7df9cb9a0ac5851cc054b14d05f781127b2b0d31fa");
+  eq("BIP138: decryption secret of two keys, in either order (BIP138 test vector)", async () => hex((await b138Secret([K2, K1])).s), "efa3c1e5a719874f5516818603cdad7ffc31c11a947c5b16b6b763ee09ea3539");
+  eq("BIP138: whole backup, one key and 4 decoys (BIP138 test vector, SHA-256 of the file)", async () => hex(await sha256bytes(await V1())), "df66f033ecf386b47340f4e85a3f9fbd106da5d741ebb854f87cba40c4e85267");
+  eq("BIP138: that backup opens with its key and gives the content back", async () => { const o = await b138TryKeys(b138Parse(await V1()), [{xonly: K1}]); return o ? new TextDecoder().decode(b138Items(o.pt)[0].data) : "not opened"; }, "00");
+  eq("Descriptor addresses: inheritance wallet wsh(or_d(pk, and_v(v:pkh, older))), change #1 (from embit)", async () => b138Address(await b138KatDesc("wsh(or_d(pk(@0/<0;1>/*),and_v(v:pkh(@1/<2;3>/*),older(52560))))"), 1, 1, "test"), "tb1q7w7zn820ppazmrwmtf8lxwsmht5d3739q2fzgc93n2vsr70y588qm4g8d5");
+  eq("Descriptor addresses: Taproot tree with multi_a and a timelock, receive #2 (from embit)", async () => b138Address(await b138KatDesc("tr(" + B138_NUMS + ",{multi_a(2,@0/<0;1>/*,@1/<0;1>/*),and_v(v:pk(@2/<0;1>/*),after(1900000000))})"), 0, 2, "test"), "tb1p5s7jxwgesjusln3fl6sy678pgh98puxp8lvsum69fdrlwpw6nfqqm4dr77");
+}
+// The test wallets' keys: the BIP48 testnet keys of the three self-test phrases (abandon ... about, legal winner ..., letter advice ...).
+let b138KatKeys = null;
+async function b138KatDesc(tpl){
+  if(b138KatKeys) return tpl.replace(/@(\d)/g, (x, i) => b138KatKeys[+i]);
+  const M = ["abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about", "legal winner thank year wave sausage worth useful legal winner thank yellow", "letter advice cage absurd amount doctor acoustic avoid letter advice cage above"], k = [];
+  for(const m of M){ const sd = await mnemonicToSeed(m, ""), w = await watchOnlyFromSeed(sd, "ms-wsh", 0, "test"); k.push(w.receive.replace(/\/0\/\*$/, "").replace(/^\[[^\]]*\]/, "")); }
+  b138KatKeys = k; return tpl.replace(/@(\d)/g, (x, i) => k[+i]);
+}
+document.getElementById("b138File").addEventListener("change", b138File);
+for(const id of ["b138In", "b138Pub", "phrase", "verifyPass"]) document.getElementById(id).addEventListener("input", b138OpenWipe);   // an old result belongs to the inputs that made it
+for(const P of B138_PANELS) document.getElementById(P + "Rolls").addEventListener("input", () => b138MakeClear(P, true));
+document.getElementById("wpIn").addEventListener("input", () => b138MakeClear("wpb", true));
+document.getElementById("msxIn").addEventListener("input", () => b138MakeClear("mxb", true));
 const CRYPTO_OK = typeof BigInt === "function" && !!(window.crypto && window.crypto.subtle);
 let selfTestState = "pending";
 function gateOk(){
@@ -10585,6 +11261,7 @@ function setGate(state, text, cls){
   document.getElementById("msStartBtn").disabled = !on;
   if(!detBusy) for(const id of ["detBtn", "detListBtn"]) document.getElementById(id).disabled = !on;   // v2.8.0: Wallet Detective
   if(!kcBusy) document.getElementById("kcBtn").disabled = !on;   // v2.9.0: Is this seed in my wallet file?
+  for(const id of b138Gated()) document.getElementById(id).disabled = !on;   // v2.10.0: BIP138 descriptor backups
   if(!lbBusy) document.getElementById("lbBtn").disabled = !on;   // v2.9.0: Read a label file
   for(const id of ["xorSplitBtn", "xorCombineBtn"]) document.getElementById(id).disabled = !on;   // v2.9.0: Seed XOR
   document.getElementById("s39Btn").disabled = !on;   // v2.9.0: SLIP39
