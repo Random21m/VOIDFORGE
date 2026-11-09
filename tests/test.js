@@ -2011,6 +2011,82 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     $('cdHex').value='ab'; w.clearAll(); ok($('cdCards').value===''&&$('cdHex').value==='','CLEAR ALL empties the cards and hex boxes');
     ok(/\["Card entropy"/.test(html)&&/\["Hex entropy"/.test(html),'dictionary: Card entropy and Hex entropy');
     r.w.close(); }
+  // v2.10.0 BEGIN
+  // v2.10.0: punch plates (binary grid, Stackbit 1248, word numbers), reading them back, inheritance documents and the bag log.
+  // Hand-computed example: legal = 1020 = 512+256+128+64+32+16+8+4 (binary 001111111100, hex 3FC, octal 1774, Stackbit 1|0|2|0);
+  // winner = 2016 (7E0, 3740); zoo = 2048 (punched alone); abandon = 1. Krux's own code is compared in tests/krux.test.mjs.
+  { const r=load(); await r.ready(); const w=r.w, $=r.$, sleep=ms=>new Promise(x=>setTimeout(x,ms));
+    const LW='legal winner thank year wave sausage worth useful legal winner thank yellow', nums=LW.split(' ').map(x=>w.pnNum(x));
+    eq(nums.join(' '),'1020 2016 1791 2040 1984 1534 2032 1920 1020 2016 1791 2041','plates: word numbers count from 1, as Krux does (legal = 1020)');
+    eq(w.pnBits(1020).join('')+' '+w.pnBits(2048).join('')+' '+w.pnBits(1).join(''),'001111111100 100000000000 000000000001','plates: binary grid columns run 2048 down to 1; zoo punches 2048 alone');
+    eq(JSON.stringify(w.pnStack(1020))+JSON.stringify(w.pnStack(2016))+JSON.stringify(w.pnStack(2048)),'[[1],[],[2],[]][[2],[],[1],[2,4]][[2],[],[4],[8]]','plates: Stackbit 1248 punches each digit as a sum of 1, 2, 4 and 8');
+    eq(JSON.stringify(w.pnBases(2016)),'{"dec":"2016","hex":"7E0","oct":"3740"}','plates: decimal, hex (capitals) and octal');
+    // on screen after VERIFY
+    $('phrase').value=LW; $('verifyPass').value=''; await w.verify(); for(let i=0;i<200&&!(w.eval('wvCtx')&&w.eval('wvCtx.shown'));i++) await sleep(20);
+    $('pnFmt').value='grid'; w.pnShow();
+    const g=[...$('pnView').querySelectorAll('tr')].map(tr=>[...tr.children].map(c=>c.textContent));
+    ok($('pnView').classList.contains('on')&&$('pnShowBtn').textContent==='HIDE PLATE'&&g.length===13&&g[0].slice(1,13).join(' ')==='2048 1024 512 256 128 64 32 16 8 4 2 1'&&g[1].slice(1,13).map(x=>x?1:0).join('')==='001111111100'&&g[1][13]==='1020','plates: SHOW PLATE draws the binary grid of the checked words (row 1: legal)');
+    $('pnFmt').value='stack'; w.pnRender(); { const s=[...$('pnView').querySelectorAll('tr')]; ok(s.length===14&&[...s[3].children].slice(1,15).map(c=>c.textContent?1:0).join('')==='01000010000110'&&s[3].lastChild.textContent==='2016','plates: the Stackbit layout follows the menu (row 2: winner, 2016)'); }
+    $('pnFmt').value='num'; w.pnRender(); ok(/^2201[67]E03740$/.test([...$('pnView').querySelectorAll('tr')][2].textContent)||[...$('pnView').querySelectorAll('tr')][2].textContent==='220167E03740','plates: the word numbers table shows decimal, hex and octal');
+    ok(/SECRET/.test($('pnView').textContent)&&/#pnView, #pnRdGrid \{ -webkit-user-select: none; user-select: none;/.test(html)&&!$('pnView').querySelector('button')&&![...$('pnBtns').querySelectorAll('button')].some(b=>/COPY/.test(b.textContent))&&/tag-secret">SECRET/.test($('pnRdBox').querySelector('summary').innerHTML),'plates: marked SECRET, cannot be highlighted, and no COPY button');
+    // print: asks first, prints the plate, never the passphrase
+    r.st.confirms=0; const p0=r.st.printed; $('pnFmt').value='grid'; w.printPlate();
+    ok(r.st.confirms===1&&r.st.printed===p0+1&&/^VOIDFORGE BINARY GRID PLATE/.test(r.st.printHTML)&&/Passphrase used: NO/.test(r.st.printHTML)&&r.st.printClass.includes('print-seed'),'plates: PRINT PLATE asks for confirmation, then prints the grid');
+    w.dispatchEvent(new w.Event('afterprint')); ok($('printOnly').textContent==='','plates: the printed plate is wiped after printing');
+    { const oc=w.confirm, p1=r.st.printed; let n=0; w.confirm=()=>{ n++; return false; }; w.printPlate(); w.confirm=oc; ok(n===1&&r.st.printed===p1,'plates: answering no to the question prints nothing'); }
+    w.printPlateBlank('check'); ok(/^VOIDFORGE BLANK BINARY GRID PLATE/.test(r.st.printHTML)&&!/legal|1020/.test(r.st.printHTML)&&r.st.printHTML.includes('Empty template for 12 words'),'plates: PRINT BLANK PLATE prints an empty grid of the right size, with no secret'); w.dispatchEvent(new w.Event('afterprint'));
+    // a stale plate never stays: editing the words closes the wallet view and the plate
+    w.pnShow(true); $('phrase').value=LW+' x'; $('phrase').dispatchEvent(new w.Event('input')); ok(!$('pnView').classList.contains('on')&&$('pnView').textContent===''&&$('pnShowBtn').textContent==='SHOW PLATE','plates: editing the words removes the plate from the screen');
+    // reading back
+    $('phrase').value=''; $('pnRdFmt').value='num'; w.pnRdLayout();
+    for(const [b,txt] of [[10,'1020 2016 1791 2040 1984 1534 2032 1920 1020 2016 1791 2041'],[16,'3FC 7e0 6FF 7F8 7C0 5FE 7F0 780 3FC 7E0 6FF 7F9'],[8,'1774,3740,3377,3770,3700,2776,3760,3600,1774,3740,3377,3771']]){
+      $('phrase').value=''; $('pnRdBase').value=String(b); $('pnRdNums').value=txt; w.pnReadUi(); ok($('phrase').value===LW&&/^Done: 12 words are in the words box/.test($('pnRdStatus').textContent),'read back: '+({10:'decimal',16:'hexadecimal',8:'octal'})[b]+' word numbers fill the words box'); }
+    $('pnRdBase').value='10'; $('pnRdNums').value='0 5'; w.pnReadUi(); ok(/^Number 1 is outside 1 to 2048/.test($('pnRdStatus').textContent)&&/bad/.test($('pnRdStatus').className),'read back: 0 is refused (numbers count from 1), and the number is named by place, not shown');
+    $('pnRdBase').value='16'; $('pnRdNums').value='801'; w.pnReadUi(); ok(/outside 1 to 800 \(hexadecimal\)/.test($('pnRdStatus').textContent),'read back: hex 801 (2049) is refused');
+    $('pnRdBase').value='8'; $('pnRdNums').value='1778'; w.pnReadUi(); ok(/^Number 1 is not an octal number/.test($('pnRdStatus').textContent),'read back: an 8 is not an octal digit');
+    $('pnRdNums').value='1'; $('pnRdNums').dispatchEvent(new w.Event('input')); ok($('pnRdStatus').textContent==='','read back: typing again clears the old result');
+    r.st.confirms=0; $('phrase').value='abandon'; $('pnRdBase').value='10'; $('pnRdNums').value='2048'; w.pnReadUi(); ok(r.st.confirms===1&&$('phrase').value==='zoo','read back: asks before replacing words already in the box');
+    $('pnRdFmt').value='grid'; $('pnRdLen').value='12'; w.pnRdLayout();
+    ok($('pnRdNums').style.display==='none'&&$('pnRdBase').style.display==='none'&&$('pnRdGrid').querySelectorAll('input[type=checkbox]').length===144,'read back: a binary grid of 12 rows x 12 holes to tick');
+    const tick=(rr,c)=>{ const x=$('pnRdGrid').querySelector(`input[data-r="${rr}"][data-c="${c}"]`); x.checked=true; x.dispatchEvent(new w.Event('change',{bubbles:true})); };
+    nums.forEach((n,rr)=>w.pnBits(n).forEach((b,c)=>{ if(b) tick(rr,c); })); ok($('pnRdTicks').value!==''&&w.autoHasSecrets(),'read back: ticked holes count as a secret for auto-clear');
+    $('phrase').value=''; w.pnReadUi(); ok($('phrase').value===LW,'read back: the ticked binary grid fills the words box');
+    tick(0,0); w.pnReadUi(); ok(/^Row 1 adds up to more than 2048\. On a binary grid 2048 is punched alone/.test($('pnRdStatus').textContent),'read back: a grid row over 2048 is refused');
+    $('pnRdFmt').value='stack'; w.pnRdLayout(); ok($('pnRdGrid').querySelectorAll('input[type=checkbox]').length===168&&$('pnRdTicks').value==='','read back: the Stackbit plate has 14 boxes a word, and the grid ticks do not carry over');
+    nums.forEach((n,rr)=>{ const s=w.pnStack(n); w.eval('PN_SCOLS').forEach(([d,b],c)=>{ if(s[d].includes(b)) tick(rr,c); }); }); $('phrase').value=''; w.pnReadUi(); ok($('phrase').value===LW,'read back: the ticked Stackbit plate fills the words box');
+    tick(0,8); tick(0,9); w.pnReadUi(); ok(/^Row 1: a digit adds up to more than 9/.test($('pnRdStatus').textContent),'read back: a Stackbit digit over 9 is refused');
+    w.printPlateBlank('read'); ok(/^VOIDFORGE BLANK STACKBIT 1248 PLATE/.test(r.st.printHTML)&&r.st.printHTML.includes('12 words'),'read back: PRINT BLANK PLATE prints the chosen blank plate'); w.dispatchEvent(new w.Event('afterprint'));
+    $('pnRdFmt').value='num'; w.pnRdLayout(); $('pnRdNums').value='1020'; w.clearAll(); await sleep(20);
+    ok($('pnRdNums').value===''&&$('pnRdTicks').value===''&&$('pnRdGrid').querySelectorAll('input:checked').length===0&&$('pnRdStatus').textContent==='','CLEAR ALL empties the plate read-back boxes and ticks');
+    $('pnRdFmt').value='grid'; w.pnRdLayout(); tick(3,3); $('pnRdNums').value='7'; ok(w.autoWipe('test')&&$('pnRdNums').value===''&&$('pnRdGrid').querySelectorAll('input:checked').length===0,'auto-clear wipes the plate read-back boxes and ticks');
+    ok(w.eval('AUTO_FIELDS').includes('pnRdNums')&&w.eval('AUTO_FIELDS').includes('pnRdTicks'),'auto-clear knows the read-back boxes');
+    // inheritance documents and the bag log
+    const pr=async k=>{ await w.printInherit(k); const t=r.st.printHTML; w.dispatchEvent(new w.Event('afterprint')); return t; };
+    w.planClear(); $('plFp').value='73c5da0a'; $('plApp').value='Sparrow'; $('plBorn').value='2026-01-02'; $('plPass').value='away'; $('plW1').value='home safe'; $('plM2').value='metal'; $('plW2').value='bank box';
+    $('plOwner').value='Ann Example'; $('plHeir').value='Ben Example'; $('plLawyer').value='C. Lawyer'; $('plWhere').value='with my will';
+    let t=await pr('letter'); ok(/^VOIDFORGE LETTER FOR THE EXECUTOR/.test(t)&&/To:    C\. Lawyer/.test(t)&&/From:  Ann Example/.test(t)&&/self-custody wallet/.test(t)&&/Nobody needs the words to settle the estate/.test(t)&&/kept are at: with my will/.test(t)&&/Beware of scams/.test(t)&&/separate passphrase/.test(t),'inheritance: the letter for the executor says what exists, where the steps are, that the words are not needed, and warns of scams');
+    t=await pr('heir'); ok(/^VOIDFORGE RECOVERY STEPS FOR THE HEIR/.test(t)&&/For: Ben Example/.test(t)&&/master fingerprint must be 73c5da0a/.test(t)&&/Use the wallet app or device: Sparrow, on a computer you trust/.test(t)&&/made on 2026-01-02 \(its birthday\)/.test(t)&&/with the passphrase \(kept on a separate note away from home\)/.test(t)&&/I FOUND A BITCOIN BACKUP/.test(t),'inheritance: the heir\'s steps use the plan\'s app, fingerprint, birthday and passphrase note');
+    t=await pr('contacts'); ok(/^VOIDFORGE TRUSTED CONTACTS/.test(t)&&/What they must never be given/.test(t),'inheritance: the trusted contacts sheet has the four columns');
+    t=await pr('bags'); ok(/^VOIDFORGE TAMPER-EVIDENT BAG LOG/.test(t)&&/1\. PaperAt home: home safe/.test(t)&&/2\. MetalAway from home: bank box/.test(t)&&/Bag serial number/.test(t)&&/Seal intact\?Serial matches\?/.test(t)&&t.includes('Next check-up due: '+w.plusYearISO(w.todayISO()))&&/assume someone has seen the words/.test(t),'bag log: one row for each copy, serials, check-ups with seal and serial columns, and the next check-up date');
+    t=await pr('keys'); ok(/^VOIDFORGE KEY DETAILS \(PUBLIC\)/.test(t)&&/No wallet is open in CHECK A BACKUP/.test(t)&&/Master fingerprint:      73c5da0a/.test(t),'key details: with no wallet open, blank lines and a note');
+    ok(/^VOIDFORGE (LETTER|RECOVERY|TRUSTED|TAMPER|KEY)/.test(t)&&!/legal|winner/.test(t),'inheritance: no seed words on the sheets');
+    // with the wallet open: public data only, 10 + 10 addresses, and the decoy fingerprint without the passphrase
+    const AB='abandon '.repeat(11)+'about'; $('phrase').value=AB; $('verifyPass').value='TREZOR'; await w.verify(); for(let i=0;i<300&&!(w.eval('wvCtx')&&w.eval('wvCtx.shown'));i++) await sleep(20);
+    const fpT=(await w.mnemonicFingerprint(AB,'TREZOR')); $('plFp').value=fpT;
+    t=await pr('keys'); const {HDKey}=require('@scure/bip32'), {mnemonicToSeedSync}=require('@scure/bip39'), root=HDKey.fromMasterSeed(mnemonicToSeedSync(AB,'TREZOR'));
+    ok(t.includes('Master fingerprint:      '+fpT+' (with the passphrase)')&&/Without the passphrase:  73c5da0a/.test(t)&&/Address type:            Native SegWit/.test(t)&&/Account path:            m\/84'\/0'\/0'/.test(t)&&t.includes(w.eval('wvCtx.shown.sheet.recv[9].address'))&&t.includes(w.eval('wvCtx.shown.sheet.change[9].address'))&&/Descriptor, receive: wpkh\(\[/.test(t)&&!t.includes('TREZOR')&&!t.includes(root.derive("m/84'/0'/0'").privateExtendedKey),'key details: the open wallet\'s fingerprints, address type, path, 10 + 10 addresses and watch-only descriptors; never the passphrase or a private key');
+    $('plFp').value='deadbeef'; t=await pr('keys'); ok(/another fingerprint than this plan/.test(t)&&!t.includes(fpT),'key details: a wallet with another fingerprint than the plan is left out');
+    // the print guard: no secrets in any box, a well-formed fingerprint
+    const p1=r.st.printed; $('plFp').value='73c5da0a'; $('plOwner').value=AB; await w.printInherit('letter'); ok(r.st.printed===p1&&/^Not printed: the boxes hold what looks like seed words/.test($('ihStatus').textContent),'inheritance: refuses to print while a box holds seed words');
+    $('plOwner').value='Ann'; $('plWhere').value='passphrase: hunter2'; await w.printInherit('bags'); ok(r.st.printed===p1&&/a passphrase or password/.test($('ihStatus').textContent),'bag log: refuses to print a passphrase');
+    $('plWhere').value='safe'; $('plFp').value='xyz'; await w.printInherit('contacts'); ok(r.st.printed===p1&&/^The master fingerprint is 8 letters/.test($('ihStatus').textContent),'inheritance: the fingerprint must be 8 hex digits');
+    $('plFp').value='73c5da0a'; $('plFp').dispatchEvent(new w.Event('input')); ok($('ihStatus').textContent==='','inheritance: editing a box clears the old message');
+    await w.printInherit('heir'); w.dispatchEvent(new w.Event('afterprint')); ok(/^Sent to the printer/.test($('ihStatus').textContent),'inheritance: says when it was sent');
+    w.planClear(); ok(['plOwner','plHeir','plLawyer','plWhere'].every(id=>$(id).value==='')&&$('ihStatus').textContent==='','backup plan CLEAR also empties the inheritance boxes');
+    ok(['Binary grid (TinySeed)','Stackbit 1248','Word number','Tamper-evident bag','Inheritance documents'].every(n=>html.includes('["'+n+'", ')),'dictionary: Binary grid (TinySeed), Stackbit 1248, Word number, Tamper-evident bag and Inheritance documents');
+    ok(/A changed serial or a broken seal means: assume the backup was seen/.test($('planBox').textContent)&&/photograph the sealed bag, never the words/.test($('planBox').textContent),'bag note: on screen, how to use tamper-evident bags');
+    r.w.close(); }
+  // v2.10.0 END
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
 

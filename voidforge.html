@@ -524,6 +524,35 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   #plTest .pl-fix { display: block; color: var(--muted); }
   #plTest .pl-na { color: var(--muted); }
   @media (max-width: 560px) { #planBox .pl-grid { grid-template-columns: 1fr; } #planBox .pl-copy { grid-template-columns: 4.2em 1fr 1fr; } #planBox .pl-copy input { grid-column: 1 / -1; grid-row: 2; } }
+  /* v2.10.0 punch plates (CHECK A BACKUP) and inheritance documents (Backup plan). The plate and its read-back ticks are secret: never highlighted. */
+  .pn-ctl { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 10px 0 4px; font-size: 13px; font-weight: 600; }
+  .pn-ctl select { min-width: 0; flex: 1 1 11em; }
+  #pnView, #pnRdGrid { -webkit-user-select: none; user-select: none; overflow-x: auto; }
+  #pnView { display: none; margin: 8px 0 0; }
+  #pnView.on { display: block; }
+  #pnRdNums { margin-top: 6px; }
+  table.pn-t { border-collapse: collapse; font-family: monospace; font-size: 12px; margin: 4px 0; }
+  table.pn-t th, table.pn-t td { border: 1px solid var(--border); padding: 1px 2px; text-align: center; min-width: 1.4em; height: 1.7em; }
+  table.pn-grid th { font-size: 9px; letter-spacing: -.03em; }
+  table.pn-t th { color: var(--muted); font-weight: 600; font-size: 10px; }
+  table.pn-t td.pn-on { color: var(--text); font-weight: 700; }
+  table.pn-t tr.pn-split td { border-top: 3px solid var(--bd2); }
+  table.pn-t input { margin: 0; width: 16px; height: 16px; }
+  @media print {
+    body.print-seed #printOnly table.pn-t { border-collapse: collapse; font-size: 13px; line-height: 1.1; margin: 4px 0; white-space: normal; }
+    body.print-seed #printOnly table.pn-t th, body.print-seed #printOnly table.pn-t td { border: 1px solid #000; padding: 1px 4px; text-align: center; min-width: 24px; height: 19px; color: #000; }
+    body.print-seed #printOnly table.pn-t th { font-size: 10px; height: 16px; }
+    body.print-seed #printOnly table.pn-t td.pn-on { font-size: 16px; }
+    body.print-seed #printOnly table.pn-t tr.pn-split td { border-top: 3px solid #000; }
+    body.print-seed #printOnly table.pn-num td, body.print-seed #printOnly table.pn-num th { min-width: 90px; }
+    body.print-seed #printOnly .ih-big { white-space: pre-wrap; font-size: 15px; line-height: 1.45; margin: 4px 0; }
+    body.print-seed #printOnly .ih-steps { font-size: 16px; }
+    body.print-seed #printOnly .ih-wrap { overflow-wrap: anywhere; word-break: break-all; }
+    body.print-seed #printOnly table.ih-t { width: 100%; border-collapse: collapse; font-size: 12px; white-space: normal; margin: 6px 0; }
+    body.print-seed #printOnly table.ih-t th, body.print-seed #printOnly table.ih-t td { border: 1px solid #000; padding: 3px 6px; text-align: left; vertical-align: top; color: #000; }
+    body.print-seed #printOnly table.ih-t td { height: 58px; }
+    body.print-seed #printOnly table.ih-bags td, body.print-seed #printOnly table.ih-checks td { height: 30px; }
+  }
   body.light #startGate { background: rgba(30,34,48,.55); }
   #startGate .sg-box { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--warn-text); border-radius: 14px; max-width: 560px; width: 100%; padding: 22px 24px 20px; box-shadow: 0 20px 60px rgba(0,0,0,.5); max-height: 100%; overflow: hidden; display: flex; flex-direction: column; }
   #startGate .sg-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-right: 2px; }
@@ -1368,6 +1397,30 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <p class="hint" id="plNext" style="margin:8px 0 0;"></p>
       <div class="btn-row" style="margin-top:8px;"><button type="button" class="secondary small" id="plPrint" onclick="printPlan()">PRINT BACKUP PLAN</button><button type="button" class="secondary small" onclick="planClear()">CLEAR</button></div>
       <div class="status" id="plStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+      <h3 class="sec">Inheritance documents</h3>
+      <p class="hint" style="margin:6px 0;">Four more sheets for the people who would settle your estate: a letter for your lawyer or executor, recovery steps for your heir, the key details (public data only) and a sheet of trusted contacts. Like the plan, none of them holds the words or the passphrase, and they refuse to print if a box above looks like a secret. They use what you filled in above.</p>
+      <div class="pl-grid">
+        <label>Your name<input type="text" id="plOwner" maxlength="60" spellcheck="false" autocomplete="off"></label>
+        <label>Who inherits (optional)<input type="text" id="plHeir" maxlength="60" spellcheck="false" autocomplete="off"></label>
+        <label>Your lawyer or executor (optional)<input type="text" id="plLawyer" maxlength="60" spellcheck="false" autocomplete="off"></label>
+        <label>Where the recovery steps and this plan are kept<input type="text" id="plWhere" maxlength="80" spellcheck="false" autocomplete="off" placeholder="such as: with my will, at my lawyer's office"></label>
+      </div>
+      <p class="hint" style="margin:6px 0 0;">The key details sheet takes the fingerprint, address type, addresses and watch-only key from the wallet open in CHECK A BACKUP (type the words, then VERIFY), if its fingerprint is the one on this plan. Otherwise it prints blank lines to fill in by hand.</p>
+      <div class="btn-row" style="margin-top:8px;"><button type="button" class="secondary small" onclick="printInherit('letter')">PRINT LETTER FOR THE EXECUTOR</button><button type="button" class="secondary small" onclick="printInherit('heir')">PRINT STEPS FOR THE HEIR</button><button type="button" class="secondary small" onclick="printInherit('keys')">PRINT KEY DETAILS</button><button type="button" class="secondary small" onclick="printInherit('contacts')">PRINT TRUSTED CONTACTS</button></div>
+      <h3 class="sec">Tamper-evident bags</h3>
+      <p class="hint" style="margin:6px 0;">A tamper-evident bag shows when it has been opened, and each bag has its own serial number. Seal each copy of the words in its own bag. Write down the serial (or photograph the sealed bag, never the words) and keep that record apart from the bag. At each check-up (the 5-minute routine on the printed plan), first check that the seal is intact and that the serial matches your record. <b>A changed serial or a broken seal means: assume the backup was seen,</b> and move the money to a new wallet. If you open a bag yourself to read the words, seal them in a new bag and write down its serial. PRINT BAG LOG prints a sheet for all of this.</p>
+      <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" onclick="printInherit('bags')">PRINT BAG LOG</button></div>
+      <div class="status" id="ihStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+    </details>
+    <details id="pnRdBox">
+      <summary>Read a punch plate or word numbers<span class="tag tag-secret">SECRET</span><small>Type the word numbers (decimal, hex or octal), or tick the holes of a binary grid or a Stackbit 1248 plate, to put the words in the box below.</small></summary>
+      <p class="hint" style="margin:8px 0;">For a backup kept as numbers or as punched holes. Every number counts from 1 (abandon) to 2048 (zoo), as on TinySeed and Stackbit plates and in Krux. What you type or tick here is as secret as the words: use an offline computer, and press CLEAR when you are done. FILL THE WORDS BOX only fills the box; then press VERIFY to check the words.</p>
+      <div class="pn-ctl"><label for="pnRdFmt">The backup is</label><select id="pnRdFmt" onchange="pnRdLayout()"><option value="num">Word numbers</option><option value="grid">A binary grid (TinySeed style)</option><option value="stack">A Stackbit 1248 plate</option></select><select id="pnRdBase" aria-label="Number base"><option value="10">Decimal, 1 to 2048</option><option value="16">Hexadecimal, 1 to 800</option><option value="8">Octal, 1 to 4000</option></select><select id="pnRdLen" aria-label="Number of words" onchange="pnRdLayout()"><option value="12">12 words</option><option value="15">15 words</option><option value="18">18 words</option><option value="21">21 words</option><option value="24">24 words</option></select></div>
+      <textarea id="pnRdNums" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Word numbers, in order" placeholder="Word numbers in order, separated by spaces"></textarea>
+      <div id="pnRdGrid" aria-label="Tick the punched holes, one row for each word"></div>
+      <input type="hidden" id="pnRdTicks" value="">
+      <div class="btn-row" style="margin-top:8px;"><button type="button" id="pnRdBtn" onclick="pnReadUi()">FILL THE WORDS BOX</button><button type="button" class="secondary small" onclick="printPlateBlank('read')">PRINT BLANK PLATE</button><button type="button" class="secondary small" onclick="pnRdClear()">CLEAR</button></div>
+      <div class="status" id="pnRdStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
     </details>
     <h3 class="sec">Check your words</h3>
     <textarea id="phrase" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Type or paste your seed words to check..."></textarea>
@@ -1436,9 +1489,13 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div id="wvqBox" class="qrbox"><div id="wvqCap" class="hint"></div><div id="wvqImg" class="qr-img"></div><details class="bip21" id="wvqReq"><summary>Payment request (BIP21)<small>Add an amount, label or message; the QR becomes a bitcoin: link.</small></summary><div class="b21-row"><input type="text" id="wvqAmt" inputmode="decimal" placeholder="Amount in BTC (optional)" aria-label="Amount in BTC" autocomplete="off" spellcheck="false"><input type="text" id="wvqLbl" placeholder="Label (optional)" aria-label="Label" autocomplete="off" spellcheck="false"><input type="text" id="wvqMsg" placeholder="Message (optional)" aria-label="Message" autocomplete="off" spellcheck="false"></div><div class="hint" id="wvqUri" style="word-break:break-all;"></div><button type="button" class="secondary small" onclick="copyReq(this,'wvq')">COPY LINK</button></details><button type="button" class="secondary small" onclick="printAddrQr('wvq')">PRINT THIS QR</button><button type="button" class="secondary small" onclick="hideAddrQr('wvq')">HIDE QR</button></div>
       <div class="sec-block" id="wvSqBlock">
         <h3 class="sec">Paper, metal and SeedQR backups<span class="tag tag-secret">SECRET</span></h3>
-        <p class="hint" style="margin:0 0 6px;">Make another backup of these words: print them, show or print their first 4 letters for a metal plate, or print a SeedQR. Print only on a trusted offline computer with a directly connected printer. The passphrase is never shown or printed.</p>
+        <p class="hint" style="margin:0 0 6px;">Make another backup of these words: print them, show or print their first 4 letters for a metal plate, lay them out for a punch plate, or print a SeedQR. Print only on a trusted offline computer with a directly connected printer. The passphrase is never shown or printed.</p>
         <div class="btn-row" id="wvBkBtns"><button type="button" class="secondary small needs-words" id="wvAbbrBtn" onclick="wvAbbr()">SHOW FIRST 4 LETTERS</button><button type="button" class="secondary small needs-words" onclick="printSeed('check')">PRINT WORDS</button><button type="button" class="secondary small needs-words" onclick="printStamp('check')">PRINT STAMP SHEET</button></div>
         <div id="wvAbbrGrid" aria-label="First 4 letters of each word"></div>
+        <div class="pn-ctl"><label for="pnFmt">Punch plate layout</label><select id="pnFmt" onchange="pnRender()"><option value="grid">Binary grid (TinySeed style)</option><option value="stack">Stackbit 1248</option><option value="num">Word numbers: decimal, hex and octal</option></select></div>
+        <p class="hint" style="margin:0 0 6px;">For a steel plate you punch. Each word is its number in the BIP39 word list, counted from 1 (abandon) to 2048 (zoo), as on TinySeed and Stackbit plates and in Krux. SeedQR counts from 0, so its numbers are 1 lower. To check a plate later, use Read a punch plate or word numbers, at the top of this tab.</p>
+        <div class="btn-row" id="pnBtns"><button type="button" class="secondary small needs-words" id="pnShowBtn" onclick="pnShow()">SHOW PLATE</button><button type="button" class="secondary small needs-words" onclick="printPlate()">PRINT PLATE</button><button type="button" class="secondary small" onclick="printPlateBlank('check')">PRINT BLANK PLATE</button></div>
+        <div id="pnView" aria-label="Punch plate layout of the words"></div>
         <p class="hint" id="wvSqNote" style="margin:10px 0 6px;"></p>
         <div class="btn-row" id="wvSqBtns"><button type="button" class="secondary small" onclick="wvSeedQr('seedqr')">SHOW SEEDQR</button><button type="button" class="secondary small" onclick="wvSeedQr('compact')">SHOW COMPACTSEEDQR</button><button type="button" class="secondary small" onclick="wvSeedQrHide()">HIDE</button></div>
         <div id="wvsBox" class="qrbox"><div id="wvsCap" class="hint"></div><div id="wvsImg" class="qr-img"></div><div class="btn-row" style="justify-content:center;"><button type="button" class="secondary small" onclick="printSeedQr('check')">PRINT THIS QR</button><button type="button" class="secondary small" onclick="printSqGuide('check')">PRINT HAND-COPY GUIDE</button><button type="button" class="secondary small" onclick="printSqBlank('check')">PRINT BLANK GRID</button></div></div>
@@ -3605,6 +3662,11 @@ const DICT = [
   ["Hidden characters", "Spaces at either end, double spaces, tabs and invisible characters. In a passphrase they count like any letter, so one added by accident opens a different wallet.", "VOIDFORGE warns about them under each passphrase box.", "Keys & seeds"],
   ["Practice mode", "A switch that puts every address and key on the test network, with worthless test coins, so the whole job can be rehearsed without risk. The seed words themselves are the same on every network.", "Practice making a backup, in CHECK A BACKUP.", "VOIDFORGE"],
   ["Stamp sheet", "A printed page with each seed word cut to its first 4 letters in large capitals, as a guide for stamping a metal plate. It is as secret as the words.", "PRINT STAMP SHEET, after FORGE and in CHECK A BACKUP.", "VOIDFORGE"],
+  ["Binary grid (TinySeed)", "A steel plate with 12 holes in a row for each word: punching the columns 2048, 1024 ... 2, 1 that add up to the word's number in the BIP39 list (abandon is 1, zoo is 2048, punched alone). TinySeed plates hold 12 words a side; Krux reads them. As secret as the words.", "CHECK A BACKUP: Open this wallet, Punch plate layout; Read a punch plate or word numbers.", "Wallets & backups"],
+  ["Stackbit 1248", "A steel plate that stores each word as the 4 digits of its number in the BIP39 list (0001 to 2048), each digit punched as a sum of boxes worth 1, 2, 4 and 8. As secret as the words.", "CHECK A BACKUP: Open this wallet, Punch plate layout; Read a punch plate or word numbers.", "Wallets & backups"],
+  ["Word number", "A word's place in the BIP39 list. Krux and punch plates count from 1 (abandon) to 2048 (zoo), written in decimal, hexadecimal (1 to 800) or octal (1 to 4000); SeedQR counts from 0 (0000 to 2047). Word numbers are as secret as the words.", "CHECK A BACKUP: Punch plate layout; Read a punch plate or word numbers.", "Keys & seeds"],
+  ["Tamper-evident bag", "A sealed bag that cannot be opened without showing it, each with its own serial number. A changed serial or a broken seal means someone may have seen what is inside, so the wallet should be moved.", "Backup plan and stress test: Tamper-evident bags and PRINT BAG LOG.", "Privacy & security"],
+  ["Inheritance documents", "Papers that help an estate pass on bitcoin without exposing it: a letter for the lawyer or executor, recovery steps for the heir, the public key details and a list of trusted contacts. None of them holds the words or the passphrase.", "Backup plan and stress test: Inheritance documents.", "Wallets & backups"],
   ["BIP352 (Silent Payments)", "A way to receive payments to one reusable code while each payment still lands on a fresh address on the blockchain. Your wallet has to scan for them.", "Silent Payment address in the watch-only box.", "Standards (BIPs)"],
   ["BIP370", "PSBT version 2: an updated format for partly signed transactions. Instead of one unsigned transaction it keeps the inputs and outputs as separate records. Bitcoin Core makes it by default from version 32.", "Inspect a transaction (PSBT) reads it.", "Standards (BIPs)"],
   ["BIP380 and the descriptor BIPs", "The standards that define output descriptors: the text that says how a wallet's keys and addresses are made.", "", "Standards (BIPs)"],
@@ -3708,7 +3770,7 @@ const DICT = [
   ["Hot wallet", "A wallet on a device that is online, such as a phone app. Handy for small amounts, riskier for large ones.", "", "Wallets & backups"],
   ["HTLC", "Hashed timelock contract: the lock that makes a Lightning payment safe across several hops. It either completes everywhere or nowhere.", "", "Lightning & layers"],
   ["Index", "The number of one address or child inside a path or a BIP85 child seed.", "BIP85 index, address numbers.", "Keys & seeds"],
-  ["Inheritance planning", "Making sure the people you trust can find and restore your wallet if something happens to you, without exposing it today.", "Backup plan and stress test; Heir mode (I FOUND A BITCOIN BACKUP) for the family.", "Wallets & backups"],
+  ["Inheritance planning", "Making sure the people you trust can find and restore your wallet if something happens to you, without exposing it today.", "Backup plan and stress test, with its inheritance documents; Heir mode (I FOUND A BITCOIN BACKUP) for the family.", "Wallets & backups"],
   ["Input and output", "The two sides of a transaction: inputs are the coins being spent, outputs are the new coins being made (the payment and the change).", "Inspect a transaction (PSBT).", "Transactions"],
   ["Key pair", "A private key and the public key worked out from it.", "", "Keys & seeds"],
   ["Key reuse (multisig)", "Using the same public key, or keys from the same seed, more than once in a wallet setup. In a multisig it quietly lowers the protection: one seed then counts as two signers.", "EXTRA TOOLS, Check descriptors for a reused key.", "Wallets & backups"],
@@ -3732,7 +3794,7 @@ const DICT = [
   ["Mempool", "The waiting room where transactions sit until a miner puts them in a block.", "", "Network & mining"],
   ["Merkle root", "The single hash at the top of a Merkle tree, stored in the block header.", "", "Units & math"],
   ["Merkle tree", "A way to boil all the transactions in a block down to one short fingerprint (the Merkle root), so any one transaction can be proven to be in the block.", "", "Network & mining"],
-  ["Metal backup", "A seed stamped or engraved on steel so it survives fire and water, which paper may not.", "SHOW FIRST 4 LETTERS and PRINT STAMP SHEET, after FORGE and in CHECK A BACKUP.", "Wallets & backups"],
+  ["Metal backup", "A seed stamped or engraved on steel so it survives fire and water, which paper may not.", "SHOW FIRST 4 LETTERS and PRINT STAMP SHEET, after FORGE and in CHECK A BACKUP; punch plate layouts in CHECK A BACKUP.", "Wallets & backups"],
   ["Miner", "A computer or company doing the mining and building blocks.", "", "Network & mining"],
   ["Mini private key", "A very short private key (22 or 30 characters starting with S) once used on physical coins, such as Casascius coins.", "Or open a private key, read only, in CHECK A BACKUP.", "Keys & seeds"],
   ["Mining", "Competing to add the next block to the blockchain by doing a lot of hashing. The winner collects the block reward and fees.", "", "Network & mining"],
@@ -5410,6 +5472,10 @@ async function runSelfTests(auto){
   const sqHash=async(k)=>hex(await sha256bytes(new TextEncoder().encode(seedQrMatrix(("abandon ".repeat(11)+"about").split(" "),k,0).rows.map(r=>r.map(x=>x?"1":"0").join("")).join(""))));
   eq("SeedQR code (25 x 25 squares) equals the independent qrcode library (mask 0)", ()=>sqHash("seedqr"), "9ccf42587b3d709c640e7305c8612a031e83c36f7bd795993d02bc97b476678b");
   eq("CompactSeedQR code (21 x 21 squares) equals the independent qrcode library (mask 0)", ()=>sqHash("compact"), "9bb4e6caab91bea9bfb4612b7f90ba3ee3dd2c0d6e56d9bbab36d7c93d927010");
+  // v2.10.0: punch plates, numbered from 1 as Krux numbers them (worked out by hand: legal = 1020 = 512+256+...+4, zoo = 2048, abandon = 1)
+  eq("punch plates: legal, zoo and abandon as a binary grid, Stackbit 1248, decimal, hex and octal (Krux counts from 1)", ()=>["legal","zoo","abandon"].map(w=>{ const n=pnNum(w), b=pnBases(n); return pnBits(n).join("")+" "+pnStack(n).map(d=>d.join("+")||"0").join("|")+" "+b.dec+" "+b.hex+" "+b.oct; }).join(", "), "001111111100 1|0|2|0 1020 3FC 1774, 100000000000 2|0|4|8 2048 800 4000, 000000000001 0|0|0|1 1 1 1");
+  eq("punch plates read back: hex, octal, a ticked binary grid and a ticked Stackbit plate give the words", ()=>[pnParse("3FC 7e0", 16), pnParse("1774 3740", 8), pnReadRows("grid", [pnBits(1020), pnBits(2048)]), pnReadRows("stack", [[1,0,0,0,0,0,0,1,0,0,0,0,0,0], [0,1,0,0,0,0,1,0,0,0,0,1,1,0]])].map(r=>r.words.join(" ")).join(", "), "legal winner, legal winner, legal zoo, legal winner");
+  eq("punch plates refuse 0, 2049, a grid row over 2048 and a Stackbit digit over 9", ()=>[pnParse("0", 10), pnParse("801", 16), pnReadRows("grid", [pnBits(2048).map((b,k)=>k===11?1:b)]), pnReadRows("stack", [[0,0,0,0,0,0,0,1,1,1,0,0,0,0]])].map(r=>!!r.error).join(" "), "true true true true");
   eq("checkPhrase accepts valid", async()=>(await checkPhrase("abandon ".repeat(11)+"about")).ok, true);
   eq("checkPhrase rejects bad checksum", async()=>(await checkPhrase("abandon ".repeat(12))).ok, false);
   eq("checkPhrase rejects unknown word", async()=>(await checkPhrase("abandon ".repeat(11)+"zzzz")).ok, false);
@@ -5715,6 +5781,7 @@ function planOpen(){
 function planClear(){
   for(const id of PLAN_IDS){ const e = document.getElementById(id); if(e.tagName === "SELECT") { for(const o of e.options) o.selected = o.defaultSelected; } else e.value = ""; }
   document.getElementById("plStatus").textContent = ""; document.getElementById("plStatus").className = "status";
+  ihSay("", "");   // v2.10.0: the inheritance documents' status
   planRender();
 }
 for(const id of PLAN_IDS){ const e = document.getElementById(id); e.addEventListener("input", planRender); e.addEventListener("change", planRender); }
@@ -8625,6 +8692,7 @@ function wipeSeed(){
   kcClear();   // v2.9.0: the wallet file check
   lbClear();   // v2.9.0: the label file (private)
   clearXor();   // v2.9.0: Seed XOR parts (secret)
+  pnClear();   // v2.10.0: the punch plate on screen and the plate read-back boxes (secret)
   seedSig = null; passKey = null; exCtx = null;   // fixes release: these held the rolls and the passphrases after a wipe (found by tests/memory.test.mjs)
   clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo(); clearMsx();   // fixes release: public but private data (xpubs, descriptors, addresses, amounts)
   for(const id of ["wpIn", "payA", "payB", "dlPaste"]){ const e = document.getElementById(id); if(e) e.value = ""; }
@@ -8668,6 +8736,274 @@ function autoClearSet(){
   document.getElementById("autoNote").textContent = (m || h) ? "Auto-clear is ON" + (m ? ": after " + m + " minutes with no activity" : "") + (h ? (m ? " and" : ":") + " when you leave this tab" : "") + "." : "Auto-clear is off.";
 }
 document.addEventListener("visibilitychange", () => { if(document.hidden) camStop(); });   // v2.9.0: leaving the page turns the camera off
+// ===== v2.10.0 punch plates: binary grid (TinySeed style), Stackbit 1248 and word numbers =====
+// The layouts Krux shows under Other Formats (selfcustody/krux at commit 28d14c216006e278fd263afead3357becb83aa43:
+// src/krux/pages/tiny_seed.py, stack_1248.py and utils.py get_mnemonic_numbers). Every word is its place in the BIP39 list
+// counted from 1 (abandon = 1, zoo = 2048), not from 0 as in SeedQR. Binary grid: that number as 12 bits, columns 2048, 1024
+// ... 1 (zoo punches 2048 alone). Stackbit 1248: the number as 4 digits, 0001 to 2048, each digit punched as the sum of its 1,
+// 2, 4 and 8 boxes (the thousands digit has only a 1 and a 2 box). Word numbers: decimal, hexadecimal (in capitals) and octal.
+// The plate on screen, the read-back boxes and the ticks are secret: never copyable, wiped by CLEAR ALL, auto-clear and END SESSION.
+const PN_COLS = [2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1];
+const PN_SCOLS = [[0, 1], [0, 2], [1, 1], [1, 2], [1, 4], [1, 8], [2, 1], [2, 2], [2, 4], [2, 8], [3, 1], [3, 2], [3, 4], [3, 8]];   // Stackbit boxes: [digit, weight]
+const PN_TITLES = {grid: "BINARY GRID PLATE", stack: "STACKBIT 1248 PLATE", num: "WORD NUMBERS SHEET"};
+const PN_BASES = {10: {name: "decimal", max: "2048", re: /^[0-9]+$/}, 16: {name: "hexadecimal", max: "800", re: /^[0-9a-f]+$/i}, 8: {name: "octal", max: "4000", re: /^[0-7]+$/}};
+function pnNum(w){ const i = WORD_MAP[w]; if(i === undefined) throw new Error("not a BIP39 word"); return i + 1; }
+function pnBits(n){ return PN_COLS.map((c, k) => (n >> (11 - k)) & 1); }
+function pnStack(n){ return String(n).padStart(4, "0").split("").map((x, k) => (k ? [1, 2, 4, 8] : [1, 2]).filter(b => +x & b)); }
+function pnBases(n){ return {dec: String(n), hex: n.toString(16).toUpperCase(), oct: n.toString(8)}; }
+// Reading back: numbers typed in one base, or the ticked holes of each plate row. Every number must be 1 to 2048.
+function pnParse(text, base){
+  const B = PN_BASES[base], toks = String(text || "").split(/[\s,;]+/).filter(Boolean), words = [];
+  if(!B) return {error: "Choose decimal, hexadecimal or octal."};
+  if(!toks.length) return {error: "Type the word numbers first, in order."};
+  for(let k = 0; k < toks.length; k++){
+    const t = base === 16 ? toks[k].replace(/^0x/i, "") : toks[k];
+    if(!B.re.test(t)) return {error: "Number " + (k + 1) + " is not " + (base === 8 ? "an " : "a ") + B.name + " number. Check the menu above: decimal, hexadecimal or octal."};
+    const n = parseInt(t, base);
+    if(!(n >= 1 && n <= 2048)) return {error: "Number " + (k + 1) + " is outside 1 to " + B.max + " (" + B.name + "). Word numbers count from 1 (abandon) to 2048 (zoo). SeedQR digits count from 0: type those into the words box itself."};
+    words.push(WORDLIST[n - 1]);
+  }
+  return {words};
+}
+function pnRowNumber(fmt, ticks){   // ticks: 0 or 1 for each hole of the row; -1 means a Stackbit digit is too big
+  if(fmt === "grid") return PN_COLS.reduce((s, c, k) => s + (ticks[k] ? c : 0), 0);
+  const d = [0, 0, 0, 0]; PN_SCOLS.forEach(([k, b], c) => { if(ticks[c]) d[k] += b; });
+  if(d[0] > 2 || d.slice(1).some(x => x > 9)) return -1;
+  return d[0] * 1000 + d[1] * 100 + d[2] * 10 + d[3];
+}
+function pnReadRows(fmt, rows){
+  const words = [];
+  for(let r = 0; r < rows.length; r++){
+    const n = pnRowNumber(fmt, rows[r]);
+    if(n === -1) return {error: "Row " + (r + 1) + ": a digit adds up to more than 9 (or the thousands to more than 2). Check the holes of that word again."};
+    if(n === 0) return {error: "Row " + (r + 1) + " has no hole ticked. Every word has at least one."};
+    if(n > 2048) return {error: "Row " + (r + 1) + " adds up to more than 2048. " + (fmt === "grid" ? "On a binary grid 2048 is punched alone (it is zoo). " : "") + "Check the holes of that word again."};
+    words.push(WORDLIST[n - 1]);
+  }
+  return {words};
+}
+function pnNote(fmt, n){
+  if(fmt === "grid") return "Punch the holes marked with a dot, one row for each word, in order: the columns add up to the word's number. A TinySeed plate holds 12 words on a side" + (n > 12 ? ", so words 13 to " + n + " go on the back or on a second plate." : ".") + (n === 12 || n === 24 ? "" : " (Krux shows this layout for 12 and 24 words only.)");
+  if(fmt === "stack") return "Each word is a 4-digit number, 0001 to 2048. Punch the boxes that add up to each digit, such as 7 = 1 + 2 + 4; the thousands digit is 0, 1 or 2.";
+  return "The same numbers three ways, as Krux shows them (DEC, HEX and OCT): all count from 1, and hexadecimal is in capitals. Write down one column, and write which one it is.";
+}
+// A plate as a table: one row for each word (or `nums` empty rows with `blank`), a dot in each punched hole.
+function pnTable(fmt, nums, blank){
+  const t = document.createElement("table"); t.className = "pn-t pn-" + fmt;
+  const row = (cells, tag, cls) => { const tr = document.createElement("tr"); if(cls) tr.className = cls;
+    for(const c of cells){ const e = document.createElement(tag); if(c && typeof c === "object"){ e.textContent = c.t; if(c.cls) e.className = c.cls; if(c.span) e.colSpan = c.span; } else e.textContent = c; tr.appendChild(e); }
+    t.appendChild(tr); };
+  const dot = {t: "●", cls: "pn-on"}, rows = blank ? new Array(nums).fill(0) : nums, split = i => i === 12 ? "pn-split" : "";
+  if(fmt === "grid"){
+    row(["#", ...PN_COLS.map(String), "No."], "th");
+    rows.forEach((n, i) => row([String(i + 1), ...(blank ? PN_COLS.map(() => "") : pnBits(n).map(b => b ? dot : "")), blank ? "" : String(n)], "td", split(i)));
+  } else if(fmt === "stack"){
+    row(["", {t: "1000", span: 2}, {t: "100", span: 4}, {t: "10", span: 4}, {t: "1", span: 4}, ""], "th");
+    row(["#", ...PN_SCOLS.map(([, b]) => String(b)), "No."], "th");
+    rows.forEach((n, i) => { const s = blank ? null : pnStack(n); row([String(i + 1), ...PN_SCOLS.map(([d, b]) => s && s[d].includes(b) ? dot : ""), blank ? "" : String(n).padStart(4, "0")], "td", split(i)); });
+  } else if(blank){
+    row(["#", "Word number", "Word, to check"], "th");
+    rows.forEach((n, i) => row([String(i + 1), "", ""], "td", split(i)));
+  } else {
+    row(["#", "Decimal", "Hex", "Octal"], "th");
+    rows.forEach((n, i) => { const b = pnBases(n); row([String(i + 1), b.dec, b.hex, b.oct], "td", split(i)); });
+  }
+  return t;
+}
+// CHECK A BACKUP, Open this wallet: the plate of the checked words, on screen only while asked for.
+function pnShow(on){
+  const v = document.getElementById("pnView"), b = document.getElementById("pnShowBtn");
+  if(on === undefined) on = !v.classList.contains("on");
+  v.textContent = "";
+  const words = on && wvCtx && wvCtx.mnemonic && wvCtx.kind !== "pub" ? wvCtx.mnemonic.split(" ") : null;
+  if(words){
+    const f = document.getElementById("pnFmt").value, p = document.createElement("p");
+    v.appendChild(pnTable(f, words.map(pnNum)));
+    p.className = "hint"; p.style.margin = "4px 0 0"; p.textContent = "SECRET: anyone who sees this plate controls the funds. " + pnNote(f, words.length); v.appendChild(p);
+  }
+  v.classList.toggle("on", !!words);
+  b.textContent = words ? "HIDE PLATE" : "SHOW PLATE";
+}
+function pnRender(){ if(document.getElementById("pnView").classList.contains("on")) pnShow(true); }
+function printPlate(){
+  const S = printSrc("check"); if(!S) return;
+  const f = document.getElementById("pnFmt").value, nums = S.words.map(pnNum);
+  if(!confirm("Printing sends your seed (as a punch plate layout) to a printer and its spooler. Only print on a trusted offline computer with a directly connected printer. The passphrase is never printed. Continue?")) return;
+  printSheet(add => {
+    add("ps-title", "VOIDFORGE " + PN_TITLES[f]);
+    add("ps-sub", S.words.length + " words, in order. Each word is its number in the BIP39 word list, counted from 1 (abandon) to 2048 (zoo). " + pnNote(f, S.words.length));
+    add("", "").appendChild(pnTable(f, nums));
+    add("ps-rule", "");
+    add("ps-info", S.fp + "\n" + S.pass);
+    add("ps-fields", "To get the words back: Read a punch plate or word numbers, in CHECK A BACKUP, then VERIFY.\nPlate checked against this sheet, hole by hole:  ____\nPassphrase stored separately:      ____________");
+    add("ps-rule", "");
+    add("ps-warn", "Anyone who has this sheet or the plate controls the funds.\nNever photograph them or type them on a connected device.\nShred this sheet when the plate is done and checked.\nWhen you are done, close the browser and restart the computer.");
+  });
+}
+// A blank plate to fill in by hand: the layout chosen in Open this wallet (its word count), or in Read a punch plate.
+function printPlateBlank(from){
+  const rd = from === "read", f = document.getElementById(rd ? "pnRdFmt" : "pnFmt").value;
+  const n = rd ? parseInt(document.getElementById("pnRdLen").value, 10) : (wvCtx && wvCtx.mnemonic ? wvCtx.mnemonic.split(" ").length : 24);
+  printSheet(add => {
+    add("ps-title", "VOIDFORGE BLANK " + PN_TITLES[f]);
+    add("ps-sub", "Empty template for " + n + " words, no secret on it until you fill it in. Word numbers count from 1 (abandon) to 2048 (zoo). " + (f === "num" ? "Write which kind of number you use: decimal, hexadecimal or octal." : pnNote(f, n)));
+    add("", "").appendChild(pnTable(f, n, true));
+    add("ps-rule", "");
+    add("ps-fields", (f === "num" ? "Numbers written in (circle one):   decimal   hexadecimal   octal\n" : "") + "Once it is filled in, this sheet is as secret as the words: anyone who has it controls the funds.\nCheck it with Read a punch plate or word numbers, in CHECK A BACKUP, then VERIFY.");
+  });
+}
+// Read a punch plate or word numbers (top of CHECK A BACKUP): fills the words box; VERIFY then checks the words.
+function pnRdSay(cls, t){ const e = document.getElementById("pnRdStatus"); e.className = "status" + (cls ? " " + cls : ""); e.textContent = t; }
+function pnRdTicksOf(){
+  const rows = [];
+  document.querySelectorAll("#pnRdGrid input[type=checkbox]").forEach(c => { const r = +c.dataset.r; (rows[r] = rows[r] || [])[+c.dataset.c] = c.checked ? 1 : 0; });
+  return rows;
+}
+function pnRdSync(){   // a result belongs to the boxes that made it; the hidden box tells auto-clear that holes are ticked
+  const n = document.querySelectorAll("#pnRdGrid input[type=checkbox]:checked").length;
+  document.getElementById("pnRdTicks").value = n ? String(n) : "";
+  pnRdSay("", "");
+}
+function pnRdLayout(){
+  const f = document.getElementById("pnRdFmt").value, n = parseInt(document.getElementById("pnRdLen").value, 10), old = pnRdTicksOf(), g = document.getElementById("pnRdGrid");
+  document.getElementById("pnRdBase").style.display = document.getElementById("pnRdNums").style.display = f === "num" ? "" : "none";
+  document.getElementById("pnRdLen").style.display = f === "num" ? "none" : "";
+  g.textContent = "";
+  if(f !== "num"){
+    const t = pnTable(f, n, true), cols = f === "grid" ? PN_COLS.map(c => [0, c]) : PN_SCOLS, keep = g.dataset.fmt === f;
+    t.querySelectorAll("tr").forEach(tr => tr.removeChild(tr.lastChild));   // no Number column: the number would show the secret as it is ticked
+    [...t.querySelectorAll("tr")].filter(tr => tr.firstChild.tagName === "TD").forEach((tr, r) => {
+      [...tr.children].slice(1).forEach((td, c) => { const x = document.createElement("input"); x.type = "checkbox"; x.dataset.r = r; x.dataset.c = c; x.checked = keep && !!(old[r] && old[r][c]);
+        x.setAttribute("aria-label", "Word " + (r + 1) + ", " + (f === "grid" ? "" : ["thousands", "hundreds", "tens", "ones"][cols[c][0]] + " ") + cols[c][1]); td.appendChild(x); });
+    });
+    g.appendChild(t);
+  }
+  g.dataset.fmt = f;
+  pnRdSync();
+}
+function pnReadUi(){
+  const f = document.getElementById("pnRdFmt").value;
+  const r = f === "num" ? pnParse(document.getElementById("pnRdNums").value, parseInt(document.getElementById("pnRdBase").value, 10)) : pnReadRows(f, pnRdTicksOf());
+  if(r.error) return pnRdSay("bad", r.error);
+  const ph = document.getElementById("phrase"), text = r.words.join(" ");
+  if(ph.value.trim() && ph.value.trim() !== text && !confirm("The words box below already holds words. Replace them with these " + r.words.length + " words?")) return;
+  ph.value = text; ph.dispatchEvent(new Event("input", {bubbles: true}));
+  pnRdSay("ok", "Done: " + r.words.length + " words are in the words box below. Press VERIFY to check them: a wrong number or hole usually shows up there as a checksum error." + ([12, 15, 18, 21, 24].includes(r.words.length) ? "" : " A seed phrase has 12, 15, 18, 21 or 24 words."));
+}
+function pnRdClear(){
+  document.getElementById("pnRdNums").value = ""; document.getElementById("pnRdTicks").value = "";
+  document.querySelectorAll("#pnRdGrid input[type=checkbox]").forEach(c => { c.checked = false; });
+  pnRdSay("", "");
+}
+function pnClear(){ pnRdClear(); pnShow(false); }
+document.getElementById("pnRdGrid").addEventListener("change", pnRdSync);
+for(const id of ["pnRdNums", "pnRdBase", "pnRdFmt", "pnRdLen"]) document.getElementById(id).addEventListener(id === "pnRdNums" ? "input" : "change", pnRdSync);
+AUTO_FIELDS.push("pnRdNums", "pnRdTicks");   // auto-clear wipes these too, and knows the page holds a secret while they are filled
+pnRdLayout();
+
+// ===== v2.10.0 inheritance documents and the tamper-evident bag log (Backup plan box) =====
+// Like PRINT BACKUP PLAN, every sheet here holds no seed words and no passphrase, and none prints while a box looks like a
+// secret (planSecret). The key details sheet adds public data only, from the wallet open in CHECK A BACKUP.
+const IH_IDS = ["plOwner", "plHeir", "plLawyer", "plWhere"];
+PLAN_IDS.push(...IH_IDS);   // CLEAR, CLEAR ALL, auto-clear and END SESSION empty them with the plan
+function ihSay(cls, t){ const e = document.getElementById("ihStatus"); e.className = "status" + (cls ? " " + cls : ""); e.textContent = t; }
+for(const id of PLAN_IDS){ const e = document.getElementById(id); e.addEventListener("input", () => ihSay("", "")); e.addEventListener("change", () => ihSay("", "")); }
+async function ihGuard(){
+  const st = planState(), v = id => document.getElementById(id).value.trim();
+  Object.assign(st, {owner: v("plOwner"), heir: v("plHeir"), lawyer: v("plLawyer"), where: v("plWhere")});
+  if(st.fp && !/^[0-9a-f]{8}$/.test(st.fp)){ ihSay("bad", "The master fingerprint is 8 letters and digits (0-9 and a-f), such as 73c5da0a. Fix it, or leave the box empty."); return null; }
+  const k = await planSecret([st.app, st.help, st.note, ...st.copies.map(c => c.where), st.owner, st.heir, st.lawyer, st.where].join("\n"));
+  if(k){ ihSay("bad", "Not printed: the boxes hold what looks like " + k + ". These sheets must never hold secrets. Remove it, then print again."); return null; }
+  return st;
+}
+const IH_BLANK = "____________________";
+const IH_SCAM = "Nobody genuine will ever ask for the words or the passphrase: not a bank, an exchange, a wallet maker, the police, a court or a \"recovery service\". Anyone who asks for them, or offers to unlock, recover or check the bitcoin for a fee, is trying to steal it. Bitcoin that is sent away cannot be brought back.";
+// The public details of the wallet open in CHECK A BACKUP, if it is this plan's wallet. Returns {note} when it is left out.
+async function ihKeyDetails(st){
+  const ctx = wvCtx;
+  if(!ctx || !ctx.mnemonic || !ctx.shown || !ctx.shown.sheet) return {note: "No wallet is open in CHECK A BACKUP, so the details below are blank lines. To fill them in, type the words into CHECK A BACKUP, press VERIFY, then print again."};
+  const fp = (document.getElementById("wvFp").textContent.match(/^Master fingerprint: ([0-9a-f]{8})/) || [])[1] || "";
+  if(st.fp && fp !== st.fp) return {note: "The wallet open in CHECK A BACKUP has another fingerprint than this plan, so its details are left out. Open the wallet of this plan, or fix the fingerprint above."};
+  if(!gateOk()) return null;
+  const sh = ctx.shown, T = SCRIPT_TYPES[sh.type], seed = await mnemonicToSeed(ctx.mnemonic, ctx.pass);
+  const w = sh.custom ? null : await watchOnlyFromSeed(seed, sh.type, sh.acct, sh.net), fp0 = ctx.pass ? await mnemonicFingerprint(ctx.mnemonic, "") : "";
+  if(ctx !== wvCtx) return {note: "The wallet in CHECK A BACKUP changed while this sheet was being made, so its details are left out. Print again."};
+  return {fp, pass: !!ctx.pass, fp0, net: sh.net, type: T.label, path: sh.custom ? sh.custom + " (a custom path)" : "m/" + T.purpose + "'/" + NETS[sh.net].coin + "'/" + sh.acct + "'", w,
+    addr: addrSheetLines(sh.sheet.recv.map(a => a.address), sh.sheet.change.map(a => a.address))};
+}
+async function printInherit(kind){
+  const st = await ihGuard(); if(!st) return;
+  const who = st.owner || IH_BLANK, P = PLAN_PASS[st.pass], hasPass = st.pass !== "none", today = todayISO(), next = plusYearISO(today);
+  let K = null;
+  if(kind === "keys"){ K = await ihKeyDetails(st); if(!K) return; }
+  printSheet(add => {
+    if(kind === "letter"){
+      add("ps-title", "VOIDFORGE LETTER FOR THE EXECUTOR");
+      add("ps-sub", "No seed words and no passphrase are on this sheet. Keep it with the will.");
+      add("ps-info", "To:    " + (st.lawyer || IH_BLANK) + " (lawyer or executor)\nFrom:  " + who + "\nDate:  " + today);
+      add("ps-rule", "");
+      add("ih-big", "This letter is about bitcoin that is part of my estate.\n\n"
+        + "What exists. I own bitcoin in a self-custody wallet. No bank, exchange or company holds it, so there is no account to close and nobody to send a death certificate to. The bitcoin can be moved only with the wallet's backup: a list of 12 to 24 words (a \"seed phrase\")" + (hasPass ? ", together with a separate passphrase" : "") + ".\n"
+        + "Wallet app or device: " + (st.app || IH_BLANK) + "\nMaster fingerprint (a public label for the wallet, not a secret): " + (st.fp || IH_BLANK) + "\nWallet made on: " + (st.born || IH_BLANK) + "\n\n"
+        + "Where the instructions are. Step-by-step recovery instructions for my heir" + (st.heir ? ", " + st.heir + "," : "") + " and a backup plan that says where the copies of the words are kept are at: " + (st.where || IH_BLANK) + ".\n\n"
+        + "What you do not need. Nobody needs the words to settle the estate. Please do not ask for them, copy them, photograph them or type them into anything. The bitcoin stays safe where it is while the estate is settled; it does not expire. Only when the heir is ready to take it over does the heir need the words, and the heir then follows the instructions alone. To value it, the heir can show the balance with the key details sheet (public data, it cannot spend).\n\n"
+        + "Beware of scams. " + IH_SCAM);
+      add("ps-rule", "");
+      add("ps-fields", "Signed: ______________________________     Date: ____________");
+    } else if(kind === "heir"){
+      add("ps-title", "VOIDFORGE RECOVERY STEPS FOR THE HEIR");
+      add("ps-sub", "For: " + (st.heir || IH_BLANK) + "     From: " + who + "\nNo seed words and no passphrase are on this sheet. Take your time: the bitcoin is safe where it is, nothing expires and nobody can rush you.");
+      const steps = [
+        "Find the backup plan (it is kept at: " + (st.where || IH_BLANK) + "). It says where each copy of the words is kept" + (hasPass ? " and how the passphrase is kept" : "") + ".",
+        "Fetch one copy of the words. Never photograph the words, and never type them into a phone or a website.",
+        "On a computer that is not connected to the internet, open voidforge.html and press I FOUND A BITCOIN BACKUP. It explains each step in plain words.",
+        "Type the words into CHECK A BACKUP" + (hasPass ? ", with the passphrase (" + P.replace(/^Yes, /, "kept ") + ")" : "") + ", and press VERIFY. The master fingerprint must be " + (st.fp || IH_BLANK) + ". If it is different, check each word" + (hasPass ? " and the passphrase" : "") + " again.",
+        "Use the wallet app or device: " + (st.app || IH_BLANK) + ", on a computer you trust or on the hardware wallet itself (never on a phone). Choose to restore a wallet from a seed phrase and type the words" + (hasPass ? " and the passphrase" : "") + ". If it asks when the wallet was made, it was made on " + (st.born || IH_BLANK) + " (its birthday).",
+        "Check that the app shows the same fingerprint, then look at the balance. You do not need to move anything yet.",
+        "When you are ready, move the bitcoin to a wallet of your own. Send a small amount first and check that it arrives."];
+      add("ih-big ih-steps", steps.map((s, i) => (i + 1) + ". " + s).join("\n"));
+      add("ps-rule", "");
+      add("ih-big", "Never share the words or the passphrase with anyone, never pay anyone to \"recover\" the bitcoin, and never hurry because someone says so. " + IH_SCAM
+        + (st.help ? "\nWho can help: " + st.help : "\nWho can help: " + IH_BLANK) + (st.note ? "\nNote: " + st.note : ""));
+    } else if(kind === "keys"){
+      add("ps-title", "VOIDFORGE KEY DETAILS (PUBLIC)" + (K.net === "test" ? " (TESTNET)" : ""));
+      add("ps-sub", "No seed words, no passphrase and no private key are on this sheet: only public details, to find the right wallet and to watch it. They cannot spend.");
+      add("ps-info", "Master fingerprint:      " + (K.fp ? K.fp + (K.pass ? " (with the passphrase)" : "") : st.fp || IH_BLANK) + (K.fp0 ? "\nWithout the passphrase:  " + K.fp0 + " (the words alone open this other wallet)" : "") + "\nPassphrase:              " + (K.fp ? (K.pass ? "used (kept separately; it is not written here)" : "none") : P)
+        + "\nWallet app or device:    " + (st.app || IH_BLANK) + "\nWallet made on:          " + (st.born || IH_BLANK)
+        + "\nNetwork:                 " + (K.net ? (K.net === "test" ? "TESTNET (practice coins only)" : "Mainnet") : IH_BLANK) + "\nAddress type:            " + (K.type || IH_BLANK) + "\nAccount path:            " + (K.path || IH_BLANK));
+      if(K.note) add("ps-info ps-small", K.note);
+      add("ps-rule", "");
+      add("ps-info", "Watch-only: put the account public key or the two descriptors into a wallet app as a watch-only wallet (such as Sparrow) to see the balance and the addresses without the words. A watch-only wallet can never spend.");
+      add("ps-info ps-small ih-wrap", "Account public key:  " + (K.w ? K.w.key : IH_BLANK + IH_BLANK) + "\nDescriptor, receive: " + (K.w ? K.w.receive : IH_BLANK + IH_BLANK) + "\nDescriptor, change:  " + (K.w ? K.w.change : IH_BLANK + IH_BLANK));
+      if(K.addr){ add("ps-info", "First " + ADDR_SHOWN + " receive and first " + ADDR_SHOWN + " change addresses (public; to compare in the wallet app):"); add("ps-addr", K.addr); }
+      add("ps-rule", "");
+      add("ps-warn", "Privacy: these details cannot spend, but anyone who reads them can see every address and the whole balance of this wallet, and link them to you. Keep this sheet private, with the backup plan.");
+    } else if(kind === "contacts"){
+      add("ps-title", "VOIDFORGE TRUSTED CONTACTS");
+      add("ps-sub", "For: " + who + ". Fill this in by hand. List the people who can help your family: a lawyer or executor, a friend who knows bitcoin, the heir. No seed words and no passphrase belong on this sheet.");
+      const t = document.createElement("table"); t.className = "ih-t";
+      for(let r = 0; r < 7; r++){ const tr = document.createElement("tr"); for(const h of ["Name", "How to reach them", "What they know", "What they must never be given"]){ const c = document.createElement(r ? "td" : "th"); c.textContent = r ? "" : h; tr.appendChild(c); } t.appendChild(tr); }
+      add("", "").appendChild(t);
+      add("ps-rule", "");
+      add("ps-fields", "Nobody on this list needs the words to help. Never give one person both the words and the passphrase, and never give the words to anyone who offers to \"recover\" the bitcoin.\nKeep this sheet with the backup plan. Updated on: ____________   ____________   ____________");
+    } else {
+      add("ps-title", "VOIDFORGE TAMPER-EVIDENT BAG LOG");
+      add("ps-sub", "One row for each copy of the words sealed in a tamper-evident bag. Write the bag's serial number when you seal it, or photograph the sealed bag (never the words). Keep this log apart from the bags. It holds no words and no passphrase, but it says where your copies are: keep it private.");
+      const t = document.createElement("table"), head = ["Copy", "Where it is", "Bag serial number", "Date sealed"]; t.className = "ih-t ih-bags";
+      const rows = st.copies.map((c, i) => [String(i + 1) + ". " + (c.m === "metal" ? "Metal" : "Paper"), (c.home ? "At home" : "Away from home") + (c.where ? ": " + c.where : ""), "", ""]);
+      while(rows.length < 4) rows.push(["", "", "", ""]);
+      for(const cells of [head, ...rows]){ const tr = document.createElement("tr"); cells.forEach(x => { const c = document.createElement(cells === head ? "th" : "td"); c.textContent = x; tr.appendChild(c); }); t.appendChild(tr); }
+      add("", "").appendChild(t);
+      add("ps-info", "Check-ups. Next check-up due: " + next + ", then once a year (the 5-minute routine on the backup plan). Before you open anything, look at each bag: the seal must be intact and the serial must match this log.");
+      const u = document.createElement("table"); u.className = "ih-t ih-checks";
+      for(let r = 0; r < 9; r++){ const tr = document.createElement("tr"); for(const h of ["Date", "Copy", "Seal intact?", "Serial matches?", "Initials"]){ const c = document.createElement(r ? "td" : "th"); c.textContent = r ? "" : h; tr.appendChild(c); } u.appendChild(tr); }
+      add("", "").appendChild(u);
+      add("ps-rule", "");
+      add("ps-warn", "A changed serial or a broken seal means: assume someone has seen the words. Move the money to a new wallet, then make new copies and seal them in new bags.\nIf you open a bag yourself to read the words, seal them in a new bag and write its serial here.");
+    }
+  });
+  ihSay("ok", "Sent to the printer. No words and no passphrase are on it" + (kind === "keys" ? ", only public details" : "") + ". Keep it private." + (K && K.note ? " " + K.note : ""));
+}
 window.addEventListener("pagehide", () => camStop());
 document.addEventListener("visibilitychange", () => { if(document.hidden && document.getElementById("autoHide").checked) autoWipe("because you left this tab"); });
 
@@ -8963,6 +9299,7 @@ function clearWalletView(){
   document.getElementById("wvList").textContent = ""; document.getElementById("wvFp").textContent = ""; document.getElementById("wvIcon").textContent = "";
   document.getElementById("wvErr").textContent = ""; document.getElementById("wvPath").textContent = "";
   hideAddrQr("wvq"); wvSeedQrHide(); wvDecoyHide();
+  pnShow(false);   // v2.10.0: the punch plate belongs to the words that were open
   for(const id of ["wvType","wvNet","wvAcct"]) document.getElementById(id).disabled = false;
   if(practiceOn){ document.getElementById("wvNet").value = "test"; document.getElementById("wvNet").disabled = true; }
   if(document.getElementById("wvAcct").value === "-") document.getElementById("wvAcct").value = "0";
