@@ -98,6 +98,50 @@ async function probe(w, mutated, fast, only, hooks) {
   const until = async (f, ms = 5000) => { for (let t = 0; t < ms && !f(); t += 20) await new Promise((r2) => setTimeout(r2, 20)); };
   const drawn = (id, d = w.document) => /<rect/.test((d.getElementById(id) || {}).innerHTML || '');
 
+  // v2.10.0: first, so a mutation of these tools fails within seconds; it ends with CLEAR ALL, so the page is as new.
+  if (SEC(66, "v2.10.0 Coldcard seed mix and flawed-device questions")) {
+  try {
+    const H = (...p) => nc.createHash('sha256').update(Buffer.concat(p.map((x) => Buffer.from(x)))).digest();
+    // expected words: Coinkite's formula (firmware shared/seed.py, docs/verify_seed_mix.py) with Node's SHA-256, then @scure
+    const mixW = (trng, s, m, pur, n) => entropyToMnemonic(new Uint8Array(H(H('CC\x01S' + pur + m, trng, H('CC\x01' + m, s))).subarray(0, n === 12 ? 16 : 32)), wordlist);
+    const trng = Buffer.alloc(32, 7), tw = entropyToMnemonic(new Uint8Array(trng), wordlist), D = '135246'.repeat(5) + '642531'.repeat(5), C = '10'.repeat(64) + '1100';
+    const set = (t, m, n, p, s) => { $('cmxTrng').value = t; $('cmxMethod').value = m; $('cmxLen').value = String(n); $('cmxPurpose').value = p; $('cmxRolls').value = s; };
+    const shown = () => [...$('cmxOut').textContent.matchAll(/\d+\. ([a-z]+)/g)].map((m) => m[1]).join(' ');
+    const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
+    if ($('cmxBtn').disabled) fails.push('coldcard mix: the button is on once the self-test passes');
+    set(tw, 'D', 24, 'T', D); await w.cmxCheck(); const wT = mixW(trng, D, 'D', 'T', 24);
+    if (shown() !== wT) fails.push('coldcard mix: a Temporary Seed (purpose T), 24 words, from dice');
+    if (!$('cmxOut').textContent.includes(addr(wT, ''))) fails.push('coldcard mix: the first receive address of the words');
+    $('cmxRolls').dispatchEvent(new w.Event('input')); if ($('cmxOut').textContent || $('cmxStatus').textContent) fails.push('coldcard mix: typing in the rolls box clears the old result');
+    set(tw, 'C', 12, 'M', C); await w.cmxCheck(); if (shown() !== mixW(trng, C, 'C', 'M', 12)) fails.push('coldcard mix: New Seed Words, 12 words, from coin flips');
+    const refused = async (t, m, s, re, msg) => { set(t, m, 12, 'M', s); await w.cmxCheck(); if (!re.test($('cmxStatus').textContent) || $('cmxOut').textContent) fails.push(msg); };
+    await refused(tw, 'D', D.slice(0, 49), /at least 50 dice rolls/, 'coldcard mix: 49 rolls are refused');
+    await refused(tw, 'C', C.slice(0, 127), /at least 128 coin flips/, 'coldcard mix: 127 flips are refused');
+    await refused(tw, 'D', '1'.repeat(16) + '23456'.repeat(6) + '2345', /more than 30%/, 'coldcard mix: one face on 16 of 50 rolls is refused');
+    await refused(tw, 'C', '1'.repeat(84) + '0'.repeat(44), /more than 65%/, 'coldcard mix: one side on 84 of 128 flips is refused');
+    await refused(tw, 'D', D.replace('3', '7'), /is not one of the dice rolls/, 'coldcard mix: a roll that is not 1 to 6 is refused');
+    await refused('abandon '.repeat(11) + 'about', 'D', D, /shows 24 words/, 'coldcard mix: 12 TRNG words are refused');
+    set(tw, 'C', 12, 'M', '1'.repeat(83) + '0'.repeat(45)); await w.cmxCheck(); if (!$('cmxOut').textContent) fails.push('coldcard mix: 83 of 128 flips on one side (65%) are accepted');
+    set(tw, 'D', 12, 'M', D); await w.cmxCheck(); w.practiceMode(true); await sleep(20);
+    if ($('cmxOut').textContent) fails.push('coldcard mix: practice mode clears a mainnet result');
+    await w.cmxCheck(); if (!$('cmxOut').textContent.includes(segAtT(mixW(trng, D, 'D', 'M', 12), '', 0, 0, 0))) fails.push('coldcard mix: in practice mode the address is on the test network');
+    w.practiceMode(false); await sleep(20);
+    if (!w.eval('AUTO_FIELDS').includes('cmxTrng')) fails.push('coldcard mix: auto-clear wipes the TRNG words');
+    set(tw, 'D', 12, 'M', D); await w.cmxCheck(); w.clearAll(); if ($('cmxTrng').value || $('cmxRolls').value || $('cmxOut').textContent) fails.push('coldcard mix: CLEAR ALL wipes it');
+    const L = (d, v, dt, dice) => w.flwAssess(d, v || '', dt || '', dice || 'none');
+    for (const [d, v, dt, dice, want] of [['ccq', '1.4.1Q', '', '', 'weak'], ['ccq', '1.5.0Q', '', '', 'ok'], ['ccmk4', '5.5.1', '', '', 'weak'], ['ccmk4', '5.6.0', '', '', 'ok'], ['ccmk4', '5.10.0', '', '', 'ok'],
+      ['ccmk3', '4.1.9', '', '', 'weak'], ['ccmk3', '4.2.0', '', '', 'ok'], ['ccedge', '6.5.0X', '', '', 'weak'], ['ccedge', '6.6.0X', '', '', 'ok'], ['ccmk4', '6.5.0X', '', '', 'weak'], ['ccmk4', '1.4.1Q', '', '', 'input'],
+      ['ccq', '', '2026-07', '', 'weak'], ['ccq', '', '2026-07-31', '', 'unknown'], ['ccq', '', '2026-08', '', 'unknown'], ['ccq', '', '', '', 'unknown'], ['ccq', '1.4.1Q', '', 'only', 'ok'],
+      ['bx', '3.6.0', '', '', 'weak'], ['bx', '3.6.1', '', '', 'ok'], ['bx', '3.0.0', '', '', 'weak'], ['trust', '0.0.172', '', '', 'weak'], ['trust', '0.0.171', '', '', 'ok'], ['trust', '0.0.182', '', '', 'weak'], ['trust', '0.0.183', '', '', 'ok']])
+      if (L(d, v, dt, dice).level !== want) fails.push('flawed device: ' + d + ' ' + v + ' ' + dt + ' ' + dice + ' is ' + want);
+    if (!/may have helped/.test(L('ccq', '1.4.1Q', '', 'mixed').text)) fails.push('flawed device: dice added to a flawed Coldcard still means move');
+    if (!/do not depend on any random number generator/.test(L('vf').text)) fails.push('flawed device: VOIDFORGE dice seeds do not depend on a random number generator');
+    $('flwDev').value = 'ccq'; $('flwVer').value = '1.4.1Q'; $('flwDice').value = 'none'; $('flwDate').value = ''; w.flwUi();
+    if (!/1\. On your offline computer/.test($('flwOut').textContent)) fails.push('flawed device: a weak answer shows the move checklist');
+    $('flwVer').dispatchEvent(new w.Event('input')); if ($('flwStatus').textContent) fails.push('flawed device: editing an answer clears the old result');
+    w.clearAll(); if ($('flwVer').value) fails.push('flawed device: CLEAR ALL empties the answers');
+  } catch (e) { fails.push('v2.10.0 Coldcard mix checks: the probe crashed: ' + e.message); }
+  }
   if (SEC(0, "r = await run('dice', 12, D50); if (r !== expect.d50 || fpOf")) {
   r = await run('dice', 12, D50); if (r !== expect.d50 || fpOf() !== fp(expect.d50, '')) fails.push('dice 12 words / fingerprint');
   if (adOf() !== addr(expect.d50, '')) fails.push('first receive address');
@@ -4983,6 +5027,45 @@ const M = [
   ["review: typo result written after an edit", "const r = await descTypoFind(document.getElementById(\"typoIn\").value); if(run !== typoRun) return;", "const r = await descTypoFind(document.getElementById(\"typoIn\").value);"],
   ["review: one part of several taken as whole", "if(r.partial){ camMsg(", "if(false){ camMsg("],
   ["review: going online leaves a SeedQR scan on", "window.addEventListener(\"online\", () => { if(cam && CAM_TARGETS[cam.id].secret) camStop(", "window.addEventListener(\"online\", () => { if(false) camStop("],
+  // v2.10.0: Check a Coldcard seed mix, and Was my seed made by a flawed device? (probe section 66)
+  ["cmx: seed domain string wrong", "te(\"CC\\x01S\" + purpose + method)", "te(\"CC\\x01\" + purpose + method)"],
+  ["cmx: purpose ignored (temporary seed as master)", "te(\"CC\\x01S\" + purpose + method)", "te(\"CC\\x01S\" + \"M\" + method)"],
+  ["cmx: method left out of the rolls hash", "te(\"CC\\x01\" + method), te(symbols)", "te(\"CC\\x01\"), te(symbols)"],
+  ["cmx: single SHA-256 instead of double", "const seed = await sha256bytes(await sha256bytes(concatBytes(te(\"CC\\x01S\" + purpose + method), trng, user)));", "const seed = await sha256bytes(concatBytes(te(\"CC\\x01S\" + purpose + method), trng, user));"],
+  ["cmx: 12 words not cut to 16 bytes", "return seed.slice(0, wc === 12 ? 16 : 32);", "return seed.slice(0, 32);"],
+  ["cmx: 49 dice rolls accepted", "min: 50, maxFreq: 0.30", "min: 49, maxFreq: 0.30"],
+  ["cmx: 127 coin flips accepted", "min: 128, maxFreq: 0.65", "min: 127, maxFreq: 0.65"],
+  ["cmx: dice limit too loose", "maxFreq: 0.30, unit", "maxFreq: 0.35, unit"],
+  ["cmx: coin limit too loose", "maxFreq: 0.65, unit", "maxFreq: 0.70, unit"],
+  ["cmx: coin limit too strict", "if(top[1] / symbols.length > m.maxFreq) return", "if(top[1] / symbols.length >= m.maxFreq - 0.01) return"],
+  ["cmx: a wrong roll character dropped silently", "if(badCh !== undefined) return", "if(false) return"],
+  ["cmx: 12 TRNG words accepted", "if(r.mnemonic.split(\" \").length !== 24) return say(\"bad\", \"View TRNG Words", "if(false) return say(\"bad\", \"View TRNG Words"],
+  ["cmx: old result kept when the rolls change", "placeholder=\"Every roll or flip you typed on the Coldcard, in order\" oninput=\"cmxClear(true)\"", "placeholder=\"Every roll or flip you typed on the Coldcard, in order\""],
+  ["cmx: button never enabled", "document.getElementById(\"cmxBtn\").disabled = !on;", "document.getElementById(\"cmxBtn\").disabled = true;"],
+  ["cmx: CLEAR ALL keeps the TRNG words", "  cmxClear(); flwClear(true);   // v2.10.0", "  flwClear(true);   // v2.10.0"],
+  ["cmx: auto-clear keeps the TRNG words", "\"dcRolls\", \"cmxTrng\", \"cmxRolls\"];", "\"dcRolls\", \"cmxRolls\"];"],
+  ["cmx: practice mode keeps a mainnet result", "dcClear(true); cmxClear(true); clearPsbt(false);", "dcClear(true); clearPsbt(false);"],
+  ["cmx: address always on mainnet", "const net = practiceOn ? \"test\" : \"main\";\n  const ent = await coldcardMixEntropy", "const net = \"main\";\n  const ent = await coldcardMixEntropy"],
+  ["flaw: Coldcard Q fix version wrong", "fixed: [1, 5, 0], fixedText: \"1.5.0Q\"", "fixed: [1, 4, 0], fixedText: \"1.5.0Q\""],
+  ["flaw: Coldcard Mk4 fix version wrong", "fixed: [5, 6, 0], fixedText: \"5.6.0\"", "fixed: [5, 5, 0], fixedText: \"5.6.0\""],
+  ["flaw: Coldcard Mk3 fix version wrong", "fixed: [4, 2, 0], fixedText: \"4.2.0\"", "fixed: [4, 1, 0], fixedText: \"4.2.0\""],
+  ["flaw: Coldcard Edge fix version wrong", "fixed: [6, 6, 0], fixedText: \"6.6.0X or 6.6.0QX\"", "fixed: [6, 5, 0], fixedText: \"6.6.0X or 6.6.0QX\""],
+  ["flaw: Edge version on another model not handled", "if(v && v.suffix.includes(\"X\")) f = FLAWS.ccedge;", ""],
+  ["flaw: another model's version not questioned", "if(v && !f.major.includes(v.nums[0])) return", "if(false) return"],
+  ["flaw: bx range ends too early", "to: [3, 6, 0], fromText: \"3.0.0\"", "to: [3, 5, 0], fromText: \"3.0.0\""],
+  ["flaw: bx range starts too late", "from: [3, 0, 0], to:", "from: [3, 0, 1], to:"],
+  ["flaw: Trust Wallet range starts too late", "from: [0, 0, 172]", "from: [0, 0, 173]"],
+  ["flaw: Trust Wallet range ends too late", "to: [0, 0, 182]", "to: [0, 0, 183]"],
+  ["flaw: versions compared as text", "for(let i = 0; i < 3; i++) if(a[i] !== b[i]) return a[i] < b[i] ? -1 : 1; return 0;", "return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0;"],
+  ["flaw: dice-only seeds called weak", "if(dice === \"only\") return", "if(false) return"],
+  ["flaw: VOIDFORGE seeds not recognized", "if(dev === \"vf\") return", "if(false) return"],
+  ["flaw: July 2026 not treated as before the fix", "if(dt.d === null) return true;", "if(dt.d === null) return null;"],
+  ["flaw: fix date wrong", "const FLAW_FIX_DATE = \"2026-07-31\";", "const FLAW_FIX_DATE = \"2026-08-01\";"],
+  ["flaw: a date before the fix not called weak", "if(before === true) return weak(", "if(before === 2) return weak("],
+  ["flaw: added dice not explained", "const mixed = dice === \"mixed\" ?", "const mixed = false ?"],
+  ["flaw: no checklist for a weak seed", "o.textContent = r.level === \"weak\" || r.level === \"unknown\" ? FLAW_MOVE", "o.textContent = r.level === \"unknown\" ? FLAW_MOVE"],
+  ["flaw: old answer kept when the version changes", "oninput=\"flwClear()\" placeholder=\"Like 5.5.1", "placeholder=\"Like 5.5.1"],
+  ["flaw: CLEAR ALL keeps the answers", "if(all){ document.getElementById(\"flwVer\").value = \"\";", "if(false){ document.getElementById(\"flwVer\").value = \"\";"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
