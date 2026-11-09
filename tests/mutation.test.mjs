@@ -3147,7 +3147,7 @@ async function probe(w, mutated, fast, only, hooks) {
     const fp4 = root.fingerprint.toString(16).padStart(8, '0'), a84 = bech32.encode('bc', [0, ...bech32.toWords(ripemd160(nsha(k84.publicKey)))]);
     if ($('s39Btn').disabled) fails.push('slip39: CHECK AND COMBINE is on once the self-test passes');
     $('s39In').value = v4[1].join('\n'); $('s39Pass').value = 'TREZOR'; await w.s39Ui(); const out = $('s39Out').textContent, st = $('s39Status').textContent;
-    if (!/^Share 1: checksum OK, share number 3 \(2 shares are needed\)\./.test(st) || !/Combined: these shares open one wallet/.test(st) || !out.includes('Master fingerprint: ' + fp4) || !out.includes('(m/84\'/0\'/0\'/0/0): ' + a84)) fails.push('slip39: 2 of 3 shares show the fingerprint and first address @scure gives');
+    if (!/^Share 1: checksum OK, share number 3 \(2 shares are needed\)\./.test(st) || !/Combined: these shares open one wallet/.test(st) || !out.includes('Master fingerprint: ' + fp4) || !out.includes('\n0/0  ' + a84 + '\n') || !out.includes('\n1/9  ' + bech32.encode('bc', [0, ...bech32.toWords(ripemd160(nsha(root.derive("m/84'/0'/0'/1/9").publicKey)))])) || !/First 10 receive addresses .*\n[\s\S]*First 10 change addresses/.test(out)) fails.push('slip39: 2 of 3 shares show the fingerprint and the first 10 receive and 10 change addresses @scure gives');
     $('s39Pass').value = ''; await w.s39Ui(); if ($('s39Out').textContent.includes(fp4) || !/If your backup has a passphrase, type it/.test($('s39Out').textContent)) fails.push('slip39: without the passphrase another wallet, and the page says so');
     $('s39In').value = v4[1][0]; $('s39Pass').value = 'TREZOR'; await w.s39Ui(); if (!/Not combined: /.test($('s39Status').textContent) || $('s39Out').style.display !== 'none') fails.push('slip39: one share of 2 is not enough, and nothing is shown');
     $('s39In').value = v4[1][0].replace(/^shadow/, 'shadoe'); await w.s39Ui(); if (!/Share 1: /.test($('s39Status').textContent) || /checksum OK/.test($('s39Status').textContent)) fails.push('slip39: a mistyped word is reported');
@@ -5475,7 +5475,7 @@ const M = [
   ["slip39: member thresholds not compared", "if(s.memberThreshold !== g.threshold)", "if(false)"],
   ["slip39: GF(256) with the wrong polynomial", "if(p & 0x100) p ^= 0x11b;", "if(p & 0x100) p ^= 0x11d;"],
   ["slip39: round number left out of the password", "s39Concat(new Uint8Array([i]), passBytes)", "s39Concat(new Uint8Array([0]), passBytes)"],
-  ["slip39: addresses of account 1 shown", "seg = await watchOnlyFromSeed(sec, \"wpkh\", 0)", "seg = await watchOnlyFromSeed(sec, \"wpkh\", 1)"],
+  ["slip39: combine shows no address list", "  o.textContent = wt.text +", "  o.textContent = \"Master fingerprint: \" + wt.fp +"],
   ["slip39: button never turned on", "  document.getElementById(\"s39Btn\").disabled = !on;   // v2.9.0: SLIP39\n", ""],
   ["slip39: the passphrase ignored", "slip39Combine(lines, document.getElementById(\"s39Pass\").value)", "slip39Combine(lines, \"\")"],
   ["slip39: wiping keeps the shares", "  wdClear(); cdClear(); clearS39();\n", "  wdClear(); cdClear();\n"],

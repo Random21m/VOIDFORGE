@@ -1768,7 +1768,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <details id="s39Box" style="margin-top:8px;">
       <summary>SLIP39 shares (Shamir backup)<span class="tag tag-secret">SECRET</span><small>Check SLIP39 shares, combine them to see which wallet they open, or make new shares from dice.</small></summary>
-      <p class="hint" style="margin:8px 0;">A SLIP39 backup (a Shamir backup, made by Trezor and Keystone) is a set of shares of 20 or 33 words each, from a list of 1,024 words that is not the BIP39 list. A set number of them (for example 2 of 3) opens the wallet; fewer reveal nothing. Type each share on its own line. VOIDFORGE checks every share, and with enough of them shows the wallet&rsquo;s master fingerprint and first addresses, so you can compare them with your device. It can also make a new wallet as SLIP39 shares from your own dice rolls (choose &ldquo;Make new SLIP39 shares from dice&rdquo;). Do this only on your offline computer.</p>
+      <p class="hint" style="margin:8px 0;">A SLIP39 backup (a Shamir backup, made by Trezor and Keystone) is a set of shares of 20 or 33 words each, from a list of 1,024 words that is not the BIP39 list. A set number of them (for example 2 of 3) opens the wallet; fewer reveal nothing. Type each share on its own line. VOIDFORGE checks every share, and with enough of them shows the wallet&rsquo;s master fingerprint and the first 10 receive and 10 change addresses, so you can compare them with your device. It can also make a new wallet as SLIP39 shares from your own dice rolls (choose &ldquo;Make new SLIP39 shares from dice&rdquo;). Do this only on your offline computer.</p>
       <div class="radio-group">
         <label><input type="radio" name="s39Mode" value="combine" checked onchange="s39ModeChange()"><span>Check or combine shares</span></label>
         <label><input type="radio" name="s39Mode" value="make" onchange="s39ModeChange()"><span>Make new SLIP39 shares from dice</span></label>
@@ -9359,11 +9359,11 @@ async function s39Ui(){
   st.textContent = "Checking and combining..."; const r = await slip39Combine(lines, document.getElementById("s39Pass").value);
   if(run !== s39Run) return;
   if(!r.ok){ st.className = "status bad"; st.textContent = each.join("\n") + "\n\nNot combined: " + r.error; return; }
-  const sec = r.masterSecret; let fp, seg, tr;
-  try { fp = await fingerprintFromSeed(sec); seg = await watchOnlyFromSeed(sec, "wpkh", 0); tr = await watchOnlyFromSeed(sec, "tr", 0); } finally { sec.fill(0); }
+  const sec = r.masterSecret; let wt;   // v2.10.0: the first 10 receive and 10 change addresses, as everywhere else on the page
+  try { wt = await s39mWalletText(sec); } finally { sec.fill(0); }
   if(run !== s39Run) return;
   st.className = "status ok"; st.textContent = each.join("\n") + "\n\nCombined: these shares open one wallet.";
-  o.textContent = "Master fingerprint: " + fp + "\nFirst Native SegWit address (m/84'/0'/0'/0/0): " + seg.first + "\nFirst Taproot address (m/86'/0'/0'/0/0): " + tr.first +
+  o.textContent = wt.text +
     "\n\nCompare the fingerprint with your device. " + (document.getElementById("s39Pass").value ? "A wrong passphrase opens a different, empty wallet with no error, so a fingerprint that does not match usually means a mistyped passphrase." : "If your backup has a passphrase, type it: without it these shares open a different wallet.");
   o.style.display = "";
 }
