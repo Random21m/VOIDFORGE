@@ -1,0 +1,9 @@
+{
+  "note": "Copied unchanged from these pinned commits (bitcoin/bitcoin v28.0 = 110183746150428e6385880c79f8c5733b1361ba; bitcoin/bips master on 2026-11-09 = a34f044bb8d5cd684d7a742d2f6483c14b719046). Data only: nothing from these repositories is run. tests/sigcheck.test.mjs checks each SHA-256 before use.",
+  "files": [
+    {"file": "core-sighash.json", "url": "https://raw.githubusercontent.com/bitcoin/bitcoin/110183746150428e6385880c79f8c5733b1361ba/src/test/data/sighash.json", "sha256": "52cf23c2076e7f129c71d5508631d3e5ae3be1b1cb0585c0e23bbb4bb373e924"},
+    {"file": "core-tx_valid.json", "url": "https://raw.githubusercontent.com/bitcoin/bitcoin/110183746150428e6385880c79f8c5733b1361ba/src/test/data/tx_valid.json", "sha256": "a85d479081d6fd93188377e27fdfa099fa1a6aefdae565d0f473003c855d1e90"},
+    {"file": "bip341-wallet-test-vectors.json", "url": "https://raw.githubusercontent.com/bitcoin/bips/a34f044bb8d5cd684d7a742d2f6483c14b719046/bip-0341/wallet-test-vectors.json", "sha256": "403e19fb81dd1f31e745699216308f61fb403774b2aafa87b631b8f7c042d37f"},
+    {"file": "bip-0143.mediawiki", "url": "https://raw.githubusercontent.com/bitcoin/bips/a34f044bb8d5cd684d7a742d2f6483c14b719046/bip-0143.mediawiki", "sha256": "62bc71351563e68baeb12643c68355d217953ae9eb6a6e68b2b0323275b6beec"}
+  ]
+}

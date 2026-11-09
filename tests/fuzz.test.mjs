@@ -14,6 +14,7 @@ import { secp256k1, schnorr } from '@noble/curves/secp256k1';
 import { ripemd160 } from '@noble/hashes/ripemd160';
 import { sha256 as nsha } from '@noble/hashes/sha256';
 import { loadPage, ready, readHtml, makeReporter } from './harness.mjs';
+import * as btc from '@scure/btc-signer';
 
 const RUNS = Math.max(1, Math.round(Number(process.env.FUZZ_RUNS) || 60));   // whole numbers only: fast-check never ends with a fractional numRuns
 const SEED = Number(process.env.FUZZ_SEED) || Date.now() % 2147483647;
@@ -103,5 +104,41 @@ await prop('Robustness: VERIFY, Explain an address and the Detective target take
   const bad = F.cases.filter(([a, b]) => w.electrumNorm(a) !== b);
   R.ok(bad.length === 0, 'Electrum: normalize_text matches Electrum on ' + F.cases.length + ' hard cases' + (bad.length ? ' (first mismatch: ' + JSON.stringify(bad[0]) + ')' : '')); }
 await prop('Electrum: normalizing twice changes nothing', anyText, async (t) => w.electrumNorm(w.electrumNorm(t)) === w.electrumNorm(t));
+
+// 10. v2.10.0 signature checks: the page's signature hashes equal @scure/btc-signer's on random transactions and hash types
+// (legacy, BIP143, BIP341 key path and BIP342 tapscript); a signature with one byte changed is never VALID; and random bytes
+// never crash the checks.
+{ const U = (b) => w.Uint8Array.from(b), K = (s) => nc.createHash('sha256').update('fuzz sig ' + s).digest(), pub = (k) => secp256k1.getPublicKey(k, true);
+  const txArb = fc.record({ nIn: fc.integer({ min: 1, max: 4 }), nOut: fc.integer({ min: 1, max: 4 }), seqs: fc.array(fc.nat(), { minLength: 4, maxLength: 4 }), amts: fc.array(fc.bigInt({ min: 1n, max: 2100000000000000n }), { minLength: 8, maxLength: 8 }),
+    ids: fc.array(fc.uint8Array({ minLength: 32, maxLength: 32 }), { minLength: 4, maxLength: 4 }), lock: fc.nat(), ver: fc.constantFrom(1, 2), idx: fc.nat(), ht: fc.constantFrom(1, 2, 3, 0x81, 0x82, 0x83), tht: fc.constantFrom(0, 1, 2, 3, 0x81, 0x82, 0x83), leaf: fc.uint8Array({ minLength: 0, maxLength: 60 }) });
+  await prop('Signature checks: legacy, BIP143, BIP341 and BIP342 hashes on random transactions equal btc-signer\'s', txArb, async (v) => {
+    const tx = new btc.Transaction({ version: v.ver, lockTime: v.lock, allowUnknownOutputs: true, allowUnknownInputs: true, disableScriptCheck: true }), spk = [], amt = [];
+    for (let i = 0; i < v.nIn; i++) { const s = btc.p2tr(schnorr.getPublicKey(K('in' + i))).script; spk.push(s); amt.push(v.amts[i]); tx.addInput({ txid: v.ids[i], index: i, sequence: v.seqs[i] >>> 0, witnessUtxo: { script: s, amount: v.amts[i] } }); }
+    for (let j = 0; j < v.nOut; j++) tx.addOutput({ script: btc.p2wpkh(pub(K('out' + j))).script, amount: v.amts[4 + j] });
+    const i = v.idx % v.nIn, model = w.svTxModel(U(tx.unsignedTx)), ctx = w.svCtx(model, spk.map((s, k) => ({ amount: amt[k], script: U(s) }))), sc = btc.p2pkh(pub(K('sc'))).script;
+    if (hex(await w.svSighashLegacy(ctx, i, U(sc), v.ht)) !== hex(tx.preimageLegacy(i, sc, v.ht))) return 'legacy hash differs';
+    if (hex(await w.svSighashV0(ctx, i, U(sc), amt[i], v.ht)) !== hex(tx.preimageWitnessV0(i, sc, v.ht, amt[i]))) return 'BIP143 hash differs';
+    if ((v.tht & 3) === 3 && i >= v.nOut) return (await w.svSighashTr(ctx, i, v.tht, {})) === null || 'SINGLE without an output must give no hash';
+    if (hex(await w.svSighashTr(ctx, i, v.tht, {})) !== hex(tx.preimageWitnessV1(i, spk, v.tht, amt))) return 'BIP341 hash differs';
+    const leaf = Uint8Array.from([...v.leaf, 0xac]);
+    return hex(await w.svSighashTr(ctx, i, v.tht, { leaf: await w.svTapLeafHash(0xc0, U(leaf)) })) === hex(tx.preimageWitnessV1(i, spk, v.tht, amt, undefined, leaf, 0xc0)) || 'BIP342 hash differs';
+  }, Math.max(10, Math.ceil(RUNS / 2)));
+  // one signed P2WPKH and one Taproot spend (btc-signer); one byte of the signature changed, anywhere
+  const signed = ['wpkh', 'tr'].map((t) => { const k = K('signer ' + t), p = t === 'tr' ? btc.p2tr(schnorr.getPublicKey(k)) : btc.p2wpkh(pub(k)), tx = new btc.Transaction();
+    tx.addInput({ txid: new Uint8Array(32).fill(4), index: 0, witnessUtxo: { script: p.script, amount: 50000n }, ...(t === 'tr' ? { tapInternalKey: p.tapInternalKey } : {}) }); tx.addOutput({ script: p.script, amount: 40000n }); tx.signIdx(k, 0); tx.finalize();
+    return { raw: tx.extract(), coin: { amount: 50000n, script: p.script } }; });
+  await prop('Signature checks: a signature with one byte changed is never VALID', fc.tuple(fc.constantFrom(0, 1), fc.nat(), fc.integer({ min: 1, max: 255 })), async ([which, pos, x]) => {
+    const s = signed[which], t = w.svTxModel(U(s.raw)), sig = t.ins[0].wit[0], k = pos % sig.length; sig[k] ^= x;
+    const r = await w.svFinal(w.svCtx(t, [{ amount: s.coin.amount, script: U(s.coin.script) }]), 0);
+    return r.state !== 'valid' || 'byte ' + k + ' ^ ' + x + ' still VALID'; });
+  await prop('Signature checks: random bytes as a transaction or PSBT never crash the checks', fc.tuple(fc.uint8Array({ maxLength: 300 }), fc.boolean()), async ([b, asPsbt]) => {
+    const bytes = asPsbt ? Uint8Array.from([0x70, 0x73, 0x62, 0x74, 0xff, ...b]) : b;
+    try { const res = await w.inspectPsbt(U(bytes), 'main'); await w.psbtSigCheck(res); return res.ins.every((x) => ['none', 'valid', 'invalid', 'unchecked'].includes(x.sv.state)) || 'odd state'; }
+    catch (e) { return e instanceof w.Error || e instanceof Error || 'threw a non-Error'; } });
+  // a signed transaction with random coins: every input gets one of the four answers, nothing crashes
+  await prop('Signature checks: a signed transaction checked against random coins gives an answer for every input', fc.tuple(fc.uint8Array({ maxLength: 40 }), fc.bigInt({ min: 0n, max: 100000n }), fc.constantFrom(0, 1)), async ([script, amount, which]) => {
+    const rs = await w.svCheckRaw(U(signed[which].raw), [{ amount, script: U(script) }]);
+    return rs.length === 1 && ['none', 'valid', 'invalid', 'unchecked'].includes(rs[0].state) && (rs[0].state !== 'valid' || hex(script) === hex(signed[which].coin.script)) || 'state ' + rs[0].state + ' for script ' + hex(script); });
+}
 
 R.done('fuzz');
