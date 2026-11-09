@@ -2048,11 +2048,12 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     r.st.confirms=0; $('phrase').value='abandon'; $('pnRdBase').value='10'; $('pnRdNums').value='2048'; w.pnReadUi(); ok(r.st.confirms===1&&$('phrase').value==='zoo','read back: asks before replacing words already in the box');
     $('pnRdFmt').value='grid'; $('pnRdLen').value='12'; w.pnRdLayout();
     ok($('pnRdNums').style.display==='none'&&$('pnRdBase').style.display==='none'&&$('pnRdGrid').querySelectorAll('input[type=checkbox]').length===144,'read back: a binary grid of 12 rows x 12 holes to tick');
-    const tick=(rr,c)=>{ const x=$('pnRdGrid').querySelector(`input[data-r="${rr}"][data-c="${c}"]`); x.checked=true; x.dispatchEvent(new w.Event('change',{bubbles:true})); };
+    const tick=(rr,c)=>{ const x=[...$('pnRdGrid').querySelectorAll('input')].find(e=>e.pnRow===rr&&e.pnCol===c); x.checked=true; x.dispatchEvent(new w.Event('change',{bubbles:true})); };
     nums.forEach((n,rr)=>w.pnBits(n).forEach((b,c)=>{ if(b) tick(rr,c); })); ok($('pnRdTicks').value!==''&&w.autoHasSecrets(),'read back: ticked holes count as a secret for auto-clear');
     $('phrase').value=''; w.pnReadUi(); ok($('phrase').value===LW,'read back: the ticked binary grid fills the words box');
     tick(0,0); w.pnReadUi(); ok(/^Row 1 adds up to more than 2048\. On a binary grid 2048 is punched alone/.test($('pnRdStatus').textContent),'read back: a grid row over 2048 is refused');
     $('pnRdFmt').value='stack'; w.pnRdLayout(); ok($('pnRdGrid').querySelectorAll('input[type=checkbox]').length===168&&$('pnRdTicks').value==='','read back: the Stackbit plate has 14 boxes a word, and the grid ticks do not carry over');
+    ok(w.watchSigns().length===0,'read back: the tick boxes leave nothing the watch check would count as an extension\'s sign');
     nums.forEach((n,rr)=>{ const s=w.pnStack(n); w.eval('PN_SCOLS').forEach(([d,b],c)=>{ if(s[d].includes(b)) tick(rr,c); }); }); $('phrase').value=''; w.pnReadUi(); ok($('phrase').value===LW,'read back: the ticked Stackbit plate fills the words box');
     tick(0,8); tick(0,9); w.pnReadUi(); ok(/^Row 1: a digit adds up to more than 9/.test($('pnRdStatus').textContent),'read back: a Stackbit digit over 9 is refused');
     w.printPlateBlank('read'); ok(/^VOIDFORGE BLANK STACKBIT 1248 PLATE/.test(r.st.printHTML)&&r.st.printHTML.includes('12 words'),'read back: PRINT BLANK PLATE prints the chosen blank plate'); w.dispatchEvent(new w.Event('afterprint'));

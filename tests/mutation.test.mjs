@@ -123,7 +123,7 @@ async function probe(w, mutated, fast, only, hooks) {
     if (t.document.getElementById('walletView').style.display !== 'none') fails.push('read back: new words in the box close the old wallet view');
     $t('pnRdNums').value = '9'; $t('pnRdNums').dispatchEvent(new t.Event('input')); if ($t('pnRdStatus').textContent !== '') fails.push('read back: an edit clears the old result');
     $t('pnRdNums').value = ''; t.pnRdSync(); $t('phrase').value = ''; $t('verifyPass').value = '';
-    $t('pnRdFmt').value = 'grid'; t.pnRdLayout(); const x = $t('pnRdGrid').querySelector('input[data-r="2"][data-c="5"]'); x.checked = true; x.dispatchEvent(new t.Event('change', { bubbles: true }));
+    $t('pnRdFmt').value = 'grid'; t.pnRdLayout(); const x = [...$t('pnRdGrid').querySelectorAll('input')].find((e) => e.pnRow === 2 && e.pnCol === 5); x.checked = true; x.dispatchEvent(new t.Event('change', { bubbles: true }));
     if (!t.autoHasSecrets()) fails.push('auto-clear: a ticked hole counts as a secret');
     $t('pnRdNums').value = '5'; if (!t.autoWipe('test') || $t('pnRdNums').value !== '' || $t('pnRdGrid').querySelector('input:checked')) fails.push('auto-clear: wipes the read-back boxes and ticks');
     x.checked = true; $t('pnRdNums').value = '5'; $t('pnRdStatus').textContent = 'old'; t.clearAll(); await sl(20);

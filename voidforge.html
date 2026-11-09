@@ -8856,7 +8856,7 @@ function printPlateBlank(from){
 function pnRdSay(cls, t){ const e = document.getElementById("pnRdStatus"); e.className = "status" + (cls ? " " + cls : ""); e.textContent = t; }
 function pnRdTicksOf(){
   const rows = [];
-  document.querySelectorAll("#pnRdGrid input[type=checkbox]").forEach(c => { const r = +c.dataset.r; (rows[r] = rows[r] || [])[+c.dataset.c] = c.checked ? 1 : 0; });
+  document.querySelectorAll("#pnRdGrid input[type=checkbox]").forEach(c => { (rows[c.pnRow] = rows[c.pnRow] || [])[c.pnCol] = c.checked ? 1 : 0; });
   return rows;
 }
 function pnRdSync(){   // a result belongs to the boxes that made it; the hidden box tells auto-clear that holes are ticked
@@ -8864,21 +8864,22 @@ function pnRdSync(){   // a result belongs to the boxes that made it; the hidden
   document.getElementById("pnRdTicks").value = n ? String(n) : "";
   pnRdSay("", "");
 }
+let pnRdShown = "";   // the layout of the tick boxes now on screen (no data- attributes: the watch check counts unknown ones as signs of an extension)
 function pnRdLayout(){
   const f = document.getElementById("pnRdFmt").value, n = parseInt(document.getElementById("pnRdLen").value, 10), old = pnRdTicksOf(), g = document.getElementById("pnRdGrid");
   document.getElementById("pnRdBase").style.display = document.getElementById("pnRdNums").style.display = f === "num" ? "" : "none";
   document.getElementById("pnRdLen").style.display = f === "num" ? "none" : "";
   g.textContent = "";
   if(f !== "num"){
-    const t = pnTable(f, n, true), cols = f === "grid" ? PN_COLS.map(c => [0, c]) : PN_SCOLS, keep = g.dataset.fmt === f;
+    const t = pnTable(f, n, true), cols = f === "grid" ? PN_COLS.map(c => [0, c]) : PN_SCOLS, keep = pnRdShown === f;
     t.querySelectorAll("tr").forEach(tr => tr.removeChild(tr.lastChild));   // no Number column: the number would show the secret as it is ticked
     [...t.querySelectorAll("tr")].filter(tr => tr.firstChild.tagName === "TD").forEach((tr, r) => {
-      [...tr.children].slice(1).forEach((td, c) => { const x = document.createElement("input"); x.type = "checkbox"; x.dataset.r = r; x.dataset.c = c; x.checked = keep && !!(old[r] && old[r][c]);
+      [...tr.children].slice(1).forEach((td, c) => { const x = document.createElement("input"); x.type = "checkbox"; x.pnRow = r; x.pnCol = c; x.checked = keep && !!(old[r] && old[r][c]);
         x.setAttribute("aria-label", "Word " + (r + 1) + ", " + (f === "grid" ? "" : ["thousands", "hundreds", "tens", "ones"][cols[c][0]] + " ") + cols[c][1]); td.appendChild(x); });
     });
     g.appendChild(t);
   }
-  g.dataset.fmt = f;
+  pnRdShown = f;
   pnRdSync();
 }
 function pnReadUi(){
