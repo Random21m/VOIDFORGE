@@ -2011,6 +2011,74 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     $('cdHex').value='ab'; w.clearAll(); ok($('cdCards').value===''&&$('cdHex').value==='','CLEAR ALL empties the cards and hex boxes');
     ok(/\["Card entropy"/.test(html)&&/\["Hex entropy"/.test(html),'dictionary: Card entropy and Hex entropy');
     r.w.close(); }
+  // v2.10.0: public example phrases (official vectors: tests/fixtures/bip39-vectors-english.json, from trezor/python-mnemonic at a pinned
+  // commit; other phrases worked out here with @scure and Node's SHA-256), look-alike letters, and rolls typed twice
+  { const {entropyToMnemonic}=require('@scure/bip39'); const {wordlist}=require('@scure/bip39/wordlists/english');
+    const r=load(); await r.ready(); const w=r.w, $=r.$, sleep=ms=>new Promise(res=>setTimeout(res,ms)), until=async(f,ms=8000)=>{ for(let t0=0;t0<ms&&!f();t0+=20) await sleep(20); };
+    const VX=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures','bip39-vectors-english.json'),'utf8')).english, OFF='one of the official BIP39 test phrases';
+    const E=(h)=>entropyToMnemonic(Buffer.from(h,'hex'),wordlist), H=(s,n)=>E(nc.createHash('sha256').update(s,'utf8').digest().subarray(0,n===24?32:16).toString('hex'));
+    ok(VX.length===24&&VX.every(([e,m])=>E(e)===m&&w.phraseEntropyHex(m)===e&&w.knownPhrase(m)===OFF),'public phrase: all 24 official BIP39 vectors (English) are named, and their entropy agrees with @scure');
+    const b85=['girl mad pet galaxy egg matter matrix prison refuse sense ordinary nose','near account window bike charge season chef number sketch tomorrow excuse sniff circle vital hockey outdoor supply token','puppy ocean match cereal symbol another shed magic wrap hammer bulb intact gadget divorce twin tonight reason outdoor destroy simple truth cigar social volcano'];
+    ok(b85.every(m=>w.knownPhrase(m)==='a published BIP85 test phrase'),'public phrase: the three BIP85 test phrases are named');
+    const R50='65515223131652132161133154444123616466443112153441', R99=R50+'5633526456254462245546236542364246312613322234612';
+    ok([H(R50,12),H(R99,24)].every(m=>/published by SeedSigner/.test(w.knownPhrase(m))),'public phrase: SeedSigner\'s published 50- and 99-roll examples are named');
+    const DC=w.eval('DC_CARD_ROLLS'); ok([H(DC.slice(0,50),12),H(DC.slice(0,99),24),H(DC.slice(0,50).replace(/6/g,'0'),12),H(DC.slice(0,100).replace(/6/g,'0'),24)].every(m=>/dice test card/.test(w.knownPhrase(m))),'public phrase: the four phrases of the page\'s dice test card are named');
+    ok((await w.practicePhrases()).every(m=>!!w.knownPhrase(m)),'public phrase: every practice phrase is named');
+    eq(w.knownPhrase('embody only exact pride episode winter estate perfect security often scout tiger'),'an example in this page\'s self-test','public phrase: the self-test\'s card example is named');
+    eq([E('a5'.repeat(16)),E('00ff'.repeat(16)),E('deadbeef'.repeat(8)),E([...Array(16)].map((_,i)=>(250-i).toString(16).padStart(2,'0')).join('')),'test '.repeat(11)+'junk'].map(m=>String(w.knownPhrase(m)).replace(/, not from real randomness$/,'')).join('|'),
+      'made from one number repeated|made from a short pattern repeated|made from a short pattern repeated|made from counting numbers|made from one word repeated','public phrase: patterned entropy and repeated words are named (one byte, a 2- and 4-byte block, counting down, test x11 junk)');
+    { let seq=null; for(const last of wordlist){ const m=wordlist.slice(100,111).join(' ')+' '+last; if((await w.checkPhrase(m)).ok){ seq=m; break; } } ok(seq&&w.knownPhrase(seq)==='made from words in list order, not from real randomness','public phrase: 11 words in list order are named'); }
+    { let n=0; for(let i=0;i<300;i++) if(w.knownPhrase(E(nc.randomBytes(i%2?32:16).toString('hex')))) n++; ok(n===0,'public phrase: 300 random seeds are never named'); }
+    // the words box in CHECK A BACKUP
+    w.showTab('check'); const typed=async(v,f)=>{ $('phrase').value=v; $('phrase').dispatchEvent(new w.Event('input')); await until(f||(()=>$('phrasePub').textContent)); return $('phrasePub'); };   // the check is async: wait for it
+    let p=await typed('abandon '.repeat(11)+'about');
+    ok(/^PUBLIC EXAMPLE PHRASE: This phrase is a public example\. Anyone can take money sent to it\. It is one of the official BIP39 test phrases\. Never use it for real money\.$/.test(p.textContent)&&p.className==='status bad','words box: a public phrase is named at once, in red');
+    await typed('',()=>$('phrasePub').textContent===''); p=await typed('0000'.repeat(11)+'0003'); ok(/public example/.test(p.textContent),'words box: a SeedQR digit string of a public phrase is named too');
+    p=await typed(E(nc.randomBytes(16).toString('hex')),()=>$('phrasePub').textContent===''); ok(p.textContent==='','words box: other words show nothing');
+    w.practiceMode(true); p=await typed('zoo '.repeat(11)+'wrong',()=>/TESTNET/.test($('phrasePub').textContent));
+    ok(/Practice mode is on, so it is fine for TESTNET \(practice coins only\), never for real funds\./.test(p.textContent)&&p.className==='status warn','words box: in practice mode the warning says TESTNET (practice coins only)');
+    w.practiceMode(false); await until(()=>$('phrasePub').className==='status bad'); ok(/Never use it for real money\./.test($('phrasePub').textContent)&&$('phrasePub').className==='status bad','words box: turning practice mode off makes it red again');
+    // VERIFY: the warning line, Open this wallet, and the look-alike letters (SECRET)
+    $('verifyPass').value=''; await typed('abandon '.repeat(11)+'about'); await w.verify();
+    ok(/PUBLIC EXAMPLE PHRASE: This phrase is a public example\./.test($('verifyStatus').textContent)&&!/PUBLIC PRACTICE PHRASE/.test($('verifyStatus').textContent),'VERIFY: a public phrase that is not a practice phrase gets the public example line');
+    await until(()=>$('wvFp').textContent); ok(/This phrase is a public example/.test($('wvPub').textContent)&&$('wvFp').textContent==='Master fingerprint: 73c5da0a','Open this wallet: names a public phrase, with the fingerprint line unchanged');
+    const SW='uncle tragic hole abandon'.split(' '); let sm=null; for(const last of wordlist){ const m=SW.concat(Array(7).fill('zoo'),[last]).join(' '); if((await w.checkPhrase(m)).ok){ sm=m; break; } }
+    await typed(sm,()=>true); ok($('vSmudge').textContent==='','VERIFY: editing the words clears the old look-alike list'); await w.verify(); const vs=$('vSmudge');
+    ok(vs.firstChild&&vs.firstChild.className==='tag tag-secret'&&vs.firstChild.textContent==='SECRET'&&/^SECRET Write these clearly: 1 \(uncle could look like under\), 2 \(tragic could look like tray\), 3 \(hole could look like hotel\)/.test(vs.textContent)&&!/abandon/.test(vs.textContent),'VERIFY: the look-alike list is marked SECRET and names the words by number');
+    ok(/#smudgeNote, #vSmudge \{ -webkit-user-select: none; user-select: none; \}/.test(html)&&/body\.drill-on #smudgeNote \{ visibility: hidden; \}/.test(html),'look-alike list: cannot be selected, and the restore drill hides it');
+    ok(!/vSmudge/.test([...w.document.querySelectorAll('button')].map(b=>b.getAttribute('onclick')||'').join(' ')),'look-alike list: no COPY button');
+    { const all=w.eval('WORDLIST'); let bad=0; for(const x of all){ const v=w.smudgeOf(x); if(v&&(v===x||!all.includes(v))) bad++; } ok(bad===0,'look-alike letters: every suggestion is another BIP39 word'); }
+    eq(w.smudgeText(['zoo','zoo']),'','look-alike letters: nothing is shown when no word has a look-alike');
+    // Wallet Detective: the list names a public phrase first
+    await typed('abandon '.repeat(11)+'about'); await w.detList(); ok(/^PUBLIC EXAMPLE PHRASE/.test($('detOut').textContent),'Wallet Detective: a public phrase is named first in the list');
+    // Seed XOR: parts that combine to a public phrase
+    w.document.querySelector('input[name=xorMode][value=combine]').checked=true; w.xorModeChange(); $('xorIn').value=[E('0f'.repeat(16)),E('70'.repeat(16))].join('\n'); await w.seedXorUi('combine');
+    ok(/^WARNING: the parts combine to a public example phrase\. PUBLIC EXAMPLE PHRASE: This phrase is a public example/.test($('xorStatus').textContent)&&/warn/.test($('xorStatus').className),'Seed XOR: parts that combine to a public phrase (7f x16) are warned about');
+    // CLEAR ALL clears the warning and the look-alike list
+    w.clearAll(); await sleep(30); ok($('phrasePub').textContent===''&&$('vSmudge').textContent===''&&$('wvPub').textContent==='','CLEAR ALL clears the public phrase warning and the look-alike list in CHECK A BACKUP');
+    // FORGE: hex 00 x16 and SeedSigner's rolls are named under the words; the look-alike list sits under the grid
+    w.showTab('make'); w.setMethod('cards'); $('cdHex').value='00'.repeat(16); w.cdUpdate(); await w.cdHexGenerate();
+    ok(w.hasSeed()&&/^PUBLIC EXAMPLE PHRASE: This phrase is a public example\. Anyone can take money sent to it\. It is one of the official BIP39 test phrases\./.test($('forgePub').textContent),'FORGE: hex 00 x16 (abandon ... about) is named as a public example');
+    eq($('smudgeNote').textContent,w.smudgeText(w.eval('madeMnemonic').split(' '))?'SECRET '+w.smudgeText(w.eval('madeMnemonic').split(' ')):'','FORGE: the look-alike list follows the words');
+    w.setMethod('dice'); r.set(R50); await w.generate(); ok(/published by SeedSigner/.test($('forgePub').textContent),'FORGE: SeedSigner\'s example rolls are named as a public example');
+    const words=$('genResult').textContent.split('\n')[0].split(' '), st=w.smudgeText(words);
+    ok(st&&$('smudgeNote').textContent==='SECRET '+st&&$('smudgeNote').firstChild.className==='tag tag-secret','FORGE: the look-alike list is shown under the words, marked SECRET');
+    w.practiceMode(true); await sleep(30); ok(/TESTNET \(practice coins only\)/.test($('forgePub').textContent)&&$('forgePub').className==='status warn','FORGE: practice mode says it may be used on TESTNET'); w.practiceMode(false);
+    r.set(rnd(50,6)); await w.generate(); ok(w.hasSeed()&&$('forgePub').textContent==='','FORGE: rolled words show no public phrase warning');
+    w.clearAll(); await sleep(20); ok($('forgePub').textContent===''&&$('smudgeNote').textContent==='','CLEAR ALL clears the notes under the words');
+    // rolls typed twice (an independent plain search: the first pair of equal blocks that do not overlap)
+    const naive=(s,L)=>{ for(let b=0;b+L<=s.length;b++) for(let a=0;a+L<=b;a++) if(s.substr(a,L)===s.substr(b,L)){ let n=L; while(b+n<s.length&&a+n<b&&s[a+n]===s[b+n]) n++; return [a+1,a+n,b+1,b+n,n]; } return null; };
+    const R=R99.slice(0,60)+R99.slice(20,38)+R99.slice(60), x=naive(R,12); r.set(R);
+    eq($('twiceNote').textContent,'The same '+x[4]+' rolls appear twice: rolls '+x[0]+' to '+x[1]+' and rolls '+x[2]+' to '+x[3]+'. By chance this almost never happens, so check that nothing was pasted or typed twice. Your rolls were not changed.','rolls typed twice: a repeated block of 18 rolls is found, as a plain search finds it');
+    ok($('rolls').value===R,'rolls typed twice: the rolls are left as typed');
+    { const R11=R99.slice(0,60)+R99.slice(20,31)+R99.slice(60); r.set(R11); ok(naive(R11,12)===null&&$('twiceNote').textContent==='','rolls typed twice: 11 repeated rolls are not enough'); }
+    { let n=0; for(let i=0;i<300;i++){ r.set(rnd(99,6)); if($('twiceNote').textContent) n++; } ok(n===0,'rolls typed twice: 300 runs of 99 fair rolls give no warning'); }
+    r.mode('coin'); const F=rnd(128,2), C=F.slice(0,40)+F.slice(0,40)+F.slice(40); r.set(C); const y=naive(C,32);
+    ok(y&&$('twiceNote').textContent.startsWith('The same '+y[4]+' flips appear twice: flips '+y[0]+' to '+y[1]+' and flips '+y[2]+' to '+y[3]+'.'),'rolls typed twice: 40 coin flips pasted twice are found');
+    { const F31=F.slice(0,31)+F.slice(0,31)+F.slice(31); r.set(F31); ok((naive(F31,32)===null)===($('twiceNote').textContent===''),'rolls typed twice: coin flips are compared in blocks of 32'); }
+    r.set(''); ok($('twiceNote').textContent==='','rolls typed twice: an empty box shows nothing'); r.mode('dice');
+    ok(/\["Public example phrase"/.test(html)&&/\["Look-alike letters"/.test(html),'dictionary: Public example phrase and Look-alike letters');
+    r.w.close(); }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
 
