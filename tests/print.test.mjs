@@ -73,7 +73,7 @@ await p.selectOption('#wordSel', '12');
 for (const mode of ['dice', 'coin', 'keystone']) {
   if (mode === 'coin') await p.click('#mt-coin');
   if (mode === 'keystone') { await p.click('#mt-dice'); await p.selectOption('#diceRules', 'keystone'); }
-  for (const n of ['12', '24']) {
+  for (const n of mode === 'keystone' ? ['12', '24'] : ['12', '15', '18', '21', '24']) {   // v2.10.0: 15, 18 and 21 words (Keystone: 12 or 24)
     await p.selectOption('#wordSel', n);
     const opts = await p.$$eval('#rsExtra option', (os) => os.map((o) => o.value));
     ok(opts.join() === (mode === 'keystone' ? '0,10,25,50,max' : '0,10,25,50'), 'roll sheet: extra-box choices for ' + mode + ' (' + opts.join() + ')');
@@ -83,9 +83,21 @@ for (const mode of ['dice', 'coin', 'keystone']) {
 await p.selectOption('#diceRules', 'std'); await p.selectOption('#wordSel', '12');
 
 // 2. Word draw sheets.
-for (const n of ['12', '24']) { await p.selectOption('#wordSel', n); await sheet('word draw sheet ' + n, () => printWordSheet()); }
-// v2.9.0: card sheets (25 boxes; or 52 and then 6 more)
-for (const n of ['12', '24']) { await p.selectOption('#wordSel', n); await sheet('card sheet ' + n, () => printCardSheet()); }
+for (const n of ['12', '15', '18', '21', '24']) { await p.selectOption('#wordSel', n); await sheet('word draw sheet ' + n, () => printWordSheet()); }
+// v2.9.0: card sheets (25 boxes; or 52 and then 6 more). v2.10.0: every length, with both card methods (raw: up to 60 boxes).
+for (const cm of ['hash', 'raw']) {
+  await p.evaluate((cm) => { const e = document.getElementById('cdMethod'); e.value = cm; e.dispatchEvent(new Event('change')); }, cm);
+  for (const n of ['12', '15', '18', '21', '24']) { await p.selectOption('#wordSel', n); await sheet('card sheet ' + cm + ' ' + n, () => printCardSheet()); }
+}
+await p.evaluate(() => { const e = document.getElementById('cdMethod'); e.value = 'hash'; e.dispatchEvent(new Event('change')); });
+// v2.10.0: a made 15, 18 and 21-word seed: backup sheet, stamp sheet and summary (no SeedQR exists for these lengths)
+for (const [n, rolls] of [['15', '1'.repeat(31) + '2'.repeat(31)], ['18', '5'.repeat(38) + '6'.repeat(37)], ['21', '3'.repeat(44) + '4'.repeat(43)]]) {
+  await p.selectOption('#wordSel', n); await forge(rolls);
+  ok(await p.evaluate((n) => document.getElementById('seedQrBox').style.display === 'none' && /No SeedQR exists for/.test(document.getElementById('sqNone').textContent) && document.getElementById('genResult').textContent.split('\n')[0].split(' ').length === +n, n), n + ' words: the seed is made, and the page says no SeedQR exists');
+  await sheet('backup sheet ' + n, () => printSeed());
+  await sheet('stamp sheet ' + n, () => printStamp());
+  await sheet('summary sheet ' + n, () => printSummary());
+}
 
 // 3. A made seed: backup sheet, stamp sheet, SeedQR prints, public QR prints, address QR prints.
 for (const [n, rolls] of [['12', '1'.repeat(25) + '2'.repeat(25)], ['24', '3'.repeat(50) + '4'.repeat(49)]]) {

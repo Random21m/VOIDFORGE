@@ -152,7 +152,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       { const css=html.match(/<style>[\s\S]*?<\/style>/)[0]; ok(/@media \(max-width: 559px\) \{ #wordGrid, #cardGen \.gen-right #wordGrid \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \} \}/.test(css)&&/\.wcell \{ animation: none; box-shadow: none; font-size: 18px; font-weight: 700; padding: 10px 12px; min-width: 0; \}/.test(css)&&/@media \(max-width: 400px\) \{ \.wcell \{ font-size: 16px;/.test(css)&&/@media \(max-width: 345px\) \{ \.wcell \{ font-size: 14\.5px;/.test(css),'seed words: two columns below 560px and smaller type on narrow phones, so long words stay inside their boxes'); }
       { const rs=t.$('rollStats'); ok(!!rs&&rs.previousElementSibling.id==='ignoredNote'&&t.$('advanced').closest('#genRight')!==null&&t.$('advanced').previousElementSibling.classList.contains('seed-actions')&&t.$('advanced').nextElementSibling.querySelector('#fingerprint')!==null,'order: roll entry, then the roll history and fairness chart; then FORGE and the words, then the passphrase box, then the fingerprints'); ok(!!rs&&rs.tagName==='DETAILS'&&!rs.open&&rs.contains(t.$('rollChart'))&&rs.contains(t.$('rollHistory'))&&rs.contains(t.$('diceVisual')),'tucked away: roll history and the fairness chart live in one closed box'); { const css=html.match(/<style>[\s\S]*?<\/style>/)[0]; ok(/#rollStats \{ margin-top: 10px; padding: 8px 12px; font-size: 13px; \}/.test(css)&&/#rollStats > summary \{ cursor: pointer; font-weight: 600; \}/.test(css),'tucked away: the roll history box is styled like the More options and Advanced options boxes'); } }
       ok(!t.$('moreBox')&&!t.$('demoBox')&&!t.$('demoOn')&&![...t.d.querySelectorAll('.tag-note')].some(e=>/DEMO/.test(e.textContent)),'no demo box and no More options box: the gray live words replaced the demo');
-      { const tabs=[...t.d.querySelectorAll('#methodTabs button')]; ok(tabs.map(b=>b.textContent).join('|')==='Dice|Coin|Word draw|Cards & hex'&&tabs.every(b=>b.getAttribute('role')==='tab')&&tabs[0].getAttribute('aria-selected')==='true'&&t.$('wordSel').options.length===2&&t.$('wordSel').value==='12'&&/50 dice rolls/.test(t.$('lenNote').textContent)&&!t.d.body.classList.contains('m-words'),'make tab: Dice, Coin, Word draw and Cards & hex tabs with one Seed length menu (12 or 24), Dice and 12 words by default'); }
+      { const tabs=[...t.d.querySelectorAll('#methodTabs button')]; ok(tabs.map(b=>b.textContent).join('|')==='Dice|Coin|Word draw|Cards & hex'&&tabs.every(b=>b.getAttribute('role')==='tab')&&tabs[0].getAttribute('aria-selected')==='true'&&t.$('wordSel').options.length===5&&t.$('wordSel').value==='12'&&/50 dice rolls/.test(t.$('lenNote').textContent)&&!t.d.body.classList.contains('m-words'),'make tab: Dice, Coin, Word draw and Cards & hex tabs with one Seed length menu (12 to 24 words, v2.10.0), Dice and 12 words by default'); }
       ok(!/Enter your rolls or flips, generate the seed, then compare/.test(d.querySelector('footer').textContent)&&/VOIDFORGE v\d+\.\d+\.\d+/.test(d.querySelector('footer').textContent),'calmer page: the footer is two lines'); }
     { // The seed buttons follow the seed (v1.33.0)
       const keepT=t; t=load(); await t.ready(); const b=()=>t.d.body.classList.contains('has-seed');
@@ -818,7 +818,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   ok(/Content-Security-Policy/.test(html)&&/default-src 'none'/.test(html),'CSP meta present with default-src none');
   { const anchors=html.replace(/const WORDLIST = \[.*?\];/s,'').match(/<a\s[^>]*>/gi)||[]; ok(anchors.length===1&&anchors[0]==='<a href="https://random21m.gitlab.io/voidforge/" target="_blank" rel="noopener noreferrer">','page contains exactly one link: the online practice copy, opening in a new tab with noopener noreferrer'); }
   // v1.2: only 12/24 words, no copy-seed button
-  eq([...t.d.querySelectorAll('input[name=words]')].map(e=>e.value).join(','),'12,24','only 12 and 24 word options are offered');
+  eq([...t.d.querySelectorAll('input[name=words]')].map(e=>e.value).join(','),'12,15,18,21,24','the 12, 15, 18, 21 and 24 word options are offered (v2.10.0)');
   ok(![...t.d.querySelectorAll('button')].some(b=>/COPY SEED/.test(b.textContent))&&typeof t.w.copyResult==='undefined','no copy-seed button or function');
   { const pb=t.$('privacyBox'); ok(!!pb&&/Privacy/.test(pb.querySelector('summary').textContent)&&pb.querySelectorAll('ul li').length===7&&!pb.querySelector('a,script,img,form,input'),'privacy box has seven points (one is the session note for the start notice) and no links or inputs');
     const keys=[...html.matchAll(/localStorage\.setItem\("([^"]+)"/g)].map(m=>m[1]).sort().join(',');
@@ -877,7 +877,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     await wd(12,'legal winner thank year wave sausage worth useful legal winner thank','1111111','secret pass'); ok(/Passphrase: used/.test(t.$('genResult').textContent)&&!/73c5da0a/.test(t.$('fingerprint').textContent),'word draw: the passphrase makes a different wallet');
     t.w.clearAll(); await new Promise(x=>setTimeout(x,30)); ok(t.$('wdWords').value===''&&t.$('wdFlips').value===''&&t.$('wdOut').textContent===''&&t.$('wdOut').style.display==='none','CLEAR wipes the word draw boxes and steps');
     t.$('passphrase').value=''; t.$('passphrase2').value=''; }
-  { let threw=false; try{ await t.w.rollsToMnemonic('1'.repeat(62),15);}catch(e){threw=true;} ok(threw,'15-word generation is rejected'); }
+  { let threw=false; try{ await t.w.rollsToMnemonic('1'.repeat(62),13);}catch(e){threw=true;} ok(threw,'a 13-word seed (not a BIP39 length) is rejected'); }
   ok(/Recovery notes/.test(html)&&/move the funds/.test(html),'changelog has recovery notes for removed modes');
   ok((await t.w.checkPhrase('abandon '.repeat(14)+'address')).ok,'VERIFY still accepts 15-word phrases from other tools');
   { const r=await t.w.checkPhrase('constructor '+'abandon '.repeat(10)+'about'); ok(!r.ok&&/^Unknown word: constructor \(word 1\): no BIP39 word is close\. /.test(r.msg),'VERIFY reports a JavaScript property name typed as a word as an unknown word (v1.28.0)'); }
@@ -1515,7 +1515,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const {HDKey}=require('@scure/bip32'); const {mnemonicToSeedSync}=require('@scure/bip39'); const btc=require('@scure/btc-signer');
     const words=$('genResult').textContent.split('\n')[0];
     const tb=HDKey.fromMasterSeed(mnemonicToSeedSync(words,'')).derive("m/84'/1'/0'/0/0"), tbAddr=btc.p2wpkh(tb.publicKey,btc.TEST_NETWORK).address;
-    const until=async(f)=>{ for(let k=0;k<120&&!f();k++) await new Promise(r=>setTimeout(r,50)); };
+    const until=async(f)=>{ for(let k=0;k<480&&!f();k++) await new Promise(r=>setTimeout(r,50)); };   // up to 24 s: a busy machine took 12 s here
     const NETS5=['wNet','wvNet','psbtNet','cmpNet','msNet'], locked=()=>NETS5.every(id=>$(id).value==='test'&&$(id).disabled);
     const tbList=(ws,pass,pur,n,ch=0)=>Array.from({length:n},(_,i)=>{ const k=HDKey.fromMasterSeed(mnemonicToSeedSync(ws,pass)).derive("m/"+pur+"'/1'/0'/"+ch+"/"+i); return pur===84?btc.p2wpkh(k.publicKey,btc.TEST_NETWORK).address:btc.p2tr(k.publicKey.slice(1),undefined,btc.TEST_NETWORK).address; });
     $('wNet').value='main'; $('cmpNet').value='main';
@@ -2010,6 +2010,87 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     $('cdHex').value='00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff'; w.cdUpdate(); ok(/choose 24 words above/.test($('cdMsg').textContent),'hex: 64 digits with 12 words chosen ask for 24 words');
     $('cdHex').value='ab'; w.clearAll(); ok($('cdCards').value===''&&$('cdHex').value==='','CLEAR ALL empties the cards and hex boxes');
     ok(/\["Card entropy"/.test(html)&&/\["Hex entropy"/.test(html),'dictionary: Card entropy and Hex entropy');
+    r.w.close(); }
+  // v2.10.0: 15, 18 and 21 words for every method, and the Card method menu (Ian Coleman, hashed or raw entropy).
+  // Expected words come from @scure/bip39 and Node's SHA-256; the raw-entropy answers come from Ian Coleman's own code at commit
+  // de71c22 (tests/coleman.test.mjs runs that code on random decks).
+  { const {entropyToMnemonic,validateMnemonic}=require('@scure/bip39'); const {wordlist}=require('@scure/bip39/wordlists/english');
+    const r=load(); await r.ready(); const w=r.w, $=r.$, first=()=>$('genResult').textContent.split('\n')[0];
+    const len=n=>{ $('wordSel').value=String(n); $('wordSel').dispatchEvent(new w.Event('change')); };
+    const sha=t=>nc.createHash('sha256').update(t,'utf8').digest(), SU={C:'♣',D:'♦',H:'♥',S:'♠'}, cs=t=>t.split(' ').map(x=>x[0]+SU[x[1]]).join(' ');
+    const deck=()=>{ const d=[]; for(const su of 'CDHS') for(const k of 'A23456789TJQK') d.push(k+su); for(let i=d.length-1;i>0;i--){ const j=nc.randomInt(i+1); [d[i],d[j]]=[d[j],d[i]]; } return d; };
+    eq([...$('wordSel').options].map(o=>o.value).join(' '),'12 15 18 21 24','lengths: the Seed length menu offers 12, 15, 18, 21 and 24 words');
+    const RN={12:50,15:62,18:75,21:87,24:99};
+    for(const n of [12,15,18,21,24]){
+      w.setMethod('dice'); len(n); eq(w.getNeeded(n),RN[n],'lengths: '+n+' words need '+RN[n]+' dice rolls (fewest rolls reaching '+n*32/3+' bits; 99 for 24 words, as SeedSigner and Coldcard)');
+      r.set(rnd(RN[n]-1)); eq($('rollCount').textContent,(RN[n]-1)+' / '+RN[n]+' rolls','lengths: the roll counter counts to '+RN[n]+' for '+n+' words');
+      await w.generate(); ok(!w.hasSeed(),'lengths: '+(RN[n]-1)+' rolls are too few for '+n+' words');
+      const R=rnd(RN[n]+3); r.set(R); await w.generate();
+      eq(first(),entropyToMnemonic(sha(R).subarray(0,n*4/3),wordlist),'lengths: '+n+'-word dice seed = first '+n*32/3+' bits of SHA-256 of the rolls (from @scure)');
+      ok($('wordGrid').children.length===n&&$('explainBox').style.display===''&&($('seedQrBox').style.display==='')===(n===12||n===24)&&($('sqNone').style.display==='')===(n%12!==0),'lengths: '+n+' words: the word grid, the steps box and '+(n%12?'"No SeedQR exists" instead of the SeedQR box':'the SeedQR box'));
+      if(n%12){ ok(/No SeedQR exists for \d+ words/.test($('sqNone').textContent),'lengths: '+n+' words: the page says SeedQR covers only 12 and 24 words');
+        await w.showExplain(); ok(/match the seed above/.test($('exOut').textContent)&&!/CompactSeedQR/.test($('exOut').textContent),'lengths: "How your seed was made" works for '+n+' words, with no CompactSeedQR claim');
+        ok(/12 or 24 words only, so they will not make these words/.test($('countNote').textContent)&&/12 or 24 words only/.test($('rulesNote').textContent),'lengths: '+n+' words: the page says SeedSigner, Coldcard and Keystone dice seeds will not match');
+        ok(/Some wallets take only 12 or 24 words/.test($('lenNote').textContent),'lengths: '+n+' words: the note says to check the wallet takes that length'); }
+      w.drillStart(); $('drillWords').value=first(); await w.drillCheck(); ok(/^Drill passed/.test($('drillStatus').textContent),'lengths: the restore drill passes for '+n+' words'); w.drillEnd();
+      r.st.printCells=[]; w.printSeed(); ok(r.st.printCells.length===n,'lengths: PRINT SEED prints '+n+' words'); w.dispatchEvent(new w.Event('afterprint'));
+      w.printStamp(); ok(r.st.printCells.length===n&&r.st.printCells[n-1].endsWith(first().split(' ')[n-1].slice(0,4).toUpperCase()),'lengths: the stamp sheet prints '+n+' words'); w.dispatchEvent(new w.Event('afterprint'));
+      $('phrase').value=first(); await w.verify(); ok(new RegExp('^Valid '+n+'-word BIP39 phrase').test($('verifyStatus').textContent),'lengths: VERIFY accepts the '+n+'-word seed'); $('phrase').value='';
+      w.printRollSheet(); ok(r.st.printCells.filter(c=>/^\d+$/.test(c)).length>=RN[n],'lengths: the roll sheet has '+RN[n]+' boxes for '+n+' words'); w.dispatchEvent(new w.Event('afterprint'));
+      r.mode('coin'); w.setMethod('coin'); eq(w.getNeeded(n),n*32/3,'lengths: '+n+' words need '+n*32/3+' coin flips');
+      const F=rnd(n*32/3,2); r.set(F); await w.generate(); eq(first(),entropyToMnemonic(sha(F).subarray(0,n*4/3),wordlist),'lengths: '+n+'-word coin seed (from @scure)');
+      if(n%12) ok(/SeedSigner's coin-flip code makes only 12 or 24 words/.test($('countNote').textContent),'lengths: '+n+' coin flips: the page says SeedSigner\'s coin code makes only 12 or 24 words');
+      r.set(''); r.mode('dice');
+      // Word draw: words - 1 drawn words and 11 - words/3 flips
+      w.setMethod('words'); len(n); const need=w.wdNeeds(n); eq(need.words+'/'+need.flips,(n-1)+'/'+(11-n/3),'lengths: word draw for '+n+' words: '+(n-1)+' drawn words and '+(11-n/3)+' coin flips');
+      const idx=Array.from({length:n-1},()=>nc.randomInt(2048)), fl=rnd(11-n/3,2); $('wdWords').value=idx.map(i=>wordlist[i]).join(' '); $('wdFlips').value=fl; w.wdUpdate(); await w.wdGenerate();
+      const bits=idx.map(i=>i.toString(2).padStart(11,'0')).join('')+fl, ent=Buffer.from(bits.match(/.{8}/g).map(b=>parseInt(b,2)));
+      eq(first(),entropyToMnemonic(ent,wordlist),'lengths: word draw '+n+' words: the drawn words and flips are the entropy (from @scure)');
+      w.printWordSheet(); ok(r.st.printCells.length===n-1+11-n/3,'lengths: the word draw sheet has '+(n-1)+' word boxes and '+(11-n/3)+' flip boxes'); w.dispatchEvent(new w.Event('afterprint'));
+      w.wdClear();
+      // Cards, hashed: as many cards as cdBits needs, then SHA-256 of the card text, its first bits
+      w.setMethod('cards'); $('cdMethod').value='hash'; $('cdMethod').dispatchEvent(new w.Event('change'));
+      const CN={12:25,15:31,18:39,21:50,24:58}[n], D=deck().concat(deck()).slice(0,CN);
+      ok(new RegExp('^'+(CN>52?'a whole shuffled deck, then '+(CN-52)+' more cards':CN+' cards from a shuffled deck')+'; or '+n*8/3+' hex digits').test($('lenNote').textContent),'lengths: cards hashed, '+n+' words: the note says '+CN+' cards or '+n*8/3+' hex digits');
+      $('cdCards').value=D.slice(0,CN-1).join(' '); w.cdUpdate(); ok($('cdBtn').disabled,'lengths: '+(CN-1)+' cards are too few for '+n+' words (hashed)');
+      $('cdCards').value=D.join(' '); w.cdUpdate(); ok(!$('cdBtn').disabled,'lengths: '+CN+' cards are enough for '+n+' words (hashed)');
+      await w.cdGenerate(); eq(first(),entropyToMnemonic(sha(cs(D.join(' '))).subarray(0,n*4/3),wordlist),'lengths: cards hashed, '+n+' words = first '+n*32/3+' bits of SHA-256 of the card text, as Ian Coleman\'s tool with '+n+' words');
+      w.printCardSheet(); ok(r.st.printCells.length===CN&&/Card method: Ian Coleman, hashed/.test(r.st.printHTML),'lengths: the card sheet has '+CN+' boxes for '+n+' words (hashed)'); w.dispatchEvent(new w.Event('afterprint'));
+      // Hex: 8 hex digits per 3 words, no hashing
+      const H=nc.randomBytes(n*4/3).toString('hex'); $('cdCards').value=''; $('cdHex').value=H; w.cdUpdate(); await w.cdHexGenerate();
+      eq(first(),entropyToMnemonic(Buffer.from(H,'hex'),wordlist),'lengths: '+H.length+' hex digits are the entropy of a '+n+'-word seed (from @scure)');
+      $('cdHex').value=H.slice(0,-1); w.cdUpdate(); ok($('cdHexBtn').disabled,'lengths: '+(H.length-1)+' hex digits are refused for '+n+' words'); $('cdHex').value='';
+    }
+    // Keystone dice rules only for 12 and 24 words
+    w.setMethod('dice'); len(24); $('diceRules').value='keystone'; $('diceRules').dispatchEvent(new w.Event('change')); eq(w.getNeeded(24),100,'lengths: Keystone rules still ask 100 rolls for 24 words');
+    len(18); ok($('diceRules').value==='std'&&$('diceRules').querySelector('option[value=keystone]').disabled&&!w.keystoneOn(),'lengths: 18 words turn the Keystone dice rules off (Keystone makes 12 or 24 words)');
+    len(12); ok(!$('diceRules').querySelector('option[value=keystone]').disabled,'lengths: back at 12 words, the Keystone rules can be chosen again');
+    // Card method: raw entropy, known answers from Ian Coleman's own code
+    const KS30='KS 3D 9H AC TC 5S JD 2H 8C QS 4D 7H 6C AH TS 9D 3C KH 5D JS 2S 8H QC 4H 7S AD 2D 3H 4C 5C';
+    w.setMethod('cards'); len(12); ok($('cdRulesRow').style.display===''&&$('rulesRow').style.display==='none'&&$('cdMethod').value==='hash','card method: the menu shows on the Cards & hex tab, hashed by default');
+    eq([...$('cdMethod').options].map(o=>o.textContent).join(' | '),'Ian Coleman, hashed (every card counts) | Ian Coleman, raw entropy','card method: the two choices');
+    $('cdCards').value=KS30; w.cdUpdate(); await w.cdGenerate(); const hashed=first();
+    $('cdMethod').value='raw'; $('cdMethod').dispatchEvent(new w.Event('change')); ok(!w.hasSeed()&&/card method/.test($('genResult').textContent),'card method: changing it after FORGE SEED clears the old words');
+    ok(/26 to 32 cards from a shuffled deck, depending on the cards; or 32 hex digits/.test($('lenNote').textContent),'card method: raw, 12 words: 26 to 32 cards');
+    ok(/^Enough cards: 30\. Press FORGE SEED\. Raw entropy keeps the last 128 of the 131 bits these cards give \(the first 3 are dropped\), so the words hold at most 128 bits/.test($('cdCount').textContent)&&!$('cdBtn').disabled,'card method: raw shows the bits kept and dropped, and the honest strength');
+    await w.cdGenerate(); eq(first(),'velvet beach salute key actual earn charge fix quick stove swing silk','card method: raw, 30 cards, 12 words = Ian Coleman\'s tool with Use Raw Entropy');
+    ok(first()!==hashed,'card method: raw and hashed give different words for the same cards');
+    ok(/^Strength: the words hold at most 128 bits of randomness \(raw entropy keeps the last 128 of the 131 bits/.test(w.seedSummary().lines[2])&&/raw entropy: his card table, no hashing/.test(w.seedSummary().lines[1]),'card method: the summary sheet says raw entropy and at most 128 bits');
+    r.st.blob=null; w.downloadSeed(); const dl=r.st.blob?await blobText(w,r.st.blob):''; ok(/Card method: Ian Coleman, raw entropy/.test(dl),'card method: DOWNLOAD names the raw card method');
+    $('cdCards').value=KS30.split(' ').slice(0,29).join(' '); w.cdUpdate(); ok($('cdBtn').disabled&&/^29 cards so far: 126 of the 128 bits 12 words need/.test($('cdCount').textContent),'card method: raw, 29 cards (126 bits) are not enough for 12 words');
+    const D2=deck(); $('cdCards').value=D2.join(' '); w.cdUpdate(); ok($('cdBtn').disabled&&/Too many cards for 12 words: with raw entropy, Ian Coleman's tool makes 21 words from these 52 cards \(232 bits\)\. .*choose 21 words above/.test($('cdMsg').textContent),'card method: raw, a whole deck for 12 words: too many cards, it says 21 words');
+    len(21); ok(!$('cdBtn').disabled&&/keeps the last 224 of the 232 bits/.test($('cdCount').textContent)&&/at most 224 bits/.test($('cdCount').textContent)&&/hold about 225/.test($('cdCount').textContent),'card method: raw, a whole deck makes 21 words, at most 224 bits (225 dealt)');
+    await w.cdGenerate(); ok(first().split(' ').length===21&&validateMnemonic(first(),wordlist),'card method: raw, 21 words from a whole deck');
+    $('cdCards').value=D2.concat(D2,D2).join(' '); len(24); w.cdUpdate(); ok(/more than the 24 of any standard seed/.test($('cdMsg').textContent)&&$('cdBtn').disabled,'card method: raw refuses more than 24 words');
+    $('cdCards').value=D2.concat(['AC','2C','3C','4C','5C']).join(' '); w.cdUpdate(); ok(!$('cdBtn').disabled&&/at most 25\d bits/.test($('cdCount').textContent),'card method: raw, a deck and 5 more make 24 words; the strength counts the cards actually dealt');
+    w.printCardSheet(); ok(r.st.printCells.length===60&&/Ian Coleman, raw entropy/.test(r.st.printHTML),'card method: raw card sheet for 24 words: a deck and up to 8 more boxes'); w.dispatchEvent(new w.Event('afterprint'));
+    len(21); w.printCardSheet(); ok(r.st.printCells.length===52,'card method: raw card sheet for 21 words: a whole deck'); w.dispatchEvent(new w.Event('afterprint'));
+    $('cdCards').value='AS 2C TD'; len(12); w.cdUpdate(); ok(/Use Raw Entropy \(3 words per 32 bits\)/.test($('cdBox').textContent)&&/same number of words/.test($('cdBox').textContent),'card method: the help says which setting to choose in Ian Coleman\'s tool for each method');
+    $('cdHex').value=nc.randomBytes(16).toString('hex'); w.cdUpdate(); await w.cdHexGenerate(); eq(first(),entropyToMnemonic(Buffer.from($('cdHex').value,'hex'),wordlist),'card method: hex is not affected by the card method');
+    $('cdHex').value='ab'.repeat(24); w.cdUpdate(); ok(/48 hex digits make an 18-word seed: choose 18 words above/.test($('cdMsg').textContent),'hex: 48 digits with 12 words chosen ask for 18 words');
+    w.clearAll(); $('cdMethod').value='hash'; w.cdUpdate();
+    ok(/\["Raw entropy \(cards\)"/.test(html)&&/\["Seed length"/.test(html),'dictionary: Raw entropy (cards) and Seed length');
+    ok(r.errors.length===0,'lengths and card method: no page errors '+JSON.stringify(r.errors));
     r.w.close(); }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');
