@@ -1819,7 +1819,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <label><input type="radio" name="c32Mode" value="make" onchange="c32ModeChange()"><span>Make new codex32 shares from dice</span></label>
       </div>
       <div id="c32CombinePanel">
-        <textarea id="c32In" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Codex32 strings, one per line" placeholder="One string per line, starting with MS1 (48 or 74 characters; spaces are ignored)"></textarea>
+        <textarea id="c32In" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Codex32 strings, one per line" placeholder="One string per line, starting with MS1 (48 characters for 128 bits, 74 for 256 bits; spaces are ignored)"></textarea>
         <div class="btn-row" style="margin-top:8px;"><button type="button" id="c32Btn" onclick="c32Ui()" disabled>CHECK AND COMBINE</button><button type="button" class="secondary small" onclick="clearC32()">CLEAR</button></div>
         <div class="status" id="c32Status" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
         <pre id="c32Out" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
@@ -4595,7 +4595,7 @@ const DICT = [
   ["Master public key (old Electrum)", "The public key of an old Electrum wallet (before version 2.0), 128 hex characters. Every address of the wallet comes from it, so it shows them all, but it cannot spend.", "VERIFY, for an old Electrum seed.", "Keys & seeds"],
   ["Damaged word", "A seed word that can only partly be read, as on a burned, rusted or smudged backup. In Reforge, ? stands for one letter that cannot be read and * for any number of them; the first 4 letters of a BIP39 word are enough.", "Reforge (EXTRA TOOLS), Missing or wrong words.", "Keys & seeds"],
   // v2.11.0
-  ["Codex32", "A way (BIP93) to back up a wallet's BIP32 master seed as one string of 48 or 74 characters starting with MS1, or as Shamir shares of it (2 to 9 needed). It is not BIP39: the same randomness as words is another wallet. There is no passphrase. The checksum can be checked by hand.", "EXTRA TOOLS: Codex32 shares (BIP93) checks and combines them, and makes new ones from dice.", "Keys & seeds"],
+  ["Codex32", "A way (BIP93) to back up a wallet's BIP32 master seed as one string starting with MS1 (48 characters for 128 bits, 74 for 256 bits; BIP93 allows up to 127), or as Shamir shares of it (2 to 9 needed). It is not BIP39: the same randomness as words is another wallet. There is no passphrase. The checksum can be checked by hand.", "EXTRA TOOLS: Codex32 shares (BIP93) checks and combines them, and makes new ones from dice.", "Keys & seeds"],
   ["Volvelle", "A paper computer: paper wheels that turn on a pin, read to look up a result instead of working it out. The codex32 project uses volvelles to compute codex32 checksums and shares by hand, with no electronic device.", "EXTRA TOOLS: Codex32 shares (BIP93), in the help text.", "Units & math"]
 ];
 let dictCat = "All";
