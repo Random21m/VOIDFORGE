@@ -1,0 +1,64 @@
+
+# Dice bias box, 12 words: tally the first 52 throws (26 pairs, including "roll again" pairs)
+false alarm for a fair die: P(max face >= H): H=17:   2.12%, H=18:   0.79%, H=19:   0.27%
+                             P(min face <= L): L=0:   0.05%, L=1:   0.52%, L=2:   2.93%
+                             P(repeats <= Q): Q=1:   0.10%, Q=2:   0.57%, Q=3:   2.08%  (expected repeats 8.5)
+chosen: fail if a face count >= 18 or <= 1, or repeats <= 2
+model                                                            face test   repeat test   either (= sheet fails)
+fair die                                                           1.31%      0.57%        1.87%
+one face +50%                                                      5.00%      0.46%        5.46%
+one face double weight                                            21.65%      0.30%       21.94%
+loaded die, p6 = 0.25                                              8.80%      0.40%        9.20%
+one face never shows (dead face)                                 100.00%      0.11%      100.00%
+two faces never show (e.g. a d4 used by mistake)                 100.00%      0.01%      100.00%
+invented numbers, never repeats                                    0.13%    100.00%      100.00%
+invented numbers, repeats half as often                            0.41%     18.91%       19.29%
+lazy throw (die often just tips over: 40% same top face kept)     22.06%      0.00%       22.06%
+
+# Dice bias box, 24 words: tally the first 104 throws (52 pairs, including "roll again" pairs)
+false alarm for a fair die: P(max face >= H): H=28:   3.34%, H=29:   1.67%, H=30:   0.82%
+                             P(min face <= L): L=5:   0.14%, L=6:   0.46%, L=7:   1.41%
+                             P(repeats <= Q): Q=6:   0.08%, Q=7:   0.26%, Q=8:   0.68%  (expected repeats 17.2)
+chosen: fail if a face count >= 29 or <= 6, or repeats <= 7
+model                                                            face test   repeat test   either (= sheet fails)
+fair die                                                           2.11%      0.27%        2.38%
+one face +50%                                                     15.88%      0.19%       16.06%
+one face double weight                                            60.27%      0.08%       60.34%
+loaded die, p6 = 0.25                                             29.01%      0.16%       29.16%
+one face never shows (dead face)                                 100.00%      0.02%      100.00%
+two faces never show (e.g. a d4 used by mistake)                 100.00%      0.00%      100.00%
+invented numbers, never repeats                                    0.19%    100.00%      100.00%
+invented numbers, repeats half as often                            0.72%     36.48%       37.03%
+lazy throw (die often just tips over: 40% same top face kept)     27.14%      0.00%       27.14%
+
+# Card bias box, per deck (45 bits from 6 octets + 1 quad; 45 neighbour checks inside the groups)
+false alarm, ideal shuffle: ones <= 11 or >= 34:   0.08% (exact binomial   0.08%)
+                             neighbours >= 5:   2.29%, >= 6:   0.55%, >= 7:   0.11%; mean 1.63
+shuffle (starting from a new Bicycle-order deck) ones test  neighbour test  either   entropy of 6 octets (max 42 bits)
+uniform shuffle (ideal)                        0.08%      0.53%       0.61%   <= 42.00 bits
+new deck, cut only                             0.00%    100.00%     100.00%   <= 20.19 bits
+1 riffle + cut                                 0.00%    100.00%     100.00%   <= 39.71 bits
+2 riffles + cut                                0.04%     96.98%      96.98%   <= 41.73 bits
+3 riffles + cut                                0.07%     43.83%      43.87%   <= 41.98 bits
+4 riffles + cut                                0.08%      6.40%       6.47%   <= 42.00 bits
+5 riffles + cut                                0.08%      1.34%       1.42%   <= 42.00 bits
+7 riffles + cut                                0.09%      0.60%       0.69%   <= 42.00 bits
+10 overhand shuffles                           0.08%     68.66%      68.68%   <= 41.93 bits
+30 overhand shuffles                           0.08%      0.87%       0.95%   <= 42.00 bits
+(The entropy column is an upper bound from per-octet marginals only; it shows that marginal tests cannot certify a shuffle: even 2 riffles look almost uniform octet by octet.)
+
+Whole deck after k GSR riffles from a KNOWN order (exact formula, no cut): Shannon entropy <= 52k bits; min-entropy = -log2 P(identity)
+  k= 1: entropy <=   52.0, min-entropy =   46.3 bits (uniform 225.6); proven min-entropy of card sheet: 12 words >= 0.0 of 128, 24 words >= 0.0 of 256
+  k= 2: entropy <=  104.0, min-entropy =   89.3 bits (uniform 225.6); proven min-entropy of card sheet: 12 words >= 0.0 of 128, 24 words >= 0.0 of 256
+  k= 3: entropy <=  156.0, min-entropy =  127.7 bits (uniform 225.6); proven min-entropy of card sheet: 12 words >= 0.0 of 128, 24 words >= 0.0 of 256
+  k= 4: entropy <=  208.0, min-entropy =  159.7 bits (uniform 225.6); proven min-entropy of card sheet: 12 words >= 0.0 of 128, 24 words >= 0.0 of 256
+  k= 5: entropy <=  225.6, min-entropy =  184.3 bits (uniform 225.6); proven min-entropy of card sheet: 12 words >= 7.5 of 128, 24 words >= 18.8 of 256
+  k= 6: entropy <=  225.6, min-entropy =  201.5 bits (uniform 225.6); proven min-entropy of card sheet: 12 words >= 55.8 of 128, 24 words >= 111.5 of 256
+  k= 7: entropy <=  225.6, min-entropy =  212.3 bits (uniform 225.6); proven min-entropy of card sheet: 12 words >= 88.2 of 128, 24 words >= 176.4 of 256
+  k= 8: entropy <=  225.6, min-entropy =  218.6 bits (uniform 225.6); proven min-entropy of card sheet: 12 words >= 107.0 of 128, 24 words >= 213.9 of 256
+  k= 9: entropy <=  225.6, min-entropy =  222.0 bits (uniform 225.6); proven min-entropy of card sheet: 12 words >= 117.1 of 128, 24 words >= 234.3 of 256
+  k=10: entropy <=  225.6, min-entropy =  223.7 bits (uniform 225.6); proven min-entropy of card sheet: 12 words >= 122.5 of 128, 24 words >= 245.0 of 256
+  k=11: entropy <=  225.6, min-entropy =  224.7 bits (uniform 225.6); proven min-entropy of card sheet: 12 words >= 125.2 of 128, 24 words >= 250.4 of 256
+  k=12: entropy <=  225.6, min-entropy =  225.1 bits (uniform 225.6); proven min-entropy of card sheet: 12 words >= 126.6 of 128, 24 words >= 253.2 of 256
+  k=13: entropy <=  225.6, min-entropy =  225.3 bits (uniform 225.6); proven min-entropy of card sheet: 12 words >= 127.3 of 128, 24 words >= 254.6 of 256
+  k=14: entropy <=  225.6, min-entropy =  225.5 bits (uniform 225.6); proven min-entropy of card sheet: 12 words >= 127.7 of 128, 24 words >= 255.3 of 256

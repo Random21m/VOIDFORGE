@@ -1,0 +1,42 @@
+# 1. Mirror 6x6 dice table
+exact: 32 kept cells, 4 rejected; codes used: 32 distinct, each exactly 1 time(s)
+=> for a fair die every kept cell has probability 1/36, so each 5-bit code has probability exactly 1/32 given acceptance (bijection).
+mirror property verified: (a,b) and (b,a) share the first 4 bits and differ in the 5th bit, for all 15 unordered pairs.
+
+# 2. Biased dice, exact (iid throws of ONE die with face probabilities p)
+fair                                 H=5.0000 bits/symbol  Hmin=5.0000  26 symbols: H=130.0 Hmin=130.0 bits | mirror bit: max bias over classes 0-14 = 0.0e+0; class 15 (5-5/6-6) P(1)=0.500
+6 at +50%                            H=4.9592 bits/symbol  Hmin=4.0875  26 symbols: H=128.9 Hmin=106.3 bits | mirror bit: max bias over classes 0-14 = 0.0e+0; class 15 (5-5/6-6) P(1)=0.692
+one face double weight (6)           H=4.8696 bits/symbol  Hmin=3.4919  26 symbols: H=126.6 Hmin=90.8 bits | mirror bit: max bias over classes 0-14 = 0.0e+0; class 15 (5-5/6-6) P(1)=0.800
+5 at double weight                   H=4.8696 bits/symbol  Hmin=3.4919  26 symbols: H=126.6 Hmin=90.8 bits | mirror bit: max bias over classes 0-14 = 0.0e+0; class 15 (5-5/6-6) P(1)=0.200
+precision die, 6 at +2%              H=4.9999 bits/symbol  Hmin=4.9537  26 symbols: H=130.0 Hmin=128.8 bits | mirror bit: max bias over classes 0-14 = 0.0e+0; class 15 (5-5/6-6) P(1)=0.510
+drilled-pip style (1:+10%, 6:-10%)   H=4.9955 bits/symbol  Hmin=4.8530  26 symbols: H=129.9 Hmin=126.2 bits | mirror bit: max bias over classes 0-14 = 0.0e+0; class 15 (5-5/6-6) P(1)=0.448
+dead face (6 never)                  H=4.3923 bits/symbol  Hmin=4.3923  26 symbols: H=114.2 Hmin=114.2 bits | mirror bit: max bias over classes 0-14 = 0.0e+0; class 15 (5-5/6-6) P(1)=0.000
+casino-cheat loaded 6 (p6=0.25)      H=4.9329 bits/symbol  Hmin=3.8639  26 symbols: H=128.3 Hmin=100.5 bits | mirror bit: max bias over classes 0-14 = 0.0e+0; class 15 (5-5/6-6) P(1)=0.735
+=> The mirror (5th) bit is exactly fair for ANY bias in classes 0-14 (P(a,b)=p_a p_b = P(b,a)); only class 15 leaks bias.
+   This needs exchangeable throws: the same die thrown twice, or two dice whose left/right order is random.
+counter-example, first throw by a die with 6 at double weight, second by a fair die: mirror bit bias up to 0.167 (guarantee lost).
+
+# 3. Dice Monte Carlo: 1,000,000 complete 12-word D sheets (fair die)
+codes: 26,000,000 symbols, chi2(31 df)=31.81, p=0.426
+per-position bit frequency over 128 positions: max |freq-0.5| = 1.25e-3 (max z=2.50; |z|<4 expected for 128 positions)
+pairs thrown per 12-word sheet: mean 29.25, 95th pct 33, 99th pct 35, max 43 (theory: 26 x 36/32 = 29.25)
+
+# 4. Card knockout
+exact: all 4! orders of 4 distinct cards -> 8 patterns of 3 bits, each exactly 3 times
+exact: all 8! orders of 8 distinct cards -> 128 patterns of 7 bits, each exactly 315 times
+=> each group gives exactly uniform bits; disjoint groups of a uniformly shuffled deck have independent uniform relative orders,
+   so all 45 bits of a deck (6 octets + 1 quad) are independent and fair. (Proof in design-notes.md; Monte Carlo below.)
+
+# 5. Card Monte Carlo: 1,000,000 uniformly shuffled decks, 45 bits each
+per-bit frequency: max |freq-0.5| = 1.68e-3 (max z=3.36)
+octet patterns, chi2(127 df) per octet: 134.0, 130.9, 102.3, 133.5, 106.1, 132.1; p-values 0.32, 0.39, 0.95, 0.33, 0.91, 0.36
+quad patterns chi2(7 df)=9.60, p=0.21
+joint (octet 1, octet 2) patterns chi2(16383 df)=16598, p=0.12
+joint (octet 6, quad) chi2(1023 df)=1063.9, p=0.18
+max |covariance| over all 990 bit pairs: 8.15e-4 (1/sqrt(T) scale for 990 pairs: ~1.0e-3)
+
+# 6. XOR: fair D xor adversarial C (1,000,000 trials, 12-word sheets)
+C all zeros                  max per-bit |freq-0.5| 1.24e-3; word-1 index chi2(2047 df)=2071 p=0.35
+C = fixed pattern 1010..     max per-bit |freq-0.5| 1.46e-3; word-1 index chi2(2047 df)=2179 p=0.02
+C biased 90% ones, iid       max per-bit |freq-0.5| 1.20e-3; word-1 index chi2(2047 df)=2031 p=0.60
+=> E is exactly uniform whenever one source is uniform and independent of the other (one-time-pad argument).

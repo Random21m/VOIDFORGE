@@ -1,0 +1,12 @@
+{
+ "id": 2,
+ "title": "Worked example 2: 12 words, a cheating card sheet (lands on the official BIP39 test vector)",
+ "words": 12,
+ "note": "Dice: the decimal digits of e after \"2.\", keeping only 1-6, in pairs. Cards: here the card person SAW the dice sheet first and arranged each group of a published deck so that C = D xor 7f7f...7f. The result is the official BIP39 test vector \"legal winner thank year wave sausage worth useful legal winner thank yellow\". Lesson: the sheet that is filled in second must not see the first one. Fold and hand over (commit) each sheet before the other is revealed. Every check in this example still passes, because the forge marks catch mistakes, not cheating.",
+ "dice": "12 12 45 45 23 53 62 41 35 26 62 45 24 36 55 46 66 62 24 66 33 53 54 54 51 32 15 25 16 64 24 24 66 31 32 35 21 14 13 56",
+ "cards": [
+  "5D 3D 2S 3H 8D TH 7C KC 8H TD 4S 4C 7H 6H JD AC 5C 4D TC 6S JH KH QH QS KS 9H 7D 9C 6D 2C 3S 7S 2D 3C AS 2H QC 8S 9D KD 9S TS 8C JS 4H AH 6C QD JC 5S AD 5H",
+  "9D 4C 6H 7C TC KS QC 9H 3H 5C 6S 7H 3D TD JD 7S 2H AS 4S QH 8H 6C JH 5S 8S QD 3C AC KC QS 6D 5D 9C 3S TS JC TH 4H 9S AD 5H 8D 8C 4D KH KD 2S 2D 2C 7D JS AH",
+  "JD JH 4C 2D KC 8H 7C 8D 9D 8C 9H 6D QH 6S AD AC 5C 4D QS 7S 6H 2H 3D 9C TS TC KH 2C 2S TH QC KD 5S 4H 7H 9S KS 3H 5H 4S 5D JS 8S TD QD AS 6C AH 3S JC 7D 3C"
+ ]
+}

@@ -1,0 +1,86 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>VOIDFORGE trial kit</title>
+<style>
+@page{size:Letter;margin:0.35in}
+*{box-sizing:border-box}
+body{font:9pt/1.2 Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:0}
+h1{font-size:16pt;margin:0 0 2px}h2{font-size:11pt;margin:6px 0 2px;border-bottom:1.5px solid #000}
+p,ul{margin:2px 0}ul{padding-left:16px}li{margin:1px 0}
+.warn{border:3px solid #000;padding:5px 8px;margin:6px 0;font-size:10.5pt}
+code{font:9pt Courier,monospace;background:#eee;padding:0 2px}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #000;padding:2px 5px;font-size:9pt}
+th{background:#ddd}td.b{height:16px;width:70px}td.n{width:62px;text-align:center}
+.cols{display:flex;gap:10px}.cols>div{flex:1}
+.box{border:1.5px solid #000;padding:5px 8px;margin:4px 0}
+.line{border-bottom:1px solid #000;height:18px}
+pre{font:8.5pt Courier,monospace;background:#eee;padding:4px;margin:3px 0;white-space:pre-wrap}
+.pb{page-break-before:always}
+</style></head><body>
+<h1>VOIDFORGE trial kit: do it once by hand, with a stopwatch</h1>
+<div class="warn"><b>WARNING: THIS IS A PRACTICE RUN. Never use these words for real money. Destroy the sheets after.</b> Use practice dice and cards only.</div>
+
+<div class="cols"><div>
+<h2>1. What to print</h2>
+<p>From <code>vfmethod/</code>, on Letter paper (A4 files in brackets):</p>
+<ul>
+<li><code>forge-sheet.pdf</code> (3 pages: sheets D, C and E) [A4: <code>forge-sheet-a4.pdf</code>]</li>
+<li><code>bip39-binary-table.pdf</code> (4 pages) [A4: <code>bip39-binary-table-a4.pdf</code>]</li>
+</ul>
+<p>Print single-sided, at 100% (no "fit to page"). This is the 12-word version.</p>
+</div><div>
+<h2>2. What you need</h2>
+<ul>
+<li>Two matching d6 (or one die thrown twice) and a cup</li>
+<li>One 52-card deck</li>
+<li>A pen</li>
+<li>A timer or stopwatch</li>
+<li>About 45 minutes, in one sitting</li>
+</ul>
+</div></div>
+
+<h2>3. Timing table</h2>
+<p>Press start when you begin a step; write the clock time. Estimates are from design-notes.md (12 words, one person).</p>
+<div class="cols"><div>
+<table><tr><th>Step</th><th>Est. min</th><th>Start</th><th>End</th><th>Minutes</th></tr>
+<tr><td>D1 Dice pairs</td><td class="n">7</td><td class="b"></td><td class="b"></td><td class="b"></td></tr>
+<tr><td>D2 Dice bias box</td><td class="n">1</td><td class="b"></td><td class="b"></td><td class="b"></td></tr>
+<tr><td>D3 Marks R, M</td><td class="n">1.5</td><td class="b"></td><td class="b"></td><td class="b"></td></tr>
+<tr><td>D4 Seed XOR (skip)</td><td class="n">optional</td><td class="b"></td><td class="b"></td><td class="b"></td></tr>
+<tr><td>C1 3 shuffles</td><td class="n">4.25</td><td class="b"></td><td class="b"></td><td class="b"></td></tr>
+<tr><td>C2 Deal and play</td><td class="n">7.25 (with C3)</td><td class="b"></td><td class="b"></td><td class="b"></td></tr>
+<tr><td>C3 Neighbors, 1s count</td><td class="n">while dealing</td><td class="b"></td><td class="b"></td><td class="b"></td></tr>
+<tr><td>C4 Marks R, M</td><td class="n">1.5</td><td class="b"></td><td class="b"></td><td class="b"></td></tr>
+</table></div><div>
+<table><tr><th>Step</th><th>Est. min</th><th>Start</th><th>End</th><th>Minutes</th></tr>
+<tr><td>E1 XOR</td><td class="n">2.5</td><td class="b"></td><td class="b"></td><td class="b"></td></tr>
+<tr><td>E2 Forge seal</td><td class="n">2</td><td class="b"></td><td class="b"></td><td class="b"></td></tr>
+<tr><td>E3 Words</td><td class="n">3</td><td class="b"></td><td class="b"></td><td class="b"></td></tr>
+<tr><td>E4 Word check</td><td class="n">2</td><td class="b"></td><td class="b"></td><td class="b"></td></tr>
+<tr><td>E5 Last word, identity</td><td class="n">4</td><td class="b"></td><td class="b"></td><td class="b"></td></tr>
+<tr><td>E6 Backup copy</td><td class="n">2</td><td class="b"></td><td class="b"></td><td class="b"></td></tr>
+<tr><th>Total</th><th>about 39</th><td class="b"></td><td class="b"></td><td class="b"></td></tr>
+</table>
+<p style="font-size:8.5pt">Setup (about 1 min) is not in the table. Count your dice throws (about 29 expected): ______</p>
+</div></div>
+
+<h2>4. How to check your result</h2>
+<div class="box">
+<p><b>A. Reference script.</b> Put your dice pairs (in the order thrown, <i>including</i> "again" pairs) and your cards (in dealt order, one string per deck) into a JSON file, for example <code>mine.json</code>:</p>
+<pre>{ "words": 12, "dice": "14 15 26 53 ...", "cards": ["7H KC TS 2D ...", "...", "..."] }</pre>
+<p>Run, from <code>vfmethod/</code>: <code>node ref/forge.js mine.json [--md out.md] [--json out.json]</code>. It prints the grids, marks and words to compare with your sheets. Or send me the photos or the values and I will run it.</p>
+<p><b>B. Two real tools.</b> Take words 1 to 11 and the 7 bits of row 12 of sheet E (offline devices; practice words only).</p>
+<ul>
+<li><b>SeedSigner 0.8.7:</b> Main menu &gt; <b>Tools</b> &gt; <b>Calc 12th/24th word</b> &gt; <b>12 words</b> &gt; type words 1 to 11 &gt; <b>Build Final Word</b> screen &gt; <b>Coin flip entropy</b> &gt; enter the 7 bits (Heads = 1, Tails = 0) &gt; <b>Next</b>. It shows the 12th word and the fingerprint. For the address: <b>Load seed</b> &gt; <b>Done</b>, then the seed's menu &gt; <b>Address explorer</b> &gt; <b>Receive addresses</b>.</li>
+<li><b>VOIDFORGE:</b> Word draw, same 11 words and 7 bits.</li>
+</ul>
+<p><b>Compare:</b> last word (both tools, and it must be in the 16-word table row from your 7 bits) / fingerprint / first address.</p>
+<p>Last word: ____________ &nbsp; Fingerprint: ____________ &nbsp; First address: ____________ &nbsp; Match? yes / no</p>
+</div>
+
+<h2>5. Feedback</h2>
+<div class="box">
+<p>Which step was confusing?</p><div class="line"></div>
+<p>Where did you make a mistake (step, what happened)?</p><div class="line"></div>
+<p>Did the forge marks (bias boxes, seal, word check) catch it? yes / no / no mistake</p><div class="line"></div>
+<p>Total time: ______ min &nbsp; Anything else:</p><div class="line"></div>
+</div>
+</body></html>

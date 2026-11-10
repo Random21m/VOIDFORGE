@@ -1,0 +1,199 @@
+
+=== 12 words (128 grid cells, 11 full 11-bit rows) — miss rate per error class, 1,000,000 trials ===
+
+single bit (miscopy / wrong XOR cell)  (non-null errors: 1000000)
+   M (column parity, 11 bits)             caught  100.000 %   missed 0.000 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+two random bits  (non-null errors: 1000000)
+   M (column parity, 11 bits)             caught   91.610 %   missed 8.390 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught   96.202 %   missed 3.798 %
+   M + skew mark K (wrapped diagonal)     caught   99.914 %   missed 0.086 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+three random bits  (non-null errors: 1000000)
+   M (column parity, 11 bits)             caught  100.000 %   missed 0.000 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+four random bits  (non-null errors: 1000000)
+   M (column parity, 11 bits)             caught   97.967 %   missed 2.033 %
+   M + row parity R (2D parity)           caught   99.971 %   missed 0.029 %
+   M + odd-row column parity              caught   99.570 %   missed 0.430 %
+   M + skew mark K (wrapped diagonal)     caught   99.963 %   missed 0.037 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+word left out, later words move up one  (non-null errors: 999943)
+   M (column parity, 11 bits)             caught   99.956 %   missed 0.044 %
+   M + row parity R (2D parity)           caught   99.995 %   missed 0.005 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+two bits in the same word (row)  (non-null errors: 1000000)
+   M (column parity, 11 bits)             caught  100.000 %   missed 0.000 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+wrong word (random other word)  (non-null errors: 1000000)
+   M (column parity, 11 bits)             caught  100.000 %   missed 0.000 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+neighbour line in list (index +-1)  (non-null errors: 1000000)
+   M (column parity, 11 bits)             caught  100.000 %   missed 0.000 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+adjacent words swapped  (non-null errors: 999510)
+   M (column parity, 11 bits)             caught    0.000 %   missed 100.000 %
+   M + row parity R (2D parity)           caught   49.997 %   missed 50.003 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught   99.948 %   missed 0.052 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+any two words swapped  (non-null errors: 999483)
+   M (column parity, 11 bits)             caught    0.000 %   missed 100.000 %
+   M + row parity R (2D parity)           caught   50.031 %   missed 49.969 %
+   M + odd-row column parity              caught   54.487 %   missed 45.513 %
+   M + skew mark K (wrapped diagonal)     caught   99.950 %   missed 0.050 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+XOR row slip (E row i made with C row i+1)  (non-null errors: 999530)
+   M (column parity, 11 bits)             caught  100.000 %   missed 0.000 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+two adjacent bits transposed in a word  (non-null errors: 498380)
+   M (column parity, 11 bits)             caught  100.000 %   missed 0.000 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+=== 24 words (256 grid cells, 23 full 11-bit rows) — miss rate per error class, 1,000,000 trials ===
+
+single bit (miscopy / wrong XOR cell)  (non-null errors: 1000000)
+   M (column parity, 11 bits)             caught  100.000 %   missed 0.000 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+two random bits  (non-null errors: 1000000)
+   M (column parity, 11 bits)             caught   91.259 %   missed 8.741 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught   95.819 %   missed 4.181 %
+   M + skew mark K (wrapped diagonal)     caught   99.553 %   missed 0.447 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+three random bits  (non-null errors: 1000000)
+   M (column parity, 11 bits)             caught  100.000 %   missed 0.000 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+four random bits  (non-null errors: 1000000)
+   M (column parity, 11 bits)             caught   97.828 %   missed 2.172 %
+   M + row parity R (2D parity)           caught   99.991 %   missed 0.009 %
+   M + odd-row column parity              caught   99.489 %   missed 0.511 %
+   M + skew mark K (wrapped diagonal)     caught   99.962 %   missed 0.038 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+word left out, later words move up one  (non-null errors: 999986)
+   M (column parity, 11 bits)             caught   99.951 %   missed 0.049 %
+   M + row parity R (2D parity)           caught   99.998 %   missed 0.002 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+two bits in the same word (row)  (non-null errors: 1000000)
+   M (column parity, 11 bits)             caught  100.000 %   missed 0.000 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+wrong word (random other word)  (non-null errors: 1000000)
+   M (column parity, 11 bits)             caught  100.000 %   missed 0.000 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+neighbour line in list (index +-1)  (non-null errors: 1000000)
+   M (column parity, 11 bits)             caught  100.000 %   missed 0.000 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+adjacent words swapped  (non-null errors: 999520)
+   M (column parity, 11 bits)             caught    0.000 %   missed 100.000 %
+   M + row parity R (2D parity)           caught   49.984 %   missed 50.016 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught   99.948 %   missed 0.052 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+any two words swapped  (non-null errors: 999505)
+   M (column parity, 11 bits)             caught    0.000 %   missed 100.000 %
+   M + row parity R (2D parity)           caught   50.047 %   missed 49.953 %
+   M + odd-row column parity              caught   52.187 %   missed 47.813 %
+   M + skew mark K (wrapped diagonal)     caught   94.795 %   missed 5.205 %
+   M + R + K                              caught   97.437 %   missed 2.563 %
+
+XOR row slip (E row i made with C row i+1)  (non-null errors: 999472)
+   M (column parity, 11 bits)             caught  100.000 %   missed 0.000 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+two adjacent bits transposed in a word  (non-null errors: 500414)
+   M (column parity, 11 bits)             caught  100.000 %   missed 0.000 %
+   M + row parity R (2D parity)           caught  100.000 %   missed 0.000 %
+   M + odd-row column parity              caught  100.000 %   missed 0.000 %
+   M + skew mark K (wrapped diagonal)     caught  100.000 %   missed 0.000 %
+   M + R + K                              caught  100.000 %   missed 0.000 %
+
+Exact enumeration, all pairs of distinct cells, 12 words:
+   M (column parity, 11 bits)             missed 682/8128 = 8.391 %
+   M + row parity R (2D parity)           missed 0/8128 = 0.000 %
+   M + odd-row column parity              missed 310/8128 = 3.814 %
+   M + skew mark K (wrapped diagonal)     missed 7/8128 = 0.086 %
+   M + R + K                              missed 0/8128 = 0.000 %
+Exact swap analysis (12 words): pairs of rows where a swap of DIFFERENT words can go undetected:
+   M (column parity, 11 bits)             missed 100.000 % of (row pair, nonzero difference) cases
+   M + row parity R (2D parity)           missed 49.976 % of (row pair, nonzero difference) cases
+   M + odd-row column parity              missed 45.455 % of (row pair, nonzero difference) cases
+   M + skew mark K (wrapped diagonal)     missed 0.049 % of (row pair, nonzero difference) cases
+   M + R + K                              missed 0.000 % of (row pair, nonzero difference) cases
+
+Exact enumeration, all pairs of distinct cells, 24 words:
+   M (column parity, 11 bits)             missed 2852/32640 = 8.738 %
+   M + row parity R (2D parity)           missed 0/32640 = 0.000 %
+   M + odd-row column parity              missed 1364/32640 = 4.179 %
+   M + skew mark K (wrapped diagonal)     missed 149/32640 = 0.456 %
+   M + R + K                              missed 0/32640 = 0.000 %
+Exact swap analysis (24 words): pairs of rows where a swap of DIFFERENT words can go undetected:
+   M (column parity, 11 bits)             missed 100.000 % of (row pair, nonzero difference) cases
+   M + row parity R (2D parity)           missed 49.976 % of (row pair, nonzero difference) cases
+   M + odd-row column parity              missed 47.826 % of (row pair, nonzero difference) cases
+   M + skew mark K (wrapped diagonal)     missed 5.185 % of (row pair, nonzero difference) cases
+   M + R + K                              missed 2.568 % of (row pair, nonzero difference) cases
+done

@@ -1,0 +1,12 @@
+{
+ "id": 1,
+ "title": "Worked example 1: 12 words (dice = digits of pi, cards = public shuffle)",
+ "words": 12,
+ "note": "Dice: the decimal digits of pi after \"3.\", keeping only 1-6, read in pairs (1415926535 -> 1 4 1 5 2 6 5 3 5 ... -> pairs 14 15 26 53 ...). Cards: decks shuffled by the published rule in ref/make-examples.js (SHA-256 of \"VOIDFORGE method example 1 deck N\").",
+ "dice": "14 15 26 53 53 23 46 26 43 33 25 24 11 63 35 15 24 44 52 31 64 62 62 62 34 25 34 21 16 21 46 51 32 23 66 43 44 65 55 22",
+ "cards": [
+  "9D 3S AC 3D 9S 5D 2D 7C 4C TC 2S 8D JD QD JH TS 4D QS 8S AH AS 2H 7D 6D 3H KD 2C 9C 8H KS JC KC 5C KH 7H 4H 6C TD JS QH 3C 4S 6S 7S TH AD 5H 5S QC 9H 6H 8C",
+  "JH 3D 5D 4C AS 8S 6S 6H 4S TS 8H TD KS KC 5S 5H JC TH AH QC AD 2C 4D KH 3H 4H 3S QD 9H 6C 2D QH 7S 8D QS TC 9S 6D 2H JD 7D KD 5C JS 7H 8C 3C 2S 9D 7C AC 9C",
+  "AS 7H 6S 8S 3D 3S AC AH JS 9D JD 8C 9H 7S KD 5S 7D 2H 4H 9S 5H AD 7C 3C TC JC QC TH QD 6C 8D QS 4C 5D 6H TS KS 4D 6D TD 2D JH 4S 3H 8H 9C KH QH 2S KC 2C 5C"
+ ]
+}
