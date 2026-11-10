@@ -2004,7 +2004,7 @@ async function probe(w, mutated, fast, only, hooks) {
       if (doc.querySelectorAll('.tag-rec').length !== 3 || doc.querySelectorAll('option.opt-rec').length !== 1 || labels.length !== 4 || !labels.every((e) => e.querySelector('.tag-rec') || e.classList.contains('opt-rec'))) fails.push('recommended: every label is a gold word or a gold option');
       const notes = [...doc.querySelectorAll('.tag-note')], ros = [...doc.querySelectorAll('.tag-ro')];
       if (notes.length !== 3 || !notes.every((e) => /^ADVANCED$/.test(e.textContent)) || [...doc.querySelectorAll('summary')].some((e) => /\((demo only|advanced)/i.test(e.textContent))) fails.push('tags: ADVANCED is a gray label, not plain (brackets)');
-      if (ros.filter((e) => e.textContent === 'NEW').length !== 2) fails.push('tags: every "NEW" label is the same gray tag-ro style');
+      if (ros.filter((e) => e.textContent === 'NEW').length !== 3) fails.push('tags: every "NEW" label is the same gray tag-ro style');
       const sheet = mutated.match(/<style>[\s\S]*?<\/style>/)[0];
       if (!/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(sheet) || !/\.tag-rec, body\.light \.tag-rec \{ color: var\(--warn-text\); background: none; \}/.test(sheet) || !/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(sheet)) fails.push('recommended: gold words, no pill');
       if (!/\.tag-secret, body\.light \.tag-secret \{ color: var\(--bad-text\); font-weight: 800; \}/.test(sheet) || !/\.tag-public \{ color: var\(--ok-text\); \}/.test(sheet) || !/\.tag-note, body\.light \.tag-note, \.tag-ro \{ color: var\(--muted\); background: none; \}/.test(sheet)) fails.push('tags: SECRET red, PUBLIC green, the rest gray');
@@ -4057,7 +4057,7 @@ const M = [
   ['dice cleaning drops sixes',             's.replace(/[^1-6]/g,"")', 's.replace(/[^1-5]/g,"")'],
   ['coin cleaning drops ones',              's.replace(/[^01]/g,"")', 's.replace(/[^0]/g,"")'],
   ['phrase checksum check disabled',        'if(bits.slice(eBits)!==bytesToBits(h).slice(0,cLen)){ const en', 'if(false){ const en'],
-  ['CSP weakened',                          "default-src 'none'", "default-src *"],
+  ['CSP weakened',                          "content=\"default-src 'none'", "content=\"default-src *"],
   ['address: a hardened level made non-hardened', '[[84,true],[0,true],[0,true],[0,false],[0,false]]', '[[84,true],[0,true],[0,false],[0,false],[0,false]]'],
   ['address: purpose 84 -> 44',             'of [[84,true],[0,true],[0,true],[0,false],[0,false]]', 'of [[44,true],[0,true],[0,true],[0,false],[0,false]]'],
   ['five addresses: purpose 84 -> 44',       'of [[84,true],[0,true],[0,true],[0,false]])', 'of [[44,true],[0,true],[0,true],[0,false]])'],
@@ -4621,7 +4621,7 @@ const M = [
   ['recommended: menu option not colored', '<option value="ms-wsh" class="opt-rec">', '<option value="ms-wsh">'],
   ['tags: core badge lost', 'Import into Bitcoin Core<span class="tag tag-note">ADVANCED</span>', 'Import into Bitcoin Core (advanced)'],
   ['tags: silent payment badges lost', 'Silent Payment address<span class="tag tag-note">ADVANCED</span><span class="tag tag-ro">NEW</span>', 'Silent Payment address (advanced, new)'],
-  ['tags: NEW badge not unified to cyan', '<span class="tag tag-ro">NEW</span></summary>', '<span class="tag tag-note">NEW</span></summary>'],
+  ['tags: NEW badge not unified to cyan', 'ADVANCED</span><span class="tag tag-ro">NEW</span></summary>', 'ADVANCED</span><span class="tag tag-note">NEW</span></summary>'],
   ['recommended: badge loses its gold', '.tag-rec, body.light .tag-rec { color: var(--warn-text); background: none; }', '.tag-rec, body.light .tag-rec { color: var(--muted); background: none; }'],
   ['recommended: menu option loses its amber', '.opt-rec { color: var(--warn-text);', '.opt-rec { color: var(--accent);'],
   ['word draw: exact words not matched', '  if(Object.prototype.hasOwnProperty.call(WORD_MAP, tok)) return WORD_MAP[tok];\n', ''],
@@ -4809,7 +4809,7 @@ const M = [
   ['multisig: one key accepted', 'm<1 || n<2 ||', 'm<1 || n<1 ||'],
   ['multisig: sixteen keys accepted', 'n<2 || n>15 ||', 'n<2 || n>16 ||'],
   ['multisig: receive branch not derived', 'const [bp,bc]=await ckdPub(c.key.pub,c.key.chain,branch);', 'const [bp,bc]=[c.key.pub,c.key.chain];'],
-  ['multisig: keys not sorted', 'pubs.sort(cmpBytes);', ''],
+  ['multisig: keys not sorted', '\n  pubs.sort(cmpBytes);', '\n'],
   ['multisig: script M opcode wrong', 'const out=[0x50+m];', 'const out=[0x50+m+1];'],
   ['multisig: script N opcode wrong', 'out.push(0x50+n, 0xae);', 'out.push(0x50+n+1, 0xae);'],
   ['multisig: script CHECKMULTISIG opcode wrong', 'out.push(0x50+n, 0xae);', 'out.push(0x50+n, 0xaf);'],
@@ -4917,8 +4917,8 @@ const M = [
   ['multisig: recovery sheet testnet label missing', '(ms.net === "test" ? ", TESTNET (practice coins only)" : ", mainnet")', '", mainnet"'],
   ['multisig: sheet title testnet label missing', '"VOIDFORGE MULTISIG RECOVERY SHEET" + (ms.net === "test" ? " (TESTNET)" : "")', '"VOIDFORGE MULTISIG RECOVERY SHEET"'],
   ['multisig: sheet QR size switch (layout only)', 'nq >= 5 ? "pq-ms pq-ms-l" : "pq-ms"', 'nq >= 6 ? "pq-ms pq-ms-l" : "pq-ms"', true],   // v2.11.0: nq is the number of xpubs in the descriptor
-  ['multisig: CLEAR ALL keeps the setup', 'msReset(); dbClear(); wipeSeed(); planClear(); camStop();\n}', 'dbClear(); wipeSeed(); planClear(); camStop();\n}'],
-  ['CLEAR ALL: backup plan kept', 'msReset(); dbClear(); wipeSeed(); planClear(); camStop();\n}', 'msReset(); dbClear(); wipeSeed(); camStop();\n}'],
+  ['multisig: CLEAR ALL keeps the setup', 'msReset(); dbClear(); wipeSeed(); planClear(); camStop();\n  if(typeof ssPageWipe', 'dbClear(); wipeSeed(); planClear(); camStop();\n  if(typeof ssPageWipe'],
+  ['CLEAR ALL: backup plan kept', 'msReset(); dbClear(); wipeSeed(); planClear(); camStop();\n  if(typeof ssPageWipe', 'msReset(); dbClear(); wipeSeed(); camStop();\n  if(typeof ssPageWipe'],
   ["multisig: reset leaves the descriptor on screen", "for(const id of [\"msDescR\",\"msDescC\",\"msAddrs\",\"msChange\",\"msSlots\",\"msRunErr\",\"msBanErr\",\"msErr\"])", "for(const id of [\"msDescC\",\"msAddrs\",\"msChange\",\"msSlots\",\"msRunErr\",\"msBanErr\",\"msErr\"])"],
   ['core guide: new wallet is not watch-only', 'createwallet "voidforge-watch" true true "" false true', 'createwallet "voidforge-watch" false true "" false true'],
   ['core guide: wallet is not descriptor type', 'true true "" false true', 'true true "" false false'],
@@ -5316,7 +5316,7 @@ const M = [
   ['signed message: taproot spend type wrong', 'await sha256bytes(parts.outputs), Uint8Array.of(0x00), le32(0));', 'await sha256bytes(parts.outputs), Uint8Array.of(0x01), le32(0));'],
   ['signed message: taproot sighash ALL ignored', 'sig.length === 65 ? 1 : 0), dec.prog, sig.slice(0, 64));', '0), dec.prog, sig.slice(0, 64));'],
   ['signed message: taproot explicit 0 sighash accepted', 'if(sig.length !== 64 && !(sig.length === 65 && sig[64] === 1)) return false;', 'if(sig.length !== 64 && sig.length !== 65) return false;'],
-  ['signed message: Schnorr challenge tag wrong', 'taggedHash("BIP0340/challenge", concatBytes(', 'taggedHash("BIP0340/challengeX", concatBytes('],
+  ['signed message: Schnorr challenge tag wrong', 'taggedHash("BIP0340/challenge", concatBytes(sig64', 'taggedHash("BIP0340/challengeX", concatBytes(sig64'],
   ['signed message: Schnorr odd R accepted', 'return !!R && (R[1] & 1n) === 0n && R[0] === r;', 'return !!R && R[0] === r;'],
   ['signed message: Schnorr x not compared', 'return !!R && (R[1] & 1n) === 0n && R[0] === r;', 'return !!R && (R[1] & 1n) === 0n;'],
   ['signed message: ECDSA x not compared', 'return !!X && nmod(X[0]) === r;', 'return !!X;'],
@@ -5376,7 +5376,7 @@ const M = [
   ['session notice: flashes before it is removed', '  body.js-ok.sg-skip #startGate { display: none; }\n', ''],
   ['session notice: stores something else', 'sessionStorage.setItem(ACK_KEY, "1")', 'sessionStorage.setItem(ACK_KEY, "1"), sessionStorage.setItem("voidforge-extra", "1")'],
   ['END SESSION: no question first', 'if(!confirm("End this session?', 'if(false && !confirm("End this session?'],
-  ['END SESSION: seed not wiped', 'for(const f of [reforgeStop, msReset, () => practiceMode(false), wipeSeed, ', 'for(const f of [reforgeStop, msReset, () => practiceMode(false), '],
+  ['END SESSION: seed not wiped', 'for(const f of [reforgeStop, msReset, () => practiceMode(false), () => ssPageWipe(), wipeSeed, ', 'for(const f of [reforgeStop, msReset, () => practiceMode(false), () => ssPageWipe(), '],
   ['END SESSION: typed boxes not reset', 'else e.value = e.defaultValue;', 'else {}'],
   ['END SESSION: boxes emptied instead of reset', 'else e.value = e.defaultValue;', 'else e.value = "";'],
   ['END SESSION: ticks not reset', 'else if(e.type === "checkbox" || e.type === "radio") e.checked = e.defaultChecked;', 'else if(e.type === "checkbox" || e.type === "radio") {}'],
@@ -6029,7 +6029,7 @@ const M = [
   ["camera: any text taken as a SeedQR", "return {error: \"This QR code is not a SeedQR or CompactSeedQR.\"};", "return {value: text};"],
   ["camera: the box never filled", "el.value = value; el.dispatchEvent(", "el.dispatchEvent("],
   ["camera: no SCAN buttons", "a.insertAdjacentElement(\"afterend\", b);", ""],
-  ["camera: the front camera asked for", "facingMode: \"environment\"", "facingMode: \"user\""],
+  ["camera: the front camera asked for", "try { stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: \"environment\"", "try { stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: \"user\""],
   ["camera: refused permission not explained", "e && e.name === \"NotAllowedError\" ? \"permission was refused\" : ", ""],
   ["slip39: the checksum string is always shamir", "const cs = extendable ? \"shamir_extendable\" : \"shamir\";", "const cs = \"shamir\";"],
   ["slip39: the checksum starts from 0", "  let chk = 1;\n  for(const v of values){\n    const b = chk >>> 20;", "  let chk = 0;\n  for(const v of values){\n    const b = chk >>> 20;"],
