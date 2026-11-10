@@ -20,6 +20,15 @@ const HOOKS = [
   for(const id of AUTO_FIELDS)`, `  reforgeStop(); msReset(); dbClear(); wipeSeed(); planClear(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
   if(typeof ssPageWipe === "function") ssPageWipe();   // v2.13.0: the practice signer
   for(const id of AUTO_FIELDS)`],
+  // v2.14.0: the practice signer is easy to find: a small card right under the header, and a MENU entry (both: ssPageOpen)
+  [`  </header>
+`, `  </header>
+  <div class="card" id="ssPromo"><span>New: practice on a SeedSigner in your browser. Same screens and buttons as the real device.</span><button type="button" class="small" id="ssPromoBtn" onclick="ssPageOpen()">OPEN PRACTICE SIGNER</button></div>
+`],
+  [`<button class="guide-btn" id="guideBtn" onclick="toggleGuide()" aria-pressed="false">GUIDE ME</button>
+`, `<button class="guide-btn" id="guideBtn" onclick="toggleGuide()" aria-pressed="false">GUIDE ME</button>
+<button class="secondary small" id="ssMenuBtn" onclick="ssPageOpen()">PRACTICE SIGNER</button>
+`],
 ];
 const once = (h, a) => h.split(a).length === 2;
 function unbuild(h) {
@@ -30,7 +39,10 @@ function unbuild(h) {
   const boxA = h.indexOf('\n    <details id="ssBox">'); must(boxA > 0, "unbuild: box start");
   const boxZ = h.indexOf("</details>", boxA); must(boxZ > boxA, "unbuild: box end");
   h = h.slice(0, boxA) + h.slice(boxZ + 10);
-  for (const [a, b] of HOOKS) { must(once(h, b), "unbuild: hook not exactly once: " + a.slice(0, 60)); h = h.replace(b, () => a); }
+  for (const [a, b] of HOOKS) {
+    if (h.indexOf(b) < 0 && once(h, a)) continue;   // a page built before this hook was added (v2.14.0 card and MENU entry)
+    must(once(h, b), "unbuild: hook not exactly once: " + a.slice(0, 60)); h = h.replace(b, () => a);
+  }
   const tag = '<script>\n"use strict";\n// v2.13.0 practice signer: ';
   const sA = h.indexOf(tag); must(sA > 0, "unbuild: scripts start");
   const last = h.lastIndexOf(tag); const sZ = h.indexOf("</script>\n", last); must(sZ > last, "unbuild: scripts end");
@@ -73,6 +85,22 @@ const css = `
   #ssBox #ssK2 { left: calc(630 * var(--u)); top: calc(119 * var(--u)); }
   #ssBox #ssK3 { left: calc(630 * var(--u)); top: calc(175 * var(--u)); }
   #ssBox .ss-warn { color: var(--warn-text); font-weight: 700; font-size: 13px; text-align: center; margin: 10px 0 0; }
+  /* v2.14.0 Learn on the practice signer: lessons and a practice transaction, as page text below the device (never on its screen) */
+  #ssBox [hidden] { display: none !important; }
+  #ssBox .ss-learn { margin: 14px auto 0; max-width: 750px; }
+  #ssBox .ss-learn .btn-row { align-items: center; }
+  #ssBox .ss-learn select { width: auto; flex: 1 1 14em; min-width: 0; padding: 6px 8px; font-size: 13px; }
+  #ssBox .ss-l-run { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin: 0 0 10px; }
+  #ssBox .ss-l-run p { margin: 6px 0; overflow-wrap: anywhere; }
+  #ssBox .ss-l-do { font-size: 15px; line-height: 1.5; }
+  #ssBox .ss-l-cam { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; margin: 0 0 10px; overflow-wrap: anywhere; }
+  #ssBox #ssTxStatus { white-space: pre-line; overflow-wrap: anywhere; }
+  /* v2.14.0: the card under the header that opens the practice signer (one line and the button on a wide screen) */
+  #ssPromo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 7px 10px; margin: 0 0 12px; border: 1px solid var(--gold); font-size: 13px; }
+  #ssPromo span { flex: 1 1 16em; min-width: 0; font-size: 12px; }
+  #ssPromo button { flex: none; padding: 6px 12px; font-size: 12px; letter-spacing: .03em; }
+  body.guided #ssPromo { display: none; }
+  @media print { #ssPromo { display: none !important; } }
 `;
 rep("\n</style>", css + "</style>");
 
@@ -95,6 +123,26 @@ const box = `
         </div>
       </div>
       <p class="ss-warn">PRACTICE ONLY: never put real coins on a seed made here.<br>It is a real signer: never type in or scan a real seed.</p>
+      <div class="ss-learn" id="ssLearn">
+        <h3 class="sec">Lessons</h3>
+        <p class="hint" style="margin:0 0 8px;">Short lessons that walk you through the device, one press at a time. Each step moves on by itself when the device shows the right screen. The lessons use public test seeds only (such as abandon ... about): anyone can make them, so never put coins on them.</p>
+        <div class="btn-row"><select id="ssLearnPick" aria-label="Lesson"></select><button type="button" id="ssLearnGo">START LESSON</button></div>
+        <div class="ss-l-run" id="ssLearnRun" hidden>
+          <p><b id="ssLearnName"></b> &middot; <span id="ssLearnCount"></span></p>
+          <p class="hint" id="ssLearnNote"></p>
+          <p class="ss-l-do" id="ssLearnDo"></p>
+          <p class="hint" id="ssLearnSee"></p>
+          <p class="status ok" id="ssLearnState" aria-live="polite"></p>
+          <div class="btn-row" style="margin:6px 0 0;"><button type="button" class="secondary small" id="ssLearnBack">BACK</button><button type="button" class="secondary small" id="ssLearnNext">NEXT</button><button type="button" class="secondary small" id="ssLearnRestart">RESTART LESSON</button></div>
+        </div>
+        <div class="ss-l-cam" id="ssLearnCam" hidden><span>Held up to the device's camera: <b id="ssLearnCamWhat"></b>.</span><button type="button" class="secondary small" id="ssLearnCamOff">PUT IT AWAY</button></div>
+        <h3 class="sec">Practice transaction</h3>
+        <p class="hint" style="margin:0 0 8px;">Makes a PSBT that spends made-up coins of the seed on the device and holds it up to the device's camera. After you sign it, this page reads the signed PSBT from the device's screen and checks every signature with its own code.</p>
+        <div class="btn-row"><select id="ssTxKind" aria-label="Kind of practice transaction"><option value="single">Single key: 2 inputs</option><option value="multi">2-of-3 multisig: 1 input</option></select><button type="button" id="ssTxGo">PRACTICE TRANSACTION</button></div>
+        <p class="ms-warn" id="ssTxNet" hidden>Mainnet: these coins don't exist; this PSBT can never be broadcast.</p>
+        <p class="status" id="ssTxStatus" aria-live="polite"></p>
+        <p class="hint" id="ssTxCoins"></p>
+      </div>
     </details>`;
 {
   const a = html.indexOf('<details id="practiceBox">'); must(a > 0, "practiceBox");
@@ -116,7 +164,7 @@ const parts = [
   ["ss_engine.js", rd("ss_engine.js")],
   ["ss_seeds.js", rd("ss_seeds.js")],
   ["ss_tools_settings.js PART B and ss_psbt.js", tools.slice(mark) + "\n" + rd("ss_psbt.js").replace(/^"use strict";$/m, "")],
-  ["ss_page.js", rd("ss_page.js")],
+  ["ss_page.js and ss_learn.js", rd("ss_page.js") + "\n" + rd("ss_learn.js").replace(/^"use strict";$/m, "")],
 ];
 let blocks = "";
 for (const [name, code] of parts) {

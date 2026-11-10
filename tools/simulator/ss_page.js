@@ -84,6 +84,7 @@ function ssPageStop() {
   try { SSFonts.fonts = {}; } catch (e) { /* engine missing */ }
   try { _ss_scratch = null; _ss_measure_ctx = null; _ss_color_ctx = null; } catch (e) { /* engine missing */ }
   try { SS_TOOLS_PENDING_FIELDS.length = 0; } catch (e) { /* tools part missing */ }
+  try { if (typeof ssLearnWipe === "function") ssLearnWipe(); } catch (e) { /* lessons part missing */ }   // v2.14.0: lessons, practice wallet, practice PSBT
 }
 
 // CLEAR ALL, auto-clear and END SESSION: stop the device, wipe its memory (and the settings on its simulated microSD),
@@ -93,6 +94,18 @@ function ssPageWipe() {
   try { SS_SIM_MICROSD.settings_json = null; } catch (e) { /* settings part missing */ }
   const b = document.getElementById("ssBox");
   if (b && b.open) b.open = false;
+}
+
+// v2.14.0: OPEN PRACTICE SIGNER (the card under the header) and PRACTICE SIGNER in the MENU: CHECK A BACKUP, the box opened
+// (which starts the device), scrolled into view, and the device focused so its keys work at once.
+function ssPageOpen() {
+  const mb = document.getElementById("menuBox"); if (mb) mb.open = false;
+  if (typeof showTab === "function") showTab("check");
+  const b = document.getElementById("ssBox"), dev = document.getElementById("ssDevice");
+  if (!b || !dev) return;
+  if (!b.open) b.open = true;
+  b.scrollIntoView({ block: "start" });
+  try { dev.focus({ preventScroll: true }); } catch (e) { dev.focus(); }
 }
 
 function ssPageInit() {
