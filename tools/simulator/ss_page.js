@@ -85,6 +85,7 @@ function ssPageStop() {
   try { _ss_scratch = null; _ss_measure_ctx = null; _ss_color_ctx = null; } catch (e) { /* engine missing */ }
   try { SS_TOOLS_PENDING_FIELDS.length = 0; } catch (e) { /* tools part missing */ }
   try { if (typeof ssLearnWipe === "function") ssLearnWipe(); } catch (e) { /* lessons part missing */ }   // v2.14.0: lessons, practice wallet, practice PSBT
+  try { if (typeof ssfDeviceOff === "function") ssfDeviceOff(); } catch (e) { /* page part missing */ }   // v2.14.0: a seed FORGE SEED took from it
 }
 
 // CLEAR ALL, auto-clear and END SESSION: stop the device, wipe its memory (and the settings on its simulated microSD),

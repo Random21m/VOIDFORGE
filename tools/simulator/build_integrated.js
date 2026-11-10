@@ -124,6 +124,10 @@ const box = `
       </div>
       <p class="ss-warn">PRACTICE ONLY: never put real coins on a seed made here.<br>It is a real signer: never type in or scan a real seed.</p>
       <div class="ss-learn" id="ssLearn">
+        <h3 class="sec">Use the seed in VOIDFORGE</h3>
+        <p class="hint" style="margin:0 0 8px;">FORGE SEED takes the seed loaded on the device, with its passphrase if one is applied, and shows it in MAKE A SEED like the other methods do: the words, fingerprint, addresses, SeedQR and watch-only wallet. It is marked PRACTICE.</p>
+        <div class="btn-row"><button type="button" id="ssForgeBtn">FORGE SEED</button><select id="ssForgePick" aria-label="Seed on the device, by fingerprint" hidden></select></div>
+        <p class="status" id="ssForgeStatus" aria-live="polite"></p>
         <h3 class="sec">Lessons</h3>
         <p class="hint" style="margin:0 0 8px;">Short lessons that walk you through the device, one press at a time. Each step moves on by itself when the device shows the right screen. The lessons use public test seeds only (such as abandon ... about): anyone can make them, so never put coins on them.</p>
         <div class="btn-row"><select id="ssLearnPick" aria-label="Lesson"></select><button type="button" id="ssLearnGo">START LESSON</button></div>
@@ -135,7 +139,7 @@ const box = `
           <p class="status ok" id="ssLearnState" aria-live="polite"></p>
           <div class="btn-row" style="margin:6px 0 0;"><button type="button" class="secondary small" id="ssLearnBack">BACK</button><button type="button" class="secondary small" id="ssLearnNext">NEXT</button><button type="button" class="secondary small" id="ssLearnRestart">RESTART LESSON</button></div>
         </div>
-        <div class="ss-l-cam" id="ssLearnCam" hidden><span>Held up to the device's camera: <b id="ssLearnCamWhat"></b>.</span><button type="button" class="secondary small" id="ssLearnCamOff">PUT IT AWAY</button></div>
+        <div class="ss-l-cam" id="ssLearnCam" hidden><span>Held up to the device's camera: <b id="ssLearnCamWhat"></b>. <span id="ssLearnCamSay" aria-live="polite"></span></span><button type="button" class="secondary small" id="ssLearnCamOff">PUT IT AWAY</button></div>
         <h3 class="sec">Practice transaction</h3>
         <p class="hint" style="margin:0 0 8px;">Makes a PSBT that spends made-up coins of the seed on the device and holds it up to the device's camera. After you sign it, this page reads the signed PSBT from the device's screen and checks every signature with its own code.</p>
         <div class="btn-row"><select id="ssTxKind" aria-label="Kind of practice transaction"><option value="single">Single key: 2 inputs</option><option value="multi">2-of-3 multisig: 1 input</option></select><button type="button" id="ssTxGo">PRACTICE TRANSACTION</button></div>

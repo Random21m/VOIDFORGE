@@ -40,6 +40,14 @@
 //               SIGNER open the box, start the device and focus it
 //   practice_tx PRACTICE TRANSACTION on Testnet: made-up coins (null outpoint, marked as practice), keys, payee and change from
 //               @scure/bip32; signed on the device, read from its screen (jsqr) and verified with btc-signer + noble; CLEAR ALL wipes it
+//   damascus    MAKE A SEED > Damascus: a practice sheet (12 words) and worked example 3 (24 words), LOAD INTO THE PRACTICE SIGNER:
+//               the practice signer opens, nothing is put into its memory, the practice wallet holds up the Standard SeedQR (digits
+//               made here with @scure/bip39) and the page says to choose Scan; Scan on the device gives the fingerprint the page
+//               shows (and @scure/bip32's); anything not marked practice is refused; PUT IT AWAY and CLEAR ALL overwrite the SeedQR
+//   forge       FORGE SEED below the device: with no seed it asks for one; a dice seed made on the device, then a SeedQR seed with
+//               the passphrase "Ab1", go into MAKE A SEED: words, fingerprint (and the device's, "match"), the first receive and
+//               change addresses (@scure/bip39, @scure/bip32, @scure/btc-signer), SeedQR, xpub and watch-only, the PRACTICE banner,
+//               PRACTICE in the downloaded file; two seeds: pick one by fingerprint; CLEAR ALL and closing the box clear it
 // And: the page self-test passes (141/141) in every page opened, and no page error or console error happens in any of them.
 // Run: node tests/simulator.test.mjs        (SCEN=dice12,wipe to run some; SIM_CONC=4 to run fewer at a time)
 import { createRequire } from 'module';
@@ -1119,6 +1127,149 @@ SCEN.lessons_tx = async (t, d, ctx, page) => {   // "sign", then "multisig" with
   if (origB && signedB) checkPractice(t, tag, origB, signedB, { net: 'M', multi: true }); else t(false, tag + ': no signed PSBT read from the screen');
 };
 
+// ---- v2.14.0: FORGE SEED below the practice signer: the seed on the device goes into VOIDFORGE's result, marked PRACTICE
+SCEN.forge = async (t, d, ctx, page) => {
+  const forge = async () => { await page.click('#ssForgeBtn'); await sleep(400); };
+  const status = () => page.textContent('#ssForgeStatus');
+  const result = async (want) => {
+    await page.waitForFunction((w) => madeMnemonic === w && /match/.test(document.getElementById('ssfCheck').textContent) && document.querySelectorAll('#addrList li').length === 10 && document.querySelectorAll('#chList li').length === 10 && document.getElementById('watchBox').style.display === '', want, { timeout: 60000 });
+    return page.evaluate(() => ({ words: madeMnemonic, kind: seedKind, tab: document.getElementById('tab-make').getAttribute('aria-selected') === 'true',
+      ban: document.getElementById('ssfBan').textContent, banShown: document.getElementById('ssfBan').style.display !== 'none', check: document.getElementById('ssfCheck').textContent, checkOk: document.getElementById('ssfCheck').classList.contains('ok'),
+      fp: document.getElementById('fingerprint').textContent, fpPic: !!document.getElementById('fpIcon').innerHTML, r0: document.querySelector('#addrList li').textContent, c0: document.querySelector('#chList li').textContent,
+      sq: document.getElementById('seedQrBox').style.display === '', watch: document.getElementById('watchBox').style.display === '', pass: document.getElementById('passphrase').value,
+      pub: document.getElementById('forgePub').textContent, inView: (() => { const r = document.getElementById('genResult').getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; })() }));
+  };
+  const checkResult = async (tag, m, pass) => {
+    const r = await result(m), fp = fpOf(rootOf(m, pass)), r0 = addrOf(m, pass, 'native', 0, 0), c0 = addrOf(m, pass, 'native', 1, 0);
+    t(r.words === m && r.kind === 'ss' && r.tab && r.inView, tag + ': FORGE SEED shows the words in MAKE A SEED (the tab is switched and scrolled to them), as @scure/bip39 gives them');
+    t(r.fp === 'Master fingerprint: ' + fp + (pass ? ' (with passphrase)' : '') && r.fpPic && r.check === 'Practice signer fingerprint: ' + fp + '; VOIDFORGE fingerprint: ' + fp + ': match' && r.checkOk,
+      tag + ': fingerprint ' + fp + ' (@scure/bip32) with its picture, and "' + r.check + '"');
+    t(r.r0.includes(r0) && r.c0.includes(c0), tag + ': the first receive and change addresses equal @scure/btc-signer\'s (' + r0.slice(0, 14) + '..., ' + c0.slice(0, 14) + '...), 10 of each');
+    t(r.sq && r.watch && r.pass === pass, tag + ': SeedQR, xpub and watch-only are offered, and the passphrase box holds the passphrase applied on the device' + (pass ? ' ("' + pass + '")' : ' (none)'));
+    t(r.banShown && r.ban === 'PRACTICE: This seed came from the practice signer. Practice only: never put real coins on it.', tag + ': the PRACTICE banner shows: ' + r.ban);
+    return r;
+  };
+  await d.waitView('SSMainMenuView');
+  await forge();
+  t((await status()) === 'Load or make a seed on the device first.' && !(await page.evaluate(() => hasSeed())), 'FORGE SEED with no seed on the device says "Load or make a seed on the device first." and makes nothing');
+  t(await page.evaluate(() => { const b = document.getElementById('ssForgeBtn'); return b.textContent === 'FORGE SEED' && !b.classList.contains('secondary') && !!b.closest('#ssLearn') && !b.closest('#ssDevice'); }), 'FORGE SEED is a gold page button below the device, not on the device');
+  // 1. a dice seed made on the device
+  const rolls = '615243'.repeat(9);   // no roll repeats the one before (quick repeats of one key can be taken as a hold)
+  const m1 = diceWords(rolls.slice(0, 50), 12), words = await diceRun(d, 12, rolls.slice(0, 50));
+  await d.waitView('SSSeedWordsBackupTestPromptView'); await d.pick(/Skip/, { wait: 1200 });
+  await d.waitView('SSSeedFinalizeView'); await d.pick(/^Done$/, { wait: 1500 }); await d.waitView('SSSeedOptionsView');
+  t(words.join(' ') === m1, 'dice seed made on the device: ' + m1.split(' ').slice(0, 3).join(' ') + ' ...');
+  await page.evaluate(() => { showTab('make'); scrollTo(0, 0); }); await page.evaluate(() => { showTab('check'); document.getElementById('ssBox').scrollIntoView(); });
+  await forge();
+  const r1 = await checkResult('dice seed', m1, '');
+  t(r1.pub === '', 'dice seed: no public example warning (it is not a public phrase)');
+  // the downloaded file says PRACTICE too
+  const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 15000 }), page.evaluate(() => downloadSeed())]);
+  const file = fs.readFileSync(await dl.path(), 'utf8');
+  t(/^PRACTICE: This seed came from the practice signer\. Practice only: never put real coins on it\./.test(file) && file.includes(m1) && /Input: the practice signer/.test(file), 'DOWNLOAD: the seed file starts with the PRACTICE line and names the practice signer as the input');
+  t(await page.evaluate(() => /from the practice signer \(PRACTICE only/.test(document.getElementById('sumLine').textContent)), 'the seed summary says it was made from the practice signer, PRACTICE only');
+  await page.evaluate(() => clearAll()); await sleep(600);
+  let w = await page.evaluate(() => ({ seed: hasSeed(), ban: document.getElementById('ssfBan').style.display, check: document.getElementById('ssfCheck').style.display, txt: document.getElementById('ssfBan').textContent + document.getElementById('ssfCheck').textContent, box: document.getElementById('ssBox').open, dev: !!SSController._instance }));
+  t(!w.seed && w.ban === 'none' && w.check === 'none' && w.txt === '' && !w.box && !w.dev, 'CLEAR ALL wipes the practice result: words, banner and fingerprint line gone, the device off (' + JSON.stringify(w) + ')');
+  // 2. a seed scanned from its SeedQR, with the passphrase "Ab1" applied on the device
+  await page.evaluate(() => { showTab('check'); const b = document.getElementById('ssBox'); b.open = true; b.scrollIntoView(); });
+  await d.waitView('SSMainMenuView', 30000);
+  await d.ev(() => ssLearnArm('seedqr')); await waitCam(d, 'seedqr');
+  await d.pick(/^Scan$/, { wait: 2500 }); await d.waitView('SSSeedFinalizeView', 30000);
+  await d.pick(/Passphrase/, { wait: 1000 });
+  await d.press('K1', 400); await d.kbGo('A', { kb: 'keyboard_ABC' }); await d.press('K1', 400); await d.kbGo('b', { kb: 'keyboard_abc' }); await d.press('K2', 400); await d.kbGo('1', { kb: 'keyboard_digits' });
+  await d.press('K3', 1200); await d.pick(/^Done$/, { wait: 2500 }); let s = await d.state();
+  if (s.view === 'SSSeedFinalizeView') { await d.pick(/^Done$/, { wait: 1500 }); s = await d.state(); }
+  t(s.view === 'SSSeedOptionsView' && s.title === fpOf(rootOf(ABANDON, 'Ab1')), 'passphrase "Ab1" applied on the device (fingerprint ' + s.title + ')');
+  await forge();
+  const r2 = await checkResult('SeedQR seed with passphrase', ABANDON, 'Ab1');
+  t(/PUBLIC EXAMPLE PHRASE/.test(r2.pub), 'the usual checks run: abandon ... about gets the public example phrase warning');
+  // 3. two seeds on the device: the one it shows, or a pick by fingerprint
+  await page.evaluate(() => { showTab('check'); document.getElementById('ssBox').scrollIntoView(); });
+  await d.back('SSMainMenuView');
+  await d.ev(() => ssLearnArm('seedqr')); await waitCam(d, 'seedqr');
+  await d.pick(/^Scan$/, { wait: 2500 }); await d.waitView('SSSeedFinalizeView', 30000); await d.pick(/^Done$/, { wait: 1500 }); await d.waitView('SSSeedOptionsView');
+  await forge();
+  const fpA = fpOf(rootOf(ABANDON)), fpB = fpOf(rootOf(ABANDON, 'Ab1'));
+  let r3 = await result(ABANDON);
+  t(r3.fp === 'Master fingerprint: ' + fpA && r3.pass === '' && (await d.ev(() => ssLearnSeeds().length)) === 2, 'two seeds on the device: FORGE SEED takes the one the device shows (' + fpA + ', no passphrase)');
+  await page.evaluate(() => { showTab('check'); document.getElementById('ssBox').scrollIntoView(); });
+  await d.back('SSMainMenuView'); await forge();
+  const pk = await page.evaluate(() => ({ hidden: document.getElementById('ssForgePick').hidden, opts: [...document.getElementById('ssForgePick').options].map((o) => o.textContent) }));
+  const st2 = await status();
+  if (!pk.hidden) {
+    t(pk.opts.length === 2 && pk.opts.includes(fpB + ' (with passphrase)') && pk.opts.includes(fpA) && /2 seeds are loaded on the device\. Pick one by its fingerprint/.test(st2), 'on Home with two seeds: FORGE SEED asks to pick one by fingerprint (' + pk.opts.join(', ') + ')');
+    await page.selectOption('#ssForgePick', { label: fpB + ' (with passphrase)' }); await forge();
+    const r4 = await result(ABANDON);
+    t(r4.fp === 'Master fingerprint: ' + fpB + ' (with passphrase)' && r4.pass === 'Ab1', 'the picked seed (' + fpB + ', with its passphrase) is the one shown');
+  } else t(false, 'on Home with two seeds: FORGE SEED should ask to pick one (it said: ' + st2 + ')');
+  // closing the practice signer clears the seed it gave
+  await page.evaluate(() => { document.getElementById('ssBox').open = false; }); await sleep(800);
+  w = await page.evaluate(() => ({ seed: hasSeed(), ban: document.getElementById('ssfBan').style.display, pass: document.getElementById('passphrase').value, res: document.getElementById('genResult').textContent, pick: document.getElementById('ssForgePick').hidden }));
+  t(!w.seed && w.ban === 'none' && w.pass === '' && /practice signer was switched off/.test(w.res) && w.pick, 'closing the practice signer clears the practice seed it gave, its passphrase and the picker (' + JSON.stringify(w) + ')');
+};
+
+// ---- v2.14.0: LOAD INTO THE PRACTICE SIGNER from MAKE A SEED > Damascus (practice seeds only), by the seed's Standard SeedQR
+SCEN.damascus = async (t, d, ctx, page) => {
+  await d.waitView('SSMainMenuView');
+  await page.evaluate(() => { document.getElementById('ssBox').open = false; }); await sleep(500);
+  const toDamascus = () => page.evaluate(() => { showTab('make'); setMethod('damascus'); scrollTo(0, 0); });
+  const pageResult = async () => { await page.waitForFunction(() => /Master fingerprint [0-9a-f]{8}\./.test(document.getElementById('dmOut').textContent), null, { timeout: 60000 });
+    return page.evaluate(() => { const o = document.getElementById('dmOut'); return { phrase: o.dataset.practicePhrase || '', fp: o.textContent.match(/Master fingerprint ([0-9a-f]{8})\./)[1], practice: dmPractice }; }); };
+  const camInfo = () => d.ev(() => { const st = SSController._instance && SSController._instance._storage; return { key: ssLearnCam.key, frames: ssLearnCam.frames ? ssLearnCam.frames.slice() : null, hidden: document.getElementById('ssLearnCam').hidden,
+    text: document.getElementById('ssLearnCam').textContent.replace(/\s+/g, ' '), cache: ssLearnCam.cache.size, seeds: ssLearnSeeds().length, pending: !!(st && st.pending_seed), open: document.getElementById('ssBox').open,
+    tab: document.getElementById('tab-check').getAttribute('aria-selected') === 'true', note: (document.getElementById('dmSignerNote') || {}).textContent || '' }; });
+  async function viaSigner(name, mnemonic, wantFp) {
+    const pg = await pageResult();
+    t(pg.phrase === mnemonic && pg.fp === wantFp && /^(practice|example) \d+$/.test(pg.practice), name + ': the page marks the result as practice and shows fingerprint ' + wantFp + ' (@scure/bip32) (' + pg.fp + ')');
+    const before = await d.ev(() => ssLearnSeeds().length);
+    await page.click('#dmSignerBtn'); await d.waitView('SSMainMenuView', 30000);
+    let c = await camInfo();
+    t(c.tab && c.open && c.key === 'dmseed' && !c.hidden && c.frames && c.frames.length === 1 && c.frames[0] === seedQrDigits(mnemonic) && c.seeds === before && !c.pending,
+      name + ': LOAD INTO THE PRACTICE SIGNER opens it in CHECK A BACKUP and the practice wallet holds up the seed\'s Standard SeedQR (' + (c.frames ? c.frames[0].length : 0) + ' digits, as made here); nothing is put into the device\'s memory (' + JSON.stringify({ tab: c.tab, open: c.open, key: c.key, seeds: c.seeds, before, pending: c.pending }) + ')');
+    for (let i = 0; i < 40 && !/fingerprint [0-9a-f]{8}/.test(c.text); i++) { await sleep(150); c = await camInfo(); }
+    t(/Standard SeedQR of Damascus (practice|example) \d+ \(\d+ words\)\. On the device, choose Scan on Home\. It should show the fingerprint /.test(c.text) && c.text.includes(wantFp) && /Choose Scan on the device/.test(c.note),
+      name + ': the page (not the device) says to choose Scan, and which fingerprint to expect (' + c.text + ')');
+    await d.waitView('SSMainMenuView', 30000);
+    const home = await d.state();
+    t(JSON.stringify(home.labels) === '["Scan","Seeds","Tools","Settings"]', name + ': the device shows SeedSigner\'s own Home: nothing is drawn on it or added to it');
+    await d.pick(/^Scan$/, { wait: 800 });
+    await d.waitView('SSSeedFinalizeView', 30000);
+    const fp = await d.scr(() => SSController._instance.current_destination.view.screen.fingerprint);
+    await sleep(500); c = await camInfo();
+    t(fp === wantFp && fp === pg.fp, name + ': Scan on the device reads the SeedQR: Finalize Seed shows fingerprint ' + fp + ', the page\'s ' + pg.fp);
+    t(c.frames === null && c.hidden && c.cache === 0 && c.key === '', name + ': after the scan the practice wallet puts the SeedQR away and drops it');
+    await d.pick(/^Done$/, { wait: 1500 }); await d.waitView('SSSeedOptionsView');
+    const has = await d.ev((m) => ssLearnSeeds().some((s) => s && s.mnemonic_str === m), mnemonic);
+    t(has, name + ': Done keeps the seed in the device\'s memory, as on SeedSigner');
+  }
+  // a practice sheet, 12 words
+  await toDamascus(); await page.selectOption('#wordSel', '12');
+  await page.click('#dmPracticeBtn'); await page.waitForFunction(() => !document.getElementById('dmCheckBtn').disabled, null, { timeout: 30000 });
+  await page.click('#dmCheckBtn');
+  const p1 = await pageResult();
+  // refused: anything the Damascus tab did not mark as practice (the box stays closed, nothing is held up)
+  const refused = await d.ev((ph) => [vfSignerLoadSeed('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'), vfSignerLoadSeed(ph + ' '), vfSignerLoadSeed(ph.split(' ').reverse().join(' ')), vfSignerLoadSeed(null)], p1.phrase);
+  const r0 = await camInfo();
+  t(refused.every((x) => x === false) && !r0.open && r0.frames === null && r0.key === '', 'Damascus: vfSignerLoadSeed refuses any phrase but the practice result on the Damascus tab (' + JSON.stringify(refused) + ')');
+  await viaSigner('Damascus ' + p1.practice + ' (12 words)', p1.phrase, fpOf(rootOf(p1.phrase)));
+  // worked example 3, 24 words
+  await toHomeAny(d); await toDamascus();
+  await page.evaluate(() => dmLoadExample(3)); await page.click('#dmCheckBtn');
+  const EX3 = 'candy play giraffe unable song nasty music stay nothing acquire cloud until logic key mango leopard true among genuine lucky family remain lesson artist';
+  await viaSigner('Damascus example 3 (24 words)', EX3, fpOf(rootOf(EX3)));
+  // the SeedQR held up is overwritten when it is put away (PUT IT AWAY) and by CLEAR ALL
+  for (const [how, act] of [['PUT IT AWAY', () => page.click('#ssLearnCamOff')], ['CLEAR ALL', () => d.ev(() => clearAll())]]) {
+    await toDamascus(); await page.click('#dmSignerBtn'); await sleep(600);
+    await d.ev(() => { window.__dmF = ssLearnCam.frames; window.__dmM = [...ssLearnCam.cache.values()]; });
+    await act(); await sleep(500);
+    const w = await d.ev(() => ({ f: window.__dmF.every((x) => x === ''), m: window.__dmM.length > 0 && window.__dmM.every((m) => m.every((r) => r.every((x) => !x))), frames: ssLearnCam.frames, cache: ssLearnCam.cache.size, seeds: ssLearnSeeds().length }));
+    t(w.f && w.m && w.frames === null && w.cache === 0 && (how !== 'CLEAR ALL' || w.seeds === 0), 'Damascus: ' + how + ' overwrites the practice seed\'s SeedQR (its digits and its QR picture) and drops it' + (how === 'CLEAR ALL' ? '; the device\'s seeds are wiped too' : '') + ' (' + JSON.stringify(w) + ')');
+  }
+  const after = await d.ev(() => ({ ph: document.getElementById('dmOut').dataset.practicePhrase || '', pr: dmPractice }));
+  t(after.ph === '' && after.pr === '' && await d.ev(() => vfSignerLoadSeed('candy play giraffe unable song nasty music stay nothing acquire cloud until logic key mango leopard true among genuine lucky family remain lesson artist')) === false,
+    'Damascus: after CLEAR ALL nothing is marked practice, so even a worked example\'s words are refused');
+};
 
 // ---- v2.14.0: easy to find. The card right under the header is on screen when the page opens (desktop and phone, after the
 // start notice), and OPEN PRACTICE SIGNER and MENU > PRACTICE SIGNER both open CHECK A BACKUP, the box and the device, with focus.
@@ -1155,7 +1306,7 @@ SCEN.find = async (t, d, ctx, page) => {
 
 // ================================================================ run
 SCEN.tools.clock = true; SCEN.offline.online = true;
-const order = ['lessons_dice', 'lessons_tx', 'lessons_seed', 'practice_tx', 'find', 'review', 'psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
+const order = ['lessons_dice', 'lessons_tx', 'lessons_seed', 'practice_tx', 'damascus', 'forge', 'find', 'review', 'psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
 const want = process.env.SCEN ? process.env.SCEN.split(',') : order;
 const results = [];
 async function runScenario(browser, name) {

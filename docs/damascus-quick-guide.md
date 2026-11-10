@@ -1,5 +1,9 @@
 # How to make a Damascus seed
 
+<img src="damascus/creator.webp" width="44" height="44" alt="Random's profile picture: a bloodhound in a Bitcoin cap"> The Damascus method, created by Random, 10 November 2026
+
+Dated and signed origin record: tag [damascus-origin-2026-11-10](https://gitlab.com/random21m/voidforge/-/tags/damascus-origin-2026-11-10) on GitLab, timestamped in Bitcoin block 975,337 (OpenTimestamps) ([DAMASCUS-ORIGIN.md](../DAMASCUS-ORIGIN.md))
+
 A Damascus seed is a normal 12-word Bitcoin seed that you make by hand from **dice** and **playing cards**, and check by hand as you go. Damascus steel is made by folding two different steels into one blade that is stronger than either. The Damascus method folds dice and cards into one seed.
 
 **Time:** about 40 minutes alone, about 30 minutes with a helper. These are estimates: nobody has timed the method yet.

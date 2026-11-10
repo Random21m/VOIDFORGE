@@ -6,6 +6,8 @@
 // QR in view through the same hook the scan path reads QR codes with (SSDecodeQR.extract_qr_data). Every lesson uses public
 // test seeds only. The practice transaction spends made-up coins: a made-up previous transaction, marked as practice, that
 // can never be on the blockchain. Everything is dropped by ssPageStop (box closed, CLEAR ALL, auto-clear, END SESSION).
+// LOAD INTO THE PRACTICE SIGNER (MAKE A SEED > Damascus, practice only): vfSignerLoadSeed at the end of this file.
+// FORGE SEED (a page button below the device): the seed loaded on the device goes into VOIDFORGE's result, marked PRACTICE.
 "use strict";
 const SS_LEARN_ABANDON = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 const SS_LEARN_TEST = {   // public BIP-39 test vectors (Trezor's vectors.json): the cosigners and the payee of the practice transactions
@@ -18,7 +20,7 @@ const SS_LEARN_MARK = "VOIDFORGE practice coins: made up, not real, never on the
 const SS_LEARN_FRAME_MS = 300;    // one QR part every 0.3 s, as a wallet app's animated QR
 
 const ssLearn = { arming: false, lesson: null, step: 0, hold: null, done: false, timer: null, tx: null, building: false, reading: false, scanDec: null, msg: "" };
-const ssLearnCam = { byLesson: false, frames: null, what: "", key: "", on: false, shown: null, t0: 0, cache: new Map() };
+const ssLearnCam = { byLesson: false, frames: null, what: "", say: "", key: "", on: false, shown: null, read: false, t0: 0, cache: new Map() };
 
 // ---------------------------------------------------------------- the device, as the lessons see it
 function ssLearnState() {
@@ -77,20 +79,33 @@ function ssLearnCamHandle() {
   };
   SSCamera.prototype._open = async function () { if (scanning && ssLearnCam.frames) return ssLearnCamHandle(); return open0.call(this); };
   SSCamera.prototype._close = function (h) {
-    if (h && h.ssLearn) { ssLearnCam.on = false; ssLearnCam.shown = null; try { h.video.width = h.video.height = 0; } catch (e) { /* gone */ } return; }
+    if (h && h.ssLearn) {
+      ssLearnCam.on = false; ssLearnCam.shown = null; try { h.video.width = h.video.height = 0; } catch (e) { /* gone */ }
+      // a practice seed's SeedQR, once the scan has read it: put away (and wiped) as soon as the scan ends
+      if (ssLearnCam.key === "dmseed" && ssLearnCam.read) setTimeout(() => { if (ssLearnCam.key === "dmseed" && ssLearnCam.read) ssLearnHide(); }, 0);
+      return;
+    }
     return close0.call(this, h);
   };
   const x0 = SSDecodeQR.extract_qr_data;
   SSDecodeQR.extract_qr_data = function (image, is_binary = false) {
-    if (ssLearnCam.on) { const t = ssLearnCam.shown; if (t === null || t === undefined) return null; return is_binary ? new TextEncoder().encode(t) : t; }
+    if (ssLearnCam.on) { const t = ssLearnCam.shown; if (t === null || t === undefined) return null; ssLearnCam.read = true; return is_binary ? new TextEncoder().encode(t) : t; }
     return x0.call(this, image, is_binary);
   };
 })();
 function ssLearnShow(frames, what, key) {
+  if (ssLearnCam.key === "dmseed") ssLearnForget();   // a practice seed's SeedQR is wiped as soon as it is put away
+  ssLearnCam.say = ""; ssLearnCam.read = false;
   ssLearnCam.byLesson = false; ssLearnCam.frames = frames && frames.length ? frames.slice() : null; ssLearnCam.what = ssLearnCam.frames ? what : ""; ssLearnCam.key = ssLearnCam.frames ? key || "" : "";
   ssLearnCam.t0 = Date.now(); ssLearnTimer(); ssLearnRender();
 }
 function ssLearnHide() { ssLearnShow(null); }
+// Overwrites the QR texts held up and the QR pictures made of them (strings cannot be overwritten: they are dropped).
+function ssLearnForget() {
+  if (ssLearnCam.frames) ssLearnCam.frames.fill("");
+  for (const m of ssLearnCam.cache.values()) for (const r of m) if (r && typeof r.fill === "function") r.fill(false);
+  ssLearnCam.cache.clear(); ssLearnCam.shown = null; ssLearnCam.say = "";
+}
 
 // ---------------------------------------------------------------- what the practice wallet can show
 async function ssLearnAcct(seed, type, n) {   // account key of a seed: [fp/purpose'/coin'/0'(/2')] xpub (public key only)
@@ -364,6 +379,7 @@ function ssLearnRender() {
   const cam = ssLearnEl("ssLearnCam");
   cam.hidden = !ssLearnCam.frames;
   ssLearnSetText("ssLearnCamWhat", ssLearnCam.what);
+  ssLearnSetText("ssLearnCamSay", ssLearnCam.frames ? ssLearnCam.say : "");
   const T = L.tx, net = T ? T.net : ssLearnNet();
   ssLearnEl("ssTxNet").hidden = !(T && net === "M");
   let s = "";
@@ -440,6 +456,7 @@ function ssLearnWipe() {
     for (const m of [T.global, ...T.inMaps, ...T.outMaps]) for (const kv of m) for (const x of kv) if (x instanceof Uint8Array) x.fill(0);
   }
   L.lesson = null; L.step = 0; L.done = false; L.hold = null; L.tx = null; L.building = false; L.scanDec = null; L.msg = "";
+  ssLearnForget(); ssForgeReset();
   ssLearnCam.frames = null; ssLearnCam.byLesson = false; ssLearnCam.what = ""; ssLearnCam.key = ""; ssLearnCam.shown = null; ssLearnCam.cache.clear();
   ssLearnRender();
 }
@@ -452,6 +469,87 @@ function ssLearnInit() {
   ssLearnEl("ssLearnRestart").addEventListener("click", () => { if (ssLearn.lesson) { ssLearnHide(); ssLearnGoto(0, false); } });
   ssLearnEl("ssLearnCamOff").addEventListener("click", ssLearnHide);
   ssLearnEl("ssTxGo").addEventListener("click", ssLearnTxGo);
+  const fb = ssLearnEl("ssForgeBtn"); if (fb) fb.addEventListener("click", ssForgeGo);
   ssLearnRender();
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", ssLearnInit); else ssLearnInit();
+
+// ---------------------------------------------------------------- LOAD INTO THE PRACTICE SIGNER (Damascus practice seeds)
+// Called by dmToSigner (MAKE A SEED > Damascus). The device stays SeedSigner: nothing is put into its memory from here. As a
+// person would, this opens the practice signer and holds the seed's Standard SeedQR up to its camera with the practice wallet;
+// the page (never the device's screen) says to choose Scan. Only the phrase of the practice result on the Damascus tab is
+// taken (a practice sheet or a worked example: public, never a seed to keep); anything else is refused. The SeedQR is wiped
+// when the practice wallet puts it away (after the scan, PUT IT AWAY, another QR) and by every wipe (ssLearnWipe).
+function ssLearnDamascusPractice(phrase) {
+  try {
+    const o = document.getElementById("dmOut");
+    return typeof phrase === "string" && phrase !== "" && typeof dmPractice === "string" && dmPractice !== "" && !!o && o.dataset.practicePhrase === phrase;
+  } catch (e) { return false; }
+}
+function vfSignerLoadSeed(phrase) {
+  if (!ssLearnDamascusPractice(phrase)) return false;
+  const words = phrase.split(" "), idx = words.map((w) => WORDLIST.indexOf(w));
+  if ((words.length !== 12 && words.length !== 24) || idx.some((i) => i < 0)) return false;
+  const name = dmPractice;
+  ssPageOpen();
+  if (!ssPageOn) ssPageStart();
+  if (!ssPageOn) return false;
+  ssLearn.lesson = null; ssLearn.done = false; ssLearn.hold = null; ssLearn.msg = "";   // a lesson would hold up its own QR codes
+  const qr = idx.map((i) => String(i).padStart(4, "0")).join("");   // Standard SeedQR: 4 digits per word
+  ssLearnShow([qr], "the Standard SeedQR of Damascus " + name + " (" + words.length + " words)", "dmseed");
+  try { ssLearnCam.cache.set(qr, seedQrMatrix(words, "standard").rows); } catch (e) { /* drawn as a plain QR */ }
+  const say = (fp) => "On the device, choose Scan on Home." + (fp ? " It should show the fingerprint " + fp + "." : "") +
+    (navigator.onLine === true ? " This computer looks online: the device reads a SeedQR only while it is offline." : "");
+  ssLearnCam.say = say(""); ssLearnRender();
+  mnemonicFingerprint(phrase, "").then((fp) => { if (ssLearnCam.key === "dmseed" && ssLearnCam.frames && ssLearnCam.frames[0] === qr) { ssLearnCam.say = say(fp); ssLearnRender(); } }).catch(() => { /* the text without it */ });
+  return true;
+}
+
+// ---------------------------------------------------------------- FORGE SEED: the seed on the device, into VOIDFORGE
+// A page button below the device (never on its screen or in its menus). It takes a seed loaded on the device (Seeds), with the
+// passphrase applied to it there, and hands it to the page's result path (forgeFromSigner in the main script: words, fingerprint,
+// addresses, SeedQR, xpub, watch-only), marked PRACTICE, with the fingerprint the device shows for it. With more than one seed:
+// the one the device shows now or showed last (its newest screen about one seed), else the person picks one by its fingerprint.
+const ssForge = { key: "", busy: false };
+function ssForgeReset() {
+  ssForge.key = ""; ssForge.busy = false;
+  const p = ssLearnEl("ssForgePick"); if (p) { p.textContent = ""; p.hidden = true; }
+  ssLearnSetText("ssForgeStatus", "");
+}
+function ssForgeShownSeed(seeds) {
+  try {
+    const c = SSController._instance, list = [c.current_destination, ...Array.from(c.back_stack || []).reverse()];
+    for (const d of list) {
+      const a = d && d.view_args, n = a && a.seed_num, v = d && d.view;
+      if (Number.isInteger(n) && seeds[n]) return seeds[n];
+      if (v && v.seed && seeds.includes(v.seed)) return v.seed;
+    }
+  } catch (e) { /* no device */ }
+  return null;
+}
+async function ssForgeGo() {
+  const say = (t, cls) => { ssLearnSetText("ssForgeStatus", t); const e = ssLearnEl("ssForgeStatus"); if (e) e.className = "status" + (cls ? " " + cls : ""); };
+  if (ssForge.busy) return;
+  const seeds = ssPageOn ? ssLearnSeeds().filter((x) => x && x.mnemonic_str) : [], pick = ssLearnEl("ssForgePick");
+  if (!seeds.length) { pick.hidden = true; ssForge.key = ""; say("Load or make a seed on the device first.", "bad"); return; }
+  ssForge.busy = true;
+  try {
+    const fps = await Promise.all(seeds.map((x) => x.get_fingerprint())), key = fps.map((f, i) => f + (seeds[i].passphrase ? "+" : "")).join(",");
+    let i = -1;
+    if (seeds.length === 1) i = 0;
+    else if (!pick.hidden && ssForge.key === key) i = +pick.value;
+    else { const sh = ssForgeShownSeed(seeds); if (sh) i = seeds.indexOf(sh); }
+    if (i < 0 || !seeds[i]) {
+      pick.textContent = "";
+      seeds.forEach((x, j) => { const o = document.createElement("option"); o.value = String(j); o.textContent = fps[j] + (x.passphrase ? " (with passphrase)" : ""); pick.appendChild(o); });
+      pick.value = String(seeds.length - 1); pick.hidden = false; ssForge.key = key;
+      say(seeds.length + " seeds are loaded on the device. Pick one by its fingerprint, then press FORGE SEED again.");
+      return;
+    }
+    const seed = seeds[i];
+    say("");
+    const ok = await forgeFromSigner(seed.mnemonic_str, seed.passphrase || "", fps[i]);
+    if (ok) say("Seed " + fps[i] + " is shown in MAKE A SEED, marked PRACTICE.", "ok");
+  } catch (e) { say("Could not take the seed: " + (e && e.message ? e.message : e), "bad"); }
+  finally { ssForge.busy = false; }
+}

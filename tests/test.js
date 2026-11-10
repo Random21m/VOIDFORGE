@@ -137,8 +137,10 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(box.querySelectorAll('a, [href], img, iframe, script').length===0&&/never goes online/.test(box.textContent)&&/never send seed words/i.test(box.textContent),'support: no link, image or script in the box, and it says nothing is sent and never to send seed words');
       t.st.clip.length=0; const b=box.querySelectorAll('button'); b[0].click(); await new Promise(r=>setTimeout(r,20)); b[1].click(); await new Promise(r=>setTimeout(r,20)); const c1=t.st.clip[0], copied=t.st.clip[1];
       ok(b.length===2&&c1==='dev@breez.tips'&&copied===code,'support: COPY copies the address and the payment code exactly'); }
-    { // The dog logo is gone in the redesign: no picture is built into the file any more
-      ok(!t.$('ownerLogo')&&t.w.document.querySelectorAll('img').length===0&&!/ownerLogo|data:image\/jpeg/.test(html),'owner logo: removed in the redesign, the file holds no picture'); }
+    { // The dog logo is gone in the redesign. v2.14.0: the only pictures are the creator's profile picture next to the Damascus method's
+      // creator line (top of the Damascus tab and ABOUT & HELP), one small WebP built into the file as a data: URI
+      const im=[...t.w.document.querySelectorAll('img')], src=im.map(i=>i.getAttribute('src')||'');
+      ok(!t.$('ownerLogo')&&!/ownerLogo|data:image\/jpeg/.test(html)&&im.length===2&&im.every(i=>i.className==='vf-creator-pic'&&i.closest('.vf-creator'))&&src[0]===src[1]&&/^data:image\/webp;base64,/.test(src[0])&&src[0].length<8000,'owner logo: removed in the redesign; the only picture is the small creator picture by the Damascus creator line (twice, a data: URI)'); }
     { // Translation and passphrase notes (v1.29.0): browsers are asked not to translate (a translated seed word is a wrong seed word), and the passphrase help warns about hardware wallet limits
       const d=t.w.document, m=d.querySelector('meta[name="google"]'), adv=t.$('passphrase').closest('details');
       ok(d.documentElement.getAttribute('translate')==='no'&&d.documentElement.getAttribute('lang')==='en'&&!!m&&m.getAttribute('content')==='notranslate','translation: the page asks browsers not to translate it');

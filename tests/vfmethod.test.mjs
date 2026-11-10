@@ -286,15 +286,23 @@ words(12); set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards));
   check("practice: every part of the result says PRACTICE", /^PRACTICE: practice 1 comes from/.test(out) && /PRACTICE: Hammer sheet/.test(out) && /PRACTICE: Anvil sheet/.test(out) && /PRACTICE: Forge sheet/.test(out) && /PRACTICE: Last word/.test(out));
   const had = w.hasSeed(); await w.dmGenerate();
   check("practice: FORGE SEED never makes a seed from practice dice and cards", !had && !w.hasSeed());
-  $("dmSignerBtn").click();
-  check("practice: LOAD INTO THE PRACTICE SIGNER says how to load it while the signer hook is not wired", /practice signer, and choose Seeds > Load a seed > Enter 12-word seed/.test($("dmSignerNote").textContent), $("dmSignerNote").textContent);
-  let got = null; w.vfSignerLoadSeed = (m) => { got = m; }; $("dmSignerBtn").click();
-  check("practice: with the signer hook, the practice words go to it", got && got === $("dmOut").dataset.practicePhrase && got.split(" ").length === 12);
-  delete w.vfSignerLoadSeed;
+  // LOAD INTO THE PRACTICE SIGNER: the practice signer's hook (tools/simulator/ss_learn.js) is in the page; its whole path, Scan on
+  // the device included, is driven in Chromium by tests/simulator.test.mjs (scenario damascus). Here: what it takes and refuses.
+  const hook = w.vfSignerLoadSeed, ph1 = $("dmOut").dataset.practicePhrase;
+  check("practice: the practice signer's hook vfSignerLoadSeed is in the page", typeof hook === "function");
+  check("practice: vfSignerLoadSeed refuses anything but the practice result on the tab (another phrase, a changed one, no phrase)", ["abandon ".repeat(11) + "about", ph1 + " ", ph1.split(" ").slice(1).join(" "), null, ""].every((m) => hook(m) === false) && !$("ssBox").open);
+  w.vfSignerLoadSeed = undefined; $("dmSignerBtn").click();
+  check("practice: without the practice signer, LOAD INTO THE PRACTICE SIGNER says how to type the words in", /practice signer, and choose Seeds > Load a seed > Enter 12-word seed/.test($("dmSignerNote").textContent), $("dmSignerNote").textContent);
+  let got = null; w.vfSignerLoadSeed = (m) => { got = m; return true; }; $("dmSignerBtn").click();
+  check("practice: the practice words go to the hook, and the note says to choose Scan on the device", got && got === ph1 && got.split(" ").length === 12 && /Choose Scan on the device\./.test($("dmSignerNote").textContent), $("dmSignerNote").textContent);
+  w.vfSignerLoadSeed = () => false; $("dmSignerBtn").click();
+  check("practice: a refusal by the hook is said plainly", /^Not loaded: only a practice seed/.test($("dmSignerNote").textContent));
+  w.vfSignerLoadSeed = hook;
   set("dmDice", $("dmDice").value + " 12");
   check("practice: editing a box keeps PRACTICE on", $("dmBtn").disabled && $("dmPracticeBan").style.display !== "none");
   set("dmDice", ""); set("dmCards", "");
   check("practice: emptying both boxes ends PRACTICE", $("dmPracticeBan").style.display === "none" && w.eval("dmPractice") === "");
+  check("practice: after PRACTICE ends, vfSignerLoadSeed refuses the practice words too", w.vfSignerLoadSeed(ph1) === false);
   words(24); await w.dmPracticeFill(); const want2 = sheetOf(2, 24);
   check("practice: the next press gives practice sheet 2 (24 words here), again by the rule", $("dmDice").value === want2.dice && $("dmCards").value === want2.cards && /practice 2/.test($("dmPracticeBan").textContent));
   w.dmClear(); words(12);
@@ -410,6 +418,15 @@ const guide = readFileSync(path.join(here, "..", "docs", "damascus-quick-guide.m
     "MAKE A SEED > Word draw. Type the same 11 words, and the 7 bits as the coin flips.", "Copy the 12 words to your backup", "Keep the hallmarks only next to the words, because they reveal part of the seed", "Destroy the sheets you do not keep."];
   const bad = same.filter((x) => !all.includes(x) || !g.replace(/'/g, "\u2019").includes(x.replace(/'/g, "\u2019")));
   check("the printed sheets and the quick guide give the same instructions in the same words (" + same.length + " sentences)", bad.length === 0, bad.slice(0, 3).join(" | ")); }
+// the creator line and picture (v2.14.0): top of the Damascus tab, ABOUT & HELP, and the two docs; the picture is docs/damascus/creator.webp
+{ const pic = readFileSync(path.join(here, "..", "docs", "damascus", "creator.webp")), want = "data:image/webp;base64," + pic.toString("base64");
+  const LINE = "The Damascus method, created by Random, 10 November 2026", REC = "Dated and signed origin record: tag damascus-origin-2026-11-10 on GitLab, timestamped in Bitcoin block 975,337 (OpenTimestamps)";
+  const blocks = ["dmCreator", "aboutCreator"].map((id) => $(id)), dm = $("dmBox");
+  check("creator line: at the top of the Damascus tab and in ABOUT & HELP right after the SeedSigner recommendation, with the origin record line", blocks.every((b) => b && b.textContent.includes(LINE) && b.textContent.includes(REC) && !b.querySelector("a")) && blocks[0].parentElement === dm && blocks[0].previousElementSibling.tagName === "SUMMARY" && $("ssRecBox").nextElementSibling === blocks[1]);
+  check("creator picture: docs/damascus/creator.webp (" + pic.length + " bytes, 128 x 128 WebP) embedded as a data: URI, shown round at 44 px", blocks.every((b) => { const i = b.querySelector("img"); return i && i.getAttribute("src") === want && i.getAttribute("width") === "44" && i.getAttribute("height") === "44" && /bloodhound/.test(i.alt); }) && /border-radius: 50%/.test(readHtml().match(/\.vf-creator-pic \{[^}]*\}/)[0]));
+  const docs = ["damascus-method.md", "damascus-quick-guide.md"].map((f) => readFileSync(path.join(here, "..", "docs", f), "utf8"));
+  check("creator line and picture in docs/damascus-method.md and docs/damascus-quick-guide.md", docs.every((d) => d.includes('<img src="damascus/creator.webp"') && d.includes(LINE) && d.includes("timestamped in Bitcoin block 975,337 (OpenTimestamps)")));
+  check("creator lines: no first or never-done claim", ![...blocks.map((b) => b.textContent), ...docs.map((d) => d.split("\n").slice(0, 6).join(" "))].some((x) => /\bfirst\b|never (?:been )?done|novel/i.test(x))); }
 words(12);
 { const html = readHtml(), vis = html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<style[\s\S]*?<\/style>/g, "");
   const box = vis.slice(vis.indexOf('<details id="dmBox"'), vis.indexOf("</details>", vis.indexOf('id="dmMineBox"') + 10) + 400);
