@@ -58,7 +58,7 @@ Yes, if it takes standard 12- or 24-word BIP39 seeds. A Damascus seed is a norma
 
 ## What do the hallmarks reveal?
 
-The row and column hallmarks are 23 bits of a 12-word seed (35 bits for 24 words). That is not enough to find the seed, but it makes guessing easier. Keep them only next to the words, never on their own. Anyone who has the words has the money anyway.
+The row and column hallmarks reveal 22 bits of a 12-word seed (34 bits for 24 words; the two share one bit, the count of all the 1s). That is not enough to find the seed, but it makes guessing easier. Keep them only next to the words, never on their own. Anyone who has the words has the money anyway.
 
 ## What is an assay?
 

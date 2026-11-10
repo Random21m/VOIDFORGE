@@ -1,6 +1,6 @@
 # The Damascus method: design notes
 
-Date: 2026-11-10. This file holds the math, the simulations and the numbers behind every claim in [damascus-method.md](damascus-method.md). The prior-art research is in section 10 below. Every number here can be reproduced with the scripts listed in section 9.
+Date: 2026-11-10. This file holds the math, the simulations and the numbers behind every claim in [damascus-method.md](damascus-method.md). The prior-art research is in section 10 below. The numbers come from the scripts listed in section 9. Those scripts are in the method's working folder, not in this repository (section 6); here, the grids, hallmarks, words and bias boxes can be checked against the reference library `tests/fixtures/damascus/vf.js` with `tests/vfmethod.test.mjs`.
 
 **Status:** these are design notes, not a review. Nobody has timed the method with real people yet, and no third party has reviewed it.
 
@@ -329,7 +329,7 @@ Results from `sim/marks.js`: 10^6 trials per error class, plus exact enumeration
   - For 24 words, swaps between rows 11 apart (for example rows 1 and 12) can only be caught by R. That gives 97.4% overall. No 11-letter pattern can reach 100% for 23 rows. Catching every swap would need every two rows' letter patterns to differ in every column. That is a Latin rectangle, which has at most 11 rows. Some other pattern might score a little above 97.4%; we did not search for one.
 - **At generation**, the word check (F4) compares each word's read-back bits with its grid row directly, which catches 100%. The marks are what lets the **XOR** be checked without redoing it, and what lets an **heir** check the backup later.
 - **Marks catch mistakes, not cheating.** They are short and linear, not a commitment. Someone who wants to fake a sheet can make the marks match. Example 2 shows a cheating card sheet that passes every check.
-- **Leakage.** Each mark is a function of the secret. M + R reveal 23 bits of a 12-word seed (35 bits for 24 words); K adds 11. Store marks only next to the words. An assayer who sees only M(H) or only M(A) learns nothing about F (5.2). Anyone who sees both learns M(F).
+- **Leakage.** Each mark is a function of the secret. M + R reveal 22 bits of a 12-word seed (34 bits for 24 words), not 23 and 35: they share one bit, the parity of the whole grid. K adds 10 more (32 and 44 in all). Store marks only next to the words. An assayer who sees only M(H) or only M(A) learns nothing about F (5.2). Anyone who sees both learns M(F).
 
 ### 3.4 Heir check, by hand
 
@@ -413,7 +413,7 @@ The owner checks the seal using the two signed mark sets. This ties the assayed 
 
 - **Commit order.** The sheet finished second must not see the first. Each person fills and folds their sheet in private, and both are handed over before either is revealed. Worked example 2 shows what happens otherwise: the card sheet was chosen after seeing the dice, and the seed became a published test vector, with every check passing.
 - **A weak source breaks the zero-knowledge claim.** If A was weak (for example, a bad shuffle), the H assayer does learn something about F, and the other way round.
-- **Collusion.** If the two assayers pool their sheets, they have the seed. If they only share marks, they learn M(F) and R(F): 23 bits.
+- **Collusion.** If the two assayers pool their sheets, they have the seed. If they only share marks, they learn M(F) and R(F): 22 bits (34 for 24 words).
 - **Checksum tools.** Computing H's checksum word on a device shows H to that device. That is fine only if A never goes to the same device.
 - **What the assay does not prove.** It does not prove that the dice and cards were really used. It proves only that the written transcript is self-consistent.
 
@@ -468,7 +468,7 @@ What `ref/test.js` checks:
 
 ## 7. Prior art (no novelty claim)
 
-This page makes **no claim that the method is new**. The owner has asked developers publicly whether the combination below was described before; any claim waits for their answers. The prior-art search (2026-11-10) is summarized in section 10.
+This page makes **no claim that the method is new**. Every ingredient is published; the prior-art search (2026-11-10) is summarized in section 10.
 
 What the method does, as a combination: it (1) mixes two physical sources of different kinds by hand; (2) checks that hand mixing, and later the backed-up words, by hand with linear hallmarks (M(F) = M(H) ⊕ M(A), R likewise); and (3) lets each source's sheet be assayed by a different person without revealing the seed, the two sheets also forming a standard Coldcard Seed XOR pair.
 
@@ -506,7 +506,7 @@ The **mirror layout** and the **card knockout** are small details; each is an ob
    - the PCI DSS split-knowledge page;
    - the Ian Coleman issue 435 text;
    - Coldcard's "Verifying Dice Roll Math" page.
-2. **Whether the combination was described before.** A negative search is not proof; the owner has asked developers publicly.
+2. **Prior art.** No novelty claim is made (section 7).
 3. **All step times** are estimates from assumed per-action costs (1.4). No person has done the method with a stopwatch yet.
 4. **Real shuffles versus the GSR model**, and the claim that washing for 30–60 seconds randomizes a deck (Diaconis; from memory, source not checked).
 5. **Exchangeability of two dice read left-first** from a cup throw. It is assumed, not measured. The safe choice is one die thrown twice.
@@ -543,7 +543,7 @@ Read-only research. Some hosts were blocked in the research sandbox, so their qu
 | Part | Verdict | Main sources |
 |---|---|---|
 | A printed sheet that turns dice pairs into 5 bits with a 6x6 table (32 kept, 4 rejected), read in 11-bit groups | Done before | seed-cat/analog-seed-entropy (the same 36 → 32 rule); Blockstream's d6 guide; Rudefox ShowMyWork (2020); Bip39-Kit; bitaps; Ian Coleman's `entropy.js` |
-| Two separate physical sources mixed by hand with XOR | Partly done | Glacier XORs dice with a computer RNG in software; Coldcard Seed XOR XORs existing seeds by hand; commit-then-reveal mixing is described in general. No published procedure was found that XORs two physical sources by hand to make a seed (a negative search, not proof). |
+| Two separate physical sources mixed by hand with XOR | Partly done | Glacier XORs dice with a computer RNG in software; Coldcard Seed XOR XORs existing seeds by hand; commit-then-reveal mixing is described in general. |
 | A bias check on the sheet before the words are trusted | Done before | Bip39-Kit (chi-square with power tables), Krux, seedroller; the by-hand chi-square test is textbook |
 | The last word needs SHA-256, so two tools must agree | Done before, and widely recommended | Glacier, Bip39-Kit, SeedSigner (dice verification doc), Krux |
 | Linear check marks that commute with share arithmetic | Done before in general | BIP-93 / codex32 |

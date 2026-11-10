@@ -102,10 +102,10 @@ await p.evaluate(() => { const g = document.getElementById('sgGo'); if (g && g.o
   const fill = async (assay) => p.evaluate(async ([dice, cards, assay]) => {
     showTab('make'); setMethod('damascus'); const s = (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input')); };
     document.getElementById('wordSel').value = '12'; document.getElementById('wordSel').dispatchEvent(new Event('change'));
-    s('dmDice', dice); s('dmCards', cards);
-    const w = document.getElementById('dmWho'), out = {};
-    for (const k of ['h', 'a']) { w.value = k; w.dispatchEvent(new Event('change')); await dmCheck(); out[k] = [...document.getElementById('dmOut').querySelectorAll('pre')].pop().textContent.split('\n').map((l) => l.replace(/^\s*\d+\.\s/, '')).join(' '); }
-    w.value = 'both'; w.dispatchEvent(new Event('change')); await dmCheck(); await dmGenerate();
+    const w = document.getElementById('dmWho'), out = {}, both = () => { w.value = 'both'; w.dispatchEvent(new Event('change')); s('dmDice', dice); s('dmCards', cards); };
+    const cf = window.confirm; window.confirm = () => true;   // an assay clears the other sheet's box after a yes (v2.14.0 review L1), so both boxes are filled again each time
+    for (const k of ['h', 'a']) { both(); w.value = k; w.dispatchEvent(new Event('change')); await dmCheck(); out[k] = [...document.getElementById('dmOut').querySelectorAll('pre')].pop().textContent.split('\n').map((l) => l.replace(/^\s*\d+\.\s/, '')).join(' '); }
+    both(); await dmCheck(); await dmGenerate(); window.confirm = cf;
     out.f = document.getElementById('genResult').textContent.split('\n')[0].trim();
     showTab('check'); document.getElementById('dmrWords').value = out.f; document.getElementById('dmrM').value = '00000000000'; document.getElementById('dmrR').value = '000000000000'; await dmRecheck();
     return out;

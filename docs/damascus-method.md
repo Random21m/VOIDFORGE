@@ -31,13 +31,13 @@ The step labels are the ones printed on the sheets. Times are estimates for one 
 | Step | What you do | Time |
 |---|---|---|
 | Setup | Lay out the sheets, the dice, the cards and a pencil. | 1 min |
-| **H1** | **Dice (Hammer sheet).** Throw both dice; read the left die first. Write both numbers in the next pair box. 1-1, 2-2, 3-3 or 4-4: cross the box out and throw again. Otherwise look up the pair in the mirror table (row = left die, column = right die) and write its 5 bits in the next shaded run of grid H. 26 good pairs fill the grid (about 29 throws); the last pair uses only 3 bits. | 7 min |
-| **H2** | **Dice check (bias box).** In the first 26 pair boxes (crossed-out ones too), count how often each face came up, and count the repeats (a throw the same as the one before). The fail rules are printed on the sheet. | 1 min |
+| **H1** | **Dice (Hammer sheet).** Throw both dice; read the left die first. Write both numbers in the next pair box. 1-1, 2-2, 3-3 or 4-4: cross the box out and throw both dice again. Otherwise look up the pair in the mirror table (row = left die, column = right die) and write its 5 bits in the next shaded run of grid H. 26 good pairs fill the grid (about 29 throws); the last pair uses only 3 bits. | 7 min |
+| **H2** | **Dice check (bias box).** In the first 26 pair boxes (crossed-out ones too), count how often each face came up, and count the repeats (a number the same as the number just before it, reading every number in order: left, right, then the next box). The fail rules are printed on the sheet. | 1 min |
 | **H3** | **Hallmarks on the Hammer sheet:** R for each row, M for each column. | 1.5 min |
 | **H4** | Optional: grid H as a Seed XOR part (see Assay). | — |
 | **A1** | **Shuffle (Anvil sheet).** Spread the cards face down and swirl them for 30 seconds, riffle shuffle 12 times, then cut. Three decks in all: shuffle the same deck again each time. | 4.25 min (1.4 a deck) |
-| **A2** | **Deal and play.** Deal 8 cards face up. Play the 7 matches: 1 against 2, 3 against 4, 5 against 6, 7 against 8, then the two winners on the left, then the two winners on the right, then the final. The higher card wins and plays on. Write **1 if the right card is higher**, 0 if the left card is higher. Ace is lowest, King is highest; for the same rank, clubs < diamonds < hearts < spades. 6 groups of 8, then 4 cards (1 against 2, 3 against 4, then the two winners). On the third deck, stop when the grid is full. | 7.25 min (2.4 a deck, A3 included) |
-| **A3** | **Card check (bias box), while you deal.** Count the neighbors: two cards side by side with the same suit and ranks next to each other. After each deck, count its 1s. | (in A2) |
+| **A2** | **Deal and play.** Deal 8 cards face up. Play the 7 matches: 1 against 2, 3 against 4, 5 against 6, 7 against 8, then the two winners on the left, then the two winners on the right, then the final. The higher card wins and plays on. Write **1 if the right card is higher**, 0 if the left card is higher. Ace is lowest, King is highest; for the same rank, clubs < diamonds < hearts < spades. 6 groups of 8, then 4 cards (1 against 2, 3 against 4, then the two winners). The last deck is shorter: on deck 3, deal 5 groups of 8, then 4 cards, and stop. | 7.25 min (2.4 a deck, A3 included) |
+| **A3** | **Card check (bias box), while you deal.** Count the neighbors: two cards side by side with the same suit and ranks next to each other (Ace and King are not neighbors). After each deck, count its 1s. | (in A2) |
 | **A4** | **Hallmarks on the Anvil sheet.** With the card record (on for two people, optional for one), also write down every card. | 1.5 min (+4.5 for the card record) |
 | **F1** | **Fold (Forge sheet).** Lay the Hammer and Anvil sheets side by side. For every box: same bits gives 0, different bits gives 1. | 2.5 min |
 | **F2** | **Seal.** Hallmarks on grid F. Fold the Hammer and Anvil hallmarks the same way: the result must equal F's hallmarks. If one does not match, the mistake is where that row and that column cross. | 2 min |
@@ -48,7 +48,7 @@ The step labels are the ones printed on the sheets. Times are estimates for one 
 | | **Total** | **about 37 min to checked words, about 39 with the backup** |
 
 - **Check my sheets:** on the Damascus tab, type the dice pairs and the card record (or grid A's bits). VOIDFORGE works out every grid, hallmark and word, shows the range of the last word, the last word, the fingerprint and the first address, and points to the row and column of any mistake you typed in. FORGE SEED then puts the seed into the page's usual tools.
-- **24 words:** the same steps with 52 good dice pairs and 6 decks. Row 24 has 3 bits, which pick one block of 256 words; choose 24 words on the SeedSigner. About 71 minutes alone, or about 53 minutes with two people.
+- **24 words:** the same steps with 52 good dice pairs and 6 decks (on deck 6, the last: 4 groups of 8, then 4 cards). Row 24 has 3 bits, which pick one block of 256 words; choose 24 words on the SeedSigner. About 71 minutes alone, or about 53 minutes with two people.
 
 ## What each check shows, and what it does not
 
@@ -59,7 +59,7 @@ The step labels are the ones printed on the sheets. Times are estimates for one 
 | Word check | Every word matches its row. | Anything about the randomness. |
 | Two tools agree, and the word is in the hand range | The SHA-256 last word is right. | That the tools are safe to use with real funds. Use offline devices. |
 | Fingerprint and first address | Your wallet holds this seed. | That no one else has seen it. |
-| Heir recheck (hallmarks on the backup) | The written words are the forged words. It catches any single wrong word, and every swap of two words when the skew hallmark K is used (12 words). VOIDFORGE: CHECK A BACKUP > Recheck a Damascus backup. | It needs the hallmarks. Keep them only next to the words: on their own they reveal 23 bits. |
+| Heir recheck (hallmarks on the backup) | The written words are the forged words. It catches any single wrong word except a wrong last word in the same table row (block, for 24 words), which only the checksum catches, and every swap of two words when the skew hallmark K is used (12 words). VOIDFORGE: CHECK A BACKUP > Recheck a Damascus backup. | It needs the hallmarks. Keep them only next to the words: on their own they reveal 22 bits (34 for 24 words). |
 
 ## Assay (optional)
 
@@ -73,6 +73,17 @@ The step labels are the ones printed on the sheets. Times are estimates for one 
 3. Each sheet, with its own last word added by a tool, is a valid BIP39 phrase, and the two phrases are a Coldcard **Seed XOR** pair for your seed. On the Damascus tab, choose "An assayer" under Check my sheets: it shows that sheet's hallmarks and its own Seed XOR phrase, never the seed.
 
 **The order matters.** Worked example 2 shows what happens if the card person sees the dice first: they can choose any seed they want, and every check still passes.
+
+## Practice sheets: the published rule
+
+PRACTICE on the Damascus tab fills in practice sheet 1, 2, 3 ... up to 100, then starts again at 1. A practice sheet is made by this rule, never by the page's own random numbers (the page makes none), so anyone can make the same sheet:
+
+1. Practice sheet N reads 32-bit numbers, big-endian, from SHA-256 of the text `VOIDFORGE Damascus practice N block k` (UTF-8), for k = 0, 1, 2 ... Each hash gives eight numbers.
+2. A number from 0 to m - 1 is drawn by rejection: a 32-bit number at or above the largest multiple of m (below 2^32) is skipped; otherwise the draw is the number modulo m.
+3. **Dice:** pairs of draws, each 1 + a draw from 0 to 5 (first throw, then second), until the grid has 26 good pairs (52 for 24 words). Pairs that say "throw again" are kept, as on paper.
+4. **Cards:** for each deck, the 52 cards in the order clubs, diamonds, hearts, spades, Ace to King in each suit, shuffled by Fisher-Yates: for i from 51 down to 1, swap card i with card j, where j is a draw from 0 to i.
+
+The dice and the cards are drawn from one stream, dice first. Practice sheets 1 to 100 of both lengths make public phrases: VOIDFORGE knows all 200 of them (and the three worked examples), says PRACTICE on the Damascus tab whenever the dice and cards make one, keeps FORGE SEED off for them, and warns about them in CHECK A BACKUP. `tests/vfmethod.test.mjs` makes all 200 again from this rule with node:crypto.
 
 ## Prior art
 

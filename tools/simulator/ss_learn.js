@@ -19,7 +19,7 @@ const SS_LEARN_FP = "73c5da0a";   // fingerprint of abandon ... about
 const SS_LEARN_MARK = "VOIDFORGE practice coins: made up, not real, never on the blockchain";
 const SS_LEARN_FRAME_MS = 300;    // one QR part every 0.3 s, as a wallet app's animated QR
 
-const ssLearn = { arming: false, lesson: null, step: 0, hold: null, done: false, timer: null, tx: null, building: false, reading: false, scanDec: null, msg: "" };
+const ssLearn = { arming: false, lesson: null, step: 0, hold: null, done: false, timer: null, tx: null, building: false, reading: false, scanDec: null, msg: "", gen: 0 };
 const ssLearnCam = { byLesson: false, frames: null, what: "", say: "", key: "", on: false, shown: null, read: false, t0: 0, cache: new Map() };
 
 // ---------------------------------------------------------------- the device, as the lessons see it
@@ -152,9 +152,14 @@ function ssLearnPsbt(tx) {
   for (const m of [tx.global, ...tx.inMaps, ...tx.outMaps]) { for (const [k, v] of m) p.push(ssLearnKV(k, v)); p.push(Uint8Array.of(0)); }
   return concatBytes(...p);
 }
-// The seed the practice transaction spends from: the last one loaded on the device, or the test seed.
+// The seed the practice transaction spends from: in a lesson, the test seed the lesson names (review L7: the last seed loaded
+// may be another one, and the lesson says to sign with the test seed); otherwise the last one loaded on the device, or the test seed.
 async function ssLearnSpender() {
   const seeds = ssLearnSeeds().filter((s) => s && s.seed_bytes instanceof Uint8Array);
+  if (ssLearn.lesson && ssLearn.lesson.txKind) {
+    const t = seeds.find((s) => s.mnemonic_str === SS_LEARN_ABANDON && !s.passphrase);
+    return t ? { seed: t.seed_bytes, own: true } : { seed: await mnemonicToSeed(SS_LEARN_ABANDON, ""), own: false };
+  }
   if (seeds.length) { const s = seeds[seeds.length - 1]; return { seed: s.seed_bytes, own: true }; }
   return { seed: await mnemonicToSeed(SS_LEARN_ABANDON, ""), own: false };
 }
@@ -284,7 +289,7 @@ const SS_LEARN_SEEDNOTE = "This lesson uses the public test seed abandon ... abo
 const SS_LEARN_LESSONS = [
   { id: "dice", name: "Make a seed from dice (12 words)",
     note: "This lesson makes a public test seed: you enter fifty 1s instead of real dice rolls. Anyone can enter the same rolls, so never put coins on this seed.",
-    end: "You made a 12-word seed, wrote it down and checked your copy. For real coins you would roll a real die 50 times and keep the paper safe. This test seed is public: never use it.",
+    end: "You made a 12-word seed, wrote it down and checked your copy. For real coins you would do this on a real SeedSigner, not here: roll a real die 50 times and keep the paper safe. This test seed is public: never use it.",
     steps: [
       SS_LEARN_HOME,
       { do: "Press the joystick down once to select Tools, then press it in.", see: "Tools: New seed, New seed, Calc 12th/24th word, Address explorer, Verify address.", at: ssLearnIs("SSToolsMenuView") },
@@ -331,7 +336,7 @@ const SS_LEARN_LESSONS = [
     ] },
   { id: "multisig", name: "Set up and check a 2-of-3 multisig", txKind: "multi",
     note: "This lesson uses three public test seeds: abandon ... about on the device (fingerprint " + SS_LEARN_FP + ") and two more for the other cosigners. Anyone can load them, so never put coins on them. The coins are made up.",
-    end: "You loaded the wallet descriptor, the device checked the change against it, and you signed. A second cosigner must sign too before this 2-of-3 transaction could be broadcast.",
+    end: "You loaded the wallet descriptor, the device checked the change against it, and you signed. With real coins, a second cosigner would sign too before a 2-of-3 transaction could be broadcast. This one spends made-up coins, so it never can.",
     steps: [...SS_LEARN_LOAD, SS_LEARN_HOME,
       { do: "Below, under Practice transaction, choose 2-of-3 multisig: 1 input and press PRACTICE TRANSACTION.", see: "Under the button: what the transaction spends and pays.", at: ssLearnTxIs("multi") },
       { feed: "tx", do: "On the device, Scan is selected: press the joystick in. The practice wallet holds the transaction (a PSBT) up to the camera.", see: "Select Signer, with " + SS_LEARN_FP + ".", at: ssLearnIs("SSPSBTSelectSeedView") },
@@ -373,7 +378,7 @@ function ssLearnRender() {
     ssLearnSetText("ssLearnDo", L.done ? les.end : st.do);
     ssLearnSetText("ssLearnSee", L.done ? "" : "What you should see: " + st.see);
     ssLearnSetText("ssLearnState", L.done ? "Lesson done." : L.msg);
-    ssLearnEl("ssLearnBack").disabled = L.step === 0 && !L.done;
+    ssLearnEl("ssLearnBack").disabled = !L.done && !L.lesson.steps.slice(0, L.step).some((s) => !(s.skip && s.skip()));
     ssLearnEl("ssLearnNext").disabled = L.done;
   }
   const cam = ssLearnEl("ssLearnCam");
@@ -442,7 +447,8 @@ async function ssLearnTxGo() {
   if (!ssPageOn || ssLearn.building) return;
   const kind = (ssLearnEl("ssTxKind") || {}).value === "multi" ? "multi" : "single";
   ssLearn.building = true; ssLearn.tx = null; ssLearnHide(); ssLearnRender();
-  try { ssLearn.tx = await ssLearnBuild(kind); if (ssPageOn) await ssLearnArm("tx"); else ssLearn.tx = null; }
+  const gen = ssLearn.gen;   // review L18: closing the box (ssLearnWipe) while it is built drops it
+  try { const tx = await ssLearnBuild(kind); if (ssPageOn && gen === ssLearn.gen) { ssLearn.tx = tx; await ssLearnArm("tx"); } }
   catch (e) { ssLearn.tx = null; console.error("Practice transaction:", e); }
   finally { ssLearn.building = false; ssLearnRender(); ssLearnTimer(); }
 }
@@ -455,7 +461,7 @@ function ssLearnWipe() {
     for (const x of [T.psbt, T.utx]) if (x instanceof Uint8Array) x.fill(0);
     for (const m of [T.global, ...T.inMaps, ...T.outMaps]) for (const kv of m) for (const x of kv) if (x instanceof Uint8Array) x.fill(0);
   }
-  L.lesson = null; L.step = 0; L.done = false; L.hold = null; L.tx = null; L.building = false; L.scanDec = null; L.msg = "";
+  L.lesson = null; L.step = 0; L.done = false; L.hold = null; L.tx = null; L.building = false; L.scanDec = null; L.msg = ""; L.gen++;
   ssLearnForget(); ssForgeReset();
   ssLearnCam.frames = null; ssLearnCam.byLesson = false; ssLearnCam.what = ""; ssLearnCam.key = ""; ssLearnCam.shown = null; ssLearnCam.cache.clear();
   ssLearnRender();
@@ -464,7 +470,8 @@ function ssLearnInit() {
   const pick = ssLearnEl("ssLearnPick"); if (!pick) return;
   for (const l of SS_LEARN_LESSONS) { const o = document.createElement("option"); o.value = l.id; o.textContent = l.name; pick.appendChild(o); }
   ssLearnEl("ssLearnGo").addEventListener("click", () => { if (ssPageOn) ssLearnStart(); });
-  ssLearnEl("ssLearnBack").addEventListener("click", () => { const L = ssLearn; if (!L.lesson) return; let i = L.done ? L.step : L.step - 1; while (i > 0 && L.lesson.steps[i].skip && L.lesson.steps[i].skip()) i--; ssLearnGoto(i, true); });
+  // review L18: BACK goes to the last step before this one that is not passed over; with none, it stays (ssLearnGoto would skip forward again)
+  ssLearnEl("ssLearnBack").addEventListener("click", () => { const L = ssLearn; if (!L.lesson) return; let i = L.done ? L.step : L.step - 1; while (i >= 0 && L.lesson.steps[i].skip && L.lesson.steps[i].skip()) i--; if (i >= 0) ssLearnGoto(i, true); });
   ssLearnEl("ssLearnNext").addEventListener("click", () => { const L = ssLearn; if (!L.lesson || L.done) return; if (L.step === L.lesson.steps.length - 1) { L.done = true; ssLearnRender(); ssLearnTimer(); } else ssLearnGoto(L.step + 1, true); });
   ssLearnEl("ssLearnRestart").addEventListener("click", () => { if (ssLearn.lesson) { ssLearnHide(); ssLearnGoto(0, false); } });
   ssLearnEl("ssLearnCamOff").addEventListener("click", ssLearnHide);

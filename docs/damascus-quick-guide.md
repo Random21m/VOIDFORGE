@@ -29,11 +29,11 @@ Work in a private room. Phones away.
 
 1. **Throw both dice.** Read the **left** die first. (H1)
 2. **Write both numbers** in the next pair box.
-3. **Rolled 1-1, 2-2, 3-3 or 4-4?** Cross the pair box out and throw again.
+3. **Rolled 1-1, 2-2, 3-3 or 4-4?** Cross the pair box out and throw both dice again.
 4. **Look up the pair** in the mirror table on the Hammer sheet: the row is the left die, the column is the right die. It gives you 5 bits (like `01101`).
 5. **Write the 5 bits** into the next shaded run of the grid.
 6. **Repeat** until the grid is full (26 good pairs). The last pair uses only 3 bits.
-7. **Dice check:** in the first 26 pair boxes (crossed-out ones too), count how often each face came up, and count the repeats (a throw the same as the one before). The sheet says when it is a FAIL. On a FAIL, use other dice and start a new Hammer sheet. (H2)
+7. **Dice check:** in the first 26 pair boxes (crossed-out ones too), count how often each face came up, and count the repeats (a number the same as the number just before it, reading every number in order: left, right, then the next box). The sheet says when it is a FAIL. On a FAIL, use other dice and start a new Hammer sheet. (H2)
 
 ## Part 2: The Anvil (cards), about 12 minutes
 
@@ -45,8 +45,8 @@ Work in a private room. Phones away.
    - Ace is lowest, King is highest. For the same rank: clubs < diamonds < hearts < spades.
 4. **Deal the next 8 cards** and play again: 6 groups of 8 in all.
 5. **Then deal 4 cards:** 1 against 2, 3 against 4, then the two winners.
-6. **Do it 3 times in all:** shuffle the same deck again (step 1) each time. On the third deck, stop when the grid is full.
-7. **Card check, while you deal:** count the neighbors, two cards side by side with the same suit and ranks next to each other (like 7♥ 8♥). After each deck, count its 1s. The sheet says when it is a FAIL. On a FAIL, shuffle again and redo that deck. (A3)
+6. **Do it 3 times in all:** shuffle the same deck again (step 1) each time. The last deck is shorter: on deck 3, deal 5 groups of 8, then 4 cards, and stop.
+7. **Card check, while you deal:** count the neighbors, two cards side by side with the same suit and ranks next to each other (like 7♥ 8♥; Ace and King are not neighbors). After each deck, count its 1s. The sheet says when it is a FAIL. On a FAIL, shuffle again and redo that deck. (A3)
 
 ## Part 3: Hallmarks on each sheet, about 3 minutes
 
@@ -91,7 +91,7 @@ Row 12 gives only 7 bits, because the last word also holds a checksum that needs
 
 ## 24 words
 
-The same steps, with 52 good dice pairs and 6 decks. The last row has 3 bits, which pick one block of the word table; use 24 words on the SeedSigner. It takes about 70 minutes alone.
+The same steps, with 52 good dice pairs and 6 decks (on deck 6, the last: 4 groups of 8, then 4 cards). The last row has 3 bits, which pick one block of the word table; use 24 words on the SeedSigner. It takes about 70 minutes alone.
 
 ## Doing it with a helper (optional)
 
