@@ -42,7 +42,14 @@ The settings menu in the code goes General -> Advanced -> Hardware. "Dev Options
 - Scan: one async loop at the stream framerate (6 fps) replaces the camera, decoder and preview threads. pyzbar is replaced by VOIDFORGE's `qrDecodeRgba`. The progress overlay (RGBA 0,0,0,191) is drawn in place, at the same coordinates.
 - Address explorer: VOIDFORGE derives addresses from the master key plus the path, so `data.xpub` holds `{root, steps}`. Regtest uses the test network's address prefixes, because VOIDFORGE has no regtest.
 
-## Left out / stage 2
-- PSBT, wallet descriptor, address-verification and sign-message scan results go to SSNotYetImplementedView. The original routing is kept in comments. Their QR types are still detected, so the "Wrong QR Type" errors work. Specter and BBQr parts are counted; UR parts are counted, and `qrTextDecode` decides whether a UR scan is complete. PSBT detection checks only the "psbt\xff" magic bytes. The fountain decoder, embit PSBT parsing and the descriptor objects are not ported.
-- The multisig branch of the address explorer is reachable only through descriptor scanning, which is stage 2. It is ported against a stub descriptor interface.
-- For the integrator: VOIDFORGE's own camera reads a SeedQR only while the computer is offline. This SeedSigner scanner does not check that. Decide whether the page's offline rule should apply here too.
+## Stage 2 (see NOTES-psbt.md)
+- The scan routing is complete: PSBT -> PSBTSelectSeedView, wallet descriptor -> MultisigWalletDescriptorView (single-sig
+  descriptors -> NotYetImplementedView, as in SeedSigner), address -> AddressVerificationStartView, sign message ->
+  SeedSignMessageStartView. The PSBT and descriptor decoders of decode_qr.py are ported (Specter, BBQr, base64, base43,
+  generic and Coldcard config-file descriptors, Specter wallet JSON, UR crypto-psbt / crypto-output / crypto-account /
+  bytes); a PSBT is recognized by fully parsing it (SSPSBT.parse), as embit does.
+- SIM: UR parts: SeedSigner's fountain decoder is not ported. SSURDecoder joins the pure parts 1..seqLen with VOIDFORGE's
+  urDecodeFrames; mixed fountain parts are skipped (shown as "already seen"), so a scan completes once each pure part
+  has been read.
+- For the integrator: VOIDFORGE's own camera reads a SeedQR only while the computer is offline; the scanner here follows
+  the same rule (ssToolsSeedScanBlocked).

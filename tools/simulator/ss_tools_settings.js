@@ -1389,45 +1389,199 @@ class SSBaseAnimatedQrDecoder extends SSBaseQrDecoder {
   }
 }
 
-// Specter "pMofN " parts (PSBT and wallet export). Collected only: their content is stage 2.
-class SSSpecterPartsQrDecoder extends SSBaseAnimatedQrDecoder {
-  current_segment_num(segment) { return parseInt(/^p(\d+)of(\d+) /i.exec(segment)[1], 10); }
-  total_segment_nums(segment) { return parseInt(/^p(\d+)of(\d+) /i.exec(segment)[2], 10); }
-  parse_segment(segment) { return segment.split(" ").slice(1).join(" "); }
+// models/decode_qr.py: the PSBT and wallet descriptor decoders.
+function ssToolsB64ToBytes(s) {   // binascii.a2b_base64
+  const bin = atob(s), b = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+  return b;
 }
+
+class SSSpecterPsbtQrDecoder extends SSBaseAnimatedQrDecoder {
+  // Used to decode Specter Desktop Animated QR PSBT encoding.
+  get_base64_data() {
+    const base64 = this.segments.join("");
+    if (this.complete && SSDecodeQR.is_base64(base64)) return base64;
+    return null;
+  }
+  get_data() {
+    const base64 = this.get_base64_data();
+    if (base64 !== null) return ssToolsB64ToBytes(base64);
+    return null;
+  }
+  current_segment_num(segment) { const m = /^p(\d+)of(\d+) /i.exec(segment); return m ? parseInt(m[1], 10) : undefined; }
+  total_segment_nums(segment) { const m = /^p(\d+)of(\d+) /i.exec(segment); return m ? parseInt(m[2], 10) : undefined; }
+  parse_segment(segment) { const a = segment.split(" "); return a[a.length - 1].trim(); }
+}
+
 class SSBBQRPsbtQrDecoder extends SSBaseAnimatedQrDecoder {
+  // Used to decode BBQR Animated PSBT encoding.
   constructor() { super(); this.encoding = null; }
+  get_data() {
+    if (this.complete && this.encoding) {
+      if (this.encoding === "H") {
+        const out = [];
+        for (const s of this.segments) for (let i = 0; i + 1 < s.length; i += 2) out.push(parseInt(s.substr(i, 2), 16));
+        return Uint8Array.from(out);
+      }
+      // base32 decode (VOIDFORGE's base32Decode ignores the missing padding, as b32decode with padding added does)
+      let rv = [];
+      for (const p of this.segments) rv = rv.concat(Array.from(base32Decode(p)));
+      // decompress (zlib wbits=-10: raw DEFLATE, VOIDFORGE's inflateRaw)
+      if (this.encoding === "Z") rv = Array.from(inflateRaw(Uint8Array.from(rv)));
+      return Uint8Array.from(rv);
+    }
+    return null;
+  }
   current_segment_num(segment) { return parseInt(segment.slice(6, 8), 36) + 1; }
   total_segment_nums(segment) { return parseInt(segment.slice(4, 6), 36); }
   parse_segment(segment) { this.encoding = segment[2]; return segment.slice(8).trim(); }
 }
 
-// SIM: stage 2. UR (crypto-psbt / crypto-output / crypto-account / bytes) parts are gathered and counted; completion uses
-// VOIDFORGE's qrTextDecode when present. SeedSigner's fountain decoder (URDecoder) is not ported.
-class SSStage2URDecoder {
-  constructor() { this.parts = []; this.total = null; this._complete = false; }
-  receive_part(s) {
-    const key = s.toLowerCase();
-    if (this.parts.includes(key)) return false;
-    this.parts.push(key);
-    const m = /^ur:[^/]+\/(\d+)-(\d+)\//i.exec(s);
-    this.total = m ? parseInt(m[2], 10) : 1;
-    if (!m) this._complete = true;
-    else if (typeof qrTextDecode === "function") { try { this._complete = !!qrTextDecode(this.parts.join("\n")); } catch (e) { this._complete = false; } }
-    else this._complete = this.parts.length >= this.total;
-    return true;
+// helpers/ur2 URDecoder. SIM: VOIDFORGE's UR reader (urDecodeFrames) joins the pure parts 1..seqLen. SeedSigner's fountain
+// decoder can also solve the mixed parts (seqNum > seqLen) that encoders send after the first round; they are skipped here
+// (read as "already seen"), so a scan completes once every pure part has been read.
+class SSURDecoder {
+  constructor() {
+    this.expected_type = null;
+    this.result = null;
+    this.seq_len = null;
+    this.received = new Map();
+    this.processed_parts_count = 0;
   }
-  is_complete() { return this._complete; }
+  receive_part(str) {
+    try {
+      // Don't process the part if we're already done
+      if (this.result !== null) return false;
+      const s = String(str).toLowerCase();
+      if (!s.startsWith("ur:")) return false;
+      const components = s.slice(3).split("/");
+      const type = components.shift();
+      if (!/^[a-z0-9-]+$/.test(type)) return false;
+      // Don't continue if this part doesn't validate
+      if (this.expected_type === null) this.expected_type = type;
+      else if (this.expected_type !== type) return false;
+      // If this is a single-part UR then we're done
+      if (components.length === 1) {
+        const r = urDecodeFrames([s]);
+        this.result = {type: r.type, cbor: Uint8Array.from(r.msg)};
+        return true;
+      }
+      // Multi-part URs must have two path components: seq/fragment
+      if (components.length !== 2) return false;
+      const m = /^(\d+)-(\d+)$/.exec(components[0]);
+      if (!m) return false;
+      const seq_num = parseInt(m[1], 10), seq_len = parseInt(m[2], 10);
+      const part = cborRead(bytewordsMinDecode(components[1]), 0).v;
+      if (!Array.isArray(part) || part.length !== 5 || part[0] !== seq_num || part[1] !== seq_len) return false;
+      if (this.seq_len !== null && this.seq_len !== seq_len) return false;
+      this.seq_len = seq_len;
+      this.processed_parts_count += 1;
+      if (seq_num > seq_len) return false;   // SIM: a mixed fountain part (see above)
+      if (this.received.has(seq_num)) return false;   // This part didn't add any new info
+      this.received.set(seq_num, s);
+      if (this.received.size === seq_len) {
+        try {
+          const r = urDecodeFrames(Array.from(this.received.values()));
+          this.result = {type: r.type, cbor: Uint8Array.from(r.msg)};
+        } catch (e) {
+          this.result = e instanceof Error ? e : new Error(String(e));
+        }
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  expected_part_count() { return this.seq_len; }
   estimated_percent_complete(weight_mixed_frames = false) {
-    if (this._complete) return 1;
-    return this.total ? Math.min(0.99, this.parts.length / this.total) : 0;
+    if (this.is_complete()) return 1;
+    if (this.seq_len === null) return 0;
+    if (!weight_mixed_frames) return Math.min(0.99, this.processed_parts_count / (this.seq_len * 1.75));
+    return Math.min(0.99, this.received.size / this.seq_len);
+  }
+  is_success() { return this.result !== null && !(this.result instanceof Error) ? this.result : false; }
+  is_failure() { return this.result instanceof Error ? this.result : false; }
+  is_complete() { return this.result !== null; }
+  result_message() { return this.result; }
+}
+
+class SSBase64PsbtQrDecoder extends SSBaseSingleFrameQrDecoder {
+  // Decodes single frame base64 encoded qr image. Does not support animated qr (no indicator of segments or their order).
+  add(segment, qr_type = SSQRType.PSBT__BASE64) {
+    if (SSDecodeQR.is_base64(segment)) {
+      this.complete = true;
+      this.data = segment;
+      this.collected_segments = 1;
+      return SSDecodeQRStatus.COMPLETE;
+    }
+    return SSDecodeQRStatus.INVALID;
+  }
+  get_base64_data() { return this.data; }
+  get_data() {
+    const base64 = this.get_base64_data();
+    if (base64 !== null && base64 !== undefined) return ssToolsB64ToBytes(base64);
+    return null;
   }
 }
 
-// Stage 2 single-frame formats (base64/base43 PSBT, generic or config-file descriptors): recognized and completed only.
-class SSStage2SingleFrameDecoder extends SSBaseSingleFrameQrDecoder {
-  constructor() { super(); this.data = null; }
-  add(segment, qr_type) { this.data = segment; this.complete = true; this.collected_segments = 1; return SSDecodeQRStatus.COMPLETE; }
+class SSBase43PsbtQrDecoder extends SSBaseSingleFrameQrDecoder {
+  // Decodes single frame base43 encoded qr image.
+  add(segment, qr_type = SSQRType.PSBT__BASE43) {
+    if (SSDecodeQR.is_base43_psbt(segment)) {
+      this.complete = true;
+      this.data = SSDecodeQR.base43_decode(segment);
+      this.collected_segments = 1;
+      return SSDecodeQRStatus.COMPLETE;
+    }
+    return SSDecodeQRStatus.INVALID;
+  }
+  get_data() { return this.data; }
+}
+
+class SSSpecterWalletQrDecoder extends SSBaseAnimatedQrDecoder {
+  // Decodes animated frames to get a wallet descriptor from Specter Desktop
+  validate_json() {
+    try { JSON.parse(this.segments.join("")); } catch (e) { return false; }
+    return true;
+  }
+  get is_valid() {
+    if (this.validate_json()) {
+      const data = JSON.parse(this.segments.join(""));
+      return !!(data && typeof data === "object" && "descriptor" in data);
+    }
+    return undefined;
+  }
+  get_wallet_descriptor() {
+    if (this.is_valid) return JSON.parse(this.segments.join(""))["descriptor"];
+    return null;
+  }
+  current_segment_num(segment) { const m = /^p(\d+)of(\d+) /i.exec(segment); return m ? parseInt(m[1], 10) : 1; }
+  total_segment_nums(segment) { const m = /^p(\d+)of(\d+) /i.exec(segment); return m ? parseInt(m[2], 10) : 1; }
+  parse_segment(segment) { const m = /^p(\d+)of(\d+) (.+$)/is.exec(segment); return m ? m[3] : segment; }
+}
+
+class SSGenericWalletQrDecoder extends SSBaseSingleFrameQrDecoder {
+  constructor() { super(); this.descriptor = null; }
+  async add(segment, qr_type = SSQRType.WALLET__GENERIC) {
+    try {
+      // Validate via embit (here: the practice signer's descriptor parser, SSDescriptor)
+      await SSDescriptor.from_string(segment);
+      this.descriptor = segment;
+      this.complete = true;
+      return SSDecodeQRStatus.COMPLETE;
+    } catch (e) {
+      console.info(String(e && e.message || e));
+    }
+    return SSDecodeQRStatus.INVALID;
+  }
+  get_wallet_descriptor() { return this.descriptor; }
+}
+
+class SSMultiSigConfigFileQRDecoder extends SSGenericWalletQrDecoder {
+  async add(segment, qr_type = SSQRType.WALLET__CONFIGFILE) {
+    const descriptor = SSDecodeQR.multisig_setup_file_to_descriptor(segment);
+    return super.add(descriptor, SSQRType.WALLET__CONFIGFILE);
+  }
 }
 
 class SSSeedQrDecoder extends SSBaseSingleFrameQrDecoder {
@@ -1563,6 +1717,8 @@ class SSBitcoinAddressQrDecoder extends SSBaseSingleFrameQrDecoder {
       "bc1p": [C.TAPROOT, C.MAINNET], "tb1p": [C.TAPROOT, C.TESTNET], "bcrt1p": [C.TAPROOT, C.REGTEST],
     };
     this.address_type = map[addr_prefix] || null;
+    // If the addr type is case-insensitive, ensure we return it lowercase
+    if (this.address_type && [C.NATIVE_SEGWIT, C.TAPROOT].includes(this.address_type[0])) this.address = this.address.toLowerCase();
     return SSDecodeQRStatus.COMPLETE;
   }
   get_address() { return this.address; }
@@ -1590,20 +1746,20 @@ class SSDecodeQR {
 
     if (this.qr_type === null) {
       this.qr_type = qr_type;
-      if ([T.PSBT__UR2, T.OUTPUT__UR, T.ACCOUNT__UR, T.BYTES__UR].includes(this.qr_type)) this.decoder = new SSStage2URDecoder();   // SIM: stage 2
-      else if (this.qr_type === T.PSBT__SPECTER) this.decoder = new SSSpecterPartsQrDecoder();                                       // SIM: stage 2
-      else if (this.qr_type === T.PSBT__BASE64) this.decoder = new SSStage2SingleFrameDecoder();                                     // SIM: stage 2
-      else if (this.qr_type === T.PSBT__BASE43) this.decoder = new SSStage2SingleFrameDecoder();                                     // SIM: stage 2
-      else if (this.qr_type === T.PSBT__BBQR) this.decoder = new SSBBQRPsbtQrDecoder();                                             // SIM: stage 2
+      if ([T.PSBT__UR2, T.OUTPUT__UR, T.ACCOUNT__UR, T.BYTES__UR].includes(this.qr_type)) this.decoder = new SSURDecoder();   // BCUR Decoder
+      else if (this.qr_type === T.PSBT__SPECTER) this.decoder = new SSSpecterPsbtQrDecoder();   // Specter Desktop PSBT QR base64 decoder
+      else if (this.qr_type === T.PSBT__BASE64) this.decoder = new SSBase64PsbtQrDecoder();     // Single Segments Base64
+      else if (this.qr_type === T.PSBT__BASE43) this.decoder = new SSBase43PsbtQrDecoder();     // Single Segment Base43
+      else if (this.qr_type === T.PSBT__BBQR) this.decoder = new SSBBQRPsbtQrDecoder();         // BBQr Decoder
       else if ([T.SEED__SEEDQR, T.SEED__COMPACTSEEDQR, T.SEED__MNEMONIC, T.SEED__FOUR_LETTER_MNEMONIC, T.SEED__UR2].includes(this.qr_type)) {
         this.decoder = new SSSeedQrDecoder(this.wordlist_language_code);
       }
       else if (this.qr_type === T.SETTINGS) this.decoder = new SSSettingsQrDecoder();
       else if (this.qr_type === T.BITCOIN_ADDRESS) this.decoder = new SSBitcoinAddressQrDecoder();
       else if (this.qr_type === T.SIGN_MESSAGE) this.decoder = new SSSignMessageQrDecoder();
-      else if (this.qr_type === T.WALLET__SPECTER) this.decoder = new SSSpecterPartsQrDecoder();                                    // SIM: stage 2
-      else if (this.qr_type === T.WALLET__GENERIC) this.decoder = new SSStage2SingleFrameDecoder();                                 // SIM: stage 2
-      else if (this.qr_type === T.WALLET__CONFIGFILE) this.decoder = new SSStage2SingleFrameDecoder();                              // SIM: stage 2
+      else if (this.qr_type === T.WALLET__SPECTER) this.decoder = new SSSpecterWalletQrDecoder();   // Specter Desktop Wallet Export decoder
+      else if (this.qr_type === T.WALLET__GENERIC) this.decoder = new SSGenericWalletQrDecoder();
+      else if (this.qr_type === T.WALLET__CONFIGFILE) this.decoder = new SSMultiSigConfigFileQRDecoder();
     } else if (this.qr_type !== qr_type) {
       throw new Error("QR Fragment Unexpected Type Change");
     }
@@ -1630,11 +1786,59 @@ class SSDecodeQR {
     return rt;
   }
 
+  get_psbt() {
+    if (this.complete) {
+      const data = this.get_data_psbt();
+      if (data !== null && data !== undefined) {
+        try { return SSPSBT.parse(data); } catch (e) { return null; }
+      }
+    }
+    return null;
+  }
+
+  get_data_psbt() {
+    if (this.complete) {
+      if (this.qr_type === SSQRType.PSBT__UR2) {
+        const cbor = this.decoder.result_message().cbor;
+        return ssPsbtUrPsbtFromCbor(cbor);   // urtypes crypto.PSBT.from_cbor(cbor).data
+      }
+      // All the other psbt decoder types use the same method signature
+      return this.decoder.get_data();
+    }
+    return null;
+  }
+
+  get_base64_psbt() {
+    if (this.complete) {
+      const data = this.get_data_psbt();
+      let s = "";
+      for (const b of data) s += String.fromCharCode(b);
+      return btoa(s);
+    }
+    return null;
+  }
+
   get_seed_phrase() { if (this.is_seed) return this.decoder.get_seed_phrase(); return undefined; }
   get_settings_data() { if (this.is_settings) return this.decoder.data; return undefined; }
   get_address() { if (this.is_address) return this.decoder.get_address(); return undefined; }
   get_address_type() { if (this.is_address) return this.decoder.get_address_type(); return undefined; }
   get_qr_data() { return this.decoder.get_qr_data(); }
+
+  get_wallet_descriptor() {
+    const T = SSQRType;
+    if (this.is_wallet_descriptor) {
+      if ([T.OUTPUT__UR, T.ACCOUNT__UR, T.BYTES__UR].includes(this.qr_type)) {
+        const cbor = this.decoder.result_message().cbor;
+        if (this.qr_type === T.OUTPUT__UR) return ssPsbtUrOutputDescriptor(cbor);   // Output.from_cbor(cbor).descriptor()
+        if (this.qr_type === T.ACCOUNT__UR) return ssPsbtUrAccountDescriptor(cbor); // Account.from_cbor(cbor).output_descriptors[0].descriptor()
+        const raw = ssPsbtUrBytesFromCbor(cbor);                                     // Bytes.from_cbor(cbor).data
+        return SSDecodeQR.multisig_setup_file_to_descriptor(new TextDecoder("utf-8", {fatal: true}).decode(raw));
+      }
+      // All the other wallet output descriptor decoder types use the same method signature
+      return this.decoder.get_wallet_descriptor();
+    }
+    return undefined;
+  }
 
   get_percent_complete(weight_mixed_frames = false) {
     const T = SSQRType;
@@ -1665,8 +1869,14 @@ class SSDecodeQR {
   get is_sign_message() { return this.qr_type === SSQRType.SIGN_MESSAGE; }
   get is_wallet_descriptor() {
     const T = SSQRType;
-    // SIM: stage 2. SeedSigner also accepts a UR:BYTES multisig setup file here (CBOR check); not ported.
-    return [T.WALLET__SPECTER, T.WALLET__UR, T.WALLET__CONFIGFILE, T.WALLET__GENERIC, T.OUTPUT__UR].includes(this.qr_type);
+    let check = [T.WALLET__SPECTER, T.WALLET__UR, T.WALLET__CONFIGFILE, T.WALLET__GENERIC, T.OUTPUT__UR].includes(this.qr_type);
+    if (this.qr_type === T.BYTES__UR) {
+      const cbor = this.decoder.result_message().cbor;
+      const raw = ssPsbtUrBytesFromCbor(cbor);
+      const data = new TextDecoder("utf-8", {fatal: true}).decode(raw).toLowerCase();
+      check = data.includes("policy:") && data.includes("format:") && data.includes("derivation:");
+    }
+    return check;
   }
   get is_settings() { return this.qr_type === SSQRType.SETTINGS; }
 
@@ -1736,9 +1946,9 @@ class SSDecodeQR {
     try { return btoa(atob(s)) === s; } catch (e) { return false; }
   }
 
-  // SIM: embit's PSBT.parse is not ported (stage 2); a PSBT is recognized by its magic bytes "psbt\xff".
+  // embit psbt.PSBT.parse(bytes) succeeds (SSPSBT, in ss_psbt.js)
   static _has_psbt_magic(bytes) {
-    return bytes.length > 5 && bytes[0] === 0x70 && bytes[1] === 0x73 && bytes[2] === 0x62 && bytes[3] === 0x74 && bytes[4] === 0xff;
+    try { SSPSBT.parse(bytes); return true; } catch (e) { return false; }
   }
 
   static is_base64_psbt(s) {
@@ -1778,6 +1988,52 @@ class SSDecodeQR {
   static is_bitcoin_address(s) {
     if (/^bitcoin:.*/i.test(s)) return true;
     return /^((bc1|tb1|bcr|[123]|[mn])[a-zA-HJ-NP-Z0-9]{25,62})$/i.test(s);
+  }
+
+  // Parses a Coldcard-style multisig setup file ("Policy: 2 of 3", "Derivation: m/48'/0'/0'/2'", "Format: P2WSH",
+  // "XFP: xpub...") into a descriptor string.
+  static multisig_setup_file_to_descriptor(text) {
+    const lines = text.split("\n");
+    let m = 0, n = 0, xpubs = [], x = 0, derivation = "", descriptor = "", script_type;
+    for (let l of lines) {
+      if (l.indexOf("#") === 0) continue;   // skip comments
+      l = l.trim();
+      if (!l.includes(":")) continue;       // when label/value divider not found, skip line
+      const i = l.indexOf(":");
+      const label = l.slice(0, i).trim().toLowerCase();
+      const value = l.slice(i + 1).trim();
+      if (label === "policy") {
+        const match = /(\d+)\D*(\d+)/.exec(value);
+        if (!match) throw new Error("Policy line not supported");
+        m = parseInt(match[1], 10);
+        n = parseInt(match[2], 10);
+      } else if (label === "derivation") {
+        derivation = value;
+      } else if (label === "format") {
+        if (["p2wsh", "p2sh-p2wsh", "p2wsh-p2sh"].includes(value.toLowerCase())) script_type = value.toLowerCase();
+      } else if (label.length === 8) {
+        if (xpubs.length === 0) xpubs = new Array(n).fill(null);
+        if (x >= xpubs.length) throw new Error("list assignment index out of range");
+        xpubs[x] = {xfp: label, key: value};
+        x += 1;
+      }
+    }
+    if (xpubs.includes(null) || xpubs.length !== n) throw new Error("bad or missing xpub");
+    if (m <= 0 || m > 9 || n <= 0 || n > 9) throw new Error("bad or missing policy");
+    if (derivation.length === 0) throw new Error("bad or missing derivation path");
+    if (!["p2wsh", "p2sh-p2wsh", "p2wsh-p2sh"].includes(script_type)) throw new Error("bad or missing script format");
+    // create descriptor string
+    let script_open, script_close;
+    if (script_type === "p2wsh") { script_open = "wsh(sortedmulti(" + m; script_close = "))"; }
+    else { script_open = "sh(wsh(sortedmulti(" + m; script_close = ")))"; }
+    descriptor = script_open;
+    for (const k of xpubs) {
+      if (derivation[0] === "m") derivation = derivation.slice(1);
+      derivation = derivation.split("'").join("h");
+      descriptor += ",[" + k.xfp + derivation + "]" + k.key + "/{0,1}/*";
+    }
+    descriptor += script_close;
+    return descriptor;
   }
 }
 
@@ -2296,8 +2552,7 @@ function ssGetStandardDerivationPath(network = SSSettingsConstants.MAINNET, wall
   throw new Error("Unexpected wallet type");
 }
 
-// embit_utils.get_multisig_policy. SIM: stage 2 (descriptor scanning routes to NotYetImplemented, so this is unreached);
-// expects the descriptor object the stage-2 port provides ({threshold, keys, is_basic_multisig}).
+// embit_utils.get_multisig_policy, on the descriptor object of ss_psbt.js (SSDescriptor: threshold, keys, is_basic_multisig).
 function ssGetMultisigPolicy(descriptor) {
   if (!descriptor || !descriptor.is_basic_multisig) throw new Error("Expected a basic multisig descriptor");
   return [String(descriptor.threshold), String(descriptor.keys.length)];
@@ -2431,7 +2686,7 @@ class SSToolsAddressExplorerAddressListView extends SSView {
             throw new Error("Custom Derivation address explorer not yet implemented");
           }
         } else if (ssToolsHasKey(data, "wallet_descriptor")) {
-          // SIM: stage 2 (multisig descriptors). SeedSigner derives with embit_utils.get_multisig_address here.
+          // embit_utils.get_multisig_address (SSDescriptor.derive_address, ss_psbt.js)
           const descriptor = data.wallet_descriptor;
           if (descriptor && descriptor.is_basic_multisig && typeof descriptor.derive_address === "function") {
             for (let i = this.start_index; i < this.start_index + addrs_per_screen; i++) {
@@ -3065,28 +3320,54 @@ class SSScanView extends SSView {
         return new SSDestination(SSSeedFinalizeView);
 
       } else if (this.decoder.is_psbt) {
-        // SIM: stage 2. SeedSigner: controller.psbt = decoder.get_psbt(); controller.psbt_parser = None;
-        //      return Destination(PSBTSelectSeedView, skip_current_view=True)
-        return new SSDestination(SSNotYetImplementedView);
+        const psbt = this.decoder.get_psbt();
+        this.controller.psbt = psbt;
+        this.controller.psbt_parser = null;
+        return new SSDestination(SSPSBTSelectSeedView, {skip_current_view: true});
 
       } else if (this.decoder.is_settings) {
         const data = this.decoder.get_settings_data();
         return new SSDestination(SSSettingsIngestSettingsQRView, {view_args: {data: data}});
 
       } else if (this.decoder.is_wallet_descriptor) {
-        // SIM: stage 2. SeedSigner parses the descriptor (rewriting /0/* to /{0,1}/*), sends single-sig descriptors to
-        //      NotYetImplementedView, sets controller.multisig_wallet_descriptor and goes to MultisigWalletDescriptorView
-        //      (skip_current_view=True).
-        return new SSDestination(SSNotYetImplementedView);
+        let descriptor_str = await this.decoder.get_wallet_descriptor();
+        // We need to replace `/0/*` wildcards with `/{0,1}/*` in order to use the Descriptor to verify change, too.
+        const orig_descriptor_str = descriptor_str;
+        try {
+          if (/\[([0-9,a-f,A-F]+?)(\/[0-9,\/,h']+?)\].*?(\/0\/\*)/.test(descriptor_str)) {
+            descriptor_str = descriptor_str.replace(/(\[[0-9,a-f,A-F]+?\/[0-9,\/,h']+?\].*?)(\/0\/\*)/g, "$1/{0,1}/*");
+          } else if (/(\[[0-9,a-f,A-F]+?\/[0-9,\/,h,']+?\][a-z,A-Z,0-9]*?)([,,)])/.test(descriptor_str)) {
+            descriptor_str = descriptor_str.replace(/(\[[0-9,a-f,A-F]+?\/[0-9,\/,h,']+?\][a-z,A-Z,0-9]*?)([,,)])/g, "$1/{0,1}/*$2");
+          }
+        } catch (e) {
+          console.info(String(e));
+          descriptor_str = orig_descriptor_str;
+        }
+
+        const descriptor = await SSDescriptor.from_string(descriptor_str);
+
+        if (!descriptor.is_basic_multisig) {
+          // TODO (SeedSigner): Handle single-sig descriptors?
+          console.info(`Received single sig descriptor: ${descriptor}`);
+          return new SSDestination(SSNotYetImplementedView);
+        }
+
+        this.controller.multisig_wallet_descriptor = descriptor;
+        return new SSDestination(SSMultisigWalletDescriptorView, {skip_current_view: true});
 
       } else if (this.decoder.is_address) {
-        // SIM: stage 2. SeedSigner: Destination(AddressVerificationStartView, skip_current_view=True,
-        //      view_args={address, script_type, network}) from decoder.get_address() / get_address_type().
-        return new SSDestination(SSNotYetImplementedView);
+        const address = this.decoder.get_address();
+        const [script_type, network] = this.decoder.get_address_type();
+        return new SSDestination(SSAddressVerificationStartView, {
+          skip_current_view: true,
+          view_args: {address: address, script_type: script_type, network: network},
+        });
 
       } else if (this.decoder.is_sign_message) {
-        // SIM: stage 2. SeedSigner: Destination(SeedSignMessageStartView, view_args={derivation_path, message}).
-        return new SSDestination(SSNotYetImplementedView);
+        const qr_data = this.decoder.get_qr_data();
+        return new SSDestination(SSSeedSignMessageStartView, {
+          view_args: {derivation_path: qr_data["derivation_path"], message: qr_data["message"]},
+        });
 
       } else {
         return new SSDestination(SSNotYetImplementedView);

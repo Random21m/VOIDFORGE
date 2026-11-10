@@ -52,6 +52,7 @@ function ssPageStop() {
   try { if (ctl && ctl.screensaver) ctl.screensaver.stop(); } catch (e) { /* not running */ }
   try { if (ctl && ctl.toast_notification_thread) ctl.toast_notification_thread.stop(); } catch (e) { /* not running */ }
   try { const k = SSCamera._instance; if (k) { k.stop_video_stream_mode(); k.stop_single_frame_mode(); } } catch (e) { /* no camera */ }
+  try { if (typeof ssPsbtWipeController === "function") ssPsbtWipeController(ctl); } catch (e) { /* best effort: PSBTs, signatures, scanned data */ }
   try {
     const st = ctl && ctl._storage;
     if (st) {

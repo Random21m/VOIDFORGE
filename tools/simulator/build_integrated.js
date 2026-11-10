@@ -76,7 +76,7 @@ rep(`  reforgeStop(); msReset(); dbClear(); wipeSeed(); planClear(); clearChild(
   if(typeof ssPageWipe === "function") ssPageWipe();   // v2.13.0: the practice signer
   for(const id of AUTO_FIELDS)`);
 
-// ---- 4. the scripts, after the main script: fonts, tools PART A, engine, seeds, tools PART B, page glue ----
+// ---- 4. the scripts, after the main script: fonts, tools PART A, engine, seeds, tools PART B + PSBT (stage 2), page glue ----
 const tools = rd("ss_tools_settings.js");
 const mark = tools.indexOf("/* ====", tools.indexOf("PART B: views and screens") - 200);
 must(mark > 0 && tools.slice(mark, mark + 400).includes("PART B: views and screens"), "PART B marker");
@@ -85,7 +85,7 @@ const parts = [
   ["ss_tools_settings.js PART A", tools.slice(0, mark)],
   ["ss_engine.js", rd("ss_engine.js")],
   ["ss_seeds.js", rd("ss_seeds.js")],
-  ["ss_tools_settings.js PART B", tools.slice(mark)],
+  ["ss_tools_settings.js PART B and ss_psbt.js", tools.slice(mark) + "\n" + rd("ss_psbt.js").replace(/^"use strict";$/m, "")],
   ["ss_page.js", rd("ss_page.js")],
 ];
 let blocks = "";

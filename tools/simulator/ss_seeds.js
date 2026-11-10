@@ -417,14 +417,17 @@ function ssSeedsModInv(a, m) {
     while (r1 !== 0n) { const q = r0 / r1; [r0, r1] = [r1, r0 - q * r1]; [s0, s1] = [s1, s0 - q * s1]; }
     return ((s0 % m) + m) % m;
 }
-async function ssSeedsEcdsaSignRecoverable(msg32, d) {
+// libsecp256k1's nonce_function_rfc6979: HMAC-DRBG seeded with key32 || (msg32 mod n) || optional 32 bytes of extra data
+// (embit's PrivateKey.sign grinds for a low R by passing a counter as the extra data, as Bitcoin Core does).
+async function ssSeedsEcdsaSignRecoverable(msg32, d, extra = null) {
     const x = ssSeedsBig32(d);
-    let V = new Uint8Array(32).fill(1), K = new Uint8Array(32);
-    K = await ssSeedsHmacSha256(K, ssSeedsConcat(V, [0], x, msg32));
-    V = await ssSeedsHmacSha256(K, V);
-    K = await ssSeedsHmacSha256(K, ssSeedsConcat(V, [1], x, msg32));
-    V = await ssSeedsHmacSha256(K, V);
     const z = ssSeedsBig(msg32) % SN;
+    const seed = extra ? ssSeedsConcat(x, ssSeedsBig32(z), extra) : ssSeedsConcat(x, ssSeedsBig32(z));
+    let V = new Uint8Array(32).fill(1), K = new Uint8Array(32);
+    K = await ssSeedsHmacSha256(K, ssSeedsConcat(V, [0], seed));
+    V = await ssSeedsHmacSha256(K, V);
+    K = await ssSeedsHmacSha256(K, ssSeedsConcat(V, [1], seed));
+    V = await ssSeedsHmacSha256(K, V);
     for (;;) {
         V = await ssSeedsHmacSha256(K, V);
         const k = ssSeedsBig(V);
