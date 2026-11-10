@@ -1757,7 +1757,7 @@ async function probe(w, mutated, fast, only, hooks) {
       const lumc = (c) => { const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); };
       const crc = (a, b) => { const x = lumc(a), y = lumc(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
       const labels = [...doc.querySelectorAll('summary, option')].filter((e) => /recommended/i.test(e.textContent));
-      if (doc.querySelectorAll('.tag-rec').length !== 2 || doc.querySelectorAll('option.opt-rec').length !== 1 || labels.length !== 3 || !labels.every((e) => e.querySelector('.tag-rec') || e.classList.contains('opt-rec'))) fails.push('recommended: every label is a gold word or a gold option');
+      if (doc.querySelectorAll('.tag-rec').length !== 3 || doc.querySelectorAll('option.opt-rec').length !== 1 || labels.length !== 4 || !labels.every((e) => e.querySelector('.tag-rec') || e.classList.contains('opt-rec'))) fails.push('recommended: every label is a gold word or a gold option');
       const notes = [...doc.querySelectorAll('.tag-note')], ros = [...doc.querySelectorAll('.tag-ro')];
       if (notes.length !== 3 || !notes.every((e) => /^ADVANCED$/.test(e.textContent)) || [...doc.querySelectorAll('summary')].some((e) => /\((demo only|advanced)/i.test(e.textContent))) fails.push('tags: ADVANCED is a gray label, not plain (brackets)');
       if (ros.filter((e) => e.textContent === 'NEW').length !== 2) fails.push('tags: every "NEW" label is the same gray tag-ro style');

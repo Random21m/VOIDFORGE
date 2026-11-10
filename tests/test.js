@@ -844,7 +844,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const tags=[...t.w.document.querySelectorAll('.tag-rec')], opts=[...t.w.document.querySelectorAll('option.opt-rec')];
       // every "recommended" label on a screen (not the changelog or help text) is a badge or a colored option
       const labels=[...t.w.document.querySelectorAll('summary, option')].filter(e=>/recommended/i.test(e.textContent));
-      ok(tags.length===2&&opts.length===1&&labels.length===3&&labels.every(e=>e.querySelector('.tag-rec')||e.classList.contains('opt-rec')),'recommended: every RECOMMENDED label is an amber badge (or an amber option in the menu)');
+      ok(tags.length===3&&opts.length===1&&labels.length===4&&labels.every(e=>e.querySelector('.tag-rec')||e.classList.contains('opt-rec')),'recommended: every RECOMMENDED label is an amber badge (or an amber option in the menu)');
       const tok=(blk,n)=>{ const m=new RegExp(n+': (#[0-9a-fA-F]{6})').exec(blk); return m?m[1]:'#000000'; };
       const rootBlk=[...css.matchAll(/\n  :root \{[^}]*\}/g)].pop()[0], lightBlk=[...css.matchAll(/\n  body\.light \{[^}]*\}/g)].pop()[0];
       for(const [nm,blk] of [['dark',rootBlk],['light',lightBlk]]){
