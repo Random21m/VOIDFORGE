@@ -1,0 +1,124 @@
+// ss_page.js: VOIDFORGE page glue for the SeedSigner 0.8.7 practice signer (CHECK A BACKUP > Practice signer).
+// The device starts only when its box is opened, and stops when the box is closed, on CLEAR ALL, on auto-clear and on
+// END SESSION (see clearAll(), autoWipe() and endSession()): every pending wait of the old run is aborted (SS_GEN), the
+// camera is released, the seeds in its memory are overwritten and dropped, and the screen goes black.
+// Keys: the five D-pad keys and KEY1-KEY3 on the case (mouse, touch or pen), or, only while the device has focus,
+// the arrow keys, Enter or Space (joystick press) and 1, 2, 3 (KEY1, KEY2, KEY3). Nothing listens to the whole page.
+"use strict";
+let ssPageOn = false, ssPageRun = 0;
+const SS_PAGE_KEYMAP = { ArrowUp: "KEY_UP", ArrowDown: "KEY_DOWN", ArrowLeft: "KEY_LEFT", ArrowRight: "KEY_RIGHT", Enter: "KEY_PRESS", " ": "KEY_PRESS", "1": "KEY1", "2": "KEY2", "3": "KEY3" };
+const SS_PAGE_KEYS = { ssKUp: "KEY_UP", ssKLeft: "KEY_LEFT", ssKPress: "KEY_PRESS", ssKRight: "KEY_RIGHT", ssKDown: "KEY_DOWN", ssK1: "KEY1", ssK2: "KEY2", ssK3: "KEY3" };
+
+// True while the device runs (auto-clear counts it as something to wipe).
+function ssPageActive() { return ssPageOn; }
+
+async function ssPageStart() {
+  if (ssPageOn) return;
+  const c = document.getElementById("ssScreen");
+  if (!c) return;
+  ssPageOn = true;
+  const run = ++ssPageRun;
+  c.style.width = "100%"; c.style.height = "100%";   // the bezel sets the size (the engine would set 320 x 240 px)
+  SSController._listeners_installed = true;           // never the engine's window-wide key listeners: see ssPageInit()
+  // Device pixels per screen pixel: from the size the bezel really shows (page zoom and phone scaling included), so the
+  // screen stays sharp; 1 to 4.
+  const shown = c.getBoundingClientRect().width * (window.devicePixelRatio || 1) / 320;
+  const scale = Math.min(4, Math.max(1, Math.ceil((shown > 0 ? shown : (window.devicePixelRatio || 1)) - 0.1)));
+  try { await SSController.start(c, { scale }); }
+  catch (e) { console.error("Practice signer did not start:", e); }
+  if (run !== ssPageRun) ssPageStop();   // closed while the fonts were loading
+}
+
+// Overwrites what can be overwritten in a seed (byte arrays, word lists) before the references are dropped.
+// (JavaScript strings cannot be wiped; dropping every reference lets the browser free them.)
+function ssPageScrubSeed(s) {
+  if (!s || typeof s !== "object") return;
+  try {
+    for (const k of Object.keys(s)) {
+      const v = s[k];
+      if (v instanceof Uint8Array) v.fill(0);
+      else if (Array.isArray(v)) v.fill("");
+      else if (v instanceof Map) { for (const x of v.values()) if (x instanceof Uint8Array) x.fill(0); v.clear(); }
+    }
+    s._mnemonic = []; s._passphrase = ""; s.seed_bytes = null;
+  } catch (e) { /* best effort */ }
+}
+
+function ssPageStop() {
+  ssPageOn = false; ssPageRun++;
+  let ran = false;
+  try { ran = !!SSRenderer._instance; SS_GEN++; } catch (e) { return; }   // aborts every pending sleep and key wait of the running device
+  const ctl = SSController._instance;
+  try { if (ctl && ctl.screensaver) ctl.screensaver.stop(); } catch (e) { /* not running */ }
+  try { if (ctl && ctl.toast_notification_thread) ctl.toast_notification_thread.stop(); } catch (e) { /* not running */ }
+  try { const k = SSCamera._instance; if (k) { k.stop_video_stream_mode(); k.stop_single_frame_mode(); } } catch (e) { /* no camera */ }
+  try {
+    const st = ctl && ctl._storage;
+    if (st) {
+      for (const s of st.seeds || []) ssPageScrubSeed(s);
+      ssPageScrubSeed(st.pending_seed);
+      if (Array.isArray(st._pending_mnemonic)) st._pending_mnemonic.fill(null);
+      if (Array.isArray(st.seeds)) st.seeds.length = 0;
+      st.pending_seed = null; st._pending_mnemonic = [];
+    }
+    if (ctl) {
+      for (const f of ["psbt", "psbt_seed", "psbt_parser", "unverified_address", "multisig_wallet_descriptor", "image_entropy_preview_frames",
+        "image_entropy_final_image", "address_explorer_data", "sign_message_data", "resume_main_flow", "current_destination"]) ctl[f] = null;
+      ctl.back_stack = new SSBackStack(); ctl._storage = null;
+    }
+  } catch (e) { /* best effort */ }
+  SSController._instance = null; SSHardwareButtons._instance = null;
+  try { SSSettings._instance = null; } catch (e) { /* settings part missing */ }
+  const c = ran ? document.getElementById("ssScreen") : null;   // (a device that never drew leaves the screen black already)
+  if (c) { const g = c.getContext && c.getContext("2d"); if (g) { g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = "#000"; g.fillRect(0, 0, c.width, c.height); } }
+  try { if (SSRenderer._instance) { SSRenderer._instance.canvas = null; SSRenderer._instance.draw = null; } SSRenderer._instance = null; } catch (e) { /* not started */ }
+}
+
+// CLEAR ALL, auto-clear and END SESSION: stop the device, wipe its memory (and the settings on its simulated microSD),
+// and close the box.
+function ssPageWipe() {
+  ssPageStop();
+  try { SS_SIM_MICROSD.settings_json = null; } catch (e) { /* settings part missing */ }
+  const b = document.getElementById("ssBox");
+  if (b && b.open) b.open = false;
+}
+
+function ssPageInit() {
+  const box = document.getElementById("ssBox"), dev = document.getElementById("ssDevice");
+  if (!box || !dev) return;
+  // Closing the box is like switching the device off: settings saved to its simulated microSD (Persistent settings) stay
+  // until CLEAR ALL, auto-clear or END SESSION; everything else is wiped.
+  box.addEventListener("toggle", () => { if (box.open) ssPageStart(); else ssPageStop(); });
+  const hw = () => (ssPageOn && SSHardwareButtons._instance) ? SSHardwareButtons._instance : null;
+  const allUp = () => { const h = hw(); if (h) for (const k of SSHardwareButtonsConstants.ALL_KEYS) h.key_up(k); };
+  const btnOf = (k) => document.getElementById(Object.keys(SS_PAGE_KEYS).find(id => SS_PAGE_KEYS[id] === k) || "");
+  dev.addEventListener("keydown", (e) => {
+    const k = SS_PAGE_KEYMAP[e.key];
+    if (!k || e.ctrlKey || e.metaKey || e.altKey) return;
+    e.preventDefault();
+    const b = btnOf(k); if (b) b.classList.add("ss-down");
+    const h = hw(); if (h && !e.repeat) h.key_down(k);
+  });
+  dev.addEventListener("keyup", (e) => {
+    const k = SS_PAGE_KEYMAP[e.key]; if (!k) return;
+    const b = btnOf(k); if (b) b.classList.remove("ss-down");
+    const h = hw(); if (h) h.key_up(k);
+  });
+  dev.addEventListener("blur", () => { allUp(); for (const id of Object.keys(SS_PAGE_KEYS)) { const b = document.getElementById(id); if (b) b.classList.remove("ss-down"); } });
+  for (const id of Object.keys(SS_PAGE_KEYS)) {
+    const b = document.getElementById(id), key = SS_PAGE_KEYS[id];
+    if (!b) continue;
+    b.addEventListener("pointerdown", (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
+      e.preventDefault();
+      try { dev.focus({ preventScroll: true, focusVisible: false }); } catch (err) { dev.focus(); }
+      try { b.setPointerCapture(e.pointerId); } catch (err) { /* not supported */ }
+      b.classList.add("ss-down");
+      const h = hw(); if (h) h.key_down(key);
+    });
+    const up = () => { b.classList.remove("ss-down"); const h = hw(); if (h) h.key_up(key); };
+    b.addEventListener("pointerup", up); b.addEventListener("pointercancel", up); b.addEventListener("lostpointercapture", up);
+    b.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", ssPageInit); else ssPageInit();
