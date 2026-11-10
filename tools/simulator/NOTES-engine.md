@@ -43,3 +43,9 @@ SIM stand-ins (each marked `// SIM:` in the code):
 - RestartView: os.execv -> restart from splash, in-memory data wiped (settings reset unless persistent settings enabled).
 - MicroSD: counts as inserted at boot; SSMicroSD.get_instance().set_inserted(bool) simulates removal/insertion.
 - Missing views from other parts resolve to NotYetImplementedView.
+- QR codes on the 320x240 screen sit against the left side, as on the owner's physical SeedSigner+ (checked 10 Nov 2026).
+  The 0.8.7 source agrees: QRDisplayScreen.QRDisplayThread.run (src/seedsigner/gui/screens/screen.py, lines 845 and 855) makes a
+  240x240 image, and Renderer.show_image (src/seedsigner/gui/renderer.py, line 84) pastes it with `self.canvas.paste(image)`, at
+  (0, 0). The port does the same (SSRenderer.show_image in ss_engine.js: `this.canvas.paste(image, [0, 0])`). This covers the
+  xpub, address, signed PSBT and signed message QR codes. The SeedQR transcription screens are centered in both
+  (SeedTranscribeSeedQRWholeQRScreen, seed_screens.py line 1171: `(self.canvas_width - qr_width)/2`). Not changed.
