@@ -31,6 +31,13 @@
 //   psbt_wipe   CLEAR ALL in the middle of a PSBT flow overwrites the PSBT, signatures, signing key and descriptor keys
 //   review      two quick taps count twice and a held key repeats; regtest bcrt1 addresses in the Address Explorer (from an
 //               xpub); a "bitcoin:" QR with no address goes Home; tr() with a script tree is "Not Yet Implemented"
+// v2.14.0, Learn on the practice signer (lessons and a practice transaction next to the device; nothing on its screen):
+//   lessons_dice / lessons_seed / lessons_tx (sign, then multisig)
+//               the six lessons, driven only with the device keys (and the page buttons a lesson asks for): every step moves on
+//               when the device reaches the expected screen; BACK, NEXT and RESTART LESSON; the dice words, the verified address,
+//               the signed message (noble) and the multisig signature checked here
+//   practice_tx PRACTICE TRANSACTION on Testnet: made-up coins (null outpoint, marked as practice), keys, payee and change from
+//               @scure/bip32; signed on the device, read from its screen (jsqr) and verified with btc-signer + noble; CLEAR ALL wipes it
 // And: the page self-test passes (140/140) in every page opened, and no page error or console error happens in any of them.
 // Run: node tests/simulator.test.mjs        (SCEN=dice12,wipe to run some; SIM_CONC=4 to run fewer at a time)
 import { createRequire } from 'module';
@@ -915,9 +922,204 @@ SCEN.review = async (t, d, ctx, page) => {
   t(st.view === 'SSNotYetImplementedView', 'tr() with a script tree: "Not Yet Implemented", as SeedSigner shows (' + st.view + ')');
 };
 
+// ================================================================ v2.14.0: Learn on the practice signer (page text and controls next to the device)
+// The lessons are driven only with the device's own keys (and the page buttons a lesson asks for); a step counts as passed only when the
+// panel moves on by itself. The practice transaction is built by the page; here it is taken apart and its signatures are checked with
+// @scure/btc-signer + @noble/curves against keys made here by @scure/bip32 from the public test seeds (never with the page's code).
+const MN_PAY = 'zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong';
+const panel = (d) => d.ev(() => ({ id: ssLearn.lesson && ssLearn.lesson.id, step: ssLearn.step, done: ssLearn.done, n: ssLearn.lesson ? ssLearn.lesson.steps.length : 0,
+  count: document.getElementById('ssLearnCount').textContent, do: document.getElementById('ssLearnDo').textContent, see: document.getElementById('ssLearnSee').textContent,
+  cam: ssLearnCam.frames ? ssLearnCam.key : '', tx: ssLearn.tx ? { kind: ssLearn.tx.kind, ok: !!(ssLearn.tx.result && ssLearn.tx.result.ok) } : null,
+  status: document.getElementById('ssTxStatus').textContent, net: !document.getElementById('ssTxNet').hidden }));
+const waitCam = async (d, key, ms = 15000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if ((await panel(d)).cam === key) return; await sleep(150); } throw new Error('the practice wallet never showed ' + key); };
+const toHomeAny = async (d) => { const s = await d.state(); if (s.screen === 'SSQRDisplayScreen') await d.press('PRESS', 1000); await d.back('SSMainMenuView'); };
+// acts[i]: what a person does at step i. Returns the steps the panel showed, in order.
+async function runLesson(d, page, id, acts) {
+  await page.evaluate(() => {   // every step the panel shows, in order (also the ones it passes at once)
+    window.__lsteps = []; const c = document.getElementById('ssLearnCount');
+    if (window.__lobs) window.__lobs.disconnect();
+    window.__lobs = new MutationObserver(() => { const i = ssLearn.done ? -1 : ssLearn.step; if (window.__lsteps[window.__lsteps.length - 1] !== i) window.__lsteps.push(i); });
+    window.__lobs.observe(c, { childList: true, characterData: true, subtree: true });
+  });
+  await page.selectOption('#ssLearnPick', id); await page.click('#ssLearnGo'); await sleep(500);
+  const seen = []; let p = await panel(d);
+  for (let guard = 0; guard < 80 && !p.done; guard++) {
+    const i = p.step; seen.push(i);
+    if (!acts[i]) throw new Error('lesson ' + id + ': nothing to do at step ' + i + ' (' + p.do + ')');
+    await acts[i](d, page);
+    const t0 = Date.now(); while (Date.now() - t0 < 60000) { p = await panel(d); if (p.done || p.step !== i) break; await sleep(150); }
+    if (!p.done && p.step === i) throw new Error('lesson ' + id + ' stuck at step ' + i + ' (' + p.do + '), device at ' + JSON.stringify(await d.state()));
+  }
+  const shown = await page.evaluate(() => window.__lsteps.filter((x) => x >= 0));
+  return { seen: shown, p };
+}
+const lessonOk = (t, id, r, n, skipped = []) => {
+  const want = Array.from({ length: n }, (_, i) => i).filter((i) => !skipped.includes(i));
+  const inOrder = r.seen.every((x, i) => i === 0 || x > r.seen[i - 1]);
+  const all = want.every((i) => r.seen.includes(i));
+  t(r.p.done && r.p.id === id && inOrder && all && /Lesson done/.test(r.p.count + 'Lesson done'),
+    'lesson "' + id + '": driven with the device keys, each of its ' + n + ' steps moves on when the device shows the expected screen (' + r.seen.length + ' steps shown' + (skipped.length ? ', ' + skipped.length + ' load steps passed over: the test seed was loaded' : '') + '), then "Lesson done"' + (r.p.done ? '' : ' ' + JSON.stringify(r)));
+};
+const P = (k, w) => async (d) => d.press(k, w || 900);
+const many = (...a) => async (d) => { for (const [k, w] of a) await d.press(k, w || 900); };
+const LOAD = [async () => {}, async (d) => { await waitCam(d, 'seedqr'); await d.pick(/^Scan$/, { wait: 2500 }); }, P('PRESS', 1500)];
+// The practice PSBT and its signed copy, checked here: made-up coins, the keys of the test seed, the payee, the change, every signature
+function checkPractice(t, tag, origB, signedB, o) {
+  const NET = o.net === 'M' ? btc.NETWORK : btc.TEST_NETWORK, coin = o.net === 'M' ? 0 : 1;
+  const orig = btc.Transaction.fromPSBT(origB), signed = btc.Transaction.fromPSBT(signedB), ref = btc.Transaction.fromPSBT(origB, { lowR: true });
+  // the coins: one made-up previous transaction whose only input is a null outpoint marked as practice
+  let made = true, mark = '';
+  for (let i = 0; i < orig.inputsLength; i++) {
+    const inp = orig.getInput(i), prev = btc.Transaction.fromRaw(btc.RawTx.encode(inp.nonWitnessUtxo), { allowUnknownInputs: true, allowUnknownOutputs: true, disableScriptCheck: true });
+    const pin = prev.getInput(0); mark = Buffer.from(pin.finalScriptSig || []).toString('latin1');
+    made = made && prev.id === hx(inp.txid) && prev.inputsLength === 1 && hx(pin.txid) === '00'.repeat(32) && pin.index === 0xffffffff && /VOIDFORGE practice coins: made up, not real/.test(mark)
+      && hx(prev.getOutput(inp.index).script) === hx(inp.witnessUtxo.script) && prev.getOutput(inp.index).amount === inp.witnessUtxo.amount;
+  }
+  t(made, tag + ': every input spends a made-up previous transaction (null outpoint, its script says "' + mark.replace(/[^ -~]/g, '').slice(0, 40) + '..."), so the PSBT can never be broadcast');
+  // keys, payee and change from the test seeds
+  const A = rootOf(ABANDON), pay = btc.p2wpkh(rootOf(MN_PAY).derive(`m/84'/${coin}'/0'/0/0`).publicKey, NET).address;
+  let keys = true;
+  const paths = [];
+  for (let i = 0; i < orig.inputsLength; i++) {
+    const inp = orig.getInput(i), mine = (inp.bip32Derivation || []).find(([, v]) => v.fingerprint === A.fingerprint);
+    const path = 'm/' + mine[1].path.map((x) => x >= HARD ? (x - HARD) + "'" : String(x)).join('/'); paths.push(path);
+    keys = keys && hx(A.derive(path).publicKey) === hx(mine[0]) && (o.multi ? path === `m/48'/${coin}'/0'/2'/0/${i}` : path === `m/84'/${coin}'/0'/0/${i}`)
+      && (o.multi ? true : hx(inp.witnessUtxo.script) === hx(btc.p2wpkh(mine[0]).script));
+  }
+  const out0 = btc.Address(NET).encode(btc.OutScript.decode(orig.getOutput(0).script)), ch = orig.getOutput(1), chd = (ch.bip32Derivation || []).find(([, v]) => v.fingerprint === A.fingerprint);
+  const chPath = chd && 'm/' + chd[1].path.map((x) => x >= HARD ? (x - HARD) + "'" : String(x)).join('/');
+  keys = keys && out0 === pay && !!chd && hx(A.derive(chPath).publicKey) === hx(chd[0]) && chPath === (o.multi ? `m/48'/${coin}'/0'/2'/1/0` : `m/84'/${coin}'/0'/1/0`);
+  t(keys, tag + ': it spends ' + orig.inputsLength + ' coin(s) of the test seed at ' + paths.join(', ') + ', pays ' + pay.slice(0, 12) + '... (receive #0 of the "zoo ... wrong" test seed) and sends change to ' + chPath + ' (keys made here with @scure/bip32)');
+  // the signatures the device made, read from its screen: BIP-143 sighash from btc-signer, noble verify, and equal to btc-signer's own
+  const ok = { n: 0, ecdsa: true, same: true };
+  for (let i = 0; i < orig.inputsLength; i++) {
+    const inp = orig.getInput(i), ps = signed.getInput(i).partialSig || [];
+    if (ps.length !== 1) { ok.ecdsa = false; continue; }
+    const [pub, sig] = ps[0], k = A.derive(paths[i]);
+    const scriptCode = o.multi ? inp.witnessScript : btc.OutScript.encode({ type: 'pkh', hash: inp.witnessUtxo.script.slice(2) });
+    const h = orig.preimageWitnessV0(i, scriptCode, btc.SigHash.ALL, inp.witnessUtxo.amount);
+    ok.ecdsa = ok.ecdsa && hx(pub) === hx(k.publicKey) && sig[sig.length - 1] === btc.SigHash.ALL && secp256k1.verify(sig.slice(0, -1), h, pub, { prehash: false, format: 'der', lowS: true });
+    ref.signIdx(k.privateKey, i); const rs = ref.getInput(i).partialSig.find((x) => hx(x[0]) === hx(pub)); ok.same = ok.same && !!rs && hx(rs[1]) === hx(sig); ok.n++;
+  }
+  t(ok.ecdsa && ok.n === orig.inputsLength, tag + ': the signed PSBT read from the device\'s screen holds one valid signature per input (' + ok.n + '), checked with btc-signer\'s BIP-143 sighash and noble');
+  t(ok.same, tag + ': each signature equals btc-signer\'s own (RFC 6979, low R) byte for byte');
+  const fin = btc.Transaction.fromPSBT(origB); fin.combine(signed);
+  if (o.multi) fin.signIdx(rootOf(MN2.B).derive(`m/48'/${coin}'/0'/2'/0/0`).privateKey, 0);
+  let raw = null; try { fin.finalize(); raw = fin.extract(); } catch (e) { raw = null; }
+  t(!!raw, tag + ': btc-signer finalizes it' + (o.multi ? ' with a second signature it made for cosigner B' : '') + ' (a complete transaction that still spends coins that do not exist)');
+}
+async function practiceRun(t, d, page, tag, o) {
+  // Home > Scan reads the practice PSBT from the practice wallet; review, sign; the page reads the signed QR back
+  await waitCam(d, 'tx');
+  const origB = Uint8Array.from(await d.ev(() => Array.from(ssLearn.tx.psbt)));
+  await toHomeAny(d); await d.pick(/^Scan$/, { wait: 800 });
+  let s = await d.waitView('SSPSBTSelectSeedView', 40000);
+  t(s.labels[0] === FPA && (await panel(d)).cam === '', tag + ': the device reads the practice PSBT from the practice wallet and asks which seed signs (' + s.labels[0] + '); the practice wallet is put away');
+  await d.pick(new RegExp(FPA), { wait: 1500 }); await d.waitView('SSPSBTOverviewScreen', 60000); await sleep(500);
+  const f = await screenFields(d, ['spend_amount', 'change_amount', 'fee_amount', 'num_inputs']);
+  const want = o.multi ? [200000, 298500, 1500, 1] : [120000, 99000, 1000, 2];
+  t(JSON.stringify([f.spend_amount, f.change_amount, f.fee_amount, f.num_inputs]) === JSON.stringify(want), tag + ': the device\'s overview shows ' + want[0] + ' sats sent, ' + want[1] + ' change, ' + want[2] + ' fee, ' + want[3] + ' input(s) (' + JSON.stringify(f) + ')');
+  for (let n = 0; n < 12; n++) {
+    s = await d.state(); if (s.view === 'SSPSBTSignedQRDisplayView') break;
+    if (s.view === 'SSPSBTChangeDetailsView' && /Verify multisig/.test(s.labels[0])) { await d.press('PRESS', 1200); await d.ev(() => ssLearnArm('descriptor')); await waitCam(d, 'descriptor'); await d.press('PRESS', 1500); await d.waitView('SSMultisigWalletDescriptorView', 40000); await sleep(400); }
+    await d.press('PRESS', s.view === 'SSPSBTFinalizeView' ? 2500 : 1500);
+  }
+  await d.waitView('SSPSBTSignedQRDisplayView', 60000); await sleep(500);
+  const r = await readUR(page);
+  t(!!r && r.type === 'crypto-psbt', tag + ': the device shows the signed PSBT as a UR crypto-psbt QR (' + (r ? r.parts + ' part(s), read with jsqr' : 'none read') + ')');
+  const t0 = Date.now(); let p; while (Date.now() - t0 < 60000) { p = await panel(d); if (p.tx && p.tx.ok) break; await sleep(300); }
+  t(p.tx && p.tx.ok && /^Signed correctly: /.test(p.status) && /checked by this page's own code/.test(p.status), tag + ': the page reads the signed QR from the device\'s screen and says "' + p.status.split('(')[0].trim() + '"');
+  if (r) checkPractice(t, tag, origB, r.bytes, o);
+  return origB;
+}
+SCEN.practice_tx = async (t, d, ctx, page) => {   // Testnet, no lesson: the PRACTICE TRANSACTION button by itself
+  const tag = 'practice transaction (single key, Testnet)';
+  await d.waitView('SSMainMenuView');
+  await d.ev(() => { const S = SSSettings.get_instance(), C = SSSettingsConstants; S.set_value(C.SETTING__NETWORK, C.TESTNET); });
+  await d.ev(() => ssLearnArm('seedqr')); await waitCam(d, 'seedqr');
+  await d.pick(/^Scan$/, { wait: 2500 }); await d.pick(/^Done$/, { wait: 1500 });
+  await page.selectOption('#ssTxKind', 'single'); await page.click('#ssTxGo');
+  await waitCam(d, 'tx'); let p = await panel(d);
+  t(!p.net && /Spends 2 made-up coins of seed 73c5da0a/.test(p.status) && /made-up transaction [0-9a-f]{16}\.\.\., marked "VOIDFORGE practice coins/.test(await page.textContent('#ssTxCoins')),
+    tag + ': PRACTICE TRANSACTION spends made-up coins of the seed on the device, names the made-up transaction, and shows no Mainnet warning on Testnet');
+  const origB = await practiceRun(t, d, page, tag, { net: 'T' });
+  // the device itself: its menus are SeedSigner's own, nothing of the lessons is on its screen or in its menus
+  await toHomeAny(d); const s = await d.state();
+  t(JSON.stringify(s.labels) === '["Scan","Seeds","Tools","Settings"]' && s.title === 'Home', 'the device keeps SeedSigner\'s own Home menu (Scan, Seeds, Tools, Settings): nothing is added to it');
+  // CLEAR ALL wipes the practice PSBT, the practice wallet and the lesson panel
+  await d.ev(() => { window.__keepTx = ssLearn.tx; }); await page.selectOption('#ssLearnPick', 'sign'); await page.click('#ssLearnGo'); await sleep(300);
+  await d.ev(() => clearAll()); await sleep(400);
+  const w = await d.ev(() => ({ tx: ssLearn.tx, lesson: ssLearn.lesson, cam: ssLearnCam.frames, zero: window.__keepTx.psbt.every((x) => x === 0) && window.__keepTx.utx.every((x) => x === 0), run: document.getElementById('ssLearnRun').hidden, st: document.getElementById('ssTxStatus').textContent, timer: ssLearn.timer }));
+  t(w.tx === null && w.lesson === null && w.cam === null && w.zero && w.run && w.st === '' && w.timer === null, 'CLEAR ALL drops the lesson, the practice wallet\'s QR codes and the practice transaction, and overwrites the PSBT bytes (' + JSON.stringify({ zero: w.zero, run: w.run }) + ')');
+};
+SCEN.lessons_dice = async (t, d, ctx, page) => {
+  const rolls = '1'.repeat(50), exp = diceWords(rolls, 12).split(' ');
+  t(await d.ev(() => SS_LEARN_LESSONS.length === 6 && SS_LEARN_LESSONS.every((l) => l.name && l.note && l.end && l.steps.every((s) => s.do && s.see && typeof s.at === 'function')) && /public test seeds only/.test(document.getElementById('ssLearn').textContent)),
+    'lessons: six lessons next to the device, each step with plain text and a "what you should see" line; the panel says they use public test seeds only');
+  let words = [];
+  const answer = async (d) => {
+    for (let n = 0; n < 14; n++) {
+      const s = await d.state(); if (s.view !== 'SSSeedWordsBackupTestView') break;
+      const k = +s.title.replace(/\D+/g, '') - 1; await d.pick(new RegExp('^' + exp[k] + '$'), { wait: 700 });
+    }
+  };
+  const readWords = async (d) => { words.push(...await d.scr(() => SSController._instance.current_destination.view.screen.words)); await d.press('PRESS', 900); };
+  const acts = [async () => {}, many(['DOWN', 300], ['PRESS', 900]), many(['DOWN', 300], ['PRESS', 900]), P('PRESS', 1000),
+    async (d) => { for (let i = 0; i < 50; i++) await d.press('PRESS', 230); }, P('PRESS', 900), readWords, readWords, readWords, P('PRESS', 900), answer, P('PRESS', 1200), P('PRESS', 1500)];
+  // the panel's controls first: BACK, NEXT and RESTART LESSON
+  await d.waitView('SSMainMenuView'); await page.selectOption('#ssLearnPick', 'dice'); await page.click('#ssLearnGo'); await sleep(800);
+  const c0 = (await panel(d)).step; await page.click('#ssLearnNext'); const c1 = (await panel(d)).step; await page.click('#ssLearnBack'); const c2 = (await panel(d)).step;
+  await page.click('#ssLearnNext'); await page.click('#ssLearnNext'); await page.click('#ssLearnRestart'); await sleep(600); const c3 = await panel(d);
+  t(c0 === 1 && c1 === 2 && c2 === 1 && c3.step === 1 && /^Step 2 of 13$/.test(c3.count), 'lesson controls: NEXT and BACK move one step, RESTART LESSON goes back to the start (step 1, Home, passes at once: the device shows Home) (' + [c0, c1, c2, c3.step].join(', ') + ')');
+  const r = await runLesson(d, page, 'dice', acts);
+  lessonOk(t, 'dice', r, 13);
+  t(words.join(' ') === exp.join(' '), 'lesson "dice": fifty 1s give the 12 words SeedSigner makes (SHA-256 of the rolls, @scure/bip39): ' + exp.slice(0, 3).join(' ') + ' ...');
+  t((await d.state()).view === 'SSSeedOptionsView' && (await d.state()).title === fpOf(rootOf(exp.join(' '))), 'lesson "dice": it ends on the seed\'s menu, under the fingerprint of those words (' + fpOf(rootOf(exp.join(' '))) + ')');
+};
+SCEN.lessons_seed = async (t, d, ctx, page) => {   // xpub, then address and message with the test seed already loaded (their load steps are passed over)
+  let r = await runLesson(d, page, 'xpub', [...LOAD, async () => {}, many(['DOWN', 300], ['PRESS', 900]), P('PRESS'), P('PRESS'), P('PRESS'), P('PRESS', 2500), P('PRESS', 1500)]);
+  lessonOk(t, 'xpub', r, 10);
+  const q = await readUR(page, 20000).catch(() => null), qr = q ? null : await d.readQR();
+  t((await d.state()).view === 'SSSeedExportXpubQRDisplayView', 'lesson "xpub": it ends on the xpub QR code');
+  r = await runLesson(d, page, 'address', [null, null, null, toHomeAny, async (d) => { await waitCam(d, 'address'); await d.pick(/^Scan$/, { wait: 1500 }); }, P('PRESS', 2000)]);
+  lessonOk(t, 'address', r, 6, [0, 1, 2]);
+  const f = await screenFields(d, ['address', 'verified_index', 'verified_index_is_change']);
+  t(f.address === addrOf(ABANDON, '', 'native', 0, 3) && f.verified_index === 3 && f.verified_index_is_change === false, 'lesson "address": the device verified receive address #3 of the test seed (' + String(f.address).slice(0, 14) + '..., the address @scure/btc-signer makes)');
+  r = await runLesson(d, page, 'message', [null, null, null, toHomeAny, async (d) => d.pick(/^Settings$/, { wait: 900 }), async (d) => d.pick(/^Advanced$/, { wait: 900 }), async (d) => d.pick(/^Message signing$/, { wait: 900 }), async (d) => d.pick(/^Enabled$/, { wait: 1200 }),
+    toHomeAny, async (d) => { await waitCam(d, 'signmsg'); await d.pick(/^Scan$/, { wait: 1500 }); }, P('PRESS', 1500), P('PRESS', 1500), P('PRESS', 2500)]);
+  lessonOk(t, 'message', r, 13, [0, 1, 2]);
+  await sleep(800); const mq = await d.readQR(), k = rootOf(ABANDON).derive("m/84'/0'/0'/0/0");
+  const ms = mq ? checkMessageSig(mq.text, 'Practice message from VOIDFORGE', k.publicKey, 'p2wpkh') : { ok: false };
+  t(ms.ok, 'lesson "message": the QR on the device is a valid signature of "Practice message from VOIDFORGE" by m/84\'/0\'/0\'/0/0 of the test seed (noble)');
+};
+const lessonSign = async (t, d, ctx, page) => {   // Mainnet (the device's default): the practice wallet warns that the coins do not exist
+  const tag = 'lesson "sign" (single key, Mainnet)';
+  const r0 = runLesson(d, page, 'sign', [...LOAD, toHomeAny, async (d, page) => page.click('#ssTxGo'), async (d) => { await waitCam(d, 'tx'); await d.pick(/^Scan$/, { wait: 1500 }); },
+    P('PRESS', 1500), P('PRESS', 1200), P('PRESS', 1200), P('PRESS', 1500), P('PRESS', 1200), P('PRESS', 2500), async () => {}]);
+  const r = await r0;
+  lessonOk(t, 'sign', r, 13);
+  const p = await panel(d);
+  t(p.net && await page.textContent('#ssTxNet') === "Mainnet: these coins don't exist; this PSBT can never be broadcast." && p.tx.ok && /^Signed correctly/.test(p.status), tag + ': the device is on Mainnet, so the page warns "these coins don\'t exist; this PSBT can never be broadcast", and the lesson ends with "Signed correctly"');
+};
+SCEN.lessons_tx = async (t, d, ctx, page) => {   // "sign", then "multisig" with the test seed already loaded
+  await lessonSign(t, d, ctx, page);
+  const tag = 'lesson "multisig" (2-of-3, Mainnet)';
+  let origB = null, signedB = null;
+  const acts = [null, null, null, toHomeAny, async (d, page) => { await page.click('#ssTxGo'); await waitCam(d, 'tx'); origB = Uint8Array.from(await d.ev(() => Array.from(ssLearn.tx.psbt))); },
+    async (d) => d.pick(/^Scan$/, { wait: 1500 }), P('PRESS', 1500), P('PRESS', 1200), P('PRESS', 1200), P('PRESS', 1500), P('PRESS', 1200),
+    async (d) => { await waitCam(d, 'descriptor'); await d.press('PRESS', 2500); }, P('PRESS', 1500), P('PRESS', 1200), P('PRESS', 2500),
+    async (d, page) => { const u = await readUR(page); signedB = u && u.bytes; }];
+  const r = await runLesson(d, page, 'multisig', acts);
+  lessonOk(t, 'multisig', r, 16, [0, 1, 2]);
+  const desc = await d.ev(() => SSController._instance.multisig_wallet_descriptor && SSController._instance.multisig_wallet_descriptor.miniscript ? true : !!SSController._instance.multisig_wallet_descriptor);
+  t(desc, tag + ': the device holds the 2-of-3 wallet descriptor it scanned from the practice wallet');
+  t((await panel(d)).tx.ok && /second cosigner/.test((await panel(d)).status), tag + ': the page says "Signed correctly" and that a second cosigner must sign too');
+  if (origB && signedB) checkPractice(t, tag, origB, signedB, { net: 'M', multi: true }); else t(false, tag + ': no signed PSBT read from the screen');
+};
+
 // ================================================================ run
 SCEN.tools.clock = true; SCEN.offline.online = true;
-const order = ['review', 'psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
+const order = ['lessons_dice', 'lessons_tx', 'lessons_seed', 'practice_tx', 'review', 'psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
 const want = process.env.SCEN ? process.env.SCEN.split(',') : order;
 const results = [];
 async function runScenario(browser, name) {
