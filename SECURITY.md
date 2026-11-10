@@ -19,7 +19,7 @@ Every release passes all of these before it is published (RELEASING.md says how 
 - **Prints** (`tests/print.test.mjs`): every printed sheet is exactly one page on Letter and A4, in a real browser.
 - **Memory** (`tests/memory.test.mjs`): after CLEAR ALL, auto-clear and END SESSION, a heap snapshot holds none of the seed words, rolls or passphrases.
 - **Screens** (`tests/screens.test.mjs`): the main screens against saved pictures.
-- **Mutation tests** (`tests/mutation.test.mjs`): about 2,400 deliberate small bugs; each one must be caught by the self-test or an end-to-end check.
+- **Mutation tests** (`tests/mutation.test.mjs`): about 2,400 deliberate small bugs; each one must be caught by the self-test or an end-to-end check. A bug that freezes the page counts as caught; one that only makes the checks run too long counts as not caught.
 - **A fresh AI code review** before every release, by a model that did not write the code, and a full review of the whole file before the first signed release. These reviews do not mean VOIDFORGE has been independently audited.
 
 THREAT_MODEL.md says what VOIDFORGE protects, against whom, and what it cannot do.

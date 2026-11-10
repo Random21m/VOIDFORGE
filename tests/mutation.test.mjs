@@ -21,11 +21,15 @@ import { hex as bhex } from '@scure/base';
 import { loadPage, ready, readHtml, makeReporter } from './harness.mjs';
 import { createRequire } from 'node:module';
 import zlib from 'node:zlib';
+import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 const requireC = createRequire(import.meta.url);
 const { UR, UREncoder } = requireC('@ngraveio/bc-ur');
 const { CryptoOutput } = requireC('@keystonehq/bc-ur-registry');
 
 const R = makeReporter();
+// The same file also runs as the worker thread that tries each mutation (see MUT_TIMEOUT below); the worker prints nothing.
+const IN_WORKER = !isMainThread && !!(workerData && workerData.mutWorker);
+if (IN_WORKER) console.log = () => {};
 const html = readHtml();
 const sha = (s) => new Uint8Array(nc.createHash('sha256').update(s).digest());
 const fp = (mn, pw) => HDKey.fromMasterSeed(mnemonicToSeedSync(mn, pw)).fingerprint.toString(16).padStart(8, '0');
@@ -6129,8 +6133,8 @@ if (process.env.MUT_MAP) {
   process.exit(Object.keys(out.secFail).length ? 1 : 0);
 }
 
-const base = await detect(html);
-R.ok(base.by === null, "control: the unmodified file passes the self-test and every probe" + (base.by ? " [" + base.by + "]" : ""));
+if (!IN_WORKER) { const base = await detect(html);
+R.ok(base.by === null, "control: the unmodified file passes the self-test and every probe" + (base.by ? " [" + base.by + "]" : "")); }
 // the map for step A, used only if it was made for this exact page and probe
 let PLAN = null;
 if (!process.env.MUT_NOPLAN) { try { const P = JSON.parse(fs.readFileSync(new URL('./fixtures/mut-plan.json', import.meta.url), 'utf8'));
@@ -6144,7 +6148,48 @@ if (PLAN) { try { const C = JSON.parse(fs.readFileSync(new URL('./fixtures/mut-c
   let n = 0; for (const [name, msg] of Object.entries(C)) { const i = src.indexOf(msg); if (i < 0 || src.indexOf(msg, i + 1) >= 0) continue; let sec = 0; for (const [p0, k] of at) { if (p0 < i) sec = k; else break; } if (sec > 0) { HINT[name] = { sec, msg }; n++; } }
   console.log('step A1 hints: ' + n); } catch (e) { console.log('no step A1 hints (tests/fixtures/mut-caught.json)'); } }
 
-const survivors = [];
+// Time limits. Each mutation runs in a worker thread, so a mutation that freezes the page cannot stop the whole run.
+// A page that stays busy for MUT_FREEZE seconds (default 120) without a break would freeze a browser tab too, so it counts as
+// caught. A mutation still running after MUT_TIMEOUT seconds (default 1800, or 3 times its time in the last full run if that
+// is longer) without freezing is stopped and counts as NOT caught, to be checked by hand: being slow never passes.
+// MUT_TIMEOUT=0 runs every mutation in this process with no time limit, as before.
+if (IN_WORKER) {
+  setInterval(() => parentPort.postMessage({ beat: 1 }), 5000);   // stops arriving while the page is busy without a break
+  parentPort.on('message', async ({ mi }) => {
+    const [name, find, rep, equivalent] = M[mi];
+    try { parentPort.postMessage({ mi, res: await detect(html.replace(find, () => rep), !process.env.MUT_ALLFAILS, equivalent ? null : PLAN && PLAN[name], equivalent ? undefined : HINT[name]) }); }
+    catch (e) { parentPort.postMessage({ mi, err: String(e && e.stack || e) }); }
+  });
+  parentPort.postMessage({ ready: true });
+} else {
+const TLIM = process.env.MUT_TIMEOUT === undefined ? 1800 : Number(process.env.MUT_TIMEOUT), FREEZE = Number(process.env.MUT_FREEZE || 120);
+if (!(TLIM >= 0) || !(FREEZE > 0)) { console.log('bad MUT_TIMEOUT or MUT_FREEZE (seconds)'); process.exit(1); }
+let TIMES = {}; try { TIMES = JSON.parse(fs.readFileSync(new URL('./fixtures/mut-times.json', import.meta.url), 'utf8')); } catch (e) { TIMES = {}; }
+let wk = null;
+const startWorker = () => new Promise((res, rej) => {
+  const w = new Worker(new URL(import.meta.url), { workerData: { mutWorker: true }, argv: process.argv.slice(2), resourceLimits: { maxOldGenerationSizeMb: 4096 } });
+  const bad = (e) => rej(e instanceof Error ? e : new Error('mutation worker exited with code ' + e));
+  w.once('error', bad); w.once('exit', bad); w.once('message', () => { w.off('error', bad); w.off('exit', bad); res(w); });
+});
+async function runOne(mi, mutated, plan, hint) {
+  if (!TLIM) return detect(mutated, !process.env.MUT_ALLFAILS, plan, hint);
+  if (!wk) wk = await startWorker();
+  const w = wk, limit = Math.max(TLIM, 3 * (Number(TIMES[M[mi][0]]) || 0));
+  return new Promise((resolve, reject) => {
+    const t0 = Date.now(); let last = t0, over = false;
+    const finish = (f) => { if (over) return; over = true; clearInterval(tick); w.off('message', onMsg); w.off('error', onErr); w.off('exit', onErr); f(); };
+    const stop = (r) => finish(() => { wk = null; w.terminate().then(() => resolve(r), () => resolve(r)); });
+    const onMsg = (m) => { last = Date.now(); if (m.mi === mi) finish(() => (m.err ? reject(new Error('mutation worker: ' + m.err)) : resolve(m.res))); };
+    const onErr = (e) => finish(() => { wk = null; reject(e instanceof Error ? e : new Error('mutation worker exited with code ' + e)); });
+    const tick = setInterval(() => {
+      if (Date.now() - last > FREEZE * 1000) stop({ by: 'page froze (busy for over ' + FREEZE + ' s without a break)', step: 'freeze' });
+      else if (Date.now() - t0 > limit * 1000) stop({ by: null, step: 'timeout', limit });
+    }, 1000);
+    w.on('message', onMsg); w.once('error', onErr); w.once('exit', onErr);
+    w.postMessage({ mi });
+  });
+}
+const survivors = [], timedOut = [];
 const ONLY = process.env.MUT_ONLY ? new RegExp(process.env.MUT_ONLY) : null; // optional: run only the mutations whose name matches
 // Optional sharding for CI: MUT_SHARD="i/n" runs only every n-th mutation starting at i, so n jobs together run them all.
 const SHARD = process.env.MUT_SHARD ? process.env.MUT_SHARD.split('/').map(Number) : null;
@@ -6178,12 +6223,15 @@ for (const mi of ORDER) {
   if (ONLY && !ONLY.test(name)) continue;
   const count = html.split(find).length - 1;
   if (count !== 1) { R.ok(false, `mutation target must occur exactly once (${count}x): ${name}`); continue; }
-  if (DONE.has(name)) { const d = DONE.get(name); R.ok(d.by !== null || !!equivalent, d.by ? `${name}: caught by ${d.by} (earlier run)` : `${name}: ${equivalent ? 'survives as expected' : 'SURVIVED (a hole in the safety net)'} (earlier run)`); if (!d.by && !equivalent) survivors.push(name); continue; }
-  const t0 = Date.now(), res = await detect(html.replace(find, () => rep), !process.env.MUT_ALLFAILS, equivalent ? null : PLAN && PLAN[name], equivalent ? undefined : HINT[name]); // a known-harmless mutation goes straight to step B
+  if (DONE.has(name)) { const d = DONE.get(name); R.ok(d.by !== null || !!equivalent, d.by ? `${name}: caught by ${d.by} (earlier run)` : `${name}: ${equivalent ? 'survives as expected' : d.step === 'timeout' ? 'TIMED OUT without freezing the page (check it by hand)' : 'SURVIVED (a hole in the safety net)'} (earlier run)`); if (!d.by && !equivalent) survivors.push(name); continue; }
+  const t0 = Date.now(), res = await runOne(mi, html.replace(find, () => rep), equivalent ? null : PLAN && PLAN[name], equivalent ? undefined : HINT[name]); // a known-harmless mutation goes straight to step B
   if (process.env.MUT_RESULTS) fs.appendFileSync(process.env.MUT_RESULTS, JSON.stringify({ name, s: Math.round((Date.now() - t0) / 1000), by: res.by, step: res.step, sec: res.sec }) + '\n');
+  if (res.step === 'timeout') { R.ok(false, `${name}: TIMED OUT after ${res.limit} s without freezing the page (check it by hand)`); timedOut.push(name); continue; }
   if (equivalent) { R.ok(true, `${name}: behaviorally equivalent, ${res.by ? 'caught by ' + res.by : 'survives as expected'}`); continue; }
   R.ok(res.by !== null, res.by ? `${name}: caught by ${res.by}` : `${name}: SURVIVED (a hole in the safety net)`);
   if (!res.by) survivors.push(name);
 }
 if (survivors.length) console.log('\nSurvivors:', survivors);
+if (timedOut.length) console.log('\nTimed out (check by hand):', timedOut);
 R.done('mutation');
+}
