@@ -747,6 +747,7 @@ async function probe(w, mutated, fast, only, hooks) {
     if (!w.eval('AUTO_FIELDS').includes('dbIn') || !w.eval('AUTO_FIELDS').includes('dbKey')) fails.push('device backups: auto-clear knows the two boxes');
   } catch (e) { if (e instanceof ProbeStop) throw e; fails.push('device backups: the probe crashed: ' + e.message); }
   w.confirm = oc; try { w.dbClear(); } catch (e) { /* the page may be broken */ }
+  w.wipeSeed(); r = await run('dice', 12, D50);   // CLEAR ALL above wiped section 0's seed: make it again for the sections after this one
   }
   if (SEC(1, "{ const wo = watch(expect.d50, ''), z = $('wZpub').textConte")) {
   { const wo = watch(expect.d50, ''), z = $('wZpub').textContent, dr = $('wDescR').textContent, dc = $('wDescC').textContent;
