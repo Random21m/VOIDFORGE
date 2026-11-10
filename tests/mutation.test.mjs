@@ -17,6 +17,7 @@ import { ripemd160 } from '@noble/hashes/ripemd160';
 import { sha256 as nsha } from '@noble/hashes/sha256';
 import { LifeHash } from 'lifehash';
 import * as btc from '@scure/btc-signer';
+import { signECDSA as btcSignECDSA, taprootTweakPubkey as btcTweakPub } from '@scure/btc-signer/utils.js';
 import { hex as bhex } from '@scure/base';
 import { loadPage, ready, readHtml, makeReporter } from './harness.mjs';
 import { createRequire } from 'node:module';
@@ -107,6 +108,228 @@ async function probe(w, mutated, fast, only, hooks) {
   if (adOf() !== addr(expect.d50, '')) fails.push('first receive address');
   }
   if (hooks && hooks.afterBase) await hooks.afterBase();
+  // v2.13.0: the SeedSigner+ practice signer (CHECK A BACKUP > Practice signer; tools/simulator/). Its money-critical code is driven
+  // directly (the device's own functions and views, no screen), and every expected value comes from @scure/bip39, @scure/bip32,
+  // @scure/btc-signer, @noble/curves or node:crypto. It never uses CLEAR ALL: only the signer's own wipe, which leaves the page alone.
+  if (SEC(72, "v2.13.0 practice signer: SeedSigner's dice, final word, SeedQR, xpubs, addresses, messages, PSBT signing, change, offline rule, wipe")) {
+  const navOnline = Object.getOwnPropertyDescriptor(w.navigator, 'onLine');
+  try {
+    const E = (s) => w.eval(s), SC = E('SSSettingsConstants'), U = E('ssSeedsEmbitUtils'), P8 = (b) => new (E('Uint8Array'))(b);
+    const H = (b) => Buffer.from(b).toString('hex'), AB = 'abandon '.repeat(11) + 'about', T = 'practice signer: ';
+    const root = (m, pw = '', v) => HDKey.fromMasterSeed(mnemonicToSeedSync(m, pw), v), rAB = root(AB), fAB = fp(AB, '');
+    const SSSeed = E('SSSeed'), sAB = await SSSeed.create({ mnemonic: AB });
+    const online = (on) => Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => on });
+    // 1. Dice and coin flips -> words: SeedSigner hashes the roll string with SHA-256 (16 bytes for 50 rolls / 128 flips, else 32)
+    const C256 = C128 + C128.split('').reverse().join('');
+    if ((await w.ssGenerateMnemonicFromDice(D50)).join(' ') !== expect.d50) fails.push(T + '50 dice rolls make the 12 words of SHA-256(rolls)');
+    if ((await w.ssGenerateMnemonicFromDice(D99)).join(' ') !== expect.d99) fails.push(T + '99 dice rolls make the 24 words of SHA-256(rolls)');
+    if ((await w.ssGenerateMnemonicFromCoinFlips(C128)).join(' ') !== expect.c128 || (await w.ssGenerateMnemonicFromCoinFlips(C256)).join(' ') !== entropyToMnemonic(sha(C256), wordlist)) fails.push(T + '128 and 256 coin flips make the words of SHA-256(flips)');
+    { const st = new (E('SSSeedStorage'))(), v = Object.create(E('SSToolsDiceEntropyEntryView').prototype); let dest;
+      v.run_screen = async () => D99; v.settings = E('SSSettings').get_instance(); v.controller = { storage: st };
+      dest = await v.run(); if (!st.pending_seed || st.pending_seed.mnemonic_str !== expect.d99 || H(st.pending_seed.seed_bytes) !== H(mnemonicToSeedSync(expect.d99, ''))) fails.push(T + 'the dice view loads the 24 words of the rolls as the pending seed');
+      if (!dest || dest.View_cls !== E('SSSeedWordsWarningView')) fails.push(T + 'after the dice the words are shown'); }
+    // 2. Calc final word: the 12th (24th) word holds the last 7 (3) entropy bits plus the checksum
+    const idx = (m) => m.split(' ').map((x) => wordlist.indexOf(x)), bitsOf = (a) => a.map((i) => i.toString(2).padStart(11, '0')).join('');
+    const finalOf = (ws, sel) => { const b = bitsOf([...idx(ws.join(' ')), wordlist.indexOf(sel)]), n = ws.length === 11 ? 128 : 256;
+      return entropyToMnemonic(Uint8Array.from(b.slice(0, n).match(/.{8}/g).map((x) => parseInt(x, 2))), wordlist).split(' ').pop(); };
+    const W11 = expect.d50.split(' ').slice(0, 11), W23 = expect.d99.split(' ').slice(0, 23);
+    for (const [ws, sel] of [[W11, 'zoo'], [W11, 'abandon'], [W11, 'satoshi'], [W23, 'zoo'], [W23, 'mind']]) {
+      const got = await w.ssCalculateChecksum([...ws, sel]); if (got.length !== ws.length + 1 || got.slice(0, -1).join(' ') !== ws.join(' ') || got[ws.length] !== finalOf(ws, sel)) { fails.push(T + 'calc final word: the checksum word for ' + (ws.length + 1) + ' words (' + sel + ')'); break; } }
+    if ((await w.ssCalculateChecksum(W11.join(' '))).pop() !== finalOf(W11, 'abandon') || (await w.ssCalculateChecksum(W23.slice())).pop() !== finalOf(W23, 'abandon')) fails.push(T + 'calc final word: 11 or 23 words get the first word as the temporary last word');
+    if (w.ssGetPartialFinalWord('1011001') !== wordlist[0b10110010000] || w.ssGetPartialFinalWord('101') !== wordlist[0b10100000000]) fails.push(T + 'calc final word: coin flips are the top bits of the final word');
+    const calcView = async (ws, sel, flips) => { const st = new (E('SSSeedStorage'))(), v = Object.create(E('SSToolsCalcFinalWordShowFinalWordView').prototype);
+      st.init_pending_mnemonic(ws.length + 1); ws.forEach((x, i) => st.update_pending_mnemonic(x, i)); if (sel) st.update_pending_mnemonic(sel, ws.length);
+      v.coin_flips = flips || null; v.controller = { storage: st }; v.settings = E('SSSettings').get_instance(); await v._init_final_word(); return [v, st.pending_mnemonic]; };
+    for (const [ws, sel, flips] of [[W11, 'satoshi'], [W23, 'mind'], [W11, null, '0110101'], [W23, null, '110']]) {
+      const s = sel || wordlist[parseInt(flips.padEnd(11, '0'), 2)], want = finalOf(ws, s), [v, pm] = await calcView(ws, sel, flips), nb = ws.length === 11 ? 4 : 8;
+      if (v.actual_final_word !== want || pm.join(' ') !== [...ws, want].join(' ') || !validateMnemonic(pm.join(' '), wordlist) || v.checksum_bits !== wordlist.indexOf(want).toString(2).padStart(11, '0').slice(-nb) || v.selected_final_bits !== (flips || wordlist.indexOf(sel).toString(2).padStart(11, '0'))) { fails.push(T + 'calc final word view: final word, checksum bits and the words kept (' + (ws.length + 1) + (flips ? ' words, coin flips)' : ' words)')); break; } }
+    // 3. SeedQR (4 digits per word) and CompactSeedQR (the entropy bytes), made and read back
+    const DQ = E('SSDecodeQR'), QT = E('SSQRType');
+    for (const m of [expect.d50, expect.d99, AB]) {
+      const digits = idx(m).map((i) => String(i).padStart(4, '0')).join(''), ent = mnemonicToEntropy(m, wordlist), ml = m.split(' ');
+      if (new (E('SSSeedsSeedQrEncoder'))({ mnemonic: ml }).next_part() !== digits || w.ssSeedsSeedQrData({ mnemonic_list: ml }, QT.SEED__SEEDQR) !== digits) fails.push(T + 'Standard SeedQR: 4 digits per word (' + ml.length + ' words)');
+      if (H(new (E('SSSeedsCompactSeedQrEncoder'))({ mnemonic: ml }).next_part()) !== H(ent) || H(w.ssSeedsSeedQrData({ mnemonic_list: ml }, QT.SEED__COMPACTSEEDQR)) !== H(ent)) fails.push(T + 'CompactSeedQR: the entropy bytes without the checksum (' + ml.length + ' words)');
+      const d1 = new DQ(), r1 = await d1.add_data(digits), d2 = new DQ(), r2 = await d2.add_data(P8(ent));
+      if (r1 !== E('SSDecodeQRStatus').COMPLETE || d1.qr_type !== QT.SEED__SEEDQR || !d1.is_seed || d1.get_seed_phrase().join(' ') !== m) fails.push(T + 'a Standard SeedQR is read back (' + ml.length + ' words)');
+      if (r2 !== E('SSDecodeQRStatus').COMPLETE || d2.qr_type !== QT.SEED__COMPACTSEEDQR || !d2.is_seed || d2.get_seed_phrase().join(' ') !== m) fails.push(T + 'a CompactSeedQR is read back (' + ml.length + ' words)');
+    }
+    { const d = new DQ(); await d.add_data(AB); const d4 = new DQ(); await d4.add_data(AB.split(' ').map((x) => x.slice(0, 4)).join(' '));
+      if (d.get_seed_phrase().join(' ') !== AB || d4.get_seed_phrase().join(' ') !== AB || d4.qr_type !== QT.SEED__FOUR_LETTER_MNEMONIC) fails.push(T + 'a QR of the words (full or 4 letters) is read back');
+      for (const m of [expect.d50, expect.c128, 'legal winner thank year wave sausage worth useful legal winner thank yellow']) { const dm = new DQ(); await dm.add_data(m); if (!dm.complete || dm.get_seed_phrase().join(' ') !== m) { fails.push(T + 'a QR of valid words is read (its 4 checksum bits compared, no more)'); break; } }
+      const bad = new DQ(); await bad.add_data('abandon '.repeat(11) + 'zoo'); if (bad.complete || bad.get_seed_phrase().length) fails.push(T + 'a QR of words with a wrong checksum is refused');
+      const d13 = new DQ(); await d13.add_data('0000'.repeat(13)); if (d13.complete || d13.qr_type !== QT.SEED__SEEDQR) fails.push(T + 'a SeedQR of 13 words is refused');
+      let thrown = ''; try { await w.ssToolsNewSeed(('0000 '.repeat(12)).trim().split(' ').map(() => 'abandon'), SC.WORDLIST_LANGUAGE__ENGLISH); } catch (e) { thrown = e.name; }
+      if (thrown !== 'InvalidSeedException') fails.push(T + 'a scanned seed with a wrong checksum is not loaded'); }
+    // 4. Seeds: words -> BIP39 seed, passphrase (NFKD), fingerprint, BIP85
+    if (H(sAB.seed_bytes) !== H(mnemonicToSeedSync(AB, '')) || await sAB.get_fingerprint() !== fAB) fails.push(T + 'the seed and fingerprint of the words');
+    { const s = await SSSeed.create({ mnemonic: AB.split(' ') }); await s.set_passphrase(UNI); if (H(s.seed_bytes) !== H(mnemonicToSeedSync(AB, UNI)) || await s.get_fingerprint() !== fp(AB, UNI)) fails.push(T + 'a passphrase (NFKD) changes the seed and fingerprint');
+      await s.set_passphrase(''); if (H(s.seed_bytes) !== H(mnemonicToSeedSync(AB, ''))) fails.push(T + 'removing the passphrase gives the first seed back');
+      let bad = 0; for (const m of ['abandon '.repeat(11) + 'abandon', 'abandon '.repeat(11) + 'abou', 'abandon '.repeat(10) + 'about']) { try { await SSSeed.create({ mnemonic: m }); } catch (e) { if (e.name === 'InvalidSeedException') bad++; } }
+      if (bad !== 3) fails.push(T + 'words with a wrong checksum, an unknown word or the wrong length make no seed');
+      if (await sAB.get_bip85_child_mnemonic(3, 12) !== b85At(AB, '', 12, 3)) fails.push(T + 'a BIP85 child seed'); }
+    // 5. xpub export: "[fingerprint/path]xpub" (zpub, ypub, Zpub, ... by the path), static QR and UR crypto-account
+    const V = (p) => ({ private: 0, public: p }), XV = { x: 0x0488b21e, y: 0x049d7cb2, z: 0x04b24746, Y: 0x0295b43f, Z: 0x02aa7ed3, t: 0x043587cf, u: 0x044a5262, v: 0x045f1cf6, U: 0x024289ef, W: 0x02575483 };
+    for (const [path, v, net] of [["m/84'/0'/0'", 'z', 'M'], ["m/49'/0'/0'", 'y', 'M'], ["m/86'/0'/0'", 'x', 'M'], ["m/48'/0'/0'/2'", 'Z', 'M'], ["m/48'/0'/0'/1'", 'Y', 'M'], ["m/84'/1'/0'", 'v', 'T'], ["m/49'/1'/0'", 'u', 'T'], ["m/48'/1'/0'/2'", 'W', 'T'], ["m/86'/1'/0'", 't', 'R']]) {
+      const enc = new (E('SSSeedsStaticXpubQrEncoder'))({ seed: sAB, derivation: path, network: { M: SC.MAINNET, T: SC.TESTNET, R: SC.REGTEST }[net], sig_type: SC.SINGLE_SIG }); await enc.prepare();
+      if (enc.next_part() !== '[' + fAB + path.slice(1) + ']' + root(AB, '', V(XV[v])).derive(path).publicExtendedKey) { fails.push(T + 'xpub export: [fingerprint/path] and the ' + v + 'pub for ' + path); break; } }
+    { const st = (n, w0, s0) => U.get_standard_derivation_path(n, w0, s0), S = SC.SINGLE_SIG, MS = SC.MULTISIG;
+      const got = [st(SC.MAINNET, S, SC.NATIVE_SEGWIT), st(SC.MAINNET, S, SC.NESTED_SEGWIT), st(SC.MAINNET, S, SC.TAPROOT), st(SC.MAINNET, S, SC.LEGACY_P2PKH), st(SC.TESTNET, S, SC.NATIVE_SEGWIT), st(SC.REGTEST, S, SC.TAPROOT), st(SC.MAINNET, MS, SC.NATIVE_SEGWIT), st(SC.MAINNET, MS, SC.NESTED_SEGWIT), st(SC.TESTNET, MS, SC.NATIVE_SEGWIT)].join(' ');
+      if (got !== "m/84'/0'/0' m/49'/0'/0' m/86'/0'/0' m/44'/0'/0' m/84'/1'/0' m/86'/1'/0' m/48'/0'/0'/2' m/48'/0'/0'/1' m/48'/1'/0'/2'") fails.push(T + 'the standard derivation paths');
+      const tg = [w.ssGetStandardDerivationPath(SC.MAINNET, S, SC.NATIVE_SEGWIT), w.ssGetStandardDerivationPath(SC.TESTNET, S, SC.TAPROOT), w.ssGetStandardDerivationPath(SC.MAINNET, S, SC.NESTED_SEGWIT), w.ssGetStandardDerivationPath(SC.MAINNET, MS, SC.NATIVE_SEGWIT)].join(' ');
+      if (tg !== "m/84'/0'/0' m/86'/1'/0' m/49'/0'/0' m/48'/0'/0'/2'") fails.push(T + 'the address explorer\'s standard derivation paths'); }
+    { const enc = new (E('SSSeedsUrXpubQrEncoder'))({ seed: sAB, derivation: "m/84'/0'/0'", network: SC.MAINNET, sig_type: SC.SINGLE_SIG, qr_density: SC.DENSITY__HIGH }); await enc.prepare();
+      const { URDecoder } = requireC('@ngraveio/bc-ur'), { CryptoAccount } = requireC('@keystonehq/bc-ur-registry'), dec = new URDecoder();
+      for (let i = 0; i < enc.seq_len() && !dec.isComplete(); i++) dec.receivePart(enc.next_part().toLowerCase());
+      let ok = false; try { const acc = CryptoAccount.fromCBOR(dec.resultUR().cbor), od = acc.getOutputDescriptors()[0], k = od.getCryptoKey();
+        ok = acc.getMasterFingerprint().toString('hex') === fAB && od.getScriptExpressions().map((x) => x.getExpression()).join() === 'wpkh' && k.getBip32Key() === rAB.derive("m/84'/0'/0'").publicExtendedKey && k.getOrigin().getPath() === "84'/0'/0'" && k.getOrigin().getSourceFingerprint().toString('hex') === fAB; } catch (e) { ok = false; }
+      if (!ok) fails.push(T + 'xpub export: the UR crypto-account holds the fingerprint, wpkh and the account key'); }
+    // 6. Addresses: receive and change, native, nested, taproot and legacy, main, test and regtest
+    const NETS = { main: btc.NETWORK, test: btc.TEST_NETWORK, regtest: { bech32: 'bcrt', pubKeyHash: 0x6f, scriptHash: 0xc4, wif: 0xef } };
+    const mk = { [SC.NATIVE_SEGWIT]: [84, (p, n) => btc.p2wpkh(p, n).address], [SC.NESTED_SEGWIT]: [49, (p, n) => btc.p2sh(btc.p2wpkh(p, n), n).address], [SC.TAPROOT]: [86, (p, n) => btc.p2tr(p.slice(1), undefined, n).address], [SC.LEGACY_P2PKH]: [44, (p, n) => btc.p2pkh(p, n).address] };
+    const addrAt = (st, net, chain, i) => mk[st][1](rAB.derive(`m/${mk[st][0]}'/${net === 'main' ? 0 : 1}'/0'/${chain}/${i}`).publicKey, NETS[net]);
+    for (const [st, net, cis] of [[SC.NATIVE_SEGWIT, 'main', [[0, 0], [1, 3]]], [SC.NESTED_SEGWIT, 'main', [[0, 0], [1, 3]]], [SC.TAPROOT, 'main', [[0, 0], [1, 3]]], [SC.LEGACY_P2PKH, 'main', [[0, 0], [1, 3]]],
+      [SC.NATIVE_SEGWIT, 'test', [[0, 1]]], [SC.NESTED_SEGWIT, 'test', [[1, 0]]], [SC.TAPROOT, 'test', [[0, 0]]], [SC.LEGACY_P2PKH, 'test', [[0, 2]]], [SC.NATIVE_SEGWIT, 'regtest', [[1, 1]]], [SC.NESTED_SEGWIT, 'regtest', [[0, 0]]], [SC.LEGACY_P2PKH, 'regtest', [[0, 0]]], [SC.TAPROOT, 'regtest', [[0, 1]]]]) {
+      const x = await sAB.get_xpub(`m/${mk[st][0]}'/${net === 'main' ? 0 : 1}'/0'`, { main: SC.MAINNET, test: SC.TESTNET, regtest: SC.REGTEST }[net]);
+      let bad = false; for (const [c, i] of cis) if (await U.get_single_sig_address(x, st, i, c === 1, net) !== addrAt(st, net, c, i)) bad = true;
+      if (bad) { fails.push(T + 'receive and change addresses (' + st + ', ' + net + ')'); break; } }
+    for (const [st, net] of [[SC.NATIVE_SEGWIT, 'main'], [SC.NESTED_SEGWIT, 'main'], [SC.TAPROOT, 'test'], [SC.LEGACY_P2PKH, 'main']]) {
+      const x = await w.ssToolsGetXpub(sAB, `m/${mk[st][0]}'/${net === 'main' ? 0 : 1}'/0'`, net), r0 = await w.ssToolsSingleSigAddresses(x, st, 2, 2, false, net), c0 = await w.ssToolsSingleSigAddresses(x, st, 1, 1, true, net);
+      if (r0.join() !== [2, 3].map((i) => addrAt(st, net, 0, i)).join() || c0.join() !== addrAt(st, net, 1, 1)) { fails.push(T + 'address explorer: receive and change addresses (' + st + ', ' + net + ')'); break; } }
+    // 2-of-3 multisig descriptors (sortedmulti and multi, native and nested)
+    const M3 = [AB, 'legal winner thank year wave sausage worth useful legal winner thank yellow', 'letter advice cage absurd amount doctor acoustic avoid letter advice cage above'];
+    const cos = M3.map((m) => ({ f: fp(m, ''), k: root(m).derive("m/48'/0'/0'/2'") })), cosN = M3.map((m) => ({ f: fp(m, ''), k: root(m).derive("m/48'/0'/0'/1'") }));
+    const descOf = (wrap, fn, cs, br = '{0,1}') => wrap[0] + fn + '(2,' + cs.map((c) => '[' + c.f + '/48h/0h/0h/' + (wrap[0] === 'sh(wsh(' ? '1h' : '2h') + ']' + c.k.publicExtendedKey + '/' + br + '/*').join(',') + ')' + wrap[1];
+    const msAt = (cs, sorted, nested, chain, i) => { let pk = cs.map((c) => c.k.deriveChild(chain).deriveChild(i).publicKey); if (sorted) pk = pk.sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
+      const ws = btc.p2wsh(btc.p2ms(2, pk)); return nested ? btc.p2sh(ws).address : ws.address; };
+    const DS = E('SSDescriptor'), descW = await DS.from_string(descOf(['wsh(', ')'], 'sortedmulti', cos));
+    for (const [d, cs, sorted, nested] of [[descW, cos, true, false], [await DS.from_string(descOf(['wsh(', ')'], 'multi', cos)), cos, false, false], [await DS.from_string(descOf(['sh(wsh(', '))'], 'sortedmulti', cosN)), cosN, true, true]]) {
+      const [c, i] = sorted && !nested ? [0, 0] : nested ? [1, 0] : [0, 1], bad = !d.is_basic_multisig || d.m !== 2 || d.keys.length !== 3 || await d.derive_address(i, c === 1, 'main') !== msAt(cs, sorted, nested, c, i);
+      if (bad) { fails.push(T + '2-of-3 multisig: receive and change addresses (' + (sorted ? 'sortedmulti' : 'multi') + (nested ? ', nested' : '') + ')'); break; } }
+    if (await U.get_multisig_address(descW, 3, true, 'main') !== msAt(cos, true, false, 1, 3)) fails.push(T + '2-of-3 multisig: a change address through embit_utils');
+    if (JSON.stringify(U.get_multisig_policy(descW)) !== '["2","3"]') fails.push(T + 'multisig: the policy is 2 of 3');
+    // 7. Address verification: the brute-force search finds the index and whether it is change, and stops when told
+    const verify = async (addr, opts) => { const C = E('SSThreadsafeCounter'), th = new (E('SSSeedAddressVerificationView').BruteForceAddressVerificationThread)(Object.assign({ address: addr, seed: null, descriptor: null, script_type: SC.NATIVE_SEGWIT, embit_network: 'main', derivation_path: "m/84'/0'/0'", threadsafe_counter: new C(), verified_index: new C(null), verified_index_is_change: new C(null) }, opts));
+      th.start(); for (let t = 0; t < 400 && th.is_alive() && th.threadsafe_counter.cur_count < 3; t++) await new Promise((r2) => setTimeout(r2, 10)); th.stop(); await th.join();
+      return [th.verified_index.cur_count, th.verified_index_is_change.cur_count]; };
+    if ((await verify(addrAt(SC.NATIVE_SEGWIT, 'main', 1, 1), { seed: sAB })).join() !== '1,1') fails.push(T + 'address verification: change address 1 is found as change');
+    if ((await verify(addrAt(SC.NATIVE_SEGWIT, 'main', 0, 2), { seed: sAB })).join() !== '2,0') fails.push(T + 'address verification: receive address 2 is found as receive');
+    if ((await verify(addrAt(SC.TAPROOT, 'main', 0, 1), { seed: sAB, script_type: SC.TAPROOT, derivation_path: "m/86'/0'/0'" })).join() !== '1,0') fails.push(T + 'address verification: a taproot address');
+    if ((await verify(msAt(cos, true, false, 1, 1), { descriptor: descW, script_type: SC.NATIVE_SEGWIT })).join() !== '1,1') fails.push(T + 'address verification: a multisig change address');
+    if ((await verify(addrAt(SC.NATIVE_SEGWIT, 'main', 0, 0).replace(/.$/, (c) => (c === 'q' ? 'p' : 'q')), { seed: sAB })).join() !== ',') fails.push(T + 'address verification: a wrong address is not found');
+    { const QD = new DQ(); await QD.add_data('bitcoin:' + addrAt(SC.NESTED_SEGWIT, 'main', 0, 1) + '?amount=1'); const t = QD.get_address_type(), QT2 = new DQ(); await QT2.add_data(addrAt(SC.TAPROOT, 'test', 0, 1).toUpperCase());
+      if (QD.get_address() !== addrAt(SC.NESTED_SEGWIT, 'main', 0, 1) || t[0] !== SC.NESTED_SEGWIT || t[1] !== SC.MAINNET || QT2.get_address() !== addrAt(SC.TAPROOT, 'test', 0, 1) || QT2.get_address_type().join() !== [SC.TAPROOT, SC.TESTNET].join()) fails.push(T + 'a scanned address: its type and network'); }
+    // 8. Sign message (BIP-137 style): header 27 + recid + 4, RFC 6979 low-S, verified by recovering the key
+    const vi = (n) => (n < 253 ? Buffer.from([n]) : Buffer.from([253, n & 255, n >> 8])), dsha = (b) => nc.createHash('sha256').update(nc.createHash('sha256').update(b).digest()).digest();
+    const msgHash = (m) => { const b = Buffer.from(m, 'utf8'); return new Uint8Array(dsha(Buffer.concat([Buffer.from('\x18Bitcoin Signed Message:\n', 'latin1'), vi(b.length), b]))); };
+    const sigOk = (b64, m, path, comp = true) => { const s = Buffer.from(b64, 'base64'), k = rAB.derive(path), h = msgHash(m), ns = secp256k1.sign(h, k.privateKey);
+      if (s.length !== 65 || s[0] !== 27 + ns.recovery + (comp ? 4 : 0) || H(s.subarray(1)) !== H(ns.toCompactRawBytes())) return false;
+      return H(new secp256k1.Signature(ns.r, ns.s).addRecoveryBit(s[0] - 27 - (comp ? 4 : 0)).recoverPublicKey(h).toRawBytes(true)) === H(k.publicKey); };
+    for (const [path, m] of [["m/84h/0h/0h/0/0", 'VOIDFORGE practice'], ["m/49'/0'/0'/1/4", 'héllo wörld ' + 'x'.repeat(260)], ["m/44h/0h/0h/0/2", '']]) {
+      if (!sigOk(await U.sign_message(sAB.seed_bytes, path, m), m, path.replace(/h/g, "'"))) { fails.push(T + 'sign message: the signature, its header and the key it recovers (' + path + ')'); break; } }
+    if (!sigOk(await U.sign_message(sAB.seed_bytes, "m/84h/0h/0h/0/1", 'u', false), 'u', "m/84'/0'/0'/0/1", false)) fails.push(T + 'sign message: an uncompressed-key header is 27 + recid');
+    { const pd = U.parse_derivation_path("m/84h/0h/0h/0/5"), pt = U.parse_derivation_path("m/49'/1'/0'/1/2"), pc = U.parse_derivation_path("m/84h/0h/0h/7/5");
+      if (pd.script_type !== SC.NATIVE_SEGWIT || pd.network !== SC.MAINNET || pd.is_change !== false || pd.index !== 5 || pd.wallet_derivation_path !== 'm/84h/0h/0h' || !pd.clean_match) fails.push(T + 'sign message: a native receive path is read');
+      if (pt.script_type !== SC.NESTED_SEGWIT || pt.is_change !== true || pt.index !== 2 || pt.wallet_derivation_path !== 'm/49h/1h/0h' || !pt.clean_match || pc.clean_match || U.parse_derivation_path("m/45h/0h/0h/0/5").script_type !== SC.CUSTOM_DERIVATION) fails.push(T + 'sign message: change and custom paths are read'); }
+    { const d = new DQ(); await d.add_data('signmessage m/84h/0h/0h/0/3 ascii:pay me: 1 BTC'); const q = d.get_qr_data();
+      if (q.derivation_path !== "m/84'/0'/0'/0/3" || q.message !== 'pay me: 1 BTC') fails.push(T + 'sign message: the QR gives the path and the message');
+      const v = Object.create(E('SSSeedSignMessageConfirmAddressView').prototype); let shown; v._ss_seed = sAB; v._ss_addr_format = U.parse_derivation_path("m/84h/0h/0h/1/3"); v.run_screen = async (c, kw) => { shown = kw.address; return 1000; }; await v.run();
+      if (shown !== addrAt(SC.NATIVE_SEGWIT, 'main', 1, 3)) fails.push(T + 'sign message: the address shown is the one for the path');
+      const s = Object.create(E('SSSeedSignMessageSignedMessageQRView').prototype); let enc; s._ss_seed = sAB; s._ss_derivation_path = "m/84h/0h/0h/0/3"; s._ss_message = 'pay me: 1 BTC'; s.run_screen = async (c, kw) => { enc = kw.qr_encoder; }; s.controller = {}; s.settings = E('SSSettings').get_instance(); await s.run();
+      if (!enc || !sigOk(enc.next_part(), 'pay me: 1 BTC', "m/84'/0'/0'/0/3")) fails.push(T + 'sign message: the QR shows the signature for the path and message'); }
+    // 9. PSBTs made by btc-signer, read, checked and signed by the practice signer, the signatures checked with btc-signer's hashes
+    const FPI = parseInt(fAB, 16), HP = 0x80000000, kAt = (p) => rAB.derive(p), other = root(M3[1]);
+    const lowR = (h, d) => { let s = secp256k1.sign(h, d); for (let c = 1; s.r >= 1n << 255n; c++) { const e = new Uint8Array(32); e[0] = c & 255; e[1] = c >> 8; s = secp256k1.sign(h, d, { extraEntropy: e }); } return H(s.toDERRawBytes()); };
+    const run9 = async (kind) => {
+      const tx = new btc.Transaction({ allowUnknownOutputs: true }), p = { wpkh: 84, sh: 49, tr: 86 }[kind] || 48, path = (c, i) => kind === 'ms' ? [48 + HP, HP, HP, 2 + HP, c, i] : [p + HP, HP, HP, c, i];
+      const pk = (c, i) => kAt('m/' + path(c, i).map((x) => (x >= HP ? (x - HP) + "'" : x)).join('/')).publicKey;
+      const msPubs = (c, i) => [rAB, root(M3[1]), root(M3[2])].map((r) => r.derive(`m/48'/0'/0'/2'/${c}/${i}`).publicKey), msFps = [FPI, ...M3.slice(1).map((m) => parseInt(fp(m, ''), 16))];
+      const scope = (c, i, amount) => { if (kind === 'wpkh') return { script: btc.p2wpkh(pk(c, i)).script, bip32Derivation: [[pk(c, i), { fingerprint: FPI, path: path(c, i) }]] };
+        if (kind === 'sh') { const r = btc.p2wpkh(pk(c, i)); return { script: btc.p2sh(r).script, redeemScript: r.script, bip32Derivation: [[pk(c, i), { fingerprint: FPI, path: path(c, i) }]] }; }
+        if (kind === 'tr') { const x = pk(c, i).slice(1); return { script: btc.p2tr(x).script, tapInternalKey: x, tapBip32Derivation: [[x, { hashes: [], der: { fingerprint: FPI, path: path(c, i) } }]] }; }
+        const pubs = msPubs(c, i), ms = btc.p2ms(2, pubs.slice().sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)))), ws = btc.p2wsh(ms);
+        return { script: ws.script, witnessScript: ms.script, bip32Derivation: pubs.map((q, j) => [q, { fingerprint: msFps[j], path: [48 + HP, HP, HP, 2 + HP, c, i] }]) }; };
+      // taproot: also inputs whose key and output key have an odd y, so both negations in the tweak matter
+      const odd = (i) => { const q = rAB.derive(`m/86'/0'/0'/0/${i}`).publicKey; return q[0] === 3 && btcTweakPub(q.slice(1), new Uint8Array(0))[1] === 1; }, io = [...Array(64).keys()].find(odd);
+      const ins = kind === 'tr' ? [[0, 1, 40000n], [1, 4, 30000n], [0, io, 25000n], [0, io + 1, 20000n]] : [[0, 1, 70000n], [1, 4, 45000n]], outs = { dest: btc.p2wpkh(other.derive("m/84'/0'/0'/0/9").publicKey).script, change: scope(1, 6) };
+      ins.forEach(([c, i, a], j) => { const s = scope(c, i); tx.addInput(Object.assign({ txid: H(sha('vf-ss-' + kind + j)), index: j, witnessUtxo: { script: s.script, amount: a } }, ...['redeemScript', 'witnessScript', 'bip32Derivation', 'tapInternalKey', 'tapBip32Derivation'].filter((f) => s[f]).map((f) => ({ [f]: s[f] })))); });
+      tx.addOutput({ script: outs.dest, amount: 80000n });
+      const ch = outs.change; tx.addOutput(Object.assign({ script: ch.script, amount: 34000n }, ...['redeemScript', 'witnessScript', 'bip32Derivation', 'tapInternalKey', 'tapBip32Derivation'].filter((f) => ch[f]).map((f) => ({ [f]: ch[f] }))));
+      // a "change" output that is not ours: it names our fingerprint and a change path, but a stranger's key (multisig: a script that is not the one named)
+      const sk = other.derive("m/84'/0'/0'/1/0").publicKey, fd = () => ({ fingerprint: FPI, path: path(1, 7) }), fake = kind === 'ms' ? Object.assign(scope(1, 7), { script: btc.p2wsh(btc.p2ms(2, msPubs(0, 0).slice(0, 2))).script })
+        : kind === 'wpkh' ? { script: btc.p2wpkh(sk).script, bip32Derivation: [[sk, fd()]] } : kind === 'sh' ? { script: btc.p2sh(btc.p2wpkh(sk)).script, redeemScript: btc.p2wpkh(sk).script, bip32Derivation: [[sk, fd()]] }
+        : { script: btc.p2tr(sk.slice(1)).script, tapInternalKey: sk.slice(1), tapBip32Derivation: [[sk.slice(1), { hashes: [], der: fd() }]] };
+      tx.addOutput({ script: fake.script, amount: 500n });
+      const psbt = E('SSPSBT').parse(P8(tx.toPSBT())), fo = psbt.outputs[2], der = (q, x) => ({ pub: P8(q), der: { fingerprint: P8(Buffer.from(x.fingerprint.toString(16).padStart(8, '0'), 'hex')), derivation: x.path } });   // (btc-signer refuses to write such an output)
+      if (fake.redeemScript) fo.redeem_script = P8(fake.redeemScript); if (fake.witnessScript) fo.witness_script = P8(fake.witnessScript);
+      for (const [q, x] of fake.bip32Derivation || []) fo.bip32_derivations.push(der(q, x));
+      for (const [q, x] of fake.tapBip32Derivation || []) fo.taproot_bip32_derivations.push(Object.assign(der(q, x.der), { leaf_hashes: [] }));
+      const parser = await E('SSPSBTParser').create(psbt, sAB, SC.MAINNET), ad = (s) => btc.Address(btc.NETWORK).encode(btc.OutScript.decode(s));
+      const cd = parser.change_data;
+      if (parser.input_amount !== 115000 || parser.num_inputs !== ins.length || parser.fee_amount !== 500 || parser.spend_amount !== 80500 || parser.change_amount !== 34000 || cd.length !== 1 || cd[0].output_index !== 1 || cd[0].address !== ad(ch.script) || cd[0].amount !== 34000
+        || parser.destination_addresses.join() !== [ad(outs.dest), ad(fake.script)].join() || parser.destination_amounts.join() !== '80000,500' || !cd[0].fingerprint.includes(fAB) || !cd[0].derivation_path.includes(kind === 'ms' ? 'm/48h/0h/0h/2h/1/6' : `m/${p}h/0h/0h/1/6`)) fails.push(T + 'PSBT (' + kind + '): amounts, fee, the change output (ours) and the destinations (a fake change among them)');
+      if (kind === 'ms') { if (parser.policy.type !== 'p2wsh' || parser.policy.m !== 2 || parser.policy.n !== 3 || !parser.is_multisig) fails.push(T + 'PSBT (multisig): the policy is 2-of-3 P2WSH');
+        if (!(await parser.verify_multisig_output(descW, 0)) || await parser.verify_multisig_output(await DS.from_string(descOf(['wsh(', ')'], 'sortedmulti', [cos[0], cos[2], { f: cos[1].f, k: root(M3[1]).derive("m/48'/0'/0'/1'") }])), 0)) fails.push(T + 'PSBT (multisig): the change is checked against the wallet descriptor'); }
+      else if (parser.is_multisig || parser.policy.type !== { wpkh: 'p2wpkh', sh: 'p2sh-p2wpkh', tr: 'p2tr' }[kind]) fails.push(T + 'PSBT (' + kind + '): the single-key policy');
+      if (!(await E('SSPSBTParser').has_matching_input_fingerprint(psbt, sAB)) || await E('SSPSBTParser').has_matching_input_fingerprint(psbt, await SSSeed.create({ mnemonic: expect.d50 }))) fails.push(T + 'PSBT (' + kind + '): only the right seed is offered for signing');
+      // signed as the device does it: PSBTFinalizeView (Approve transaction) signs and trims
+      const n0 = E('SSPSBTParser').sig_count(psbt), ctl = { psbt, psbt_parser: parser }, fv = Object.create(E('SSPSBTFinalizeView').prototype); fv.controller = ctl; fv.run_screen = async () => 0;
+      const dest = await fv.run(), signed = ctl.psbt, t2 = btc.Transaction.fromPSBT(signed.serialize());
+      if (!dest || dest.View_cls !== E('SSPSBTSignedQRDisplayView') || signed === psbt || E('SSPSBTParser').sig_count(signed) !== n0 + ins.length || signed.inputs.some((x) => x.witness_utxo || x.bip32_derivations.length)) { fails.push(T + 'PSBT (' + kind + '): Approve signs every input and keeps only the signatures'); return; }
+      for (let j = 0; j < ins.length; j++) { const [c, i, a] = ins[j], s = scope(c, i), inp = t2.getInput(j), priv = kAt('m/' + path(c, i).map((x) => (x >= HP ? (x - HP) + "'" : x)).join('/')).privateKey;
+        if (kind === 'tr') { const sig = inp.finalScriptWitness && inp.finalScriptWitness[0], h = tx.preimageWitnessV1(j, ins.map(([c2, i2]) => scope(c2, i2).script), 0, ins.map((x) => x[2]));
+          if (!sig || sig.length !== 64 || !schnorr.verify(sig, h, btc.p2tr(pk(c, i).slice(1)).tweakedPubkey)) { fails.push(T + 'PSBT (taproot): the key-path signature verifies (input ' + j + ')'); return; } continue; }
+        const ps = inp.partialSig || [], mine = ps.find(([q]) => H(q) === H(pk(c, i))), code = kind === 'ms' ? s.witnessScript : btc.p2pkh(pk(c, i)).script, h = tx.preimageWitnessV0(j, code, 1, a);
+        if (ps.length !== 1 || !mine || mine[1][mine[1].length - 1] !== 1 || !secp256k1.verify(secp256k1.Signature.fromDER(mine[1].slice(0, -1)), h, pk(c, i))) { fails.push(T + 'PSBT (' + kind + '): the signature verifies, SIGHASH_ALL (input ' + j + ')'); return; }
+        const want = lowR(h, priv), bs = H(btcSignECDSA(h, priv, true)); if (secp256k1.sign(h, priv).r >= 1n << 255n) ground++;
+        if (H(mine[1].slice(0, -1)) !== want || (secp256k1.sign(h, priv).r < 1n << 255n && bs !== want)) { fails.push(T + 'PSBT (' + kind + '): the signature is RFC 6979 low-R, as btc-signer (lowR) and Bitcoin Core make it (input ' + j + ')'); return; } }
+      if (kind !== 'ms') { try { for (let j = 0; j < ins.length; j++) { const g = t2.getInput(j); tx.updateInput(j, kind === 'tr' ? { tapKeySig: g.finalScriptWitness[0] } : { partialSig: g.partialSig }); } tx.finalize(); tx.extract(); } catch (e) { fails.push(T + 'PSBT (' + kind + '): btc-signer finalizes the signed transaction'); } }
+      return [psbt, parser];
+    };
+    let kept = null, ground = 0;
+    for (const kind of ['wpkh', 'sh', 'tr', 'ms']) { const r9 = await run9(kind); if (kind === 'wpkh') kept = r9; }
+    if (ground < 2) fails.push(T + 'PSBT: (the test data must include signatures that need low-R grinding)');
+    { // a derivation whose key is not the seed's is refused; a missing (zero) fingerprint is filled in
+      const tx = new btc.Transaction(), q = kAt("m/84'/0'/0'/0/0").publicKey, q2 = kAt("m/84'/0'/0'/0/1").publicKey;
+      tx.addInput({ txid: '55'.repeat(32), index: 0, witnessUtxo: { script: btc.p2wpkh(q).script, amount: 9000n }, bip32Derivation: [[q2, { fingerprint: FPI, path: [84 + HP, HP, HP, 0, 0] }]] }); tx.addOutput({ script: btc.p2wpkh(q2).script, amount: 8000n });
+      const ps = E('SSPSBT').parse(P8(tx.toPSBT())); let msg = ''; try { await ps.sign_with(await E('SSPsbtHDKey').from_seed(sAB.seed_bytes)); } catch (e) { msg = e.message; }
+      if (!/doesn't look right/.test(msg)) fails.push(T + 'PSBT: a derivation whose key is not the seed\'s is refused');
+      const to = new btc.Transaction(), qo = other.derive("m/84'/0'/0'/0/0").publicKey; to.addInput({ txid: '57'.repeat(32), index: 0, witnessUtxo: { script: btc.p2wpkh(qo).script, amount: 9000n }, bip32Derivation: [[qo, { fingerprint: parseInt(fp(M3[1], ''), 16), path: [84 + HP, HP, HP, 0, 0] }]] }); to.addOutput({ script: btc.p2wpkh(q2).script, amount: 8000n });
+      { const po = E('SSPSBT').parse(P8(to.toPSBT())), ctl = { psbt: po, psbt_parser: await E('SSPSBTParser').create(po, sAB, SC.MAINNET) }, fv = Object.create(E('SSPSBTFinalizeView').prototype); fv.controller = ctl; fv.run_screen = async () => 0;
+        const dest = await fv.run(); if (!dest || dest.View_cls !== E('SSPSBTSigningErrorView') || ctl.psbt !== po) fails.push(T + 'PSBT: Approve with a seed that cannot sign says Signing Failed'); }
+      const t0 = new btc.Transaction(); t0.addInput({ txid: '66'.repeat(32), index: 0, witnessUtxo: { script: btc.p2wpkh(q).script, amount: 9000n }, bip32Derivation: [[q, { fingerprint: 0, path: [84 + HP, HP, HP, 0, 0] }]] }); t0.addOutput({ script: btc.p2wpkh(q2).script, amount: 8000n });
+      const pz = E('SSPSBT').parse(P8(t0.toPSBT())), pr = await E('SSPSBTParser').create(pz, sAB, SC.MAINNET);
+      if (H(pz.inputs[0].bip32_derivations[0].der.fingerprint) !== fAB || await pz.sign_with(pr.root) !== 1 || !(await E('SSPSBTParser').has_matching_input_fingerprint(E('SSPSBT').parse(P8(t0.toPSBT())), sAB))) fails.push(T + 'PSBT: a zero fingerprint is filled in when the key is the seed\'s, and it signs'); }
+    // 10. The offline-only rule for seed QR codes (VOIDFORGE's own camera rule)
+    online(true); if (!w.ssToolsSeedScanBlocked()) fails.push(T + 'seed QR codes are refused while the computer is online');
+    online(false); if (w.ssToolsSeedScanBlocked()) fails.push(T + 'seed QR codes are read while the computer is offline');
+    { const scanView = async (cls, on, data) => { const v = Object.create(E(cls).prototype), got = {}; v.wordlist_language_code = SC.WORDLIST_LANGUAGE__ENGLISH; v.decoder = new DQ(); v.settings = E('SSSettings').get_instance();
+        v.controller = { storage: { set_pending_seed: (s) => { got.seed = s; } }, reset_screensaver_timeout: () => {} }; v.run_screen = async () => { got.ran = true; if (data) await v.decoder.add_data(data); };
+        online(on); got.dest = await v.run(); return got; };
+      const dg = idx(AB).map((i) => String(i).padStart(4, '0')).join('');
+      let g = await scanView('SSScanSeedQRView', true, dg); if (g.ran || g.seed || !g.dest.view_args || g.dest.view_args.status_headline !== 'Offline only') fails.push(T + 'the SeedQR scan does not start while online');
+      g = await scanView('SSScanView', true, dg); if (g.seed || !g.dest.view_args || g.dest.view_args.status_headline !== 'Offline only') fails.push(T + 'a SeedQR read by the general scan while online is not loaded');
+      g = await scanView('SSScanView', true, P8(mnemonicToEntropy(AB, wordlist))); if (g.seed || !g.dest.view_args || g.dest.view_args.status_headline !== 'Offline only') fails.push(T + 'a CompactSeedQR read while online is not loaded');
+      g = await scanView('SSScanSeedQRView', false, dg); if (!g.seed || g.seed.mnemonic_str !== AB || g.dest.View_cls !== E('SSSeedFinalizeView')) fails.push(T + 'a SeedQR read while offline is loaded');
+      const tv = Object.create(E('SSSeedTranscribeSeedQRConfirmScanView').prototype); let ran = false; tv.decoder = new DQ(); tv.run_screen = async () => { ran = true; return false; }; online(true); const d0 = await tv.run();
+      if (ran || !d0.view_args || d0.view_args.status_headline !== 'Offline only') fails.push(T + 'checking a written SeedQR by scanning it waits for offline'); }
+    if (navOnline) Object.defineProperty(w.navigator, 'onLine', navOnline); else delete w.navigator.onLine;
+    // 11. The wipe: the controller's PSBT, signing key and scanned data, and (CLEAR ALL, auto-clear, END SESSION) the seeds in memory
+    { const [psbt, parser] = kept || [], d = new DQ(); await d.add_data(P8(mnemonicToEntropy(AB, wordlist)));
+      const spk = psbt.inputs[0].witness_utxo.script_pubkey, ps = psbt.inputs[0].partial_sigs[0].sig, cc = parser.root.chain_code, desc = await DS.from_string(descOf(['wsh(', ')'], 'sortedmulti', cos)), dpub = desc.keys[0].key.pub;
+      const ctl = { psbt, psbt_parser: parser, multisig_wallet_descriptor: desc, sign_message_data: Object.assign(E('({})'), { sig: P8([1, 2, 3]) }), unverified_address: null, back_stack: [], current_destination: { view: { decoder: d } } }, smd = ctl.sign_message_data.sig;
+      w.ssPsbtWipeController(ctl);
+      if ([spk, ps, cc, dpub, smd].some((b) => b.some((x) => x !== 0)) || parser.root.k !== 0n) fails.push(T + 'wipe: the PSBT, its signatures, the signing key, the descriptor and the signed message are overwritten');
+      const CT = E('SSController'), c2 = CT.get_instance(), s1 = await SSSeed.create({ mnemonic: AB }), s2 = await SSSeed.create({ mnemonic: M3[1] }), b1 = s1.seed_bytes, b2 = s2.seed_bytes, ws1 = s1._mnemonic;
+      c2.storage.seeds.push(s1); c2.storage.pending_seed = s2; c2.storage._pending_mnemonic = ['abandon', 'zoo']; const pm = c2.storage._pending_mnemonic;
+      const t3 = new btc.Transaction(); t3.addInput({ txid: '77'.repeat(32), index: 0, witnessUtxo: { script: btc.p2wpkh(kAt("m/84'/0'/0'/0/0").publicKey).script, amount: 1000n } }); t3.addOutput({ script: btc.p2wpkh(kAt("m/84'/0'/0'/0/1").publicKey).script, amount: 900n });
+      c2.psbt = E('SSPSBT').parse(P8(t3.toPSBT())); const spk3 = c2.psbt.inputs[0].witness_utxo.script_pubkey; E('SS_SIM_MICROSD').settings_json = '{"x":1}'; w.eval('ssPageOn = true');
+      w.ssPageWipe();
+      if ([b1, b2, spk3].some((b) => b.some((x) => x !== 0)) || ws1.some((x) => x) || pm.some((x) => x) || c2._storage !== null || E('SSController._instance') !== null) fails.push(T + 'wipe: the seeds (bytes and words), the pending words and the PSBT in the device are overwritten and dropped');
+      if (E('SS_SIM_MICROSD').settings_json !== null || w.ssPageActive()) fails.push(T + 'wipe: the settings on its microSD are wiped and the device is off');
+      if (!/ssPageWipe\(\)/.test(w.clearAll.toString()) || !/ssPageWipe\(\)/.test(w.autoWipe.toString()) || !/ssPageWipe\(\)/.test(w.endSession.toString()) || !/ssPsbtWipeController\(ctl\)/.test(w.ssPageStop.toString())) fails.push(T + 'wipe: CLEAR ALL, auto-clear and END SESSION wipe the practice signer'); }
+  } catch (e) { if (e instanceof ProbeStop) throw e; fails.push('practice signer: the probe crashed: ' + e.message); }
+  finally { if (navOnline) Object.defineProperty(w.navigator, 'onLine', navOnline); else delete w.navigator.onLine; }
+  }
   // v2.10.0: right after section 0 (and after the map's start mark), so a mutation of these tools fails within seconds; it ends with CLEAR ALL, then makes section 0's seed again.
   if (SEC(66, "v2.10.0 Coldcard seed mix and flawed-device questions")) {
   try {
@@ -6370,6 +6593,133 @@ const M = [
   ["device backups: button never turned on", "  document.getElementById(\"dbBtn\").disabled = !on;   // v2.12.0: device backups\n", "\n"],
   ["device backups: opens before the self-test", "async function dbOpenUi(){\n  if(!gateOk()) return;", "async function dbOpenUi(){"],
   ["device backups: self-test checks left out", "  dbSelfTests(eq);   // v2.12.0: device backups (Krux and Coinkite test data)\n", "\n"],
+  // v2.13.0: the SeedSigner+ practice signer (tools/simulator/): its crypto and safety code, caught by section 72. Left out as
+  // equivalent (not listed): the 12th/24th word's padding bits in the calc-final-word view (the checksum overwrites them); the
+  // passphrase NFKD in SSSeed (mnemonicToSeed normalizes it again); SIGHASH_DEFAULT -> ALL for an input without a sighash type
+  // (already ALL); the even-y negation of the tweaked taproot key (ssPsbtSchnorrSign negates an odd-y key again).
+  ["practice signer: dice: 50 rolls taken as a 24-word seed", "const SS_DICE__NUM_ROLLS__12WORD = 50;", "const SS_DICE__NUM_ROLLS__12WORD = 49;"],
+  ["practice signer: dice: rolls hashed with an extra character", "let entropy_bytes = await sha256bytes(new TextEncoder().encode(roll_data));", "let entropy_bytes = await sha256bytes(new TextEncoder().encode(roll_data + \" \"));"],
+  ["practice signer: coin flips: 128 flips taken as a 24-word seed", "if (coin_flips.length === 128) entropy_bytes = entropy_bytes.slice(0, 16);", "if (coin_flips.length === 127) entropy_bytes = entropy_bytes.slice(0, 16);"],
+  ["practice signer: final word: coin flips padded with ones", "  const binary_string = coin_flips + \"0\".repeat(11 - coin_flips.length);\n  return", "  const binary_string = coin_flips + \"1\".repeat(11 - coin_flips.length);\n  return"],
+  ["practice signer: final word: temporary last word is not the first word", "if (mnemonic.length === 11 || mnemonic.length === 23) mnemonic.push(ssToolsWordlist(wordlist_language_code)[0]);", "if (mnemonic.length === 11 || mnemonic.length === 23) mnemonic.push(ssToolsWordlist(wordlist_language_code)[2047]);"],
+  ["practice signer: final word: the old checksum is checked", "const mnemonic_bytes = await ssBip39MnemonicToBytes(mnemonic_copy.join(\" \").normalize(\"NFKD\"), true, ssToolsWordlist(wordlist_language_code));", "const mnemonic_bytes = await ssBip39MnemonicToBytes(mnemonic_copy.join(\" \").normalize(\"NFKD\"), false, ssToolsWordlist(wordlist_language_code));"],
+  ["practice signer: final word view: the real final word not kept", "storage.update_pending_mnemonic(final_mnemonic[final_mnemonic.length - 1], storage.pending_mnemonic.length - 1);", "storage.update_pending_mnemonic(final_mnemonic[0], storage.pending_mnemonic.length - 1);"],
+  ["practice signer: mnemonic_to_bytes: checksum not compared", "if (!ignore_checksum && checksum.some((b, i) => b !== computed_checksum[i])) throw new Error(\"Checksum verification failed\");", "if (false) throw new Error(\"Checksum verification failed\");"],
+  ["practice signer: mnemonic_to_bytes: one checksum bit too many compared", "bits_to_ignore = 8 - num_remainder;", "bits_to_ignore = 7 - num_remainder;"],
+  ["practice signer: explorer: nested SegWit shown as native", "{[C.NATIVE_SEGWIT]: \"wpkh\", [C.NESTED_SEGWIT]: \"sh-wpkh\", [C.LEGACY_P2PKH]: \"pkh\", [C.TAPROOT]: \"tr\"}[script_type]", "{[C.NATIVE_SEGWIT]: \"wpkh\", [C.NESTED_SEGWIT]: \"wpkh\", [C.LEGACY_P2PKH]: \"pkh\", [C.TAPROOT]: \"tr\"}[script_type]"],
+  ["practice signer: explorer: always mainnet", "const net = embit_network === \"main\" ? \"main\" : \"test\";", "const net = \"main\";"],
+  ["practice signer: explorer: change shown as receive", "const rows = await walletAddressesFrom(xpub.root, xpub.steps, type, net, is_change ? 1 : 0, start, n);", "const rows = await walletAddressesFrom(xpub.root, xpub.steps, type, net, 0, start, n);"],
+  ["practice signer: explorer: nested path purpose 84", "    else if (script_type === C.NESTED_SEGWIT) return `m/49'/${network_path}/0'`;", "    else if (script_type === C.NESTED_SEGWIT) return `m/84'/${network_path}/0'`;"],
+  ["practice signer: net: mainnet bech32 prefix", "main: { hrp: \"bc\", pkh: 0x00,", "main: { hrp: \"tb\", pkh: 0x00,"],
+  ["practice signer: net: mainnet legacy version byte", "main: { hrp: \"bc\", pkh: 0x00, sh: 0x05,", "main: { hrp: \"bc\", pkh: 0x6f, sh: 0x05,"],
+  ["practice signer: net: mainnet nested version byte", "main: { hrp: \"bc\", pkh: 0x00, sh: 0x05,", "main: { hrp: \"bc\", pkh: 0x00, sh: 0xc4,"],
+  ["practice signer: net: testnet bech32 prefix", "test: { hrp: \"tb\", pkh: 0x6f,", "test: { hrp: \"bc\", pkh: 0x6f,"],
+  ["practice signer: net: testnet nested version byte", "test: { hrp: \"tb\", pkh: 0x6f, sh: 0xc4,", "test: { hrp: \"tb\", pkh: 0x6f, sh: 0x05,"],
+  ["practice signer: net: regtest bech32 prefix", "regtest: { hrp: \"bcrt\", pkh: 0x6f,", "regtest: { hrp: \"tb\", pkh: 0x6f,"],
+  ["practice signer: xpub: mainnet zpub version", "ypub: \"049d7cb2\", zpub: \"04b24746\", Ypub", "ypub: \"049d7cb2\", zpub: \"04b24747\", Ypub"],
+  ["practice signer: xpub: mainnet ypub version", "xpub: \"0488b21e\", ypub: \"049d7cb2\",", "xpub: \"0488b21e\", ypub: \"0488b21e\","],
+  ["practice signer: xpub: mainnet Zpub version", "Ypub: \"0295b43f\", Zpub: \"02aa7ed3\" }", "Ypub: \"0295b43f\", Zpub: \"0295b43f\" }"],
+  ["practice signer: xpub: testnet vpub version", "test: { hrp: \"tb\", pkh: 0x6f, sh: 0xc4, ver: { xpub: \"043587cf\", ypub: \"044a5262\", zpub: \"045f1cf6\",", "test: { hrp: \"tb\", pkh: 0x6f, sh: 0xc4, ver: { xpub: \"043587cf\", ypub: \"044a5262\", zpub: \"04b24746\","],
+  ["practice signer: xpub: testnet Vpub version", "test: { hrp: \"tb\", pkh: 0x6f, sh: 0xc4, ver: { xpub: \"043587cf\", ypub: \"044a5262\", zpub: \"045f1cf6\", Ypub: \"024289ef\", Zpub: \"02575483\" } },\n    regtest", "test: { hrp: \"tb\", pkh: 0x6f, sh: 0xc4, ver: { xpub: \"043587cf\", ypub: \"044a5262\", zpub: \"045f1cf6\", Ypub: \"024289ef\", Zpub: \"02aa7ed3\" } },\n    regtest"],
+  ["practice signer: xpub: native path gets an xpub", "        if (path[0] === H + 84) key = \"zpub\";", "        if (path[0] === H + 84) key = \"xpub\";"],
+  ["practice signer: xpub: nested path gets an xpub", "        else if (path[0] === H + 49) key = \"ypub\";", "        else if (path[0] === H + 49) key = \"xpub\";"],
+  ["practice signer: xpub: nested multisig gets a Zpub", "                if (path[3] === H + 1) key = \"Ypub\";", "                if (path[3] === H + 1) key = \"Zpub\";"],
+  ["practice signer: xpub: native multisig gets a Ypub", "                else if (path[3] === H + 2) key = \"Zpub\";", "                else if (path[3] === H + 2) key = \"Ypub\";"],
+  ["practice signer: xpub: ' not read as hardened", "        if (e.endsWith(\"h\") || e.endsWith(\"'\")) { hardened = true; e = e.slice(0, -1); }", "        if (e.endsWith(\"h\")) { hardened = true; e = e.slice(0, -1); }"],
+  ["practice signer: xpub: hardened index loses its flag", "        return hardened ? i + SS_SEEDS_HARDENED : i;", "        return i;"],
+  ["practice signer: xpub: hardened bit dropped from the child number", "        const cn = this.child_number >>> 0;", "        const cn = (this.child_number & 0x7fffffff) >>> 0;"],
+  ["practice signer: xpub: parent fingerprint takes the wrong bytes", "        parent_fp = (await hash160(pubkeyBytes(k))).slice(0, 4);", "        parent_fp = (await hash160(pubkeyBytes(k))).slice(1, 5);"],
+  ["practice signer: xpub: hardened steps derived as normal ones", "        [k, c] = await ckdPriv(k, c, hardened ? i - SS_SEEDS_HARDENED : i, hardened);", "        [k, c] = await ckdPriv(k, c, hardened ? i - SS_SEEDS_HARDENED : i, false);"],
+  ["practice signer: xpub: key origin without the fingerprint", "enc.xpubstring = \"[\" + ssSeedsBytesToHex(enc.fingerprint) + enc.derivation.slice(1) + \"]\" + enc.xpub_base58;", "enc.xpubstring = \"[\" + enc.derivation.slice(2) + \"]\" + enc.xpub_base58;"],
+  ["practice signer: xpub: version always for mainnet", "const version = enc.seed.detect_version(enc.derivation, enc.network, enc.sig_type);", "const version = enc.seed.detect_version(enc.derivation, SSSettingsConstants.MAINNET, enc.sig_type);"],
+  ["practice signer: xpub: testnet setting read as mainnet", "    if (network === SC.TESTNET) return \"test\";", "    if (network === SC.TESTNET) return \"main\";"],
+  ["practice signer: xpub UR: native SegWit tagged as wsh", "            if (c0 === 84) ur_outputs.push(output([404]));", "            if (c0 === 84) ur_outputs.push(output([401]));"],
+  ["practice signer: xpub UR: master fingerprint left out", "const origin_pairs = [[CB.uint(1), CB.arr(comps)], [CB.uint(2), CB.uint(my_fp)]];", "const origin_pairs = [[CB.uint(1), CB.arr(comps)], [CB.uint(2), CB.uint(0)]];"],
+  ["practice signer: address: nested script is a P2WSH program", "Uint8Array.of(0x00, 0x14, ...(await hash160(pub)))", "Uint8Array.of(0x00, 0x20, ...(await hash160(pub)))"],
+  ["practice signer: address: legacy uses the script version byte", "return base58check(Uint8Array.of(N.pkh, ...(await hash160(pub))));", "return base58check(Uint8Array.of(N.sh, ...(await hash160(pub))));"],
+  ["practice signer: address: taproot always mainnet", "if (script_type === SC.TAPROOT) return taprootAddressFromPoint(pointFromPub(pub), N.hrp);", "if (script_type === SC.TAPROOT) return taprootAddressFromPoint(pointFromPub(pub));"],
+  ["practice signer: address: change from the receive chain", "if (is_change) pubkey = (await xpub.derive([1, index])).key;", "if (is_change) pubkey = (await xpub.derive([0, index])).key;"],
+  ["practice signer: address: receive from the change chain", "else pubkey = (await xpub.derive([0, index])).key;", "else pubkey = (await xpub.derive([1, index])).key;"],
+  ["practice signer: paths: mainnet coin type 1", "        if (network === SC.MAINNET) network_path = \"0'\";", "        if (network === SC.MAINNET) network_path = \"1'\";"],
+  ["practice signer: paths: nested purpose 84", "            else if (script_type === SC.NESTED_SEGWIT) return `m/49'/${network_path}/0'`;", "            else if (script_type === SC.NESTED_SEGWIT) return `m/84'/${network_path}/0'`;"],
+  ["practice signer: paths: native multisig script 1", "            else if (script_type === SC.NATIVE_SEGWIT) return `m/48'/${network_path}/0'/2'`;", "            else if (script_type === SC.NATIVE_SEGWIT) return `m/48'/${network_path}/0'/1'`;"],
+  ["practice signer: seed: checksum not checked", "        if (hbits !== bits.slice(ebits)) throw new Error(\"Checksum verification failed\");", ""],
+  ["practice signer: SeedQR: 3 digits per word", "            this.data += String(index).padStart(4, \"0\");", "            this.data += String(index).padStart(3, \"0\");"],
+  ["practice signer: CompactSeedQR: 24 words keep 4 checksum bits", "if (this.mnemonic.length === 24) binary_str = binary_str.slice(0, -8);", "if (this.mnemonic.length === 24) binary_str = binary_str.slice(0, -4);"],
+  ["practice signer: CompactSeedQR: 12 words drop 8 bits", "else if (this.mnemonic.length === 12) binary_str = binary_str.slice(0, -4);", "else if (this.mnemonic.length === 12) binary_str = binary_str.slice(0, -8);"],
+  ["practice signer: SeedQR read: any number of words accepted", "        if (this.seed_phrase.length > 0) {\n          if (this.is_12_or_24_word_phrase() === false) return SSDecodeQRStatus.INVALID;", "        if (this.seed_phrase.length > 0) {"],
+  ["practice signer: CompactSeedQR read: first byte dropped", "this.seed_phrase = (await ssBip39MnemonicFromBytes(segment)).split(\" \");", "this.seed_phrase = (await ssBip39MnemonicFromBytes(segment.slice(1))).split(\" \");"],
+  ["practice signer: words QR: checksum not checked", "        await ssBip39MnemonicToBytes(seed_phrase_list.join(\" \").normalize(\"NFKD\"), false, this.wordlist);", "        await ssBip39MnemonicToBytes(seed_phrase_list.join(\" \").normalize(\"NFKD\"), true, this.wordlist);"],
+  ["practice signer: QR type: 12-word SeedQR not recognized", "if (/\\d{48,96}/.test(s)) return T.SEED__SEEDQR;", "if (/\\d{49,96}/.test(s)) return T.SEED__SEEDQR;"],
+  ["practice signer: QR type: 12-word CompactSeedQR not recognized", "if (bytes.length === 32 || bytes.length === 16) return T.SEED__COMPACTSEEDQR;", "if (bytes.length === 32 || bytes.length === 17) return T.SEED__COMPACTSEEDQR;"],
+  ["practice signer: offline rule: seed QR codes read while online", "return typeof navigator !== \"undefined\" && navigator.onLine === true;", "return false;"],
+  ["practice signer: offline rule: SeedQR scan starts while online", "    if (this instanceof SSScanSeedQRView && ssToolsSeedScanBlocked()) return ssToolsOfflineOnlyDest();\n", ""],
+  ["practice signer: offline rule: a seed read by the general scan is loaded while online", "      if (this.decoder.is_seed && ssToolsSeedScanBlocked()) {", "      if (false) {"],
+  ["practice signer: offline rule: SeedQR check scan starts while online", "        if (typeof ssToolsSeedScanBlocked === \"function\" && ssToolsSeedScanBlocked()) return ssToolsOfflineOnlyDest();\n", ""],
+  ["practice signer: verify address: receive found as change", "            if (this.address === receive_address) {\n                this.verified_index.set_value(i);\n                this.verified_index_is_change.set_value(0);", "            if (this.address === receive_address) {\n                this.verified_index.set_value(i);\n                this.verified_index_is_change.set_value(1);"],
+  ["practice signer: verify address: change chain not searched", "change_address = await U.get_single_sig_address(this.xpub, this.script_type, i, true, this.embit_network);", "change_address = await U.get_single_sig_address(this.xpub, this.script_type, i, false, this.embit_network);"],
+  ["practice signer: verify address: multisig change chain not searched", "change_address = await U.get_multisig_address(this.descriptor, i, true, this.embit_network);", "change_address = await U.get_multisig_address(this.descriptor, i, false, this.embit_network);"],
+  ["practice signer: verify address: every other index skipped", "            this.threadsafe_counter.increment();\n", "            this.threadsafe_counter.increment(2);\n"],
+  ["practice signer: scanned address: 3... read as native SegWit", "\"3\": [C.NESTED_SEGWIT, C.MAINNET]", "\"3\": [C.NATIVE_SEGWIT, C.MAINNET]"],
+  ["practice signer: sign message: nonce HMAC-DRBG start value", "    let V = new Uint8Array(32).fill(1), K = new Uint8Array(32);", "    let V = new Uint8Array(32).fill(2), K = new Uint8Array(32);"],
+  ["practice signer: sign message: nonce first step byte", "    K = await ssSeedsHmacSha256(K, ssSeedsConcat(V, [0], seed));", "    K = await ssSeedsHmacSha256(K, ssSeedsConcat(V, [1], seed));"],
+  ["practice signer: ECDSA: s leaves out the key", "let s = (ssSeedsModInv(k, SN) * ((z + r * d) % SN)) % SN;", "let s = (ssSeedsModInv(k, SN) * ((z + r) % SN)) % SN;"],
+  ["practice signer: ECDSA: recovery id parity flipped", "let recid = ((R[1] & 1n) ? 1 : 0) | (R[0] >= SN ? 2 : 0);", "let recid = ((R[1] & 1n) ? 0 : 1) | (R[0] >= SN ? 2 : 0);"],
+  ["practice signer: ECDSA: low-S recovery id not flipped", "if (s > SN / 2n) { s = SN - s; recid ^= 1; }", "if (s > SN / 2n) { s = SN - s; }"],
+  ["practice signer: ECDSA: grinding data ignored", "const seed = extra ? ssSeedsConcat(x, ssSeedsBig32(z), extra) : ssSeedsConcat(x, ssSeedsBig32(z));", "const seed = ssSeedsConcat(x, ssSeedsBig32(z));"],
+  ["practice signer: sign message: compressed header without the 4", "const c = compressed ? 4 : 0;", "const c = compressed ? 0 : 4;"],
+  ["practice signer: sign message: header without the recovery id", "const ser = ssSeedsConcat([27 + sig.recid + c], ssSeedsBig32(sig.r), ssSeedsBig32(sig.s));", "const ser = ssSeedsConcat([27 + c], ssSeedsBig32(sig.r), ssSeedsBig32(sig.s));"],
+  ["practice signer: sign message: nested path read as native", "const script_types = { \"44h\": SC.LEGACY_P2PKH, \"49h\": SC.NESTED_SEGWIT,", "const script_types = { \"44h\": SC.LEGACY_P2PKH, \"49h\": SC.NATIVE_SEGWIT,"],
+  ["practice signer: sign message: change read as receive", "if (s2 === \"0\" || s2 === \"1\") details[\"is_change\"] = s2 === \"1\";", "if (s2 === \"0\" || s2 === \"1\") details[\"is_change\"] = s2 === \"0\";"],
+  ["practice signer: sign message: wallet path keeps the change level", "details[\"wallet_derivation_path\"] = sections.slice(0, -2).join(\"/\");", "details[\"wallet_derivation_path\"] = sections.slice(0, -1).join(\"/\");"],
+  ["practice signer: sign message QR: h not read as hardened", "this.derivation_path = parts[1].replace(/h/g, \"'\");", "this.derivation_path = parts[1];"],
+  ["practice signer: PSBT: P2WPKH script code not made", "    if (st(sc) === \"p2wpkh\") sc = ssPsbtP2pkhFromP2wpkh(sc);\n", ""],
+  ["practice signer: taproot: key with odd y not negated before the tweak", "  if (P[1] & 1n) secret = SN - k;", ""],
+  ["practice signer: taproot: tweak tag wrong", "const t = bigOf(await taggedHash(\"TapTweak\", concatBytes(ssPsbtBig32(P[0]), h || new Uint8Array(0))));", "const t = bigOf(await taggedHash(\"TapTweaK\", concatBytes(ssPsbtBig32(P[0]), h || new Uint8Array(0))));"],
+  ["practice signer: schnorr: nonce with odd y not negated", "  const k = (R[1] & 1n) ? SN - k0 : k0;", "  const k = k0;"],
+  ["practice signer: schnorr: challenge in the wrong order", "const e = nmod(bigOf(await taggedHash(\"BIP0340/challenge\", concatBytes(rx, px, m32))));", "const e = nmod(bigOf(await taggedHash(\"BIP0340/challenge\", concatBytes(px, rx, m32))));"],
+  ["practice signer: schnorr: sighash byte added for SIGHASH_DEFAULT", "      if (sighash !== 0) wit = concatBytes(wit, Uint8Array.of(sighash));", "      wit = concatBytes(wit, Uint8Array.of(sighash));"],
+  ["practice signer: ECDSA: DER sign byte padding left out", "    if (b[0] & 0x80) b.unshift(0);", ""],
+  ["practice signer: ECDSA: no low-R grinding", "  while (der.length > 70) {", "  while (der.length > 71) {"],
+  ["practice signer: ECDSA: grinding counter starts at 0", "  let counter = 1;\n  while (der.length > 70) {", "  let counter = 0;\n  while (der.length > 70) {"],
+  ["practice signer: PSBT: other fingerprints signed too", "        for (const d of inp.bip32_derivations) if (ssPsbtEq(d.der.fingerprint, fingerprint)) bip32_derivations.push({pub: d.pub, der: d.der});", "        for (const d of inp.bip32_derivations) bip32_derivations.push({pub: d.pub, der: d.der});"],
+  ["practice signer: PSBT: derived key not compared with the PSBT key", "        if (!ssPsbtEq(hdkey.xonly(), xonly(d.pub))) throw new Error(\"Derivation path doesn't look right\");\n", ""],
+  ["practice signer: PSBT: signature filed under the root key", "        put(kp.pub, concatBytes(await ssPsbtEcdsaSign(h, kp.prv), Uint8Array.of(inp_sighash)));", "        put(rootpub, concatBytes(await ssPsbtEcdsaSign(h, kp.prv), Uint8Array.of(inp_sighash)));"],
+  ["practice signer: taproot: derived keys never sign", "        for (const kp of derived_keypairs) counter += await this.sign_input_with_tapkey(ctx, kp.prv, i, inp, inp_sighash);\n", ""],
+  ["practice signer: PSBT: signatures not kept by trim", "        trimmed_psbt.inputs[i].partial_sigs = inp.partial_sigs;", "        trimmed_psbt.inputs[i].partial_sigs = [];"],
+  ["practice signer: PSBT: Approve reports no signature as signed", "    if (sig_cnt === SSPSBTParser.sig_count(trimmed_psbt)) {", "    if (false) {"],
+  ["practice signer: PSBT: zero fingerprint not filled in", "      if (ssPsbtEq(pk, public_key)) return {fingerprint: Uint8Array.from(signing_seed_fingerprint), derivation: d.derivation};", "      if (ssPsbtEq(pk, public_key)) return null;"],
+  ["practice signer: PSBT: seed fingerprint match not seen", "      if (hex(derivation_path_obj.fingerprint) === seed_fingerprint) return true;", "      if (hex(derivation_path_obj.fingerprint) === seed_fingerprint) return false;"],
+  ["practice signer: PSBT: input amounts not added", "        this.input_amount += Number(inp.witness_utxo.value);", ""],
+  ["practice signer: PSBT: fee ignores the outputs", "    for (const out of this.tx.vout) fee -= BigInt(out.value);", ""],
+  ["practice signer: PSBT: change amount not added", "        this.change_amount += Number(vout[i].value);", ""],
+  ["practice signer: PSBT: change output amount shown as 0", "          amount: Number(vout[i].value),", "          amount: 0,"],
+  ["practice signer: change: native SegWit change trusts the output's script", "          else if (type === \"p2wpkh\" && my_pubkey !== null) sc = await ssPsbtP2wpkh(my_pubkey);", "          else if (type === \"p2wpkh\" && my_pubkey !== null) sc = spk;"],
+  ["practice signer: change: nested SegWit change trusts the output's script", "          else if (type === \"p2sh-p2wpkh\" && my_pubkey !== null) sc = await ssPsbtP2sh(await ssPsbtP2wpkh(my_pubkey));", "          else if (type === \"p2sh-p2wpkh\" && my_pubkey !== null) sc = spk;"],
+  ["practice signer: change: single-key change trusts the PSBT's key", "            const der = out.bip32_derivations[0].der.derivation;\n            my_pubkey = (await this.root.derive(der)).pub;", "            my_pubkey = out.bip32_derivations[0].pub;"],
+  ["practice signer: change: taproot change trusts the output's script", "            sc = await ssPsbtP2tr(my_pubkey);", "            sc = spk;"],
+  ["practice signer: change: taproot change trusts the PSBT's key", "            const der = out.taproot_bip32_derivations[0].der.derivation;\n            my_pubkey = (await this.root.derive(der)).pub;", "            my_pubkey = Uint8Array.of(2, ...out.taproot_bip32_derivations[0].pub);"],
+  ["practice signer: change: multisig change trusts the output's script", "          sc = out.witness_script ? await ssPsbtP2wsh(out.witness_script) : new Uint8Array(0);", "          sc = out.witness_script ? spk : new Uint8Array(0);"],
+  ["practice signer: change: nested single-key seen as plain P2SH", "      else if (scope.redeem_script && ssPsbtScriptType(scope.redeem_script) === \"p2wpkh\") script_type = \"p2sh-p2wpkh\";", ""],
+  ["practice signer: multisig: threshold read wrong", "    const m = sc[0] - 0x50;", "    const m = sc[0] - 0x51;"],
+  ["practice signer: multisig: change not checked against the descriptor", "            // if derivation is found but scriptpubkey doesn't match - fail\n            return ssPsbtEq(sc, spk);", "            // if derivation is found but scriptpubkey doesn't match - fail\n            return true;"],
+  ["practice signer: address: taproot witness version not taken from OP_1", "  if (ver > 0) ver = ver % 0x50;", ""],
+  ["practice signer: address: P2SH uses the legacy version byte", "if (t === \"p2sh\") return base58check(concatBytes(Uint8Array.of(N.sh), data.slice(2, 22)));", "if (t === \"p2sh\") return base58check(concatBytes(Uint8Array.of(N.pkh), data.slice(2, 22)));"],
+  ["practice signer: descriptor: sortedmulti keys not sorted", "    if (this.is_sorted) pubs.sort(cmpBytes);", ""],
+  ["practice signer: descriptor: OP_m is the number of keys", "    const w = new SSPsbtWriter().raw([0x50 + m]);", "    const w = new SSPsbtWriter().raw([0x50 + n]);"],
+  ["practice signer: descriptor: nested multisig not wrapped in P2SH", "    if (this.sh && this.wsh) return ssPsbtP2sh(await ssPsbtP2wsh(sc));", "    if (this.sh && this.wsh) return ssPsbtP2wsh(sc);"],
+  ["practice signer: descriptor: change branch ignored", "        i = el[branch_index];", "        i = el[0];"],
+  ["practice signer: wipe: byte arrays not overwritten", "  if (x instanceof Uint8Array) { x.fill(0); return; }", "  if (x instanceof Uint8Array) { return; }"],
+  ["practice signer: wipe: signing key not wiped", "  if (x instanceof SSPsbtHDKey) { x.wipe(); return; }", "  if (x instanceof SSPsbtHDKey) { return; }"],
+  ["practice signer: wipe: descriptor kept", "for (const f of [\"psbt\", \"psbt_parser\", \"multisig_wallet_descriptor\", \"sign_message_data\", \"unverified_address\"]) {", "for (const f of [\"psbt\", \"psbt_parser\", \"sign_message_data\", \"unverified_address\"]) {"],
+  ["practice signer: wipe: device stop leaves the PSBT", "  try { if (typeof ssPsbtWipeController === \"function\") ssPsbtWipeController(ctl); } catch (e) { /* best effort: PSBTs, signatures, scanned data */ }\n", ""],
+  ["practice signer: wipe: seeds in memory not scrubbed", "      for (const s of st.seeds || []) ssPageScrubSeed(s);\n", ""],
+  ["practice signer: wipe: pending seed not scrubbed", "      ssPageScrubSeed(st.pending_seed);\n", ""],
+  ["practice signer: wipe: seed words kept", "      else if (Array.isArray(v)) v.fill(\"\");", "      else if (Array.isArray(v)) {}"],
+  ["practice signer: wipe: microSD settings kept", "  try { SS_SIM_MICROSD.settings_json = null; } catch (e) { /* settings part missing */ }\n", ""],
+  ["practice signer: wipe: CLEAR ALL leaves the practice signer", "  if(typeof ssPageWipe === \"function\") ssPageWipe();   // v2.13.0: the practice signer (stops it, wipes its seeds, closes its box)\n", ""],
+  ["practice signer: wipe: auto-clear leaves the practice signer", "  if(typeof ssPageWipe === \"function\") ssPageWipe();   // v2.13.0: the practice signer\n", ""],
+  ["practice signer: wipe: END SESSION leaves the practice signer", "() => practiceMode(false), () => ssPageWipe(), wipeSeed,", "() => practiceMode(false), wipeSeed,"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
