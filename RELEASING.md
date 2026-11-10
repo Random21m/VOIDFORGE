@@ -52,6 +52,7 @@ The in-page Bitcoin dictionary (ABOUT & HELP) is general, not only about VOIDFOR
 
 ## Clean-up (after every release)
 Mark the previous release "Superseded by vX", check that the README, REVIEW.md, RELEASING.md and the in-page changelog all name the new version, check that the online copy serves the new file (its SHA-256 matches `SHA256SUMS`), and leave no stray files in the repo (`git ls-files`).
+Then clean up GitLab: delete the release's leftover branches (`dev-X.Y.Z`, the frozen test branch `mutrun-…` and the helpers' result branches `mutres-u1` to `mutres-u16`), each only after checking it is already in `main` or no longer needed. Never touch `main` or any tag.
 
 ## Current build
 `voidforge.html` v2.13.0, SHA256: `a341a5cb5cc97ea4d834dec4dc9cbe1da3141601737b5d482d4ed5af77e683c8`
