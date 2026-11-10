@@ -1,10 +1,10 @@
-// Builds the integrated voidforge.html: the v213 worktree's committed page + the practice signer.
+// Builds the integrated voidforge.html: the v2.12.0 release page + the practice signer.
 // Usage: node build_integrated.js [out]   (default: the v213 worktree's voidforge.html)
 const fs = require("fs"), path = require("path"), cp = require("child_process");
 const W = __dirname;
-const WT = path.join(W, "..", "vf-bundle", "v213");
+const WT = fs.existsSync(path.join(W, "..", "..", "voidforge.html")) ? path.join(W, "..", "..") : path.join(W, "..", "vf-bundle", "v213");
 const out = process.argv[2] || path.join(WT, "voidforge.html");
-let html = cp.execSync("git show HEAD:voidforge.html", { cwd: WT, maxBuffer: 64 << 20 }).toString("utf8");
+let html = cp.execSync("git show v2.12.0:voidforge.html", { cwd: WT, maxBuffer: 64 << 20 }).toString("utf8");
 const before = Buffer.byteLength(html);
 const rd = (f) => fs.readFileSync(path.join(W, f), "utf8");
 const must = (cond, msg) => { if (!cond) throw new Error("build: " + msg); };
