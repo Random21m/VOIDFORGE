@@ -592,6 +592,8 @@ async function probe(w, mutated, fast, only, hooks) {
   // the expected wallet comes from @scure. Coldcard's own sample (its docs/backup.7z) and two Krux test vectors are used as they are.
   if (SEC(71, "v2.12.0 device backups (TAPSIGNER, Krux, Coldcard; made with node:crypto, wallets from @scure)")) {
   const oc = w.confirm;
+  if (!/only when you need it/.test($('dbKindNote').textContent)) fails.push('device backups: the TAPSIGNER note is there when the page opens');
+  { let k = 0; w.dbSelfTests(() => { k++; }); if (k !== 4 || !/\n\s*dbSelfTests\(eq\);/.test(w.runSelfTests.toString())) fails.push('device backups: the self-test runs the four device backup checks'); }
   try {
     const B = (x) => Buffer.from(x), enc = (t) => new Uint8Array(B(t)), sh = (...p) => nc.createHash('sha256').update(Buffer.concat(p.map(B))).digest();
     const root = HDKey.fromMasterSeed(Buffer.alloc(32, 7)), fpx = root.fingerprint.toString(16).padStart(8, '0');
@@ -665,7 +667,7 @@ async function probe(w, mutated, fast, only, hooks) {
       for (let r = 0; r < 2 ** pow; r++) { unit.writeBigUInt64LE(BigInt(r), salt.length + pwb.length); h.update(unit); }
       const key = h.digest(), P = B(plain), pt = Buffer.concat([P, Buffer.alloc((16 - (P.length % 16)) % 16)]), c = nc.createCipheriv('aes-256-cbc', key, iv); c.setAutoPadding(false); const ct = Buffer.concat([c.update(pt), c.final()]);
       const nm = Buffer.from('probe1.txt\0', 'utf16le'), coder = o.coder ?? Buffer.from([0x24, 6, 0xf1, 7, 1]);
-      const hdr = Buffer.concat([Buffer.from([o.top ?? 1, 4, 6, 0, 1, 9]), vn(ct.length), Buffer.from([0, 7, 0x0b, 1, 0, 1]), coder, vn(34), Buffer.from([0xc0 | pow, 0xff]), salt, iv, Buffer.from([1, 0, 0x0c]), vn(P.length), Buffer.from([0, 8, 0x0a, 1]), u32(zlib.crc32(P)), Buffer.from([0, 0, 5, 1, 0x11]), vn(nm.length + 1), Buffer.from([0]), nm, Buffer.from([0, 0])]);
+      const hdr = Buffer.concat([Buffer.from([o.top ?? 1, 4, 6, 0, 1, 9]), vn(ct.length), Buffer.from([0, 7, 0x0b, 1, 0, 1]), coder, vn(34), Buffer.from([0xc0 | pow, 0xff]), salt, iv, (o.filler || Buffer.from([1, 0])), Buffer.from([0x0c]), vn(P.length), Buffer.from([0, 8, 0x0a, 1]), u32(zlib.crc32(P)), Buffer.from([0, 0, 5, 1, 0x11]), vn(nm.length + 1), Buffer.from([0]), nm, Buffer.from([0, 0])]);
       const tail = Buffer.concat([u64(ct.length), u64(hdr.length), u32(zlib.crc32(hdr))]);
       return new Uint8Array(Buffer.concat([Buffer.from([0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c, 0, 3]), u32(zlib.crc32(tail)), tail, ct, hdr]));
     };
@@ -717,7 +719,18 @@ async function probe(w, mutated, fast, only, hooks) {
     { const right = kef(20, E16, 'k', 'r'), wrong = w.kefUnwrap(kef(20, E32, 'not k', 'w')), real = w.kefFromText; w.kefFromText = (t) => [wrong].concat(real(t));
       const t = B(right).toString('hex'), x = await w.kruxOpen(enc(t), t, 'k', false); w.kefFromText = real;
       if (!x.list[0] || x.list[0].mnemonic !== W16) fails.push('krux: when one reading of the text is not the seed, the next reading is tried'); }
-    // the box: a Krux QR, the secret only when asked, the words into the box above, CLEAR and CLEAR ALL
+    // more Krux, Coldcard and box checks (from the v2.12.0 release run)
+    for (const v of [0, 1, 5, 10]) { const z = Buffer.concat([E16.subarray(0, 13), Buffer.alloc(3)]); if (await kw(kef(v, z, 'zz'), 'zz') !== entropyToMnemonic(z, wordlist)) fails.push('krux: KEF version ' + v + ' with data ending in zero bytes (the padding is given back)'); }
+    { const g = sevenZ(ccTxt([['raw_secret', rs('80', E16)]]), CW, { filler: Buffer.from([0x19, 2, 0xaa, 0xbb]) }); const x = await w.ccOpen(g, CW, 'x.7z'); if (x.mnemonic !== W16) fails.push('coldcard: an unknown header part with data is skipped'); }
+    { const b1 = B(good); b1[9] ^= 1; const b2 = B(good); b2[29] ^= 1; b2.writeUInt32LE(zlib.crc32(b2.subarray(12, 32)), 8);
+      if (!/start header is damaged/.test(await ccErr(new Uint8Array(b1), CW))) fails.push('coldcard: a damaged start header is refused');
+      if (!/its header is damaged/.test(await ccErr(new Uint8Array(b2), CW))) fails.push('coldcard: a header that does not match its CRC is refused'); }
+    { const e = kef(20, E16, 'k', 'g'), short = new Uint8Array([...e.slice(0, 6), ...nc.randomBytes(12), ...nc.randomBytes(4)]); if (w.kefUnwrap(short) !== null) fails.push('krux: a GCM envelope with no data before its tag is no envelope'); }
+    { const leg = (words, id, pw) => { const k = nc.pbkdf2Sync(B(pw), B(id), 10000, 32, 'sha256'), d = Buffer.concat([B(words), Buffer.alloc(16 - (B(words).length % 16 || 16))]); const c = nc.createCipheriv('aes-256-ecb', k, null); c.setAutoPadding(false); return { version: 0, key_iterations: 10000, data: Buffer.concat([c.update(d), c.final()]).toString('base64') }; };
+      const j = JSON.stringify({ a: leg(W16, 'a', 'right') }), x = await w.kruxOpen(enc(j), j, 'wrong', true); if (x.list[0].mnemonic !== null) fails.push('krux: an older entry opened with a wrong key shows no words');
+      const bad = 'abandon '.repeat(11) + 'abandon', jb = JSON.stringify({ b: leg(bad, 'b', 'right') }), y = await w.kruxOpen(enc(jb), jb, 'right', true); if (y.list[0].mnemonic !== null) fails.push('krux: words that fail their checksum are not shown'); }
+    { const env = kef(11, E32, 'file key', 'f'), x = await w.kruxOpen(env, null, 'file key', true); if (!x.list[0] || x.list[0].mnemonic !== W32) fails.push('krux: a raw binary file opens'); }
+    if (w.ccPassword('ABAN abil ABLE abou abov ABSE abso abst absu abus acce acci') !== 'abandon ability able about above absent absorb abstract absurd abuse access accident') fails.push('coldcard: 4-letter starts become the full words');
     const env = kef(20, E32, 'ui key', fpx), qr = b43(env), rK = HDKey.fromMasterSeed(mnemonicToSeedSync(W32, '')), fpK = rK.fingerprint.toString(16).padStart(8, '0');
     const open = async (kind, text, key) => { $('dbKind').value = kind; $('dbIn').value = text; $('dbKey').value = key; await w.dbOpenUi(); };
     const envU = kef(20, E32, 'ui key', fpK), qrU = b43(envU);
@@ -728,9 +741,11 @@ async function probe(w, mutated, fast, only, hooks) {
     w.dbReveal(); if (!$('dbSecret').textContent.includes(' 1. ' + W32.split(' ')[0]) || !$('dbSecret').textContent.includes('24. ' + W32.split(' ')[23]) || !/SEED WORDS/.test($('dbSecret').textContent)) fails.push('device backups: SHOW THE SECRET shows the numbered words');
     w.dbReveal(); if ($('dbSecret').textContent !== '' || $('dbSecret').style.display !== 'none') fails.push('device backups: HIDE THE SECRET wipes it from the page');
     w.dbUseWords(); if ($('phrase').value !== W32) fails.push('device backups: the words go into the box above'); $('phrase').value = '';
-    if (!w.autoHasSecrets()) fails.push('device backups: auto-clear knows an open backup holds a secret');
+    { w.wipeSeed(); const F = w.eval('AUTO_FIELDS'), keep = F.map((id) => { const e = $(id); const v = e ? e.value : ''; if (e) e.value = ''; return v; });
+      const has = w.autoHasSecrets(); F.forEach((id, i) => { const e = $(id); if (e) e.value = keep[i]; });
+      if (!has) fails.push('device backups: auto-clear knows an open backup holds a secret, even with every box empty'); }
     $('dbKey').value = 'ui key2'; $('dbKey').dispatchEvent(new w.Event('input')); if ($('dbOut').textContent !== '' || w.eval('dbGot')) fails.push('device backups: editing the key wipes the result');
-    await open('krux', qr, 'ui key'); if (!/is not these words' fingerprint/.test($('dbOut').textContent)) fails.push('device backups: a Krux ID that is not the fingerprint is pointed out');
+    await open('krux', qr, 'ui key'); if (!/is not these words' fingerprint/.test($('dbOut').textContent) || !/had a passphrase/.test($('dbOut').textContent)) fails.push('device backups: a Krux ID that is not the fingerprint is pointed out, a passphrase named as one reason');
     await open('krux', qr, 'wrong'); if (!/this key does not open it/.test($('dbStatus').textContent) || $('dbOut').textContent !== '' || !/status bad/.test($('dbStatus').className)) fails.push('device backups: a wrong Krux key says so');
     { const shf = '#!/bin/sh\nbase64 -d <<END-OF-DATA | openssl aes-128-ctr -d -iv 0 -K $KEY\n' + B(ts(root.privateExtendedKey, 'm/84h/0h/0h')).toString('base64') + '\nEND-OF-DATA\n';
       await open('ts', shf, tsKey); w.dbReveal();
@@ -742,6 +757,12 @@ async function probe(w, mutated, fast, only, hooks) {
       Object.defineProperty($('dbFile'), 'files', { value: [new w.File([new Uint8Array(1048577)], 'big.7z')], configurable: true }); await open('cc', '', CW);
       if (!/too big/.test($('dbStatus').textContent)) fails.push('device backups: a file over 1 MB is refused'); delete $('dbFile').files; }
     await open('ts', '', tsKey); if (!/Choose the backup file/.test($('dbStatus').textContent)) fails.push('device backups: nothing to open says so');
+    { const t20 = B(kef(20, nc.randomBytes(20), 'nw')).toString('hex'); await open('krux', t20, 'nw'); if (!/opened, but it holds no seed words/.test($('dbStatus').textContent)) fails.push('device backups: a Krux seed that opens but holds no words says so'); }
+    $('dbKind').value = 'ts'; w.dbKindSet(); if (!/only when you need it/.test($('dbKindNote').textContent)) fails.push('device backups: the TAPSIGNER note says to open it only when needed');
+    { $('dbKind').value = 'krux'; $('dbIn').value = qrU; $('dbKey').value = 'ui key'; const p = w.dbOpenUi(); $('dbKey').dispatchEvent(new w.Event('input')); await p; if ($('dbOut').textContent !== '' || w.eval('dbGot')) fails.push('device backups: a result that comes after an edit is not shown'); }
+    if ($('dbBtn').disabled) fails.push('device backups: OPEN BACKUP is on after the self-test');
+    { const oa = w.alert; let said = 0; w.alert = () => { said++; }; w.eval('selfTestState = "pending"'); await open('krux', qrU, 'ui key'); w.eval('selfTestState = "pass"'); w.alert = oa;
+      if (said !== 1 || $('dbOut').textContent !== '' || w.eval('dbGot')) fails.push('device backups: nothing opens before the self-test has passed'); }
     $('dbKind').value = 'ts'; w.dbKindSet(); if (!/no longer secure/.test($('dbKindNote').textContent) || !/emergencies only/.test($('dbKindNote').textContent)) fails.push('device backups: the TAPSIGNER warning is shown before the key is typed');
     $('dbKind').value = 'cc'; w.dbKindSet(); if (/no longer secure/.test($('dbKindNote').textContent) || !/12 backup words/.test($('dbKindNote').textContent)) fails.push('device backups: each kind has its own note');
     Object.defineProperty($('dbFile'), 'files', { value: [new w.File([new Uint8Array(40)], 'b.aes')], configurable: true }); await open('krux', qrU, 'ui key'); delete $('dbFile').files;
@@ -6263,13 +6284,13 @@ const M = [
   ["krux: AES-128 key", "salt, iterations: iters}, base, 256));", "salt, iterations: iters}, base, 128));"],
   ["krux: GCM full tag", "tagLength: 32}, key, concatBytes(e.ct, e.tag))", "tagLength: 128}, key, concatBytes(e.ct, e.tag))"],
   ["krux: compressed GCM not inflated", "    return V.z ? inflateRaw(p) : p;\n  }\n  if(V.m === \"ctr\"){", "    return p;\n  }\n  if(V.m === \"ctr\"){"],
-  ["krux: CTR counter of 64 bits", "concatBytes(e.iv, new Uint8Array(4)), length: 32}", "concatBytes(e.iv, new Uint8Array(4)), length: 64}"],
+  ["krux: CTR counter of 64 bits (equivalent: the counter starts at zero and a seed is a few blocks, so the low 32 bits never carry)", "concatBytes(e.iv, new Uint8Array(4)), length: 32}", "concatBytes(e.iv, new Uint8Array(4)), length: 64}", true],
   ["krux: CTR nonce at the end", "counter: concatBytes(e.iv, new Uint8Array(4))", "counter: concatBytes(new Uint8Array(4), e.iv)"],
   ["krux: PKCS7 length not checked (equivalent: a bad length comes only from a wrong key, and the hash check right after refuses it)", "if(n < 1 || n > 16 || n > p.length) return null;", "", true],
   ["krux: exposed check without the key", "return dbEq((await sh(Uint8Array.of(e.v), e.iv, q, k)).slice(0, V.x), e.tag);", "return dbEq((await sh(Uint8Array.of(e.v), e.iv, q)).slice(0, V.x), e.tag);"],
   ["krux: exposed check never fails", "return dbEq((await sh(Uint8Array.of(e.v), e.iv, q, k)).slice(0, V.x), e.tag);", "return true;"],
   ["krux: hidden check takes the first bytes", "const d = q.slice(0, q.length - V.auth); return dbEq((await sh(d)).slice(0, V.auth), q.slice(q.length - V.auth));", "const d = q.slice(V.auth); return dbEq((await sh(d)).slice(0, V.auth), q.slice(0, V.auth));"],
-  ["krux: hidden check over the padded data", "if(q.length <= V.auth) return false;", "if(q.length <= V.auth) return true;"],
+  ["krux: hidden check over the padded data (equivalent: only a wrong key leaves data shorter than its check, and then the check fails anyway)", "if(q.length <= V.auth) return false;", "if(q.length <= V.auth) return true;", true],
   ["krux: NUL padding not given back", "for(let r = 0; r <= (V.auth || V.x) + 1 && end + r <= p.length; r++)", "for(let r = 0; r <= 0 && end + r <= p.length; r++)"],
   ["krux: check bytes left in the data", "const strip = (q) => V.x ? q : q.slice(0, q.length - V.auth);", "const strip = (q) => q;"],
   ["krux: compressed CBC not inflated", "  p = strip(p); return V.z ? inflateRaw(p) : p;\n}", "  p = strip(p); return p;\n}"],
@@ -6286,7 +6307,7 @@ const M = [
   ["krux: raw file bytes not tried", "isFile && kefUnwrap(bytes) ? [kefUnwrap(bytes)] : []", "[]"],
   ["krux: only the first reading of the text tried", "for(const e of f.es || [f.e]){", "for(const e of (f.es || [f.e]).slice(0, 1)){"],
   ["krux: an empty ID refused", "const n = b[0]; if(n > 252 || b.length < n + 6) return null;", "const n = b[0]; if(n < 1 || n > 252 || b.length < n + 6) return null;"],
-  ["krux: base43 tried first", "  if(/^([0-9a-fA-F]{2})+$/.test(s)) tries.push(() => fromHex(s.toLowerCase()));\n  if(/^[A-Z2-7]+=*$/", "  if(/^[0-9A-Z$*+\\-./:]+$/.test(s)) tries.unshift(() => base43Decode(s));\n  if(/^([0-9a-fA-F]{2})+$/.test(s)) tries.push(() => fromHex(s.toLowerCase()));\n  if(/^[A-Z2-7]+=*$/"],
+  ["krux: base43 tried first (equivalent: every reading of the text is tried and only the one the key opens is used, whatever the order)", "  if(/^([0-9a-fA-F]{2})+$/.test(s)) tries.push(() => fromHex(s.toLowerCase()));\n  if(/^[A-Z2-7]+=*$/", "  if(/^[0-9A-Z$*+\\-./:]+$/.test(s)) tries.unshift(() => base43Decode(s));\n  if(/^([0-9a-fA-F]{2})+$/.test(s)) tries.push(() => fromHex(s.toLowerCase()));\n  if(/^[A-Z2-7]+=*$/", true],
   ["tapsigner: a non-master key accepted", " || raw[45] !== 0 || raw[4] !== 0) throw new Error(wrong);", " || raw[45] !== 0) throw new Error(wrong);"],
   ["krux: no cap on iterations", "if(iters < 10000 || iters > 5000000) return null;", "if(iters < 10000) return null;"],
   ["krux: any length read as entropy", "if(p.length === 16 || p.length === 32) return entropyToMnemonic(p);", "if([16, 20, 24, 28, 32].includes(p.length)) return entropyToMnemonic(p);"],
