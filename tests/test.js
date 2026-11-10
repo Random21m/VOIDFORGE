@@ -854,7 +854,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(css)&&/\.tag-rec, body\.light \.tag-rec \{ color: var\(--warn-text\); background: none; \}/.test(css)&&/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(css),'labels: RECOMMENDED, SECRET, PUBLIC and the gray ones are plain colored words (no pill, border or fill)');
       { const notes=[...t.w.document.querySelectorAll('.tag-note')], ros=[...t.w.document.querySelectorAll('.tag-ro')];
         ok(notes.length===3&&notes.every(e=>/^ADVANCED$/.test(e.textContent))&&![...t.w.document.querySelectorAll('summary')].some(e=>/\((demo only|advanced)/i.test(e.textContent)),'tags: ADVANCED is a gray label, not plain (brackets) in the headings');
-        ok(ros.filter(e=>e.textContent==='NEW').length===2,'tags: every "NEW" badge (Multisig header and Silent Payment address) looks the same -- the same gray tag-ro style, not two different colors for the same word');
+        ok(ros.filter(e=>e.textContent==='NEW').length===3,'tags: every "NEW" badge (Multisig header, Silent Payment address and the practice signer) looks the same -- the same gray tag-ro style, not two different colors for the same word');
  }
     }
     ok(/#statusLine \{ position: relative; z-index: 1;/.test(html),'status line sits above the page background');
@@ -1858,7 +1858,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     // wipes
     $('detAddr').value='x'; w.clearAll(); await sleep(20); ok(!$('detAddr').value&&!$('detOut').textContent&&!$('detStatus').textContent,'CLEAR ALL wipes the Wallet Detective');
     // --- Is anything watching this page? ---
-    ok(!html.includes('<script id=')&&(html.match(/<script>/g)||[]).length===2&&(html.match(/<style>/g)||[]).length===1,'watch check: the page has exactly two scripts and one style sheet, which it knows as its own');
+    ok(!html.includes('<script id=')&&(html.match(/<script>/g)||[]).length===8&&(html.match(/<style>/g)||[]).length===1,'watch check: the page has exactly eight scripts (two of its own and six of the practice signer) and one style sheet, which it knows as its own');
     { const own=w.eval('VF_OWN_DATA'), names=w.eval('WATCH_NAMES'), found=new Set();
       for(const m of html.matchAll(/data-([a-z0-9][a-z0-9-]*)/g)) if(!names.some(([re])=>re.test('data-'+m[1]))) found.add(m[1]);
       for(const m of html.matchAll(/dataset\.([a-zA-Z]+)/g)) found.add(m[1].replace(/[A-Z]/g,c=>'-'+c.toLowerCase()));
