@@ -54,6 +54,6 @@ The in-page Bitcoin dictionary (ABOUT & HELP) is general, not only about VOIDFOR
 Mark the previous release "Superseded by vX", check that the README, REVIEW.md, RELEASING.md and the in-page changelog all name the new version, check that the online copy serves the new file (its SHA-256 matches `SHA256SUMS`), and leave no stray files in the repo (`git ls-files`).
 
 ## Current build
-`voidforge.html` v2.12.0, SHA256: `f65a834f7f2fa05f052edf577871fac6adb7d77cfd303c6d43adfab0b8e01cdc`
-Content ID (CIDv1): `bafkreihwlkbu67zpubpqklw7k54hd6wgvw35o7h5ga6g2q5n7kylrya43q`
+`voidforge.html` v2.13.0, SHA256: `a341a5cb5cc97ea4d834dec4dc9cbe1da3141601737b5d482d4ed5af77e683c8`
+Content ID (CIDv1): `bafkreifdigs4wxgjp2snqng6ytojzpq5umkbmaltpnouqlko2wxxpzudza`
 (Recompute after any edit.)
