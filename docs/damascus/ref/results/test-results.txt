@@ -1,0 +1,21 @@
+node ref/test.js 3000  (2026-11-10T17:53:37.360Z)
+# 1. BIP39 test vectors (words from entropy)
+vectors: 8 x 2 checks done
+# 2. BIP84 vector (abandon x11 about)
+fingerprint 73c5da0a, address bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu
+# 3. Coldcard Seed XOR documented examples
+12-word: cannon opinion leader nephew found yard metal galaxy crouch between real trade
+24-word: silent toe meat possible chair blossom wait occur this worth option bag nurse find fish scene bench asthma bike wage world quit primary indoor
+# 4. Extraction code vs independent re-implementations
+mirror table 36 cells, 20000 octet + 20000 quad knockouts, card plans: checked
+# 5. 3000 random end-to-end trials, 12 words
+3000 trials in 48.9 s; dice bias box false alarms 61 (2.03%), card decks failing 39 of 9000
+mutations on E (1000): one cell flipped caught by M+R 1000/1000; one word replaced caught by M 1000/1000; two words swapped caught by M+R 487/1000, by M+R+K 1000/1000
+# 5. 3000 random end-to-end trials, 24 words
+3000 trials in 48.4 s; dice bias box false alarms 86 (2.87%), card decks failing 74 of 18000
+mutations on E (1000): one cell flipped caught by M+R 1000/1000; one word replaced caught by M 1000/1000; two words swapped caught by M+R 504/1000, by M+R+K 977/1000
+# 6. Printed sheet consistency
+sheet: 36 mirror cells and 128 skew letters checked
+binary word table: 2048 words checked against @scure/bip39 english list
+
+TOTAL: 211473 checks, 0 failures

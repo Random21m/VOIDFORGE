@@ -1,0 +1,35 @@
+forge-sheet.html page 1 Letter: content 7.50 x 9.78 in, printable 7.80 x 10.30 in -> fits
+forge-sheet.html page 2 Letter: content 7.50 x 10.29 in, printable 7.80 x 10.30 in -> fits
+forge-sheet.html page 3 Letter: content 7.50 x 9.47 in, printable 7.80 x 10.30 in -> fits
+forge-sheet.pdf: 3 pages (expected 3)
+forge-sheet.html page 1 A4: content 7.50 x 9.78 in, printable 7.57 x 10.99 in -> fits
+forge-sheet.html page 2 A4: content 7.50 x 10.29 in, printable 7.57 x 10.99 in -> fits
+forge-sheet.html page 3 A4: content 7.50 x 9.47 in, printable 7.57 x 10.99 in -> fits
+forge-sheet-a4.pdf: 3 pages (expected 3)
+forge-sheet-24.html page 1 Letter: content 7.50 x 7.31 in, printable 7.80 x 10.30 in -> fits
+forge-sheet-24.html page 2 Letter: content 7.50 x 6.85 in, printable 7.80 x 10.30 in -> fits
+forge-sheet-24.html page 3 Letter: content 7.50 x 4.27 in, printable 7.80 x 10.30 in -> fits
+forge-sheet-24.html page 4 Letter: content 7.50 x 6.85 in, printable 7.80 x 10.30 in -> fits
+forge-sheet-24.html page 5 Letter: content 7.50 x 4.84 in, printable 7.80 x 10.30 in -> fits
+forge-sheet-24.html page 6 Letter: content 7.50 x 9.31 in, printable 7.80 x 10.30 in -> fits
+forge-sheet-24.html page 7 Letter: content 7.50 x 5.09 in, printable 7.80 x 10.30 in -> fits
+forge-sheet-24.pdf: 7 pages (expected 7)
+forge-sheet-24.html page 1 A4: content 7.50 x 7.31 in, printable 7.57 x 10.99 in -> fits
+forge-sheet-24.html page 2 A4: content 7.50 x 6.85 in, printable 7.57 x 10.99 in -> fits
+forge-sheet-24.html page 3 A4: content 7.50 x 4.27 in, printable 7.57 x 10.99 in -> fits
+forge-sheet-24.html page 4 A4: content 7.50 x 6.85 in, printable 7.57 x 10.99 in -> fits
+forge-sheet-24.html page 5 A4: content 7.50 x 4.84 in, printable 7.57 x 10.99 in -> fits
+forge-sheet-24.html page 6 A4: content 7.50 x 9.31 in, printable 7.57 x 10.99 in -> fits
+forge-sheet-24.html page 7 A4: content 7.50 x 5.09 in, printable 7.57 x 10.99 in -> fits
+forge-sheet-24-a4.pdf: 7 pages (expected 7)
+bip39-binary-table.html page 1 Letter: content 7.60 x 9.54 in, printable 7.90 x 10.40 in -> fits
+bip39-binary-table.html page 2 Letter: content 7.60 x 8.97 in, printable 7.90 x 10.40 in -> fits
+bip39-binary-table.html page 3 Letter: content 7.60 x 8.97 in, printable 7.90 x 10.40 in -> fits
+bip39-binary-table.html page 4 Letter: content 7.60 x 8.97 in, printable 7.90 x 10.40 in -> fits
+bip39-binary-table.pdf: 4 pages (expected 4)
+bip39-binary-table.html page 1 A4: content 7.60 x 9.54 in, printable 7.67 x 11.09 in -> fits
+bip39-binary-table.html page 2 A4: content 7.60 x 8.97 in, printable 7.67 x 11.09 in -> fits
+bip39-binary-table.html page 3 A4: content 7.60 x 8.97 in, printable 7.67 x 11.09 in -> fits
+bip39-binary-table.html page 4 A4: content 7.60 x 8.97 in, printable 7.67 x 11.09 in -> fits
+bip39-binary-table-a4.pdf: 4 pages (expected 4)
+bip39-binary-table.html: 0 clipped word cells 
