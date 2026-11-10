@@ -36,6 +36,8 @@
 //               the six lessons, driven only with the device keys (and the page buttons a lesson asks for): every step moves on
 //               when the device reaches the expected screen; BACK, NEXT and RESTART LESSON; the dice words, the verified address,
 //               the signed message (noble) and the multisig signature checked here
+//   find        the card under the header is on screen at load (desktop and phone); OPEN PRACTICE SIGNER and MENU > PRACTICE
+//               SIGNER open the box, start the device and focus it
 //   practice_tx PRACTICE TRANSACTION on Testnet: made-up coins (null outpoint, marked as practice), keys, payee and change from
 //               @scure/bip32; signed on the device, read from its screen (jsqr) and verified with btc-signer + noble; CLEAR ALL wipes it
 // And: the page self-test passes (140/140) in every page opened, and no page error or console error happens in any of them.
@@ -1117,9 +1119,43 @@ SCEN.lessons_tx = async (t, d, ctx, page) => {   // "sign", then "multisig" with
   if (origB && signedB) checkPractice(t, tag, origB, signedB, { net: 'M', multi: true }); else t(false, tag + ': no signed PSBT read from the screen');
 };
 
+
+// ---- v2.14.0: easy to find. The card right under the header is on screen when the page opens (desktop and phone, after the
+// start notice), and OPEN PRACTICE SIGNER and MENU > PRACTICE SIGNER both open CHECK A BACKUP, the box and the device, with focus.
+async function cardOnLoad(browser, w, h, mobile) {
+  const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: mobile, hasTouch: mobile }); await ctx.setOffline(true);
+  const page = await ctx.newPage(); await page.goto(FILE);
+  await page.waitForFunction(() => window.selfTestDone !== undefined, null, { timeout: 90000 }); await page.evaluate(() => window.selfTestDone);
+  const go = await page.$('#sgGo'); if (go && await go.isVisible()) await go.click(); await sleep(300);
+  const r = await page.evaluate(() => { const c = document.getElementById('ssPromo'), b = document.getElementById('ssPromoBtn'), cr = c.getBoundingClientRect(), br = b.getBoundingClientRect(), s = c.querySelector('span'), cs = getComputedStyle(b);
+    return { top: cr.top, bottom: cr.bottom, h: innerHeight, y: scrollY, bvis: br.bottom <= innerHeight && br.top >= 0, text: s.textContent, btn: b.textContent, gold: !b.classList.contains('secondary'), bg: cs.backgroundColor, lines: Math.round(s.getBoundingClientRect().height / parseFloat(getComputedStyle(s).fontSize) / 1.15), under: !!document.querySelector('header + #ssPromo') }; });
+  await ctx.close(); return r;
+}
+SCEN.find = async (t, d, ctx, page) => {
+  for (const [name, w, h, m] of [['desktop', 1280, 800, false], ['phone', 390, 844, true]]) {
+    const r = await cardOnLoad(page.context().browser(), w, h, m);
+    t(r.y === 0 && r.top >= 0 && r.bottom <= r.h && r.bvis && r.under && r.text === 'New: practice on a SeedSigner in your browser. Same screens and buttons as the real device.' && r.btn === 'OPEN PRACTICE SIGNER' && r.gold && (name === 'phone' || r.lines === 1),
+      'card (' + name + ' ' + w + 'x' + h + '): right under the header, the card and its gold OPEN PRACTICE SIGNER button are on screen without scrolling once the start notice is closed' + (name === 'desktop' ? ', one line of text' : '') + ' (' + JSON.stringify({ top: Math.round(r.top), bottom: Math.round(r.bottom), lines: r.lines }) + ')');
+  }
+  const closed = async () => { await page.click('#ssBox > summary'); await sleep(400); await page.evaluate(() => { showTab('make'); scrollTo(0, 0); }); await sleep(300); };
+  const opened = () => page.evaluate(() => { const b = document.getElementById('ssBox'), r = b.getBoundingClientRect();
+    return { tab: document.getElementById('tab-check').getAttribute('aria-selected') === 'true', open: b.open, inView: r.top >= -2 && r.top < innerHeight, focus: document.activeElement && document.activeElement.id, menu: document.getElementById('menuBox').open }; });
+  for (const [name, act] of [['OPEN PRACTICE SIGNER', () => page.click('#ssPromoBtn')], ['MENU > PRACTICE SIGNER', async () => { await page.click('#menuBox > summary'); await sleep(200); await page.click('#ssMenuBtn'); }]]) {
+    await closed();
+    t(await page.evaluate(() => !document.getElementById('ssBox').open && !SSController._instance), name + ': before, the box is closed and the device is off');
+    await act(); await sleep(400);
+    const o = await opened();
+    await d.waitView('SSMainMenuView', 30000); const a = (await d.state()).sel;
+    await page.keyboard.press('ArrowRight'); await sleep(500); const b = (await d.state()).sel;
+    t(o.tab && o.open && o.inView && o.focus === 'ssDevice' && !o.menu && a === 0 && b === 1, name + ': opens CHECK A BACKUP and the practice signer box, scrolls it into view, starts the device and gives it focus: the arrow keys work at once (' + JSON.stringify(o) + ', sel ' + a + ' then ' + b + ')');
+  }
+  const mb = await page.evaluate(() => { const b = document.getElementById('ssMenuBtn'); return [...document.querySelectorAll('#menuBox .menu-list button')].map((x) => x.textContent).join('|') + ' / ' + b.className; });
+  t(mb === 'GUIDE ME|PRACTICE SIGNER|TEXT A+|PRINT SEED|PRINT STAMP SHEET|IS ANYTHING WATCHING THIS PAGE?|DARK|END SESSION / secondary small', 'MENU: PRACTICE SIGNER sits right after GUIDE ME, in the gray secondary style of the MENU helpers (' + mb + ')');
+};
+
 // ================================================================ run
 SCEN.tools.clock = true; SCEN.offline.online = true;
-const order = ['lessons_dice', 'lessons_tx', 'lessons_seed', 'practice_tx', 'review', 'psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
+const order = ['lessons_dice', 'lessons_tx', 'lessons_seed', 'practice_tx', 'find', 'review', 'psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
 const want = process.env.SCEN ? process.env.SCEN.split(',') : order;
 const results = [];
 async function runScenario(browser, name) {

@@ -978,6 +978,12 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   #ssBox .ss-l-do { font-size: 15px; line-height: 1.5; }
   #ssBox .ss-l-cam { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; margin: 0 0 10px; overflow-wrap: anywhere; }
   #ssBox #ssTxStatus { white-space: pre-line; overflow-wrap: anywhere; }
+  /* v2.14.0: the card under the header that opens the practice signer (one line and the button on a wide screen) */
+  #ssPromo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 7px 10px; margin: 0 0 12px; border: 1px solid var(--gold); font-size: 13px; }
+  #ssPromo span { flex: 1 1 16em; min-width: 0; font-size: 12px; }
+  #ssPromo button { flex: none; padding: 6px 12px; font-size: 12px; letter-spacing: .03em; }
+  body.guided #ssPromo { display: none; }
+  @media print { #ssPromo { display: none !important; } }
 </style>
 
 </head>
@@ -991,6 +997,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
 <details id="menuBox"><summary>MENU &#9776;</summary>
 <div class="menu-list">
 <button class="guide-btn" id="guideBtn" onclick="toggleGuide()" aria-pressed="false">GUIDE ME</button>
+<button class="secondary small" id="ssMenuBtn" onclick="ssPageOpen()">PRACTICE SIGNER</button>
 <button class="size-btn" id="sizeBtn" onclick="toggleSize()" aria-pressed="false">TEXT A+</button>
 <button class="print-btn" onclick="printSeed()">PRINT SEED</button>
 <button class="print-btn" id="stampBtn" onclick="printStamp()">PRINT STAMP SHEET</button>
@@ -1017,6 +1024,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <div id="guideNew">New here? Open MENU at the top and press GUIDE ME to be walked through making a seed one screen at a time.</div>
     <div id="heirNew">Found someone&rsquo;s Bitcoin backup? <button type="button" id="heirBtn" class="small" onclick="heirOpen()" aria-expanded="false" aria-controls="heirCard">I FOUND A BITCOIN BACKUP</button></div>
   </header>
+  <div class="card" id="ssPromo"><span>New: practice on a SeedSigner in your browser. Same screens and buttons as the real device.</span><button type="button" class="small" id="ssPromoBtn" onclick="ssPageOpen()">OPEN PRACTICE SIGNER</button></div>
 
   
   <div class="strip" id="strip"><b>Educational, not independently audited.</b> <span>Use an offline computer, write seeds on paper, start with a small amount.</span> <button type="button" class="linklike" onclick="showTab('about','beforeCard')">Read before real keys &rarr;</button></div>
@@ -32262,6 +32270,18 @@ function ssPageWipe() {
   try { SS_SIM_MICROSD.settings_json = null; } catch (e) { /* settings part missing */ }
   const b = document.getElementById("ssBox");
   if (b && b.open) b.open = false;
+}
+
+// v2.14.0: OPEN PRACTICE SIGNER (the card under the header) and PRACTICE SIGNER in the MENU: CHECK A BACKUP, the box opened
+// (which starts the device), scrolled into view, and the device focused so its keys work at once.
+function ssPageOpen() {
+  const mb = document.getElementById("menuBox"); if (mb) mb.open = false;
+  if (typeof showTab === "function") showTab("check");
+  const b = document.getElementById("ssBox"), dev = document.getElementById("ssDevice");
+  if (!b || !dev) return;
+  if (!b.open) b.open = true;
+  b.scrollIntoView({ block: "start" });
+  try { dev.focus({ preventScroll: true }); } catch (e) { dev.focus(); }
 }
 
 function ssPageInit() {

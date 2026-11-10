@@ -20,6 +20,15 @@ const HOOKS = [
   for(const id of AUTO_FIELDS)`, `  reforgeStop(); msReset(); dbClear(); wipeSeed(); planClear(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
   if(typeof ssPageWipe === "function") ssPageWipe();   // v2.13.0: the practice signer
   for(const id of AUTO_FIELDS)`],
+  // v2.14.0: the practice signer is easy to find: a small card right under the header, and a MENU entry (both: ssPageOpen)
+  [`  </header>
+`, `  </header>
+  <div class="card" id="ssPromo"><span>New: practice on a SeedSigner in your browser. Same screens and buttons as the real device.</span><button type="button" class="small" id="ssPromoBtn" onclick="ssPageOpen()">OPEN PRACTICE SIGNER</button></div>
+`],
+  [`<button class="guide-btn" id="guideBtn" onclick="toggleGuide()" aria-pressed="false">GUIDE ME</button>
+`, `<button class="guide-btn" id="guideBtn" onclick="toggleGuide()" aria-pressed="false">GUIDE ME</button>
+<button class="secondary small" id="ssMenuBtn" onclick="ssPageOpen()">PRACTICE SIGNER</button>
+`],
 ];
 const once = (h, a) => h.split(a).length === 2;
 function unbuild(h) {
@@ -30,7 +39,10 @@ function unbuild(h) {
   const boxA = h.indexOf('\n    <details id="ssBox">'); must(boxA > 0, "unbuild: box start");
   const boxZ = h.indexOf("</details>", boxA); must(boxZ > boxA, "unbuild: box end");
   h = h.slice(0, boxA) + h.slice(boxZ + 10);
-  for (const [a, b] of HOOKS) { must(once(h, b), "unbuild: hook not exactly once: " + a.slice(0, 60)); h = h.replace(b, () => a); }
+  for (const [a, b] of HOOKS) {
+    if (h.indexOf(b) < 0 && once(h, a)) continue;   // a page built before this hook was added (v2.14.0 card and MENU entry)
+    must(once(h, b), "unbuild: hook not exactly once: " + a.slice(0, 60)); h = h.replace(b, () => a);
+  }
   const tag = '<script>\n"use strict";\n// v2.13.0 practice signer: ';
   const sA = h.indexOf(tag); must(sA > 0, "unbuild: scripts start");
   const last = h.lastIndexOf(tag); const sZ = h.indexOf("</script>\n", last); must(sZ > last, "unbuild: scripts end");
@@ -83,6 +95,12 @@ const css = `
   #ssBox .ss-l-do { font-size: 15px; line-height: 1.5; }
   #ssBox .ss-l-cam { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; margin: 0 0 10px; overflow-wrap: anywhere; }
   #ssBox #ssTxStatus { white-space: pre-line; overflow-wrap: anywhere; }
+  /* v2.14.0: the card under the header that opens the practice signer (one line and the button on a wide screen) */
+  #ssPromo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 7px 10px; margin: 0 0 12px; border: 1px solid var(--gold); font-size: 13px; }
+  #ssPromo span { flex: 1 1 16em; min-width: 0; font-size: 12px; }
+  #ssPromo button { flex: none; padding: 6px 12px; font-size: 12px; letter-spacing: .03em; }
+  body.guided #ssPromo { display: none; }
+  @media print { #ssPromo { display: none !important; } }
 `;
 rep("\n</style>", css + "</style>");
 

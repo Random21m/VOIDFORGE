@@ -96,6 +96,18 @@ function ssPageWipe() {
   if (b && b.open) b.open = false;
 }
 
+// v2.14.0: OPEN PRACTICE SIGNER (the card under the header) and PRACTICE SIGNER in the MENU: CHECK A BACKUP, the box opened
+// (which starts the device), scrolled into view, and the device focused so its keys work at once.
+function ssPageOpen() {
+  const mb = document.getElementById("menuBox"); if (mb) mb.open = false;
+  if (typeof showTab === "function") showTab("check");
+  const b = document.getElementById("ssBox"), dev = document.getElementById("ssDevice");
+  if (!b || !dev) return;
+  if (!b.open) b.open = true;
+  b.scrollIntoView({ block: "start" });
+  try { dev.focus({ preventScroll: true }); } catch (e) { dev.focus(); }
+}
+
 function ssPageInit() {
   const box = document.getElementById("ssBox"), dev = document.getElementById("ssDevice");
   if (!box || !dev) return;
