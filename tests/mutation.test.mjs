@@ -5938,7 +5938,7 @@ const M = [
   ["wallet detective: unusual mix not named", "if(!f.usual) lines.push(", "if(false) lines.push("],
   ["watch check: extension elements ignored", "  if(t.includes(\"-\")) return", "  if(false) return"],
   ["watch check: removed scripts forgotten", "/^(SCRIPT|IFRAME|FRAME|OBJECT|EMBED|LINK|STYLE|FONT)$|-/.test(n.tagName)", "/^(IFRAME|FRAME|OBJECT|EMBED|LINK|STYLE|FONT)$|-/.test(n.tagName)"],
-  ["watch check: the page's own data-tab flagged", "\"seed\", \"tab\", \"text\"", "\"seed\", \"text\""],
+  ["watch check: the page's own data-tab flagged", "\"sig\", \"tab\", \"text\"", "\"sig\", \"text\""],
   ["watch check: unknown attributes ignored", "  return \"An attribute \" + a + \" that this page never sets, probably added by a browser extension.\";", "  return null;"],
   ["watch check: warning never shown at the top", "b.append(t, m, l); b.style.display = \"block\";", "b.append(t, m, l);"],
   ["watch check: says safe", "st.className = \"status\"; st.textContent = \"NO SIGN FOUND of extensions, translators or other scripts on this page right now.\";", "st.className = \"status ok\"; st.textContent = \"SAFE: nothing is watching this page.\";"],

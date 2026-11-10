@@ -455,7 +455,7 @@ if(browser){
     }
   }
   check("printing leaves no sign for the watch check (the print style is the page's own)", await page.evaluate(() => !watchSigns().some((x) => /style sheet/i.test(x))));
-  check("after printing, the sheet and its page style are gone", await page.evaluate(() => !document.getElementById("printOnly").textContent && !document.getElementById("dmPrintCss") && !document.body.classList.contains("print-seed")));
+  check("after printing, the sheet and its page style are gone", await page.evaluate(() => !document.getElementById("printOnly").textContent && !(document.getElementById("dmPrintCss") || {}).textContent && !document.body.classList.contains("print-seed")));
   // phone width: no sideways scroll on the Damascus tab with a result on screen
   await page.setViewportSize({ width: 360, height: 800 });
   await page.evaluate(async (e) => { document.getElementById("wordSel").value = "12"; document.getElementById("wordSel").dispatchEvent(new Event("change")); const s = (id, v) => { const x = document.getElementById(id); x.value = v; x.dispatchEvent(new Event("input")); }; s("dmDice", e.dice); s("dmCards", e.cards.join("\n")); document.getElementById("dmMineBox").open = true; await dmCheck(); }, { dice: E1.e.dice, cards: E1.e.cards });

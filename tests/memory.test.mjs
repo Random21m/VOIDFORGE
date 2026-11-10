@@ -91,6 +91,37 @@ await p.waitForFunction(() => document.body.classList.contains('js-ok'));
 await p.waitForTimeout(1500);
 { const s = await heapStrings(); const there = findIn(s, secrets); ok(there.length === 0, 'END SESSION: after the reload no secret is in the page\'s heap' + (there.length ? ' (still held: ' + there.join(', ') + ')' : '')); }
 
+// The Damascus method (v2.14.0): dice pairs and a card record that occur nowhere else, Check my sheets (grids, words, the Seed
+// XOR phrases of the assay), FORGE SEED, and Recheck a Damascus backup; then CLEAR ALL, and again with auto-clear.
+await p.waitForFunction(() => /PASSED/.test(document.getElementById('selfTestBadge').textContent), null, { timeout: 120000 });
+await p.evaluate(() => { const g = document.getElementById('sgGo'); if (g && g.offsetParent) g.click(); window.print = () => {}; });
+{
+  const pairs = []; let good = 0; while (good < 26) { const a = 1 + nc.randomInt(6), b = 1 + nc.randomInt(6); pairs.push(a + '' + b); if (a !== b || a > 4) good++; }
+  const deck = () => { const d = []; for (const su of 'CDHS') for (const r of 'A23456789TJQK') d.push(r + su); for (let i = 51; i > 0; i--) { const j = nc.randomInt(i + 1); [d[i], d[j]] = [d[j], d[i]]; } return d.join(' '); };
+  const dice = pairs.join(' '), cards = [deck(), deck(), deck()].join('\n');
+  const fill = async (assay) => p.evaluate(async ([dice, cards, assay]) => {
+    showTab('make'); setMethod('damascus'); const s = (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input')); };
+    document.getElementById('wordSel').value = '12'; document.getElementById('wordSel').dispatchEvent(new Event('change'));
+    s('dmDice', dice); s('dmCards', cards);
+    const w = document.getElementById('dmWho'), out = {};
+    for (const k of ['h', 'a']) { w.value = k; w.dispatchEvent(new Event('change')); await dmCheck(); out[k] = [...document.getElementById('dmOut').querySelectorAll('pre')].pop().textContent.split('\n').map((l) => l.replace(/^\s*\d+\.\s/, '')).join(' '); }
+    w.value = 'both'; w.dispatchEvent(new Event('change')); await dmCheck(); await dmGenerate();
+    out.f = document.getElementById('genResult').textContent.split('\n')[0].trim();
+    showTab('check'); document.getElementById('dmrWords').value = out.f; document.getElementById('dmrM').value = '00000000000'; document.getElementById('dmrR').value = '000000000000'; await dmRecheck();
+    return out;
+  }, [dice, cards, assay]);
+  const got = await fill();
+  ok(got.f.split(' ').length === 12 && got.h.split(' ').length === 12 && got.a.split(' ').length === 12, 'Damascus: a seed and both Seed XOR phrases were made from unique dice and cards');
+  const dmSecrets = [['the Damascus dice pairs', dice.slice(0, 60)], ['the Damascus card record', cards.split('\n')[1].slice(0, 60)], ['the Damascus seed words', got.f], ['the Hammer sheet Seed XOR phrase', got.h], ['the Anvil sheet Seed XOR phrase', got.a]];
+  await p.waitForTimeout(1000);
+  { const s = await heapStrings(); const there = findIn(s, dmSecrets); ok(there.length >= 2, 'Damascus control: before wiping, its secrets are in the heap (' + there.join(', ') + ')'); }
+  await p.evaluate(() => clearAll()); await p.waitForTimeout(1500);
+  { const s = await heapStrings(); const there = findIn(s, dmSecrets); ok(there.length === 0, 'Damascus, CLEAR ALL: no secret is still held by the page' + (there.length ? ' (still held: ' + there.join(', ') + ')' : ''));
+    if (process.env.MEM_DEBUG && there.length) for (const [n, v] of dmSecrets) for (const x of s) if (x.includes(v)) console.log('  ' + n + ' inside: ' + JSON.stringify(x.slice(0, 160))); }
+  await fill(); await p.evaluate(() => autoWipe('in the memory test')); await p.waitForTimeout(1500);
+  { const s = await heapStrings(); const there = findIn(s, dmSecrets); ok(there.length === 0, 'Damascus, auto-clear: no secret is still held by the page' + (there.length ? ' (still held: ' + there.join(', ') + ')' : '')); }
+}
+
 // The practice signer (v2.13.0): a 12-word seed from made-up dice rolls, a passphrase typed on its keyboard, the words
 // viewed on its screen, then each wipe. Besides the string search, the heap graph is searched for any one object that
 // holds six or more of the seed words (single words are in the word list, so they cannot be searched for as text): the

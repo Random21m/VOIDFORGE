@@ -14026,12 +14026,11 @@ function dmPrint(kind){
     if(!confirm("Print the Damascus kit for " + wc + " words: the quick guide, the Hammer, Anvil and Forge sheets, the word table, a backup card and a trial checklist (" + dmKitPages(wc) + " pages).\n\nBlank pages are not secret. Once filled in, the Forge sheet and the backup card are your seed: keep them private and destroy the sheets you do not keep.")) return;
     html = '<div class="dm-sh">' + dmGuidePrint() + dmSheetH(wc) + dmSheetA(wc) + dmSheetF(wc) + '</div><div class="dm-tb">' + dmWordTable() + '</div><div class="dm-sh">' + dmSheetCard(wc) + dmSheetTrial(wc) + "</div>";
   } else html = kind === "t" ? '<div class="dm-tb">' + dmWordTable() + "</div>" : '<div class="dm-sh">' + one[kind]() + "</div>";
-  const st = document.createElement("style"); st.id = "dmPrintCss";
+  // one style element of the page's own, made once and listed in vfOwnEls (so the watch check knows it); empty except while printing
+  let st = document.getElementById("dmPrintCss");
+  if(!st){ st = document.createElement("style"); st.id = "dmPrintCss"; if(window.vfOwnEls) window.vfOwnEls.push(st); document.head.appendChild(st); }
   st.textContent = "@media print { @page { size: " + (document.getElementById("dmPaper").value === "a4" ? "A4" : "letter") + "; margin: 0.3in; } }" + DM_SHEET_CSS + DM_KIT_CSS;
-  const old = document.getElementById("dmPrintCss"); if(old) old.remove();
-  const own = window.vfOwnEls || []; own.push(st);   // the page's own style sheet, so the watch check does not count it as a stranger's
-  document.head.appendChild(st);
-  let done = false; const off = () => { if(done) return; done = true; st.remove(); const k = own.indexOf(st); if(k >= 0) own.splice(k, 1); };
+  let done = false; const off = () => { if(done) return; done = true; st.textContent = ""; };
   window.addEventListener("afterprint", off, {once: true}); setTimeout(off, 120000);
   printSheet(add => { add("dm-kit", "").innerHTML = html; });
 }
