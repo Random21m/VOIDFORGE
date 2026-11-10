@@ -29855,14 +29855,13 @@ function ssPsbtCborRead(b, pos) {
   }
   throw new Error("Unsupported CBOR item");
 }
-// urtypes Keypath -> "fp/48h/0h/0h/2h" style text (fingerprint only when given)
+// urtypes Keypath.path() (urtypes 1.0.1, crypto/keypath.py): "48'/0'/0'/2'" style parts. A component that is not a
+// number (a wildcard [] or a pair) is read as a wildcard and written "*", as urtypes' from_data_item does.
 function ssPsbtUrKeypath(m) {
   const comps = m.get(1) || [], out = [];
   for (let i = 0; i < comps.length; i += 2) {
     const c = comps[i], h = comps[i + 1] === true;
-    if (Array.isArray(c) && c.length === 0) out.push("*" + (h ? "h" : ""));
-    else if (Array.isArray(c)) out.push("<" + c.filter((x, j) => j % 2 === 0).join(";") + ">" + (h ? "h" : ""));
-    else out.push(c + (h ? "h" : ""));
+    out.push((typeof c === "number" ? String(c) : "*") + (h ? "'" : ""));
   }
   return out;
 }
@@ -29874,9 +29873,12 @@ async function ssPsbtUrKey(item) {
   if (item.tag !== 303) throw new Error("Unsupported key in the UR");
   const key_data = m.get(3), chain_code = m.get(4);
   if (!key_data || !chain_code) throw new Error("A master key or a key without chain code is not supported");
+  // urtypes bip32_key(): main-network version bytes only when there is no use-info or its network is 0
+  // (a use-info without a network field gives test-network bytes there too).
   let network = 0;
   const use = m.get(5);
-  if (use instanceof SSPsbtCborTag && use.value instanceof Map && use.value.get(2) === 1) network = 1;
+  const useMap = use instanceof SSPsbtCborTag ? use.value : use;
+  if (useMap instanceof Map && useMap.get(2) !== 0) network = 1;
   let origin = m.get(6), children = m.get(7);
   origin = origin instanceof SSPsbtCborTag ? origin.value : origin;
   children = children instanceof SSPsbtCborTag ? children.value : children;
@@ -29884,7 +29886,11 @@ async function ssPsbtUrKey(item) {
   const depth = origin && origin.get(3) !== undefined ? origin.get(3) : comps.length / 2;
   let child_number = 0;
   if (comps.length >= 2) child_number = (comps[comps.length - 2] + (comps[comps.length - 1] === true ? SS_PSBT_HARDENED : 0)) >>> 0;
-  const parent_fp = m.get(8) || 0;
+  let parent_fp = m.get(8) || 0;
+  // urtypes quirk, kept: with no parent fingerprint, a one-step origin with a source fingerprint gives that
+  // fingerprint as the parent, and then the [fingerprint/path] origin is left out of the descriptor.
+  let source_is_parent = false;
+  if (m.get(8) === undefined && origin && origin.get(2) !== undefined && comps.length === 2) { parent_fp = origin.get(2); source_is_parent = true; }
   const raw = new SSPsbtWriter();
   raw.raw(network === 1 ? [0x04, 0x35, 0x87, 0xcf] : [0x04, 0x88, 0xb2, 0x1e]);
   raw.raw([depth]);
@@ -29892,13 +29898,13 @@ async function ssPsbtUrKey(item) {
   raw.raw([(child_number >>> 24) & 255, (child_number >>> 16) & 255, (child_number >>> 8) & 255, child_number & 255]);
   raw.raw(chain_code); raw.raw(key_data);
   let s = "";
-  if (origin) {
+  if (origin && !source_is_parent) {
     const fp = origin.get(2);
     const path = ssPsbtUrKeypath(origin);
-    if (fp !== undefined) s += "[" + [fp.toString(16).padStart(8, "0")].concat(path).join("/") + "]";
+    if (fp !== undefined && path.length) s += "[" + [(fp >>> 0).toString(16).padStart(8, "0")].concat(path).join("/") + "]";
   }
   s += await base58check(raw.out());
-  if (children) s += "/" + ssPsbtUrKeypath(children).join("/");
+  if (children && ssPsbtUrKeypath(children).length) s += "/" + ssPsbtUrKeypath(children).join("/");
   return s;
 }
 const SS_PSBT_UR_SCRIPTS = {400: "sh", 401: "wsh", 402: "pk", 403: "pkh", 404: "wpkh", 405: "combo", 409: "tr", 410: "cosigner"};
@@ -29912,10 +29918,12 @@ async function ssPsbtUrOutputItem(item) {
   }
   return ssPsbtUrKey(item);
 }
+// urtypes Output.descriptor() adds "#" and the descriptor checksum (embit ignores what follows "#" when parsing).
+async function ssPsbtUrWithChecksum(d) { return descriptorChecksum(d); }   // the page function returns d + "#" + checksum
 async function ssPsbtUrOutputDescriptor(cbor) {
   let item = ssPsbtCborRead(cbor, 0).v;
   if (item instanceof SSPsbtCborTag && item.tag === 308) item = item.value;   // tagged crypto-output
-  return ssPsbtUrOutputItem(item);
+  return ssPsbtUrWithChecksum(await ssPsbtUrOutputItem(item));
 }
 async function ssPsbtUrAccountDescriptor(cbor) {
   let m = ssPsbtCborRead(cbor, 0).v;
@@ -29924,7 +29932,7 @@ async function ssPsbtUrAccountDescriptor(cbor) {
   if (!outs.length) throw new Error("No output descriptors in the crypto-account");
   let item = outs[0];
   if (item instanceof SSPsbtCborTag && item.tag === 308) item = item.value;
-  return ssPsbtUrOutputItem(item);
+  return ssPsbtUrWithChecksum(await ssPsbtUrOutputItem(item));
 }
 
 
