@@ -1590,8 +1590,9 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </div>
     <div class="sec-block" id="dbBlock">
       <h3 class="sec">Open a signing device&rsquo;s backup<span class="tag tag-secret">SECRET</span></h3>
-      <p class="hint" style="margin:0 0 6px;">An encrypted backup a signing device wrote: a <b>TAPSIGNER</b> backup (.aes) with the key printed on the back of the card, a <b>Krux</b> encrypted seed (the encrypted QR&rsquo;s text, or seeds.json) with its key, or a <b>Coldcard</b> backup (.7z) with its 12 backup words. VOIDFORGE opens it here, offline, and shows which wallet it holds (the fingerprint and first addresses), so you know the backup works. The backup holds the wallet&rsquo;s private keys: open it only on your offline computer.</p>
-      <select id="dbKind" aria-label="Which device made the backup" style="width:100%;" onchange="dbWipe()"><option value="ts">TAPSIGNER backup (.aes)</option><option value="krux">Krux encrypted seed (QR text or seeds.json)</option><option value="cc">Coldcard backup (.7z)</option></select>
+      <p class="hint" style="margin:0 0 6px;">An encrypted backup a signing device wrote: a <b>TAPSIGNER</b> backup (.aes) with the key printed on the back of the card, a <b>Krux</b> encrypted seed (the encrypted QR&rsquo;s text, or seeds.json) with its key, or a <b>Coldcard</b> backup (.7z) with its 12 backup words. VOIDFORGE opens it here, offline, and shows which wallet it holds (the fingerprint and first addresses). The backup holds the wallet&rsquo;s private keys: open it only on your offline computer.</p>
+      <select id="dbKind" aria-label="Which device made the backup" style="width:100%;" onchange="dbKindSet()"><option value="ts">TAPSIGNER backup (.aes)</option><option value="krux">Krux encrypted seed (QR text or seeds.json)</option><option value="cc">Coldcard backup (.7z)</option></select>
+      <p class="hint" id="dbKindNote" style="margin:6px 0;"></p>
       <input type="file" id="dbFile" accept=".aes,.sh,.7z,.json,.txt,application/octet-stream,text/plain,application/json" aria-label="Choose the backup file" onchange="dbWipe()" style="width:100%; margin-top:6px;">
       <textarea id="dbIn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Or the backup as text" placeholder="Or paste it as text: the encrypted QR&rsquo;s text (Krux), seeds.json, or a TAPSIGNER .sh backup" style="margin-top:6px;" oninput="dbWipe()"></textarea>
       <input type="password" id="dbKey" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="The backup's key or password" placeholder="Key or password: 32 characters from the card, the Krux key, or the 12 Coldcard words" style="width:100%; margin-top:6px;" oninput="dbWipe()">
@@ -2193,7 +2194,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details>
       <summary>Changelog</summary>
       <ul>
-        <li><b>2.12.0</b> &mdash; <b>Open a signing device&rsquo;s backup.</b> CHECK A BACKUP has <b>Open a signing device&rsquo;s backup</b>: a <b>TAPSIGNER</b> backup (.aes, or the .sh form) with the key from the back of the card, a <b>Krux</b> encrypted seed (the encrypted QR&rsquo;s text in base43, hex or Base64, or seeds.json; every KEF version and the older entries) with its key, or a <b>Coldcard</b> backup (.7z) with its 12 backup words (4-letter starts are fine) or its custom password. It shows the fingerprint and the first 10 receive and 10 change addresses, says what else the backup holds, and shows the words or key only when asked, never copyable. Each format is read as its maker&rsquo;s own code writes it, and checked against Krux&rsquo;s and Coinkite&rsquo;s test data. Also: the mutation test now has a time limit for each mutation, so a page freeze no longer stops the run.</li>
+        <li><b>2.12.0</b> &mdash; <b>Open a signing device&rsquo;s backup.</b> CHECK A BACKUP has <b>Open a signing device&rsquo;s backup</b>: a <b>TAPSIGNER</b> backup (.aes, or the .sh form) with the key from the back of the card, a <b>Krux</b> encrypted seed (the encrypted QR&rsquo;s text in base43, hex or Base64, or seeds.json; every KEF version and the older entries) with its key, or a <b>Coldcard</b> backup (.7z) with its 12 backup words (4-letter starts are fine) or its custom password. It shows the fingerprint and the first 10 receive and 10 change addresses, says what else the backup holds, and shows the words or key only when asked, in a box that cannot be selected (PUT THE WORDS IN THE BOX ABOVE copies them into the words box, which CLEAR and CLEAR ALL wipe). Before a TAPSIGNER key is typed, the page gives Coinkite&rsquo;s warning: the key on the card is for emergencies only. Each format is read as its maker&rsquo;s own code writes it, and checked against Krux&rsquo;s test vectors and Coinkite&rsquo;s sample Coldcard backups (Coinkite publishes no TAPSIGNER test file, so those checks use backups made exactly as its documentation says). Also: the mutation test now has a time limit for each mutation, so a page freeze no longer stops the run.</li>
         <li><b>2.11.0</b> &mdash; <b>Codex32 shares and Taproot multisig.</b> (1) <b>Codex32 shares</b> (BIP93, EXTRA TOOLS): check codex32 strings (each mistake is named; nothing is corrected), combine a codex32 secret or k shares to see the wallet (fingerprint, the first 10 receive and 10 change addresses and the first Taproot address; TESTNET (practice coins only) in practice mode), or make a new wallet from 50 or 99 dice rolls as k-of-n codex32 shares (2 to 9 needed, up to 31) or one codex32 secret. Shares are read back and combined again before they are shown, are never copyable, and print one page each after asking. A codex32 seed is the BIP32 seed itself, not BIP39 words. (2) <b>Taproot multisig</b> in the MULTISIG WALLET card: a Taproot (bc1p) wallet with <code>sortedmulti_a</code> (BIP386, BIP387). Its key path is shut by an unspendable key worked out from the cosigners&rsquo; keys, so nothing random is needed. Keys use m/48&rsquo;/coin&rsquo;/account&rsquo;/3&rsquo;, which BIP48 does not define (Coldcard EDGE firmware uses it). Bitcoin Core 24.0.1 or later and Coldcard EDGE firmware (checked with 6.6.1X and 6.6.1QX) can sign; Sparrow cannot yet. (3) Every multisig wallet now shows <b>Import this wallet into Bitcoin Core</b> (createwallet and importdescriptors), and Explain an inheritance or timelock wallet and Is this seed in my wallet file? read Taproot multisig descriptors.</li>
         <li><b>2.10.0</b> &mdash; <b>Sixteen ways to make, check and keep a seed better.</b> (1) MAKE A SEED: a <b>Card method</b> menu (Ian Coleman, hashed, as before, or Ian Coleman, raw entropy, his tool&rsquo;s Use Raw Entropy choice, shown with an honest at-most strength), and <b>12, 15, 18, 21 or 24 words</b> for every method (15, 18 and 21-word dice and coin seeds do not match SeedSigner, Coldcard or Keystone, and SeedQR stays 12 and 24 words). (2) Warnings: a <b>public example phrase</b> (official test phrases, this page&rsquo;s own examples, or patterned numbers and words) is named after FORGE SEED, in the CHECK A BACKUP words box, VERIFY, Open this wallet and the Wallet Detective, and in Seed XOR; <b>Write these clearly</b> lists words whose letters could be misread as another word; rolls or flips <b>typed twice</b> are pointed out. (3) CHECK A BACKUP: <b>Reforge</b> reads half-readable words (<code>?</code> is one letter, <code>*</code> any number); <b>old Electrum seeds</b> (Electrum before version 2.0) are recognized, with the first 10 receive and 10 change addresses; <b>punch plates</b> (a TinySeed-style binary grid, Stackbit 1248, or word numbers in decimal, hex and octal, counted from 1 as Krux does) to show, print and read back; <b>Open an encrypted descriptor backup</b> (BIP138, the format Liana writes). (4) Backup plan: a letter for the executor, steps for the heir, key details and trusted contacts, and a <b>tamper-evident bag log</b>. (5) EXTRA TOOLS: <b>Inspect a transaction</b> checks every signature (VALID, INVALID or NOT CHECKED); <b>Check a Coldcard seed mix</b>; <b>Was my seed made by a flawed device?</b> (the Coldcard randomness bug of 2021 to July 2026, Milk Sad and the Trust Wallet browser extension); <b>Make new SLIP39 shares from dice</b>; and SAVE ENCRYPTED DESCRIPTOR BACKUP for multisig and inheritance wallets. (6) The page says &ldquo;first ten receive and ten change addresses&rdquo; wherever it shows a wallet, and SLIP39 check and combine now lists them.</li>
         <li><b>2.9.0</b> &mdash; <b>More ways in, more ways to check.</b> (1) <b>Cards &amp; hex</b> in MAKE A SEED: tap real-looking cards in the order you dealt them (each one flips to the VOIDFORGE back once used), or type them; 25 cards make 12 words, a whole deck and 6 more make 24. The cards are hashed exactly as Ian Coleman&rsquo;s BIP39 tool and EntropyLab do, so either can check the words; PRINT CARD SHEET gives boxes to write them in. Or type 32 or 64 hex digits (a 16-sided die) used as they are. Every way to make a seed now has the same FORGE SEED button. (2) <b>SCAN</b> buttons read QR codes with the camera: a SeedQR (only while offline), a watch-only key, an address, or a transaction, including moving QR codes (UR and BBQr); a red CAMERA ON bar shows while it is on, and it stops as soon as a code is read. OPEN A PHOTO INSTEAD works without a camera. (3) EXTRA TOOLS: <b>Check a signed release</b> (as Sparrow does), <b>Seed XOR</b> (as Coldcard does), <b>SLIP39 shares</b> (check and combine a Trezor or Keystone Shamir backup), <b>Find a typo in a descriptor</b> and <b>Explain an inheritance or timelock wallet</b>. CHECK A BACKUP: <b>Is this seed in my wallet file?</b> and <b>Read a label file</b> (BIP329). The transaction inspector finds this wallet&rsquo;s change even when it is not marked. (4) The dictionary names signet next to testnet, and THREAT_MODEL.md says what VOIDFORGE protects and what it cannot.</li>
@@ -12814,7 +12815,7 @@ function kefUnwrap(b){
   const n = b[0]; if(n > 252 || b.length < n + 6) return null;   // an empty ID is allowed (kef.py)
   const id = b.slice(1, 1 + n), v = b[1 + n], V = KEF_V[v]; if(!V) return null;
   const s = (b[2 + n] << 16) | (b[3 + n] << 8) | b[4 + n], iters = s <= 10000 ? s * 10000 : s;
-  if(iters < 10000) return null;
+  if(iters < 10000 || iters > 5000000) return null;   // Krux's own screen allows 10,000 to 550,000; far more is not a Krux seed (and would take minutes)
   const pay = b.slice(5 + n), ivLen = V.m === "cbc" ? 16 : V.m === "ctr" || V.m === "gcm" ? 12 : 0, tail = V.x || (V.m === "gcm" ? 4 : 0), body = pay.length - ivLen - tail;
   if(body <= 0 || ((V.m === "ecb" || V.m === "cbc") && body % 16)) return null;
   return {id, v, V, iters, iv: pay.slice(0, ivLen), ct: pay.slice(ivLen, ivLen + body), tag: pay.slice(ivLen + body)};
@@ -12873,7 +12874,7 @@ function kefFromText(t){
 }
 // The words in a decrypted Krux seed: BIP39 entropy bytes (what Krux writes), the words as text, or SeedQR digits.
 async function kruxWords(p){
-  if([16, 20, 24, 28, 32].includes(p.length)) return entropyToMnemonic(p);
+  if(p.length === 16 || p.length === 32) return entropyToMnemonic(p);   // Krux saves 12 or 24 words as BIP39 entropy (mnemonic_loader.py)
   let t; try { t = dbUtf8(p).trim(); } catch(e) { return null; }
   if(/^(\d{48}|\d{96})$/.test(t)) return t.match(/\d{4}/g).map(x => WORDLIST[parseInt(x, 10)] || "?").join(" ");
   return /\s/.test(t) ? t.toLowerCase().split(/\s+/).join(" ") : null;
@@ -12891,12 +12892,15 @@ async function kruxOpen(bytes, text, password, isFile){
   const t = text !== null ? text.trim() : null, found = [];
   if(t && t[0] === "{"){
     let j; try { j = JSON.parse(t); } catch(e) { throw new Error("This looks like seeds.json, but it is not valid JSON."); }
-    for(const [id, ent] of Object.entries(j)){
+    for(const [id, ent] of Object.entries(j)){   // each entry on its own: a damaged one is named and the others still open
       if(!ent || typeof ent !== "object") continue;
-      if(typeof ent.b64_kef === "string"){ const e = kefUnwrap(dbB64(ent.b64_kef)); if(e) found.push({id, e}); }
-      else if((ent.version === 0 || ent.version === 1) && Number.isInteger(ent.key_iterations) && ent.key_iterations > 0 && ent.key_iterations <= 10000000 && typeof ent.data === "string") found.push({id, legacy: ent});
+      try {
+        if(typeof ent.b64_kef === "string"){ const e = kefUnwrap(dbB64(ent.b64_kef)); found.push(e ? {id, e} : {id, bad: "not a KEF envelope this page knows (an unknown version, or damaged)"}); }
+        else if((ent.version === 0 || ent.version === 1) && Number.isInteger(ent.key_iterations) && ent.key_iterations >= 1 && ent.key_iterations <= 5000000 && typeof ent.data === "string") found.push({id, legacy: ent});
+        else found.push({id, bad: "not an encrypted seed this page knows"});
+      } catch(e) { found.push({id, bad: e.message}); }
     }
-    if(!found.length) throw new Error("No encrypted seed was found in this seeds.json.");
+    if(!found.some(f => !f.bad)) throw new Error("No encrypted seed was found in this seeds.json" + (found.length ? ": " + found.map(f => "“" + f.id + "”, " + f.bad).join("; ") : "") + ".");
   } else {
     const es = (t ? kefFromText(t) : []).concat(isFile && kefUnwrap(bytes) ? [kefUnwrap(bytes)] : []);
     if(!es.length) throw new Error("This is not a Krux encrypted seed: no KEF envelope was found (Krux writes it as the encrypted QR’s text, or in seeds.json).");
@@ -12904,12 +12908,13 @@ async function kruxOpen(bytes, text, password, isFile){
   }
   const out = [];
   for(const f of found){
-    let words = null;
-    if(f.legacy) words = await kruxLegacy(f.id, f.legacy, password);
-    else { for(const e of f.es || [f.e]){ const p = await kefDecrypt(e, password); if(p){ words = await kruxWords(p); f.e = e; break; } } if(!f.e) f.e = f.es[0]; }
+    if(f.bad){ out.push({id: f.id, version: "", iters: null, mnemonic: null, bad: f.bad}); continue; }
+    let words = null, opened = false;
+    if(f.legacy){ try { words = await kruxLegacy(f.id, f.legacy, password); } catch(e) { out.push({id: f.id, version: "", iters: null, mnemonic: null, bad: e.message}); continue; } }
+    else { for(const e of f.es || [f.e]){ const p = await kefDecrypt(e, password); if(p){ opened = true; words = await kruxWords(p); f.e = e; break; } } if(!f.e) f.e = f.es[0]; }
     const r = words ? await checkPhrase(words) : null;
     const id = f.legacy ? f.id : !f.e.id.length ? null : (() => { try { return dbUtf8(f.e.id); } catch(x) { return hex(f.e.id); } })();
-    out.push({id, version: f.legacy ? "seeds.json version " + f.legacy.version + " (older)" : "KEF version " + f.e.v, iters: f.legacy ? f.legacy.key_iterations : f.e.iters, mnemonic: r && r.ok ? r.mnemonic : null});
+    out.push({id, version: f.legacy ? "seeds.json version " + f.legacy.version + " (older)" : "KEF version " + f.e.v, iters: f.legacy ? f.legacy.key_iterations : f.e.iters, mnemonic: r && r.ok ? r.mnemonic : null, notWords: opened && !(r && r.ok)});
   }
   return {kind: "krux", list: out};
 }
@@ -12949,8 +12954,12 @@ function cc7zParse(b){
   const salt = props.slice(2, 2 + sl), iv = concatBytes(props.slice(2 + sl, 2 + sl + il), new Uint8Array(16 - il));
   return {pow, salt, iv, ct: b.slice(32 + packPos, 32 + packPos + packSize), unpackSize, crc};
 }
-async function cc7zKey(salt, password, pow){
-  const pw = new Uint8Array(password.length * 2); for(let j = 0; j < password.length; j++){ const c = password.charCodeAt(j); pw[2 * j] = c & 255; pw[2 * j + 1] = c >> 8; }
+// ccWay: the Coldcard's own encoding (compat7z.py "assuming ascii"): each UTF-8 byte then a zero; 7-Zip's is real UTF-16LE. They differ
+// only for letters outside ASCII.
+async function cc7zKey(salt, password, pow, ccWay){
+  let pw;
+  if(ccWay){ const u = new TextEncoder().encode(password); pw = new Uint8Array(u.length * 2); u.forEach((x, j) => { pw[2 * j] = x; }); }
+  else { pw = new Uint8Array(password.length * 2); for(let j = 0; j < password.length; j++){ const c = password.charCodeAt(j); pw[2 * j] = c & 255; pw[2 * j + 1] = c >> 8; } }
   const unit = salt.length + pw.length + 8, rounds = 2 ** pow, buf = new Uint8Array(unit * rounds);
   for(let r = 0; r < rounds; r++){ const o = r * unit; buf.set(salt, o); buf.set(pw, o + salt.length); let c = r; for(let j = 0; j < 8; j++){ buf[o + salt.length + pw.length + j] = c & 255; c = Math.floor(c / 256); } }
   return sha256bytes(buf);
@@ -12968,18 +12977,23 @@ async function ccRead(text){
   if(!/^# Coldcard backup file/.test(text)) throw new Error("It opened, but it is not a Coldcard backup text (its first line is wrong).");
   const v = {};
   for(const line of text.split("\n")){ if(!line.trim() || line[0] === "#") continue; const at = line.indexOf(" = "); if(at < 0) continue; try { v[line.slice(0, at)] = JSON.parse(line.slice(at + 3)); } catch(e) { /* not JSON: left out */ } }
+  if(v.chain !== undefined && v.chain !== "BTC" && v.chain !== "XTN") throw new Error(v.chain === "XRT" ? "This is a regtest (XRT) backup; VOIDFORGE shows mainnet and testnet wallets only." : "It opened, but it is for a chain this page does not know (" + String(v.chain).slice(0, 8) + ").");
   const net = v.chain === "XTN" ? "test" : "main", rs = typeof v.raw_secret === "string" ? v.raw_secret : null;
   if(!rs || !/^[0-9a-f]+$/.test(rs) || rs.length > 144) throw new Error("It opened, but it has no seed record (raw_secret) this page can read.");
   const r = fromHex(rs.padEnd(144, "0").slice(0, 144)), m = r[0];
-  const also = [v["setting.multisig"] ? "multisig wallet setups" : "", v["setting.seeds"] ? "a seed vault" : "", Object.keys(v).some(k => /^duress_/.test(k)) ? "duress (decoy) wallets" : "", v["setting.notes"] ? "secure notes" : ""].filter(Boolean);
+  const has = (x) => Array.isArray(x) ? x.length > 0 : x && typeof x === "object" ? Object.keys(x).length > 0 : !!x;   // [] and {} hold nothing
+  const also = [has(v["setting.multisig"]) ? "multisig wallet setups" : "", has(v["setting.seeds"]) ? "a seed vault" : "", Object.keys(v).some(k => /^duress_/.test(k) && has(v[k])) ? "duress (decoy) wallets" : "", has(v["setting.notes"]) ? "secure notes" : ""].filter(Boolean);
   const base = {kind: "cc", net, fw: [v.hardware, v.fw_version].filter(x => typeof x === "string").join(" "), also};
-  if(m & 0x80){
+  // The file's own xprv line must be the master key of the seed record, as the Coldcard itself checks when it restores (backups.py).
+  const same = async (root) => { if(typeof v.xprv === "string" && v.xprv !== await xprvText(root, net)) throw new Error("It opened, but its key (xprv) and its seed record disagree, so a Coldcard would refuse to restore it: the backup is damaged or was changed."); };
+  if((m & 0xfc) === 0x80 && (m & 3) < 3){
     const n = ((m & 3) + 2) * 8, words = await entropyToMnemonic(r.slice(1, 1 + n));
     if(typeof v.mnemonic === "string" && v.mnemonic.trim().toLowerCase().split(/\s+/).join(" ") !== words) throw new Error("It opened, but its words and its seed record disagree: the backup is damaged.");
+    await same(await masterFromSeed(await mnemonicToSeed(words, "")));
     return Object.assign(base, {mnemonic: words});
   }
-  if(m === 0x01){ const k = BigInt("0x" + hex(r.slice(33, 65))); if(k === 0n || k >= SN) throw new Error("Its key is not valid."); return Object.assign(base, {root: [k, r.slice(1, 33)], xprvOnly: true}); }
-  if(m >= 16 && m <= 64) return Object.assign(base, {seed: r.slice(1, 1 + m)});
+  if(m === 0x01){ const k = BigInt("0x" + hex(r.slice(33, 65))); if(k === 0n || k >= SN) throw new Error("Its key is not valid."); await same([k, r.slice(1, 33)]); return Object.assign(base, {root: [k, r.slice(1, 33)], xprvOnly: true}); }
+  if(m >= 16 && m <= 64){ await same(await masterFromSeed(r.slice(1, 1 + m))); return Object.assign(base, {seed: r.slice(1, 1 + m)}); }
   throw new Error("It opened, but its seed record is of a kind this page does not know (" + m + ").");
 }
 async function ccOpen(bytes, password, name){
@@ -12990,8 +13004,10 @@ async function ccOpen(bytes, password, name){
     let z; try { z = cc7zParse(bytes); } catch(e) { throw new Error("This 7z file is not a Coldcard backup: " + e.message + "."); }
     if(!z) throw new Error("This is not a Coldcard backup: Coldcard backups are .7z files.");
     if(!password) throw new Error("Type the 12 backup words the Coldcard showed (or its custom backup password).");
-    const p = (await dbCbcNoPad(await cc7zKey(z.salt, ccPassword(password), z.pow), z.iv, z.ct)).slice(0, z.unpackSize);
-    if(crc32(p) !== z.crc) throw new Error("These words do not open this backup (or the file is damaged). Check each of the 12 words and their order.");
+    const tries = [[ccPassword(password), false], [password, false]].concat(/[^\x00-\x7f]/.test(password) ? [[password, true]] : []);
+    let p = null;
+    for(const [pw, cw] of tries.filter((x, i, a) => a.findIndex(y => y[0] === x[0] && y[1] === x[1]) === i)){ const q = (await dbCbcNoPad(await cc7zKey(z.salt, pw, z.pow, cw), z.iv, z.ct)).slice(0, z.unpackSize); if(crc32(q) === z.crc){ p = q; break; } }
+    if(!p) throw new Error("These words (or this custom backup password) do not open this backup, or the file is damaged. Check each of the 12 words and their order.");
     try { plain = dbUtf8(p); } catch(e) { throw new Error("It opened, but the text inside is not valid."); }
   }
   return ccRead(plain);
@@ -13008,28 +13024,37 @@ async function dbWalletText(root, fp, net, steps){
     "\n\nFirst " + ADDR_SHOWN + " change addresses (" + t[1] + ", " + p + "/1/0 to 1/" + last + "):\n" + await rows(1);
 }
 async function dbRootFromWords(m){ const sd = await mnemonicToSeed(m, ""); return {root: await masterFromSeed(sd), fp: await fingerprintFromSeed(sd)}; }
-// The self-test checks: one from each maker's own test data (Krux tests/test_encryption.py, Coinkite's docs/backup.7z) and, for TAPSIGNER
+// The self-test checks: one from each maker's own test data (Krux tests/test_encryption.py; Coldcard's testing/data/tip-index-...7z, a real
+// backup: the older docs/backup.7z sample has an xprv line that does not match its seed, so a Coldcard would refuse it) and, for TAPSIGNER
 // (Coinkite publishes no test file), a backup made exactly as docs/protocol.md says: BIP32 test vector 1's master key, key 41 x 16.
 const DB_KAT_TS = "f9a6bfb58465c9bc28cbeac0b0bf68a2263a9b582c4ae060c7f4750bfd5c0ef8803a0bf97d3abc96f4dd8eeaa5d31862108340306ef7b325e4717ad3f01e7bfe362582a4ddac936849125ef971b1058299fb7c544aee53ba906990e6e8aaf5051705039733710149b3865c75dc216a1447eb9913a323c066fe368e92";
-const DB_KAT_CC = "N3q8ryccAANG3l66MAIAAAAAAABuAAAAAAAAAOBcoA5oGlcK7Vt3iepKhHLUdda9RRP8amY0RzAeyAiOvE9PTR2k/JMuCP8opHHN9/5INWk6a8jr5JBs9SQSVUC7IFnlrtVie80ntkwV9c9obOkwh5bdHdGY5ePPzrOBR/N6FLjB8khVaQk/qqV+nzxZqcG2caaHv50OJrwUnu082QyQWn3q2EorFaLPmzg6/aiitUnYVgNqJmXGsslaZ7DHRApnOjYpQ+aG2Pe5NizYvDE2Rru6rncfsCXmznpYZ8GKmWmEiZTcw2/MG+hOAMp7OYJqjcpPgSGV17ii+e3TePiiGzEAQGCjoiafCPmcS9v0hvNCi5tqfpWpRxiigxNABh/wAuZIWQjKN63OKGIvqxt6lxpJwwTcift7RNTBRaN+ldhHRIrz0rrv1/0R4FW5HvnukW2cSz2IvNf7BxASQbi3TmortHI4Srv5ZTIAb+wKuPYaC7iaaqctQOTKB6oPQo+0YpWwArjHJQZISzvVvVBxJrIIlQCqOUZ0RXPl/lmuFNTxJUfIE0K873/TVlJd5ngZaBwZRlI07RiEp1+ISUuJBmcU3DRZt5rtk8qxs6mLtzm5H6Dtl/oMFN0IuqUYNLdITRqyLj0mRywotWWRxjuGaVFxIIjBxw01vxajIKTDHugCHpn4J1PfFDA3IggQ5GJVcU0l6QB0deCeplE8KVsnqzdx8SNv5CCvdGiTLD8uINtW8F9YICeoax+JKybASwDj6jWH9WmfCfbgo8erwvM1qAEEBgABCcAwAgAHCwEAASQG8QcBIs3/CgEBKDelZywfg9Z0rTFlJSmVFCj8wUaTUYOWiv0wmX8BAAzALwIACAoBlds7cQAABQERIQBjAGsAYwBjAC0AYgBhAGMAawB1AHAALgB0AHgAdAAAAAAA";
+const DB_KAT_CC = "N3q8ryccAAM918tHIAMAAAAAAABuAAAAAAAAAIWrMibVaat48XTshOggEJYFGryymlwmPD3NtpB053cQ0vmZv6UnLk1CZwjzgb9Nohoaqroaku/rdaOP5I0XXJ4VPqBrLO0F2MPsJWuc23OzOuj96/SrewRBAaQdiOvNzIiXw54Kk9MX5cIvvH51IAcG6t+aHvk6bXjIv2dgPOnoesLOl60wGZWUYHJIPxLuEzaExDPydgEIFp79eBt0N7qjlLaNKsVWvyPze5+ZoJeuvw2qKdLan17g/ltt3NCsQuMZkwkqjGsWMdFcL3ThZt59QDebajHenVFrsLsckx5xTbRn5dFOJZxXOeMm2nbco/VJMWNSMXWZyGt5/93EVy0ul0Ep3pXNHb730ktgcuL/p3FeqBAbCCUA8IrYgrA51Av0hpk26ZtoSOhGvl6WbTRywoXPEIPiz8jy0uZQuytWdRzoBdt3RzfhCvNGl09lgV1RHgJG6uUIfAraftpiXfrYS9Y+eHHDJjwsz0Swqo8wGSoP57mQWhaaRNd6ZDsMe9erbhR4iLbEyBgd5+VaSTf5gJO3e5biseGccWmxVlQAfrJ8D+tzcMCdsHnK/GDBdds0SL3YSkT/R+IGpZwo0F5yGhpZchgjZs6M2P/PBfnCRzaJKlNefSYgBZezwqK0chznYfNZgMBfkNdj0PvHQiVirogjRCnbpyf1XNY/0i6A4lpjd1MVFRTv29wpUEySioeP/4AFcS/umoExPCsJRfM6P72XLuF7o5mu4W8RBMN/YrjJlS55jv1zc3oZwduXehOe9d7KgD3FOPz7yqRqsXKASAAuTo/E577Cj1jy1ujx8YbfG9TfuPcHPQWLSFHcsgqYkZv3UPmrc1BS6Rs1waRDtdXXQ/78hdoD60WQ/odz8t5JMdG/UsOt7gHLkXCRw7CqmRP6jB5/aGogua9WmuNjupLRj1XxFXjcwE6e9cBA8MCIROqlmonHxwJppqNBxJQOnxuhGD0xRLfBtgteYs92gsetb3mpHnL7VnSgMzBy2demSTp6N68DgGMVpsb7iUcZHoY7l2NT9w6J2ZOaDPVhkwHBxtOijJ6L76NWR5iM7oN0zQEEBgABCcAgAwAHCwEAASQG8QcBIs3/pFByu/gMc5Xrpij3j2npoLfcyeieutTNcvpAIg0WHKoBAAzAHAMACAoB6rFMgwAABQERIQBjAGsAYwBjAC0AYgBhAGMAawB1AHAALgB0AHgAdAAAAAAA";
 function dbSelfTests(eq){
   const enc = (t) => new TextEncoder().encode(t), words = async (t, pw) => (await kruxOpen(enc(t), t, pw, false)).list[0].mnemonic;
   eq("Krux: an encrypted QR (KEF version 20, AES-GCM) opens with its key (Krux test vector)", () => words("W:3VXG.PEBY2QI2S5JAQML/-33Y0LKEX594MJVVZ3QWN2-X+SPKOIXFLX4ZJH9GX", "test key"), "crush inherit small egg include title slogan mom remain blouse boost bonus");
   eq("Krux: an encrypted QR (KEF version 10, AES-CBC with its check outside) opens with its key (Krux test vector)", () => words("MHLMQ6:6-NNY:NKQ77$4/6A.7GWR+XYA+UD0.264NOF8BHMK40D+DVWJHU5A8TLQ33YOGV", "test key"), "crush inherit small egg include title slogan mom remain blouse boost bonus");
   eq("TAPSIGNER: a backup opens with the key from the card: fingerprint and path", async () => { const r = await tsOpen(fromHex(DB_KAT_TS), "41414141414141414141414141414141"); return r.fp + " " + r.path; }, "3442193e m/84h/0h/0h");
-  eq("Coldcard: Coinkite's sample backup (docs/backup.7z) opens with its 12 words", async () => (await ccOpen(b64bytes(DB_KAT_CC), "spice until comfort zoo divide album erode yard inmate change quantum skate", "backup.7z")).mnemonic, "index abuse oil swift wolf clarify broom auto student media ribbon blossom hundred brief tomato abandon copy design angle memory narrow urge bulk resemble");
+  eq("Coldcard: a backup from Coldcard's own tests opens with its 12 words", async () => (await ccOpen(b64bytes(DB_KAT_CC), "tip index famous embark tobacco rice attitude interest mask random amazing initial", "backup.7z")).mnemonic, "wife shiver author away frog air rough vanish fantasy frozen noodle athlete pioneer citizen symptom firm much faith extend rare axis garment kiwi clarify");
 }
-let dbRun = 0, dbGot = null;
+let dbRun = 0, dbGot = null, dbPut = null;
 function dbWipe(){ dbRun++; dbGot = null; const st = document.getElementById("dbStatus"); st.textContent = ""; st.className = "status";
   for(const id of ["dbOut", "dbSecret"]){ const e = document.getElementById(id); e.textContent = ""; e.style.display = "none"; }
   document.getElementById("dbSecretRow").style.display = "none"; document.getElementById("dbShowBtn").textContent = "SHOW THE SECRET"; }
-function dbClear(){ document.getElementById("dbIn").value = ""; document.getElementById("dbKey").value = ""; document.getElementById("dbFile").value = ""; dbWipe(); }
+function dbClear(){ document.getElementById("dbIn").value = ""; document.getElementById("dbKey").value = ""; document.getElementById("dbFile").value = ""; dbWipe();
+  document.getElementById("dbKey").type = "password"; document.getElementById("dbShowKey").checked = false;
+  const ph = document.getElementById("phrase"); if(dbPut && ph.value === dbPut){ ph.value = ""; ph.dispatchEvent(new Event("input", {bubbles: true})); } dbPut = null; }
+const DB_NOTES = {ts: "<b>TAPSIGNER: only when you need it.</b> Coinkite says the key printed on the back of the card is for emergencies only: once it has been used, the TAPSIGNER is no longer secure. Open this backup only to recover the coins (the card is lost or broken, or its PIN is forgotten), then move them to a new wallet.",
+  krux: "<b>Krux:</b> the encrypted QR&rsquo;s text, or seeds.json from its SD card, and the key you typed when you saved it.",
+  cc: "<b>Coldcard:</b> the .7z file from its microSD card, and the 12 backup words it showed (or your custom backup password)."};
+function dbKindSet(){ dbWipe(); document.getElementById("dbKindNote").innerHTML = DB_NOTES[document.getElementById("dbKind").value] || ""; }
+dbKindSet();
 async function dbOpenUi(){
   if(!gateOk()) return;
   dbWipe();
   const run = dbRun, st = document.getElementById("dbStatus"), o = document.getElementById("dbOut"), kind = document.getElementById("dbKind").value;
   const f = document.getElementById("dbFile").files[0], typed = document.getElementById("dbIn").value.trim(), pw = document.getElementById("dbKey").value;
   if(!f && !typed){ st.textContent = "Choose the backup file, or paste it as text."; return; }
+  if(f && typed){ st.className = "status bad"; st.textContent = "A file is chosen and text is pasted too: use one of them (CLEAR, then choose or paste again)."; return; }
   if(f && f.size > 1048576){ st.className = "status bad"; st.textContent = "This file is too big to be a device backup (over 1 MB)."; return; }
   st.textContent = "Opening...";
   try {
@@ -13044,11 +13069,11 @@ async function dbOpenUi(){
     } else if(kind === "krux"){
       r = await kruxOpen(bytes, f ? text : typed, pw, !!f);
       const okOnes = r.list.filter(x => x.mnemonic);
-      head = r.list.map(x => (x.id !== null ? "ID “" + x.id + "”, " : "") + x.version + ", " + x.iters + " iterations: " + (x.mnemonic ? "opened" : "this key does not open it")).join("\n");
-      if(!okOnes.length) throw new Error(head + "\n\nThe key does not open " + (r.list.length > 1 ? "any of these seeds" : "this seed") + ". Check the key (capitals, spaces); Krux asks for it exactly as typed when it was saved.");
+      head = r.list.map(x => (x.id !== null ? "ID “" + x.id + "”" + (x.bad ? "" : ", ") : "") + (x.bad ? ": could not be read (" + x.bad + ")" : x.version + ", " + x.iters + " iterations: " + (x.mnemonic ? "opened" : x.notWords ? "opened, but it holds no seed words" : "this key does not open it"))).join("\n");
+      if(!okOnes.length) throw new Error(head + (r.list.some(x => x.notWords) ? "" : "\n\nThe key does not open " + (r.list.length > 1 ? "any of these seeds" : "this seed") + ". Check the key (capitals, spaces); Krux asks for it exactly as typed when it was saved."));
       const x = okOnes[0], w = await dbRootFromWords(x.mnemonic); words = x.mnemonic;
       lines = [await dbWalletText(w.root, w.fp, "main", [[84, true], [0, true], [0, true]]),
-        x.id && /^[0-9a-f]{8}$/.test(x.id) ? (x.id === w.fp ? "The ID is these words' fingerprint, as Krux sets by default: the right seed." : "The ID (" + x.id + ") is not these words' fingerprint (" + w.fp + "). Krux uses the fingerprint as the ID unless you typed your own.") : "",
+        x.id && /^[0-9a-f]{8}$/.test(x.id) ? (x.id === w.fp ? "The ID is these words' fingerprint, as Krux sets by default: the right seed." : "The ID (" + x.id + ") is not these words' fingerprint (" + w.fp + "). Krux uses the wallet's fingerprint as the ID unless you typed your own, or the wallet had a passphrase when the seed was saved.") : "",
         okOnes.length > 1 ? "This file holds " + okOnes.length + " seeds this key opens; the first is shown." : "",
         "These are the words alone, with no passphrase. If you use a passphrase, put the words in the box above and type it in VERIFY."];
       secret = "SEED WORDS: anyone with them can spend\n" + numberedWords(words);
@@ -13083,7 +13108,7 @@ function dbReveal(){
 }
 function dbUseWords(){
   if(!dbGot || !dbGot.words) return;
-  const ph = document.getElementById("phrase"); ph.value = dbGot.words; ph.dispatchEvent(new Event("input", {bubbles: true}));
+  const ph = document.getElementById("phrase"); ph.value = dbGot.words; dbPut = dbGot.words; ph.dispatchEvent(new Event("input", {bubbles: true}));
   reveal(ph);
 }
 function gateOk(){

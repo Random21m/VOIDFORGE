@@ -661,7 +661,7 @@ async function probe(w, mutated, fast, only, hooks) {
     const vn = (n) => n < 0x80 ? Buffer.from([n]) : Buffer.from([0x80 | (n >> 8), n & 255]);
     const u32 = (n) => { const b = Buffer.alloc(4); b.writeUInt32LE(n >>> 0); return b; }, u64 = (n) => { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(n)); return b; };
     const sevenZ = (plain, pw, o = {}) => {
-      const pow = o.pow ?? 13, salt = nc.randomBytes(16), iv = nc.randomBytes(16), pwb = Buffer.from(pw, 'utf16le'), unit = Buffer.concat([salt, pwb, Buffer.alloc(8)]), h = nc.createHash('sha256');
+      const pow = o.pow ?? 13, salt = nc.randomBytes(16), iv = nc.randomBytes(16), pwb = o.ccWay ? Buffer.from([...Buffer.from(pw, 'utf8')].flatMap((x) => [x, 0])) : Buffer.from(pw, 'utf16le'), unit = Buffer.concat([salt, pwb, Buffer.alloc(8)]), h = nc.createHash('sha256');
       for (let r = 0; r < 2 ** pow; r++) { unit.writeBigUInt64LE(BigInt(r), salt.length + pwb.length); h.update(unit); }
       const key = h.digest(), P = B(plain), pt = Buffer.concat([P, Buffer.alloc((16 - (P.length % 16)) % 16)]), c = nc.createCipheriv('aes-256-cbc', key, iv); c.setAutoPadding(false); const ct = Buffer.concat([c.update(pt), c.final()]);
       const nm = Buffer.from('probe1.txt\0', 'utf16le'), coder = o.coder ?? Buffer.from([0x24, 6, 0xf1, 7, 1]);
@@ -674,7 +674,7 @@ async function probe(w, mutated, fast, only, hooks) {
     const CW = 'zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zone', cw = await w.ccPassword(CW.toUpperCase().split(' ').map(x => x.slice(0, 4)).join('  '));
     if (cw !== CW) fails.push('coldcard: the 12 words in capitals and as 4-letter starts make the password');
     const W24 = entropyToMnemonic(sh('cc24'), wordlist), r24 = HDKey.fromMasterSeed(mnemonicToSeedSync(W24, ''));
-    { const x = await w.ccOpen(sevenZ(ccTxt([['mnemonic', W24], ['chain', 'BTC'], ['xprv', 'x'], ['raw_secret', rs('82', sh('cc24'))], ['fw_version', '1.5.3Q'], ['hardware', 'Q1'], ['setting.multisig', [[1]]], ['setting.seeds', [[1]]], ['duress_1_words', 'a'], ['setting.notes', [1]]]), CW), CW, 'backup-x.7z');
+    { const x = await w.ccOpen(sevenZ(ccTxt([['mnemonic', W24], ['chain', 'BTC'], ['xprv', r24.privateExtendedKey], ['raw_secret', rs('82', sh('cc24'))], ['fw_version', '1.5.3Q'], ['hardware', 'Q1'], ['setting.multisig', [[1]]], ['setting.seeds', [[1]]], ['duress_1_words', 'a'], ['setting.notes', [1]]]), CW), CW, 'backup-x.7z');
       if (x.mnemonic !== W24 || x.net !== 'main' || x.fw !== 'Q1 1.5.3Q' || x.also.join('|') !== 'multisig wallet setups|a seed vault|duress (decoy) wallets|secure notes') fails.push('coldcard: a 24-word backup, its firmware and what else it holds'); }
     { const x = await w.ccOpen(sevenZ(ccTxt([['raw_secret', rs('80', E16)], ['chain', 'XTN']]), CW, { pow: 10 }), cw, 'b.7z'); if (x.mnemonic !== W16 || x.net !== 'test') fails.push('coldcard: a 12-word testnet backup (XTN), other key rounds'); }
     { const x = await w.ccOpen(sevenZ(ccTxt([['raw_secret', rs('01', Buffer.concat([root.chainCode, root.privateKey]))]]), CW), CW, 'c.7z');
@@ -695,8 +695,22 @@ async function probe(w, mutated, fast, only, hooks) {
     { const bad = B(good); bad[40] ^= 1; if (!/do not open this backup/.test(await ccErr(new Uint8Array(bad), CW))) fails.push('coldcard: a changed byte fails its CRC'); }
     if (!/disagree/.test(await ccErr(sevenZ(ccTxt([['mnemonic', W24], ['raw_secret', rs('80', E16)]]), CW), CW))) fails.push('coldcard: words that disagree with the seed record are refused');
     if (!/no seed record/.test(await ccErr(sevenZ(ccTxt([['mnemonic', W24]]), CW), CW)) || !/first line is wrong/.test(await ccErr(sevenZ('hello\n', CW), CW))) fails.push('coldcard: a backup without a seed record, or not a backup text, is named');
-    { const S = 'N3q8ryccAANG3l66MAIAAAAAAABuAAAAAAAAAOBcoA5oGlcK7Vt3iepKhHLUdda9RRP8amY0RzAeyAiOvE9PTR2k/JMuCP8opHHN9/5INWk6a8jr5JBs9SQSVUC7IFnlrtVie80ntkwV9c9obOkwh5bdHdGY5ePPzrOBR/N6FLjB';
-      if (!w.eval('DB_KAT_CC').startsWith(S)) fails.push('coldcard: the self-test uses Coinkite\'s docs/backup.7z'); }
+    { const DOCS = 'N3q8ryccAANG3l66MAIAAAAAAABuAAAAAAAAAOBcoA5oGlcK7Vt3iepKhHLUdda9RRP8amY0RzAeyAiOvE9PTR2k/JMuCP8opHHN9/5INWk6a8jr5JBs9SQSVUC7IFnlrtVie80ntkwV9c9obOkwh5bdHdGY5ePPzrOBR/N6FLjB';
+      if (w.eval('DB_KAT_CC').length !== 1256 || w.eval('DB_KAT_CC').startsWith(DOCS)) fails.push('coldcard: the self-test uses the backup from Coldcard\'s own tests (942 bytes)'); }
+    // review fixes: the file's own xprv, the chain, the seed record's length mark, empty lists, passwords as typed and the Coldcard's encoding
+    if (!/disagree, so a Coldcard would refuse/.test(await ccErr(sevenZ(ccTxt([['raw_secret', rs('80', E16)], ['xprv', root.privateExtendedKey]]), CW), CW))) fails.push('coldcard: an xprv line that is not the seed\'s is refused, as the Coldcard does');
+    { const r16 = HDKey.fromMasterSeed(mnemonicToSeedSync(W16, '')); if ((await w.ccOpen(sevenZ(ccTxt([['raw_secret', rs('80', E16)], ['xprv', r16.privateExtendedKey]]), CW), CW, 'x.7z')).mnemonic !== W16) fails.push('coldcard: a matching xprv line opens'); }
+    if (!/regtest/.test(await ccErr(sevenZ(ccTxt([['raw_secret', rs('80', E16)], ['chain', 'XRT']]), CW), CW)) || !/chain this page does not know/.test(await ccErr(sevenZ(ccTxt([['raw_secret', rs('80', E16)], ['chain', 'LTC']]), CW), CW))) fails.push('coldcard: regtest and unknown chains are refused');
+    if (!/of a kind this page does not know \(131\)/.test(await ccErr(sevenZ(ccTxt([['raw_secret', rs('83', sh('x'))]]), CW), CW))) fails.push('coldcard: a seed record marked for 40 bytes is refused');
+    if ((await w.ccOpen(sevenZ(ccTxt([['raw_secret', rs('80', E16)], ['setting.multisig', []], ['setting.notes', []], ['setting.seeds', {}], ['duress_1_words', '']]), CW), CW, 'x.7z')).also.length !== 0) fails.push('coldcard: empty multisig, notes, vault and duress entries are not named');
+    { const pw = 'Zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong'; if ((await w.ccOpen(sevenZ(ccTxt([['raw_secret', rs('80', E16)]]), pw), pw, 'x.7z')).mnemonic !== W16) fails.push('coldcard: a custom password that looks like words is also tried as typed'); }
+    { const pw = 'Contraseña de la copia de seguridad 2026'; if ((await w.ccOpen(sevenZ(ccTxt([['raw_secret', rs('80', E16)]]), pw, { ccWay: true }), pw, 'x.7z')).mnemonic !== W16 || (await w.ccOpen(sevenZ(ccTxt([['raw_secret', rs('80', E16)]]), pw), pw, 'x.7z')).mnemonic !== W16) fails.push('coldcard: a non-ASCII password, written the Coldcard\'s way or 7-Zip\'s'); }
+    if (!/or this custom backup password/.test(await ccErr(good, 'not the password at all, but long enough'))) fails.push('coldcard: a wrong custom password is named as such');
+    { const ok = B(kef(20, E16, 'k', 'g1')).toString('base64'), j = JSON.stringify({ bad: { b64_kef: 'not base64!' }, odd: { b64_kef: B(Buffer.from([2, 65, 66, 99, 0, 0, 10, 1, 2, 3])).toString('base64') }, old: { version: 1, key_iterations: 10000, data: 'AAAAAAAA' }, g1: { b64_kef: ok } });
+      const x = await w.kruxOpen(enc(j), j, 'k', true), g = x.list.find((y) => y.id === 'g1'), bad = x.list.filter((y) => y.bad);
+      if (!g || g.mnemonic !== W16 || bad.length !== 3) fails.push('krux: damaged seeds.json entries are named and the good one still opens'); }
+    { const t20 = B(kef(20, nc.randomBytes(20), 'k')).toString('hex'), x = await w.kruxOpen(enc(t20), t20, 'k', false); if (x.list[0].mnemonic !== null || !x.list[0].notWords) fails.push('krux: 20 bytes that open are not taken as words (Krux saves 16 or 32)'); }
+    if (w.kefUnwrap(kef(20, E16, 'k', 'big', 6000000)) !== null || !w.kefUnwrap(kef(20, E16, 'k', 'big', 550000))) fails.push('krux: more than 5,000,000 rounds is not a Krux seed');
     // the box: a Krux QR, the secret only when asked, the words into the box above, CLEAR and CLEAR ALL
     const env = kef(20, E32, 'ui key', fpx), qr = b43(env), rK = HDKey.fromMasterSeed(mnemonicToSeedSync(W32, '')), fpK = rK.fingerprint.toString(16).padStart(8, '0');
     const open = async (kind, text, key) => { $('dbKind').value = kind; $('dbIn').value = text; $('dbKey').value = key; await w.dbOpenUi(); };
@@ -722,6 +736,13 @@ async function probe(w, mutated, fast, only, hooks) {
       Object.defineProperty($('dbFile'), 'files', { value: [new w.File([new Uint8Array(1048577)], 'big.7z')], configurable: true }); await open('cc', '', CW);
       if (!/too big/.test($('dbStatus').textContent)) fails.push('device backups: a file over 1 MB is refused'); delete $('dbFile').files; }
     await open('ts', '', tsKey); if (!/Choose the backup file/.test($('dbStatus').textContent)) fails.push('device backups: nothing to open says so');
+    $('dbKind').value = 'ts'; w.dbKindSet(); if (!/no longer secure/.test($('dbKindNote').textContent) || !/emergencies only/.test($('dbKindNote').textContent)) fails.push('device backups: the TAPSIGNER warning is shown before the key is typed');
+    $('dbKind').value = 'cc'; w.dbKindSet(); if (/no longer secure/.test($('dbKindNote').textContent) || !/12 backup words/.test($('dbKindNote').textContent)) fails.push('device backups: each kind has its own note');
+    Object.defineProperty($('dbFile'), 'files', { value: [new w.File([new Uint8Array(40)], 'b.aes')], configurable: true }); await open('krux', qrU, 'ui key'); delete $('dbFile').files;
+    if (!/use one of them/.test($('dbStatus').textContent) || $('dbOut').textContent !== '') fails.push('device backups: a chosen file and pasted text together are refused');
+    await open('krux', qrU, 'ui key'); w.dbUseWords(); $('dbShowKey').checked = true; $('dbKey').type = 'text'; w.dbClear();
+    if ($('phrase').value !== '' || $('dbKey').type !== 'password' || $('dbShowKey').checked) fails.push('device backups: CLEAR hides the key box again and takes back the words it put above');
+    $('phrase').value = 'other words'; await open('krux', qrU, 'ui key'); w.dbClear(); if ($('phrase').value !== 'other words') fails.push('device backups: CLEAR leaves words it did not put there'); $('phrase').value = '';
     await open('krux', qrU, 'ui key'); w.dbClear(); if ($('dbIn').value !== '' || $('dbKey').value !== '' || $('dbOut').textContent !== '' || w.eval('dbGot')) fails.push('device backups: CLEAR wipes the box');
     if (!w.eval('AUTO_FIELDS').includes('dbIn') || !w.eval('AUTO_FIELDS').includes('dbKey')) fails.push('device backups: auto-clear knows the two boxes');
   } catch (e) { if (e instanceof ProbeStop) throw e; fails.push('device backups: the probe crashed: ' + e.message); }
@@ -6227,7 +6248,7 @@ const M = [
   ["tapsigner: fingerprint of the chain code", "const fp = hex((await hash160(pubkeyBytes(k))).slice(0, 4));\n  return {kind: \"ts\"", "const fp = hex((await hash160(raw.slice(13, 45))).slice(0, 4));\n  return {kind: \"ts\""],
   ["krux: iterations always in 10000s", "iters = s <= 10000 ? s * 10000 : s;", "iters = s * 10000;"],
   ["krux: unknown version accepted", "const id = b.slice(1, 1 + n), v = b[1 + n], V = KEF_V[v]; if(!V) return null;", "const id = b.slice(1, 1 + n), v = b[1 + n], V = KEF_V[v] || KEF_V[20];"],
-  ["krux: too few iterations accepted", "  if(iters < 10000) return null;\n", "\n"],
+  ["krux: too few iterations accepted", "if(iters < 10000 || iters > 5000000) return null;", "if(iters > 5000000) return null;"],
   ["krux: ECB blocks not checked", "if(body <= 0 || ((V.m === \"ecb\" || V.m === \"cbc\") && body % 16)) return null;", "if(body <= 0) return null;"],
   ["krux: CBC IV of 12 bytes", "ivLen = V.m === \"cbc\" ? 16 : V.m === \"ctr\" || V.m === \"gcm\" ? 12 : 0", "ivLen = V.m === \"cbc\" ? 12 : V.m === \"ctr\" || V.m === \"gcm\" ? 12 : 0"],
   ["krux: GCM tag length kept in the data", "tail = V.x || (V.m === \"gcm\" ? 4 : 0)", "tail = V.x || 0"],
@@ -6249,10 +6270,10 @@ const M = [
   ["krux: base43 leading zeros dropped", "let z = 0; for(const ch of t){ if(ch === \"0\") z++; else break; }", "let z = 0;"],
   ["krux: hex QR text not tried", "  if(/^([0-9a-fA-F]{2})+$/.test(s)) tries.push(() => fromHex(s.toLowerCase()));\n", "\n"],
   ["krux: Base64 QR text not tried", "  if(/^[A-Za-z0-9+/]+={0,2}$/.test(s)) tries.push(() => dbB64(s));\n", "\n"],
-  ["krux: 24-word entropy not read", "if([16, 20, 24, 28, 32].includes(p.length)) return entropyToMnemonic(p);", "if([16, 20, 24, 28].includes(p.length)) return entropyToMnemonic(p);"],
+  ["krux: 24-word entropy not read", "if(p.length === 16 || p.length === 32) return entropyToMnemonic(p);", "if(p.length === 16) return entropyToMnemonic(p);"],
   ["krux: older entries with CBC as ECB", "let p = ent.version === 1 ? await dbCbcNoPad(k, d.slice(0, 16), d.slice(16)) : await dbEcb(k, d);", "let p = await dbEcb(k, d);"],
   ["krux: older entries salted with nothing", "const k = await kefKey(password, new TextEncoder().encode(id), ent.key_iterations)", "const k = await kefKey(password, new Uint8Array(0), ent.key_iterations)"],
-  ["krux: seeds.json KEF entries skipped", "if(typeof ent.b64_kef === \"string\"){ const e = kefUnwrap(dbB64(ent.b64_kef)); if(e) found.push({id, e}); }", "if(typeof ent.b64_kef === \"string\"){ }"],
+  ["krux: seeds.json KEF entries skipped", "found.push(e ? {id, e} : {id, bad: \"not a KEF envelope this page knows (an unknown version, or damaged)\"});", "found.push({id, bad: \"skipped\"});"],
   ["krux: words with a bad checksum shown", "mnemonic: r && r.ok ? r.mnemonic : null", "mnemonic: words"],
   ["krux: no key accepted", "  if(!password) throw new Error(\"Type the key the seed was encrypted with.\");\n", "\n"],
   ["krux: raw file bytes not tried", "isFile && kefUnwrap(bytes) ? [kefUnwrap(bytes)] : []", "[]"],
@@ -6260,6 +6281,23 @@ const M = [
   ["krux: an empty ID refused", "const n = b[0]; if(n > 252 || b.length < n + 6) return null;", "const n = b[0]; if(n < 1 || n > 252 || b.length < n + 6) return null;"],
   ["krux: base43 tried first", "  if(/^([0-9a-fA-F]{2})+$/.test(s)) tries.push(() => fromHex(s.toLowerCase()));\n  if(/^[A-Z2-7]+=*$/", "  if(/^[0-9A-Z$*+\\-./:]+$/.test(s)) tries.unshift(() => base43Decode(s));\n  if(/^([0-9a-fA-F]{2})+$/.test(s)) tries.push(() => fromHex(s.toLowerCase()));\n  if(/^[A-Z2-7]+=*$/"],
   ["tapsigner: a non-master key accepted", " || raw[45] !== 0 || raw[4] !== 0) throw new Error(wrong);", " || raw[45] !== 0) throw new Error(wrong);"],
+  ["krux: no cap on iterations", "if(iters < 10000 || iters > 5000000) return null;", "if(iters < 10000) return null;"],
+  ["krux: any length read as entropy", "if(p.length === 16 || p.length === 32) return entropyToMnemonic(p);", "if([16, 20, 24, 28, 32].includes(p.length)) return entropyToMnemonic(p);"],
+  ["krux: one bad seeds.json entry stops the rest", "} catch(e) { found.push({id, bad: e.message}); }", "} catch(e) { throw e; }"],
+  ["krux: an opened seed without words called a wrong key", "x.notWords ? \"opened, but it holds no seed words\" : ", ""],
+  ["krux: ID mismatch blamed only on a typed ID", ", or the wallet had a passphrase when the seed was saved.\") : \"\",", ".\") : \"\","],
+  ["tapsigner: no warning before the key", "<b>TAPSIGNER: only when you need it.</b> Coinkite says", "Coinkite once said"],
+  ["device backups: kind note never set", "\ndbKindSet();", "\n"],
+  ["device backups: file and text both accepted", "  if(f && typed){ st.className = \"status bad\"; st.textContent = \"A file is chosen and text is pasted too: use one of them (CLEAR, then choose or paste again).\"; return; }\n", ""],
+  ["device backups: CLEAR leaves the key shown", "document.getElementById(\"dbKey\").type = \"password\"; document.getElementById(\"dbShowKey\").checked = false;", ""],
+  ["device backups: CLEAR leaves the words put above", "if(dbPut && ph.value === dbPut){ ph.value = \"\";", "if(false){ ph.value = \"\";"],
+  ["coldcard: xprv line never compared", "if(typeof v.xprv === \"string\" && v.xprv !== await xprvText(root, net)) throw", "if(false) throw"],
+  ["coldcard: regtest read as mainnet", "if(v.chain !== undefined && v.chain !== \"BTC\" && v.chain !== \"XTN\") throw", "if(false) throw"],
+  ["coldcard: a 30-word record accepted", "if((m & 0xfc) === 0x80 && (m & 3) < 3){", "if(m & 0x80){"],
+  ["coldcard: empty lists named", "const has = (x) => Array.isArray(x) ? x.length > 0 : x && typeof x === \"object\" ? Object.keys(x).length > 0 : !!x;", "const has = (x) => !!x;"],
+  ["coldcard: password not tried as typed", "const tries = [[ccPassword(password), false], [password, false]]", "const tries = [[ccPassword(password), false]]"],
+  ["coldcard: the Coldcard's own encoding not tried", ".concat(/[^\\x00-\\x7f]/.test(password) ? [[password, true]] : [])", ""],
+  ["coldcard: Coldcard encoding without the zero bytes", "u.forEach((x, j) => { pw[2 * j] = x; });", "u.forEach((x, j) => { pw[2 * j] = x; pw[2 * j + 1] = x; });"],
   ["coldcard: start header CRC not checked", "if(crc32(b.slice(12, 32)) !== u32(8)) throw new Error(\"its start header is damaged (CRC does not match)\");", ""],
   ["coldcard: header CRC not checked", "if(crc32(h) !== u32(28)) throw new Error(\"its header is damaged (CRC does not match)\");", ""],
   ["coldcard: encoded header not refused", "if(top === 0x17) throw new Error(\"its header is compressed or encrypted, which a Coldcard never writes\"); ", ""],
@@ -6275,7 +6313,7 @@ const M = [
   ["coldcard: 4-letter starts not filled in", "return w.map(x => WORDLIST.includes(x) ? x : WORDLIST.find(y => y.startsWith(x))).join(\" \");", "return w.join(\" \");"],
   ["coldcard: words not lowercased", "const w = String(t).trim().toLowerCase().split(/\\s+/);", "const w = String(t).trim().split(/\\s+/);"],
   ["coldcard: padding not trimmed", "z.iv, z.ct)).slice(0, z.unpackSize);", "z.iv, z.ct));"],
-  ["coldcard: plaintext CRC not checked", "if(crc32(p) !== z.crc) throw new Error(\"These words do not open this backup", "if(false) throw new Error(\"These words do not open this backup"],
+  ["coldcard: plaintext CRC not checked", "if(crc32(q) === z.crc){ p = q; break; }", "{ p = q; break; }"],
   ["coldcard: clone file not named", "if(/^[0-9a-f]{66}-ccbk\\.7z$/i.test(name || \"\"))", "if(/^[0-9a-f]{67}-ccbk\\.7z$/i.test(name || \"\"))"],
   ["coldcard: plain-text backup not read", "if(bytes.length > 22 && dbUtf8Safe(bytes.slice(0, 22)) === \"# Coldcard backup file\") plain = dbUtf8(bytes);", "if(false) plain = dbUtf8(bytes);"],
   ["coldcard: XTN read as mainnet", "const net = v.chain === \"XTN\" ? \"test\" : \"main\"", "const net = \"main\""],
@@ -6283,7 +6321,7 @@ const M = [
   ["coldcard: words and record never compared", "if(typeof v.mnemonic === \"string\" && v.mnemonic.trim().toLowerCase().split(/\\s+/).join(\" \") !== words) throw", "if(false) throw"],
   ["coldcard: xprv record key and chain swapped", "return Object.assign(base, {root: [k, r.slice(1, 33)], xprvOnly: true});", "return Object.assign(base, {root: [BigInt(\"0x\" + hex(r.slice(1, 33))), r.slice(33, 65)], xprvOnly: true});"],
   ["coldcard: raw seed one byte short", "return Object.assign(base, {seed: r.slice(1, 1 + m)});", "return Object.assign(base, {seed: r.slice(1, m)});"],
-  ["coldcard: duress wallets not mentioned", "Object.keys(v).some(k => /^duress_/.test(k)) ? \"duress (decoy) wallets\" : \"\"", "\"\""],
+  ["coldcard: duress wallets not mentioned", "Object.keys(v).some(k => /^duress_/.test(k) && has(v[k])) ? \"duress (decoy) wallets\" : \"\"", "\"\""],
   ["coldcard: not a backup text accepted", "if(!/^# Coldcard backup file/.test(text)) throw", "if(false) throw"],
   ["device backups: addresses always native SegWit", "const t = DB_TYPES[steps.length ? steps[0][0] : 84] || DB_TYPES[84]", "const t = DB_TYPES[84]"],
   ["device backups: nested SegWit addresses as legacy", "49: [\"sh-wpkh\", \"nested SegWit\"]", "49: [\"pkh\", \"nested SegWit\"]"],
@@ -6294,7 +6332,7 @@ const M = [
   ["device backups: secret shown at once", "    dbGot = {secret, words};\n", "    dbGot = {secret, words}; document.getElementById(\"dbSecret\").textContent = secret; document.getElementById(\"dbSecret\").style.display = \"\";\n"],
   ["device backups: hiding keeps the secret on the page", "else { s.textContent = \"\"; s.style.display = \"none\"; b.textContent = \"SHOW THE SECRET\"; }", "else { s.style.display = \"none\"; b.textContent = \"SHOW THE SECRET\"; }"],
   ["device backups: wipe keeps the result", "function dbWipe(){ dbRun++; dbGot = null;", "function dbWipe(){ dbRun++;"],
-  ["device backups: CLEAR keeps the key", "document.getElementById(\"dbKey\").value = \"\"; document.getElementById(\"dbFile\").value = \"\"; dbWipe(); }", "document.getElementById(\"dbFile\").value = \"\"; dbWipe(); }"],
+  ["device backups: CLEAR keeps the key", "document.getElementById(\"dbKey\").value = \"\"; document.getElementById(\"dbFile\").value = \"\"; dbWipe();\n", "document.getElementById(\"dbFile\").value = \"\"; dbWipe();\n"],
   ["device backups: CLEAR ALL keeps the backup", "  msReset(); dbClear(); wipeSeed(); planClear(); camStop();\n", "  msReset(); wipeSeed(); planClear(); camStop();\n"],
   ["device backups: auto-clear ignores an open backup", "return hasSeed() || !!dbGot ||", "return hasSeed() ||"],
   ["device backups: auto-clear forgets the key box", "\"cmxTrng\", \"cmxRolls\", \"dbIn\", \"dbKey\"];", "\"cmxTrng\", \"cmxRolls\", \"dbIn\"];"],

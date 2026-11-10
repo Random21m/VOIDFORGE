@@ -119,7 +119,9 @@ for (const v of KX.extra) {
 for (const v of CC) {
   const bytes = u8(Buffer.from(v.base64, 'base64')), name = path.basename(v.file), plain = v.plaintext;
   const mn = /^mnemonic = "(.*)"$/m.exec(plain)[1], chain = /^chain = "(.*)"$/m.exec(plain);
-  const short = name.slice(0, 12);
+  const short = name.slice(0, 12), xl = /^xprv = "(.*)"$/m.exec(plain);
+  // Coldcard's older docs/backup.7z has an xprv line that is not its seed's: the firmware asserts 'xprv mismatch' (backups.py), so the page refuses it too
+  if (xl && rootOfWords(mn).privateExtendedKey !== xl[1]) { await throws(w.ccOpen(bytes, v.password, name), /disagree, so a Coldcard would refuse/, 'Coldcard ' + short + ': its xprv line is not its seed\'s, so it is refused as a Coldcard refuses it'); continue; }
   try {
     const x = await w.ccOpen(bytes, v.password, name);
     R.ok(x.mnemonic === mn && x.net === 'main', 'Coldcard ' + short + ': opens with its 12 words: ' + mn.split(' ').slice(0, 3).join(' ') + '... (' + mn.split(' ').length + ' words)');
@@ -294,7 +296,7 @@ function legacyEntry(id, version, iters, words, pw) {
   const text = JSON.stringify(j) + ' '.repeat(40);   // Krux pads the file with spaces when it writes a shorter one over a longer
   const x = await w.kruxOpen(enc(text), text, 'k1', true);
   const by = Object.fromEntries(x.list.map((y) => [y.id, y.mnemonic]));
-  R.ok(x.list.length === 4 && by['old ecb'] === m1 && by['old cbc'] === m2 && by['kef one'] === m3 && by['other key'] === null, 'Krux seeds.json made here: an older ECB entry, an older CBC entry and a KEF entry open with one key; the entry of another key and the junk ones do not (' + x.list.length + ' entries listed)');
+  R.ok(x.list.filter((y) => !y.bad).length === 4 && by['old ecb'] === m1 && by['old cbc'] === m2 && by['kef one'] === m3 && by['other key'] === null, 'Krux seeds.json made here: an older ECB entry, an older CBC entry and a KEF entry open with one key; the entry of another key and the junk ones do not (' + x.list.length + ' entries listed)');
   const y = await w.kruxOpen(enc(text), text, 'k2', true);
   R.ok(y.list.filter((z) => z.mnemonic).length === 1 && y.list.find((z) => z.id === 'other key').mnemonic === m1, 'Krux seeds.json: the other key opens only its own entry');
   const iters = Object.fromEntries(x.list.map((z) => [z.id, z.iters])); R.ok(iters['old ecb'] === 12000 && iters['kef one'] === 20000, 'Krux seeds.json: the iteration counts are shown (' + JSON.stringify(iters) + ')');
@@ -394,7 +396,7 @@ for (const cs of CCCASES) {
   await throws(w.tsOpen(u8(tsCt), '4141414141414141414141414141414g'), /32 characters/, 'TAPSIGNER: a key with a letter that is not hex');
   await throws(w.tsOpen(u8(tsCt), ''), /32 characters/, 'TAPSIGNER: no key');
   await throws(w.kruxOpen(enc(b43enc(kefMake(20, Buffer.from('a'), 1, 'k', rb(16)))), b43enc(kefMake(20, Buffer.from('a'), 1, 'k', rb(16))), '', false), /Type the key/, 'Krux: no key typed');
-  await throws(w.ccOpen(u8(file), ccPw(), 'x.7z'), /These words do not open this backup/, 'Coldcard: wrong words');
+  await throws(w.ccOpen(u8(file), ccPw(), 'x.7z'), /These words \(or this custom backup password\) do not open this backup/, 'Coldcard: wrong words');
   // not a backup
   await throws(w.tsOpen(rb(50), '41'.repeat(16)), /not a TAPSIGNER backup: it is 50 bytes/, 'TAPSIGNER: a file of 50 bytes');
   await throws(w.tsOpen(rb(5000), '41'.repeat(16)), /not a TAPSIGNER backup: it is 5000 bytes/, 'TAPSIGNER: a file of 5000 bytes');
@@ -431,7 +433,7 @@ for (const cs of CCCASES) {
   await throws(w.ccOpen(file.subarray(0, 31), pw, 'x.7z'), /not a Coldcard backup/, 'Coldcard: a file cut inside its start header (31 bytes)');
   { const f = Buffer.from(file); f[13] ^= 1; await throws(w.ccOpen(f, pw, 'x.7z'), /start header is damaged/, 'Coldcard: a damaged start header'); }
   { const f = Buffer.from(file); f[f.length - 5] ^= 1; await throws(w.ccOpen(f, pw, 'x.7z'), /header is damaged \(CRC does not match\)/, 'Coldcard: a damaged trailing header'); }
-  { const f = Buffer.from(file); f[40] ^= 1; await throws(w.ccOpen(f, pw, 'x.7z'), /do not open this backup \(or the file is damaged\)/, 'Coldcard: a damaged byte in the encrypted data'); }
+  { const f = Buffer.from(file); f[40] ^= 1; await throws(w.ccOpen(f, pw, 'x.7z'), /do not open this backup, or the file is damaged/, 'Coldcard: a damaged byte in the encrypted data'); }
   // the words in the text and the seed record must agree
   const other = entropyToMnemonic(rb(16), wordlist), lie = cc7z(ccText({ mnemonic: other, raw: '80' + hex(e), chain: 'BTC' }), pw);
   await throws(w.ccOpen(u8(lie), pw, 'x.7z'), /its words and its seed record disagree: the backup is damaged/, 'Coldcard: a backup whose mnemonic line disagrees with raw_secret');
@@ -496,10 +498,10 @@ const open = async ({ kind, text = '', file = null, key = '' }) => {
   r = await open({ kind: 'krux', text: sj2, key: 'k' });
   R.ok(r.cls === 'status ok' && /is not these words' fingerprint/.test(r.out) && r.out.includes(fp1), 'UI Krux: an 8-hex-digit ID that is not the fingerprint is pointed out'); w.dbClear();
   // Coldcard official file: words typed as people type them
-  const c0 = CC[0], c0b = u8(Buffer.from(c0.base64, 'base64')), c0m = /^mnemonic = "(.*)"$/m.exec(c0.plaintext)[1];
+  const c0 = CC[1], c0b = u8(Buffer.from(c0.base64, 'base64')), c0m = /^mnemonic = "(.*)"$/m.exec(c0.plaintext)[1];
   r = await open({ kind: 'cc', file: fileOf('backup.7z', c0b), key: c0.password.toUpperCase() });
-  R.ok(r.cls === 'status ok' && /Coldcard backup opened \(SIM\)/.test(r.st), 'UI Coldcard (docs/backup.7z): ' + r.st);
-  shows(r.out, rootOfWords(c0m), "m/84'/0'/0'", 'main', 'UI Coldcard docs/backup.7z');
+  R.ok(r.cls === 'status ok' && /Coldcard backup opened/.test(r.st), 'UI Coldcard (testing/data, a real backup): ' + r.st);
+  shows(r.out, rootOfWords(c0m), "m/84'/0'/0'", 'main', 'UI Coldcard testing/data backup');
   R.ok(r.secret === '' && r.useBtn, 'UI Coldcard: dbSecret empty until SHOW THE SECRET; USE THESE WORDS offered');
   w.dbReveal(); R.ok(wordsOf($('dbSecret').textContent) === c0m, 'UI Coldcard: dbReveal() shows the 24 words');
   $('phrase').value = ''; w.dbUseWords(); R.ok($('phrase').value === c0m && c0m.split(' ').length === 24, 'UI Coldcard: dbUseWords() fills #phrase with the 24 words');
