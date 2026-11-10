@@ -711,6 +711,12 @@ async function probe(w, mutated, fast, only, hooks) {
       if (!g || g.mnemonic !== W16 || bad.length !== 3) fails.push('krux: damaged seeds.json entries are named and the good one still opens'); }
     { const t20 = B(kef(20, nc.randomBytes(20), 'k')).toString('hex'), x = await w.kruxOpen(enc(t20), t20, 'k', false); if (x.list[0].mnemonic !== null || !x.list[0].notWords) fails.push('krux: 20 bytes that open are not taken as words (Krux saves 16 or 32)'); }
     if (w.kefUnwrap(kef(20, E16, 'k', 'big', 6000000)) !== null || !w.kefUnwrap(kef(20, E16, 'k', 'big', 550000))) fails.push('krux: more than 5,000,000 rounds is not a Krux seed');
+    { const e = kef(20, E16, 'k', 'v'), at = 2; const odd = new Uint8Array(e); odd[at] = 99; const few = new Uint8Array(e); few[at + 1] = 0; few[at + 2] = 0; few[at + 3] = 0; const low = new Uint8Array(e); low[at + 1] = 0; low[at + 2] = 0x27; low[at + 3] = 0x0f;
+      if (w.kefUnwrap(odd) !== null) fails.push('krux: an unknown version is no envelope');
+      if (w.kefUnwrap(few) !== null || w.kefUnwrap(low) !== null) fails.push('krux: fewer than 10,000 rounds is no envelope'); }
+    { const right = kef(20, E16, 'k', 'r'), wrong = w.kefUnwrap(kef(20, E32, 'not k', 'w')), real = w.kefFromText; w.kefFromText = (t) => [wrong].concat(real(t));
+      const t = B(right).toString('hex'), x = await w.kruxOpen(enc(t), t, 'k', false); w.kefFromText = real;
+      if (!x.list[0] || x.list[0].mnemonic !== W16) fails.push('krux: when one reading of the text is not the seed, the next reading is tried'); }
     // the box: a Krux QR, the secret only when asked, the words into the box above, CLEAR and CLEAR ALL
     const env = kef(20, E32, 'ui key', fpx), qr = b43(env), rK = HDKey.fromMasterSeed(mnemonicToSeedSync(W32, '')), fpK = rK.fingerprint.toString(16).padStart(8, '0');
     const open = async (kind, text, key) => { $('dbKind').value = kind; $('dbIn').value = text; $('dbKey').value = key; await w.dbOpenUi(); };
@@ -6259,7 +6265,7 @@ const M = [
   ["krux: compressed GCM not inflated", "    return V.z ? inflateRaw(p) : p;\n  }\n  if(V.m === \"ctr\"){", "    return p;\n  }\n  if(V.m === \"ctr\"){"],
   ["krux: CTR counter of 64 bits", "concatBytes(e.iv, new Uint8Array(4)), length: 32}", "concatBytes(e.iv, new Uint8Array(4)), length: 64}"],
   ["krux: CTR nonce at the end", "counter: concatBytes(e.iv, new Uint8Array(4))", "counter: concatBytes(new Uint8Array(4), e.iv)"],
-  ["krux: PKCS7 length not checked", "if(n < 1 || n > 16 || n > p.length) return null;", ""],
+  ["krux: PKCS7 length not checked (equivalent: a bad length comes only from a wrong key, and the hash check right after refuses it)", "if(n < 1 || n > 16 || n > p.length) return null;", "", true],
   ["krux: exposed check without the key", "return dbEq((await sh(Uint8Array.of(e.v), e.iv, q, k)).slice(0, V.x), e.tag);", "return dbEq((await sh(Uint8Array.of(e.v), e.iv, q)).slice(0, V.x), e.tag);"],
   ["krux: exposed check never fails", "return dbEq((await sh(Uint8Array.of(e.v), e.iv, q, k)).slice(0, V.x), e.tag);", "return true;"],
   ["krux: hidden check takes the first bytes", "const d = q.slice(0, q.length - V.auth); return dbEq((await sh(d)).slice(0, V.auth), q.slice(q.length - V.auth));", "const d = q.slice(V.auth); return dbEq((await sh(d)).slice(0, V.auth), q.slice(0, V.auth));"],
