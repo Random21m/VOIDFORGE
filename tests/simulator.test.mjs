@@ -16,6 +16,19 @@
 //   tools       Tools > Calc 12th word, Power > Restart, the screensaver
 //   offline     the offline rule: seed QR scanning is refused while the browser is online, works while it is offline
 //   wipe        CLEAR ALL, closing the section, the auto-clear and END SESSION clear the simulator; keyboard only with focus
+// Stage 2 (PSBTs, descriptors, address verification, sign message). The PSBTs are built here with @scure/btc-signer; the stand-in
+// camera hands the scanner the QR text (SSDecodeQR.extract_qr_data is replaced), the signed PSBTs and messages are read off the screen:
+//   psbt_p2wpkh / psbt_p2sh / psbt_p2tr
+//               review (overview, math, recipient, change, OP_RETURN), sign, read the signed UR crypto-psbt from the screen QR(s) and
+//               check it with btc-signer + noble (BIP-143 / BIP-341 sighash, signatures, btc-signer's own lowR signature, finalize);
+//               the P2TR PSBT is fed as an animated UR
+//   psbt_msig   2-of-3 P2WSH: change unverified, scan the wallet descriptor, change verified, sign, a cosigner signs with btc-signer, finalize
+//   psbt_msig_bad  a descriptor of other cosigners: "Address Verification Failed", the transaction is discarded
+//   addr_single / addr_taproot / addr_multi
+//               address verification: native receive #3, nested change #2, taproot receive #12, multisig receive #7 (descriptor scan)
+//   signmsg     message signing off, then on in Settings; P2WPKH, P2PKH (two pages) and P2SH-P2WPKH messages checked as
+//               "Bitcoin Signed Message" signatures by public key recovery (noble)
+//   psbt_wipe   CLEAR ALL in the middle of a PSBT flow overwrites the PSBT, signatures, signing key and descriptor keys
 // And: the page self-test passes (140/140) in every page opened, and no page error or console error happens in any of them.
 // Run: node tests/simulator.test.mjs        (SCEN=dice12,wipe to run some; SIM_CONC=4 to run fewer at a time)
 import { createRequire } from 'module';
@@ -465,9 +478,395 @@ SCEN.wipe = async (t, d, ctx, page) => {
   }
 };
 
+// ================================================================ stage 2: PSBTs, descriptors, address verification, sign message
+// The test PSBTs are built here with @scure/btc-signer (mainnet; nothing is committed as a binary). Every expected value comes from
+// btc-signer / @scure/bip32 / @noble/curves, never from the page. The stand-in for the camera's QR reading is a replacement of
+// SSDecodeQR.extract_qr_data (the camera is Chromium's fake one, which plays one SeedQR only): it hands the scanner the QR text of
+// each frame, as a read QR would. What the device shows is read back from its screen (the QR with jsqr, the amounts from its screens).
+const { secp256k1, schnorr } = require('@noble/curves/secp256k1');
+const { UREncoder, URDecoder } = require('@ngraveio/bc-ur');
+const { CryptoPSBT } = require('@keystonehq/bc-ur-registry');
+const HARD = 0x80000000;
+const pathIdx = (s) => s.split('/').slice(1).map((x) => x.endsWith("'") ? parseInt(x) + HARD : parseInt(x));
+const hx = (b) => Buffer.from(b).toString('hex');
+const b64b = (s) => Uint8Array.from(Buffer.from(s, 'base64'));
+const MN2 = {
+  A: ABANDON, B: 'legal winner thank year wave sausage worth useful legal winner thank yellow',
+  C: 'letter advice cage absurd amount doctor acoustic avoid letter advice cage above', D: 'zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong',
+};
+const R2 = Object.fromEntries(Object.entries(MN2).map(([k, m]) => [k, rootOf(m)]));
+const FPA = fpOf(R2.A);
+const EXT1 = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', EXT2 = '3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy';   // outside addresses (BIP-173 / BIP-13 examples)
+const txid2 = (n) => Uint8Array.from({ length: 32 }, (_, i) => (i * 7 + n * 13) & 255);
+const deriv = (root, p) => ({ fingerprint: root.fingerprint, path: pathIdx(p) });
+function buildStage2() {
+  const A = R2.A, out = {};
+  // 1. P2WPKH: two inputs (150,000 + 200,000), a recipient (120,000), change (228,000), an OP_RETURN "hello world"; fee 2,000
+  {
+    const tx = new btc.Transaction({ allowUnknownOutputs: true });
+    for (const [i, p] of [[0, "m/84'/0'/0'/0/0"], [1, "m/84'/0'/0'/0/1"]]) {
+      const k = A.derive(p);
+      tx.addInput({ txid: txid2(i + 1), index: i, witnessUtxo: { script: btc.p2wpkh(k.publicKey).script, amount: 150000n + BigInt(i) * 50000n }, bip32Derivation: [[k.publicKey, deriv(A, p)]] });
+    }
+    tx.addOutputAddress(EXT1, 120000n);
+    const ck = A.derive("m/84'/0'/0'/1/0");
+    tx.addOutput({ script: btc.p2wpkh(ck.publicKey).script, amount: 228000n, bip32Derivation: [[ck.publicKey, deriv(A, "m/84'/0'/0'/1/0")]] });
+    tx.addOutput({ script: Uint8Array.from([0x6a, 0x4c, 11, ...Buffer.from('hello world')]), amount: 0n });
+    out.p2wpkh = { b64: Buffer.from(tx.toPSBT(0)).toString('base64'), keys: ["m/84'/0'/0'/0/0", "m/84'/0'/0'/0/1"], inputs: 2, inSum: 350000, dests: [[EXT1, 120000]], change: [btc.p2wpkh(ck.publicKey).address, 228000, 0, true], fee: 2000, opReturn: 'hello world' };
+  }
+  // 2. P2SH-P2WPKH: one input (2,500,000), a recipient (1,000,000), change at /1/3 (1,499,000); fee 1,000
+  {
+    const tx = new btc.Transaction(), p = "m/49'/0'/0'/0/0", k = A.derive(p), pay = btc.p2sh(btc.p2wpkh(k.publicKey));
+    tx.addInput({ txid: txid2(3), index: 0, witnessUtxo: { script: pay.script, amount: 2500000n }, redeemScript: pay.redeemScript, bip32Derivation: [[k.publicKey, deriv(A, p)]] });
+    tx.addOutputAddress(EXT2, 1000000n);
+    const cp = "m/49'/0'/0'/1/3", ck = A.derive(cp), cpay = btc.p2sh(btc.p2wpkh(ck.publicKey));
+    tx.addOutput({ script: cpay.script, amount: 1499000n, redeemScript: cpay.redeemScript, bip32Derivation: [[ck.publicKey, deriv(A, cp)]] });
+    out.p2sh_p2wpkh = { b64: Buffer.from(tx.toPSBT(0)).toString('base64'), keys: [p], inputs: 1, inSum: 2500000, dests: [[EXT2, 1000000]], change: [cpay.address, 1499000, 3, true], fee: 1000, opReturn: null };
+  }
+  // 3. P2TR key path: one input (300,000), a recipient (100,000), change (199,000); fee 1,000
+  {
+    const tx = new btc.Transaction(), p = "m/86'/0'/0'/0/0", k = A.derive(p), x = k.publicKey.slice(1);
+    tx.addInput({ txid: txid2(4), index: 1, witnessUtxo: { script: btc.p2tr(x).script, amount: 300000n }, tapInternalKey: x, tapBip32Derivation: [[x, { hashes: [], der: deriv(A, p) }]] });
+    tx.addOutputAddress(EXT1, 100000n);
+    const cp = "m/86'/0'/0'/1/0", ck = A.derive(cp), cx = ck.publicKey.slice(1);
+    tx.addOutput({ script: btc.p2tr(cx).script, amount: 199000n, tapInternalKey: cx, tapBip32Derivation: [[cx, { hashes: [], der: deriv(A, cp) }]] });
+    out.p2tr = { b64: Buffer.from(tx.toPSBT(0)).toString('base64'), keys: [p], inputs: 1, inSum: 300000, dests: [[EXT1, 100000]], change: [btc.p2tr(cx).address, 199000, 0, true], fee: 1000, opReturn: null };
+  }
+  // 4. 2-of-3 P2WSH sortedmulti (A, B, C at m/48'/0'/0'/2'): one input (5,000,000) at /0/5, a recipient (3,000,000), change at /1/2 (1,998,000); fee 2,000
+  {
+    const acct = "m/48'/0'/0'/2'", names = ['A', 'B', 'C'], accts = Object.fromEntries(names.map((n) => [n, R2[n].derive(acct)]));
+    const ms = (branch, idx, set = names, hd = accts) => {
+      const ks = set.map((n) => ({ n, pub: hd[n].deriveChild(branch).deriveChild(idx).publicKey }));
+      const sorted = ks.slice().sort((a, b) => Buffer.compare(Buffer.from(a.pub), Buffer.from(b.pub)));
+      return { pay: btc.p2wsh(btc.p2ms(2, sorted.map((x) => x.pub))), ders: ks.map((x) => [x.pub, deriv(R2[x.n], acct + '/' + branch + '/' + idx)]) };
+    };
+    const tx = new btc.Transaction(), i0 = ms(0, 5);
+    tx.addInput({ txid: txid2(5), index: 0, witnessUtxo: { script: i0.pay.script, amount: 5000000n }, witnessScript: i0.pay.witnessScript, bip32Derivation: i0.ders });
+    tx.addOutputAddress(EXT1, 3000000n);
+    const c0 = ms(1, 2);
+    tx.addOutput({ script: c0.pay.script, amount: 1998000n, witnessScript: c0.pay.witnessScript, bip32Derivation: c0.ders });
+    tx.global.xpub = names.map((n) => { const a = accts[n]; return [{ version: 0x0488b21e, depth: a.depth, parentFingerprint: a.parentFingerprint, childNumber: a.index, chainCode: a.chainCode, publicKey: a.publicKey }, { fingerprint: R2[n].fingerprint, path: pathIdx(acct) }]; });
+    const desc = (set, hd) => 'wsh(sortedmulti(2,' + set.map((n) => '[' + fpOf(R2[n]) + '/48h/0h/0h/2h]' + hd[n].publicExtendedKey + '/0/*').join(',') + '))';
+    const accD = { ...accts, D: R2.D.derive(acct) };
+    out.p2wsh_2of3 = { b64: Buffer.from(tx.toPSBT(0)).toString('base64'), keys: [acct + '/0/5'], inputs: 1, inSum: 5000000, dests: [[EXT1, 3000000]], change: [c0.pay.address, 1998000, 2, true], fee: 2000, opReturn: null,
+      descriptor: desc(names, accts), badDescriptor: desc(['A', 'B', 'D'], accD), fps: names.map((n) => fpOf(R2[n])), receive7: ms(0, 7).pay.address, receive0: ms(0, 0).pay.address };
+  }
+  return out;
+}
+const S2 = buildStage2();
+
+// What the device is fed (a base64 PSBT as one QR, or an animated UR crypto-psbt) and how a QR it shows is read back
+const urParts = (rawBytes, maxFrag) => { const e = new UREncoder(new CryptoPSBT(Buffer.from(rawBytes)).toUR(), maxFrag, 0, 10), p = []; for (let i = 0; i < e.fragmentsLength; i++) p.push(e.nextPart().toUpperCase()); return p; };
+async function feedQR(page, frames) {
+  await page.evaluate((frames) => {
+    window.__ssQ = frames.slice();
+    SSDecodeQR.extract_qr_data = function (image, is_binary) { const s = window.__ssQ.shift(); if (s === undefined) return null; return is_binary ? new TextEncoder().encode(s) : s; };
+  }, frames);
+}
+async function scanFrames(d, page, frames, from = /^Scan$/) { await feedQR(page, frames); if (from) await d.pick(from, { wait: 600 }); }
+async function startCapture(page) {   // keeps every different picture the screen shows, so an animated QR can be read part by part
+  await page.evaluate(() => {
+    window.__frames = []; let last = -1; clearInterval(window.__capTimer);
+    window.__capTimer = setInterval(() => {
+      const c = document.getElementById('ssScreen'), g = c.getContext('2d'), im = g.getImageData(0, 0, c.width, c.height), a = im.data; let h = 2166136261;
+      for (let i = 0; i < a.length; i += 11) h = Math.imul(h ^ a[i], 16777619) >>> 0;
+      if (h === last) return; last = h;
+      let s = ''; for (let i = 0; i < a.length; i += 8192) s += String.fromCharCode.apply(null, a.subarray(i, i + 8192));
+      window.__frames.push({ w: c.width, h: c.height, b64: btoa(s) });
+    }, 25);
+  });
+}
+async function readUR(page, ms = 60000) {   // the animated UR on the screen -> the bytes of the crypto-psbt, and the number of parts
+  await startCapture(page);
+  const dec = new URDecoder(), seen = new Set(); let from = 0; const t0 = Date.now();
+  while (Date.now() - t0 < ms && !dec.isComplete()) {
+    const fr = await page.evaluate((f) => window.__frames.slice(f), from); from += fr.length;
+    for (const f of fr) { const q = jsQR(new Uint8ClampedArray(Buffer.from(f.b64, 'base64')), f.w, f.h); if (q && /^ur:/i.test(q.data)) { seen.add(q.data.toLowerCase()); try { dec.receivePart(q.data.toLowerCase()); } catch (e) { /* a part of another UR */ } } }
+    if (!dec.isComplete()) await sleep(150);
+  }
+  await page.evaluate(() => clearInterval(window.__capTimer));
+  if (!dec.isComplete() || !dec.isSuccess()) return null;
+  return { bytes: new Uint8Array(CryptoPSBT.fromCBOR(dec.resultUR().cbor).getPSBT()), parts: seen.size, type: dec.resultUR().type };
+}
+
+// The signatures the device made, checked with btc-signer (signature hashes, own signatures) and @noble/curves, as in tests/sigcheck.test.mjs
+function checkSigned(t, tag, name, signedBytes) {
+  const P = S2[name], orig = btc.Transaction.fromPSBT(b64b(P.b64), { allowUnknownOutputs: true }), ref = btc.Transaction.fromPSBT(b64b(P.b64), { lowR: true, allowUnknownOutputs: true });
+  const signed = btc.Transaction.fromPSBT(signedBytes, { allowUnknownOutputs: true });
+  const verdict = { sigs: 0, ecdsa: true, same: true, hash: true, low: true, key: true, schnorr: true, one: true };
+  for (let i = 0; i < orig.inputsLength; i++) {
+    const inp = orig.getInput(i), s = signed.getInput(i), spk = inp.witnessUtxo.script, amount = inp.witnessUtxo.amount, type = btc.OutScript.decode(spk).type;
+    if (type === 'tr') {
+      const w = s.finalScriptWitness; verdict.one = verdict.one && !!w && w.length === 1 && w[0].length === 64; if (!verdict.one) continue;
+      const amounts = [], scripts = [];
+      for (let j = 0; j < orig.inputsLength; j++) { amounts.push(orig.getInput(j).witnessUtxo.amount); scripts.push(orig.getInput(j).witnessUtxo.script); }
+      const h = orig.preimageWitnessV1(i, scripts, btc.SigHash.DEFAULT, amounts);
+      verdict.schnorr = verdict.schnorr && schnorr.verify(w[0], h, spk.slice(2)); verdict.sigs++;   // BIP-340 against the output key (tweaked), SIGHASH_DEFAULT
+    } else {
+      const ps = s.partialSig || []; verdict.one = verdict.one && ps.length === 1; if (!verdict.one) continue;
+      const [pub, sig] = ps[0]; verdict.hash = verdict.hash && sig[sig.length - 1] === btc.SigHash.ALL;
+      let scriptCode;
+      if (type === 'wpkh') scriptCode = btc.OutScript.encode({ type: 'pkh', hash: spk.slice(2) });
+      else if (type === 'sh') scriptCode = btc.OutScript.encode({ type: 'pkh', hash: inp.redeemScript.slice(2) });
+      else scriptCode = inp.witnessScript;
+      const h = orig.preimageWitnessV0(i, scriptCode, btc.SigHash.ALL, amount), der = sig.slice(0, -1);
+      verdict.ecdsa = verdict.ecdsa && secp256k1.verify(der, h, pub, { prehash: false, format: 'der', lowS: true }); verdict.low = verdict.low && der.length <= 70;
+      const k = R2.A.derive(P.keys[i]); verdict.key = verdict.key && hx(k.publicKey) === hx(pub);
+      ref.signIdx(k.privateKey, i); const rs = ref.getInput(i).partialSig.find((x) => hx(x[0]) === hx(pub));
+      verdict.same = verdict.same && !!rs && hx(rs[1]) === hx(sig); verdict.sigs++;
+    }
+  }
+  const type = name === 'p2tr' ? 'tr' : 'ecdsa';
+  t(verdict.one && verdict.sigs === orig.inputsLength, tag + ': the signed PSBT holds one signature for each of its ' + orig.inputsLength + ' input(s)');
+  if (type === 'tr') t(verdict.schnorr, tag + ': the BIP-340 signature verifies against the output key (sighash from btc-signer, SIGHASH_DEFAULT, noble verify)');
+  else {
+    t(verdict.hash && verdict.ecdsa, tag + ': each ECDSA signature verifies for its input with the BIP-143 sighash from btc-signer (SIGHASH_ALL, noble verify, low S)');
+    t(verdict.low && verdict.key && verdict.same, tag + ': each is low R, made with the key at ' + P.keys[0] + (P.keys.length > 1 ? ' ...' : '') + ', and equals btc-signer\'s own signature byte for byte');
+  }
+  // merge into the original PSBT (a Taproot input comes back final: its witness goes in as the key-path signature), finalize, extract
+  const fin = btc.Transaction.fromPSBT(b64b(P.b64), { allowUnknownOutputs: true });
+  if (type === 'tr') fin.updateInput(0, { tapKeySig: signed.getInput(0).finalScriptWitness[0] }); else fin.combine(signed);
+  if (name === 'p2wsh_2of3') fin.signIdx(R2.B.derive("m/48'/0'/0'/2'/0/5").privateKey, 0);   // the second cosigner, signed with btc-signer
+  let raw = null, err = '';
+  try { fin.finalize(); raw = fin.extract(); } catch (e) { err = ' (' + e.message + ')'; }
+  const back = raw && btc.Transaction.fromRaw(raw, { allowUnknownOutputs: true });
+  t(!!raw && back.outputsLength === orig.outputsLength && back.getOutput(0).amount === orig.getOutput(0).amount, tag + ': btc-signer finalizes' + (name === 'p2wsh_2of3' ? ' (with a second signature it made for cosigner B)' : '') + ' and extracts the transaction' + (raw ? ' (' + raw.length + ' bytes)' : err));
+}
+
+// The screens of a PSBT review, read from the device
+const amountOf = (s) => { s = String(s).replace(/[,\s]/g, ''); return s.includes('.') ? Math.round(parseFloat(s) * 1e8) : +s; };
+const screenFields = (d, names) => d.ev((names) => { const s = SSController._instance.current_destination.view.screen, o = {}; for (const n of names) { const v = s[n]; o[n] = v instanceof Uint8Array ? Array.from(v) : v; } return o; }, names);
+async function toHome(d) { await d.back('SSMainMenuView'); }
+async function psbtToOverview(t, d, page, tag, name, frames) {
+  await toHome(d);
+  await scanFrames(d, page, frames);
+  let s = await d.waitView('SSPSBTSelectSeedView', 40000);
+  t(/Select Signer/.test(s.title) && s.labels.includes(FPA), tag + ': the scan is read as a PSBT and the device asks which seed signs (' + s.labels[0] + ')');
+  await d.pick(new RegExp(FPA), { wait: 1500 });
+  return d.waitView('SSPSBTOverviewScreen', 60000);
+}
+async function psbtReview(t, d, page, tag, name, o = {}) {
+  const P = S2[name], spend = P.dests.reduce((a, x) => a + x[1], 0);
+  await sleep(500);
+  let f = await screenFields(d, ['spend_amount', 'change_amount', 'fee_amount', 'num_inputs', 'num_change_outputs', 'num_self_transfer_outputs', 'destination_addresses', 'has_op_return']);
+  t(f.spend_amount === spend && f.change_amount === P.change[1] && f.fee_amount === P.fee && f.num_inputs === P.inputs && f.num_change_outputs === 1 && f.num_self_transfer_outputs === 0 && f.has_op_return === !!P.opReturn && JSON.stringify(f.destination_addresses) === JSON.stringify(P.dests.map((x) => x[0])),
+    tag + ': overview shows ' + P.inputs + ' input(s), sending ' + spend + ' sats to ' + P.dests[0][0].slice(0, 10) + '..., change ' + P.change[1] + ', fee ' + P.fee + (P.opReturn ? ', an OP_RETURN' : '') + (f.spend_amount === spend && f.change_amount === P.change[1] && f.fee_amount === P.fee ? '' : ' (shows ' + JSON.stringify(f) + ')'));
+  await d.press('PRESS', 900);
+  let s = await d.waitView('SSPSBTMathScreen'); f = await screenFields(d, ['input_amount', 'spend_amount', 'fee_amount', 'change_amount']);
+  const m = [f.input_amount, f.spend_amount, f.fee_amount, f.change_amount].map(amountOf);
+  t(m[0] === P.inSum && m[1] === spend && m[2] === P.fee && m[3] === P.change[1] && m[0] - m[1] - m[2] === m[3], tag + ': the transaction math reads ' + P.inSum + ' - ' + spend + ' - ' + P.fee + ' = ' + P.change[1] + ' (shows ' + m.join(', ') + ')');
+  await d.press('PRESS', 900);
+  for (let i = 0; i < P.dests.length; i++) {
+    s = await d.waitView('SSPSBTAddressDetailsScreen'); f = await screenFields(d, ['address', 'amount']);
+    t(f.address === P.dests[i][0] && f.amount === P.dests[i][1], tag + ': "Will Send" shows ' + P.dests[i][1] + ' sats to ' + P.dests[i][0] + (f.address === P.dests[i][0] ? '' : ' (shows ' + f.address + ' ' + f.amount + ')'));
+    await d.press('PRESS', 1500);
+  }
+  s = await d.waitView('SSPSBTChangeDetailsScreen', 40000);
+  return { P, s };
+}
+async function changeChecks(t, d, tag, name, verified) {
+  const P = S2[name], f = await screenFields(d, ['amount', 'address', 'is_multisig', 'derivation_path_addr_index', 'is_change_derivation_path', 'is_change_addr_verified']), s = await d.state();
+  t(f.amount === P.change[1] && f.address === P.change[0] && f.derivation_path_addr_index === P.change[2] && f.is_change_derivation_path === P.change[3] && f.is_multisig === (name === 'p2wsh_2of3'),
+    tag + ': "Your Change" shows ' + P.change[1] + ' sats to ' + P.change[0].slice(0, 12) + '... as change address #' + P.change[2] + (f.address === P.change[0] ? '' : ' (shows ' + JSON.stringify(f) + ')'));
+  t(f.is_change_addr_verified === verified && (verified ? /^Next$/.test((s.labels || [])[0]) && (s.labels || []).length === 1 : /Verify multisig change/.test((s.labels || [])[0])),
+    tag + ': the change is ' + (verified ? 'shown as verified' : 'unverified, the device offers "Verify multisig change" and "Skip verification"') + ' (' + (s.labels || []).join(' | ') + ')');
+}
+async function psbtSign(t, d, page, tag, name) {
+  await d.waitView('SSPSBTFinalizeView'); await d.press('PRESS', 2500);
+  await d.waitView('SSPSBTSignedQRDisplayView', 60000); await sleep(600);
+  const r = await readUR(page);
+  t(!!r && r.type === 'crypto-psbt', tag + ': the device shows the signed PSBT as a UR crypto-psbt QR (' + (r ? r.parts + ' part(s)' : 'none read') + ', read with jsqr)');
+  if (r) checkSigned(t, tag, name, r.bytes); else t(false, tag + ': no signed PSBT to check');
+  return r;
+}
+async function psbtFlow(t, d, page, name, frames, o = {}) {
+  const tag = name + (o.label ? ' ' + o.label : '');
+  await d.loadByScan();
+  await psbtToOverview(t, d, page, tag, name, frames);
+  const { s } = await psbtReview(t, d, page, tag, name);
+  const P = S2[name];
+  await changeChecks(t, d, tag, name, true);
+  await d.press('PRESS', 900);
+  if (P.opReturn) {
+    await d.waitView('SSPSBTOpReturnScreen'); const f = await screenFields(d, ['op_return_data']);
+    t(Buffer.from(f.op_return_data).toString() === P.opReturn, tag + ': the OP_RETURN screen shows the data "' + P.opReturn + '"');
+    await d.press('PRESS', 900);
+  }
+  await psbtSign(t, d, page, tag, name);
+  await d.press('PRESS', 1200); const e = await d.waitView('SSMainMenuView');
+  t(await d.ev(() => SSController._instance.psbt === null && SSController._instance.psbt_parser === null), tag + ': after the signed QR the PSBT and its parser are cleared from the device');
+}
+SCEN.psbt_p2wpkh = (t, d, ctx, page) => psbtFlow(t, d, page, 'p2wpkh', [S2.p2wpkh.b64]);
+SCEN.psbt_p2sh = (t, d, ctx, page) => psbtFlow(t, d, page, 'p2sh_p2wpkh', [S2.p2sh_p2wpkh.b64]);
+SCEN.psbt_p2tr = (t, d, ctx, page) => psbtFlow(t, d, page, 'p2tr', urParts(b64b(S2.p2tr.b64), 60), { label: '(animated UR in)' });
+
+// ---- 2-of-3 P2WSH: the change is unverified until the wallet descriptor is scanned; then it is checked against the descriptor
+async function loadDescriptor(t, d, page, tag, text, o = {}) {
+  await d.waitView('SSLoadMultisigWalletDescriptorView'); let s = await d.state();
+  t(/Multisig Verification/.test(s.title) && /Scan descriptor/.test(s.labels[0]), tag + ': "Verify multisig change" asks to scan the wallet descriptor (' + s.title + ': ' + s.labels.join(' | ') + ')');
+  await scanFrames(d, page, [text], /Scan descriptor/);
+  s = await d.waitView('SSMultisigWalletDescriptorView', 40000); await sleep(500);
+  const f = await screenFields(d, ['policy', 'fingerprints']), want = o.fps || S2.p2wsh_2of3.fps;
+  t(f.policy === '2 of 3' && JSON.stringify(f.fingerprints) === JSON.stringify(want), tag + ': the scanned descriptor loads as policy "2 of 3" with the cosigner fingerprints ' + want.join(', ') + ' (shows ' + f.policy + ' ' + (f.fingerprints || []).join(', ') + ')');
+  return s;
+}
+SCEN.psbt_msig = async (t, d, ctx, page) => {
+  const name = 'p2wsh_2of3', P = S2[name], tag = '2-of-3 P2WSH';
+  await d.loadByScan(); await psbtToOverview(t, d, page, tag, name, [P.b64]);
+  await psbtReview(t, d, page, tag, name);
+  await changeChecks(t, d, tag, name, false);
+  await d.pick(/Verify multisig change/, { wait: 1000 });
+  const s = await loadDescriptor(t, d, page, tag, P.descriptor);
+  t(/Return to transaction/.test(s.labels[0]), tag + ': the descriptor screen offers "Return to transaction"');
+  await d.press('PRESS', 1500);
+  await d.waitView('SSPSBTChangeDetailsScreen', 40000); await sleep(400);
+  await changeChecks(t, d, tag + ' with the descriptor', name, true);
+  await d.press('PRESS', 900);
+  await psbtSign(t, d, page, tag, name);
+  await d.press('PRESS', 1200); await d.waitView('SSMainMenuView');
+};
+SCEN.psbt_msig_bad = async (t, d, ctx, page) => {   // a descriptor of other cosigners (A, B, D) does not own the change: the transaction is flagged and discarded
+  const name = 'p2wsh_2of3', P = S2[name], tag = '2-of-3 P2WSH, wrong descriptor';
+  await d.loadByScan(); await psbtToOverview(t, d, page, tag, name, [P.b64]);
+  await psbtReview(t, d, page, tag, name);
+  await d.pick(/Verify multisig change/, { wait: 1000 });
+  await loadDescriptor(t, d, page, tag, P.badDescriptor, { fps: [FPA, fpOf(R2.B), fpOf(R2.D)] });
+  await d.press('PRESS', 1500);
+  const s = await d.waitView('SSPSBTAddressVerificationFailedView', 40000); await sleep(500);
+  const st = await d.state();
+  t(/Suspicious Transaction/.test(st.title) && /Address Verification Failed/.test(st.headline) && /change address could not be verified from wallet descriptor/.test(st.text) && /Discard transaction/.test(st.labels[0]), tag + ': "Address Verification Failed" warns that the change could not be verified from the wallet descriptor (' + st.headline + ')');
+  await d.press('PRESS', 1200); await d.waitView('SSMainMenuView');
+  t(await d.ev(() => SSController._instance.psbt === null && SSController._instance.multisig_wallet_descriptor === null), tag + ': discarding clears the PSBT and the descriptor');
+};
+
+// ---- address verification: an address scanned from a QR code is found among the seed's (or the descriptor's) addresses
+async function verifyDone(d, ms = 90000) {   // waits for the success screen of the address verification
+  const t0 = Date.now(); let s;
+  while (Date.now() - t0 < ms) { s = await d.state(); if (s && s.view === 'SSSeedAddressVerificationSuccessView') { await sleep(500); return screenFields(d, ['address', 'verified_index', 'verified_index_is_change']); } await sleep(300); }
+  throw new Error('address verification did not finish, at ' + JSON.stringify(s));
+}
+async function verifySingle(t, d, page, tag, addr, idx, change, o = {}) {
+  await toHome(d);
+  await scanFrames(d, page, [(o.uri || '') + addr]);
+  let s = await d.state();
+  if (o.sigType) {   // a 3... address is a nested segwit or a multisig one: the device cannot tell and asks
+    s = await d.waitView('SSAddressVerificationSigTypeView', 40000);
+    t(/can't be auto-detected/.test(s.text) && s.labels.join('|') === 'Single Sig|Multisig', tag + ': the device cannot tell the signature type of a 3... address and asks (' + s.labels.join(' | ') + ')');
+    await d.pick(/Single Sig/, { wait: 900 });
+  }
+  s = await d.waitView('SSSeedSelectSeedView', 40000);
+  t(/Verify Address/.test(s.title) && s.labels[0] === FPA, tag + ': the scanned address asks which seed to verify it with');
+  await d.pick(new RegExp(FPA), { wait: 800 });
+  const f = await verifyDone(d);
+  t(f.address === addr && f.verified_index === idx && f.verified_index_is_change === change, tag + ': "Address Verified": ' + addr.slice(0, 12) + '... is ' + (change ? 'change' : 'receive') + ' address #' + idx + ' of the seed (device says #' + f.verified_index + (f.verified_index_is_change ? ' change' : ' receive') + ')');
+  await d.press('PRESS', 1000); await d.waitView('SSMainMenuView');
+}
+SCEN.addr_single = async (t, d, ctx, page) => {   // single sig: addresses made here by @scure/btc-signer from the seed
+  await d.loadByScan();
+  await verifySingle(t, d, page, 'native receive #3', addrOf(ABANDON, '', 'native', 0, 3), 3, false, { uri: 'bitcoin:' });
+  await verifySingle(t, d, page, 'nested change #2', addrOf(ABANDON, '', 'nested', 1, 2), 2, true, { sigType: true });
+};
+SCEN.addr_taproot = async (t, d, ctx, page) => {
+  await d.loadByScan();
+  await verifySingle(t, d, page, 'taproot receive #12', addrOf(ABANDON, '', 'taproot', 0, 12), 12, false);
+};
+SCEN.addr_multi = async (t, d, ctx, page) => {   // multisig: the address is #7 of the 2-of-3 descriptor
+  const P = S2.p2wsh_2of3, tag = 'multisig address #7';
+  await d.loadByScan(); await toHome(d);
+  await scanFrames(d, page, [P.receive7]);
+  await loadDescriptor(t, d, page, tag, P.descriptor);
+  const st = await d.state();
+  t(st.labels[0] === 'Verify addr ' + P.receive7.slice(0, 7), tag + ': the descriptor screen offers "Verify addr ' + P.receive7.slice(0, 7) + '" (' + st.labels[0] + ')');
+  await d.press('PRESS', 800);
+  const f = await verifyDone(d);
+  t(f.address === P.receive7 && f.verified_index === 7 && f.verified_index_is_change === false, tag + ': "Address Verified": ' + P.receive7.slice(0, 12) + '... is receive address #7 of the 2-of-3 wallet, made by btc-signer (device says #' + f.verified_index + ')');
+  await d.press('PRESS', 1000); await d.waitView('SSMainMenuView');
+};
+
+// ---- sign message: a scanned "signmessage" request; the signature is checked as a "Bitcoin Signed Message" (noble secp256k1, independent of the page)
+const varStr = (b) => { const n = b.length, h = n < 253 ? Buffer.from([n]) : Buffer.from([253, n & 255, n >> 8]); return Buffer.concat([h, b]); };
+const msgHash = (msg) => sha256(sha256(Buffer.concat([varStr(Buffer.from('Bitcoin Signed Message:\n')), varStr(Buffer.from(msg, 'utf8'))])));
+function checkMessageSig(sigB64, msg, wantPub, kind) {   // the classic format: base64 of header + r + s, header = 27 + recovery id (+ 4 for a compressed key)
+  const sig = Buffer.from(sigB64, 'base64'); if (sig.length !== 65 || sig[0] < 27 || sig[0] > 34) return { ok: false, why: 'not a 65-byte signature with a header 27..34' };
+  const rec = (sig[0] - 27) & 3, comp = sig[0] >= 31, rs = sig.subarray(1), h = msgHash(msg);
+  const pub = secp256k1.Signature.fromCompact(rs).addRecoveryBit(rec).recoverPublicKey(h).toRawBytes(comp);
+  const good = secp256k1.verify(rs, h, pub, { prehash: false }) && hx(pub) === hx(wantPub);
+  const addr = kind === 'p2pkh' ? btc.p2pkh(pub).address : kind === 'p2sh' ? btc.p2sh(btc.p2wpkh(pub)).address : btc.p2wpkh(pub).address;
+  return { ok: good && comp, pub, addr, header: sig[0] };
+}
+SCEN.signmsg = async (t, d, ctx, page) => {
+  await d.loadByScan(); await toHome(d);
+  const cases = [
+    { path: "m/84'/0'/0'/0/0", kind: 'p2wpkh', msg: 'hello world' },
+    { path: "m/44'/0'/0'/0/3", kind: 'p2pkh', msg: 'The quick brown fox jumps over the lazy dog. '.repeat(6).trim() },
+    { path: "m/49'/0'/0'/1/1", kind: 'p2sh', msg: 'Signed with SeedSigner+ practice simulator: 0123456789' },
+  ];
+  // Message signing is off until Settings > Advanced > Message signing is set to Enabled: the request is refused first
+  await scanFrames(d, page, ['signmessage ' + cases[0].path.replace(/'/g, 'h') + ' ascii:' + cases[0].msg]);
+  let s = await sleepUntil(d, (x) => x.view !== 'SSMainMenuView', 20000);
+  t(s && s.view === 'SSOptionDisabledView', 'message signing disabled: a signmessage request is refused, no seed is asked for (' + (s && s.view) + ')');
+  await toHome(d);
+  await d.pick(/^Settings$/, { wait: 700 }); await d.pick(/^Advanced$/, { wait: 700 }); await d.pick(/^Message signing$/, { wait: 700 }); await d.pick(/^Enabled$/, { wait: 900 });
+  await toHome(d);
+  t(await d.ev(() => SSSettings.get_instance().get_value('message_signing')) === 'E', 'Settings > Advanced > Message signing > Enabled turns it on');
+  for (const c of cases) {
+    const tag = 'sign message ' + c.kind + ' ' + c.path, k = R2.A.derive(c.path), addr = c.kind === 'p2pkh' ? btc.p2pkh(k.publicKey).address : c.kind === 'p2sh' ? btc.p2sh(btc.p2wpkh(k.publicKey)).address : btc.p2wpkh(k.publicKey).address;
+    await toHome(d);
+    await scanFrames(d, page, ['signmessage ' + c.path.replace(/'/g, 'h') + ' ascii:' + c.msg]);
+    s = await d.waitView('SSSeedSelectSeedView', 30000);
+    t(/Sign Message/.test(s.title), tag + ': the request asks which seed signs');
+    await d.pick(new RegExp(FPA), { wait: 1000 });
+    let pages = 0;
+    for (let n = 0; n < 12; n++) { s = await d.state(); if (s.view === 'SSSeedSignMessageConfirmMessageView') { pages++; await d.press('PRESS', 900); } else break; }
+    t(pages >= 1 && (c.msg.length < 60 || pages > 1) && await d.ev(() => SSController._instance.sign_message_data.message) === c.msg, tag + ': the device shows the message in ' + pages + ' page(s) (' + c.msg.length + ' characters)');
+    s = await d.waitView('SSSeedSignMessageConfirmAddressView', 20000); await sleep(800);
+    const f = await screenFields(d, ['derivation_path', 'address']);
+    t(f.address === addr && f.derivation_path.replace(/h/g, "'") === c.path, tag + ': "Confirm Address" shows ' + addr + ' (' + c.path + ')' + (f.address === addr ? '' : ' (shows ' + f.address + ')'));
+    await d.press('PRESS', 2000);
+    await d.waitView('SSSeedSignMessageSignedMessageQRView', 30000); await sleep(1000);
+    const q = await d.readQR();
+    const r = q ? checkMessageSig(q.text, c.msg, k.publicKey, c.kind) : { ok: false, why: 'no QR' };
+    t(r.ok, tag + ': the QR is a valid "Bitcoin Signed Message" signature (noble: recovers the key at ' + c.path + ', verifies, compressed header ' + r.header + ')' + (r.ok ? '' : ' ' + (r.why || '')));
+    t(r.addr === addr, tag + ': the key recovered from the signature is the key of ' + addr);
+    await d.press('PRESS', 1200); await d.waitView('SSMainMenuView');
+  }
+};
+async function sleepUntil(d, f, ms) { const t0 = Date.now(); let s; while (Date.now() - t0 < ms) { s = await d.state(); if (s && f(s)) { await sleep(300); return d.state(); } await sleep(250); } return s; }
+
+// ---- wipe in the middle of a PSBT flow: after signing (signatures held), with the descriptor loaded
+SCEN.psbt_wipe = async (t, d, ctx, page) => {
+  const name = 'p2wsh_2of3', P = S2[name], tag = 'wipe in a PSBT flow';
+  await d.loadByScan(); await psbtToOverview(t, d, page, tag, name, [P.b64]);
+  await psbtReview(t, d, page, tag, name);
+  await d.pick(/Verify multisig change/, { wait: 1000 });
+  await loadDescriptor(t, d, page, tag, P.descriptor);
+  await d.press('PRESS', 1500); await d.waitView('SSPSBTChangeDetailsScreen', 40000);
+  await d.press('PRESS', 900); await d.waitView('SSPSBTFinalizeView'); await d.press('PRESS', 2500);
+  await d.waitView('SSPSBTSignedQRDisplayView', 60000); await sleep(800);
+  const held = await d.ev(() => {
+    const c = SSController._instance, p = c.psbt, parser = c.psbt_parser, desc = c.multisig_wallet_descriptor, o = parser.psbt.inputs[0];
+    const keys = desc.miniscript.keys, zero = (b) => b.every((x) => x === 0);
+    window.__keep = { sig: p.inputs[0].partial_sigs[0].sig, sig2: o.partial_sigs[0].sig, ws: o.witness_script, spk: o.witness_utxo.script_pubkey, chain: parser.root.chain_code, k: parser.root, dpub: keys[0].key.pub, dchain: keys[0].key.chain };
+    const k = window.__keep;
+    return { sig: !zero(k.sig), ws: !zero(k.ws), spk: !zero(k.spk), chain: !zero(k.chain), dpub: !zero(k.dpub), dchain: !zero(k.dchain), has: !!c.psbt && !!c.psbt_parser && !!desc };
+  });
+  t(held.has && held.sig && held.ws && held.spk && held.chain && held.dpub && held.dchain, tag + ': before the wipe the device holds the PSBT, a signature, the signing key and the descriptor (' + JSON.stringify(held) + ')');
+  await d.ev(() => clearAll());   // CLEAR ALL
+  await sleep(500);
+  const w = await d.ev(() => {
+    const k = window.__keep, zero = (b) => b.every((x) => x === 0), c = document.getElementById('ssScreen'), g = c.getContext('2d'), px = g.getImageData(0, 0, c.width, c.height).data; let lit = 0;
+    for (let i = 0; i < px.length; i += 4) if (px[i] || px[i + 1] || px[i + 2]) lit++;
+    return { ctl: !SSController._instance, sig: zero(k.sig), sig2: zero(k.sig2), ws: zero(k.ws), spk: zero(k.spk), chain: zero(k.chain), key: k.k.k === 0n, dpub: zero(k.dpub), dchain: zero(k.dchain), box: document.getElementById('ssBox').open, lit, cam: document.body.classList.contains('cam-on') };
+  });
+  t(w.ctl && !w.box && w.lit === 0 && !w.cam, tag + ': CLEAR ALL drops the controller, closes the section, blanks the screen and turns the camera off (' + JSON.stringify({ ctl: w.ctl, box: w.box, lit: w.lit, cam: w.cam }) + ')');
+  t(w.sig && w.sig2 && w.ws && w.spk, tag + ': the PSBT bytes and the signature are overwritten with zeros');
+  t(w.chain && w.key, tag + ': the signing root key (private key and chain code) is overwritten');
+  t(w.dpub && w.dchain, tag + ': the scanned descriptor\'s keys are overwritten');
+};
+
 // ================================================================ run
 SCEN.tools.clock = true; SCEN.offline.online = true;
-const order = ['dice12', 'dice24', 'words', 'settings', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
+const order = ['psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
 const want = process.env.SCEN ? process.env.SCEN.split(',') : order;
 const results = [];
 async function runScenario(browser, name) {
