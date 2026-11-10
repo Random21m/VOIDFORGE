@@ -3,12 +3,45 @@
 const fs = require("fs"), path = require("path"), cp = require("child_process");
 const W = __dirname;
 const WT = fs.existsSync(path.join(W, "..", "..", "voidforge.html")) ? path.join(W, "..", "..") : path.join(W, "..", "vf-bundle", "v213");
-const out = process.argv[2] || path.join(WT, "voidforge.html");
-let html = cp.execSync("git show v2.12.0:voidforge.html", { cwd: WT, maxBuffer: 64 << 20 }).toString("utf8");
-const before = Buffer.byteLength(html);
+const out = process.argv.slice(2).find((a) => !a.startsWith("--")) || path.join(WT, "voidforge.html");
+// The base is the repo's voidforge.html with the practice signer of the last build taken out again (unbuild below),
+// so edits made to the rest of the page since (version, dictionary, ...) are kept. "--check" only proves the unbuild:
+// the page without the practice signer must equal the v2.12.0 page plus any later edits, so it is printed for comparison.
 const rd = (f) => fs.readFileSync(path.join(W, f), "utf8");
 const must = (cond, msg) => { if (!cond) throw new Error("build: " + msg); };
-const rep = (a, b) => { must(html.split(a).length === 2, "not exactly once: " + a.slice(0, 80)); html = html.replace(a, () => b); };
+const HOOKS = [
+  [`  msReset(); dbClear(); wipeSeed(); planClear(); camStop();
+}`, `  msReset(); dbClear(); wipeSeed(); planClear(); camStop();
+  if(typeof ssPageWipe === "function") ssPageWipe();   // v2.13.0: the practice signer (stops it, wipes its seeds, closes its box)
+}`],
+  [`for(const f of [reforgeStop, msReset, () => practiceMode(false), wipeSeed,`, `for(const f of [reforgeStop, msReset, () => practiceMode(false), () => ssPageWipe(), wipeSeed,`],
+  [`function autoHasSecrets(){ return hasSeed() || !!dbGot ||`, `function autoHasSecrets(){ return hasSeed() || !!dbGot || (typeof ssPageActive === "function" && ssPageActive()) ||`],
+  [`  reforgeStop(); msReset(); dbClear(); wipeSeed(); planClear(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
+  for(const id of AUTO_FIELDS)`, `  reforgeStop(); msReset(); dbClear(); wipeSeed(); planClear(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
+  if(typeof ssPageWipe === "function") ssPageWipe();   // v2.13.0: the practice signer
+  for(const id of AUTO_FIELDS)`],
+];
+const once = (h, a) => h.split(a).length === 2;
+function unbuild(h) {
+  if (h.indexOf('<details id="ssBox">') < 0) return h;                       // no practice signer in it
+  const cssA = h.indexOf("\n  /* Practice signer (SeedSigner 0.8.7"); must(cssA > 0, "unbuild: css start");
+  const cssZ = h.indexOf("</style>", cssA); must(cssZ > cssA, "unbuild: css end");
+  h = h.slice(0, cssA) + "\n" + h.slice(cssZ);
+  const boxA = h.indexOf('\n    <details id="ssBox">'); must(boxA > 0, "unbuild: box start");
+  const boxZ = h.indexOf("</details>", boxA); must(boxZ > boxA, "unbuild: box end");
+  h = h.slice(0, boxA) + h.slice(boxZ + 10);
+  for (const [a, b] of HOOKS) { must(once(h, b), "unbuild: hook not exactly once: " + a.slice(0, 60)); h = h.replace(b, () => a); }
+  const tag = '<script>\n"use strict";\n// v2.13.0 practice signer: ';
+  const sA = h.indexOf(tag); must(sA > 0, "unbuild: scripts start");
+  const last = h.lastIndexOf(tag); const sZ = h.indexOf("</script>\n", last); must(sZ > last, "unbuild: scripts end");
+  h = h.slice(0, sA) + h.slice(sZ + 10);
+  must(h.indexOf("ssPage") < 0 && h.indexOf("ssBox") < 0, "unbuild: practice signer left in the page");
+  return h;
+}
+let html = unbuild(fs.readFileSync(path.join(WT, "voidforge.html"), "utf8"));
+if (process.argv.includes("--check")) { process.stdout.write(html); process.exit(0); }
+const before = Buffer.byteLength(html);
+const rep = (a, b) => { must(once(html, a), "not exactly once: " + a.slice(0, 80)); html = html.replace(a, () => b); };
 
 // ---- 1. CSS (in the page's one style sheet) ----
 const css = `
@@ -65,16 +98,7 @@ const box = `
 }
 
 // ---- 3. hooks in the page's wipes ----
-rep(`  msReset(); dbClear(); wipeSeed(); planClear(); camStop();
-}`, `  msReset(); dbClear(); wipeSeed(); planClear(); camStop();
-  if(typeof ssPageWipe === "function") ssPageWipe();   // v2.13.0: the practice signer (stops it, wipes its seeds, closes its box)
-}`);
-rep(`for(const f of [reforgeStop, msReset, () => practiceMode(false), wipeSeed,`, `for(const f of [reforgeStop, msReset, () => practiceMode(false), () => ssPageWipe(), wipeSeed,`);
-rep(`function autoHasSecrets(){ return hasSeed() || !!dbGot ||`, `function autoHasSecrets(){ return hasSeed() || !!dbGot || (typeof ssPageActive === "function" && ssPageActive()) ||`);
-rep(`  reforgeStop(); msReset(); dbClear(); wipeSeed(); planClear(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
-  for(const id of AUTO_FIELDS)`, `  reforgeStop(); msReset(); dbClear(); wipeSeed(); planClear(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
-  if(typeof ssPageWipe === "function") ssPageWipe();   // v2.13.0: the practice signer
-  for(const id of AUTO_FIELDS)`);
+for (const [a, b] of HOOKS) rep(a, b);
 
 // ---- 4. the scripts, after the main script: fonts, tools PART A, engine, seeds, tools PART B + PSBT (stage 2), page glue ----
 const tools = rd("ss_tools_settings.js");
