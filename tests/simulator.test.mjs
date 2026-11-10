@@ -31,7 +31,7 @@
 //   psbt_wipe   CLEAR ALL in the middle of a PSBT flow overwrites the PSBT, signatures, signing key and descriptor keys
 //   review      two quick taps count twice and a held key repeats; regtest bcrt1 addresses in the Address Explorer (from an
 //               xpub); a "bitcoin:" QR with no address goes Home; tr() with a script tree is "Not Yet Implemented"
-// And: the page self-test passes (140/140) in every page opened, and no page error or console error happens in any of them.
+// And: the page self-test passes (141/141) in every page opened, and no page error or console error happens in any of them.
 // Run: node tests/simulator.test.mjs        (SCEN=dice12,wipe to run some; SIM_CONC=4 to run fewer at a time)
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
@@ -940,7 +940,7 @@ const queue = want.filter((n) => SCEN[n]); const CONC = +(process.env.SIM_CONC |
 await Promise.all(Array.from({ length: Math.min(CONC, queue.length) }, async () => { while (queue.length) await runScenario(browser, queue.shift()); }));
 await browser.close();
 if (!process.env.SCEN) {
-  ok(badges.size === 1 && [...badges][0] === 'SELF-TEST PASSED (140/140)', 'the page self-test passes 140/140 in every page opened (' + [...badges].join(' / ') + ')');
+  ok(badges.size === 1 && [...badges][0] === 'SELF-TEST PASSED (141/141)', 'the page self-test passes 141/141 in every page opened (' + [...badges].join(' / ') + ')');
 }
 ok(pageProblems.length === 0, 'no page error and no console error in any page during the whole run' + (pageProblems.length ? ': ' + pageProblems.slice(0, 4).join(' || ') : ''));
 console.log('(scenario times: ' + results.map((r) => r.name + ' ' + r.secs + 's').join(', ') + '; total ' + Math.round((Date.now() - T0) / 1000) + 's)');
