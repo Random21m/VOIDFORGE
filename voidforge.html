@@ -1588,6 +1588,20 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <pre id="b138Out" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
       <div class="btn-row" id="b138CopyRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" onclick="b138CopyDesc(this)">COPY DESCRIPTOR</button></div>
     </div>
+    <div class="sec-block" id="dbBlock">
+      <h3 class="sec">Open a signing device&rsquo;s backup<span class="tag tag-secret">SECRET</span></h3>
+      <p class="hint" style="margin:0 0 6px;">An encrypted backup a signing device wrote: a <b>TAPSIGNER</b> backup (.aes) with the key printed on the back of the card, a <b>Krux</b> encrypted seed (the encrypted QR&rsquo;s text, or seeds.json) with its key, or a <b>Coldcard</b> backup (.7z) with its 12 backup words. VOIDFORGE opens it here, offline, and shows which wallet it holds (the fingerprint and first addresses), so you know the backup works. The backup holds the wallet&rsquo;s private keys: open it only on your offline computer.</p>
+      <select id="dbKind" aria-label="Which device made the backup" style="width:100%;" onchange="dbWipe()"><option value="ts">TAPSIGNER backup (.aes)</option><option value="krux">Krux encrypted seed (QR text or seeds.json)</option><option value="cc">Coldcard backup (.7z)</option></select>
+      <input type="file" id="dbFile" accept=".aes,.sh,.7z,.json,.txt,application/octet-stream,text/plain,application/json" aria-label="Choose the backup file" onchange="dbWipe()" style="width:100%; margin-top:6px;">
+      <textarea id="dbIn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Or the backup as text" placeholder="Or paste it as text: the encrypted QR&rsquo;s text (Krux), seeds.json, or a TAPSIGNER .sh backup" style="margin-top:6px;" oninput="dbWipe()"></textarea>
+      <input type="password" id="dbKey" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="The backup's key or password" placeholder="Key or password: 32 characters from the card, the Krux key, or the 12 Coldcard words" style="width:100%; margin-top:6px;" oninput="dbWipe()">
+      <label style="display:block; margin-top:4px; font-size:13px;"><input type="checkbox" id="dbShowKey" onchange="document.getElementById('dbKey').type = this.checked ? 'text' : 'password'"> Show what I type</label>
+      <div class="btn-row" style="margin-top:8px;"><button type="button" id="dbBtn" onclick="dbOpenUi()" disabled>OPEN BACKUP</button><button type="button" class="secondary small" onclick="dbClear()">CLEAR</button></div>
+      <div class="status" id="dbStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+      <pre id="dbOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
+      <div class="btn-row" id="dbSecretRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" id="dbShowBtn" onclick="dbReveal()">SHOW THE SECRET</button><button type="button" class="secondary small" id="dbUseBtn" onclick="dbUseWords()">PUT THE WORDS IN THE BOX ABOVE</button></div>
+      <pre id="dbSecret" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:15px; margin:8px 0 0; -webkit-user-select:none; user-select:none;"></pre>
+    </div>
     <div class="sec-block" id="lbBlock">
       <h3 class="sec">Read a label file (BIP329)<span class="tag tag-private">PRIVATE</span></h3>
       <p class="hint" style="margin:0 0 6px;">Wallet apps such as Sparrow, Bitcoin Core and Nunchuk can export their labels (&ldquo;Rent, March&rdquo;, &ldquo;Savings&rdquo;) as a BIP329 file. Paste it or choose it: VOIDFORGE lists every label and, with the seed words typed above, says which labeled addresses are this seed&rsquo;s (the first 100 receive and change addresses of each address type, account 0). Labels are private: they link coins to you. The file is only read here, never stored or sent.</p>
@@ -6531,6 +6545,7 @@ async function runSelfTests(auto){
   eq("CompactSeedQR code (21 x 21 squares) equals the independent qrcode library (mask 0)", ()=>sqHash("compact"), "9bb4e6caab91bea9bfb4612b7f90ba3ee3dd2c0d6e56d9bbab36d7c93d927010");
   b138SelfTests(eq);   // v2.10.0: BIP138 encrypted descriptor backups (official vectors) and descriptor addresses (embit)
   c32SelfTests(eq);   // v2.11.0: codex32 (BIP93 test vectors, and strings made from fixed rolls)
+  dbSelfTests(eq);   // v2.12.0: device backups (Krux and Coinkite test data)
   // v2.10.0: punch plates, numbered from 1 as Krux numbers them (worked out by hand: legal = 1020 = 512+256+...+4, zoo = 2048, abandon = 1)
   eq("punch plates: legal, zoo and abandon as a binary grid, Stackbit 1248, decimal, hex and octal (Krux counts from 1)", ()=>["legal","zoo","abandon"].map(w=>{ const n=pnNum(w), b=pnBases(n); return pnBits(n).join("")+" "+pnStack(n).map(d=>d.join("+")||"0").join("|")+" "+b.dec+" "+b.hex+" "+b.oct; }).join(", "), "001111111100 1|0|2|0 1020 3FC 1774, 100000000000 2|0|4|8 2048 800 4000, 000000000001 0|0|0|1 1 1 1");
   eq("punch plates read back: hex, octal, a ticked binary grid and a ticked Stackbit plate give the words", ()=>[pnParse("3FC 7e0", 16), pnParse("1774 3740", 8), pnReadRows("grid", [pnBits(1020), pnBits(2048)]), pnReadRows("stack", [[1,0,0,0,0,0,0,1,0,0,0,0,0,0], [0,1,0,0,0,0,1,0,0,0,0,1,1,0]])].map(r=>r.words.join(" ")).join(", "), "legal winner, legal winner, legal zoo, legal winner");
@@ -10160,7 +10175,7 @@ function updateRollHistory(rolls){
 function clearAll(){
   if(!confirm("Clear all rolls, results, the verify box, the backup plan and (if the browser allows) the clipboard?")) return;
   reforgeStop(); reforgeReset(true); AUTO_FIELDS.forEach(id => { const e = document.getElementById(id); if(e) e.value = ""; });   // v2.6.0: also Reforge and every box auto-clear wipes
-  msReset(); wipeSeed(); planClear(); camStop();
+  msReset(); dbClear(); wipeSeed(); planClear(); camStop();
 }
 
 // END SESSION (v2.3.0, in the MENU): wipes everything on the page, forgets that the start notice was read, then reloads the page,
@@ -10230,15 +10245,15 @@ function wipeSeed(){
 }
 
 // Auto-clear (v1.34.0): optional, off at every page load, nothing stored. Wipes the secrets without asking after idle time or when the tab is hidden.
-const AUTO_FIELDS = ["pkIn", "rolls", "passphrase", "passphrase2", "note", "phrase", "verifyPass", "verifyRecorded", "checkAddr", "drillWords", "drillPass", "prInput", "reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "wdWords", "wdFlips", "wdFind", "cdCards", "cdHex", "s39In", "s39Pass", "dpRolls", "dcRolls", "s39mRolls", "s39mPass", "s39mPass2", "cmxTrng", "cmxRolls"];
+const AUTO_FIELDS = ["pkIn", "rolls", "passphrase", "passphrase2", "note", "phrase", "verifyPass", "verifyRecorded", "checkAddr", "drillWords", "drillPass", "prInput", "reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "wdWords", "wdFlips", "wdFind", "cdCards", "cdHex", "s39In", "s39Pass", "dpRolls", "dcRolls", "s39mRolls", "s39mPass", "s39mPass2", "cmxTrng", "cmxRolls", "dbIn", "dbKey"];
 let autoLast = Date.now(), autoTimer = null;
 function autoTouch(){ autoLast = Date.now(); }
 ["keydown", "pointerdown", "input", "touchstart", "wheel"].forEach(e => document.addEventListener(e, autoTouch, {capture: true, passive: true}));
 function autoMinutes(){ return parseInt(document.getElementById("autoIdle").value, 10) || 0; }
-function autoHasSecrets(){ return hasSeed() || AUTO_FIELDS.some(id => { const e = document.getElementById(id); return !!(e && e.value); }); }
+function autoHasSecrets(){ return hasSeed() || !!dbGot || AUTO_FIELDS.some(id => { const e = document.getElementById(id); return !!(e && e.value); }); }
 function autoWipe(why){
   if(!autoHasSecrets()) return false;
-  reforgeStop(); msReset(); wipeSeed(); planClear(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
+  reforgeStop(); msReset(); dbClear(); wipeSeed(); planClear(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
   for(const id of AUTO_FIELDS){ const e = document.getElementById(id); if(e) e.value = ""; }
   const ro = document.getElementById("reforgeOut"); ro.textContent = ""; ro.style.display = "none";
   updateCount(); autoTouch();
@@ -12734,6 +12749,336 @@ document.getElementById("wpIn").addEventListener("input", () => b138MakeClear("w
 document.getElementById("msxIn").addEventListener("input", () => b138MakeClear("mxb", true));
 const CRYPTO_OK = typeof BigInt === "function" && !!(window.crypto && window.crypto.subtle);
 let selfTestState = "pending";
+// ===== v2.12.0 Open a signing device's backup: TAPSIGNER (.aes), Krux encrypted seeds (KEF and the older seeds.json), Coldcard (.7z) =====
+// Each format is read exactly as its maker's own code writes it (sources in the comments). Nothing is guessed: a file that does not fit
+// is refused with the reason. The secret is kept only until CLEAR, CLEAR ALL or auto-clear, and is shown only when asked.
+// AES-CBC with no padding: WebCrypto strips PKCS7 padding and refuses anything else, so one block is added that decrypts to a full block
+// of padding: encrypting nothing with the last ciphertext block as IV gives E(last XOR 16 x 0x10), which is exactly that block.
+async function dbCbcNoPad(raw, iv, ct){
+  if(!ct.length || ct.length % 16) throw new Error("the encrypted data is not whole 16-byte blocks");
+  const k = await crypto.subtle.importKey("raw", raw, {name: "AES-CBC"}, false, ["encrypt", "decrypt"]);
+  const extra = new Uint8Array(await crypto.subtle.encrypt({name: "AES-CBC", iv: ct.slice(-16)}, k, new Uint8Array(0)));
+  return new Uint8Array(await crypto.subtle.decrypt({name: "AES-CBC", iv}, k, concatBytes(ct, extra)));
+}
+// AES-ECB (not in WebCrypto): each block on its own, as CBC with an all-zero IV.
+async function dbEcb(raw, ct){
+  if(!ct.length || ct.length % 16) throw new Error("the encrypted data is not whole 16-byte blocks");
+  const out = []; for(let i = 0; i < ct.length; i += 16) out.push(await dbCbcNoPad(raw, new Uint8Array(16), ct.slice(i, i + 16)));
+  return concatBytes(...out);
+}
+const dbEq = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+const dbUtf8 = (b) => new TextDecoder("utf-8", {fatal: true}).decode(b);
+function dbB64(t){ const b = b64bytes(t); if(!b) throw new Error("its Base64 text is not valid"); return b; }
+
+// --- TAPSIGNER (coinkite-tap-proto docs/protocol.md, "backup"; emulator/ecard.py cmd_backup) ---
+// AES-128-CTR, all-zero counter block, with the 16-byte key printed in hex on the back of the card. The plaintext is two text lines:
+// the master xprv (Base58Check) and the card's derivation path, such as m/84h/0h/0h (steps over 32768 may be written 0x...h).
+function tsCipher(bytes){
+  const t = (() => { try { return dbUtf8(bytes); } catch(e) { return null; } })();
+  if(t !== null && /END-OF-DATA/.test(t)){   // the .sh form cktap writes: the file in Base64 between two END-OF-DATA lines
+    const m = /<<\s*END-OF-DATA[^\n]*\n([\s\S]*?)\nEND-OF-DATA/.exec(t); if(!m) throw new Error("this .sh backup has no data between its END-OF-DATA lines");
+    return dbB64(m[1].replace(/\s+/g, ""));
+  }
+  return bytes;
+}
+async function tsOpen(bytes, keyText){
+  const kh = String(keyText || "").replace(/[\s-]/g, "").toLowerCase();
+  if(!/^[0-9a-f]{32}$/.test(kh)) throw new Error("The key on the back of the card is 32 characters (0-9 and a-f).");
+  const ct = tsCipher(bytes); if(ct.length < 100 || ct.length > 4096) throw new Error("This is not a TAPSIGNER backup: it is " + ct.length + " bytes long.");
+  const key = await crypto.subtle.importKey("raw", fromHex(kh), {name: "AES-CTR"}, false, ["decrypt"]);
+  const pt = new Uint8Array(await crypto.subtle.decrypt({name: "AES-CTR", counter: new Uint8Array(16), length: 128}, key, ct));
+  const wrong = "The key does not open this file: check the 32 characters from the back of the card (or this is not a TAPSIGNER backup).";
+  let lines; try { lines = dbUtf8(pt).split("\n"); } catch(e) { throw new Error(wrong); }
+  let raw; try { raw = await base58decode(lines[0].trim()); } catch(e) { throw new Error(wrong); }
+  const ver = hex(raw.slice(0, 4));
+  if(raw.length !== 78 || (ver !== "0488ade4" && ver !== "04358394") || raw[45] !== 0) throw new Error(wrong);
+  const k = BigInt("0x" + hex(raw.slice(46, 78))); if(k === 0n || k >= SN) throw new Error(wrong);
+  const p = (lines[1] || "").trim().replace(/0x([0-9a-fA-F]{1,8})/g, (a, h) => String(parseInt(h, 16)));
+  const steps = parsePath(p); if(!steps) throw new Error("The backup opened, but its path line (“" + (lines[1] || "").slice(0, 40) + "”) is not a path.");
+  const fp = hex((await hash160(pubkeyBytes(k))).slice(0, 4));
+  return {kind: "ts", net: ver === "04358394" ? "test" : "main", root: [k, raw.slice(13, 45)], fp, steps, path: p, xprv: lines[0].trim(), depth: raw[4], extra: lines.slice(2).filter(x => x.trim()).length};
+}
+
+// --- Krux (selfcustody/krux v26.09.0: src/krux/kef.py, src/krux/encryption.py, docs .../kef-specifications) ---
+// KEF envelope: len_id(1) | id | version(1) | iterations(3, big-endian; up to 10000 it counts in 10000s) | payload. The key is
+// PBKDF2-HMAC-SHA256(key, salt = id, iterations), 32 bytes (AES-256).
+const KEF_V = {0: {m: "ecb", pad: "nul", auth: 16}, 1: {m: "cbc", pad: "nul", auth: 16}, 5: {m: "ecb", pad: "nul", x: 3}, 6: {m: "ecb", pad: "pkcs", auth: 4},
+  7: {m: "ecb", pad: "pkcs", auth: 4, z: true}, 10: {m: "cbc", pad: "nul", x: 4}, 11: {m: "cbc", pad: "pkcs", auth: 4}, 12: {m: "cbc", pad: "pkcs", auth: 4, z: true},
+  15: {m: "ctr", auth: 4}, 16: {m: "ctr", auth: 4, z: true}, 20: {m: "gcm"}, 21: {m: "gcm", z: true}};
+function kefUnwrap(b){
+  if(!b || b.length < 6) return null;
+  const n = b[0]; if(n < 1 || n > 252 || b.length < n + 6) return null;
+  const id = b.slice(1, 1 + n), v = b[1 + n], V = KEF_V[v]; if(!V) return null;
+  const s = (b[2 + n] << 16) | (b[3 + n] << 8) | b[4 + n], iters = s <= 10000 ? s * 10000 : s;
+  if(iters < 10000) return null;
+  const pay = b.slice(5 + n), ivLen = V.m === "cbc" ? 16 : V.m === "ctr" || V.m === "gcm" ? 12 : 0, tail = V.x || (V.m === "gcm" ? 4 : 0), body = pay.length - ivLen - tail;
+  if(body <= 0 || ((V.m === "ecb" || V.m === "cbc") && body % 16)) return null;
+  return {id, v, V, iters, iv: pay.slice(0, ivLen), ct: pay.slice(ivLen, ivLen + body), tag: pay.slice(ivLen + body)};
+}
+async function kefKey(password, salt, iters){
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), {name: "PBKDF2"}, false, ["deriveBits"]);
+  return new Uint8Array(await crypto.subtle.deriveBits({name: "PBKDF2", hash: "SHA-256", salt, iterations: iters}, base, 256));
+}
+// The plaintext, or null when the key does not fit (the check fails).
+async function kefDecrypt(e, password){
+  const k = await kefKey(password, e.id, e.iters), V = e.V, sh = async (...p) => sha256bytes(concatBytes(...p));
+  let p;
+  if(V.m === "gcm"){
+    const key = await crypto.subtle.importKey("raw", k, {name: "AES-GCM"}, false, ["decrypt"]);
+    try { p = new Uint8Array(await crypto.subtle.decrypt({name: "AES-GCM", iv: e.iv, tagLength: 32}, key, concatBytes(e.ct, e.tag))); } catch(x) { return null; }
+    return V.z ? inflateRaw(p) : p;
+  }
+  if(V.m === "ctr"){
+    const key = await crypto.subtle.importKey("raw", k, {name: "AES-CTR"}, false, ["decrypt"]);
+    p = new Uint8Array(await crypto.subtle.decrypt({name: "AES-CTR", counter: concatBytes(e.iv, new Uint8Array(4)), length: 32}, key, e.ct));
+  } else p = V.m === "ecb" ? await dbEcb(k, e.ct) : await dbCbcNoPad(k, e.iv, e.ct);
+  if(V.pad === "pkcs"){ const n = p[p.length - 1]; if(n < 1 || n > 16 || n > p.length) return null; p = p.slice(0, p.length - n); }
+  // hidden check: the first bytes of SHA-256 of the data, after it; exposed check (v5, v10): SHA-256 of version, IV, data and key, outside.
+  const ok = async (q) => {
+    if(V.x) return dbEq((await sh(Uint8Array.of(e.v), e.iv, q, k)).slice(0, V.x), e.tag);
+    if(q.length <= V.auth) return false;
+    const d = q.slice(0, q.length - V.auth); return dbEq((await sh(d)).slice(0, V.auth), q.slice(q.length - V.auth));
+  };
+  const strip = (q) => V.x ? q : q.slice(0, q.length - V.auth);
+  if(V.pad === "nul"){   // NUL padding: strip the zeros, then give them back one at a time (the data or its check may end in zeros)
+    let end = p.length; while(end > 0 && p[end - 1] === 0) end--;
+    for(let r = 0; r <= (V.auth || V.x) + 1 && end + r <= p.length; r++){ const q = p.slice(0, end + r); if(await ok(q)){ p = strip(q); return V.z ? inflateRaw(p) : p; } }
+    return null;
+  }
+  if(!await ok(p)) return null;
+  p = strip(p); return V.z ? inflateRaw(p) : p;
+}
+// Krux QR text is base43 (Electrum's alphabet; each leading "0" is a zero byte). Krux's scanner also takes hex, Base64 and base32.
+const B43 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$*+-./:";
+function base43Decode(t){
+  let n = 0n; for(const ch of t){ const v = B43.indexOf(ch); if(v < 0) throw new Error("not base43"); n = n * 43n + BigInt(v); }
+  let h = n ? n.toString(16) : ""; if(h.length % 2) h = "0" + h;
+  let z = 0; for(const ch of t){ if(ch === "0") z++; else break; }
+  return concatBytes(new Uint8Array(z), fromHex(h));
+}
+function kefFromText(t){
+  const s = t.replace(/\s+/g, ""), tries = [];
+  if(/^[0-9A-Z$*+\-./:]+$/.test(s)) tries.push(() => base43Decode(s));
+  if(/^([0-9a-fA-F]{2})+$/.test(s)) tries.push(() => fromHex(s.toLowerCase()));
+  if(/^[A-Za-z0-9+/]+={0,2}$/.test(s)) tries.push(() => dbB64(s));
+  if(/^[A-Z2-7]+=*$/.test(s)) tries.push(() => base32Decode(s.replace(/=+$/, "")));
+  for(const f of tries){ try { const e = kefUnwrap(f()); if(e) return e; } catch(x) { /* the next way */ } }
+  return null;
+}
+// The words in a decrypted Krux seed: BIP39 entropy bytes (what Krux writes), the words as text, or SeedQR digits.
+async function kruxWords(p){
+  if([16, 20, 24, 28, 32].includes(p.length)) return entropyToMnemonic(p);
+  let t; try { t = dbUtf8(p).trim(); } catch(e) { return null; }
+  if(/^(\d{48}|\d{96})$/.test(t)) return t.match(/\d{4}/g).map(x => WORDLIST[parseInt(x, 10)] || "?").join(" ");
+  return /\s/.test(t) ? t.toLowerCase().split(/\s+/).join(" ") : null;
+}
+// The older seeds.json entries (encryption.py): {"version": 0 (ECB) or 1 (CBC, IV first), "key_iterations": N, "data": Base64}; the salt is the
+// entry's ID, the plaintext the words as text padded with zeros, and there is no check: the words' own checksum tells a wrong key.
+async function kruxLegacy(id, ent, password){
+  const k = await kefKey(password, new TextEncoder().encode(id), ent.key_iterations), d = dbB64(String(ent.data));
+  let p = ent.version === 1 ? await dbCbcNoPad(k, d.slice(0, 16), d.slice(16)) : await dbEcb(k, d);
+  let end = p.length; while(end > 0 && p[end - 1] === 0) end--;
+  try { return dbUtf8(p.slice(0, end)).trim(); } catch(e) { return null; }
+}
+async function kruxOpen(bytes, text, password, isFile){
+  if(!password) throw new Error("Type the key the seed was encrypted with.");
+  const t = text !== null ? text.trim() : null, found = [];
+  if(t && t[0] === "{"){
+    let j; try { j = JSON.parse(t); } catch(e) { throw new Error("This looks like seeds.json, but it is not valid JSON."); }
+    for(const [id, ent] of Object.entries(j)){
+      if(!ent || typeof ent !== "object") continue;
+      if(typeof ent.b64_kef === "string"){ const e = kefUnwrap(dbB64(ent.b64_kef)); if(e) found.push({id, e}); }
+      else if((ent.version === 0 || ent.version === 1) && Number.isInteger(ent.key_iterations) && ent.key_iterations > 0 && ent.key_iterations <= 10000000 && typeof ent.data === "string") found.push({id, legacy: ent});
+    }
+    if(!found.length) throw new Error("No encrypted seed was found in this seeds.json.");
+  } else {
+    const e = (t ? kefFromText(t) : null) || (isFile ? kefUnwrap(bytes) : null);
+    if(!e) throw new Error("This is not a Krux encrypted seed: no KEF envelope was found (Krux writes it as the encrypted QR’s text, or in seeds.json).");
+    found.push({id: null, e});
+  }
+  const out = [];
+  for(const f of found){
+    let words = null;
+    if(f.legacy) words = await kruxLegacy(f.id, f.legacy, password);
+    else { const p = await kefDecrypt(f.e, password); if(p) words = await kruxWords(p); }
+    const r = words ? await checkPhrase(words) : null;
+    const id = f.legacy ? f.id : (() => { try { return dbUtf8(f.e.id); } catch(x) { return hex(f.e.id); } })();
+    out.push({id, version: f.legacy ? "seeds.json version " + f.legacy.version + " (older)" : "KEF version " + f.e.v, iters: f.legacy ? f.legacy.key_iterations : f.e.iters, mnemonic: r && r.ok ? r.mnemonic : null});
+  }
+  return {kind: "krux", list: out};
+}
+
+// --- Coldcard (Coldcard/firmware: shared/backups.py, shared/compat7z.py; 7-Zip's 7zFormat.txt and 7zAes.cpp) ---
+// A 7z file with one AES-256 coder and no compression: 32-byte start header, the encrypted data, then a plain header. The key is SHA-256
+// over (salt, the password in UTF-16LE, an 8-byte counter) for 2^N rounds in one hash; AES-256-CBC, zero-padded, checked by CRC32.
+function cc7zParse(b){
+  const sig = [0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c];
+  if(b.length < 32 || !sig.every((x, i) => b[i] === x)) return null;
+  const u32 = (i) => (b[i] | b[i + 1] << 8 | b[i + 2] << 16 | b[i + 3] << 24) >>> 0, u64 = (i) => u32(i) + u32(i + 4) * 4294967296;
+  if(crc32(b.slice(12, 32)) !== u32(8)) throw new Error("its start header is damaged (CRC does not match)");
+  const off = u64(12), size = u64(20); if(32 + off + size > b.length || size < 8) throw new Error("the file is cut short");
+  const h = b.slice(32 + off, 32 + off + size); if(crc32(h) !== u32(28)) throw new Error("its header is damaged (CRC does not match)");
+  let i = 0; const byte = () => { if(i >= h.length) throw new Error("its header ends early"); return h[i++]; };
+  const num = () => { const f = byte(); let mask = 0x80, v = 0; for(let k = 0; k < 8; k++){ if(!(f & mask)){ return v + ((f & (mask - 1)) * 2 ** (8 * k)); } v += byte() * 2 ** (8 * k); mask >>= 1; } return v; };
+  const need = (id, what) => { const x = byte(); if(x !== id) throw new Error("it is not laid out like a Coldcard backup (" + what + ")"); };
+  const wait = (id) => { for(;;){ const x = num(); if(x === id) return; if(x === 0) throw new Error("it is not laid out like a Coldcard backup"); const skip = num(); i += skip; } };   // 7-Zip skips unknown parts
+  const top = byte(); if(top === 0x17) throw new Error("its header is compressed or encrypted, which a Coldcard never writes"); if(top !== 0x01) throw new Error("it has no header");
+  need(0x04, "streams"); need(0x06, "pack info"); const packPos = num(); if(num() !== 1) throw new Error("it has more than one stream");
+  need(0x09, "pack size"); const packSize = num(); for(let x = byte(); x !== 0; x = byte()) throw new Error("it is not laid out like a Coldcard backup (pack info)");
+  need(0x07, "unpack info"); need(0x0b, "folder"); if(num() !== 1) throw new Error("it has more than one folder"); if(byte() !== 0) throw new Error("it uses an external folder");
+  if(num() !== 1) throw new Error("it uses more than one coder, so it is compressed: a Coldcard backup is not");
+  const flag = byte(); if(flag & 0x10) throw new Error("it uses a complex coder");
+  const cid = hex(h.slice(i, i + (flag & 0x0f))); i += flag & 0x0f;
+  if(cid !== "06f10701") throw new Error("it is not encrypted with 7-Zip's AES (coder " + cid + ")");
+  if(!(flag & 0x20)) throw new Error("its AES settings are missing");
+  const pl = num(), props = h.slice(i, i + pl); i += pl;
+  wait(0x0c); const unpackSize = num(); need(0x00, "end of unpack info");
+  need(0x08, "substreams"); need(0x0a, "CRC"); if(byte() !== 1) throw new Error("its CRC is missing"); const crc = (h[i] | h[i + 1] << 8 | h[i + 2] << 16 | h[i + 3] << 24) >>> 0; i += 4;
+  if(packSize % 16 || packSize < unpackSize || 32 + packPos + packSize > 32 + off) throw new Error("its sizes do not fit together");
+  if(props.length < 2) throw new Error("its AES settings are too short");
+  const pow = props[0] & 0x3f, sl = ((props[0] >> 7) & 1) + (props[1] >> 4), il = ((props[0] >> 6) & 1) + (props[1] & 0x0f);
+  if(pow === 0x3f) throw new Error("it uses 7-Zip's no-hash key mode, which a Coldcard never writes");
+  if(pow > 19) throw new Error("it asks for 2^" + pow + " key rounds; a Coldcard writes 2^13 and reads at most 2^19");
+  if(props.length < 2 + sl + il) throw new Error("its AES settings are too short");
+  const salt = props.slice(2, 2 + sl), iv = concatBytes(props.slice(2 + sl, 2 + sl + il), new Uint8Array(16 - il));
+  return {pow, salt, iv, ct: b.slice(32 + packPos, 32 + packPos + packSize), unpackSize, crc};
+}
+async function cc7zKey(salt, password, pow){
+  const pw = new Uint8Array(password.length * 2); for(let j = 0; j < password.length; j++){ const c = password.charCodeAt(j); pw[2 * j] = c & 255; pw[2 * j + 1] = c >> 8; }
+  const unit = salt.length + pw.length + 8, rounds = 2 ** pow, buf = new Uint8Array(unit * rounds);
+  for(let r = 0; r < rounds; r++){ const o = r * unit; buf.set(salt, o); buf.set(pw, o + salt.length); let c = r; for(let j = 0; j < 8; j++){ buf[o + salt.length + pw.length + j] = c & 255; c = Math.floor(c / 256); } }
+  return sha256bytes(buf);
+}
+// The password: the 12 words, lowercase, one space apart (backups.py); 4-letter starts are filled in. Anything else (a custom backup
+// password, 32 to 128 characters) is used exactly as typed.
+function ccPassword(t){
+  const w = String(t).trim().toLowerCase().split(/\s+/);
+  if(w.length === 12 && w.every(x => WORDLIST.includes(x) || (x.length === 4 && WORDLIST.filter(y => y.startsWith(x)).length === 1))) return w.map(x => WORDLIST.includes(x) ? x : WORDLIST.find(y => y.startsWith(x))).join(" ");
+  return String(t);
+}
+// The text inside: "key = JSON value" lines; # lines are comments. raw_secret is the seed record (stash.py): 0x80|n then 16, 24 or 32 bytes of
+// BIP39 entropy; 0x01 then a chain code and a private key (an xprv-only wallet); or a length of 16 to 64 then a raw BIP32 seed.
+async function ccRead(text){
+  if(!/^# Coldcard backup file/.test(text)) throw new Error("It opened, but it is not a Coldcard backup text (its first line is wrong).");
+  const v = {};
+  for(const line of text.split("\n")){ if(!line.trim() || line[0] === "#") continue; const at = line.indexOf(" = "); if(at < 0) continue; try { v[line.slice(0, at)] = JSON.parse(line.slice(at + 3)); } catch(e) { /* not JSON: left out */ } }
+  const net = v.chain === "XTN" ? "test" : "main", rs = typeof v.raw_secret === "string" ? v.raw_secret : null;
+  if(!rs || !/^[0-9a-f]+$/.test(rs) || rs.length > 144) throw new Error("It opened, but it has no seed record (raw_secret) this page can read.");
+  const r = fromHex(rs.padEnd(144, "0").slice(0, 144)), m = r[0];
+  const also = [v["setting.multisig"] ? "multisig wallet setups" : "", v["setting.seeds"] ? "a seed vault" : "", Object.keys(v).some(k => /^duress_/.test(k)) ? "duress (decoy) wallets" : "", v["setting.notes"] ? "secure notes" : ""].filter(Boolean);
+  const base = {kind: "cc", net, fw: [v.hardware, v.fw_version].filter(x => typeof x === "string").join(" "), also};
+  if(m & 0x80){
+    const n = ((m & 3) + 2) * 8, words = await entropyToMnemonic(r.slice(1, 1 + n));
+    if(typeof v.mnemonic === "string" && v.mnemonic.trim().toLowerCase().split(/\s+/).join(" ") !== words) throw new Error("It opened, but its words and its seed record disagree: the backup is damaged.");
+    return Object.assign(base, {mnemonic: words});
+  }
+  if(m === 0x01){ const k = BigInt("0x" + hex(r.slice(33, 65))); if(k === 0n || k >= SN) throw new Error("Its key is not valid."); return Object.assign(base, {root: [k, r.slice(1, 33)], xprvOnly: true}); }
+  if(m >= 16 && m <= 64) return Object.assign(base, {seed: r.slice(1, 1 + m)});
+  throw new Error("It opened, but its seed record is of a kind this page does not know (" + m + ").");
+}
+async function ccOpen(bytes, password, name){
+  if(/^[0-9a-f]{66}-ccbk\.7z$/i.test(name || "")) throw new Error("This is a Coldcard clone file. Its password is made by the two Coldcards together, so only the receiving Coldcard can open it.");
+  let plain = null;
+  if(bytes.length > 22 && dbUtf8Safe(bytes.slice(0, 22)) === "# Coldcard backup file") plain = dbUtf8(bytes);
+  else {
+    let z; try { z = cc7zParse(bytes); } catch(e) { throw new Error("This 7z file is not a Coldcard backup: " + e.message + "."); }
+    if(!z) throw new Error("This is not a Coldcard backup: Coldcard backups are .7z files.");
+    if(!password) throw new Error("Type the 12 backup words the Coldcard showed (or its custom backup password).");
+    const p = (await dbCbcNoPad(await cc7zKey(z.salt, ccPassword(password), z.pow), z.iv, z.ct)).slice(0, z.unpackSize);
+    if(crc32(p) !== z.crc) throw new Error("These words do not open this backup (or the file is damaged). Check each of the 12 words and their order.");
+    try { plain = dbUtf8(p); } catch(e) { throw new Error("It opened, but the text inside is not valid."); }
+  }
+  return ccRead(plain);
+}
+function dbUtf8Safe(b){ try { return dbUtf8(b); } catch(e) { return ""; } }
+
+// --- the result, in plain words ---
+const DB_TYPES = {44: ["pkh", "legacy"], 49: ["sh-wpkh", "nested SegWit"], 84: ["wpkh", "native SegWit"], 86: ["tr", "Taproot"]};
+async function dbWalletText(root, fp, net, steps){
+  const t = DB_TYPES[steps.length ? steps[0][0] : 84] || DB_TYPES[84], last = ADDR_SHOWN - 1, tn = net === "test" ? " TESTNET (practice coins only)" : "";
+  const p = "m" + steps.map(([i, h]) => "/" + i + (h ? "'" : "")).join("");
+  const rows = async (chain) => (await walletAddressesFrom(root, steps, t[0], net, chain, 0, ADDR_SHOWN)).map(a => String(chain + "/" + a.index).padEnd(5) + a.address).join("\n");
+  return "Master fingerprint: " + fp + "\n\nFirst " + ADDR_SHOWN + tn + " receive addresses (" + t[1] + ", " + p + "/0/0 to 0/" + last + "):\n" + await rows(0) +
+    "\n\nFirst " + ADDR_SHOWN + " change addresses (" + t[1] + ", " + p + "/1/0 to 1/" + last + "):\n" + await rows(1);
+}
+async function dbRootFromWords(m){ const sd = await mnemonicToSeed(m, ""); return {root: await masterFromSeed(sd), fp: await fingerprintFromSeed(sd)}; }
+// The self-test checks: one from each maker's own test data (Krux tests/test_encryption.py, Coinkite's docs/backup.7z) and, for TAPSIGNER
+// (Coinkite publishes no test file), a backup made exactly as docs/protocol.md says: BIP32 test vector 1's master key, key 41 x 16.
+const DB_KAT_TS = "f9a6bfb58465c9bc28cbeac0b0bf68a2263a9b582c4ae060c7f4750bfd5c0ef8803a0bf97d3abc96f4dd8eeaa5d31862108340306ef7b325e4717ad3f01e7bfe362582a4ddac936849125ef971b1058299fb7c544aee53ba906990e6e8aaf5051705039733710149b3865c75dc216a1447eb9913a323c066fe368e92";
+const DB_KAT_CC = "N3q8ryccAANG3l66MAIAAAAAAABuAAAAAAAAAOBcoA5oGlcK7Vt3iepKhHLUdda9RRP8amY0RzAeyAiOvE9PTR2k/JMuCP8opHHN9/5INWk6a8jr5JBs9SQSVUC7IFnlrtVie80ntkwV9c9obOkwh5bdHdGY5ePPzrOBR/N6FLjB8khVaQk/qqV+nzxZqcG2caaHv50OJrwUnu082QyQWn3q2EorFaLPmzg6/aiitUnYVgNqJmXGsslaZ7DHRApnOjYpQ+aG2Pe5NizYvDE2Rru6rncfsCXmznpYZ8GKmWmEiZTcw2/MG+hOAMp7OYJqjcpPgSGV17ii+e3TePiiGzEAQGCjoiafCPmcS9v0hvNCi5tqfpWpRxiigxNABh/wAuZIWQjKN63OKGIvqxt6lxpJwwTcift7RNTBRaN+ldhHRIrz0rrv1/0R4FW5HvnukW2cSz2IvNf7BxASQbi3TmortHI4Srv5ZTIAb+wKuPYaC7iaaqctQOTKB6oPQo+0YpWwArjHJQZISzvVvVBxJrIIlQCqOUZ0RXPl/lmuFNTxJUfIE0K873/TVlJd5ngZaBwZRlI07RiEp1+ISUuJBmcU3DRZt5rtk8qxs6mLtzm5H6Dtl/oMFN0IuqUYNLdITRqyLj0mRywotWWRxjuGaVFxIIjBxw01vxajIKTDHugCHpn4J1PfFDA3IggQ5GJVcU0l6QB0deCeplE8KVsnqzdx8SNv5CCvdGiTLD8uINtW8F9YICeoax+JKybASwDj6jWH9WmfCfbgo8erwvM1qAEEBgABCcAwAgAHCwEAASQG8QcBIs3/CgEBKDelZywfg9Z0rTFlJSmVFCj8wUaTUYOWiv0wmX8BAAzALwIACAoBlds7cQAABQERIQBjAGsAYwBjAC0AYgBhAGMAawB1AHAALgB0AHgAdAAAAAAA";
+function dbSelfTests(eq){
+  const enc = (t) => new TextEncoder().encode(t), words = async (t, pw) => (await kruxOpen(enc(t), t, pw, false)).list[0].mnemonic;
+  eq("Krux: an encrypted QR (KEF version 20, AES-GCM) opens with its key (Krux test vector)", () => words("W:3VXG.PEBY2QI2S5JAQML/-33Y0LKEX594MJVVZ3QWN2-X+SPKOIXFLX4ZJH9GX", "test key"), "crush inherit small egg include title slogan mom remain blouse boost bonus");
+  eq("Krux: an encrypted QR (KEF version 10, AES-CBC with its check outside) opens with its key (Krux test vector)", () => words("MHLMQ6:6-NNY:NKQ77$4/6A.7GWR+XYA+UD0.264NOF8BHMK40D+DVWJHU5A8TLQ33YOGV", "test key"), "crush inherit small egg include title slogan mom remain blouse boost bonus");
+  eq("TAPSIGNER: a backup opens with the key from the card: fingerprint and path", async () => { const r = await tsOpen(fromHex(DB_KAT_TS), "41414141414141414141414141414141"); return r.fp + " " + r.path; }, "3442193e m/84h/0h/0h");
+  eq("Coldcard: Coinkite's sample backup (docs/backup.7z) opens with its 12 words", async () => (await ccOpen(b64bytes(DB_KAT_CC), "spice until comfort zoo divide album erode yard inmate change quantum skate", "backup.7z")).mnemonic, "index abuse oil swift wolf clarify broom auto student media ribbon blossom hundred brief tomato abandon copy design angle memory narrow urge bulk resemble");
+}
+let dbRun = 0, dbGot = null;
+function dbWipe(){ dbRun++; dbGot = null; const st = document.getElementById("dbStatus"); st.textContent = ""; st.className = "status";
+  for(const id of ["dbOut", "dbSecret"]){ const e = document.getElementById(id); e.textContent = ""; e.style.display = "none"; }
+  document.getElementById("dbSecretRow").style.display = "none"; document.getElementById("dbShowBtn").textContent = "SHOW THE SECRET"; }
+function dbClear(){ document.getElementById("dbIn").value = ""; document.getElementById("dbKey").value = ""; document.getElementById("dbFile").value = ""; dbWipe(); }
+async function dbOpenUi(){
+  if(!gateOk()) return;
+  dbWipe();
+  const run = dbRun, st = document.getElementById("dbStatus"), o = document.getElementById("dbOut"), kind = document.getElementById("dbKind").value;
+  const f = document.getElementById("dbFile").files[0], typed = document.getElementById("dbIn").value.trim(), pw = document.getElementById("dbKey").value;
+  if(!f && !typed){ st.textContent = "Choose the backup file, or paste it as text."; return; }
+  if(f && f.size > 1048576){ st.className = "status bad"; st.textContent = "This file is too big to be a device backup (over 1 MB)."; return; }
+  st.textContent = "Opening...";
+  try {
+    const bytes = f ? new Uint8Array(await f.arrayBuffer()) : new TextEncoder().encode(typed), text = f ? (dbUtf8Safe(bytes) || null) : typed;
+    let r, head = "", words = null, secret = "", lines = [];
+    if(kind === "ts"){
+      r = await tsOpen(bytes, pw);
+      head = "TAPSIGNER backup opened." + (r.extra ? " (It has " + r.extra + " more line" + (r.extra === 1 ? "" : "s") + " this page does not use.)" : "");
+      lines = [await dbWalletText(r.root, r.fp, r.net, r.steps), "The card's path is " + r.path + "; the backup holds the master key, so it opens every account of this card.",
+        "Coinkite says the key printed on the card is for emergencies only: once it has been used, the TAPSIGNER is no longer secure. Move the coins to a new wallet when you can."];
+      secret = "MASTER PRIVATE KEY (xprv): anyone with it can spend\n" + r.xprv;
+    } else if(kind === "krux"){
+      r = await kruxOpen(bytes, f ? text : typed, pw, !!f);
+      const okOnes = r.list.filter(x => x.mnemonic);
+      head = r.list.map(x => (x.id !== null ? "ID “" + x.id + "”, " : "") + x.version + ", " + x.iters + " iterations: " + (x.mnemonic ? "opened" : "this key does not open it")).join("\n");
+      if(!okOnes.length) throw new Error(head + "\n\nThe key does not open " + (r.list.length > 1 ? "any of these seeds" : "this seed") + ". Check the key (capitals, spaces); Krux asks for it exactly as typed when it was saved.");
+      const x = okOnes[0], w = await dbRootFromWords(x.mnemonic); words = x.mnemonic;
+      lines = [await dbWalletText(w.root, w.fp, "main", [[84, true], [0, true], [0, true]]),
+        x.id && /^[0-9a-f]{8}$/.test(x.id) ? (x.id === w.fp ? "The ID is these words' fingerprint, as Krux sets by default: the right seed." : "The ID (" + x.id + ") is not these words' fingerprint (" + w.fp + "). Krux uses the fingerprint as the ID unless you typed your own.") : "",
+        okOnes.length > 1 ? "This file holds " + okOnes.length + " seeds this key opens; the first is shown." : "",
+        "These are the words alone, with no passphrase. If you use a passphrase, put the words in the box above and type it in VERIFY."];
+      secret = "SEED WORDS: anyone with them can spend\n" + numberedWords(words);
+    } else {
+      r = await ccOpen(bytes, pw, f ? f.name : "");
+      head = "Coldcard backup opened" + (r.fw ? " (" + r.fw + ")" : "") + ".";
+      const coin = r.net === "test" ? 1 : 0, acct = [[84, true], [coin, true], [0, true]];
+      if(r.mnemonic){ const w = await dbRootFromWords(r.mnemonic); words = r.mnemonic; lines.push(await dbWalletText(w.root, w.fp, r.net, acct)); secret = "SEED WORDS: anyone with them can spend\n" + numberedWords(words); }
+      else if(r.xprvOnly){ const fp = hex((await hash160(pubkeyBytes(r.root[0]))).slice(0, 4)); lines.push(await dbWalletText(r.root, fp, r.net, acct), "This backup holds a key, not seed words: a passphrase wallet or an imported xprv. A Coldcard never stores the passphrase itself.");
+        secret = "MASTER PRIVATE KEY: anyone with it can spend\n" + await xprvText(r.root, r.net); }
+      else { const ro = await masterFromSeed(r.seed), fp = hex((await hash160(pubkeyBytes(ro[0]))).slice(0, 4)); lines.push(await dbWalletText(ro, fp, r.net, acct), "This backup holds a raw " + r.seed.length * 8 + "-bit master seed, not seed words.");
+        secret = "MASTER SEED (hex): anyone with it can spend\n" + hex(r.seed); }
+      if(r.also.length) lines.push("It also holds " + r.also.join(", ") + ". This page shows only the main wallet.");
+    }
+    if(run !== dbRun) return;
+    dbGot = {secret, words};
+    st.className = "status ok"; st.textContent = head;
+    o.textContent = lines.filter(Boolean).join("\n\n"); o.style.display = "";
+    document.getElementById("dbSecretRow").style.display = ""; document.getElementById("dbUseBtn").style.display = words ? "" : "none";
+  } catch(e) { if(run !== dbRun) return; st.className = "status bad"; st.textContent = e.message; }
+}
+function numberedWords(m){ const w = m.split(" "), out = []; for(let i = 0; i < w.length; i += 4) out.push(w.slice(i, i + 4).map((x, j) => String(i + j + 1).padStart(2) + ". " + x.padEnd(9)).join(" ")); return out.join("\n"); }
+async function xprvText(root, net){
+  const [k, c] = root, ver = net === "test" ? [0x04, 0x35, 0x83, 0x94] : [0x04, 0x88, 0xad, 0xe4];
+  return base58check(Uint8Array.from([...ver, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...c, 0, ...fromHex(k.toString(16).padStart(64, "0"))]));
+}
+function dbReveal(){
+  const s = document.getElementById("dbSecret"), b = document.getElementById("dbShowBtn");
+  if(s.style.display === "none"){ if(!dbGot) return; s.textContent = dbGot.secret; s.style.display = ""; b.textContent = "HIDE THE SECRET"; }
+  else { s.textContent = ""; s.style.display = "none"; b.textContent = "SHOW THE SECRET"; }
+}
+function dbUseWords(){
+  if(!dbGot || !dbGot.words) return;
+  const ph = document.getElementById("phrase"); ph.value = dbGot.words; ph.dispatchEvent(new Event("input", {bubbles: true}));
+  reveal(ph);
+}
 function gateOk(){
   if(!CRYPTO_OK){ alert("This browser cannot run the cryptography this tool needs. Try a current Firefox or Chrome."); return false; }
   if(selfTestState !== "pass"){ alert(selfTestState === "pending" ? "The self-test is still running. Try again in a moment." : "The self-test FAILED, so this file is disabled. Do not use it for real funds."); return false; }
@@ -12757,6 +13102,7 @@ function setGate(state, text, cls){
   document.getElementById("s39Btn").disabled = !on;   // v2.9.0: SLIP39
   document.getElementById("s39mBtn").disabled = !on;   // v2.10.0: SLIP39 shares from dice
   for(const id of ["c32Btn", "c32mBtn"]) document.getElementById(id).disabled = !on;   // v2.11.0: codex32
+  document.getElementById("dbBtn").disabled = !on;   // v2.12.0: device backups
   document.getElementById("cmxBtn").disabled = !on;   // v2.10.0: Check a Coldcard seed mix
   document.getElementById("wpBtn").disabled = !on;
   document.getElementById("reuseBtn").disabled = !on;
