@@ -1,0 +1,232 @@
+{
+ "source": {
+  "repo": "https://github.com/selfcustody/krux",
+  "tag": "v26.09.0",
+  "commit": "2b20e3370169731a0d89839a4113ad9a1b732078",
+  "note": "All vectors independently decrypted with python cryptography + hashlib (tools/verify.py) and matched expected mnemonics. base43 text computed by me from the repo's pure-python algorithm (src/krux/baseconv.py:134-191), round-trip checked; it is not a literal in the repo."
+ },
+ "password": "test key",
+ "password_encoding": "utf-8 bytes, no normalization",
+ "kef_qr_vectors": [
+  {
+   "name": "ECB_ENCRYPTED_QR",
+   "file": "krux-tag/tests/test_encryption.py",
+   "line": 42,
+   "id": "test ID",
+   "version": 5,
+   "iterations": 100000,
+   "envelope_hex": "07746573742049440500000a2ae19dc582c1199bb726f23f03c76ff6523e23",
+   "qr_text_base43": "HSI8$FSFV:X76WQFV-51EUHCPLV/5331X70JSS7IZPEF6",
+   "plaintext_entropy_hex": "350e7b31a36727c5f2fc76b58304668c",
+   "expected_mnemonic": "crush inherit small egg include title slogan mom remain blouse boost bonus"
+  },
+  {
+   "name": "OLDECB_ENCRYPTED_QR",
+   "file": "krux-tag/tests/test_encryption.py",
+   "line": 45,
+   "id": "test ID",
+   "version": 0,
+   "iterations": 100000,
+   "envelope_hex": "07746573742049440000000a2ae19dc582c1199bb726f23f03c76ff6af9e8123462c5173e61debd159a02fcf",
+   "qr_text_base43": "W:3VXG.PEBX/6WOFWLRD/+5:PWYUGKA--J2J7KN907DES*4$4R+KEUBK0*O$+MG:",
+   "plaintext_entropy_hex": "350e7b31a36727c5f2fc76b58304668c",
+   "expected_mnemonic": "crush inherit small egg include title slogan mom remain blouse boost bonus"
+  },
+  {
+   "name": "CBC_ENCRYPTED_QR",
+   "file": "krux-tag/tests/test_encryption.py",
+   "line": 46,
+   "id": "test ID",
+   "version": 10,
+   "iterations": 100000,
+   "envelope_hex": "07746573742049440a00000a4f52a1936c3e3271209e9d64059ed78e010360755fd7ab2f4ebc4019cc0a22c543fa9690",
+   "qr_text_base43": "MHLMQ6:6-NNY:NKQ77$4/6A.7GWR+XYA+UD0.264NOF8BHMK40D+DVWJHU5A8TLQ33YOGV",
+   "plaintext_entropy_hex": "350e7b31a36727c5f2fc76b58304668c",
+   "expected_mnemonic": "crush inherit small egg include title slogan mom remain blouse boost bonus"
+  },
+  {
+   "name": "OLDCBC_ENCRYPTED_QR",
+   "file": "krux-tag/tests/test_encryption.py",
+   "line": 47,
+   "id": "test ID",
+   "version": 1,
+   "iterations": 100000,
+   "envelope_hex": "07746573742049440100000a4f52a1936c3e3271209e9d64059ed78e010360755fd7ab2f4ebc4019cc0a22c58a5e337874a4b30b4bca8a4082da7ad3",
+   "qr_text_base43": "718W57$9.T5$ZOTNB2VS*LI53QS4LZXKA5.*JX*0+UHG+/6U56WZSDZ36PMU.F-ZF/W0CFN:0N0Y*-D$NSA+SWQD",
+   "plaintext_entropy_hex": "350e7b31a36727c5f2fc76b58304668c",
+   "expected_mnemonic": "crush inherit small egg include title slogan mom remain blouse boost bonus"
+  },
+  {
+   "name": "CTR_ENCRYPTED_QR",
+   "file": "krux-tag/tests/test_encryption.py",
+   "line": 48,
+   "id": "test ID",
+   "version": 15,
+   "iterations": 100000,
+   "envelope_hex": "07746573742049440f00000a4f52a1936c3e3271209e9d64f49120c7a26d12de7b0ff0268c9691e689b02494f0af52c21c295b57b5347e9a86ee2a40",
+   "qr_text_base43": "718W57$9.T5*L74RC:CC.U.7W:Z6EGVLTN6LJ1FM+N6FD6EF7*R/MDCZ7GC-Q0T3T41DD:DE5I5EH0+NNO30/J-/",
+   "plaintext_entropy_hex": "ec54ea346caa1ed06cb35c96c4ef23228a26a2e0996c71d0608ec2ba49ce2316",
+   "expected_mnemonic": "unable point minimum sun peanut habit ready high nothing cherry silver eagle pen fabric list collect impact loan casual lyrics pig train middle screen"
+  },
+  {
+   "name": "GCM_ENCRYPTED_QR",
+   "file": "krux-tag/tests/test_encryption.py",
+   "line": 49,
+   "id": "test ID",
+   "version": 20,
+   "iterations": 100000,
+   "envelope_hex": "07746573742049441400000a4f52a1936c3e3271209e9d64bfb7766f5d5d8a4f908e86e738344c025d8fed54",
+   "qr_text_base43": "W:3VXG.PEBY2QI2S5JAQML/-33Y0LKEX594MJVVZ3QWN2-X+SPKOIXFLX4ZJH9GX",
+   "plaintext_entropy_hex": "350e7b31a36727c5f2fc76b58304668c",
+   "expected_mnemonic": "crush inherit small egg include title slogan mom remain blouse boost bonus"
+  }
+ ],
+ "kef_in_seeds_json": [
+  {
+   "name": "KEF_ECBENTROPY_ONLY_JSON",
+   "file": "krux-tag/tests/test_encryption.py",
+   "line": 78,
+   "seeds_json": "{\"KEFecbID\": {\"b64_kef\": \"CEtFRmVjYklEBQAACrjZPsHP9sA0UAKiWuotRXbnFma/HVnfaVAZV6Kw5Tu7UPT3\"}}",
+   "id": "KEFecbID",
+   "version": 5,
+   "iterations": 100000,
+   "plaintext_entropy_hex": "1b266577e684c5b09c89f524b5ca10416190aa650919dbd99ec74316617e2543",
+   "expected_mnemonic": "brass creek fuel snack era success impulse dirt caution purity lottery lizard boil festival neither case swift smooth range mail gravity sample never ivory",
+   "words_line": 14
+  },
+  {
+   "name": "KEF_CBCENTROPY_ONLY_JSON",
+   "file": "krux-tag/tests/test_encryption.py",
+   "line": 79,
+   "seeds_json": "{\"KEFcbcID\": {\"b64_kef\": \"CEtFRmNiY0lECgAACk9SoZNsPjJxIJ6dZAWe145shFPojYLA4hthWHv2Z2FSIyQ6fm5KU81NLiQ/mQDM46XqtaI=\"}}",
+   "id": "KEFcbcID",
+   "version": 10,
+   "iterations": 100000,
+   "plaintext_entropy_hex": "408cf9b8d8d9e2bd6fb5d1a13fb0104fd4c8fd2829a0c2afb51d06dcfb801c6e",
+   "expected_mnemonic": "dog guitar hotel random owner gadget salute riot patrol work advice panic erode leader pass cross section laundry elder asset soul scale immune scatter",
+   "words_line": 15
+  },
+  {
+   "name": "KEF_CTRENTROPY_ONLY_JSON",
+   "file": "krux-tag/tests/test_encryption.py",
+   "line": 80,
+   "seeds_json": "{\"KEFctrID\": {\"b64_kef\": \"CEtFRmN0cklEDwAACmkkBdxuqL8fLOJ4eWLT9sw3iPtGPZ79abe7Gk1YZXkaocEyUasKQW5d6KKp6FgcDA==\"}}",
+   "id": "KEFctrID",
+   "version": 15,
+   "iterations": 100000,
+   "plaintext_entropy_hex": "ec54ea346caa1ed06cb35c96c4ef23228a26a2e0996c71d0608ec2ba49ce2316",
+   "expected_mnemonic": "unable point minimum sun peanut habit ready high nothing cherry silver eagle pen fabric list collect impact loan casual lyrics pig train middle screen",
+   "words_line": 16
+  },
+  {
+   "name": "KEF_GCMENTROPY_ONLY_JSON",
+   "file": "krux-tag/tests/test_encryption.py",
+   "line": 81,
+   "seeds_json": "{\"KEFgcmID\": {\"b64_kef\": \"CEtFRmdjbUlEFAAACk9SoZNsPjJxIJ6dZL+jDD/X+v8sJY3z7oiBTgjTt9BbJh1mAQus1rbFF4D4HH+SVw==\"}}",
+   "id": "KEFgcmID",
+   "version": 20,
+   "iterations": 100000,
+   "plaintext_entropy_hex": "06ef92e3bbb6c8da755775a0a900a43c455c8e1033dd95f85d364345f3dcae7d",
+   "expected_mnemonic": "alone lady rib jazz hold honey stem upgrade pass elite cinnamon joy fiction either dolphin knife nominee seed eternal make game unusual rigid pass",
+   "words_line": 17
+  }
+ ],
+ "legacy_seeds_json": [
+  {
+   "name": "OLD_ECBWORDS_ONLY_JSON",
+   "file": "krux-tag/tests/test_encryption.py",
+   "line": 82,
+   "seeds_json": "{\"ecbID\": {\"version\": 0, \"key_iterations\": 100000, \"data\": \"sMCvAUvVpGSCsXsBl7EBNGPZLymZoyB8eAUHb2TMbarhqD4GJga/SW/AstxIvZz6MR1opXLfF7Pyd+IJBe3E0lDQCkvqytSQfVGnVSeYz+sNfd5T1CXS0/C2zYKTKFL7RTpHd0IXHZ+GQuzX1hoJMHkh0sx0VgorVdDj87ykUQIeC95MS98y/ha2q/vWfLyIZU1hc5VcehzmTA1B6ExMGA==\"}}",
+   "salt_is_entry_key": "ecbID",
+   "version": 0,
+   "key_iterations": 100000,
+   "expected_mnemonic": "brass creek fuel snack era success impulse dirt caution purity lottery lizard boil festival neither case swift smooth range mail gravity sample never ivory",
+   "note": "no auth/checksum; plaintext = UTF-8 words, NUL padded; AES-CBC: first 16 bytes of base64-decoded data are the IV"
+  },
+  {
+   "name": "OLD_CBCWORDS_ONLY_JSON",
+   "file": "krux-tag/tests/test_encryption.py",
+   "line": 83,
+   "seeds_json": "{\"cbcID\": {\"version\": 1, \"key_iterations\": 100000, \"data\": \"T1Khk2w+MnEgnp1kBZ7Xjp+66c9sy20J39ffK11XvVAaDSyQybsM6txAwKy/U1iU4KKYRu3ywDDN9q9sWAi1R+y7x4aHwQd0C0rRcW0iDxvWtFyWMKilA0AsDQwvBSgkhf5PQnQ1rfjnKVF75rTrG5vUNF01FRwa9PoM5cq30Yki/hFnWj/4niaeXqgQvIwjSzBNbXgaRLjfoaUyHiu8+zBX25rkpI0PW243fgDEfqI=\"}}",
+   "salt_is_entry_key": "cbcID",
+   "version": 1,
+   "key_iterations": 100000,
+   "expected_mnemonic": "dog guitar hotel random owner gadget salute riot patrol work advice panic erode leader pass cross section laundry elder asset soul scale immune scatter",
+   "note": "no auth/checksum; plaintext = UTF-8 words, NUL padded; AES-CBC: first 16 bytes of base64-decoded data are the IV"
+  }
+ ],
+ "extra": [
+  {
+   "name": "test_grind_alternate_decryption_key",
+   "file": "krux-tag/tests/test_kef.py",
+   "line": 1900,
+   "password": "abc",
+   "id": "a1e6c7e4",
+   "version": 5,
+   "iterations": 10000,
+   "envelope_hex": "08613165366337653405000001e3c3b2a72967a5711e54d8734bf1fdd02ddc80",
+   "qr_text_base43": "2W89FWNKYS:KGESBY/AKK7343ZPB800-IGH7ZM6.ZHYSZ+$",
+   "plaintext_ascii": "I'm 16 raw bytes",
+   "plaintext_hex": "49276d20313620726177206279746573",
+   "note": "v5 AES-ECB, 16 raw bytes (not BIP39 entropy meaning)"
+  },
+  {
+   "name": "test_grind_alternate_decryption_key",
+   "file": "krux-tag/tests/test_kef.py",
+   "line": 1908,
+   "password": "key",
+   "id": "a1e6c7e4",
+   "version": 5,
+   "iterations": 10000,
+   "envelope_hex": "08613165366337653405000001f1e3371b01422a48430c5a579bf9f02fca8a8f",
+   "qr_text_base43": "2W89FWNKYS:KGESBY/AM.$7M9L:9JM$P$5VHH$DJJBN6V53",
+   "plaintext_ascii": "I'm 16 raw bytes",
+   "plaintext_hex": "49276d20313620726177206279746573",
+   "note": "v5 AES-ECB, 16 raw bytes (not BIP39 entropy meaning)"
+  },
+  {
+   "name": "CTR_ENCRYPTED_KEF",
+   "file": "krux-tag/tests/test_kef.py",
+   "line": 21,
+   "password": "key (key found by my trial; repo file does not state it at the definition)",
+   "id": "test ID",
+   "version": 15,
+   "iterations": 10000,
+   "envelope_hex": "07746573742049440f0000014f52a1936c3e3271209e9d64de442732247c37cb455d1b5410b25744dad4ac6fe4f2f4cf5c4de77bfc829682938298f0",
+   "plaintext_entropy_hex": "ec54ea346caa1ed06cb35c96c4ef23228a26a2e0996c71d0608ec2ba49ce2316",
+   "mnemonic": "unable point minimum sun peanut habit ready high nothing cherry silver eagle pen fabric list collect impact loan casual lyrics pig train middle screen"
+  },
+  {
+   "name": "GCM_ENCRYPTED_KEF",
+   "file": "krux-tag/tests/test_kef.py",
+   "line": 22,
+   "password": "test key (key found by my trial; repo file does not state it at the definition)",
+   "id": "test ID",
+   "version": 20,
+   "iterations": 100000,
+   "envelope_hex": "07746573742049441400000a4f52a1936c3e3271209e9d64bfb7766f5d5d8a4f908e86e738344c025d8fed54",
+   "plaintext_entropy_hex": "350e7b31a36727c5f2fc76b58304668c",
+   "mnemonic": "crush inherit small egg include title slogan mom remain blouse boost bonus"
+  },
+  {
+   "name": "ECB_ENCRYPTED_KEF",
+   "file": "krux-tag/tests/test_kef.py",
+   "line": 19,
+   "envelope_hex": "07746573742049440500000a2ae19dc582c1199bb726f23f03c76ff6eb1a36",
+   "note": "structure-only vector (used by test_unwrap_rejects_low_iterations, test_kef.py:1100-1116); does NOT authenticate with 'test key' in my check -> do not use as a decrypt vector",
+   "id": "test ID",
+   "version": 5,
+   "iterations": 100000
+  },
+  {
+   "name": "CBC_ENCRYPTED_KEF",
+   "file": "krux-tag/tests/test_kef.py",
+   "line": 20,
+   "envelope_hex": "07746573742049440a00000a4f52a1936c3e3271209e9d64059ed78e010360755fd7ab2f4ebc4019cc0a22c5eb1a366d",
+   "note": "structure-only vector (used by test_unwrap_rejects_low_iterations, test_kef.py:1100-1116); does NOT authenticate with 'test key' in my check -> do not use as a decrypt vector",
+   "id": "test ID",
+   "version": 10,
+   "iterations": 100000
+  }
+ ]
+}

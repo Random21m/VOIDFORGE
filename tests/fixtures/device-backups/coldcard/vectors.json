@@ -1,0 +1,30 @@
+[
+ {
+  "file": "vectors/docs-backup.7z",
+  "password": "spice until comfort zoo divide album erode yard inmate change quantum skate",
+  "size": 702,
+  "sha256": "b4199d1e34125c7982e79fda089cc61f47517e4927b349bda014cdbe1eb2ba17",
+  "base64": "N3q8ryccAANG3l66MAIAAAAAAABuAAAAAAAAAOBcoA5oGlcK7Vt3iepKhHLUdda9RRP8amY0RzAeyAiOvE9PTR2k/JMuCP8opHHN9/5INWk6a8jr5JBs9SQSVUC7IFnlrtVie80ntkwV9c9obOkwh5bdHdGY5ePPzrOBR/N6FLjB8khVaQk/qqV+nzxZqcG2caaHv50OJrwUnu082QyQWn3q2EorFaLPmzg6/aiitUnYVgNqJmXGsslaZ7DHRApnOjYpQ+aG2Pe5NizYvDE2Rru6rncfsCXmznpYZ8GKmWmEiZTcw2/MG+hOAMp7OYJqjcpPgSGV17ii+e3TePiiGzEAQGCjoiafCPmcS9v0hvNCi5tqfpWpRxiigxNABh/wAuZIWQjKN63OKGIvqxt6lxpJwwTcift7RNTBRaN+ldhHRIrz0rrv1/0R4FW5HvnukW2cSz2IvNf7BxASQbi3TmortHI4Srv5ZTIAb+wKuPYaC7iaaqctQOTKB6oPQo+0YpWwArjHJQZISzvVvVBxJrIIlQCqOUZ0RXPl/lmuFNTxJUfIE0K873/TVlJd5ngZaBwZRlI07RiEp1+ISUuJBmcU3DRZt5rtk8qxs6mLtzm5H6Dtl/oMFN0IuqUYNLdITRqyLj0mRywotWWRxjuGaVFxIIjBxw01vxajIKTDHugCHpn4J1PfFDA3IggQ5GJVcU0l6QB0deCeplE8KVsnqzdx8SNv5CCvdGiTLD8uINtW8F9YICeoax+JKybASwDj6jWH9WmfCfbgo8erwvM1qAEEBgABCcAwAgAHCwEAASQG8QcBIs3/CgEBKDelZywfg9Z0rTFlJSmVFCj8wUaTUYOWiv0wmX8BAAzALwIACAoBlds7cQAABQERIQBjAGsAYwBjAC0AYgBhAGMAawB1AHAALgB0AHgAdAAAAAAA",
+  "numCyclesPower": 13,
+  "salt_hex": "0a01012837a5672c1f83d674ad316525",
+  "iv_hex": "29951428fcc146935183968afd30997f",
+  "aes_key_hex": "8d48f3ae4fbce64d209ea5cbb57e2ab2d4b8bc226bedafe393a8270121f9a811",
+  "plaintext_crc32": "0x713bdb95",
+  "plaintext_len": 559,
+  "plaintext": "# Coldcard backup file! DO NOT CHANGE.\n\n# Private key details\nmnemonic = \"index abuse oil swift wolf clarify broom auto student media ribbon blossom hundred brief tomato abandon copy design angle memory narrow urge bulk resemble\"\nxprv = \"xprv9s21ZrQH143K2pSWq6uW4ARspjhHfzVWM1ceM2sPVJWS9QWeuHYRHbYFcL3F3199vUPFE2SpFEhxnZJKQhqbZSZxFkYCt1LJidizB8tqXM6\"\nraw_secret = \"8272c026676defcc53c7307cd7714ee40c06f237f9000030077823457931dec785\"\n\n# Firmware version (informational)\nfw_date = \"2018-02-30\"\nfw_version = \"SIM\"\n\n# User preferences\nsetting.terms_ok = 1\n\n# EOF\n"
+ },
+ {
+  "file": "vectors/tip-index-famous-embark-tobacco-rice-attitude-interest-mask-random-amazing-initial.7z",
+  "password": "tip index famous embark tobacco rice attitude interest mask random amazing initial",
+  "size": 942,
+  "sha256": "2d47a716d0f0158497ab54550d961de8405976507c6700308b6924ec7cfb1167",
+  "base64": "N3q8ryccAAM918tHIAMAAAAAAABuAAAAAAAAAIWrMibVaat48XTshOggEJYFGryymlwmPD3NtpB053cQ0vmZv6UnLk1CZwjzgb9Nohoaqroaku/rdaOP5I0XXJ4VPqBrLO0F2MPsJWuc23OzOuj96/SrewRBAaQdiOvNzIiXw54Kk9MX5cIvvH51IAcG6t+aHvk6bXjIv2dgPOnoesLOl60wGZWUYHJIPxLuEzaExDPydgEIFp79eBt0N7qjlLaNKsVWvyPze5+ZoJeuvw2qKdLan17g/ltt3NCsQuMZkwkqjGsWMdFcL3ThZt59QDebajHenVFrsLsckx5xTbRn5dFOJZxXOeMm2nbco/VJMWNSMXWZyGt5/93EVy0ul0Ep3pXNHb730ktgcuL/p3FeqBAbCCUA8IrYgrA51Av0hpk26ZtoSOhGvl6WbTRywoXPEIPiz8jy0uZQuytWdRzoBdt3RzfhCvNGl09lgV1RHgJG6uUIfAraftpiXfrYS9Y+eHHDJjwsz0Swqo8wGSoP57mQWhaaRNd6ZDsMe9erbhR4iLbEyBgd5+VaSTf5gJO3e5biseGccWmxVlQAfrJ8D+tzcMCdsHnK/GDBdds0SL3YSkT/R+IGpZwo0F5yGhpZchgjZs6M2P/PBfnCRzaJKlNefSYgBZezwqK0chznYfNZgMBfkNdj0PvHQiVirogjRCnbpyf1XNY/0i6A4lpjd1MVFRTv29wpUEySioeP/4AFcS/umoExPCsJRfM6P72XLuF7o5mu4W8RBMN/YrjJlS55jv1zc3oZwduXehOe9d7KgD3FOPz7yqRqsXKASAAuTo/E577Cj1jy1ujx8YbfG9TfuPcHPQWLSFHcsgqYkZv3UPmrc1BS6Rs1waRDtdXXQ/78hdoD60WQ/odz8t5JMdG/UsOt7gHLkXCRw7CqmRP6jB5/aGogua9WmuNjupLRj1XxFXjcwE6e9cBA8MCIROqlmonHxwJppqNBxJQOnxuhGD0xRLfBtgteYs92gsetb3mpHnL7VnSgMzBy2demSTp6N68DgGMVpsb7iUcZHoY7l2NT9w6J2ZOaDPVhkwHBxtOijJ6L76NWR5iM7oN0zQEEBgABCcAgAwAHCwEAASQG8QcBIs3/pFByu/gMc5Xrpij3j2npoLfcyeieutTNcvpAIg0WHKoBAAzAHAMACAoB6rFMgwAABQERIQBjAGsAYwBjAC0AYgBhAGMAawB1AHAALgB0AHgAdAAAAAAA",
+  "numCyclesPower": 13,
+  "salt_hex": "a45072bbf80c7395eba628f78f69e9a0",
+  "iv_hex": "b7dcc9e89ebad4cd72fa40220d161caa",
+  "aes_key_hex": "5178545a240eb7e497307069216677aa75d5c5bb1abd315f68b3ea08aa59db79",
+  "plaintext_crc32": "0x834cb1ea",
+  "plaintext_len": 796,
+  "plaintext": "# Coldcard backup file! DO NOT CHANGE.\n\n# Private key details: Bitcoin\nmnemonic = \"wife shiver author away frog air rough vanish fantasy frozen noodle athlete pioneer citizen symptom firm much faith extend rare axis garment kiwi clarify\"\nchain = \"BTC\"\nxprv = \"xprv9s21ZrQH143K3i4kfV4tE2qAvhys9WDCpHJXKz2biqWkZwLKma1dzWaqin8CxCKPF3tX2fVRD9tBggJtxvdAxTpKfz8zRUoJZa3S7MtMgwy\"\nxpub = \"xpub661MyMwAqRbcGC9DmWbtbAmuUjpMYxw4BWE88NSDHB3jSjfUK7KtYJuKa52GbowD3DVLkgsxH9QwPnTx5mjdHykYFEncnmAsNsCTbWzBhA7\"\nraw_secret = \"82faf8c43d8835d20aef178a530bb658071a5252b722ba910a4143d9010ebfded9\"\n\n# Firmware version (informational)\nfw_date = \"2018-02-30\"\nfw_version = \"S.M\"\nserial = \"F1F1F1F1F1F1\"\n\n# User preferences\nsetting.xfp = 252012867\nsetting.terms_ok = 1\nsetting.idle_to = 28800\nsetting.chain = \"BTC\"\n\n# EOF\n"
+ }
+]

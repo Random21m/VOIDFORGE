@@ -587,6 +587,146 @@ async function probe(w, mutated, fast, only, hooks) {
   } catch (e) { fails.push('taproot multisig: the probe crashed: ' + e.message); }
   w.msReset(); $('msType').value = 'ms-wsh'; $('msType').dispatchEvent(new w.Event('change'));
   }
+  // v2.12.0: device backups. Every backup here is made by this probe with node:crypto and zlib, following each maker's documented
+  // layout (TAPSIGNER: coinkite-tap-proto docs/protocol.md; Krux: kef.py and encryption.py; Coldcard: compat7z.py and backups.py), and
+  // the expected wallet comes from @scure. Coldcard's own sample (its docs/backup.7z) and two Krux test vectors are used as they are.
+  if (SEC(71, "v2.12.0 device backups (TAPSIGNER, Krux, Coldcard; made with node:crypto, wallets from @scure)")) {
+  const oc = w.confirm;
+  try {
+    const B = (x) => Buffer.from(x), enc = (t) => new Uint8Array(B(t)), sh = (...p) => nc.createHash('sha256').update(Buffer.concat(p.map(B))).digest();
+    const root = HDKey.fromMasterSeed(Buffer.alloc(32, 7)), fpx = root.fingerprint.toString(16).padStart(8, '0');
+    const p2 = (k, path, kind, net) => { const pk = k.derive(path).publicKey; return kind === 'tr' ? btc.p2tr(pk.slice(1), undefined, net).address : kind === 'pkh' ? btc.p2pkh(pk, net).address : kind === 'sh' ? btc.p2sh(btc.p2wpkh(pk, net), net).address : btc.p2wpkh(pk, net).address; };
+    // TAPSIGNER: AES-128-CTR, zero counter, key from the card; the master xprv and the path as two text lines.
+    const tsKey = '00112233445566778899aabbccddeeff', ts = (xprv, path, key = tsKey) => { const c = nc.createCipheriv('aes-128-ctr', Buffer.from(key, 'hex'), Buffer.alloc(16)); return new Uint8Array(Buffer.concat([c.update(xprv + '\n' + path + '\n'), c.final()])); };
+    for (const [path, kind, p] of [['m/84h/0h/0h', 'wpkh', "m/84'/0'/0'"], ['m/49h/0h/0h', 'sh', "m/49'/0'/0'"], ['m/44h/0h/0h', 'pkh', "m/44'/0'/0'"], ['m/86h/0h/0h', 'tr', "m/86'/0'/0'"]]) {
+      const r = await w.tsOpen(ts(root.privateExtendedKey, path), tsKey.toUpperCase().replace(/(..)/g, '$1 '));
+      if (r.fp !== fpx || r.xprv !== root.privateExtendedKey || r.path !== path || r.net !== 'main') fails.push('tapsigner: the key and the path (' + path + ')');
+      const t = await w.dbWalletText(r.root, r.fp, r.net, r.steps);
+      if (!t.includes('0/0  ' + p2(root, p + '/0/0', kind)) || !t.includes('0/9  ' + p2(root, p + '/0/9', kind)) || !t.includes('1/9  ' + p2(root, p + '/1/9', kind)) || !t.includes('Master fingerprint: ' + fpx)) fails.push('tapsigner: addresses for ' + path);
+    }
+    { const tv = HDKey.fromMasterSeed(Buffer.alloc(32, 9), { private: 0x04358394, public: 0x043587cf }), r = await w.tsOpen(ts(tv.privateExtendedKey, 'm/84h/1h/0h'), tsKey);
+      if (r.net !== 'test' || !(await w.dbWalletText(r.root, r.fp, r.net, r.steps)).includes(p2(tv, "m/84'/1'/0'/0/0", 'wpkh', btc.TEST_NETWORK))) fails.push('tapsigner: a tprv backup gives TESTNET addresses'); }
+    { const r = await w.tsOpen(ts(root.privateExtendedKey, 'm/84h/0x00000001h/0h'), tsKey); if (r.path !== 'm/84h/1h/0h') fails.push('tapsigner: a step written in hex (0x...) is read'); }
+    { const shf = '#!/bin/sh\nbase64 -d <<END-OF-DATA | openssl aes-128-ctr -d -iv 0 -K $KEY\n' + B(ts(root.privateExtendedKey, 'm/84h/0h/0h')).toString('base64').replace(/(.{76})/g, '$1\n') + '\nEND-OF-DATA\n';
+      if ((await w.tsOpen(enc(shf), tsKey)).fp !== fpx) fails.push('tapsigner: the .sh form is read'); }
+    const tsErr = async (b, k) => { try { await w.tsOpen(b, k); return 'opened'; } catch (e) { return e.message; } };
+    if (!/does not open this file/.test(await tsErr(ts(root.privateExtendedKey, 'm/84h/0h/0h'), 'ffeeddccbbaa99887766554433221100'))) fails.push('tapsigner: a wrong key is refused');
+    if (!/32 characters/.test(await tsErr(ts(root.privateExtendedKey, 'm/84h/0h/0h'), tsKey.slice(2)))) fails.push('tapsigner: a short key is refused');
+    if (!/is not a TAPSIGNER backup: it is 20 bytes/.test(await tsErr(new Uint8Array(20), tsKey))) fails.push('tapsigner: a tiny file is refused');
+    if (!/does not open this file/.test(await tsErr(ts(root.publicExtendedKey, 'm/84h/0h/0h'), tsKey))) fails.push('tapsigner: an xpub in place of the xprv is refused');
+    if (!/is not a path/.test(await tsErr(ts(root.privateExtendedKey, 'x/84h'), tsKey))) fails.push('tapsigner: a bad path line is named');
+    if (!/does not open this file/.test(await tsErr(ts(root.deriveChild(0).privateExtendedKey, 'm/84h/0h/0h'), tsKey))) fails.push('tapsigner: a key that is not the master key is refused');
+    // Krux KEF: len_id | id | version | iterations (3 bytes; up to 10000 counts in 10000s) | payload; PBKDF2-HMAC-SHA256 with the ID as salt.
+    const KV = { 0: ['ecb', 'nul', 16], 1: ['cbc', 'nul', 16], 5: ['ecb', 'nul', -3], 6: ['ecb', 'pkcs', 4], 7: ['ecb', 'pkcs', 4, 1], 10: ['cbc', 'nul', -4], 11: ['cbc', 'pkcs', 4], 12: ['cbc', 'pkcs', 4, 1], 15: ['ctr', '', 4], 16: ['ctr', '', 4, 1], 20: ['gcm', '', 0], 21: ['gcm', '', 0, 1] };
+    const kef = (v, P, pw, id = 'probe ID', iters = 100000) => {
+      const [m, pad, a, z] = KV[v], idb = B(id), k = nc.pbkdf2Sync(B(pw), idb, iters, 32, 'sha256'), iv = nc.randomBytes(m === 'cbc' ? 16 : m === 'ecb' ? 0 : 12);
+      let d = z ? zlib.deflateRawSync(B(P), { windowBits: 10 }) : B(P), tail = Buffer.alloc(0);
+      if (a > 0) d = Buffer.concat([d, sh(d).subarray(0, a)]);
+      if (a < 0) tail = sh(Buffer.from([v]), iv, d, k).subarray(0, -a);
+      if (pad === 'nul' && d.length % 16) d = Buffer.concat([d, Buffer.alloc(16 - (d.length % 16))]);
+      if (pad === 'pkcs') { const n = 16 - (d.length % 16); d = Buffer.concat([d, Buffer.alloc(n, n)]); }
+      let ct, tag = Buffer.alloc(0);
+      if (m === 'gcm') { const c = nc.createCipheriv('aes-256-gcm', k, iv); ct = Buffer.concat([c.update(d), c.final()]); tag = c.getAuthTag().subarray(0, 4); }
+      else { const c = nc.createCipheriv(m === 'ctr' ? 'aes-256-ctr' : m === 'cbc' ? 'aes-256-cbc' : 'aes-256-ecb', k, m === 'ctr' ? Buffer.concat([iv, Buffer.alloc(4)]) : m === 'cbc' ? iv : null); c.setAutoPadding(false); ct = Buffer.concat([c.update(d), c.final()]); }
+      const it = iters % 10000 === 0 && iters <= 100000000 ? iters / 10000 : iters;
+      return new Uint8Array(Buffer.concat([Buffer.from([idb.length]), idb, Buffer.from([v, it >> 16, (it >> 8) & 255, it & 255]), iv, ct, tail, tag]));
+    };
+    const E16 = Buffer.from('000102030405060708090a0b0c0d0e0f', 'hex'), E32 = sh('probe entropy'), W16 = entropyToMnemonic(E16, wordlist), W32 = entropyToMnemonic(E32, wordlist);
+    const kw = async (env, pw) => { const e = w.kefUnwrap(env); if (!e) return 'no envelope'; const p = await w.kefDecrypt(e, pw); return p ? await w.kruxWords(p) : null; };
+    for (const v of Object.keys(KV).map(Number)) {
+      if (await kw(kef(v, E16, 'pass'), 'pass') !== W16) fails.push('krux: KEF version ' + v + ' gives the 12 words');
+      if (await kw(kef(v, E32, 'pässwörd 1', 'a1b2c3d4', 104321), 'pässwörd 1') !== W32) fails.push('krux: KEF version ' + v + ' with a raw iteration count gives the 24 words');
+      if (await kw(kef(v, E16, 'pass'), 'Pass') !== null) fails.push('krux: KEF version ' + v + ' refuses a wrong key');
+    }
+    { const e = w.kefUnwrap(kef(20, E16, 'k', 'x', 10000)); if (!e || e.iters !== 10000 || e.v !== 20 || B(e.id).toString() !== 'x') fails.push('krux: the envelope header (ID, version, iterations in 10000s)'); }
+    if (w.kefUnwrap(new Uint8Array([3, 1, 2, 3, 20, 0, 0, 0, 1, 2])) !== null || w.kefUnwrap(new Uint8Array([2, 65, 66, 99, 0, 0, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])) !== null) fails.push('krux: an unknown version or too few iterations is no envelope');
+    { const ecb = kef(6, E16, 'p'); if (w.kefUnwrap(ecb.slice(0, ecb.length - 1)) !== null) fails.push('krux: an ECB payload that is not whole blocks is no envelope'); }
+    const b43 = (b) => { let n = BigInt('0x' + (B(b).toString('hex') || '0')), s = ''; const A = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$*+-./:'; while (n > 0n) { s = A[Number(n % 43n)] + s; n /= 43n; } let z = 0; while (z < b.length && b[z] === 0) z++; return '0'.repeat(z) + s; };
+    { const env = kef(20, E16, 'qr key', 'qr'), t = b43(env); if (B(w.base43Decode(t)).toString('hex') !== B(env).toString('hex') || B(w.base43Decode('00' + t)).subarray(0, 2).toString('hex') !== '0000') fails.push('krux: base43 (and its leading zeros)');
+      const x = await w.kruxOpen(enc(t), t, 'qr key', false); if (!x.list[0] || x.list[0].mnemonic !== W16 || x.list[0].iters !== 100000 || x.list[0].id !== 'qr') fails.push('krux: QR text in base43 opens');
+      for (const form of [B(env).toString('hex'), B(env).toString('base64')]) { const y = await w.kruxOpen(enc(form), form, 'qr key', false); if (y.list[0].mnemonic !== W16) fails.push('krux: QR text in hex or Base64 opens'); } }
+    { const e0 = kef(11, E16, 'k', '', 10000), t0 = b43(e0), x = await w.kruxOpen(enc(t0), t0, 'k', false); if (!x.list[0] || x.list[0].mnemonic !== W16 || x.list[0].id !== null) fails.push('krux: an empty ID (allowed by kef.py) opens'); }
+    { const h = '07b4ce462263f61814000001000000000000000000000068b4d7d01355b231608f483b941417ecec93965c53', b32 = (b) => { const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; let bits = '', o = ''; for (const x of b) bits += x.toString(2).padStart(8, '0'); while (bits.length % 5) bits += '0'; for (let i = 0; i < bits.length; i += 5) o += A[parseInt(bits.slice(i, i + 5), 2)]; while (o.length % 8) o += '='; return o; };
+      const t = b32(Buffer.from(h, 'hex')), x = await w.kruxOpen(enc(t), t, 'k', false); if (!x.list[0] || x.list[0].mnemonic !== W16) fails.push('krux: base32 text that also reads as base43 opens with its key'); }
+    if ((await w.kruxOpen(enc('W:3VXG.PEBY2QI2S5JAQML/-33Y0LKEX594MJVVZ3QWN2-X+SPKOIXFLX4ZJH9GX'), 'W:3VXG.PEBY2QI2S5JAQML/-33Y0LKEX594MJVVZ3QWN2-X+SPKOIXFLX4ZJH9GX', 'test key', false)).list[0].mnemonic !== 'crush inherit small egg include title slogan mom remain blouse boost bonus') fails.push('krux: its own GCM test vector');
+    { const leg = (v, words, id, pw) => { const k = nc.pbkdf2Sync(B(pw), B(id), 20000, 32, 'sha256'), iv = nc.randomBytes(16), d = Buffer.concat([B(words), Buffer.alloc(16 - (B(words).length % 16) || 16)]).subarray(0, Math.ceil(B(words).length / 16) * 16);
+        const c = nc.createCipheriv(v ? 'aes-256-cbc' : 'aes-256-ecb', k, v ? iv : null); c.setAutoPadding(false); return { version: v, key_iterations: 20000, data: Buffer.concat([v ? iv : Buffer.alloc(0), c.update(d), c.final()]).toString('base64') }; };
+      const j = JSON.stringify({ old0: leg(0, W16, 'old0', 'sd key'), old1: leg(1, W32, 'old1', 'sd key'), [fpx]: { b64_kef: B(kef(11, E32, 'sd key', fpx)).toString('base64') }, other: { b64_kef: B(kef(20, E16, 'not this one', 'other')).toString('base64') } });
+      const x = await w.kruxOpen(enc(j), j, 'sd key', true), by = (id) => (x.list.find(y => y.id === id) || {}).mnemonic;
+      if (x.list.length !== 4 || by('old0') !== W16 || by('old1') !== W32 || by(fpx) !== W32 || by('other') !== null) fails.push('krux: seeds.json with older and KEF entries, each with its own result');
+      if (!/older/.test(x.list.find(y => y.id === 'old0').version) || !/KEF version 11/.test(x.list.find(y => y.id === fpx).version)) fails.push('krux: each entry names its format'); }
+    const kErr = async (t, pw, f) => { try { await w.kruxOpen(enc(t), t, pw, f); return 'opened'; } catch (e) { return e.message; } };
+    if (!/no KEF envelope/.test(await kErr('HELLO WORLD', 'k', false)) || !/not valid JSON/.test(await kErr('{bad', 'k', true)) || !/Type the key/.test(await kErr('abc', '', false)) || !/No encrypted seed/.test(await kErr('{"a": {"x": 1}}', 'k', true))) fails.push('krux: what is not a Krux seed is named');
+    // Coldcard: 7z with one AES coder: start header, ciphertext, plain header (compat7z.py); key = SHA-256 over 2^pow rounds of salt | UTF-16LE password | counter.
+    const vn = (n) => n < 0x80 ? Buffer.from([n]) : Buffer.from([0x80 | (n >> 8), n & 255]);
+    const u32 = (n) => { const b = Buffer.alloc(4); b.writeUInt32LE(n >>> 0); return b; }, u64 = (n) => { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(n)); return b; };
+    const sevenZ = (plain, pw, o = {}) => {
+      const pow = o.pow ?? 13, salt = nc.randomBytes(16), iv = nc.randomBytes(16), pwb = Buffer.from(pw, 'utf16le'), unit = Buffer.concat([salt, pwb, Buffer.alloc(8)]), h = nc.createHash('sha256');
+      for (let r = 0; r < 2 ** pow; r++) { unit.writeBigUInt64LE(BigInt(r), salt.length + pwb.length); h.update(unit); }
+      const key = h.digest(), P = B(plain), pt = Buffer.concat([P, Buffer.alloc((16 - (P.length % 16)) % 16)]), c = nc.createCipheriv('aes-256-cbc', key, iv); c.setAutoPadding(false); const ct = Buffer.concat([c.update(pt), c.final()]);
+      const nm = Buffer.from('probe1.txt\0', 'utf16le'), coder = o.coder ?? Buffer.from([0x24, 6, 0xf1, 7, 1]);
+      const hdr = Buffer.concat([Buffer.from([o.top ?? 1, 4, 6, 0, 1, 9]), vn(ct.length), Buffer.from([0, 7, 0x0b, 1, 0, 1]), coder, vn(34), Buffer.from([0xc0 | pow, 0xff]), salt, iv, Buffer.from([1, 0, 0x0c]), vn(P.length), Buffer.from([0, 8, 0x0a, 1]), u32(zlib.crc32(P)), Buffer.from([0, 0, 5, 1, 0x11]), vn(nm.length + 1), Buffer.from([0]), nm, Buffer.from([0, 0])]);
+      const tail = Buffer.concat([u64(ct.length), u64(hdr.length), u32(zlib.crc32(hdr))]);
+      return new Uint8Array(Buffer.concat([Buffer.from([0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c, 0, 3]), u32(zlib.crc32(tail)), tail, ct, hdr]));
+    };
+    const ccTxt = (kv) => '# Coldcard backup file! DO NOT CHANGE.\n\n# Private key details: Bitcoin\n' + kv.map(([k, v]) => k + ' = ' + JSON.stringify(v)).join('\n') + '\n\n# EOF\n';
+    const rs = (marker, b) => (marker + B(b).toString('hex')).replace(/0+$/, '');
+    const CW = 'zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zone', cw = await w.ccPassword(CW.toUpperCase().split(' ').map(x => x.slice(0, 4)).join('  '));
+    if (cw !== CW) fails.push('coldcard: the 12 words in capitals and as 4-letter starts make the password');
+    const W24 = entropyToMnemonic(sh('cc24'), wordlist), r24 = HDKey.fromMasterSeed(mnemonicToSeedSync(W24, ''));
+    { const x = await w.ccOpen(sevenZ(ccTxt([['mnemonic', W24], ['chain', 'BTC'], ['xprv', 'x'], ['raw_secret', rs('82', sh('cc24'))], ['fw_version', '1.5.3Q'], ['hardware', 'Q1'], ['setting.multisig', [[1]]], ['setting.seeds', [[1]]], ['duress_1_words', 'a'], ['setting.notes', [1]]]), CW), CW, 'backup-x.7z');
+      if (x.mnemonic !== W24 || x.net !== 'main' || x.fw !== 'Q1 1.5.3Q' || x.also.join('|') !== 'multisig wallet setups|a seed vault|duress (decoy) wallets|secure notes') fails.push('coldcard: a 24-word backup, its firmware and what else it holds'); }
+    { const x = await w.ccOpen(sevenZ(ccTxt([['raw_secret', rs('80', E16)], ['chain', 'XTN']]), CW, { pow: 10 }), cw, 'b.7z'); if (x.mnemonic !== W16 || x.net !== 'test') fails.push('coldcard: a 12-word testnet backup (XTN), other key rounds'); }
+    { const x = await w.ccOpen(sevenZ(ccTxt([['raw_secret', rs('01', Buffer.concat([root.chainCode, root.privateKey]))]]), CW), CW, 'c.7z');
+      if (!x.xprvOnly || B(x.root[1]).toString('hex') !== B(root.chainCode).toString('hex') || x.root[0].toString(16).padStart(64, '0') !== B(root.privateKey).toString('hex') || await w.xprvText(x.root, 'main') !== root.privateExtendedKey) fails.push('coldcard: an xprv-only backup (passphrase wallet)'); }
+    { const x = await w.ccOpen(sevenZ(ccTxt([['raw_secret', rs('20', sh('raw seed'))]]), CW), CW, 'd.7z'); if (B(x.seed).toString('hex') !== sh('raw seed').toString('hex')) fails.push('coldcard: a raw 32-byte master seed backup'); }
+    { const pw = 'my own backup password, forty characters'; const x = await w.ccOpen(sevenZ(ccTxt([['raw_secret', rs('80', E16)]]), pw), pw, 'e.7z'); if (x.mnemonic !== W16) fails.push('coldcard: a custom backup password'); }
+    { const x = await w.ccOpen(enc(ccTxt([['raw_secret', rs('81', sh('x').subarray(0, 24))]])), '', 'backup.txt'); if (x.mnemonic !== entropyToMnemonic(sh('x').subarray(0, 24), wordlist)) fails.push('coldcard: a plain-text backup (18 words) needs no password'); }
+    const ccErr = async (b, pw, nm = 'x.7z') => { try { await w.ccOpen(b, pw, nm); return 'opened'; } catch (e) { return e.message; } };
+    const good = sevenZ(ccTxt([['raw_secret', rs('80', E16)]]), CW);
+    if (!/do not open this backup/.test(await ccErr(good, CW.replace('zone', 'zero')))) fails.push('coldcard: wrong words are refused');
+    if (!/clone file/.test(await ccErr(good, CW, 'ab'.repeat(33) + '-ccbk.7z'))) fails.push('coldcard: a clone file is named');
+    if (!/not encrypted with 7-Zip's AES/.test(await ccErr(sevenZ('x', CW, { coder: Buffer.from([0x23, 3, 1, 1]) }), CW))) fails.push('coldcard: a compressed 7z (another coder) is refused');
+    if (!/compressed or encrypted/.test(await ccErr(sevenZ('x', CW, { top: 0x17 }), CW))) fails.push('coldcard: an encoded header is refused');
+    { const b = B(sevenZ('x', CW, { pow: 1 })), at = b.indexOf(Buffer.from([0xc1, 0xff])); b[at] = 0xc0 | 20; const hs = 32 + Number(b.readBigUInt64LE(12)), hl = Number(b.readBigUInt64LE(20)); b.writeUInt32LE(zlib.crc32(b.subarray(hs, hs + hl)), 28); b.writeUInt32LE(zlib.crc32(b.subarray(12, 32)), 8);
+      if (!/2\^20 key rounds/.test(await ccErr(new Uint8Array(b), CW))) fails.push('coldcard: more key rounds than a Coldcard reads are refused'); }
+    if (!/cut short|damaged/.test(await ccErr(good.slice(0, good.length - 20), CW))) fails.push('coldcard: a cut file is refused');
+    if (!/not a Coldcard backup: Coldcard backups are .7z/.test(await ccErr(enc('hello world, not a backup'), CW))) fails.push('coldcard: what is not a 7z is named');
+    { const bad = B(good); bad[40] ^= 1; if (!/do not open this backup/.test(await ccErr(new Uint8Array(bad), CW))) fails.push('coldcard: a changed byte fails its CRC'); }
+    if (!/disagree/.test(await ccErr(sevenZ(ccTxt([['mnemonic', W24], ['raw_secret', rs('80', E16)]]), CW), CW))) fails.push('coldcard: words that disagree with the seed record are refused');
+    if (!/no seed record/.test(await ccErr(sevenZ(ccTxt([['mnemonic', W24]]), CW), CW)) || !/first line is wrong/.test(await ccErr(sevenZ('hello\n', CW), CW))) fails.push('coldcard: a backup without a seed record, or not a backup text, is named');
+    { const S = 'N3q8ryccAANG3l66MAIAAAAAAABuAAAAAAAAAOBcoA5oGlcK7Vt3iepKhHLUdda9RRP8amY0RzAeyAiOvE9PTR2k/JMuCP8opHHN9/5INWk6a8jr5JBs9SQSVUC7IFnlrtVie80ntkwV9c9obOkwh5bdHdGY5ePPzrOBR/N6FLjB';
+      if (!w.eval('DB_KAT_CC').startsWith(S)) fails.push('coldcard: the self-test uses Coinkite\'s docs/backup.7z'); }
+    // the box: a Krux QR, the secret only when asked, the words into the box above, CLEAR and CLEAR ALL
+    const env = kef(20, E32, 'ui key', fpx), qr = b43(env), rK = HDKey.fromMasterSeed(mnemonicToSeedSync(W32, '')), fpK = rK.fingerprint.toString(16).padStart(8, '0');
+    const open = async (kind, text, key) => { $('dbKind').value = kind; $('dbIn').value = text; $('dbKey').value = key; await w.dbOpenUi(); };
+    const envU = kef(20, E32, 'ui key', fpK), qrU = b43(envU);
+    await open('krux', qrU, 'ui key');
+    if (!/opened/.test($('dbStatus').textContent) || !$('dbOut').textContent.includes('Master fingerprint: ' + fpK) || !$('dbOut').textContent.includes(p2(rK, "m/84'/0'/0'/0/0", 'wpkh')) || !$('dbOut').textContent.includes(p2(rK, "m/84'/0'/0'/1/9", 'wpkh'))) fails.push('device backups: a Krux QR shows the fingerprint and addresses');
+    if (!/The ID is these words' fingerprint/.test($('dbOut').textContent)) fails.push('device backups: a Krux ID equal to the fingerprint is confirmed');
+    if ($('dbSecret').textContent !== '' || $('dbSecretRow').style.display === 'none' || $('dbUseBtn').style.display === 'none') fails.push('device backups: the secret is hidden until asked');
+    w.dbReveal(); if (!$('dbSecret').textContent.includes(' 1. ' + W32.split(' ')[0]) || !$('dbSecret').textContent.includes('24. ' + W32.split(' ')[23]) || !/SEED WORDS/.test($('dbSecret').textContent)) fails.push('device backups: SHOW THE SECRET shows the numbered words');
+    w.dbReveal(); if ($('dbSecret').textContent !== '' || $('dbSecret').style.display !== 'none') fails.push('device backups: HIDE THE SECRET wipes it from the page');
+    w.dbUseWords(); if ($('phrase').value !== W32) fails.push('device backups: the words go into the box above'); $('phrase').value = '';
+    if (!w.autoHasSecrets()) fails.push('device backups: auto-clear knows an open backup holds a secret');
+    $('dbKey').value = 'ui key2'; $('dbKey').dispatchEvent(new w.Event('input')); if ($('dbOut').textContent !== '' || w.eval('dbGot')) fails.push('device backups: editing the key wipes the result');
+    await open('krux', qr, 'ui key'); if (!/is not these words' fingerprint/.test($('dbOut').textContent)) fails.push('device backups: a Krux ID that is not the fingerprint is pointed out');
+    await open('krux', qr, 'wrong'); if (!/this key does not open it/.test($('dbStatus').textContent) || $('dbOut').textContent !== '' || !/status bad/.test($('dbStatus').className)) fails.push('device backups: a wrong Krux key says so');
+    { const shf = '#!/bin/sh\nbase64 -d <<END-OF-DATA | openssl aes-128-ctr -d -iv 0 -K $KEY\n' + B(ts(root.privateExtendedKey, 'm/84h/0h/0h')).toString('base64') + '\nEND-OF-DATA\n';
+      await open('ts', shf, tsKey); w.dbReveal();
+      if (!/TAPSIGNER backup opened/.test($('dbStatus').textContent) || !$('dbSecret').textContent.includes(root.privateExtendedKey) || $('dbUseBtn').style.display !== 'none' || !/no longer secure/.test($('dbOut').textContent)) fails.push('device backups: a TAPSIGNER backup, its xprv only when asked, and Coinkite\'s warning'); }
+    { const f = new w.File([sevenZ(ccTxt([['raw_secret', rs('82', sh('cc24'))]]), CW)], 'backup-1.7z'); Object.defineProperty($('dbFile'), 'files', { value: [f], configurable: true });
+      await open('cc', '', CW); if (!/Coldcard backup opened/.test($('dbStatus').textContent) || !$('dbOut').textContent.includes(p2(r24, "m/84'/0'/0'/0/0", 'wpkh'))) fails.push('device backups: a Coldcard file opens through the box');
+      w.confirm = () => true; w.clearAll(); w.confirm = oc;
+      if ($('dbIn').value !== '' || $('dbKey').value !== '' || $('dbOut').textContent !== '' || $('dbSecret').textContent !== '' || w.eval('dbGot') || $('dbStatus').textContent !== '') fails.push('device backups: CLEAR ALL wipes the backup box');
+      Object.defineProperty($('dbFile'), 'files', { value: [new w.File([new Uint8Array(1048577)], 'big.7z')], configurable: true }); await open('cc', '', CW);
+      if (!/too big/.test($('dbStatus').textContent)) fails.push('device backups: a file over 1 MB is refused'); delete $('dbFile').files; }
+    await open('ts', '', tsKey); if (!/Choose the backup file/.test($('dbStatus').textContent)) fails.push('device backups: nothing to open says so');
+    await open('krux', qrU, 'ui key'); w.dbClear(); if ($('dbIn').value !== '' || $('dbKey').value !== '' || $('dbOut').textContent !== '' || w.eval('dbGot')) fails.push('device backups: CLEAR wipes the box');
+    if (!w.eval('AUTO_FIELDS').includes('dbIn') || !w.eval('AUTO_FIELDS').includes('dbKey')) fails.push('device backups: auto-clear knows the two boxes');
+  } catch (e) { if (e instanceof ProbeStop) throw e; fails.push('device backups: the probe crashed: ' + e.message); }
+  w.confirm = oc; try { w.dbClear(); } catch (e) { /* the page may be broken */ }
+  }
   if (SEC(1, "{ const wo = watch(expect.d50, ''), z = $('wZpub').textConte")) {
   { const wo = watch(expect.d50, ''), z = $('wZpub').textContent, dr = $('wDescR').textContent, dc = $('wDescC').textContent;
     if (z !== wo.zpub) fails.push('watch-only zpub');
@@ -3746,8 +3886,8 @@ const M = [
   ['auto-clear: child seed left on screen (equivalent: wipeSeed also clears the child seed)', 'clearChild(); hideExplain();', 'hideExplain();', true],
   ['auto-clear: typed fields left', 'for(const id of AUTO_FIELDS){ const e = document.getElementById(id); if(e) e.value = ""; }', ''],
   ['auto-clear: Reforge result left', 'ro.textContent = ""; ro.style.display = "none";', ''],
-  ['auto-clear: seed not wiped', 'msReset(); wipeSeed(); planClear(); clearChild();', 'msReset(); planClear(); clearChild();'],
-  ['auto-clear: backup plan kept', 'msReset(); wipeSeed(); planClear(); clearChild();', 'msReset(); wipeSeed(); clearChild();'],
+  ['auto-clear: seed not wiped', 'msReset(); dbClear(); wipeSeed(); planClear(); clearChild();', 'msReset(); dbClear(); planClear(); clearChild();'],
+  ['auto-clear: backup plan kept', 'msReset(); dbClear(); wipeSeed(); planClear(); clearChild();', 'msReset(); dbClear(); wipeSeed(); clearChild();'],
   ['auto-clear: reason not shown', '"Wiped automatically " + why', '"" + why'],
   ['auto-clear: wipes when there is nothing', 'if(!autoHasSecrets()) return false;', ''],
   ['auto-clear: timer never starts', 'if(m && !autoTimer) autoTimer = setInterval(() => autoCheck(), 5000);', 'if(m && !autoTimer) autoTimer = null;'],
@@ -4505,8 +4645,8 @@ const M = [
   ['multisig: recovery sheet testnet label missing', '(ms.net === "test" ? ", TESTNET (practice coins only)" : ", mainnet")', '", mainnet"'],
   ['multisig: sheet title testnet label missing', '"VOIDFORGE MULTISIG RECOVERY SHEET" + (ms.net === "test" ? " (TESTNET)" : "")', '"VOIDFORGE MULTISIG RECOVERY SHEET"'],
   ['multisig: sheet QR size switch (layout only)', 'nq >= 5 ? "pq-ms pq-ms-l" : "pq-ms"', 'nq >= 6 ? "pq-ms pq-ms-l" : "pq-ms"', true],   // v2.11.0: nq is the number of xpubs in the descriptor
-  ['multisig: CLEAR ALL keeps the setup', 'msReset(); wipeSeed(); planClear(); camStop();\n}', 'wipeSeed(); planClear(); camStop();\n}'],
-  ['CLEAR ALL: backup plan kept', 'msReset(); wipeSeed(); planClear(); camStop();\n}', 'msReset(); wipeSeed(); camStop();\n}'],
+  ['multisig: CLEAR ALL keeps the setup', 'msReset(); dbClear(); wipeSeed(); planClear(); camStop();\n}', 'dbClear(); wipeSeed(); planClear(); camStop();\n}'],
+  ['CLEAR ALL: backup plan kept', 'msReset(); dbClear(); wipeSeed(); planClear(); camStop();\n}', 'msReset(); dbClear(); wipeSeed(); camStop();\n}'],
   ["multisig: reset leaves the descriptor on screen", "for(const id of [\"msDescR\",\"msDescC\",\"msAddrs\",\"msChange\",\"msSlots\",\"msRunErr\",\"msBanErr\",\"msErr\"])", "for(const id of [\"msDescC\",\"msAddrs\",\"msChange\",\"msSlots\",\"msRunErr\",\"msBanErr\",\"msErr\"])"],
   ['core guide: new wallet is not watch-only', 'createwallet "voidforge-watch" true true "" false true', 'createwallet "voidforge-watch" false true "" false true'],
   ['core guide: wallet is not descriptor type', 'true true "" false true', 'true true "" false false'],
@@ -5825,7 +5965,7 @@ const M = [
   ["cmx: old result kept when the rolls change", "placeholder=\"Every roll or flip you typed on the Coldcard, in order\" oninput=\"cmxClear(true)\"", "placeholder=\"Every roll or flip you typed on the Coldcard, in order\""],
   ["cmx: button never enabled", "document.getElementById(\"cmxBtn\").disabled = !on;", "document.getElementById(\"cmxBtn\").disabled = true;"],
   ["cmx: CLEAR ALL keeps the TRNG words", "  cmxClear(); flwClear(true);   // v2.10.0", "  flwClear(true);   // v2.10.0"],
-  ["cmx: auto-clear keeps the TRNG words", "\"s39mPass2\", \"cmxTrng\", \"cmxRolls\"];", "\"s39mPass2\", \"cmxRolls\"];"],
+  ["cmx: auto-clear keeps the TRNG words", "\"s39mPass2\", \"cmxTrng\", \"cmxRolls\", \"dbIn\"", "\"s39mPass2\", \"cmxRolls\", \"dbIn\""],
   ["cmx: practice mode keeps a mainnet result", "dcClear(true); cmxClear(true); clearPsbt(false);", "dcClear(true); clearPsbt(false);"],
   ["cmx: address always on mainnet", "const net = practiceOn ? \"test\" : \"main\";\n  const ent = await coldcardMixEntropy", "const net = \"main\";\n  const ent = await coldcardMixEntropy"],
   ["flaw: Coldcard Q fix version wrong", "fixed: [1, 5, 0], fixedText: \"1.5.0Q\"", "fixed: [1, 4, 0], fixedText: \"1.5.0Q\""],
@@ -6073,6 +6213,97 @@ const M = [
   ["taproot multisig: an xpub on H is not recognized", "try { return hex((await parseExtendedKey(k)).pub.slice(1))===MS_NUMS; } catch(e) { return false; }", "return false;"],
   ["taproot multisig: wallet file counts the internal key as a cosigner", "internal = keys.length && tl[0].includes(keys[0].key) ? keys.shift() : {key: tl[0].trim(), fp: null};", "internal = {key: tl[0].trim(), fp: null};"],
   ["taproot multisig: recovery sheet size ignores the internal key", "const nq = ms.n + (ms.type === \"ms-tr\" ? 1 : 0);", "const nq = ms.n;"],
+  // v2.12.0: device backups (TAPSIGNER, Krux, Coldcard)
+  ["device backups: CBC without padding loses its extra block", "return new Uint8Array(await crypto.subtle.decrypt({name: \"AES-CBC\", iv}, k, concatBytes(ct, extra)));", "return new Uint8Array(await crypto.subtle.decrypt({name: \"AES-CBC\", iv}, k, concatBytes(ct, ct.slice(-16))));"],
+  ["device backups: ECB block IV not zero", "out.push(await dbCbcNoPad(raw, new Uint8Array(16), ct.slice(i, i + 16)));", "out.push(await dbCbcNoPad(raw, new Uint8Array(16).fill(1), ct.slice(i, i + 16)));"],
+  ["tapsigner: .sh data not read", "return dbB64(m[1].replace(/\\s+/g, \"\"));", "return bytes;"],
+  ["tapsigner: key length not checked", "if(!/^[0-9a-f]{32}$/.test(kh)) throw new Error(\"The key on the back of the card is 32 characters (0-9 and a-f).\");", ""],
+  ["tapsigner: key spaces kept", "String(keyText || \"\").replace(/[\\s-]/g, \"\").toLowerCase()", "String(keyText || \"\").replace(/-/g, \"\").toLowerCase()"],
+  ["tapsigner: small file accepted", "if(ct.length < 100 || ct.length > 4096) throw new Error(\"This is not a TAPSIGNER backup: it is \" + ct.length + \" bytes long.\");", ""],
+  ["tapsigner: counter starts at one", "counter: new Uint8Array(16), length: 128}, key, ct));", "counter: Uint8Array.of(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1), length: 128}, key, ct));"],
+  ["tapsigner: xpub accepted", "(ver !== \"0488ade4\" && ver !== \"04358394\") || raw[45] !== 0", "(ver !== \"0488ade4\" && ver !== \"04358394\" && ver !== \"0488b21e\")"],
+  ["tapsigner: tprv read as mainnet", "net: ver === \"04358394\" ? \"test\" : \"main\"", "net: \"main\""],
+  ["tapsigner: hex steps not read", ".replace(/0x([0-9a-fA-F]{1,8})/g, (a, h) => String(parseInt(h, 16)))", ""],
+  ["tapsigner: fingerprint of the chain code", "const fp = hex((await hash160(pubkeyBytes(k))).slice(0, 4));\n  return {kind: \"ts\"", "const fp = hex((await hash160(raw.slice(13, 45))).slice(0, 4));\n  return {kind: \"ts\""],
+  ["krux: iterations always in 10000s", "iters = s <= 10000 ? s * 10000 : s;", "iters = s * 10000;"],
+  ["krux: unknown version accepted", "const id = b.slice(1, 1 + n), v = b[1 + n], V = KEF_V[v]; if(!V) return null;", "const id = b.slice(1, 1 + n), v = b[1 + n], V = KEF_V[v] || KEF_V[20];"],
+  ["krux: too few iterations accepted", "  if(iters < 10000) return null;\n", "\n"],
+  ["krux: ECB blocks not checked", "if(body <= 0 || ((V.m === \"ecb\" || V.m === \"cbc\") && body % 16)) return null;", "if(body <= 0) return null;"],
+  ["krux: CBC IV of 12 bytes", "ivLen = V.m === \"cbc\" ? 16 : V.m === \"ctr\" || V.m === \"gcm\" ? 12 : 0", "ivLen = V.m === \"cbc\" ? 12 : V.m === \"ctr\" || V.m === \"gcm\" ? 12 : 0"],
+  ["krux: GCM tag length kept in the data", "tail = V.x || (V.m === \"gcm\" ? 4 : 0)", "tail = V.x || 0"],
+  ["krux: PBKDF2 with SHA-512", "hash: \"SHA-256\", salt, iterations: iters}, base, 256)", "hash: \"SHA-512\", salt, iterations: iters}, base, 256)"],
+  ["krux: AES-128 key", "salt, iterations: iters}, base, 256));", "salt, iterations: iters}, base, 128));"],
+  ["krux: GCM full tag", "tagLength: 32}, key, concatBytes(e.ct, e.tag))", "tagLength: 128}, key, concatBytes(e.ct, e.tag))"],
+  ["krux: compressed GCM not inflated", "    return V.z ? inflateRaw(p) : p;\n  }\n  if(V.m === \"ctr\"){", "    return p;\n  }\n  if(V.m === \"ctr\"){"],
+  ["krux: CTR counter of 64 bits", "concatBytes(e.iv, new Uint8Array(4)), length: 32}", "concatBytes(e.iv, new Uint8Array(4)), length: 64}"],
+  ["krux: CTR nonce at the end", "counter: concatBytes(e.iv, new Uint8Array(4))", "counter: concatBytes(new Uint8Array(4), e.iv)"],
+  ["krux: PKCS7 length not checked", "if(n < 1 || n > 16 || n > p.length) return null;", ""],
+  ["krux: exposed check without the key", "return dbEq((await sh(Uint8Array.of(e.v), e.iv, q, k)).slice(0, V.x), e.tag);", "return dbEq((await sh(Uint8Array.of(e.v), e.iv, q)).slice(0, V.x), e.tag);"],
+  ["krux: exposed check never fails", "return dbEq((await sh(Uint8Array.of(e.v), e.iv, q, k)).slice(0, V.x), e.tag);", "return true;"],
+  ["krux: hidden check takes the first bytes", "const d = q.slice(0, q.length - V.auth); return dbEq((await sh(d)).slice(0, V.auth), q.slice(q.length - V.auth));", "const d = q.slice(V.auth); return dbEq((await sh(d)).slice(0, V.auth), q.slice(0, V.auth));"],
+  ["krux: hidden check over the padded data", "if(q.length <= V.auth) return false;", "if(q.length <= V.auth) return true;"],
+  ["krux: NUL padding not given back", "for(let r = 0; r <= (V.auth || V.x) + 1 && end + r <= p.length; r++)", "for(let r = 0; r <= 0 && end + r <= p.length; r++)"],
+  ["krux: check bytes left in the data", "const strip = (q) => V.x ? q : q.slice(0, q.length - V.auth);", "const strip = (q) => q;"],
+  ["krux: compressed CBC not inflated", "  p = strip(p); return V.z ? inflateRaw(p) : p;\n}", "  p = strip(p); return p;\n}"],
+  ["krux: base43 alphabet shifted", "const B43 = \"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$*+-./:\";", "const B43 = \"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ*$+-./:\";"],
+  ["krux: base43 leading zeros dropped", "let z = 0; for(const ch of t){ if(ch === \"0\") z++; else break; }", "let z = 0;"],
+  ["krux: hex QR text not tried", "  if(/^([0-9a-fA-F]{2})+$/.test(s)) tries.push(() => fromHex(s.toLowerCase()));\n", "\n"],
+  ["krux: Base64 QR text not tried", "  if(/^[A-Za-z0-9+/]+={0,2}$/.test(s)) tries.push(() => dbB64(s));\n", "\n"],
+  ["krux: 24-word entropy not read", "if([16, 20, 24, 28, 32].includes(p.length)) return entropyToMnemonic(p);", "if([16, 20, 24, 28].includes(p.length)) return entropyToMnemonic(p);"],
+  ["krux: older entries with CBC as ECB", "let p = ent.version === 1 ? await dbCbcNoPad(k, d.slice(0, 16), d.slice(16)) : await dbEcb(k, d);", "let p = await dbEcb(k, d);"],
+  ["krux: older entries salted with nothing", "const k = await kefKey(password, new TextEncoder().encode(id), ent.key_iterations)", "const k = await kefKey(password, new Uint8Array(0), ent.key_iterations)"],
+  ["krux: seeds.json KEF entries skipped", "if(typeof ent.b64_kef === \"string\"){ const e = kefUnwrap(dbB64(ent.b64_kef)); if(e) found.push({id, e}); }", "if(typeof ent.b64_kef === \"string\"){ }"],
+  ["krux: words with a bad checksum shown", "mnemonic: r && r.ok ? r.mnemonic : null", "mnemonic: words"],
+  ["krux: no key accepted", "  if(!password) throw new Error(\"Type the key the seed was encrypted with.\");\n", "\n"],
+  ["krux: raw file bytes not tried", "isFile && kefUnwrap(bytes) ? [kefUnwrap(bytes)] : []", "[]"],
+  ["krux: only the first reading of the text tried", "for(const e of f.es || [f.e]){", "for(const e of (f.es || [f.e]).slice(0, 1)){"],
+  ["krux: an empty ID refused", "const n = b[0]; if(n > 252 || b.length < n + 6) return null;", "const n = b[0]; if(n < 1 || n > 252 || b.length < n + 6) return null;"],
+  ["krux: base43 tried first", "  if(/^([0-9a-fA-F]{2})+$/.test(s)) tries.push(() => fromHex(s.toLowerCase()));\n  if(/^[A-Z2-7]+=*$/", "  if(/^[0-9A-Z$*+\\-./:]+$/.test(s)) tries.unshift(() => base43Decode(s));\n  if(/^([0-9a-fA-F]{2})+$/.test(s)) tries.push(() => fromHex(s.toLowerCase()));\n  if(/^[A-Z2-7]+=*$/"],
+  ["tapsigner: a non-master key accepted", " || raw[45] !== 0 || raw[4] !== 0) throw new Error(wrong);", " || raw[45] !== 0) throw new Error(wrong);"],
+  ["coldcard: start header CRC not checked", "if(crc32(b.slice(12, 32)) !== u32(8)) throw new Error(\"its start header is damaged (CRC does not match)\");", ""],
+  ["coldcard: header CRC not checked", "if(crc32(h) !== u32(28)) throw new Error(\"its header is damaged (CRC does not match)\");", ""],
+  ["coldcard: encoded header not refused", "if(top === 0x17) throw new Error(\"its header is compressed or encrypted, which a Coldcard never writes\"); ", ""],
+  ["coldcard: 7z numbers read as one byte", "const num = () => { const f = byte(); let mask = 0x80, v = 0;", "const num = () => { const f = byte(); let mask = 0, v = 0;"],
+  ["coldcard: another coder accepted", "if(cid !== \"06f10701\") throw new Error(\"it is not encrypted with 7-Zip's AES (coder \" + cid + \")\");", ""],
+  ["coldcard: unknown header parts not skipped", "const skip = num(); i += skip;", "const skip = num();"],
+  ["coldcard: 2^20 key rounds accepted", "if(pow > 19) throw", "if(pow > 20) throw"],
+  ["coldcard: salt size not counted", "sl = ((props[0] >> 7) & 1) + (props[1] >> 4)", "sl = (props[1] >> 4)"],
+  ["coldcard: IV taken from the salt", "iv = concatBytes(props.slice(2 + sl, 2 + sl + il), new Uint8Array(16 - il))", "iv = concatBytes(props.slice(2, 2 + il), new Uint8Array(16 - il))"],
+  ["coldcard: password as UTF-8", "pw[2 * j] = c & 255; pw[2 * j + 1] = c >> 8;", "pw[2 * j] = c & 255; pw[2 * j + 1] = 0x20;"],
+  ["coldcard: counter big-endian", "buf[o + salt.length + pw.length + j] = c & 255; c = Math.floor(c / 256);", "buf[o + salt.length + pw.length + 7 - j] = c & 255; c = Math.floor(c / 256);"],
+  ["coldcard: one key round too few", "const unit = salt.length + pw.length + 8, rounds = 2 ** pow,", "const unit = salt.length + pw.length + 8, rounds = 2 ** pow - 1,"],
+  ["coldcard: 4-letter starts not filled in", "return w.map(x => WORDLIST.includes(x) ? x : WORDLIST.find(y => y.startsWith(x))).join(\" \");", "return w.join(\" \");"],
+  ["coldcard: words not lowercased", "const w = String(t).trim().toLowerCase().split(/\\s+/);", "const w = String(t).trim().split(/\\s+/);"],
+  ["coldcard: padding not trimmed", "z.iv, z.ct)).slice(0, z.unpackSize);", "z.iv, z.ct));"],
+  ["coldcard: plaintext CRC not checked", "if(crc32(p) !== z.crc) throw new Error(\"These words do not open this backup", "if(false) throw new Error(\"These words do not open this backup"],
+  ["coldcard: clone file not named", "if(/^[0-9a-f]{66}-ccbk\\.7z$/i.test(name || \"\"))", "if(/^[0-9a-f]{67}-ccbk\\.7z$/i.test(name || \"\"))"],
+  ["coldcard: plain-text backup not read", "if(bytes.length > 22 && dbUtf8Safe(bytes.slice(0, 22)) === \"# Coldcard backup file\") plain = dbUtf8(bytes);", "if(false) plain = dbUtf8(bytes);"],
+  ["coldcard: XTN read as mainnet", "const net = v.chain === \"XTN\" ? \"test\" : \"main\"", "const net = \"main\""],
+  ["coldcard: 24-word record read as 12", "const n = ((m & 3) + 2) * 8, words", "const n = 16, words"],
+  ["coldcard: words and record never compared", "if(typeof v.mnemonic === \"string\" && v.mnemonic.trim().toLowerCase().split(/\\s+/).join(\" \") !== words) throw", "if(false) throw"],
+  ["coldcard: xprv record key and chain swapped", "return Object.assign(base, {root: [k, r.slice(1, 33)], xprvOnly: true});", "return Object.assign(base, {root: [BigInt(\"0x\" + hex(r.slice(1, 33))), r.slice(33, 65)], xprvOnly: true});"],
+  ["coldcard: raw seed one byte short", "return Object.assign(base, {seed: r.slice(1, 1 + m)});", "return Object.assign(base, {seed: r.slice(1, m)});"],
+  ["coldcard: duress wallets not mentioned", "Object.keys(v).some(k => /^duress_/.test(k)) ? \"duress (decoy) wallets\" : \"\"", "\"\""],
+  ["coldcard: not a backup text accepted", "if(!/^# Coldcard backup file/.test(text)) throw", "if(false) throw"],
+  ["device backups: addresses always native SegWit", "const t = DB_TYPES[steps.length ? steps[0][0] : 84] || DB_TYPES[84]", "const t = DB_TYPES[84]"],
+  ["device backups: nested SegWit addresses as legacy", "49: [\"sh-wpkh\", \"nested SegWit\"]", "49: [\"pkh\", \"nested SegWit\"]"],
+  ["device backups: change addresses from the receive chain", "\"/1/0 to 1/\" + last + \"):\\n\" + await rows(1);", "\"/1/0 to 1/\" + last + \"):\\n\" + await rows(0);"],
+  ["device backups: words with a passphrase", "const sd = await mnemonicToSeed(m, \"\"); return {root: await masterFromSeed(sd)", "const sd = await mnemonicToSeed(m, \"TREZOR\"); return {root: await masterFromSeed(sd)"],
+  ["device backups: Krux ID check never matches", "(x.id === w.fp ? \"The ID is these words' fingerprint", "(x.id === w.fp.toUpperCase() ? \"The ID is these words' fingerprint"],
+  ["device backups: file size not checked", "if(f && f.size > 1048576){", "if(f && f.size > 1048576 * 64){"],
+  ["device backups: secret shown at once", "    dbGot = {secret, words};\n", "    dbGot = {secret, words}; document.getElementById(\"dbSecret\").textContent = secret; document.getElementById(\"dbSecret\").style.display = \"\";\n"],
+  ["device backups: hiding keeps the secret on the page", "else { s.textContent = \"\"; s.style.display = \"none\"; b.textContent = \"SHOW THE SECRET\"; }", "else { s.style.display = \"none\"; b.textContent = \"SHOW THE SECRET\"; }"],
+  ["device backups: wipe keeps the result", "function dbWipe(){ dbRun++; dbGot = null;", "function dbWipe(){ dbRun++;"],
+  ["device backups: CLEAR keeps the key", "document.getElementById(\"dbKey\").value = \"\"; document.getElementById(\"dbFile\").value = \"\"; dbWipe(); }", "document.getElementById(\"dbFile\").value = \"\"; dbWipe(); }"],
+  ["device backups: CLEAR ALL keeps the backup", "  msReset(); dbClear(); wipeSeed(); planClear(); camStop();\n", "  msReset(); wipeSeed(); planClear(); camStop();\n"],
+  ["device backups: auto-clear ignores an open backup", "return hasSeed() || !!dbGot ||", "return hasSeed() ||"],
+  ["device backups: auto-clear forgets the key box", "\"cmxTrng\", \"cmxRolls\", \"dbIn\", \"dbKey\"];", "\"cmxTrng\", \"cmxRolls\", \"dbIn\"];"],
+  ["device backups: words not put in the box", "const ph = document.getElementById(\"phrase\"); ph.value = dbGot.words;", "const ph = document.getElementById(\"phrase\");"],
+  ["device backups: TAPSIGNER warning missing", "Coinkite says the key printed on the card is for emergencies only: once it has been used, the TAPSIGNER is no longer secure. Move the coins to a new wallet when you can.", ""],
+  ["device backups: a late result shown after an edit", "    if(run !== dbRun) return;\n    dbGot = {secret, words};", "    dbGot = {secret, words};"],
+  ["device backups: button never turned on", "  document.getElementById(\"dbBtn\").disabled = !on;   // v2.12.0: device backups\n", "\n"],
+  ["device backups: opens before the self-test", "async function dbOpenUi(){\n  if(!gateOk()) return;", "async function dbOpenUi(){"],
+  ["device backups: self-test checks left out", "  dbSelfTests(eq);   // v2.12.0: device backups (Krux and Coinkite test data)\n", "\n"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

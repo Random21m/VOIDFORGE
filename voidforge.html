@@ -1600,7 +1600,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div class="status" id="dbStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
       <pre id="dbOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
       <div class="btn-row" id="dbSecretRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" id="dbShowBtn" onclick="dbReveal()">SHOW THE SECRET</button><button type="button" class="secondary small" id="dbUseBtn" onclick="dbUseWords()">PUT THE WORDS IN THE BOX ABOVE</button></div>
-      <pre id="dbSecret" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:15px; margin:8px 0 0; -webkit-user-select:none; user-select:none;"></pre>
+      <pre id="dbSecret" style="-webkit-user-select:none; user-select:none; display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:15px; margin:8px 0 0;"></pre>
     </div>
     <div class="sec-block" id="lbBlock">
       <h3 class="sec">Read a label file (BIP329)<span class="tag tag-private">PRIVATE</span></h3>
@@ -2193,6 +2193,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details>
       <summary>Changelog</summary>
       <ul>
+        <li><b>2.12.0</b> &mdash; <b>Open a signing device&rsquo;s backup.</b> CHECK A BACKUP has <b>Open a signing device&rsquo;s backup</b>: a <b>TAPSIGNER</b> backup (.aes, or the .sh form) with the key from the back of the card, a <b>Krux</b> encrypted seed (the encrypted QR&rsquo;s text in base43, hex or Base64, or seeds.json; every KEF version and the older entries) with its key, or a <b>Coldcard</b> backup (.7z) with its 12 backup words (4-letter starts are fine) or its custom password. It shows the fingerprint and the first 10 receive and 10 change addresses, says what else the backup holds, and shows the words or key only when asked, never copyable. Each format is read as its maker&rsquo;s own code writes it, and checked against Krux&rsquo;s and Coinkite&rsquo;s test data. Also: the mutation test now has a time limit for each mutation, so a page freeze no longer stops the run.</li>
         <li><b>2.11.0</b> &mdash; <b>Codex32 shares and Taproot multisig.</b> (1) <b>Codex32 shares</b> (BIP93, EXTRA TOOLS): check codex32 strings (each mistake is named; nothing is corrected), combine a codex32 secret or k shares to see the wallet (fingerprint, the first 10 receive and 10 change addresses and the first Taproot address; TESTNET (practice coins only) in practice mode), or make a new wallet from 50 or 99 dice rolls as k-of-n codex32 shares (2 to 9 needed, up to 31) or one codex32 secret. Shares are read back and combined again before they are shown, are never copyable, and print one page each after asking. A codex32 seed is the BIP32 seed itself, not BIP39 words. (2) <b>Taproot multisig</b> in the MULTISIG WALLET card: a Taproot (bc1p) wallet with <code>sortedmulti_a</code> (BIP386, BIP387). Its key path is shut by an unspendable key worked out from the cosigners&rsquo; keys, so nothing random is needed. Keys use m/48&rsquo;/coin&rsquo;/account&rsquo;/3&rsquo;, which BIP48 does not define (Coldcard EDGE firmware uses it). Bitcoin Core 24.0.1 or later and Coldcard EDGE firmware (checked with 6.6.1X and 6.6.1QX) can sign; Sparrow cannot yet. (3) Every multisig wallet now shows <b>Import this wallet into Bitcoin Core</b> (createwallet and importdescriptors), and Explain an inheritance or timelock wallet and Is this seed in my wallet file? read Taproot multisig descriptors.</li>
         <li><b>2.10.0</b> &mdash; <b>Sixteen ways to make, check and keep a seed better.</b> (1) MAKE A SEED: a <b>Card method</b> menu (Ian Coleman, hashed, as before, or Ian Coleman, raw entropy, his tool&rsquo;s Use Raw Entropy choice, shown with an honest at-most strength), and <b>12, 15, 18, 21 or 24 words</b> for every method (15, 18 and 21-word dice and coin seeds do not match SeedSigner, Coldcard or Keystone, and SeedQR stays 12 and 24 words). (2) Warnings: a <b>public example phrase</b> (official test phrases, this page&rsquo;s own examples, or patterned numbers and words) is named after FORGE SEED, in the CHECK A BACKUP words box, VERIFY, Open this wallet and the Wallet Detective, and in Seed XOR; <b>Write these clearly</b> lists words whose letters could be misread as another word; rolls or flips <b>typed twice</b> are pointed out. (3) CHECK A BACKUP: <b>Reforge</b> reads half-readable words (<code>?</code> is one letter, <code>*</code> any number); <b>old Electrum seeds</b> (Electrum before version 2.0) are recognized, with the first 10 receive and 10 change addresses; <b>punch plates</b> (a TinySeed-style binary grid, Stackbit 1248, or word numbers in decimal, hex and octal, counted from 1 as Krux does) to show, print and read back; <b>Open an encrypted descriptor backup</b> (BIP138, the format Liana writes). (4) Backup plan: a letter for the executor, steps for the heir, key details and trusted contacts, and a <b>tamper-evident bag log</b>. (5) EXTRA TOOLS: <b>Inspect a transaction</b> checks every signature (VALID, INVALID or NOT CHECKED); <b>Check a Coldcard seed mix</b>; <b>Was my seed made by a flawed device?</b> (the Coldcard randomness bug of 2021 to July 2026, Milk Sad and the Trust Wallet browser extension); <b>Make new SLIP39 shares from dice</b>; and SAVE ENCRYPTED DESCRIPTOR BACKUP for multisig and inheritance wallets. (6) The page says &ldquo;first ten receive and ten change addresses&rdquo; wherever it shows a wallet, and SLIP39 check and combine now lists them.</li>
         <li><b>2.9.0</b> &mdash; <b>More ways in, more ways to check.</b> (1) <b>Cards &amp; hex</b> in MAKE A SEED: tap real-looking cards in the order you dealt them (each one flips to the VOIDFORGE back once used), or type them; 25 cards make 12 words, a whole deck and 6 more make 24. The cards are hashed exactly as Ian Coleman&rsquo;s BIP39 tool and EntropyLab do, so either can check the words; PRINT CARD SHEET gives boxes to write them in. Or type 32 or 64 hex digits (a 16-sided die) used as they are. Every way to make a seed now has the same FORGE SEED button. (2) <b>SCAN</b> buttons read QR codes with the camera: a SeedQR (only while offline), a watch-only key, an address, or a transaction, including moving QR codes (UR and BBQr); a red CAMERA ON bar shows while it is on, and it stops as soon as a code is read. OPEN A PHOTO INSTEAD works without a camera. (3) EXTRA TOOLS: <b>Check a signed release</b> (as Sparrow does), <b>Seed XOR</b> (as Coldcard does), <b>SLIP39 shares</b> (check and combine a Trezor or Keystone Shamir backup), <b>Find a typo in a descriptor</b> and <b>Explain an inheritance or timelock wallet</b>. CHECK A BACKUP: <b>Is this seed in my wallet file?</b> and <b>Read a label file</b> (BIP329). The transaction inspector finds this wallet&rsquo;s change even when it is not marked. (4) The dictionary names signet next to testnet, and THREAT_MODEL.md says what VOIDFORGE protects and what it cannot.</li>
@@ -2265,7 +2266,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   </div>
 
   <footer>
-    <div class="ft-name">VOIDFORGE <span>v2.11.0</span></div>
+    <div class="ft-name">VOIDFORGE <span>v2.12.0</span></div>
     <div class="ft-line"><span>SHA-256 of your rolls &rarr; BIP39</span><span>Same method as SeedSigner and Coldcard</span><span>gitlab.com/random21m/voidforge</span></div>
   </footer>
 </div>
@@ -4447,6 +4448,7 @@ const DICT = [
   ["Coin selection", "How a wallet chooses which of your coins (UTXOs) to spend in a payment.", "", "Transactions"],
   ["Coinbase transaction", "The first transaction in every block. It creates the block reward and pays it to the miner. (Not related to the company of that name.)", "", "Network & mining"],
   ["CoinJoin", "Several people combine their payments into one transaction, so it is harder to tell whose coin went where.", "", "Privacy & security"],
+  ["Coldcard backup (.7z)", "An encrypted backup a Coldcard writes to its microSD card: a .7z file locked with 12 words the Coldcard shows (or a custom backup password you set). It holds the seed and the Coldcard's settings, such as multisig wallets and the seed vault.", "CHECK A BACKUP: Open a signing device's backup opens it offline and shows which wallet it holds.", "Wallets & backups"],
   ["Cold storage", "Keeping keys on something that is never online, such as a seed on paper or a hardware wallet used offline.", "", "Wallets & backups"],
   ["Collaborative custody", "Sharing control of coins between you and a service or helper, using multisig, so neither can move them alone.", "", "Wallets & backups"],
   ["Collision", "Two different inputs that give the same hash. For a good hash like SHA-256 nobody has found one.", "", "Units & math"],
@@ -4684,6 +4686,8 @@ const DICT = [
   ["Master public key (old Electrum)", "The public key of an old Electrum wallet (before version 2.0), 128 hex characters. Every address of the wallet comes from it, so it shows them all, but it cannot spend.", "VERIFY, for an old Electrum seed.", "Keys & seeds"],
   ["Damaged word", "A seed word that can only partly be read, as on a burned, rusted or smudged backup. In Reforge, ? stands for one letter that cannot be read and * for any number of them; the first 4 letters of a BIP39 word are enough.", "Reforge (EXTRA TOOLS), Missing or wrong words.", "Keys & seeds"],
   // v2.11.0
+  ["Krux encrypted seed (KEF)", "A seed Krux saves encrypted with a key you choose, as a QR code or in seeds.json on its SD card. The Krux Encryption Format (KEF) holds an ID, the number of key-stretching rounds and the encrypted words. The ID is the wallet's fingerprint unless you typed your own.", "CHECK A BACKUP: Open a signing device's backup opens it offline and shows which wallet it holds.", "Wallets & backups"],
+  ["TAPSIGNER backup", "An encrypted copy of a TAPSIGNER card's master private key and its path, saved by a wallet app as a .aes file. It opens only with the 32-character key printed on the back of the card. Coinkite says that key is for emergencies only: once used, the card is no longer secure.", "CHECK A BACKUP: Open a signing device's backup opens it offline and shows which wallet it holds.", "Wallets & backups"],
   ["Codex32", "A way (BIP93) to back up a wallet's BIP32 master seed as one string starting with MS1 (48 characters for 128 bits, 74 for 256 bits; BIP93 allows up to 127), or as Shamir shares of it (2 to 9 needed). It is not BIP39: the same randomness as words is another wallet. There is no passphrase. The checksum can be checked by hand.", "EXTRA TOOLS: Codex32 shares (BIP93) checks and combines them, and makes new ones from dice.", "Keys & seeds"],
   ["Volvelle", "A paper computer: paper wheels that turn on a pin, read to look up a result instead of working it out. The codex32 project uses volvelles to compute codex32 checksums and shares by hand, with no electronic device.", "EXTRA TOOLS: Codex32 shares (BIP93), in the help text.", "Units & math"]
 ];
@@ -12791,7 +12795,7 @@ async function tsOpen(bytes, keyText){
   let lines; try { lines = dbUtf8(pt).split("\n"); } catch(e) { throw new Error(wrong); }
   let raw; try { raw = await base58decode(lines[0].trim()); } catch(e) { throw new Error(wrong); }
   const ver = hex(raw.slice(0, 4));
-  if(raw.length !== 78 || (ver !== "0488ade4" && ver !== "04358394") || raw[45] !== 0) throw new Error(wrong);
+  if(raw.length !== 78 || (ver !== "0488ade4" && ver !== "04358394") || raw[45] !== 0 || raw[4] !== 0) throw new Error(wrong);   // a TAPSIGNER backs up its master key (depth 0)
   const k = BigInt("0x" + hex(raw.slice(46, 78))); if(k === 0n || k >= SN) throw new Error(wrong);
   const p = (lines[1] || "").trim().replace(/0x([0-9a-fA-F]{1,8})/g, (a, h) => String(parseInt(h, 16)));
   const steps = parsePath(p); if(!steps) throw new Error("The backup opened, but its path line (“" + (lines[1] || "").slice(0, 40) + "”) is not a path.");
@@ -12807,7 +12811,7 @@ const KEF_V = {0: {m: "ecb", pad: "nul", auth: 16}, 1: {m: "cbc", pad: "nul", au
   15: {m: "ctr", auth: 4}, 16: {m: "ctr", auth: 4, z: true}, 20: {m: "gcm"}, 21: {m: "gcm", z: true}};
 function kefUnwrap(b){
   if(!b || b.length < 6) return null;
-  const n = b[0]; if(n < 1 || n > 252 || b.length < n + 6) return null;
+  const n = b[0]; if(n > 252 || b.length < n + 6) return null;   // an empty ID is allowed (kef.py)
   const id = b.slice(1, 1 + n), v = b[1 + n], V = KEF_V[v]; if(!V) return null;
   const s = (b[2 + n] << 16) | (b[3 + n] << 8) | b[4 + n], iters = s <= 10000 ? s * 10000 : s;
   if(iters < 10000) return null;
@@ -12856,14 +12860,16 @@ function base43Decode(t){
   let z = 0; for(const ch of t){ if(ch === "0") z++; else break; }
   return concatBytes(new Uint8Array(z), fromHex(h));
 }
+// One text can read as more than one of these, so every reading that is an envelope is kept (hex, base32, Base64, then base43, as
+// Krux's own scanner orders them), and the key decides: the first that opens is the one.
 function kefFromText(t){
-  const s = t.replace(/\s+/g, ""), tries = [];
-  if(/^[0-9A-Z$*+\-./:]+$/.test(s)) tries.push(() => base43Decode(s));
+  const s = t.replace(/\s+/g, ""), tries = [], out = [];
   if(/^([0-9a-fA-F]{2})+$/.test(s)) tries.push(() => fromHex(s.toLowerCase()));
+  if(/^[A-Z2-7]+=*$/.test(s)) tries.push(() => Uint8Array.from(base32Decode(s.replace(/=+$/, ""))));
   if(/^[A-Za-z0-9+/]+={0,2}$/.test(s)) tries.push(() => dbB64(s));
-  if(/^[A-Z2-7]+=*$/.test(s)) tries.push(() => base32Decode(s.replace(/=+$/, "")));
-  for(const f of tries){ try { const e = kefUnwrap(f()); if(e) return e; } catch(x) { /* the next way */ } }
-  return null;
+  if(/^[0-9A-Z$*+\-./:]+$/.test(s)) tries.push(() => base43Decode(s));
+  for(const f of tries){ try { const e = kefUnwrap(f()); if(e) out.push(e); } catch(x) { /* the next way */ } }
+  return out;
 }
 // The words in a decrypted Krux seed: BIP39 entropy bytes (what Krux writes), the words as text, or SeedQR digits.
 async function kruxWords(p){
@@ -12892,17 +12898,17 @@ async function kruxOpen(bytes, text, password, isFile){
     }
     if(!found.length) throw new Error("No encrypted seed was found in this seeds.json.");
   } else {
-    const e = (t ? kefFromText(t) : null) || (isFile ? kefUnwrap(bytes) : null);
-    if(!e) throw new Error("This is not a Krux encrypted seed: no KEF envelope was found (Krux writes it as the encrypted QR’s text, or in seeds.json).");
-    found.push({id: null, e});
+    const es = (t ? kefFromText(t) : []).concat(isFile && kefUnwrap(bytes) ? [kefUnwrap(bytes)] : []);
+    if(!es.length) throw new Error("This is not a Krux encrypted seed: no KEF envelope was found (Krux writes it as the encrypted QR’s text, or in seeds.json).");
+    found.push({id: null, es});
   }
   const out = [];
   for(const f of found){
     let words = null;
     if(f.legacy) words = await kruxLegacy(f.id, f.legacy, password);
-    else { const p = await kefDecrypt(f.e, password); if(p) words = await kruxWords(p); }
+    else { for(const e of f.es || [f.e]){ const p = await kefDecrypt(e, password); if(p){ words = await kruxWords(p); f.e = e; break; } } if(!f.e) f.e = f.es[0]; }
     const r = words ? await checkPhrase(words) : null;
-    const id = f.legacy ? f.id : (() => { try { return dbUtf8(f.e.id); } catch(x) { return hex(f.e.id); } })();
+    const id = f.legacy ? f.id : !f.e.id.length ? null : (() => { try { return dbUtf8(f.e.id); } catch(x) { return hex(f.e.id); } })();
     out.push({id, version: f.legacy ? "seeds.json version " + f.legacy.version + " (older)" : "KEF version " + f.e.v, iters: f.legacy ? f.legacy.key_iterations : f.e.iters, mnemonic: r && r.ok ? r.mnemonic : null});
   }
   return {kind: "krux", list: out};
@@ -13027,7 +13033,7 @@ async function dbOpenUi(){
   if(f && f.size > 1048576){ st.className = "status bad"; st.textContent = "This file is too big to be a device backup (over 1 MB)."; return; }
   st.textContent = "Opening...";
   try {
-    const bytes = f ? new Uint8Array(await f.arrayBuffer()) : new TextEncoder().encode(typed), text = f ? (dbUtf8Safe(bytes) || null) : typed;
+    const bytes = f ? await dbReadFile(f) : new TextEncoder().encode(typed), text = f ? (dbUtf8Safe(bytes) || null) : typed;
     let r, head = "", words = null, secret = "", lines = [];
     if(kind === "ts"){
       r = await tsOpen(bytes, pw);
@@ -13064,6 +13070,7 @@ async function dbOpenUi(){
     document.getElementById("dbSecretRow").style.display = ""; document.getElementById("dbUseBtn").style.display = words ? "" : "none";
   } catch(e) { if(run !== dbRun) return; st.className = "status bad"; st.textContent = e.message; }
 }
+function dbReadFile(f){ return new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(new Uint8Array(r.result)); r.onerror = () => no(new Error("The file could not be read.")); r.readAsArrayBuffer(f); }); }
 function numberedWords(m){ const w = m.split(" "), out = []; for(let i = 0; i < w.length; i += 4) out.push(w.slice(i, i + 4).map((x, j) => String(i + j + 1).padStart(2) + ". " + x.padEnd(9)).join(" ")); return out.join("\n"); }
 async function xprvText(root, net){
   const [k, c] = root, ver = net === "test" ? [0x04, 0x35, 0x83, 0x94] : [0x04, 0x88, 0xad, 0xe4];

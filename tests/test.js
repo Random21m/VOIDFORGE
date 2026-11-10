@@ -1797,7 +1797,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const r=load(); await r.ready(); const $=r.$, w=r.w, AB='abandon '.repeat(11)+'about';
     const EL_STD='cycle rocket west magnet parrot shuffle foot correct salt library feed song', EL_SW='bitter grass shiver impose acquire brush forget axis eager alone wine silver';
     const DF=async(words,pass,addr)=>{ $('phrase').value=words; $('verifyPass').value=pass; $('detAddr').value=addr; await w.detFind(); return {st:$('detStatus').textContent, cls:$('detStatus').className, out:$('detOut').textContent, shown:$('detOut').style.display!=='none'}; };
-    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.11.0','v2.11.0: the footer shows the new version');
+    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.12.0','v2.12.0: the footer shows the new version');
     ok(html.indexOf('<li><b>2.8.0</b>')>0&&html.indexOf('<li><b>2.8.0</b>')<html.indexOf('<li><b>2.7.0</b>'),'v2.8.0: the changelog lists 2.8.0 first');
     // --- Wallet Detective ---
     ok(!$('detBtn').disabled&&!$('detListBtn').disabled&&$('detStop').disabled&&$('detBtn').className===''&&$('detListBtn').className==='secondary small','Wallet Detective: FIND MY WALLET is the gold main button, enabled after the self-test; LIST and STOP are gray');
@@ -2777,6 +2777,20 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(/\["Taproot multisig"/.test(html)&&/\["multi_a and sortedmulti_a"/.test(html)&&/\["NUMS point \(unspendable key\)"/.test(html),'dictionary: Taproot multisig, multi_a and sortedmulti_a, NUMS point');
     w.setGate('fail','SELF-TEST FAILED','bad'); ok($('msStartBtn').disabled,'Taproot multisig: START MULTISIG SETUP waits for the self-test'); w.setGate('pass','SELF-TEST PASSED','good');
     ok(r.errors.length===0,'Taproot multisig: no page errors '+JSON.stringify(r.errors));
+    r.w.close(); }
+  // v2.12.0: Open a signing device's backup (the full checks are in tests/devbackup.test.mjs and the mutation probe, section 71)
+  { const r=load(); await r.ready(); const $=r.$, w=r.w, {HDKey}=require('@scure/bip32'), btc=require('@scure/btc-signer');
+    ok(html.indexOf('<li><b>2.12.0</b>')>0&&html.indexOf('<li><b>2.12.0</b>')<html.indexOf('<li><b>2.11.0</b>'),'v2.12.0: the changelog lists 2.12.0 first');
+    ok(/SELF-TEST PASSED \(140\/140\)/.test($('selfTestBadge').textContent),'v2.12.0: the self-test has 140 checks, the four new ones from Krux and Coinkite test data');
+    { const names=w.eval('DICT').map(e=>e[0]); ok(['Coldcard backup (.7z)','Krux encrypted seed (KEF)','TAPSIGNER backup'].every(n=>names.includes(n)),'dictionary: Coldcard backup, Krux encrypted seed and TAPSIGNER backup'); }
+    ok(!$('dbBtn').disabled&&$('dbKey').type==='password'&&/user-select:none/.test($('dbSecret').getAttribute('style'))&&$('dbSecretRow').style.display==='none','device backups: the button is on after the self-test, the key box hides what is typed, and the secret box cannot be selected');
+    const k='00112233445566778899aabbccddeeff', root=HDKey.fromMasterSeed(Buffer.alloc(32,3)), c=nc.createCipheriv('aes-128-ctr',Buffer.from(k,'hex'),Buffer.alloc(16));
+    const ct=Buffer.concat([c.update(root.privateExtendedKey+'\nm/84h/0h/0h\n'),c.final()]), shf='base64 -d <<END-OF-DATA | openssl aes-128-ctr -d -iv 0 -K $KEY\n'+ct.toString('base64')+'\nEND-OF-DATA\n';
+    $('dbKind').value='ts'; $('dbIn').value=shf; $('dbKey').value=k; await w.dbOpenUi();
+    ok($('dbOut').textContent.includes('Master fingerprint: '+root.fingerprint.toString(16).padStart(8,'0'))&&$('dbOut').textContent.includes(btc.p2wpkh(root.derive("m/84'/0'/0'/0/0").publicKey).address),'device backups: a TAPSIGNER backup made with node:crypto shows its fingerprint and first address (@scure)');
+    ok($('dbSecret').textContent==='','device backups: the key is not shown until asked'); w.dbReveal(); ok($('dbSecret').textContent.includes(root.privateExtendedKey),'device backups: SHOW THE SECRET shows the xprv');
+    w.dbClear(); ok($('dbSecret').textContent===''&&$('dbIn').value===''&&$('dbKey').value==='','device backups: CLEAR wipes the box');
+    ok(r.errors.length===0,'device backups: no page errors '+JSON.stringify(r.errors));
     r.w.close(); }
   // item 8: changelog
   ok(/Changelog/.test(html)&&/Breaking/.test(html),'changelog documents the H/T breaking change');

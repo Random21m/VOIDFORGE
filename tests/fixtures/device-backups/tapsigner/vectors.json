@@ -1,0 +1,17 @@
+{
+ "commit": "6ea18e9e94b5cc877885a9dd92518c28e814e251",
+ "official_vectors": "NONE: no key+plaintext+ciphertext triple exists in the repo",
+ "readme_sample_official_but_incomplete": {
+  "source": "README.md:368-389",
+  "key": "not published",
+  "length": 109,
+  "hexdump_bytes": "d63e4059f0fd7a3d0667a5940b5d01092758c32a1fc166d984842596af7123a10bbcaabac1a3986df2cd9c24518cf7bf09ad530d9b072b8e12be73243a09a93d266c98593495aa78a10b7a2b77981f7ad1cfd6e6fd31b3881ad9df6803a38b06db66efd6ea5f5f089aedf22a71"
+ },
+ "synthetic_NOT_OFFICIAL": {
+  "note": "made with openssl per docs/protocol.md:913-928; plaintext xprv is BIP-32 test vector 1 master key; key = emulator FIXED_AES_KEY b'A'*16 (emulator/ecard.py:43); path string format per path2str",
+  "key_hex": "41414141414141414141414141414141",
+  "iv_hex": "00000000000000000000000000000000",
+  "plaintext_utf8": "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi\nm/84h/0h/0h\n",
+  "ciphertext_hex": "f9a6bfb58465c9bc28cbeac0b0bf68a2263a9b582c4ae060c7f4750bfd5c0ef8803a0bf97d3abc96f4dd8eeaa5d31862108340306ef7b325e4717ad3f01e7bfe362582a4ddac936849125ef971b1058299fb7c544aee53ba906990e6e8aaf5051705039733710149b3865c75dc216a1447eb9913a323c066fe368e92"
+ }
+}
