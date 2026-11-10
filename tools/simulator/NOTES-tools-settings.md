@@ -40,7 +40,7 @@ The settings menu in the code goes General -> Advanced -> Hardware. "Dev Options
 - Language: English only, as get_detected_languages() reports when no catalogs are present.
 - I/O test: a 50 ms pause between the "selected" and "unselected" renders keeps the key highlight visible. On the device, the display's transfer time does this.
 - Scan: one async loop at the stream framerate (6 fps) replaces the camera, decoder and preview threads. pyzbar is replaced by VOIDFORGE's `qrDecodeRgba`. The progress overlay (RGBA 0,0,0,191) is drawn in place, at the same coordinates.
-- Address explorer: VOIDFORGE derives addresses from the master key plus the path, so `data.xpub` holds `{root, steps}`. Regtest uses the test network's address prefixes, because VOIDFORGE has no regtest.
+- Address explorer: `data.xpub` is the account's extended public key (the seeds part's HDKey stand-in), as in SeedSigner; addresses come from the seeds part's get_single_sig_address (bcrt1 on regtest).
 
 ## Stage 2 (see NOTES-psbt.md)
 - The scan routing is complete: PSBT -> PSBTSelectSeedView, wallet descriptor -> MultisigWalletDescriptorView (single-sig
@@ -48,8 +48,9 @@ The settings menu in the code goes General -> Advanced -> Hardware. "Dev Options
   SeedSignMessageStartView. The PSBT and descriptor decoders of decode_qr.py are ported (Specter, BBQr, base64, base43,
   generic and Coldcard config-file descriptors, Specter wallet JSON, UR crypto-psbt / crypto-output / crypto-account /
   bytes); a PSBT is recognized by fully parsing it (SSPSBT.parse), as embit does.
-- SIM: UR parts: SeedSigner's fountain decoder is not ported. SSURDecoder joins the pure parts 1..seqLen with VOIDFORGE's
-  urDecodeFrames; mixed fountain parts are skipped (shown as "already seen"), so a scan completes once each pure part
-  has been read.
+- UR parts: SSURDecoder is a fountain decoder written from BCR-2020-005 (Xoshiro256** seeded by SHA-256, the degree
+  sampler, the shuffle, XOR reduction of mixed parts, CRC-32), so an animation finishes from mixed parts as on the
+  device. Checked against SeedSigner's own ur2 decoder part by part (accepted or not, both percents, complete) on 81
+  sequences made with @ngraveio/bc-ur with pure parts skipped.
 - For the integrator: VOIDFORGE's own camera reads a SeedQR only while the computer is offline; the scanner here follows
   the same rule (ssToolsSeedScanBlocked).

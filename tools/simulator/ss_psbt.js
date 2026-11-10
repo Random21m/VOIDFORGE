@@ -3,8 +3,8 @@
 //   models/encode_qr.py, and the embit pieces they need (PSBT parse/sign/serialize, Descriptor, urtypes Output/Account).
 // Loaded after ss_tools_settings.js PART B, in the same script block (the build script joins them).
 // Crypto comes from VOIDFORGE's own functions: secp256k1 (emul, eadd, liftX, SG, SN), BIP32 (masterFromSeed, ckdPriv,
-// ckdPub), hashes (sha256bytes, dsha256, hash160, taggedHash), signature hashes (svSighashLegacy, svSighashV0,
-// svSighashTr: BIP143 and BIP341), base58check, bech32Encode, UR (urEncode, urDecodeFrames) and the RFC 6979 signer of
+// ckdPub), hashes (sha256bytes, dsha256, hash160, taggedHash, oldElSha256), signature hashes (svSighashV0, svSighashTr:
+// BIP143 and BIP341; the legacy one is embit's own, below), base58check, bech32Encode, UR (urEncode, urDecodeFrames) and the RFC 6979 signer of
 // ss_seeds.js (ssSeedsEcdsaSignRecoverable).
 "use strict";
 
@@ -18,6 +18,11 @@ function ssPsbtEq(a, b) {
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
   return true;
 }
+// PublicKey.sec() of a key as embit holds it. SeedSigner behavior: embit stores a taproot (x-only, 32-byte) key as
+// PublicKey.from_xonly(x) = the point with an EVEN y (prefix 02), so SeedSigner's "derived_key.key.sec() ==
+// public_key.sec()" matches a taproot key only when the derived key's y is even (about half of the keys); keys with an
+// odd y are not matched (a missing 00000000 fingerprint then stays missing and the input is not signed), as on the device.
+function ssPsbtSec(pub) { return pub.length === 32 ? concatBytes(Uint8Array.of(0x02), pub) : pub; }
 // Python `needle in haystack` for bytes
 function ssPsbtContains(haystack, needle) {
   if (!needle || !haystack || needle.length > haystack.length) return false;
@@ -181,24 +186,129 @@ async function ssPsbtSchnorrSign(m32, d0) {
 /* ---------------------------------------------------------------------------------------------------------------------
    3. embit Transaction and PSBT (version 0 and 2), what SeedSigner uses of them
    --------------------------------------------------------------------------------------------------------------------- */
-function ssPsbtParseTx(bytes) {
-  const r = psbtReader(bytes), tx = {version: r.u32(), vin: [], vout: [], locktime: 0};
-  let n = r.varint(), seg = false;
-  if (n === 0) {
-    if (r.byte() !== 1) throw new Error("Invalid segwit flag");
-    seg = true; n = r.varint();
+// embit reads a PSBT from a stream (io.BytesIO): stream.read(n) returns what is left when fewer than n bytes remain (no
+// error); only compact.read_from, read_string and Script.read_from check that they got their bytes. SSPsbtStream does
+// the same, so the port accepts and refuses the same damaged PSBTs as SeedSigner. Every count read from the data is
+// checked against the bytes left before anything is built from it (each item needs at least one byte, so a larger
+// count fails in embit too, only after a long loop): a damaged count gives embit's error at once, never a frozen page.
+class SSPsbtStream {
+  constructor(b) { this.b = b; this.o = 0; }
+  get left() { return this.b.length - this.o; }
+  read(n) { const x = this.b.slice(this.o, this.o + Math.max(0, Math.min(n, this.left))); this.o += x.length; return x; }
+  // compact.read_from
+  compact() {
+    const c = this.read(1);
+    if (c.length !== 1) throw new Error("Can't read one byte from the stream");
+    if (c[0] >= 0xfd) return ssPsbtLeNum(this.read(2 ** (c[0] - 0xfc)));
+    return c[0];
   }
+  // read_string (embit.psbt)
+  string() {
+    const l = this.compact(), s = this.read(l);
+    if (s.length !== l) throw new Error(`Failed to read ${l} bytes`);
+    return s;
+  }
+  // Script.read_from
+  script() {
+    const l = this.compact(), s = this.read(l);
+    if (s.length !== l) throw new Error(`Cant read ${l} bytes`);
+    return s;
+  }
+  // a count of items that each need at least `min` bytes
+  count(n, min = 1, what = "item") {
+    if (n * min > this.left) throw new Error("Can't read one byte from the stream");   // (where embit's loop would end)
+    return n;
+  }
+  // EmbitBase.parse: nothing may be left over
+  end() { if (this.left > 0) throw new Error("Unexpected extra bytes"); }
+}
+// int.from_bytes(b, "little") (any length; exact as a Number up to 2^53, which every real field is far below)
+function ssPsbtLeBig(b) { let v = 0n; for (let i = b.length - 1; i >= 0; i--) v = (v << 8n) | BigInt(b[i]); return v; }
+function ssPsbtLeNum(b) { return Number(ssPsbtLeBig(b)); }
+// ec.PublicKey.parse(b): 33-byte compressed or 65-byte uncompressed point on the curve, nothing left over
+function ssPsbtPubParse(b) {
+  if (!b.length || ![2, 3, 4].includes(b[0])) throw new Error("Invalid public key");
+  const n = b[0] === 4 ? 65 : 33;
+  if (b.length < n) throw new Error("Serialized pubkey should be 33 or 65 bytes long");
+  if (b.length > n) throw new Error("Unexpected extra bytes");
+  if (n === 33) { try { pointFromPub(b); } catch (e) { throw new Error("Failed parsing public key"); } return b; }
+  const x = ssPsbtBeBig(b.slice(1, 33)), y = ssPsbtBeBig(b.slice(33));
+  if (x >= SP || y >= SP || (y * y - (x * x * x + 7n)) % SP !== 0n) throw new Error("Failed parsing public key");
+  return b;
+}
+function ssPsbtBeBig(b) { let v = 0n; for (const x of b) v = (v << 8n) | BigInt(x); return v; }
+// ec.PublicKey.from_xonly(b): 32 bytes, a point on the curve
+function ssPsbtXonlyParse(b) {
+  if (b.length !== 32) throw new Error("AssertionError");
+  ssPsbtPubParse(concatBytes(Uint8Array.of(0x02), b));
+  return b;
+}
+// bip32.HDKey.parse(b) for a global xpub key: the checks embit makes (version, key, depth, nothing left over)
+function ssPsbtHDKeyCheck(b) {
+  const s = new SSPsbtStream(b);
+  const version = s.read(4), depth = s.read(1), fingerprint = s.read(4), child = s.read(4), chain_code = s.read(32), k = s.read(33);
+  if (!depth.length || !k.length) throw new Error("IndexError: index out of range");
+  let is_private = false;
+  if (k[0] === 0) {
+    const sk = k.slice(1);
+    if (sk.length !== 32) throw new Error("Secret should be 32-byte array");
+    const d = ssPsbtBeBig(sk);
+    if (d === 0n || d >= SN) throw new Error("Secret is not valid (larger then N?)");
+    is_private = true;
+  } else ssPsbtPubParse(k);
+  if (version.length < 4 || fingerprint.length < 4 || chain_code.length < 32) throw new Error("Not enough bytes");
+  const sub = ssPsbtBase58Check(b.slice(0, 78)).slice(1, 4);
+  if (sub === "prv" && !is_private) throw new Error("Invalid version for private key");
+  if (sub === "pub" && is_private) throw new Error("Invalid version for public key");
+  if (sub !== "prv" && sub !== "pub") throw new Error("Invalid version");
+  if (depth[0] === 0 && ssPsbtBeBig(child) !== 0n) throw new Error("zero depth with non-zero index");
+  if (depth[0] === 0 && !ssPsbtEq(fingerprint, [0, 0, 0, 0])) throw new Error("zero depth with non-zero parent");
+  s.end();
+}
+// base58.encode_check, without waiting (VOIDFORGE's oldElSha256 is a synchronous SHA-256)
+function ssPsbtBase58Check(payload) {
+  const all = concatBytes(payload, oldElSha256(oldElSha256(payload)).slice(0, 4));
+  const A = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  let v = ssPsbtBeBig(all), out = "";
+  while (v > 0n) { out = A[Number(v % 58n)] + out; v /= 58n; }
+  for (const x of all) { if (x !== 0) break; out = "1" + out; }
+  return out;
+}
+// DerivationPath.read_from: a 4-byte fingerprint (fewer bytes are kept as they are, as embit does) and uint32 indexes
+function ssPsbtReadDer(s) {
+  const fingerprint = s.read(4), derivation = [];
+  for (;;) {
+    const r = s.read(4);
+    if (r.length === 0) break;
+    if (r.length < 4) throw new Error("Invalid length");
+    derivation.push(ssPsbtLeNum(r));
+  }
+  return {fingerprint, derivation};
+}
+function ssPsbtParseDer(v) { return ssPsbtReadDer(new SSPsbtStream(v)); }   // DerivationPath.parse
+// Transaction.read_from (the stream form: a non-witness utxo is read straight from the PSBT, as embit does)
+function ssPsbtReadTx(s) {
+  const start = s.o;
+  const tx = {version: ssPsbtLeNum(s.read(4)), vin: [], vout: [], locktime: 0};
+  let n = s.compact();
+  const seg = n === 0;
+  if (seg) {
+    if (!ssPsbtEq(s.read(1), [1])) throw new Error("Invalid segwit marker");
+    n = s.compact();
+  }
+  s.count(n);
   for (let i = 0; i < n; i++) {
-    const txid = r.bytes(32), vout = r.u32(), script_sig = r.bytes(r.varint());
-    tx.vin.push({txid, vout, script_sig, sequence: r.u32()});
+    const txid = s.read(32), vout = ssPsbtLeNum(s.read(4)), script_sig = s.script();
+    tx.vin.push({txid, vout, script_sig, sequence: ssPsbtLeNum(s.read(4))});
   }
-  n = r.varint();
-  for (let i = 0; i < n; i++) { const value = r.i64(); tx.vout.push({value, script_pubkey: r.bytes(r.varint())}); }
-  if (seg) for (let i = 0; i < tx.vin.length; i++) { const k = r.varint(); for (let j = 0; j < k; j++) r.bytes(r.varint()); }
-  tx.locktime = r.u32();
-  if (!r.done) throw new Error("Transaction has extra data");
+  n = s.count(s.compact());
+  for (let i = 0; i < n; i++) { const value = ssPsbtLeBig(s.read(8)); tx.vout.push({value, script_pubkey: s.script()}); }
+  if (seg) for (let i = 0; i < tx.vin.length; i++) ssPsbtReadWitness(s);
+  tx.locktime = ssPsbtLeNum(s.read(4));
+  tx.raw = s.b.slice(start, s.o);
   return tx;
 }
+function ssPsbtParseTx(bytes) { const s = new SSPsbtStream(bytes), tx = ssPsbtReadTx(s); s.end(); return tx; }   // Transaction.parse
 function ssPsbtSerializeTx(tx) {
   const w = new SSPsbtWriter();
   w.u32(tx.version).varint(tx.vin.length);
@@ -208,16 +318,21 @@ function ssPsbtSerializeTx(tx) {
   w.u32(tx.locktime);
   return w.out();
 }
-// DerivationPath: 4-byte fingerprint + uint32 indexes
-function ssPsbtParseDer(v) {
-  if (v.length < 4 || v.length % 4) throw new Error("Invalid derivation path");
-  const r = psbtReader(v), fingerprint = r.bytes(4), derivation = [];
-  while (!r.done) derivation.push(r.u32());
-  return {fingerprint, derivation};
-}
 function ssPsbtSerDer(d) { const w = new SSPsbtWriter(); w.raw(d.fingerprint); for (const i of d.derivation) w.u32(i); return w.out(); }
-function ssPsbtWitnessParse(v) { const r = psbtReader(v), n = r.varint(), items = []; for (let i = 0; i < n; i++) items.push(r.bytes(r.varint())); return items; }
+// Witness.read_from: each item is read like stream.read(l) (a short last item is kept as it is)
+function ssPsbtReadWitness(s) { const n = s.count(s.compact()), items = []; for (let i = 0; i < n; i++) items.push(s.read(s.compact())); return items; }
+function ssPsbtWitnessParse(v) { const s = new SSPsbtStream(v), w = ssPsbtReadWitness(s); s.end(); return w; }   // Witness.parse
 function ssPsbtWitnessSer(items) { const w = new SSPsbtWriter(); w.varint(items.length); for (const x of items) w.str(x); return w.out(); }
+// TransactionOutput.parse
+function ssPsbtTxOutParse(v) { const s = new SSPsbtStream(v), value = ssPsbtLeBig(s.read(8)), script_pubkey = s.script(); s.end(); return {value, script_pubkey}; }
+// The taproot derivation value: leaf hashes, then DerivationPath.read_from
+function ssPsbtTapDer(v) {
+  const s = new SSPsbtStream(v), num = s.compact(), leaf_hashes = [];
+  if (num * 32 > s.left) throw new Error("Invalid length of taproot leaf hashes");
+  for (let i = 0; i < num; i++) leaf_hashes.push(s.read(32));
+  return {leaf_hashes, der: ssPsbtReadDer(s)};
+}
+function ssPsbtReadScope(s, scope) { for (;;) { const key = s.string(); if (key.length === 0) return; scope.read_value(s, key); } }
 const ssPsbtKeyHex = (b) => hex(b);
 
 class SSPSBTInputScope {
@@ -241,7 +356,10 @@ class SSPSBTInputScope {
     this.taproot_merkle_root = null;
     this.unknown = [];              // [{key, val}]
   }
-  get vin() { return {txid: this.txid, vout: this.vout, script_sig: new Uint8Array(0), sequence: this.sequence === null ? 0xffffffff : this.sequence}; }
+  // SeedSigner behavior: embit's InputScope.vin is TransactionInput(txid, vout, sequence=(self.sequence or 0xFFFFFFFF)),
+  // so a sequence of 0 becomes 0xFFFFFFFF in the transaction SeedSigner signs and in the PSBT it returns (correct
+  // Bitcoin would keep 0; the device does not).
+  get vin() { return {txid: this.txid, vout: this.vout, script_sig: new Uint8Array(0), sequence: this.sequence || 0xffffffff}; }
   get utxo() {
     if (this.witness_utxo) return this.witness_utxo;
     if (this.non_witness_utxo) return this.non_witness_utxo.tx.vout[this.vout] || null;
@@ -250,27 +368,34 @@ class SSPSBTInputScope {
   get script_pubkey() { const u = this.utxo; return u ? u.script_pubkey : null; }
   get is_taproot() { const u = this.utxo; return !!u && ssPsbtScriptType(u.script_pubkey) === "p2tr"; }
 
-  read_value(t, key, v) {
-    const k1 = key.length === 0;
+  // InputScope.read_value(stream, k): k is the whole key (type byte first), as in embit
+  read_value(s, k) {
+    if (k.length === 0) return;
+    const t = k[0], key = k.slice(1), k1 = k.length === 1;
     const dup = (what) => { throw new Error("Duplicated " + what); };
+    // non witness utxo: embit reads the transaction straight from the stream (the length before it is read and not used)
     if (t === 0x00) {
       if (!k1) throw new Error("Invalid non-witness utxo key");
-      if (this.non_witness_utxo) dup("utxo");
-      this.non_witness_utxo = {raw: v, tx: ssPsbtParseTx(v)};
-    } else if (t === 0x01) {
+      if (this.non_witness_utxo) dup("utxo value");
+      s.compact();
+      const tx = ssPsbtReadTx(s);
+      this.non_witness_utxo = {raw: tx.raw, tx};
+      return;
+    }
+    const v = s.string();
+    if (t === 0x01) {
       if (!k1) throw new Error("Invalid witness utxo key");
-      if (this.witness_utxo) dup("utxo");
-      const r = psbtReader(v), value = r.i64(), script_pubkey = r.bytes(r.varint());
-      this.witness_utxo = {value, script_pubkey};
+      if (this.witness_utxo) dup("utxo value");
+      this.witness_utxo = ssPsbtTxOutParse(v);
     } else if (t === 0x02) {
-      pointFromPub(key);
+      ssPsbtPubParse(key);
       if (this.partial_sigs.some((x) => ssPsbtEq(x.pub, key))) dup("partial sig");
       this.partial_sigs.push({pub: key, sig: v});
     } else if (t === 0x03) {
       if (!k1) throw new Error("Invalid sighash type key");
       if (this.sighash_type !== null) dup("sighash type");
       if (v.length !== 4) throw new Error("Sighash type should be 4 bytes long");
-      this.sighash_type = (v[0] | (v[1] << 8) | (v[2] << 16) | (v[3] << 24)) >>> 0;
+      this.sighash_type = ssPsbtLeNum(v);
     } else if (t === 0x04) {
       if (!k1) throw new Error("Invalid redeem script key");
       if (this.redeem_script) dup("redeem script");
@@ -280,7 +405,7 @@ class SSPSBTInputScope {
       if (this.witness_script) dup("witness script");
       this.witness_script = v;
     } else if (t === 0x06) {
-      pointFromPub(key);
+      ssPsbtPubParse(key);
       if (this.bip32_derivations.some((x) => ssPsbtEq(x.pub, key))) dup("derivation path");
       this.bip32_derivations.push({pub: key, der: ssPsbtParseDer(v)});
     } else if (t === 0x07) {
@@ -294,27 +419,30 @@ class SSPSBTInputScope {
     } else if (t === 0x0e && k1) {
       this.txid = Uint8Array.from(v);   // (stored here in serialized byte order, as the unsigned transaction has it)
     } else if (t === 0x0f && k1) {
-      this.vout = (v[0] | (v[1] << 8) | (v[2] << 16) | (v[3] << 24)) >>> 0;
+      this.vout = ssPsbtLeNum(v);
     } else if (t === 0x10 && k1) {
-      this.sequence = (v[0] | (v[1] << 8) | (v[2] << 16) | (v[3] << 24)) >>> 0;
+      this.sequence = ssPsbtLeNum(v);
     } else if (t === 0x14) {
-      if (key.length !== 64) throw new Error("Invalid key length");
+      if (k.length !== 65) throw new Error("Invalid key length");
+      ssPsbtXonlyParse(k.slice(1, 33));
+      if (this.taproot_sigs.some((x) => ssPsbtEq(x.key, key))) dup("taproot sig");
       this.taproot_sigs.push({key, val: v});
     } else if (t === 0x15) {
+      if (this.taproot_scripts.some((x) => ssPsbtEq(x.control, key))) dup("taproot script");
       this.taproot_scripts.push({control: key, script: v});
     } else if (t === 0x16) {
-      if (key.length !== 32) throw new Error("Invalid key length");
+      ssPsbtXonlyParse(key);
       if (!this.taproot_bip32_derivations.some((x) => ssPsbtEq(x.pub, key))) {
-        const r = psbtReader(v), num = r.varint(), leaf_hashes = [];
-        for (let i = 0; i < num; i++) leaf_hashes.push(r.bytes(32));
-        this.taproot_bip32_derivations.push({pub: key, leaf_hashes, der: ssPsbtParseDer(r.bytes(v.length - r.pos))});
+        const {leaf_hashes, der} = ssPsbtTapDer(v);
+        this.taproot_bip32_derivations.push({pub: key, leaf_hashes, der});
       }
     } else if (t === 0x17) {
-      this.taproot_internal_key = v;
+      this.taproot_internal_key = ssPsbtXonlyParse(v);
     } else if (t === 0x18) {
       this.taproot_merkle_root = v;
     } else {
-      this.unknown.push({key: concatBytes(Uint8Array.of(t), key), val: v});
+      if (this.unknown.some((x) => ssPsbtEq(x.key, k))) dup("key");
+      this.unknown.push({key: k, val: v});
     }
   }
 
@@ -361,27 +489,39 @@ class SSPSBTOutputScope {
     this.unknown = [];
   }
   get vout() { return {value: this.value, script_pubkey: this.script_pubkey}; }
-  read_value(t, key, v) {
-    const k1 = key.length === 0;
-    if (t === 0x00 && k1) { if (this.redeem_script) throw new Error("Duplicated redeem script"); this.redeem_script = v; }
-    else if (t === 0x01 && k1) { if (this.witness_script) throw new Error("Duplicated witness script"); this.witness_script = v; }
-    else if (t === 0x02) {
-      pointFromPub(key);
+  // OutputScope.read_value(stream, k)
+  read_value(s, k) {
+    if (k.length === 0) return;
+    const t = k[0], key = k.slice(1), k1 = k.length === 1;
+    const v = s.string();
+    if (t === 0x00) {
+      if (!k1) throw new Error("Invalid redeem script key");
+      if (this.redeem_script) throw new Error("Duplicated redeem script");
+      this.redeem_script = v;
+    } else if (t === 0x01) {
+      if (!k1) throw new Error("Invalid witness script key");
+      if (this.witness_script) throw new Error("Duplicated witness script");
+      this.witness_script = v;
+    } else if (t === 0x02) {
+      ssPsbtPubParse(key);
       if (this.bip32_derivations.some((x) => ssPsbtEq(x.pub, key))) throw new Error("Duplicated derivation path");
       this.bip32_derivations.push({pub: key, der: ssPsbtParseDer(v)});
-    }
-    else if (t === 0x03 && k1) { this.value = psbtReader(v).i64(); }
-    else if (t === 0x04 && k1) { this.script_pubkey = v; }
-    else if (t === 0x05) { this.taproot_internal_key = v; }
-    else if (t === 0x07) {
-      if (key.length !== 32) throw new Error("Invalid key length");
+    } else if (t === 0x03 && k1) {
+      this.value = ssPsbtLeBig(v);
+    } else if (t === 0x04 && k1) {
+      this.script_pubkey = v;
+    } else if (t === 0x05) {
+      this.taproot_internal_key = ssPsbtXonlyParse(v);
+    } else if (t === 0x07) {
+      ssPsbtXonlyParse(key);
       if (!this.taproot_bip32_derivations.some((x) => ssPsbtEq(x.pub, key))) {
-        const r = psbtReader(v), num = r.varint(), leaf_hashes = [];
-        for (let i = 0; i < num; i++) leaf_hashes.push(r.bytes(32));
-        this.taproot_bip32_derivations.push({pub: key, leaf_hashes, der: ssPsbtParseDer(r.bytes(v.length - r.pos))});
+        const {leaf_hashes, der} = ssPsbtTapDer(v);
+        this.taproot_bip32_derivations.push({pub: key, leaf_hashes, der});
       }
+    } else {
+      if (this.unknown.some((x) => ssPsbtEq(x.key, k))) throw new Error("Duplicated key");
+      this.unknown.push({key: k, val: v});
     }
-    else this.unknown.push({key: concatBytes(Uint8Array.of(t), key), val: v});
   }
   write_to(w, version = null) {
     const rec = (k, v) => { w.str(k); w.str(v); };
@@ -389,8 +529,8 @@ class SSPSBTOutputScope {
     if (this.witness_script) rec(Uint8Array.of(0x01), this.witness_script);
     for (const d of this.bip32_derivations) rec(concatBytes(Uint8Array.of(0x02), d.pub), ssPsbtSerDer(d.der));
     if (version === 2) {
-      rec(Uint8Array.of(0x03), svLe64(this.value));
-      rec(Uint8Array.of(0x04), this.script_pubkey);
+      if (this.value !== null) rec(Uint8Array.of(0x03), svLe64(this.value));
+      if (this.script_pubkey !== null) rec(Uint8Array.of(0x04), this.script_pubkey);
     }
     if (this.taproot_internal_key) rec(Uint8Array.of(0x05), this.taproot_internal_key);
     for (const d of this.taproot_bip32_derivations) {
@@ -402,6 +542,64 @@ class SSPSBTOutputScope {
     for (const x of this.unknown) rec(x.key, x.val);
     w.raw([0]);
   }
+}
+
+// SIGHASH.check
+function ssPsbtSighashCheck(sighash) {
+  let acp = false;
+  if (sighash & 0x80) { sighash ^= 0x80; acp = true; }
+  if (![0, 1, 2, 3].includes(sighash)) throw new Error("Invalid SIGHASH type");
+  return [sighash, acp];
+}
+// x.to_bytes(n, "little"), with Python's errors for None and for a number that does not fit
+function ssPsbtToBytes(x, n) {
+  if (x === null || x === undefined) throw new Error("'NoneType' object has no attribute 'to_bytes'");
+  const v = BigInt(x);
+  if (v < 0n || v >= (1n << BigInt(8 * n))) throw new Error("int too big to convert");
+  const o = new Uint8Array(n); let y = v;
+  for (let i = 0; i < n; i++) { o[i] = Number(y & 255n); y >>= 8n; }
+  return o;
+}
+// The transaction fields embit's signature hashes read: a PSBT (version 2, or damaged) without them cannot be signed
+// in SeedSigner (embit stops with an error), so it is not signed here either.
+function ssPsbtSighashFields(tx, i, sighash) {
+  const [sh, acp] = ssPsbtSighashCheck(sighash);
+  ssPsbtToBytes(tx.version, 4); ssPsbtToBytes(tx.locktime, 4);
+  for (let j = 0; j < tx.vin.length; j++) {
+    if (acp && j !== i) continue;
+    const x = tx.vin[j];
+    if (!x.txid) throw new Error("'NoneType' object is not reversible");
+    ssPsbtToBytes(x.vout, 4); ssPsbtToBytes(x.sequence, 4);
+  }
+  for (let j = 0; j < tx.vout.length; j++) {
+    if (sh === 2 || (sh === 3 && j !== i)) continue;
+    const o = tx.vout[j];
+    ssPsbtToBytes(o.value, 8);
+    if (!o.script_pubkey) throw new Error("'NoneType' object has no attribute 'serialize'");
+  }
+}
+// embit Transaction.sighash_legacy (SeedSigner signs with it: the script is used as it is, no OP_CODESEPARATOR handling)
+async function ssPsbtSighashLegacy(tx, i, script_pubkey, sighash) {
+  if (i < 0 || i >= tx.vin.length) throw new Error("Invalid input index");
+  let [sh, acp] = ssPsbtSighashCheck(sighash);
+  if (sh === 0) sh = 1;
+  if (sh === 3 && i >= tx.vout.length) { const o = new Uint8Array(32); o[31] = 1; return o; }   // (embit's 00...01)
+  const p = [ssPsbtToBytes(tx.version, 4)];
+  const inp = (x, sc, other) => {
+    const seq = other && (acp || sh === 2 || sh === 3) ? 0 : x.sequence;
+    return [x.txid, ssPsbtToBytes(x.vout, 4), varintBytes(sc.length), sc, ssPsbtToBytes(seq, 4)];
+  };
+  if (acp) p.push(varintBytes(1), ...inp(tx.vin[i], script_pubkey, false));
+  else { p.push(varintBytes(tx.vin.length)); tx.vin.forEach((x, j) => p.push(...inp(x, j === i ? script_pubkey : new Uint8Array(0), j !== i))); }
+  const out = (o) => [ssPsbtToBytes(o.value, 8), varintBytes(o.script_pubkey.length), o.script_pubkey];
+  if (sh === 2) p.push(varintBytes(0));
+  else if (sh === 3) {
+    p.push(varintBytes(i + 1));
+    for (let j = 0; j < i; j++) p.push(ssPsbtToBytes(0xffffffff, 8), Uint8Array.of(0));   // (embit's empty output: value 0xFFFFFFFF)
+    p.push(...out(tx.vout[i]));
+  } else { p.push(varintBytes(tx.vout.length)); for (const o of tx.vout) p.push(...out(o)); }
+  p.push(ssPsbtToBytes(tx.locktime, 4), ssPsbtToBytes(sighash, 4));
+  return dsha256(concatBytes(...p));
 }
 
 // embit psbt.PSBT
@@ -416,59 +614,56 @@ class SSPSBT {
     this.unknown = [];
   }
 
-  // psbt.PSBT.parse(bytes)
+  // psbt.PSBT.parse(bytes): PSBT.read_from on a stream, then nothing may be left over (EmbitBase.parse)
   static parse(bytes) {
     bytes = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes);
-    const r = psbtReader(bytes);
-    if (!ssPsbtEq(r.bytes(5), [0x70, 0x73, 0x62, 0x74, 0xff])) throw new Error("Invalid PSBT magic");
+    const s = new SSPsbtStream(bytes);
+    if (!ssPsbtEq(s.read(5), [0x70, 0x73, 0x62, 0x74, 0xff])) throw new Error("Invalid PSBT magic");
     let tx = null, version = null;
     const unknown = [];
     for (;;) {
-      const kl = r.varint();
-      if (kl === 0) break;
-      const key = r.bytes(kl), value = r.bytes(r.varint());
+      const key = s.string();
+      if (key.length === 0) break;
+      const value = s.string();
       if (key.length === 1 && key[0] === 0x00) {
         if (tx) throw new Error("Failed to parse PSBT - duplicated transaction field");
         tx = ssPsbtParseTx(value);
       } else if (key.length === 1 && key[0] === 0xfb) {
-        version = (value[0] | (value[1] << 8) | (value[2] << 16) | (value[3] << 24)) >>> 0;
+        version = ssPsbtLeNum(value);
       } else {
         if (unknown.some((x) => ssPsbtEq(x.key, key))) throw new Error("Duplicated key");
         unknown.push({key, val: value});
       }
     }
     if (tx && version === 2) throw new Error("Global TX field is not allowed in PSBTv2");
-    if (!tx && version !== 2) throw new Error("No transaction in the PSBT");
+    // (embit needs no transaction field when it is not version 2 either: the input and output counts then come from
+    // the 0x04 and 0x05 fields, or are zero)
     const psbt = new SSPSBT(tx, version);
-    let nin = psbt.inputs.length, nout = psbt.outputs.length;
     // parse_unknowns
     for (const u of unknown) {
       const t = u.key[0], k1 = u.key.length === 1;
-      if (t === 0x01 && u.key.length === 79) psbt.xpubs.push({key: u.key.slice(1), der: ssPsbtParseDer(u.val)});
-      else if (t === 0x02 && k1) psbt.tx_version = (u.val[0] | (u.val[1] << 8) | (u.val[2] << 16) | (u.val[3] << 24)) >>> 0;
-      else if (t === 0x03 && k1) psbt.locktime = (u.val[0] | (u.val[1] << 8) | (u.val[2] << 16) | (u.val[3] << 24)) >>> 0;
-      else if (t === 0x04 && k1) { if (nin > 0) throw new Error("Inputs already initialized"); nin = psbtReader(u.val).varint(); }
-      else if (t === 0x05 && k1) { if (nout > 0) throw new Error("Outputs already initialized"); nout = psbtReader(u.val).varint(); }
+      if (t === 0x01) { ssPsbtHDKeyCheck(u.key.slice(1)); psbt.xpubs.push({key: u.key.slice(1), der: ssPsbtParseDer(u.val)}); }
+      else if (t === 0x02 && k1) psbt.tx_version = ssPsbtLeNum(u.val);
+      else if (t === 0x03 && k1) psbt.locktime = ssPsbtLeNum(u.val);
+      else if ((t === 0x04 || t === 0x05) && k1) {
+        const list = t === 0x04 ? psbt.inputs : psbt.outputs;
+        if (list.length > 0) throw new Error(t === 0x04 ? "Inputs already initialized" : "Outputs already initialized");
+        const c = new SSPsbtStream(u.val), n = c.compact();
+        c.end();   // compact.from_bytes: "Too many bytes"
+        // every scope takes at least its one-byte separator, so a count above the bytes left cannot be read (embit
+        // would allocate that many scopes first: a damaged QR would freeze the page)
+        s.count(n);
+        const make = t === 0x04 ? () => new SSPSBTInputScope() : () => new SSPSBTOutputScope();
+        for (let i = 0; i < n; i++) list.push(make());
+      }
       else psbt.unknown.push(u);
     }
-    if (version === 2) {
-      psbt.inputs = Array.from({length: nin}, () => new SSPSBTInputScope());
-      psbt.outputs = Array.from({length: nout}, () => new SSPSBTOutputScope());
-    }
-    const readScope = (scope) => {
-      for (;;) {
-        const kl = r.varint();
-        if (kl === 0) return;
-        const key = r.bytes(kl), value = r.bytes(r.varint());
-        scope.read_value(key[0], key.slice(1), value);
-      }
-    };
-    for (const inp of psbt.inputs) readScope(inp);
-    for (const out of psbt.outputs) readScope(out);
-    if (version === 2) {
-      for (const inp of psbt.inputs) if (!inp.txid || inp.vout === null) throw new Error("Invalid PSBTv2 input");
-      for (const out of psbt.outputs) if (out.value === null || !out.script_pubkey) throw new Error("Invalid PSBTv2 output");
-    }
+    // input and output scopes: each starts from psbt.tx (InputScope(vin=...)), as embit's read_from does
+    const t0 = psbt.tx;
+    s.count(t0.vin.length + t0.vout.length);
+    psbt.inputs = t0.vin.map((vin) => { const x = new SSPSBTInputScope(vin); ssPsbtReadScope(s, x); return x; });
+    psbt.outputs = t0.vout.map((vout) => { const x = new SSPSBTOutputScope(vout); ssPsbtReadScope(s, x); return x; });
+    s.end();
     return psbt;
   }
 
@@ -531,6 +726,7 @@ class SSPSBT {
   // PSBT.sighash(i, sighash, ...)
   async sighash(ctx, i, sighash, ext = null) {
     const inp = this.inputs[i];
+    ssPsbtSighashFields(this.tx, i, sighash);
     if (inp.is_taproot) {
       for (const c of ctx.coins) if (!c) throw new Error("Missing previous utxo");
       return svSighashTr(ctx, i, sighash, ext);
@@ -544,7 +740,7 @@ class SSPSBT {
     // convert to p2pkh according to bip143
     if (st(sc) === "p2wpkh") sc = ssPsbtP2pkhFromP2wpkh(sc);
     if (is_segwit) return svSighashV0(ctx, i, sc, u.value, sighash);
-    return svSighashLegacy(ctx, i, sc, sighash);
+    return ssPsbtSighashLegacy(this.tx, i, sc, sighash);
   }
 
   // PSBT.sign_input_with_tapkey(key, input_index, inp, sighash). key: the private key (BigInt)
@@ -592,7 +788,7 @@ class SSPSBT {
       // get all possible derivations with matching fingerprint
       const bip32_derivations = [];
       if (fingerprint) {
-        for (const d of inp.taproot_bip32_derivations) if (ssPsbtEq(d.der.fingerprint, fingerprint)) bip32_derivations.push({pub: d.pub, der: d.der});
+        for (const d of inp.taproot_bip32_derivations) if (ssPsbtEq(d.der.fingerprint, fingerprint)) bip32_derivations.push({pub: ssPsbtSec(d.pub), der: d.der});   // (embit keeps them as PublicKey: 02 + x)
         for (const d of inp.bip32_derivations) if (ssPsbtEq(d.der.fingerprint, fingerprint)) bip32_derivations.push({pub: d.pub, der: d.der});
       }
       // get derived keys for signing
@@ -878,6 +1074,7 @@ class SSDescriptor {
   constructor({miniscript = null, sh = false, wsh = true, key = null, wpkh = true, taproot = false} = {}) {
     this.miniscript = miniscript;   // {name: "multi"|"sortedmulti", threshold, keys} or {name: <other>, keys: []} (opaque)
     this.sh = sh; this.wsh = wsh; this.key = key; this.wpkh = wpkh; this.taproot = taproot;
+    this.taptree = null;
     this.text = "";
   }
 
@@ -903,8 +1100,16 @@ class SSDescriptor {
     const is_miniscript = !(wpkh || taproot || (s.startsWith("pkh(")));
     let d;
     if (!is_miniscript) {
-      if (taproot && inner.includes(",")) throw new Error("SIM: taproot script trees are not supported by this practice signer");
+      // tr(key,{script tree}): the key is read; the tree is kept as text. SeedSigner reads it too, and as it is not a
+      // basic multisig it shows "Not Yet Implemented" for it (no address of it is ever derived here).
+      let taptree = null;
+      if (taproot) {
+        const args = SSDescriptor._split_args(inner);
+        if (args.length > 2 || (args.length === 2 && !args[1].trim())) throw new Error("Invalid taproot descriptor");
+        if (args.length === 2) { inner = args[0]; taptree = args[1]; }
+      }
       d = new SSDescriptor({key: await SSDescriptorKey.parse(inner), sh, wsh: false, wpkh, taproot});
+      d.taptree = taptree;
     } else {
       const m = /^(multi|sortedmulti)\((.*)\)$/.exec(inner);
       if (m) {
@@ -969,6 +1174,7 @@ class SSDescriptor {
   async script_pubkey(idx, branch_index = null) {
     if (this.key) {
       const pub = await this.key.derive_pub(idx, branch_index);
+      if (this.taproot && this.taptree) throw new Error("SIM: taproot script trees are not supported by this practice signer");
       if (this.taproot) return ssPsbtP2tr(pub);
       if (this.sh) return ssPsbtP2sh(await ssPsbtP2wpkh(pub));
       if (this.wpkh) return ssPsbtP2wpkh(pub);
@@ -1137,17 +1343,21 @@ class SSPSBTParser {
         let sc = new Uint8Array(0);
         const type = this.policy["type"];
         // if older multisig, just use existing script
-        if (type === "p2sh") sc = out.redeem_script ? await ssPsbtP2sh(out.redeem_script) : new Uint8Array(0);
+        // (script.p2sh(None) / script.p2wsh(None) and `"pkh" in None` stop SeedSigner's parser with an error: so here too)
+        const need = (x) => { if (!x) throw new Error("'NoneType' object has no attribute 'data'"); return x; };
+        if (type === "p2sh") sc = await ssPsbtP2sh(need(out.redeem_script));
 
         if (type === "p2wsh") {
           // multisig, we know witness script
-          sc = out.witness_script ? await ssPsbtP2wsh(out.witness_script) : new Uint8Array(0);
+          sc = await ssPsbtP2wsh(need(out.witness_script));
         } else if (type === "p2sh-p2wsh") {
-          sc = out.witness_script ? await ssPsbtP2sh(await ssPsbtP2wsh(out.witness_script)) : new Uint8Array(0);
+          sc = await ssPsbtP2sh(await ssPsbtP2wsh(need(out.witness_script)));
         } else if (type === "p2sh") {
           // Arbitrary p2sh; includes pre-segwit multisig (m/45')
-          sc = out.redeem_script ? await ssPsbtP2sh(out.redeem_script) : new Uint8Array(0);
-        } else if (type && type.includes("pkh")) {
+          sc = await ssPsbtP2sh(need(out.redeem_script));
+        } else if (type === null || type === undefined) {
+          throw new TypeError("argument of type 'NoneType' is not iterable");
+        } else if (type.includes("pkh")) {
           // single-sig
           let my_pubkey = null;
           // should be one or zero for single-key addresses
@@ -1159,7 +1369,7 @@ class SSPSBTParser {
           else if (type === "p2sh-p2wpkh" && my_pubkey !== null) sc = await ssPsbtP2sh(await ssPsbtP2wpkh(my_pubkey));
           else if (type === "p2wpkh" && my_pubkey !== null) sc = await ssPsbtP2wpkh(my_pubkey);
           if (ssPsbtEq(sc, spk)) is_change = true;
-        } else if (type && type.includes("p2tr")) {
+        } else if (type.includes("p2tr")) {
           let my_pubkey = null;
           // should have one or zero derivations for single-key addresses
           if (out.taproot_bip32_derivations.length > 0) {
@@ -1345,8 +1555,7 @@ class SSPSBTParser {
         try {
           if (!root) { await seed._ready; root = await SSPsbtHDKey.from_seed(seed.seed_bytes); }
           const derived_key = await root.derive(derivation_path_obj.derivation);
-          const pk = public_key.length === 32 ? derived_key.xonly() : derived_key.pub;
-          return ssPsbtEq(pk, public_key);   // Public keys match
+          return ssPsbtEq(derived_key.pub, ssPsbtSec(public_key));   // Public keys match
         } catch (e) {
           console.debug("Fingerprint fallback derive failed:", e);
         }
@@ -1382,8 +1591,7 @@ class SSPSBTParser {
     const updated = async (public_key, d) => {
       if (!ssPsbtEq(d.fingerprint, [0, 0, 0, 0])) return null;
       const derived_key = await this.root.derive(d.derivation);
-      const pk = public_key.length === 32 ? derived_key.xonly() : derived_key.pub;
-      if (ssPsbtEq(pk, public_key)) return {fingerprint: Uint8Array.from(signing_seed_fingerprint), derivation: d.derivation};
+      if (ssPsbtEq(derived_key.pub, ssPsbtSec(public_key))) return {fingerprint: Uint8Array.from(signing_seed_fingerprint), derivation: d.derivation};
       return null;
     };
     const fill_scope = async (scope) => {
@@ -2506,7 +2714,7 @@ class SSPSBTSigningErrorView extends SSView {
    10. Wiping (CLEAR ALL, auto-clear, END SESSION and closing the box: see ssPageStop in ss_page.js)
    --------------------------------------------------------------------------------------------------------------------- */
 const SS_PSBT_SCRUB_CLASSES = () => [SSPSBT, SSPSBTInputScope, SSPSBTOutputScope, SSPSBTParser, SSDescriptor, SSDescriptorKey,
-  SSDecodeQR, SSBaseQrDecoder, SSURDecoder, SSSeedsBaseQrEncoder];
+  SSDecodeQR, SSBaseQrDecoder, SSURDecoder, SSURFountainDecoder, SSSeedsBaseQrEncoder];
 // Overwrites the byte arrays of the scanned and signed data (PSBTs, signatures, descriptors, decoder state) and the
 // private keys held for signing, then the caller drops the references. Seeds are wiped by ssPageScrubSeed.
 function ssPsbtScrub(x, seen = new Set()) {

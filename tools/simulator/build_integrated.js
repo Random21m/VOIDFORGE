@@ -88,7 +88,7 @@ const box = `
           <span class="ss-usb" aria-hidden="true"></span>
         </div>
       </div>
-      <p class="ss-warn">PRACTICE ONLY: never put real coins on a seed made here.</p>
+      <p class="ss-warn">PRACTICE ONLY: never put real coins on a seed made here.<br>It is a real signer: never type in or scan a real seed.</p>
     </details>`;
 {
   const a = html.indexOf('<details id="practiceBox">'); must(a > 0, "practiceBox");

@@ -9,8 +9,14 @@ let ssPageOn = false, ssPageRun = 0;
 const SS_PAGE_KEYMAP = { ArrowUp: "KEY_UP", ArrowDown: "KEY_DOWN", ArrowLeft: "KEY_LEFT", ArrowRight: "KEY_RIGHT", Enter: "KEY_PRESS", " ": "KEY_PRESS", "1": "KEY1", "2": "KEY2", "3": "KEY3" };
 const SS_PAGE_KEYS = { ssKUp: "KEY_UP", ssKLeft: "KEY_LEFT", ssKPress: "KEY_PRESS", ssKRight: "KEY_RIGHT", ssKDown: "KEY_DOWN", ssK1: "KEY1", ssK2: "KEY2", ssK3: "KEY3" };
 
-// True while the device runs (auto-clear counts it as something to wipe).
-function ssPageActive() { return ssPageOn; }
+// True while the device runs, or while anything of it is left after the box was closed (settings saved to its
+// simulated microSD, text in the font caches), so auto-clear still wipes it.
+function ssPageActive() {
+  if (ssPageOn) return true;
+  try { if (SS_SIM_MICROSD.settings_json) return true; } catch (e) { /* settings part missing */ }
+  try { if (Object.keys(SSFonts.fonts).length) return true; } catch (e) { /* engine missing */ }
+  return false;
+}
 
 async function ssPageStart() {
   if (ssPageOn) return;
@@ -73,6 +79,11 @@ function ssPageStop() {
   const c = ran ? document.getElementById("ssScreen") : null;   // (a device that never drew leaves the screen black already)
   if (c) { const g = c.getContext && c.getContext("2d"); if (g) { g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = "#000"; g.fillRect(0, 0, c.width, c.height); } }
   try { if (SSRenderer._instance) { SSRenderer._instance.canvas = null; SSRenderer._instance.draw = null; } SSRenderer._instance = null; } catch (e) { /* not started */ }
+  // Every text the device ever drew or measured (seed words, passphrase, dice rolls) is a key in its fonts' measuring
+  // caches: drop the fonts (the next start makes new ones), the scratch canvases, and any fields of a screen being built.
+  try { SSFonts.fonts = {}; } catch (e) { /* engine missing */ }
+  try { _ss_scratch = null; _ss_measure_ctx = null; _ss_color_ctx = null; } catch (e) { /* engine missing */ }
+  try { SS_TOOLS_PENDING_FIELDS.length = 0; } catch (e) { /* tools part missing */ }
 }
 
 // CLEAR ALL, auto-clear and END SESSION: stop the device, wipe its memory (and the settings on its simulated microSD),

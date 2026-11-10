@@ -5,6 +5,8 @@
 // objects), so the wipe missed it. This cannot see copies outside the JavaScript heap (the browser's own text-box
 // buffers, the GPU, swap), which is why the page says that wiping is a precaution, not a guarantee.
 //
+// The practice signer (v2.13.0) is checked the same way after CLEAR ALL, auto-clear and closing its box.
+//
 // Run: node tests/memory.test.mjs        (MEM_DEBUG=1 prints where a found string is held)
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
@@ -88,6 +90,134 @@ await Promise.all([p.waitForEvent('load'), p.evaluate(() => endSession())]);
 await p.waitForFunction(() => document.body.classList.contains('js-ok'));
 await p.waitForTimeout(1500);
 { const s = await heapStrings(); const there = findIn(s, secrets); ok(there.length === 0, 'END SESSION: after the reload no secret is in the page\'s heap' + (there.length ? ' (still held: ' + there.join(', ') + ')' : '')); }
+
+// The practice signer (v2.13.0): a 12-word seed from made-up dice rolls, a passphrase typed on its keyboard, the words
+// viewed on its screen, then each wipe. Besides the string search, the heap graph is searched for any one object that
+// holds six or more of the seed words (single words are in the word list, so they cannot be searched for as text): the
+// device's text caches held them that way in seed order. CLEAR ALL, auto-clear and closing the box are each checked, and
+// after closing the box, that a later auto-clear still runs.
+const ssKey = { UP: 'ssKUp', DOWN: 'ssKDown', LEFT: 'ssKLeft', RIGHT: 'ssKRight', PRESS: 'ssKPress', K1: 'ssK1', K2: 'ssK2', K3: 'ssK3' };
+const ssState = () => p.evaluate(() => {
+  const c = SSController._instance; if (!c) return null;
+  const x = c.current_destination, v = x && x.view, s = v && v.screen, kb = s && (s.keyboard_abc || s.keyboard);
+  return { view: x && x.View_cls && x.View_cls.name, screen: s && s.constructor.name, sel: s && s.selected_button, kb: kb && kb.selected_key ? [kb.selected_key.x, kb.selected_key.y] : null,
+    input: s && (s.user_input !== undefined ? s.user_input : s.passphrase), labels: s && s.button_data ? s.button_data.map((b) => typeof b === 'string' ? b : b && b.button_label) : null };
+});
+// presses a key on the case and waits until the screen has taken it (or a fixed time when nothing visible changes)
+async function ssPress(k, settle = 0) {
+  const before = JSON.stringify(await ssState());
+  await p.click('#' + ssKey[k]);
+  const t = Date.now();
+  while (Date.now() - t < (settle || 2000)) { await p.waitForTimeout(25); if (!settle && JSON.stringify(await ssState()) !== before) break; }
+}
+async function ssWait(name, ms = 20000) {
+  const t = Date.now(); let s;
+  while (Date.now() - t < ms) { s = await ssState(); if (s && (s.view === name || s.screen === name)) { await p.waitForTimeout(150); return s; } await p.waitForTimeout(50); }
+  throw new Error('practice signer: no ' + name + ' (at ' + JSON.stringify(s) + ')');
+}
+async function ssPick(re) {
+  for (let n = 0; n < 30; n++) {
+    const s = await ssState(), i = (s.labels || []).findIndex((l) => re.test(l || ''));
+    if (i < 0) throw new Error('practice signer: no button ' + re + ' in ' + JSON.stringify(s));
+    if (s.sel === i) return ssPress('PRESS');
+    if (s.screen === 'SSMainMenuScreen') { const [cx, cy, tx, ty] = [s.sel % 2, Math.floor(s.sel / 2), i % 2, Math.floor(i / 2)]; await ssPress(cy < ty || s.sel === null ? 'DOWN' : cy > ty ? 'UP' : cx < tx ? 'RIGHT' : 'LEFT'); }
+    else await ssPress(s.sel > i ? 'UP' : 'DOWN');
+  }
+  throw new Error('practice signer: stuck at ' + re);
+}
+async function ssKb(name, target) {   // target: a letter, or {x, y}
+  for (let n = 0; n < 40; n++) {
+    const kb = await p.evaluate((name) => { const k = SSController._instance.current_destination.view.screen[name]; return { sel: [k.selected_key.x, k.selected_key.y], keys: k.keys.map((r) => r.map((x) => x.letter)) }; }, name);
+    let tx = -1, ty = -1;
+    if (typeof target === 'object') { tx = target.x; ty = target.y; } else kb.keys.forEach((r, y) => r.forEach((l, x) => { if (l === target) { tx = x; ty = y; } }));
+    if (ty < 0) throw new Error('practice signer: no key ' + target);
+    // sideways first while the target column exists in this row of letters (rows differ in length), else up or down
+    const row = kb.keys[kb.sel[1]] || [], side = kb.sel[0] !== tx && row.length > tx && row.every((l) => l);
+    if (side) await ssPress(kb.sel[0] < tx ? 'RIGHT' : 'LEFT');
+    else if (kb.sel[1] !== ty) await ssPress(kb.sel[1] < ty ? 'DOWN' : 'UP');
+    else if (kb.sel[0] !== tx) await ssPress(kb.sel[0] < tx ? 'RIGHT' : 'LEFT');
+    else return ssPress('PRESS');
+  }
+  throw new Error('practice signer: keyboard stuck at ' + target + ' ' + JSON.stringify(await ssState()) + ' ' + JSON.stringify(await p.evaluate((name) => { const k = SSController._instance.current_destination.view.screen[name]; return [k.selected_key.x, k.selected_key.y, k.keys.map((r) => r.map((x) => x.letter).join('')).join('|')]; }, name)));
+}
+async function ssMakeSeed(rolls, pw) {
+  await p.evaluate(() => { showTab('check'); const b = document.getElementById('ssBox'); b.open = true; b.scrollIntoView(); });
+  await ssWait('SSMainMenuView');
+  await ssPick(/^Tools$/); await ssWait('SSToolsMenuView');
+  for (let n = 0; n < 5 && (await ssState()).sel !== 1; n++) await ssPress('DOWN');   // the second "New seed" is the dice one
+  await ssPress('PRESS');
+  await ssPick(/12 words/);
+  await ssWait('SSToolsDiceEntropyEntryScreen');
+  for (const r of rolls) { const k = +r - 1; await ssKb('keyboard', { x: k % 3, y: Math.floor(k / 3) }); }
+  await ssWait('SSSeedWordsWarningView'); await ssPress('PRESS');
+  const words = [];
+  for (let page = 0; page < 3; page++) { await ssWait('SSSeedWordsScreen'); words.push(...await p.evaluate(() => SSController._instance.current_destination.view.screen.words)); await ssPress('PRESS'); }
+  await ssWait('SSSeedWordsBackupTestPromptView'); await ssPick(/Skip/);
+  await ssWait('SSSeedFinalizeView'); await ssPick(/Passphrase/);
+  await ssWait('SSSeedAddPassphraseScreen');
+  for (const ch of pw) await ssKb('keyboard_abc', ch);
+  const typed = await p.evaluate(() => SSController._instance.current_destination.view.screen.passphrase);
+  await ssPress('K3'); await ssWait('SSSeedReviewPassphraseView'); await ssPick(/^Done$/);
+  let s = await ssState(); if (s.view === 'SSSeedFinalizeView') await ssPick(/^Done$/);
+  await ssWait('SSSeedOptionsView');
+  // view the words again from the seed's menu
+  await ssPick(/Backup/i); await ssPick(/View seed words/i); await ssWait('SSSeedWordsWarningView'); await ssPress('PRESS'); await ssWait('SSSeedWordsScreen');
+  return { words: words.join(' '), typed };
+}
+// how many objects in the heap graph hold `min` or more of the given words (word lists left out)
+async function heapHolders(words, min = 6) {
+  for (let i = 0; i < 2; i++) await cdp.send('HeapProfiler.collectGarbage');
+  let json = ''; const onChunk = (c) => { json += c.chunk; };
+  cdp.on('HeapProfiler.addHeapSnapshotChunk', onChunk);
+  await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false, captureNumericValue: false });
+  cdp.off('HeapProfiler.addHeapSnapshotChunk', onChunk);
+  const snap = JSON.parse(json); json = '';
+  const m = snap.snapshot.meta, NF = m.node_fields.length, EF = m.edge_fields.length, N = snap.nodes, E = snap.edges, S = snap.strings;
+  const fType = m.node_fields.indexOf('type'), fName = m.node_fields.indexOf('name'), fEdges = m.node_fields.indexOf('edge_count'), eTo = m.edge_fields.indexOf('to_node');
+  const strType = m.node_types[0].indexOf('string'), synType = m.node_types[0].indexOf('synthetic'), seed = new Set(words);
+  let e = 0, found = 0;
+  for (let n = 0; n < N.length; n += NF) {
+    const ec = N[n + fEdges]; let hit = new Set(), all = 0;
+    for (let j = 0; j < ec; j++, e += EF) {
+      const t = E[e + eTo]; if (N[t + fType] !== strType) continue;
+      const v = S[N[t + fName]]; if (seed.has(v)) hit.add(v); all++;
+    }
+    // (word lists are left out: the BIP39 list, the old Electrum list of 1626 words, the strings of the page source)
+    if (hit.size >= min && all < 1000 && N[n + fType] !== synType) {
+      found++;
+      if (process.env.MEM_DEBUG) console.log('  held by a ' + m.node_types[0][N[n + fType]] + ' "' + String(S[N[n + fName]]).slice(0, 60) + '" with ' + ec + ' edges: ' + [...hit].join(' '));
+    }
+  }
+  return found;
+}
+await p.evaluate(() => { const g = document.getElementById('sgGo'); if (g) g.click(); window.print = () => {}; });   // (END SESSION showed the start notice again)
+const ssWipes = {
+  'CLEAR ALL': () => p.evaluate(() => clearAll()),
+  'auto-clear': () => p.evaluate(() => autoWipe('in the memory test')),
+  'closing the box': () => p.click('#ssBox > summary'),
+};
+for (const [how, wipe] of Object.entries(ssWipes)) {
+  const rolls = Array.from({ length: 50 }, () => 1 + nc.randomInt(6)).join('');
+  const pw = Array.from({ length: 8 }, () => 'abcdefghijklmnopqrstuvwxyz'[nc.randomInt(26)]).join('');
+  const { words, typed } = await ssMakeSeed(rolls, pw);
+  const wl = words.split(' ');
+  const needles = [['its seed words', words], ['its first four seed words', wl.slice(0, 4).join(' ')], ['its dice rolls', rolls], ['its first 20 rolls', rolls.slice(0, 20)],
+    ['its last 20 rolls', rolls.slice(-20)], ['its passphrase', pw], ['the start of its passphrase', pw.slice(0, 5)]];
+  if (how === 'CLEAR ALL') {
+    const s = await heapStrings(), there = findIn(s, needles), held = await heapHolders(wl);
+    ok(wl.length === 12 && typed === pw && there.some((x) => /rolls/.test(x)) && there.includes('its passphrase') && held > 0,
+      'practice signer control: a dice seed with a passphrase is made on its own keys, and before a wipe the search finds its rolls and passphrase as text and ' + held + ' object(s) holding its words (' + there.join(', ') + ')');
+  }
+  await wipe();
+  await p.waitForTimeout(1500);
+  const s = await heapStrings(), there = findIn(s, needles), held = await heapHolders(wl);
+  ok(there.length === 0 && held === 0, 'practice signer, ' + how + ': no seed word, roll or passphrase is still held' + (there.length || held ? ' (still held: ' + there.concat(held ? [held + ' object(s) with its words'] : []).join(', ') + ')' : ''));
+  if (process.env.MEM_DEBUG && there.length) for (const [n, v] of needles) for (const x of s) if (x.includes(v)) console.log('  ' + n + ' inside: ' + JSON.stringify(x.slice(0, 160)));
+  if (how === 'closing the box') {
+    const ran = await p.evaluate(() => { document.getElementById('autoNote').textContent = ''; const r = autoWipe('in the memory test'); return { r, active: ssPageActive() }; });
+    ok(!ran.active, 'practice signer: after closing the box nothing of it is left for a later auto-clear to wipe (ssPageActive ' + ran.active + ')');
+  }
+}
 
 ok(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
 await browser.close();

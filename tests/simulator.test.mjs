@@ -21,7 +21,7 @@
 //   psbt_p2wpkh / psbt_p2sh / psbt_p2tr
 //               review (overview, math, recipient, change, OP_RETURN), sign, read the signed UR crypto-psbt from the screen QR(s) and
 //               check it with btc-signer + noble (BIP-143 / BIP-341 sighash, signatures, btc-signer's own lowR signature, finalize);
-//               the P2TR PSBT is fed as an animated UR
+//               the P2TR PSBT is fed as an animated UR with part 1 missed (finished from fountain-mixed parts)
 //   psbt_msig   2-of-3 P2WSH: change unverified, scan the wallet descriptor, change verified, sign, a cosigner signs with btc-signer, finalize
 //   psbt_msig_bad  a descriptor of other cosigners: "Address Verification Failed", the transaction is discarded
 //   addr_single / addr_taproot / addr_multi
@@ -29,6 +29,8 @@
 //   signmsg     message signing off, then on in Settings; P2WPKH, P2PKH (two pages) and P2SH-P2WPKH messages checked as
 //               "Bitcoin Signed Message" signatures by public key recovery (noble)
 //   psbt_wipe   CLEAR ALL in the middle of a PSBT flow overwrites the PSBT, signatures, signing key and descriptor keys
+//   review      two quick taps count twice and a held key repeats; regtest bcrt1 addresses in the Address Explorer (from an
+//               xpub); a "bitcoin:" QR with no address goes Home; tr() with a script tree is "Not Yet Implemented"
 // And: the page self-test passes (140/140) in every page opened, and no page error or console error happens in any of them.
 // Run: node tests/simulator.test.mjs        (SCEN=dice12,wipe to run some; SIM_CONC=4 to run fewer at a time)
 import { createRequire } from 'module';
@@ -698,7 +700,14 @@ async function psbtFlow(t, d, page, name, frames, o = {}) {
 }
 SCEN.psbt_p2wpkh = (t, d, ctx, page) => psbtFlow(t, d, page, 'p2wpkh', [S2.p2wpkh.b64]);
 SCEN.psbt_p2sh = (t, d, ctx, page) => psbtFlow(t, d, page, 'p2sh_p2wpkh', [S2.p2sh_p2wpkh.b64]);
-SCEN.psbt_p2tr = (t, d, ctx, page) => psbtFlow(t, d, page, 'p2tr', urParts(b64b(S2.p2tr.b64), 60), { label: '(animated UR in)' });
+// The P2TR PSBT comes as a real wallet's animation does when the camera starts late: part 1 and every other pure part are
+// missed, so the scan can only finish by solving the fountain-mixed parts that follow (bc-ur's encoder makes them)
+const urFountainParts = (rawBytes, maxFrag) => {
+  const e = new UREncoder(new CryptoPSBT(Buffer.from(rawBytes)).toUR(), maxFrag, 0, 10), n = e.fragmentsLength, p = [];
+  for (let i = 0; i < 4 * n + 10; i++) { const x = e.nextPart().toUpperCase(); if (i >= n || i % 2 === 1) p.push(x); }
+  return p;
+};
+SCEN.psbt_p2tr = (t, d, ctx, page) => psbtFlow(t, d, page, 'p2tr', urFountainParts(b64b(S2.p2tr.b64), 60), { label: '(animated UR in, part 1 missed: read from fountain-mixed parts)' });
 
 // ---- 2-of-3 P2WSH: the change is unverified until the wallet descriptor is scanned; then it is checked against the descriptor
 async function loadDescriptor(t, d, page, tag, text, o = {}) {
@@ -864,9 +873,51 @@ SCEN.psbt_wipe = async (t, d, ctx, page) => {
   t(w.dpub && w.dchain, tag + ': the scanned descriptor\'s keys are overwritten');
 };
 
+// ---- review fixes: two quick taps, key repeat only while held, regtest addresses in the Address Explorer (from an xpub),
+// a "bitcoin:" QR with no address, a taproot descriptor with a script tree
+SCEN.review = async (t, d, ctx, page) => {
+  await d.waitView('SSMainMenuView'); await d.pick(/^Tools$/, { wait: 900 });
+  await d.press('DOWN', 300); await d.press('PRESS', 900); await d.pick(/12 words/, { wait: 1000 });
+  await d.waitView('SSToolsDiceEntropyEntryScreen'); await sleep(500);
+  const taps = (plan) => d.ev((plan) => new Promise((res) => {   // [[at ms, hold ms], ...] on the joystick press (the dice key "1" is selected)
+    const h = SSHardwareButtons.get_instance(), sc = () => SSController._instance.current_destination.view.screen, n0 = sc().user_input.length;
+    for (const [at, hold] of plan) { setTimeout(() => h.key_down('KEY_PRESS'), at); setTimeout(() => h.key_up('KEY_PRESS'), at + hold); }
+    setTimeout(() => res(sc().user_input.length - n0), Math.max(...plan.map(([a, b]) => a + b)) + 600);
+  }), plan);
+  const counts = [];
+  for (const gap of [150, 180, 200, 240, 300]) counts.push(await taps([[0, 70], [gap, 70]]));
+  t(counts.every((c) => c === 2), 'keys: two quick taps (70 ms each, 150 to 300 ms apart) count as two rolls, never three (' + counts.join(', ') + ')');
+  const held = await taps([[0, 700]]);
+  t(held >= 3, 'keys: a key held for 700 ms repeats after 225 ms, as on the device (' + held + ' rolls)');
+  await page.click('#ssBox > summary'); await sleep(400); await page.click('#ssBox > summary');   // switch it off and on
+  // regtest: the Address Explorer shows bcrt1 addresses (BIP84 path m/84'/1'/0'), made from the account xpub
+  await d.waitView('SSMainMenuView');
+  await d.ev(() => { const S = SSSettings.get_instance(), C = SSSettingsConstants; S.set_value(C.SETTING__NETWORK, C.REGTEST); });
+  const { fp } = await d.loadByScan();
+  await d.pick(/Address explorer/, { wait: 900 }); await d.pick(/^Native Segwit$/, { wait: 900 });
+  await d.waitView('SSToolsAddressExplorerAddressTypeView'); await d.pick(/Receive/, { wait: 3000 }); await d.waitView('SSToolsAddressExplorerAddressListView'); await sleep(1500);
+  const REG = { bech32: 'bcrt', pubKeyHash: 0x6f, scriptHash: 0xc4, wif: 0xef };
+  const want = Array.from({ length: 10 }, (_, i) => shortAddr(btc.p2wpkh(rootOf(ABANDON).derive(`m/84'/1'/0'/0/${i}`).publicKey, REG).address, i));
+  const got = ((await d.state()).labels || []).slice(0, 10);
+  t(JSON.stringify(got) === JSON.stringify(want), 'regtest: the Address Explorer shows bcrt1 addresses, as SeedSigner does (' + got[0] + ', wanted ' + want[0] + ')');
+  const xp = await d.ev(() => { const x = SSController._instance.address_explorer_data.xpub; return { keys: Object.keys(x).sort().join(','), key: x.key && x.key.length, chain: x.chain_code && x.chain_code.length }; });
+  t(xp.key === 33 && xp.chain === 32 && !/\b(k|root|steps)\b/.test(xp.keys), 'Address Explorer: it holds the account xpub (33-byte public key, chain code), not the master private key (' + xp.keys + ')');
+  // "bitcoin:" with no address: the scan stops and goes Home (SeedSigner: "Invalid address", DecodeQRStatus.INVALID)
+  await toHome(d);
+  await scanFrames(d, page, ['bitcoin:', 'bitcoin:', 'hello']); await sleep(2500);
+  let st = await d.state();
+  t(st.view === 'SSMainMenuView', '"bitcoin:" with no address: the scan stops and the device goes Home (' + st.view + ')');
+  // tr(key, {script tree}): read as a descriptor, then "Not Yet Implemented" as on SeedSigner
+  const xpubOf = (m, path) => rootOf(m).derive(path).publicExtendedKey;
+  const trDesc = `tr([${FPA}/86'/0'/0']${xpubOf(MN2.A, "m/86'/0'/0'")}/0/*,{sortedmulti_a(1,${xpubOf(MN2.B, "m/86'/0'/0'")}/0/*,${xpubOf(MN2.C, "m/86'/0'/0'")}/0/*)})`;
+  await scanFrames(d, page, [trDesc]);
+  st = await d.waitView('SSNotYetImplementedView', 30000);
+  t(st.view === 'SSNotYetImplementedView', 'tr() with a script tree: "Not Yet Implemented", as SeedSigner shows (' + st.view + ')');
+};
+
 // ================================================================ run
 SCEN.tools.clock = true; SCEN.offline.online = true;
-const order = ['psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
+const order = ['review', 'psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
 const want = process.env.SCEN ? process.env.SCEN.split(',') : order;
 const results = [];
 async function runScenario(browser, name) {

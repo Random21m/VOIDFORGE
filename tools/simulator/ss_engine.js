@@ -1385,8 +1385,11 @@ SSHardwareButtonsConstants.KEYS__ANYCLICK = ["KEY_PRESS", "KEY1", "KEY2", "KEY3"
 
 /*
  * SIM: GPIO levels are replaced by key state. A key is "LOW" (pressed) while it is held (keyboard keydown or
- * key_down() from the page) and for SS_KEY_LATCH_MS after it went down, so a very short tap is never missed
- * by the 10 ms polling loop.
+ * key_down() from the page). A tap that is already released when the 10 ms polling loop looks (a mouse click can go
+ * down and up between two polls) still counts once: it stays pending until wait_for() returns it, or SS_KEY_LATCH_MS
+ * after it can first be returned. Key repeat (SeedSigner's first_repeat_threshold rule) happens only while the key
+ * is really held, never from a pending tap, so two quick taps count as two, as on the device. check_for_low() and
+ * has_any_input() (toasts, the screensaver) see a tap as LOW for SS_KEY_LATCH_MS, as they would see a short press.
  */
 const SS_KEY_LATCH_MS = 120;
 const SS_TAP_MS = 110;
@@ -1404,6 +1407,8 @@ class SSHardwareButtons {
             hb.next_repeat_threshold = 250;   // Amount of time where we no longer consider input a continuous hold
             hb._held = {};
             hb._down_at = {};
+            hb._pending = {};               // SIM: a tap not yet returned by wait_for()
+            hb._pend_at = {};
             SSHardwareButtons._instance = hb;
         }
         return SSHardwareButtons._instance;
@@ -1414,16 +1419,25 @@ class SSHardwareButtons {
     static check_for_low(key, keys) { return SSHardwareButtons.get_instance().check_for_low(key, keys); }
     static has_any_input() { return SSHardwareButtons.get_instance().has_any_input(); }
 
+    // GPIO level for check_for_low() / has_any_input(): held, or tapped less than SS_KEY_LATCH_MS ago
     _is_low(key) {
         if (this._held[key]) return true;
         const t = this._down_at[key];
         return t !== undefined && Date.now() - t < SS_KEY_LATCH_MS;
     }
+    // For wait_for(): held, or a tap it has not returned yet (kept SS_KEY_LATCH_MS from when it can first be returned)
+    _is_waiting(key) {
+        if (this._held[key]) return true;
+        if (!this._pending[key]) return false;
+        if (Date.now() - this._pend_at[key] < SS_KEY_LATCH_MS) return true;
+        this._pending[key] = false;   // a tap nobody waited for is gone, like a short press the device did not poll
+        return false;
+    }
 
     // Page/keyboard input
     key_down(key) {
         if (!SSHardwareButtonsConstants.ALL_KEYS.includes(key)) return;
-        if (!this._held[key]) this._down_at[key] = Date.now();
+        if (!this._held[key]) { this._down_at[key] = this._pend_at[key] = Date.now(); this._pending[key] = true; }
         this._held[key] = true;
     }
     key_up(key) { this._held[key] = false; }
@@ -1467,11 +1481,12 @@ class SSHardwareButtons {
 
             // Check each candidate key to see if it was pressed
             for (const key of keys) {
-                if (this._is_low(key)) {
+                if (this._is_waiting(key)) {
                     if (this.cur_input !== key) {
                         this.cur_input = key;
                         this.cur_input_started = Date.now();
                         this.last_input_time = this.cur_input_started;
+                        this._pending[key] = false;
                         return await this._return_key(key);
                     } else {
                         // Still pressing the same input
@@ -1479,13 +1494,21 @@ class SSHardwareButtons {
                             // Too much time has elapsed to consider this the same continuous input.
                             this.cur_input_started = cur_time;
                             this.last_input_time = cur_time;
+                            this._pending[key] = false;
                             return await this._return_key(key);
-                        } else if (cur_time - this.cur_input_started > this.first_repeat_threshold &&
+                        } else if (this._held[key] && this._down_at[key] <= this.cur_input_started &&
+                                   cur_time - this.cur_input_started > this.first_repeat_threshold &&
                                    cur_time - this.last_input_time >= SS_REPEAT_MIN_MS) {
                             // We're good to relay this immediately as continuous input.
-                            // (SIM: at most one repeat per SS_REPEAT_MIN_MS, the time a Pi needs to redraw a screen.)
+                            // (SIM: only while the key is held down without a break since this input began, and at
+                            // most one repeat per SS_REPEAT_MIN_MS, the time a Pi needs to redraw a screen.)
                             this.last_input_time = cur_time;
+                            this._pending[key] = false;
                             return await this._return_key(key);
+                        } else if (this._pending[key]) {
+                            // SIM: a new tap inside the "same press" window: keep it pending until the window ends
+                            // (then it is a new separate press, as a second press after next_repeat_threshold is on the device).
+                            this._pend_at[key] = Math.max(this._pend_at[key], this.last_input_time + this.next_repeat_threshold + 1);
                         }
                         // else: not yet at the first repeat threshold; ignore this round's input.
                     }
@@ -4945,7 +4968,8 @@ class SSBaseToastOverlayManagerThread extends SSBaseThread {
                 await ssSleep(0.1);
             }
         } finally {
-            if (has_rendered && this.renderer.lock.locked()) {
+            // (SIM: not when the page has stopped the device while the toast showed: its screen is gone)
+            if (has_rendered && this.renderer.lock.locked() && this.renderer.canvas) {
                 // As far as we know, we currently hold the Renderer.lock
                 this.renderer.show_image(previous_screen_state);
             }

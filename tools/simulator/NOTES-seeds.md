@@ -52,7 +52,7 @@ mnemonicToSeed, fingerprintFromSeed, masterFromSeed, ckdPriv, ckdPub, pubkeyByte
   - Error correction is level L. Above version 3 it uses level M, because the page has no level-L tables for larger codes.
   - Text is encoded in a single mode (numeric, alphanumeric or byte) rather than split into mixed segments.
   - If the engine provides SSQR, display QR codes use it.
-- **Animated UR:** the pure parts 1..n repeat. SeedSigner's fountain encoder sends mixed parts after part n, and the page has no fountain encoder. Parts 1..n match SeedSigner exactly.
+- **Animated UR:** parts 1..n are the pure parts, then fountain-mixed parts follow, as SeedSigner's ur2 encoder makes them (BCR-2020-005, written from the specification).
 - **SeedWordsScreen:** the PIL SHARPEN filter is not applied.
 - **Message signing:** ECDSA signing (RFC 6979, low-S, recoverable) is written in this part, because the page only has verification.
 - **Regtest:** addresses use the hrp "bcrt", which this part adds.

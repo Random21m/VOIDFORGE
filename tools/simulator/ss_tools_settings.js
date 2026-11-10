@@ -1041,29 +1041,21 @@ async function ssToolsSeedBytes(seed) {
   return mnemonicToSeed(words, pass);
 }
 
-// "m/84'/0'/0'" or "m/0h" -> [[84,true],[0,true],[0,true]] (the steps walletAddressesFrom takes)
-function ssToolsParsePath(path) {
-  const s = String(path || "").trim().replace(/[hH]/g, "'");
-  if (!/^m(\/[0-9]+'?)*$/.test(s)) throw new Error(`Invalid derivation path: ${path}`);
-  return s.split("/").slice(1).map(x => [parseInt(x, 10), x.endsWith("'")]);
-}
-
-// Seed.get_xpub(derivation_path, network): what the address explorer keeps as data["xpub"]. VOIDFORGE derives addresses
-// from the master key along the path, so the "xpub" here is that master key plus the path steps.
+// Seed.get_xpub(derivation_path, network): what the address explorer keeps as data["xpub"], as SeedSigner does: the
+// account's extended PUBLIC key (the seeds part's HDKey stand-in), never the master private key.
 async function ssToolsGetXpub(seed, derivation_path, network) {
-  const root = await masterFromSeed(await ssToolsSeedBytes(seed));
-  return {root, steps: ssToolsParsePath(derivation_path), derivation_path, network};
+  if (typeof seed.get_xpub === "function") return seed.get_xpub(derivation_path, network);
+  return ssSeedsGetXpub(await ssToolsSeedBytes(seed), derivation_path);
 }
 
-// embit_utils.get_single_sig_address for indexes [start, start+n)
+// embit_utils.get_single_sig_address for indexes [start, start+n) (the seeds part's port: main, test and regtest
+// prefixes, so regtest shows bcrt1 addresses as SeedSigner does)
 async function ssToolsSingleSigAddresses(xpub, script_type, start, n, is_change, embit_network) {
   const C = SSSettingsConstants;
-  const type = {[C.NATIVE_SEGWIT]: "wpkh", [C.NESTED_SEGWIT]: "sh-wpkh", [C.LEGACY_P2PKH]: "pkh", [C.TAPROOT]: "tr"}[script_type];
-  if (!type) return new Array(n).fill(null);   // embit_utils returns None for other script types
-  // SIM: VOIDFORGE knows the main and test networks only; regtest addresses are shown with the test network's prefixes.
-  const net = embit_network === "main" ? "main" : "test";
-  const rows = await walletAddressesFrom(xpub.root, xpub.steps, type, net, is_change ? 1 : 0, start, n);
-  return rows.map(r => r.address);
+  if (![C.NATIVE_SEGWIT, C.NESTED_SEGWIT, C.LEGACY_P2PKH, C.TAPROOT].includes(script_type)) return new Array(n).fill(null);   // embit_utils returns None for other script types
+  const out = [];
+  for (let i = start; i < start + n; i++) out.push(await ssSeedsEmbitUtils.get_single_sig_address(xpub, script_type, i, is_change, embit_network));
+  return out;
 }
 
 
@@ -1370,14 +1362,23 @@ class SSBaseAnimatedQrDecoder extends SSBaseQrDecoder {
   get is_valid() { return true; }
   add(segment, qr_type = null) {
     if (this.total_segments === null) {
-      this.total_segments = this.total_segment_nums(segment);
-      this.segments = new Array(this.total_segments).fill(null);
+      const total = this.total_segment_nums(segment);
+      if (!Number.isInteger(total) || total < 0) throw new TypeError("can't multiply sequence by non-int");
+      // [None] * total: a list of 8-byte slots. A count the device's 512 MB cannot hold ends in MemoryError there, and
+      // here too; smaller counts are kept as an empty (sparse) array, so a damaged count never freezes the page.
+      if (total > 2 ** 26) { const e = new Error(""); e.name = "MemoryError"; throw e; }
+      this.total_segments = total;
+      this.segments = new Array(total);
     } else if (this.total_segments !== this.total_segment_nums(segment)) {
       throw new Error("Segment total changed unexpectedly");
     }
     const current_segment_num = this.current_segment_num(segment);
-    if (this.segments[current_segment_num - 1] === null || this.segments[current_segment_num - 1] === undefined) {
-      this.segments[current_segment_num - 1] = this.parse_segment(segment);
+    // Python list indexing: segments[n - 1] (0 is the last slot; past the end is an IndexError)
+    let idx = current_segment_num - 1;
+    if (idx < 0) idx += this.total_segments;
+    if (!(idx >= 0 && idx < this.total_segments)) { const e = new Error("list index out of range"); e.name = "IndexError"; throw e; }
+    if (this.segments[idx] === null || this.segments[idx] === undefined) {
+      this.segments[idx] = this.parse_segment(segment);
       this.collected_segments += 1;
       if (this.total_segments === this.collected_segments) {
         if (this.is_valid) { this.complete = true; return SSDecodeQRStatus.COMPLETE; }
@@ -1437,16 +1438,176 @@ class SSBBQRPsbtQrDecoder extends SSBaseAnimatedQrDecoder {
   parse_segment(segment) { this.encoding = segment[2]; return segment.slice(8).trim(); }
 }
 
-// helpers/ur2 URDecoder. SIM: VOIDFORGE's UR reader (urDecodeFrames) joins the pure parts 1..seqLen. SeedSigner's fountain
-// decoder can also solve the mixed parts (seqNum > seqLen) that encoders send after the first round; they are skipped here
-// (read as "already seen"), so a scan completes once every pure part has been read.
+// helpers/ur2 URDecoder: SeedSigner's UR reader, with the fountain decoder of BCR-2020-005 (Blockchain Commons, "Uniform
+// Resources", multi-part URs). Written here from that specification; it gives the same results as SeedSigner's ur2
+// decoder (Foundation Devices' Python port of the reference decoder): the same parts are accepted or ignored, the same
+// percent is shown, and an animation finishes from its mixed parts as it does on the device.
+// A multi-part UR part is the CBOR array [seqNum, seqLen, messageLen, checksum, fragment]. Parts 1..seqLen each carry
+// one fragment; a part with seqNum > seqLen carries the XOR of several fragments, chosen by a random-number generator
+// that both sides seed the same way:
+//   - Xoshiro256**, its four 64-bit words taken big-endian from SHA-256(seqNum as 4 bytes || checksum as 4 bytes);
+//   - the degree d (how many fragments) from a Vose alias sampler over the weights 1/1, 1/2, ... 1/seqLen;
+//   - the fragments: the first d of the indexes 0..seqLen-1 after a shuffle that draws next_int(0, remaining - 1).
+// The decoder keeps the single fragments it knows and the mixed parts it cannot solve yet; each new fragment is XORed
+// out of every mixed part that contains it, and a mixed part left with one fragment becomes a new single fragment.
+// When all fragments are known, the message is joined, cut to messageLen and checked with CRC-32.
+const SS_UR_M64 = (1n << 64n) - 1n;
+class SSUrXoshiro256 {
+  constructor(seed_bytes) {
+    const d = oldElSha256(seed_bytes);
+    this.s = [0, 1, 2, 3].map((i) => { let v = 0n; for (let n = 0; n < 8; n++) v = (v << 8n) | BigInt(d[i * 8 + n]); return v; });
+  }
+  static rotl(x, k) { return ((x << BigInt(k)) | (x >> BigInt(64 - k))) & SS_UR_M64; }
+  next() {
+    const s = this.s;
+    const result = (SSUrXoshiro256.rotl((s[1] * 5n) & SS_UR_M64, 7) * 9n) & SS_UR_M64;
+    const t = (s[1] << 17n) & SS_UR_M64;
+    s[2] ^= s[0]; s[3] ^= s[1]; s[1] ^= s[2]; s[0] ^= s[3]; s[2] ^= t;
+    s[3] = SSUrXoshiro256.rotl(s[3], 45);
+    return result;
+  }
+  next_double() { return Number(this.next()) / 18446744073709551616; }   // / 2^64
+  next_int(low, high) { return Math.floor(this.next_double() * (high - low + 1)) + low; }
+}
+// Vose's alias method, with the index order the UR specification fixes (small and large lists filled from the top index down)
+class SSUrSampler {
+  constructor(probs) {
+    const n = probs.length;
+    let total = 0;
+    for (const p of probs) total += p;
+    const P = probs.map((p) => (p * n) / total), S = [], L = [];
+    for (let i = n - 1; i >= 0; i--) (P[i] < 1 ? S : L).push(i);
+    this.probs = new Array(n).fill(0); this.aliases = new Array(n).fill(0);
+    while (S.length && L.length) {
+      const a = S.pop(), g = L.pop();
+      this.probs[a] = P[a]; this.aliases[a] = g;
+      P[g] += P[a] - 1;
+      (P[g] < 1 ? S : L).push(g);
+    }
+    while (L.length) this.probs[L.pop()] = 1;
+    while (S.length) this.probs[S.pop()] = 1;   // (only through rounding)
+  }
+  next(rng) {
+    const r1 = rng.next_double(), r2 = rng.next_double(), n = this.probs.length, i = Math.floor(n * r1);
+    return r2 < this.probs[i] ? i : this.aliases[i];
+  }
+}
+// The fragment indexes (0-based) a part carries
+function ssUrChooseFragments(seq_num, seq_len, checksum) {
+  if (seq_num <= seq_len) return [seq_num - 1];
+  if (seq_num > 0xffffffff || checksum > 0xffffffff) throw new Error("int too big to convert");
+  const rng = new SSUrXoshiro256(Uint8Array.from([...be32(seq_num), ...be32(checksum)]));
+  const w = []; for (let i = 1; i <= seq_len; i++) w.push(1 / i);
+  const degree = new SSUrSampler(w).next(rng) + 1;
+  const remaining = []; for (let i = 0; i < seq_len; i++) remaining.push(i);
+  const shuffled = [];
+  while (remaining.length) shuffled.push(remaining.splice(rng.next_int(0, remaining.length - 1), 1)[0]);
+  return shuffled.slice(0, degree);
+}
+
+class SSURFountainDecoder {
+  constructor() {
+    this.expected = null;          // {seq_len, message_len, checksum, fragment_len}
+    this.received = new Map();     // fragment index -> data (the solved single fragments)
+    this.mixed = new Map();        // key of the index set -> {idx: sorted indexes, data}
+    this.queue = [];
+    this.processed_parts_count = 0;
+    this.result = null;            // Uint8Array, or an Error (checksum)
+  }
+  static key(idx) { return idx.join(","); }
+  // Every part must match the first one seen (a part of another animation is ignored)
+  validate(p) {
+    if (this.expected === null) {
+      this.expected = {seq_len: p.seq_len, message_len: p.message_len, checksum: p.checksum, fragment_len: p.data.length};
+      return true;
+    }
+    const e = this.expected;
+    return e.seq_len === p.seq_len && e.message_len === p.message_len && e.checksum === p.checksum && e.fragment_len === p.data.length;
+  }
+  receive_part(p) {
+    if (this.result !== null) return false;
+    if (!this.validate(p)) return false;
+    const idx = ssUrChooseFragments(p.seq_num, p.seq_len, p.checksum).slice().sort((a, b) => a - b);
+    this.queue.push({idx, data: Uint8Array.from(p.data)});
+    const n_simple = this.received.size, n_mixed = this.mixed.size;
+    while (this.result === null && this.queue.length) {
+      const q = this.queue.shift();
+      if (q.idx.length === 1) this._simple(q); else this._mixed(q);
+    }
+    this.processed_parts_count += 1;
+    return !(n_simple === this.received.size && n_mixed === this.mixed.size);   // false: nothing new
+  }
+  // a minus b, if b's fragments are all in a (as the reference decoder: an equal set reduces to an empty part)
+  static reduce(a, b) {
+    if (!b.idx.every((i) => a.idx.includes(i))) return a;
+    const data = Uint8Array.from(a.data);
+    for (let i = 0; i < data.length; i++) data[i] ^= b.data[i];
+    return {idx: a.idx.filter((i) => !b.idx.includes(i)), data};
+  }
+  _reduce_mixed_by(p) {
+    const next = new Map();
+    for (const m of this.mixed.values()) {
+      const r = SSURFountainDecoder.reduce(m, p);
+      if (r.idx.length === 1) this.queue.push(r); else next.set(SSURFountainDecoder.key(r.idx), r);
+    }
+    this.mixed = next;
+  }
+  _simple(p) {
+    const i = p.idx[0];
+    if (this.received.has(i)) return;
+    this.received.set(i, p.data);
+    const e = this.expected;
+    if (this.received.size === e.seq_len) {
+      const msg = new Uint8Array(e.seq_len * e.fragment_len);
+      for (let j = 0; j < e.seq_len; j++) msg.set(this.received.get(j), j * e.fragment_len);
+      const m = msg.slice(0, e.message_len);
+      this.result = crc32(m) === e.checksum ? m : new Error("InvalidChecksum");
+    } else this._reduce_mixed_by(p);
+  }
+  _mixed(p) {
+    let r = p;
+    for (const [i, data] of this.received) r = SSURFountainDecoder.reduce(r, {idx: [i], data});
+    for (const m of this.mixed.values()) r = SSURFountainDecoder.reduce(r, m);
+    if (r.idx.length === 1) this.queue.push(r);
+    else { this._reduce_mixed_by(r); this.mixed.set(SSURFountainDecoder.key(r.idx), r); }
+  }
+  // FountainDecoder.estimated_percent_complete, both of SeedSigner's methods
+  estimated_percent_complete(weight_mixed_frames = false) {
+    if (this.result !== null) return 1;
+    if (this.expected === null) return 0;
+    const n = this.expected.seq_len;
+    if (!weight_mixed_frames) return Math.min(0.99, this.processed_parts_count / (n * 1.75));
+    // each fragment inside a mixed part counts 1/(fragments in that part), at most 0.75 for one fragment
+    const score = new Map();
+    for (const m of this.mixed.values()) {
+      if (!m.idx.length) continue;
+      for (const i of m.idx) score.set(i, (score.get(i) || 0) + 1 / m.idx.length);
+    }
+    let mixed_score = 0;
+    for (const v of score.values()) mixed_score += Math.min(v, 0.75);
+    return (this.received.size + mixed_score) / n;
+  }
+}
+
+// Bytewords.decode (minimal style) as SeedSigner's ur2 does it: two letters per byte, at least 5 bytes, and the last 4
+// bytes (the CRC-32) dropped WITHOUT being checked (ur2 has that check commented out). SeedSigner behavior; a part with a
+// wrong checksum is read anyway, the message checksum of a multi-part UR still catches a wrong fragment.
+function ssUrBytewordsDecode(t) {
+  const out = [];
+  for (let i = 0; i < t.length; i += 2) {
+    const v = BW_INDEX[t.slice(i, i + 2)];
+    if (v === undefined) throw new Error("Invalid Bytewords.");
+    out.push(v);
+  }
+  if (out.length < 5) throw new Error("Invalid Bytewords.");
+  return Uint8Array.from(out.slice(0, -4));
+}
+
 class SSURDecoder {
   constructor() {
+    this.fountain_decoder = new SSURFountainDecoder();
     this.expected_type = null;
-    this.result = null;
-    this.seq_len = null;
-    this.received = new Map();
-    this.processed_parts_count = 0;
+    this.result = null;   // {type, cbor}, or an Error
   }
   receive_part(str) {
     try {
@@ -1455,6 +1616,7 @@ class SSURDecoder {
       const s = String(str).toLowerCase();
       if (!s.startsWith("ur:")) return false;
       const components = s.slice(3).split("/");
+      if (components.length < 2) return false;
       const type = components.shift();
       if (!/^[a-z0-9-]+$/.test(type)) return false;
       // Don't continue if this part doesn't validate
@@ -1462,8 +1624,7 @@ class SSURDecoder {
       else if (this.expected_type !== type) return false;
       // If this is a single-part UR then we're done
       if (components.length === 1) {
-        const r = urDecodeFrames([s]);
-        this.result = {type: r.type, cbor: Uint8Array.from(r.msg)};
+        this.result = {type, cbor: ssUrBytewordsDecode(components[0])};
         return true;
       }
       // Multi-part URs must have two path components: seq/fragment
@@ -1471,34 +1632,28 @@ class SSURDecoder {
       const m = /^(\d+)-(\d+)$/.exec(components[0]);
       if (!m) return false;
       const seq_num = parseInt(m[1], 10), seq_len = parseInt(m[2], 10);
-      const part = cborRead(bytewordsMinDecode(components[1]), 0).v;
-      if (!Array.isArray(part) || part.length !== 5 || part[0] !== seq_num || part[1] !== seq_len) return false;
-      if (this.seq_len !== null && this.seq_len !== seq_len) return false;
-      this.seq_len = seq_len;
-      this.processed_parts_count += 1;
-      if (seq_num > seq_len) return false;   // SIM: a mixed fountain part (see above)
-      if (this.received.has(seq_num)) return false;   // This part didn't add any new info
-      this.received.set(seq_num, s);
-      if (this.received.size === seq_len) {
-        try {
-          const r = urDecodeFrames(Array.from(this.received.values()));
-          this.result = {type: r.type, cbor: Uint8Array.from(r.msg)};
-        } catch (e) {
-          this.result = e instanceof Error ? e : new Error(String(e));
-        }
-      }
+      if (seq_num < 1 || seq_len < 1) return false;
+      const part = cborRead(ssUrBytewordsDecode(components[1]), 0).v;
+      if (!Array.isArray(part) || part.length !== 5 || !(part[4] instanceof Uint8Array) || part.slice(0, 4).some((x) => typeof x !== "number")) return false;
+      const p = {seq_num: part[0], seq_len: part[1], message_len: part[2], checksum: part[3], data: part[4]};
+      if (seq_num !== p.seq_num || seq_len !== p.seq_len) return false;
+      // SIM: a part whose numbers no encoder can make (more fragments than message bytes, fragments that do not fit the
+      // message) is ignored: SeedSigner would set up that many fragment slots and wait forever (or run out of memory).
+      const fl = p.data.length;
+      if (!fl || p.message_len < 1 || p.seq_len > p.message_len || fl * p.seq_len < p.message_len || fl * (p.seq_len - 1) >= p.message_len) return false;
+      // Process the part
+      if (!this.fountain_decoder.receive_part(p)) return false;
+      const r = this.fountain_decoder.result;
+      if (r instanceof Error) this.result = r;
+      else if (r !== null) this.result = {type, cbor: r};
       return true;
     } catch (e) {
       return false;
     }
   }
-  expected_part_count() { return this.seq_len; }
-  estimated_percent_complete(weight_mixed_frames = false) {
-    if (this.is_complete()) return 1;
-    if (this.seq_len === null) return 0;
-    if (!weight_mixed_frames) return Math.min(0.99, this.processed_parts_count / (this.seq_len * 1.75));
-    return Math.min(0.99, this.received.size / this.seq_len);
-  }
+  expected_part_count() { return this.fountain_decoder.expected ? this.fountain_decoder.expected.seq_len : null; }
+  get processed_parts_count() { return this.fountain_decoder.processed_parts_count; }
+  estimated_percent_complete(weight_mixed_frames = false) { return this.fountain_decoder.estimated_percent_complete(weight_mixed_frames); }
   is_success() { return this.result !== null && !(this.result instanceof Error) ? this.result : false; }
   is_failure() { return this.result instanceof Error ? this.result : false; }
   is_complete() { return this.result !== null; }
@@ -1705,7 +1860,7 @@ class SSBitcoinAddressQrDecoder extends SSBaseSingleFrameQrDecoder {
     const C = SSSettingsConstants;
     const pieces = segment.split(":");
     const m = /^((bc1q|tb1q|bcrt1q|bc1p|tb1p|bcrt1p|[123]|[mn])[a-zA-HJ-NP-Z0-9]{25,64})/i.exec(pieces[pieces.length - 1]);
-    if (m === null) return null;
+    if (m === null) return SSDecodeQRStatus.INVALID;   // ("Invalid address": the scan stops, and the view goes Home)
     this.address = m[1];
     this.complete = true;
     this.collected_segments = 1;
@@ -1994,7 +2149,7 @@ class SSDecodeQR {
   // "XFP: xpub...") into a descriptor string.
   static multisig_setup_file_to_descriptor(text) {
     const lines = text.split("\n");
-    let m = 0, n = 0, xpubs = [], x = 0, derivation = "", descriptor = "", script_type;
+    let m = 0, n = 0, xpubs = [], xpubs_n = 0, x = 0, derivation = "", descriptor = "", script_type;
     for (let l of lines) {
       if (l.indexOf("#") === 0) continue;   // skip comments
       l = l.trim();
@@ -2012,13 +2167,15 @@ class SSDecodeQR {
       } else if (label === "format") {
         if (["p2wsh", "p2sh-p2wsh", "p2wsh-p2sh"].includes(value.toLowerCase())) script_type = value.toLowerCase();
       } else if (label.length === 8) {
-        if (xpubs.length === 0) xpubs = new Array(n).fill(null);
+        // ([None] * n: a policy count larger than the lines of the file can never be filled and ends in "bad or
+        // missing xpub" below, so no more than one slot per line is made: the same result without a huge list)
+        if (xpubs.length === 0) { xpubs = new Array(Math.min(n, lines.length + 1)).fill(null); xpubs_n = n; }
         if (x >= xpubs.length) throw new Error("list assignment index out of range");
         xpubs[x] = {xfp: label, key: value};
         x += 1;
       }
     }
-    if (xpubs.includes(null) || xpubs.length !== n) throw new Error("bad or missing xpub");
+    if (xpubs.includes(null) || xpubs_n !== xpubs.length || xpubs.length !== n) throw new Error("bad or missing xpub");
     if (m <= 0 || m > 9 || n <= 0 || n > 9) throw new Error("bad or missing policy");
     if (derivation.length === 0) throw new Error("bad or missing derivation path");
     if (!["p2wsh", "p2sh-p2wsh", "p2wsh-p2sh"].includes(script_type)) throw new Error("bad or missing script format");

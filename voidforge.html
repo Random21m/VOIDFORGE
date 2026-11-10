@@ -1430,7 +1430,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
           <span class="ss-usb" aria-hidden="true"></span>
         </div>
       </div>
-      <p class="ss-warn">PRACTICE ONLY: never put real coins on a seed made here.</p>
+      <p class="ss-warn">PRACTICE ONLY: never put real coins on a seed made here.<br>It is a real signer: never type in or scan a real seed.</p>
     </details>
     <details id="planBox">
       <summary>Backup plan and stress test<span class="tag tag-private">NO WORDS, KEEP PRIVATE</span><small>Where your copies are, who can help, and what happens if something goes wrong. Printable.</small></summary>
@@ -2193,7 +2193,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <li><b>Keep every seed in a different place,</b> and make each one on a different day or device if you can.</li>
         <li><b>Never reuse a seed</b> as two of the keys, or the same seed in two different multisig wallets of the same account.</li>
         <li><b>Test with a small amount first,</b> and practice recovering with M of the seeds before you trust it with real savings.</li>
-        <li><b>Spending needs a wallet app</b> (Sparrow, Nunchuk, Bitcoin Core) plus signers. VOIDFORGE only sets the wallet up; its tools never sign. Only the practice signer signs, and only practice transactions.</li>
+        <li><b>Spending needs a wallet app</b> (Sparrow, Nunchuk, Bitcoin Core) plus signers. VOIDFORGE only sets the wallet up; its tools never sign. Only the practice signer signs. It is a real signer, so never give it a real seed.</li>
       </ul>
     </details>
     <details>
@@ -2238,7 +2238,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details>
       <summary>Changelog</summary>
       <ul>
-        <li><b>2.13.0</b> &mdash; <b>Practice signer: works like SeedSigner.</b> CHECK A BACKUP has a <b>Practice signer</b>: a practice copy of SeedSigner 0.8.7 on the SeedSigner+ screen (320 x 240), with the same screens, menus and buttons, drawn with SeedSigner&rsquo;s own fonts and colors. Use the joystick, KEY1, KEY2 and KEY3 with the mouse, a finger or the keyboard. What works: make a seed (from dice, or from a camera picture as its stand-in), SeedQR and CompactSeedQR, xpub export, the address explorer, a passphrase, settings, PSBT review and signing (single-sig and multisig), multisig descriptors, address verification and sign message. What does not: it has no camera of its own (scans use the computer&rsquo;s camera under the page&rsquo;s SCAN rules, and a SeedQR is read only while the page is offline), the fountain parts of animated UR codes are not decoded, and Taproot script-path signing is not done. <b>PRACTICE ONLY: never put real coins on a seed made there.</b> It signs only practice transactions, with seeds made on the page. CLEAR ALL, auto-clear, END SESSION and closing the box wipe everything it holds, and it saves nothing. It is a port of SeedSigner&rsquo;s own code (MIT license); its fonts and icons are credited in THIRD_PARTY_NOTICES.md. New dictionary entries: Practice signer and SeedSigner+. The file grows by about 1 MB.</li>
+        <li><b>2.13.0</b> &mdash; <b>Practice signer: works like SeedSigner.</b> CHECK A BACKUP has a <b>Practice signer</b>: a practice copy of SeedSigner 0.8.7 on the SeedSigner+ screen (320 x 240), with the same screens, menus and buttons, drawn with SeedSigner&rsquo;s own fonts and colors. Use the joystick, KEY1, KEY2 and KEY3 with the mouse, a finger or the keyboard. What works: make a seed (from dice, or from a camera picture as its stand-in), SeedQR and CompactSeedQR, xpub export, the address explorer, a passphrase, settings, PSBT review and signing (single-sig and multisig), multisig descriptors, address verification and sign message. What does not: it has no camera of its own (scans use the computer&rsquo;s camera under the page&rsquo;s SCAN rules, and a SeedQR is read only while the page is offline), and Taproot script-path signing is not done. <b>PRACTICE ONLY: never put real coins on a seed made there.</b> It is a real, working signer: it can sign real transactions, exactly like SeedSigner, so never type in or scan a real seed. It is for practice only. CLEAR ALL, auto-clear and END SESSION wipe everything it holds. Closing the box wipes it all but the settings saved to its practice microSD. It saves nothing in the browser. It is a port of SeedSigner&rsquo;s own code (MIT license); its fonts and icons are credited in THIRD_PARTY_NOTICES.md. New dictionary entries: Practice signer and SeedSigner+. The file grows by about 1 MB.</li>
         <li><b>2.12.0</b> &mdash; <b>Open a signing device&rsquo;s backup.</b> CHECK A BACKUP has <b>Open a signing device&rsquo;s backup</b>: a <b>TAPSIGNER</b> backup (.aes, or the .sh form) with the key from the back of the card, a <b>Krux</b> encrypted seed (the encrypted QR&rsquo;s text in base43, hex or Base64, or seeds.json; every KEF version and the older entries) with its key, or a <b>Coldcard</b> backup (.7z) with its 12 backup words (4-letter starts are fine) or its custom password. It shows the fingerprint and the first 10 receive and 10 change addresses, says what else the backup holds, and shows the words or key only when asked, in a box that cannot be selected (PUT THE WORDS IN THE BOX ABOVE copies them into the words box, which CLEAR and CLEAR ALL wipe). Before a TAPSIGNER key is typed, the page gives Coinkite&rsquo;s warning: the key on the card is for emergencies only. Each format is read as its maker&rsquo;s own code writes it, and checked against Krux&rsquo;s test vectors and Coinkite&rsquo;s sample Coldcard backups (Coinkite publishes no TAPSIGNER test file, so those checks use backups made exactly as its documentation says). ABOUT &amp; HELP now names VOIDFORGE&rsquo;s recommended hardware wallet, <b>SeedSigner</b>, with the reasons from its own source code. Also: the mutation test now has a time limit for each mutation, so a page freeze no longer stops the run.</li>
         <li><b>2.11.0</b> &mdash; <b>Codex32 shares and Taproot multisig.</b> (1) <b>Codex32 shares</b> (BIP93, EXTRA TOOLS): check codex32 strings (each mistake is named; nothing is corrected), combine a codex32 secret or k shares to see the wallet (fingerprint, the first 10 receive and 10 change addresses and the first Taproot address; TESTNET (practice coins only) in practice mode), or make a new wallet from 50 or 99 dice rolls as k-of-n codex32 shares (2 to 9 needed, up to 31) or one codex32 secret. Shares are read back and combined again before they are shown, are never copyable, and print one page each after asking. A codex32 seed is the BIP32 seed itself, not BIP39 words. (2) <b>Taproot multisig</b> in the MULTISIG WALLET card: a Taproot (bc1p) wallet with <code>sortedmulti_a</code> (BIP386, BIP387). Its key path is shut by an unspendable key worked out from the cosigners&rsquo; keys, so nothing random is needed. Keys use m/48&rsquo;/coin&rsquo;/account&rsquo;/3&rsquo;, which BIP48 does not define (Coldcard EDGE firmware uses it). Bitcoin Core 24.0.1 or later and Coldcard EDGE firmware (checked with 6.6.1X and 6.6.1QX) can sign; Sparrow cannot yet. (3) Every multisig wallet now shows <b>Import this wallet into Bitcoin Core</b> (createwallet and importdescriptors), and Explain an inheritance or timelock wallet and Is this seed in my wallet file? read Taproot multisig descriptors.</li>
         <li><b>2.10.0</b> &mdash; <b>Sixteen ways to make, check and keep a seed better.</b> (1) MAKE A SEED: a <b>Card method</b> menu (Ian Coleman, hashed, as before, or Ian Coleman, raw entropy, his tool&rsquo;s Use Raw Entropy choice, shown with an honest at-most strength), and <b>12, 15, 18, 21 or 24 words</b> for every method (15, 18 and 21-word dice and coin seeds do not match SeedSigner, Coldcard or Keystone, and SeedQR stays 12 and 24 words). (2) Warnings: a <b>public example phrase</b> (official test phrases, this page&rsquo;s own examples, or patterned numbers and words) is named after FORGE SEED, in the CHECK A BACKUP words box, VERIFY, Open this wallet and the Wallet Detective, and in Seed XOR; <b>Write these clearly</b> lists words whose letters could be misread as another word; rolls or flips <b>typed twice</b> are pointed out. (3) CHECK A BACKUP: <b>Reforge</b> reads half-readable words (<code>?</code> is one letter, <code>*</code> any number); <b>old Electrum seeds</b> (Electrum before version 2.0) are recognized, with the first 10 receive and 10 change addresses; <b>punch plates</b> (a TinySeed-style binary grid, Stackbit 1248, or word numbers in decimal, hex and octal, counted from 1 as Krux does) to show, print and read back; <b>Open an encrypted descriptor backup</b> (BIP138, the format Liana writes). (4) Backup plan: a letter for the executor, steps for the heir, key details and trusted contacts, and a <b>tamper-evident bag log</b>. (5) EXTRA TOOLS: <b>Inspect a transaction</b> checks every signature (VALID, INVALID or NOT CHECKED); <b>Check a Coldcard seed mix</b>; <b>Was my seed made by a flawed device?</b> (the Coldcard randomness bug of 2021 to July 2026, Milk Sad and the Trust Wallet browser extension); <b>Make new SLIP39 shares from dice</b>; and SAVE ENCRYPTED DESCRIPTOR BACKUP for multisig and inheritance wallets. (6) The page says &ldquo;first ten receive and ten change addresses&rdquo; wherever it shows a wallet, and SLIP39 check and combine now lists them.</li>
@@ -4447,7 +4447,7 @@ const DICT = [
   ["BIP389 (multipath descriptors)", "One descriptor for both receiving and change addresses: the step that is 0 or 1 is written as 0;1 between angle brackets. Sparrow and newer wallet apps read it.", "The watch-only file.", "Standards (BIPs)"],
   ["Hidden characters", "Spaces at either end, double spaces, tabs and invisible characters. In a passphrase they count like any letter, so one added by accident opens a different wallet.", "VOIDFORGE warns about them under each passphrase box.", "Keys & seeds"],
   ["Practice mode", "A switch that puts every address and key on the test network, with worthless test coins, so the whole job can be rehearsed without risk. The seed words themselves are the same on every network.", "Practice making a backup, in CHECK A BACKUP.", "VOIDFORGE"],
-  ["Practice signer", "A practice copy of SeedSigner 0.8.7 inside the page: the same screens, menus and buttons, for learning how the real device works. It is for practice only: never put real coins on a seed made there.", "CHECK A BACKUP: Practice signer: works like SeedSigner.", "VOIDFORGE"],
+  ["Practice signer", "A practice copy of SeedSigner 0.8.7 inside the page: the same screens, menus and buttons, for learning how the real device works. It is for practice only: never put real coins on a seed made there. It is a real, working signer, so never type in or scan a real seed.", "CHECK A BACKUP: Practice signer: works like SeedSigner.", "VOIDFORGE"],
   ["Stamp sheet", "A printed page with each seed word cut to its first 4 letters in large capitals, as a guide for stamping a metal plate. It is as secret as the words.", "PRINT STAMP SHEET, after FORGE and in CHECK A BACKUP.", "VOIDFORGE"],
   ["Binary grid (TinySeed)", "A steel plate with 12 holes in a row for each word: punching the columns 2048, 1024 ... 2, 1 that add up to the word's number in the BIP39 list (abandon is 1, zoo is 2048, punched alone). TinySeed plates hold 12 words a side; Krux reads them. As secret as the words.", "CHECK A BACKUP: Open this wallet, Punch plate layout; Read a punch plate or word numbers.", "Wallets & backups"],
   ["Stackbit 1248", "A steel plate that stores each word as the 4 digits of its number in the BIP39 list (0001 to 2048), each digit punched as a sum of boxes worth 1, 2, 4 and 8. As secret as the words.", "CHECK A BACKUP: Open this wallet, Punch plate layout; Read a punch plate or word numbers.", "Wallets & backups"],
@@ -4630,7 +4630,7 @@ const DICT = [
   ["Proof of work", "The proof, shown by a block's hash, that a miner spent real computing effort on it. It makes rewriting history very expensive.", "", "Network & mining"],
   ["Protocol", "The shared rules and message formats that let different Bitcoin software work together.", "", "Basics"],
   ["Pruned node", "A full node that checks everything but then deletes old block data to save disk space.", "", "Network & mining"],
-  ["PSBT (partly signed Bitcoin transaction)", "A standard file for passing a transaction between a wallet, which builds it, and a signer, which signs it. VOIDFORGE's tools only read these. Only the practice signer signs, and only practice ones.", "Inspect a transaction (PSBT), Compare two transactions.", "Transactions"],
+  ["PSBT (partly signed Bitcoin transaction)", "A standard file for passing a transaction between a wallet, which builds it, and a signer, which signs it. VOIDFORGE's tools only read these. Only the practice signer signs them. It is a real signer, so never give it a real seed.", "Inspect a transaction (PSBT), Compare two transactions.", "Transactions"],
   ["Public key", "The number worked out from a private key. It can be shared and cannot be used to spend.", "", "Keys & seeds"],
   ["Public key hash (HASH160)", "The short fingerprint of a public key (SHA-256 then RIPEMD-160) that old address types are made from.", "", "Addresses & scripts"],
   ["QR code", "A square picture that holds text. VOIDFORGE draws QR codes on screen, and reads them with the camera only when you press a SCAN button (the camera stops as soon as the code is read).", "Watch-only QR, SeedQR, address QR, Support this project. PRINT THIS QR prints them; the SCAN buttons read them.", "Basics"],
@@ -4688,7 +4688,7 @@ const DICT = [
   ["Signed message", "Text signed with the key of an address, to show that whoever holds that key agrees with it, for example to prove an address is yours. Anyone can check it with the address alone. It does not show who holds the key, or that any coins are still there.", "EXTRA TOOLS: Verify a signed message.", "Keys & seeds"],
   ["Signer", "A device or program that holds the keys and signs transactions, such as a hardware wallet.", "", "Wallets & backups"],
   ["Signet", "A test network with predictable behavior, run by a few trusted signers, used for testing software. Its coins have no value. Its addresses and keys have exactly the same form as testnet's (tb1..., tpub), so everything VOIDFORGE shows for TESTNET (practice coins only) works on signet too.", "The network menus: choose TESTNET (practice coins only).", "Network & mining"],
-  ["Signing", "Using a private key to prove a transaction is authorized. VOIDFORGE's tools never sign. Only the practice signer signs, and only practice transactions.", "", "Transactions"],
+  ["Signing", "Using a private key to prove a transaction is authorized. VOIDFORGE's tools never sign. Only the practice signer signs. It is a real signer, so never give it a real seed.", "", "Transactions"],
   ["Single point of failure", "One thing whose loss or theft ruins everything, such as a single paper copy of a seed.", "", "Privacy & security"],
   ["SLIP39", "A Trezor (SatoshiLabs) standard for backing up a seed as Shamir shares of 20 or 33 words, from its own list of 1,024 words (not BIP39 words). A set number of shares rebuilds the wallet; newer Trezors make a single 20-word share by default. A wrong passphrase opens a different wallet with no error.", "EXTRA TOOLS: SLIP39 shares (Shamir backup) checks and combines them, and makes new ones from dice; the Wallet Detective names them.", "Standards (BIPs)"],
   ["SLIP132", "The scheme that gives extended keys different starting letters (xpub, ypub, zpub) to hint at the address type.", "", "Standards (BIPs)"],
@@ -14814,29 +14814,21 @@ async function ssToolsSeedBytes(seed) {
   return mnemonicToSeed(words, pass);
 }
 
-// "m/84'/0'/0'" or "m/0h" -> [[84,true],[0,true],[0,true]] (the steps walletAddressesFrom takes)
-function ssToolsParsePath(path) {
-  const s = String(path || "").trim().replace(/[hH]/g, "'");
-  if (!/^m(\/[0-9]+'?)*$/.test(s)) throw new Error(`Invalid derivation path: ${path}`);
-  return s.split("/").slice(1).map(x => [parseInt(x, 10), x.endsWith("'")]);
-}
-
-// Seed.get_xpub(derivation_path, network): what the address explorer keeps as data["xpub"]. VOIDFORGE derives addresses
-// from the master key along the path, so the "xpub" here is that master key plus the path steps.
+// Seed.get_xpub(derivation_path, network): what the address explorer keeps as data["xpub"], as SeedSigner does: the
+// account's extended PUBLIC key (the seeds part's HDKey stand-in), never the master private key.
 async function ssToolsGetXpub(seed, derivation_path, network) {
-  const root = await masterFromSeed(await ssToolsSeedBytes(seed));
-  return {root, steps: ssToolsParsePath(derivation_path), derivation_path, network};
+  if (typeof seed.get_xpub === "function") return seed.get_xpub(derivation_path, network);
+  return ssSeedsGetXpub(await ssToolsSeedBytes(seed), derivation_path);
 }
 
-// embit_utils.get_single_sig_address for indexes [start, start+n)
+// embit_utils.get_single_sig_address for indexes [start, start+n) (the seeds part's port: main, test and regtest
+// prefixes, so regtest shows bcrt1 addresses as SeedSigner does)
 async function ssToolsSingleSigAddresses(xpub, script_type, start, n, is_change, embit_network) {
   const C = SSSettingsConstants;
-  const type = {[C.NATIVE_SEGWIT]: "wpkh", [C.NESTED_SEGWIT]: "sh-wpkh", [C.LEGACY_P2PKH]: "pkh", [C.TAPROOT]: "tr"}[script_type];
-  if (!type) return new Array(n).fill(null);   // embit_utils returns None for other script types
-  // SIM: VOIDFORGE knows the main and test networks only; regtest addresses are shown with the test network's prefixes.
-  const net = embit_network === "main" ? "main" : "test";
-  const rows = await walletAddressesFrom(xpub.root, xpub.steps, type, net, is_change ? 1 : 0, start, n);
-  return rows.map(r => r.address);
+  if (![C.NATIVE_SEGWIT, C.NESTED_SEGWIT, C.LEGACY_P2PKH, C.TAPROOT].includes(script_type)) return new Array(n).fill(null);   // embit_utils returns None for other script types
+  const out = [];
+  for (let i = start; i < start + n; i++) out.push(await ssSeedsEmbitUtils.get_single_sig_address(xpub, script_type, i, is_change, embit_network));
+  return out;
 }
 
 
@@ -15143,14 +15135,23 @@ class SSBaseAnimatedQrDecoder extends SSBaseQrDecoder {
   get is_valid() { return true; }
   add(segment, qr_type = null) {
     if (this.total_segments === null) {
-      this.total_segments = this.total_segment_nums(segment);
-      this.segments = new Array(this.total_segments).fill(null);
+      const total = this.total_segment_nums(segment);
+      if (!Number.isInteger(total) || total < 0) throw new TypeError("can't multiply sequence by non-int");
+      // [None] * total: a list of 8-byte slots. A count the device's 512 MB cannot hold ends in MemoryError there, and
+      // here too; smaller counts are kept as an empty (sparse) array, so a damaged count never freezes the page.
+      if (total > 2 ** 26) { const e = new Error(""); e.name = "MemoryError"; throw e; }
+      this.total_segments = total;
+      this.segments = new Array(total);
     } else if (this.total_segments !== this.total_segment_nums(segment)) {
       throw new Error("Segment total changed unexpectedly");
     }
     const current_segment_num = this.current_segment_num(segment);
-    if (this.segments[current_segment_num - 1] === null || this.segments[current_segment_num - 1] === undefined) {
-      this.segments[current_segment_num - 1] = this.parse_segment(segment);
+    // Python list indexing: segments[n - 1] (0 is the last slot; past the end is an IndexError)
+    let idx = current_segment_num - 1;
+    if (idx < 0) idx += this.total_segments;
+    if (!(idx >= 0 && idx < this.total_segments)) { const e = new Error("list index out of range"); e.name = "IndexError"; throw e; }
+    if (this.segments[idx] === null || this.segments[idx] === undefined) {
+      this.segments[idx] = this.parse_segment(segment);
       this.collected_segments += 1;
       if (this.total_segments === this.collected_segments) {
         if (this.is_valid) { this.complete = true; return SSDecodeQRStatus.COMPLETE; }
@@ -15210,16 +15211,176 @@ class SSBBQRPsbtQrDecoder extends SSBaseAnimatedQrDecoder {
   parse_segment(segment) { this.encoding = segment[2]; return segment.slice(8).trim(); }
 }
 
-// helpers/ur2 URDecoder. SIM: VOIDFORGE's UR reader (urDecodeFrames) joins the pure parts 1..seqLen. SeedSigner's fountain
-// decoder can also solve the mixed parts (seqNum > seqLen) that encoders send after the first round; they are skipped here
-// (read as "already seen"), so a scan completes once every pure part has been read.
+// helpers/ur2 URDecoder: SeedSigner's UR reader, with the fountain decoder of BCR-2020-005 (Blockchain Commons, "Uniform
+// Resources", multi-part URs). Written here from that specification; it gives the same results as SeedSigner's ur2
+// decoder (Foundation Devices' Python port of the reference decoder): the same parts are accepted or ignored, the same
+// percent is shown, and an animation finishes from its mixed parts as it does on the device.
+// A multi-part UR part is the CBOR array [seqNum, seqLen, messageLen, checksum, fragment]. Parts 1..seqLen each carry
+// one fragment; a part with seqNum > seqLen carries the XOR of several fragments, chosen by a random-number generator
+// that both sides seed the same way:
+//   - Xoshiro256**, its four 64-bit words taken big-endian from SHA-256(seqNum as 4 bytes || checksum as 4 bytes);
+//   - the degree d (how many fragments) from a Vose alias sampler over the weights 1/1, 1/2, ... 1/seqLen;
+//   - the fragments: the first d of the indexes 0..seqLen-1 after a shuffle that draws next_int(0, remaining - 1).
+// The decoder keeps the single fragments it knows and the mixed parts it cannot solve yet; each new fragment is XORed
+// out of every mixed part that contains it, and a mixed part left with one fragment becomes a new single fragment.
+// When all fragments are known, the message is joined, cut to messageLen and checked with CRC-32.
+const SS_UR_M64 = (1n << 64n) - 1n;
+class SSUrXoshiro256 {
+  constructor(seed_bytes) {
+    const d = oldElSha256(seed_bytes);
+    this.s = [0, 1, 2, 3].map((i) => { let v = 0n; for (let n = 0; n < 8; n++) v = (v << 8n) | BigInt(d[i * 8 + n]); return v; });
+  }
+  static rotl(x, k) { return ((x << BigInt(k)) | (x >> BigInt(64 - k))) & SS_UR_M64; }
+  next() {
+    const s = this.s;
+    const result = (SSUrXoshiro256.rotl((s[1] * 5n) & SS_UR_M64, 7) * 9n) & SS_UR_M64;
+    const t = (s[1] << 17n) & SS_UR_M64;
+    s[2] ^= s[0]; s[3] ^= s[1]; s[1] ^= s[2]; s[0] ^= s[3]; s[2] ^= t;
+    s[3] = SSUrXoshiro256.rotl(s[3], 45);
+    return result;
+  }
+  next_double() { return Number(this.next()) / 18446744073709551616; }   // / 2^64
+  next_int(low, high) { return Math.floor(this.next_double() * (high - low + 1)) + low; }
+}
+// Vose's alias method, with the index order the UR specification fixes (small and large lists filled from the top index down)
+class SSUrSampler {
+  constructor(probs) {
+    const n = probs.length;
+    let total = 0;
+    for (const p of probs) total += p;
+    const P = probs.map((p) => (p * n) / total), S = [], L = [];
+    for (let i = n - 1; i >= 0; i--) (P[i] < 1 ? S : L).push(i);
+    this.probs = new Array(n).fill(0); this.aliases = new Array(n).fill(0);
+    while (S.length && L.length) {
+      const a = S.pop(), g = L.pop();
+      this.probs[a] = P[a]; this.aliases[a] = g;
+      P[g] += P[a] - 1;
+      (P[g] < 1 ? S : L).push(g);
+    }
+    while (L.length) this.probs[L.pop()] = 1;
+    while (S.length) this.probs[S.pop()] = 1;   // (only through rounding)
+  }
+  next(rng) {
+    const r1 = rng.next_double(), r2 = rng.next_double(), n = this.probs.length, i = Math.floor(n * r1);
+    return r2 < this.probs[i] ? i : this.aliases[i];
+  }
+}
+// The fragment indexes (0-based) a part carries
+function ssUrChooseFragments(seq_num, seq_len, checksum) {
+  if (seq_num <= seq_len) return [seq_num - 1];
+  if (seq_num > 0xffffffff || checksum > 0xffffffff) throw new Error("int too big to convert");
+  const rng = new SSUrXoshiro256(Uint8Array.from([...be32(seq_num), ...be32(checksum)]));
+  const w = []; for (let i = 1; i <= seq_len; i++) w.push(1 / i);
+  const degree = new SSUrSampler(w).next(rng) + 1;
+  const remaining = []; for (let i = 0; i < seq_len; i++) remaining.push(i);
+  const shuffled = [];
+  while (remaining.length) shuffled.push(remaining.splice(rng.next_int(0, remaining.length - 1), 1)[0]);
+  return shuffled.slice(0, degree);
+}
+
+class SSURFountainDecoder {
+  constructor() {
+    this.expected = null;          // {seq_len, message_len, checksum, fragment_len}
+    this.received = new Map();     // fragment index -> data (the solved single fragments)
+    this.mixed = new Map();        // key of the index set -> {idx: sorted indexes, data}
+    this.queue = [];
+    this.processed_parts_count = 0;
+    this.result = null;            // Uint8Array, or an Error (checksum)
+  }
+  static key(idx) { return idx.join(","); }
+  // Every part must match the first one seen (a part of another animation is ignored)
+  validate(p) {
+    if (this.expected === null) {
+      this.expected = {seq_len: p.seq_len, message_len: p.message_len, checksum: p.checksum, fragment_len: p.data.length};
+      return true;
+    }
+    const e = this.expected;
+    return e.seq_len === p.seq_len && e.message_len === p.message_len && e.checksum === p.checksum && e.fragment_len === p.data.length;
+  }
+  receive_part(p) {
+    if (this.result !== null) return false;
+    if (!this.validate(p)) return false;
+    const idx = ssUrChooseFragments(p.seq_num, p.seq_len, p.checksum).slice().sort((a, b) => a - b);
+    this.queue.push({idx, data: Uint8Array.from(p.data)});
+    const n_simple = this.received.size, n_mixed = this.mixed.size;
+    while (this.result === null && this.queue.length) {
+      const q = this.queue.shift();
+      if (q.idx.length === 1) this._simple(q); else this._mixed(q);
+    }
+    this.processed_parts_count += 1;
+    return !(n_simple === this.received.size && n_mixed === this.mixed.size);   // false: nothing new
+  }
+  // a minus b, if b's fragments are all in a (as the reference decoder: an equal set reduces to an empty part)
+  static reduce(a, b) {
+    if (!b.idx.every((i) => a.idx.includes(i))) return a;
+    const data = Uint8Array.from(a.data);
+    for (let i = 0; i < data.length; i++) data[i] ^= b.data[i];
+    return {idx: a.idx.filter((i) => !b.idx.includes(i)), data};
+  }
+  _reduce_mixed_by(p) {
+    const next = new Map();
+    for (const m of this.mixed.values()) {
+      const r = SSURFountainDecoder.reduce(m, p);
+      if (r.idx.length === 1) this.queue.push(r); else next.set(SSURFountainDecoder.key(r.idx), r);
+    }
+    this.mixed = next;
+  }
+  _simple(p) {
+    const i = p.idx[0];
+    if (this.received.has(i)) return;
+    this.received.set(i, p.data);
+    const e = this.expected;
+    if (this.received.size === e.seq_len) {
+      const msg = new Uint8Array(e.seq_len * e.fragment_len);
+      for (let j = 0; j < e.seq_len; j++) msg.set(this.received.get(j), j * e.fragment_len);
+      const m = msg.slice(0, e.message_len);
+      this.result = crc32(m) === e.checksum ? m : new Error("InvalidChecksum");
+    } else this._reduce_mixed_by(p);
+  }
+  _mixed(p) {
+    let r = p;
+    for (const [i, data] of this.received) r = SSURFountainDecoder.reduce(r, {idx: [i], data});
+    for (const m of this.mixed.values()) r = SSURFountainDecoder.reduce(r, m);
+    if (r.idx.length === 1) this.queue.push(r);
+    else { this._reduce_mixed_by(r); this.mixed.set(SSURFountainDecoder.key(r.idx), r); }
+  }
+  // FountainDecoder.estimated_percent_complete, both of SeedSigner's methods
+  estimated_percent_complete(weight_mixed_frames = false) {
+    if (this.result !== null) return 1;
+    if (this.expected === null) return 0;
+    const n = this.expected.seq_len;
+    if (!weight_mixed_frames) return Math.min(0.99, this.processed_parts_count / (n * 1.75));
+    // each fragment inside a mixed part counts 1/(fragments in that part), at most 0.75 for one fragment
+    const score = new Map();
+    for (const m of this.mixed.values()) {
+      if (!m.idx.length) continue;
+      for (const i of m.idx) score.set(i, (score.get(i) || 0) + 1 / m.idx.length);
+    }
+    let mixed_score = 0;
+    for (const v of score.values()) mixed_score += Math.min(v, 0.75);
+    return (this.received.size + mixed_score) / n;
+  }
+}
+
+// Bytewords.decode (minimal style) as SeedSigner's ur2 does it: two letters per byte, at least 5 bytes, and the last 4
+// bytes (the CRC-32) dropped WITHOUT being checked (ur2 has that check commented out). SeedSigner behavior; a part with a
+// wrong checksum is read anyway, the message checksum of a multi-part UR still catches a wrong fragment.
+function ssUrBytewordsDecode(t) {
+  const out = [];
+  for (let i = 0; i < t.length; i += 2) {
+    const v = BW_INDEX[t.slice(i, i + 2)];
+    if (v === undefined) throw new Error("Invalid Bytewords.");
+    out.push(v);
+  }
+  if (out.length < 5) throw new Error("Invalid Bytewords.");
+  return Uint8Array.from(out.slice(0, -4));
+}
+
 class SSURDecoder {
   constructor() {
+    this.fountain_decoder = new SSURFountainDecoder();
     this.expected_type = null;
-    this.result = null;
-    this.seq_len = null;
-    this.received = new Map();
-    this.processed_parts_count = 0;
+    this.result = null;   // {type, cbor}, or an Error
   }
   receive_part(str) {
     try {
@@ -15228,6 +15389,7 @@ class SSURDecoder {
       const s = String(str).toLowerCase();
       if (!s.startsWith("ur:")) return false;
       const components = s.slice(3).split("/");
+      if (components.length < 2) return false;
       const type = components.shift();
       if (!/^[a-z0-9-]+$/.test(type)) return false;
       // Don't continue if this part doesn't validate
@@ -15235,8 +15397,7 @@ class SSURDecoder {
       else if (this.expected_type !== type) return false;
       // If this is a single-part UR then we're done
       if (components.length === 1) {
-        const r = urDecodeFrames([s]);
-        this.result = {type: r.type, cbor: Uint8Array.from(r.msg)};
+        this.result = {type, cbor: ssUrBytewordsDecode(components[0])};
         return true;
       }
       // Multi-part URs must have two path components: seq/fragment
@@ -15244,34 +15405,28 @@ class SSURDecoder {
       const m = /^(\d+)-(\d+)$/.exec(components[0]);
       if (!m) return false;
       const seq_num = parseInt(m[1], 10), seq_len = parseInt(m[2], 10);
-      const part = cborRead(bytewordsMinDecode(components[1]), 0).v;
-      if (!Array.isArray(part) || part.length !== 5 || part[0] !== seq_num || part[1] !== seq_len) return false;
-      if (this.seq_len !== null && this.seq_len !== seq_len) return false;
-      this.seq_len = seq_len;
-      this.processed_parts_count += 1;
-      if (seq_num > seq_len) return false;   // SIM: a mixed fountain part (see above)
-      if (this.received.has(seq_num)) return false;   // This part didn't add any new info
-      this.received.set(seq_num, s);
-      if (this.received.size === seq_len) {
-        try {
-          const r = urDecodeFrames(Array.from(this.received.values()));
-          this.result = {type: r.type, cbor: Uint8Array.from(r.msg)};
-        } catch (e) {
-          this.result = e instanceof Error ? e : new Error(String(e));
-        }
-      }
+      if (seq_num < 1 || seq_len < 1) return false;
+      const part = cborRead(ssUrBytewordsDecode(components[1]), 0).v;
+      if (!Array.isArray(part) || part.length !== 5 || !(part[4] instanceof Uint8Array) || part.slice(0, 4).some((x) => typeof x !== "number")) return false;
+      const p = {seq_num: part[0], seq_len: part[1], message_len: part[2], checksum: part[3], data: part[4]};
+      if (seq_num !== p.seq_num || seq_len !== p.seq_len) return false;
+      // SIM: a part whose numbers no encoder can make (more fragments than message bytes, fragments that do not fit the
+      // message) is ignored: SeedSigner would set up that many fragment slots and wait forever (or run out of memory).
+      const fl = p.data.length;
+      if (!fl || p.message_len < 1 || p.seq_len > p.message_len || fl * p.seq_len < p.message_len || fl * (p.seq_len - 1) >= p.message_len) return false;
+      // Process the part
+      if (!this.fountain_decoder.receive_part(p)) return false;
+      const r = this.fountain_decoder.result;
+      if (r instanceof Error) this.result = r;
+      else if (r !== null) this.result = {type, cbor: r};
       return true;
     } catch (e) {
       return false;
     }
   }
-  expected_part_count() { return this.seq_len; }
-  estimated_percent_complete(weight_mixed_frames = false) {
-    if (this.is_complete()) return 1;
-    if (this.seq_len === null) return 0;
-    if (!weight_mixed_frames) return Math.min(0.99, this.processed_parts_count / (this.seq_len * 1.75));
-    return Math.min(0.99, this.received.size / this.seq_len);
-  }
+  expected_part_count() { return this.fountain_decoder.expected ? this.fountain_decoder.expected.seq_len : null; }
+  get processed_parts_count() { return this.fountain_decoder.processed_parts_count; }
+  estimated_percent_complete(weight_mixed_frames = false) { return this.fountain_decoder.estimated_percent_complete(weight_mixed_frames); }
   is_success() { return this.result !== null && !(this.result instanceof Error) ? this.result : false; }
   is_failure() { return this.result instanceof Error ? this.result : false; }
   is_complete() { return this.result !== null; }
@@ -15478,7 +15633,7 @@ class SSBitcoinAddressQrDecoder extends SSBaseSingleFrameQrDecoder {
     const C = SSSettingsConstants;
     const pieces = segment.split(":");
     const m = /^((bc1q|tb1q|bcrt1q|bc1p|tb1p|bcrt1p|[123]|[mn])[a-zA-HJ-NP-Z0-9]{25,64})/i.exec(pieces[pieces.length - 1]);
-    if (m === null) return null;
+    if (m === null) return SSDecodeQRStatus.INVALID;   // ("Invalid address": the scan stops, and the view goes Home)
     this.address = m[1];
     this.complete = true;
     this.collected_segments = 1;
@@ -15767,7 +15922,7 @@ class SSDecodeQR {
   // "XFP: xpub...") into a descriptor string.
   static multisig_setup_file_to_descriptor(text) {
     const lines = text.split("\n");
-    let m = 0, n = 0, xpubs = [], x = 0, derivation = "", descriptor = "", script_type;
+    let m = 0, n = 0, xpubs = [], xpubs_n = 0, x = 0, derivation = "", descriptor = "", script_type;
     for (let l of lines) {
       if (l.indexOf("#") === 0) continue;   // skip comments
       l = l.trim();
@@ -15785,13 +15940,15 @@ class SSDecodeQR {
       } else if (label === "format") {
         if (["p2wsh", "p2sh-p2wsh", "p2wsh-p2sh"].includes(value.toLowerCase())) script_type = value.toLowerCase();
       } else if (label.length === 8) {
-        if (xpubs.length === 0) xpubs = new Array(n).fill(null);
+        // ([None] * n: a policy count larger than the lines of the file can never be filled and ends in "bad or
+        // missing xpub" below, so no more than one slot per line is made: the same result without a huge list)
+        if (xpubs.length === 0) { xpubs = new Array(Math.min(n, lines.length + 1)).fill(null); xpubs_n = n; }
         if (x >= xpubs.length) throw new Error("list assignment index out of range");
         xpubs[x] = {xfp: label, key: value};
         x += 1;
       }
     }
-    if (xpubs.includes(null) || xpubs.length !== n) throw new Error("bad or missing xpub");
+    if (xpubs.includes(null) || xpubs_n !== xpubs.length || xpubs.length !== n) throw new Error("bad or missing xpub");
     if (m <= 0 || m > 9 || n <= 0 || n > 9) throw new Error("bad or missing policy");
     if (derivation.length === 0) throw new Error("bad or missing derivation path");
     if (!["p2wsh", "p2sh-p2wsh", "p2wsh-p2sh"].includes(script_type)) throw new Error("bad or missing script format");
@@ -17204,8 +17361,11 @@ SSHardwareButtonsConstants.KEYS__ANYCLICK = ["KEY_PRESS", "KEY1", "KEY2", "KEY3"
 
 /*
  * SIM: GPIO levels are replaced by key state. A key is "LOW" (pressed) while it is held (keyboard keydown or
- * key_down() from the page) and for SS_KEY_LATCH_MS after it went down, so a very short tap is never missed
- * by the 10 ms polling loop.
+ * key_down() from the page). A tap that is already released when the 10 ms polling loop looks (a mouse click can go
+ * down and up between two polls) still counts once: it stays pending until wait_for() returns it, or SS_KEY_LATCH_MS
+ * after it can first be returned. Key repeat (SeedSigner's first_repeat_threshold rule) happens only while the key
+ * is really held, never from a pending tap, so two quick taps count as two, as on the device. check_for_low() and
+ * has_any_input() (toasts, the screensaver) see a tap as LOW for SS_KEY_LATCH_MS, as they would see a short press.
  */
 const SS_KEY_LATCH_MS = 120;
 const SS_TAP_MS = 110;
@@ -17223,6 +17383,8 @@ class SSHardwareButtons {
             hb.next_repeat_threshold = 250;   // Amount of time where we no longer consider input a continuous hold
             hb._held = {};
             hb._down_at = {};
+            hb._pending = {};               // SIM: a tap not yet returned by wait_for()
+            hb._pend_at = {};
             SSHardwareButtons._instance = hb;
         }
         return SSHardwareButtons._instance;
@@ -17233,16 +17395,25 @@ class SSHardwareButtons {
     static check_for_low(key, keys) { return SSHardwareButtons.get_instance().check_for_low(key, keys); }
     static has_any_input() { return SSHardwareButtons.get_instance().has_any_input(); }
 
+    // GPIO level for check_for_low() / has_any_input(): held, or tapped less than SS_KEY_LATCH_MS ago
     _is_low(key) {
         if (this._held[key]) return true;
         const t = this._down_at[key];
         return t !== undefined && Date.now() - t < SS_KEY_LATCH_MS;
     }
+    // For wait_for(): held, or a tap it has not returned yet (kept SS_KEY_LATCH_MS from when it can first be returned)
+    _is_waiting(key) {
+        if (this._held[key]) return true;
+        if (!this._pending[key]) return false;
+        if (Date.now() - this._pend_at[key] < SS_KEY_LATCH_MS) return true;
+        this._pending[key] = false;   // a tap nobody waited for is gone, like a short press the device did not poll
+        return false;
+    }
 
     // Page/keyboard input
     key_down(key) {
         if (!SSHardwareButtonsConstants.ALL_KEYS.includes(key)) return;
-        if (!this._held[key]) this._down_at[key] = Date.now();
+        if (!this._held[key]) { this._down_at[key] = this._pend_at[key] = Date.now(); this._pending[key] = true; }
         this._held[key] = true;
     }
     key_up(key) { this._held[key] = false; }
@@ -17286,11 +17457,12 @@ class SSHardwareButtons {
 
             // Check each candidate key to see if it was pressed
             for (const key of keys) {
-                if (this._is_low(key)) {
+                if (this._is_waiting(key)) {
                     if (this.cur_input !== key) {
                         this.cur_input = key;
                         this.cur_input_started = Date.now();
                         this.last_input_time = this.cur_input_started;
+                        this._pending[key] = false;
                         return await this._return_key(key);
                     } else {
                         // Still pressing the same input
@@ -17298,13 +17470,21 @@ class SSHardwareButtons {
                             // Too much time has elapsed to consider this the same continuous input.
                             this.cur_input_started = cur_time;
                             this.last_input_time = cur_time;
+                            this._pending[key] = false;
                             return await this._return_key(key);
-                        } else if (cur_time - this.cur_input_started > this.first_repeat_threshold &&
+                        } else if (this._held[key] && this._down_at[key] <= this.cur_input_started &&
+                                   cur_time - this.cur_input_started > this.first_repeat_threshold &&
                                    cur_time - this.last_input_time >= SS_REPEAT_MIN_MS) {
                             // We're good to relay this immediately as continuous input.
-                            // (SIM: at most one repeat per SS_REPEAT_MIN_MS, the time a Pi needs to redraw a screen.)
+                            // (SIM: only while the key is held down without a break since this input began, and at
+                            // most one repeat per SS_REPEAT_MIN_MS, the time a Pi needs to redraw a screen.)
                             this.last_input_time = cur_time;
+                            this._pending[key] = false;
                             return await this._return_key(key);
+                        } else if (this._pending[key]) {
+                            // SIM: a new tap inside the "same press" window: keep it pending until the window ends
+                            // (then it is a new separate press, as a second press after next_repeat_threshold is on the device).
+                            this._pend_at[key] = Math.max(this._pend_at[key], this.last_input_time + this.next_repeat_threshold + 1);
                         }
                         // else: not yet at the first repeat threshold; ignore this round's input.
                     }
@@ -20764,7 +20944,8 @@ class SSBaseToastOverlayManagerThread extends SSBaseThread {
                 await ssSleep(0.1);
             }
         } finally {
-            if (has_rendered && this.renderer.lock.locked()) {
+            // (SIM: not when the page has stopped the device while the toast showed: its screen is gone)
+            if (has_rendered && this.renderer.lock.locked() && this.renderer.canvas) {
                 // As far as we know, we currently hold the Renderer.lock
                 this.renderer.show_image(previous_screen_state);
             }
@@ -22894,9 +23075,10 @@ class SSSeedsSpecterLegacyXPubQrEncoder extends SSSeedsBaseSimpleAnimatedQREncod
     }
 }
 
-/* Fountain (UR) encoders. SIM: VOIDFORGE's urEncode() makes the pure parts 1..seqLen with
-   the same fragment length rule as SeedSigner's ur2 UREncoder; SeedSigner keeps going with
-   fountain-mixed parts after seqLen, here the pure parts repeat instead. */
+/* Fountain (UR) encoders (helpers/ur2 UREncoder, written from BCR-2020-005): the message is cut into fragments of the
+   length ur2's find_nominal_fragment_length picks (at least 10 bytes, at most the density's size); parts 1..seqLen
+   carry one fragment each, later parts the XOR of the fragments chosen for that part number (ssUrChooseFragments in
+   the scan part), as SeedSigner sends them. */
 class SSSeedsBaseFountainQrEncoder extends SSSeedsBaseQrEncoder {
     constructor(fields = {}) {
         super(fields);
@@ -22912,17 +23094,38 @@ class SSSeedsBaseFountainQrEncoder extends SSSeedsBaseQrEncoder {
         return density_mapping[this.qr_density] !== undefined ? density_mapping[this.qr_density] : 30;
     }
     _ss_set_message(ur_type, cbor_bytes) {
-        this.ur_parts = urEncode(ur_type, cbor_bytes, this.qr_max_fragment_size);
+        const msg = Array.from(cbor_bytes), min_fragment_len = 10, max_fragment_len = this.qr_max_fragment_size;
+        // FountainEncoder.find_nominal_fragment_length
+        let fl = null;
+        for (let count = 1; count <= Math.floor(msg.length / min_fragment_len); count++) {
+            fl = Math.ceil(msg.length / count);
+            if (fl <= max_fragment_len) break;
+        }
+        if (fl === null) throw new Error("AssertionError");
+        this._ur_type = ur_type;
+        this._ur_msg = msg;
+        this._ur_fl = fl;
+        this._ur_crc = crc32(msg);
+        this.ur_parts = new Array(Math.ceil(msg.length / fl)).fill(null);   // (only its length is used: seq_len)
     }
     get is_complete() { return this.seq_num >= this.seq_len(); }
     _create_parts() { /* parts are dynamically generated by the fountain encoder */ }
     seq_len() { return this.ur_parts.length; }
+    // part number n (1-based): one fragment for n <= seqLen, else the XOR of the fragments chosen for n
+    _ss_part(n) {
+        const L = this.ur_parts.length, msg = this._ur_msg, fl = this._ur_fl, crc = this._ur_crc;
+        if (L === 1) return ("ur:" + this._ur_type + "/" + bytewordsMin(msg)).toUpperCase();
+        const mixed = new Array(fl).fill(0);
+        for (const i of ssUrChooseFragments(n, L, crc)) for (let j = 0; j < fl; j++) mixed[j] ^= (msg[i * fl + j] || 0);
+        return ("ur:" + this._ur_type + "/" + n + "-" + L + "/" + bytewordsMin(CB.arr([CB.uint(n), CB.uint(L), CB.uint(msg.length), CB.uint(crc), CB.bytes(mixed)]))).toUpperCase();
+    }
     next_part() {
-        this.seq_num += 1;
-        return this.ur_parts[(this.seq_num - 1) % this.ur_parts.length].toUpperCase();
+        this.seq_num = (this.seq_num + 1) % 0xffffffff;   // (wraps at 2^32, as ur2 does)
+        return this._ss_part(this.seq_num);
     }
     cur_part() {
-        return this.ur_parts[(Math.max(this.seq_num, 1) - 1) % this.ur_parts.length].toUpperCase();
+        if (this.seq_num === 0) return this.next_part();
+        return this._ss_part(this.seq_num);
     }
     restart() { this.seq_num = 0; }
 }
@@ -29177,8 +29380,8 @@ class SSSettingsQRConfirmationScreen extends SSButtonListScreen {
 //   models/encode_qr.py, and the embit pieces they need (PSBT parse/sign/serialize, Descriptor, urtypes Output/Account).
 // Loaded after ss_tools_settings.js PART B, in the same script block (the build script joins them).
 // Crypto comes from VOIDFORGE's own functions: secp256k1 (emul, eadd, liftX, SG, SN), BIP32 (masterFromSeed, ckdPriv,
-// ckdPub), hashes (sha256bytes, dsha256, hash160, taggedHash), signature hashes (svSighashLegacy, svSighashV0,
-// svSighashTr: BIP143 and BIP341), base58check, bech32Encode, UR (urEncode, urDecodeFrames) and the RFC 6979 signer of
+// ckdPub), hashes (sha256bytes, dsha256, hash160, taggedHash, oldElSha256), signature hashes (svSighashV0, svSighashTr:
+// BIP143 and BIP341; the legacy one is embit's own, below), base58check, bech32Encode, UR (urEncode, urDecodeFrames) and the RFC 6979 signer of
 // ss_seeds.js (ssSeedsEcdsaSignRecoverable).
 
 
@@ -29192,6 +29395,11 @@ function ssPsbtEq(a, b) {
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
   return true;
 }
+// PublicKey.sec() of a key as embit holds it. SeedSigner behavior: embit stores a taproot (x-only, 32-byte) key as
+// PublicKey.from_xonly(x) = the point with an EVEN y (prefix 02), so SeedSigner's "derived_key.key.sec() ==
+// public_key.sec()" matches a taproot key only when the derived key's y is even (about half of the keys); keys with an
+// odd y are not matched (a missing 00000000 fingerprint then stays missing and the input is not signed), as on the device.
+function ssPsbtSec(pub) { return pub.length === 32 ? concatBytes(Uint8Array.of(0x02), pub) : pub; }
 // Python `needle in haystack` for bytes
 function ssPsbtContains(haystack, needle) {
   if (!needle || !haystack || needle.length > haystack.length) return false;
@@ -29355,24 +29563,129 @@ async function ssPsbtSchnorrSign(m32, d0) {
 /* ---------------------------------------------------------------------------------------------------------------------
    3. embit Transaction and PSBT (version 0 and 2), what SeedSigner uses of them
    --------------------------------------------------------------------------------------------------------------------- */
-function ssPsbtParseTx(bytes) {
-  const r = psbtReader(bytes), tx = {version: r.u32(), vin: [], vout: [], locktime: 0};
-  let n = r.varint(), seg = false;
-  if (n === 0) {
-    if (r.byte() !== 1) throw new Error("Invalid segwit flag");
-    seg = true; n = r.varint();
+// embit reads a PSBT from a stream (io.BytesIO): stream.read(n) returns what is left when fewer than n bytes remain (no
+// error); only compact.read_from, read_string and Script.read_from check that they got their bytes. SSPsbtStream does
+// the same, so the port accepts and refuses the same damaged PSBTs as SeedSigner. Every count read from the data is
+// checked against the bytes left before anything is built from it (each item needs at least one byte, so a larger
+// count fails in embit too, only after a long loop): a damaged count gives embit's error at once, never a frozen page.
+class SSPsbtStream {
+  constructor(b) { this.b = b; this.o = 0; }
+  get left() { return this.b.length - this.o; }
+  read(n) { const x = this.b.slice(this.o, this.o + Math.max(0, Math.min(n, this.left))); this.o += x.length; return x; }
+  // compact.read_from
+  compact() {
+    const c = this.read(1);
+    if (c.length !== 1) throw new Error("Can't read one byte from the stream");
+    if (c[0] >= 0xfd) return ssPsbtLeNum(this.read(2 ** (c[0] - 0xfc)));
+    return c[0];
   }
+  // read_string (embit.psbt)
+  string() {
+    const l = this.compact(), s = this.read(l);
+    if (s.length !== l) throw new Error(`Failed to read ${l} bytes`);
+    return s;
+  }
+  // Script.read_from
+  script() {
+    const l = this.compact(), s = this.read(l);
+    if (s.length !== l) throw new Error(`Cant read ${l} bytes`);
+    return s;
+  }
+  // a count of items that each need at least `min` bytes
+  count(n, min = 1, what = "item") {
+    if (n * min > this.left) throw new Error("Can't read one byte from the stream");   // (where embit's loop would end)
+    return n;
+  }
+  // EmbitBase.parse: nothing may be left over
+  end() { if (this.left > 0) throw new Error("Unexpected extra bytes"); }
+}
+// int.from_bytes(b, "little") (any length; exact as a Number up to 2^53, which every real field is far below)
+function ssPsbtLeBig(b) { let v = 0n; for (let i = b.length - 1; i >= 0; i--) v = (v << 8n) | BigInt(b[i]); return v; }
+function ssPsbtLeNum(b) { return Number(ssPsbtLeBig(b)); }
+// ec.PublicKey.parse(b): 33-byte compressed or 65-byte uncompressed point on the curve, nothing left over
+function ssPsbtPubParse(b) {
+  if (!b.length || ![2, 3, 4].includes(b[0])) throw new Error("Invalid public key");
+  const n = b[0] === 4 ? 65 : 33;
+  if (b.length < n) throw new Error("Serialized pubkey should be 33 or 65 bytes long");
+  if (b.length > n) throw new Error("Unexpected extra bytes");
+  if (n === 33) { try { pointFromPub(b); } catch (e) { throw new Error("Failed parsing public key"); } return b; }
+  const x = ssPsbtBeBig(b.slice(1, 33)), y = ssPsbtBeBig(b.slice(33));
+  if (x >= SP || y >= SP || (y * y - (x * x * x + 7n)) % SP !== 0n) throw new Error("Failed parsing public key");
+  return b;
+}
+function ssPsbtBeBig(b) { let v = 0n; for (const x of b) v = (v << 8n) | BigInt(x); return v; }
+// ec.PublicKey.from_xonly(b): 32 bytes, a point on the curve
+function ssPsbtXonlyParse(b) {
+  if (b.length !== 32) throw new Error("AssertionError");
+  ssPsbtPubParse(concatBytes(Uint8Array.of(0x02), b));
+  return b;
+}
+// bip32.HDKey.parse(b) for a global xpub key: the checks embit makes (version, key, depth, nothing left over)
+function ssPsbtHDKeyCheck(b) {
+  const s = new SSPsbtStream(b);
+  const version = s.read(4), depth = s.read(1), fingerprint = s.read(4), child = s.read(4), chain_code = s.read(32), k = s.read(33);
+  if (!depth.length || !k.length) throw new Error("IndexError: index out of range");
+  let is_private = false;
+  if (k[0] === 0) {
+    const sk = k.slice(1);
+    if (sk.length !== 32) throw new Error("Secret should be 32-byte array");
+    const d = ssPsbtBeBig(sk);
+    if (d === 0n || d >= SN) throw new Error("Secret is not valid (larger then N?)");
+    is_private = true;
+  } else ssPsbtPubParse(k);
+  if (version.length < 4 || fingerprint.length < 4 || chain_code.length < 32) throw new Error("Not enough bytes");
+  const sub = ssPsbtBase58Check(b.slice(0, 78)).slice(1, 4);
+  if (sub === "prv" && !is_private) throw new Error("Invalid version for private key");
+  if (sub === "pub" && is_private) throw new Error("Invalid version for public key");
+  if (sub !== "prv" && sub !== "pub") throw new Error("Invalid version");
+  if (depth[0] === 0 && ssPsbtBeBig(child) !== 0n) throw new Error("zero depth with non-zero index");
+  if (depth[0] === 0 && !ssPsbtEq(fingerprint, [0, 0, 0, 0])) throw new Error("zero depth with non-zero parent");
+  s.end();
+}
+// base58.encode_check, without waiting (VOIDFORGE's oldElSha256 is a synchronous SHA-256)
+function ssPsbtBase58Check(payload) {
+  const all = concatBytes(payload, oldElSha256(oldElSha256(payload)).slice(0, 4));
+  const A = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  let v = ssPsbtBeBig(all), out = "";
+  while (v > 0n) { out = A[Number(v % 58n)] + out; v /= 58n; }
+  for (const x of all) { if (x !== 0) break; out = "1" + out; }
+  return out;
+}
+// DerivationPath.read_from: a 4-byte fingerprint (fewer bytes are kept as they are, as embit does) and uint32 indexes
+function ssPsbtReadDer(s) {
+  const fingerprint = s.read(4), derivation = [];
+  for (;;) {
+    const r = s.read(4);
+    if (r.length === 0) break;
+    if (r.length < 4) throw new Error("Invalid length");
+    derivation.push(ssPsbtLeNum(r));
+  }
+  return {fingerprint, derivation};
+}
+function ssPsbtParseDer(v) { return ssPsbtReadDer(new SSPsbtStream(v)); }   // DerivationPath.parse
+// Transaction.read_from (the stream form: a non-witness utxo is read straight from the PSBT, as embit does)
+function ssPsbtReadTx(s) {
+  const start = s.o;
+  const tx = {version: ssPsbtLeNum(s.read(4)), vin: [], vout: [], locktime: 0};
+  let n = s.compact();
+  const seg = n === 0;
+  if (seg) {
+    if (!ssPsbtEq(s.read(1), [1])) throw new Error("Invalid segwit marker");
+    n = s.compact();
+  }
+  s.count(n);
   for (let i = 0; i < n; i++) {
-    const txid = r.bytes(32), vout = r.u32(), script_sig = r.bytes(r.varint());
-    tx.vin.push({txid, vout, script_sig, sequence: r.u32()});
+    const txid = s.read(32), vout = ssPsbtLeNum(s.read(4)), script_sig = s.script();
+    tx.vin.push({txid, vout, script_sig, sequence: ssPsbtLeNum(s.read(4))});
   }
-  n = r.varint();
-  for (let i = 0; i < n; i++) { const value = r.i64(); tx.vout.push({value, script_pubkey: r.bytes(r.varint())}); }
-  if (seg) for (let i = 0; i < tx.vin.length; i++) { const k = r.varint(); for (let j = 0; j < k; j++) r.bytes(r.varint()); }
-  tx.locktime = r.u32();
-  if (!r.done) throw new Error("Transaction has extra data");
+  n = s.count(s.compact());
+  for (let i = 0; i < n; i++) { const value = ssPsbtLeBig(s.read(8)); tx.vout.push({value, script_pubkey: s.script()}); }
+  if (seg) for (let i = 0; i < tx.vin.length; i++) ssPsbtReadWitness(s);
+  tx.locktime = ssPsbtLeNum(s.read(4));
+  tx.raw = s.b.slice(start, s.o);
   return tx;
 }
+function ssPsbtParseTx(bytes) { const s = new SSPsbtStream(bytes), tx = ssPsbtReadTx(s); s.end(); return tx; }   // Transaction.parse
 function ssPsbtSerializeTx(tx) {
   const w = new SSPsbtWriter();
   w.u32(tx.version).varint(tx.vin.length);
@@ -29382,16 +29695,21 @@ function ssPsbtSerializeTx(tx) {
   w.u32(tx.locktime);
   return w.out();
 }
-// DerivationPath: 4-byte fingerprint + uint32 indexes
-function ssPsbtParseDer(v) {
-  if (v.length < 4 || v.length % 4) throw new Error("Invalid derivation path");
-  const r = psbtReader(v), fingerprint = r.bytes(4), derivation = [];
-  while (!r.done) derivation.push(r.u32());
-  return {fingerprint, derivation};
-}
 function ssPsbtSerDer(d) { const w = new SSPsbtWriter(); w.raw(d.fingerprint); for (const i of d.derivation) w.u32(i); return w.out(); }
-function ssPsbtWitnessParse(v) { const r = psbtReader(v), n = r.varint(), items = []; for (let i = 0; i < n; i++) items.push(r.bytes(r.varint())); return items; }
+// Witness.read_from: each item is read like stream.read(l) (a short last item is kept as it is)
+function ssPsbtReadWitness(s) { const n = s.count(s.compact()), items = []; for (let i = 0; i < n; i++) items.push(s.read(s.compact())); return items; }
+function ssPsbtWitnessParse(v) { const s = new SSPsbtStream(v), w = ssPsbtReadWitness(s); s.end(); return w; }   // Witness.parse
 function ssPsbtWitnessSer(items) { const w = new SSPsbtWriter(); w.varint(items.length); for (const x of items) w.str(x); return w.out(); }
+// TransactionOutput.parse
+function ssPsbtTxOutParse(v) { const s = new SSPsbtStream(v), value = ssPsbtLeBig(s.read(8)), script_pubkey = s.script(); s.end(); return {value, script_pubkey}; }
+// The taproot derivation value: leaf hashes, then DerivationPath.read_from
+function ssPsbtTapDer(v) {
+  const s = new SSPsbtStream(v), num = s.compact(), leaf_hashes = [];
+  if (num * 32 > s.left) throw new Error("Invalid length of taproot leaf hashes");
+  for (let i = 0; i < num; i++) leaf_hashes.push(s.read(32));
+  return {leaf_hashes, der: ssPsbtReadDer(s)};
+}
+function ssPsbtReadScope(s, scope) { for (;;) { const key = s.string(); if (key.length === 0) return; scope.read_value(s, key); } }
 const ssPsbtKeyHex = (b) => hex(b);
 
 class SSPSBTInputScope {
@@ -29415,7 +29733,10 @@ class SSPSBTInputScope {
     this.taproot_merkle_root = null;
     this.unknown = [];              // [{key, val}]
   }
-  get vin() { return {txid: this.txid, vout: this.vout, script_sig: new Uint8Array(0), sequence: this.sequence === null ? 0xffffffff : this.sequence}; }
+  // SeedSigner behavior: embit's InputScope.vin is TransactionInput(txid, vout, sequence=(self.sequence or 0xFFFFFFFF)),
+  // so a sequence of 0 becomes 0xFFFFFFFF in the transaction SeedSigner signs and in the PSBT it returns (correct
+  // Bitcoin would keep 0; the device does not).
+  get vin() { return {txid: this.txid, vout: this.vout, script_sig: new Uint8Array(0), sequence: this.sequence || 0xffffffff}; }
   get utxo() {
     if (this.witness_utxo) return this.witness_utxo;
     if (this.non_witness_utxo) return this.non_witness_utxo.tx.vout[this.vout] || null;
@@ -29424,27 +29745,34 @@ class SSPSBTInputScope {
   get script_pubkey() { const u = this.utxo; return u ? u.script_pubkey : null; }
   get is_taproot() { const u = this.utxo; return !!u && ssPsbtScriptType(u.script_pubkey) === "p2tr"; }
 
-  read_value(t, key, v) {
-    const k1 = key.length === 0;
+  // InputScope.read_value(stream, k): k is the whole key (type byte first), as in embit
+  read_value(s, k) {
+    if (k.length === 0) return;
+    const t = k[0], key = k.slice(1), k1 = k.length === 1;
     const dup = (what) => { throw new Error("Duplicated " + what); };
+    // non witness utxo: embit reads the transaction straight from the stream (the length before it is read and not used)
     if (t === 0x00) {
       if (!k1) throw new Error("Invalid non-witness utxo key");
-      if (this.non_witness_utxo) dup("utxo");
-      this.non_witness_utxo = {raw: v, tx: ssPsbtParseTx(v)};
-    } else if (t === 0x01) {
+      if (this.non_witness_utxo) dup("utxo value");
+      s.compact();
+      const tx = ssPsbtReadTx(s);
+      this.non_witness_utxo = {raw: tx.raw, tx};
+      return;
+    }
+    const v = s.string();
+    if (t === 0x01) {
       if (!k1) throw new Error("Invalid witness utxo key");
-      if (this.witness_utxo) dup("utxo");
-      const r = psbtReader(v), value = r.i64(), script_pubkey = r.bytes(r.varint());
-      this.witness_utxo = {value, script_pubkey};
+      if (this.witness_utxo) dup("utxo value");
+      this.witness_utxo = ssPsbtTxOutParse(v);
     } else if (t === 0x02) {
-      pointFromPub(key);
+      ssPsbtPubParse(key);
       if (this.partial_sigs.some((x) => ssPsbtEq(x.pub, key))) dup("partial sig");
       this.partial_sigs.push({pub: key, sig: v});
     } else if (t === 0x03) {
       if (!k1) throw new Error("Invalid sighash type key");
       if (this.sighash_type !== null) dup("sighash type");
       if (v.length !== 4) throw new Error("Sighash type should be 4 bytes long");
-      this.sighash_type = (v[0] | (v[1] << 8) | (v[2] << 16) | (v[3] << 24)) >>> 0;
+      this.sighash_type = ssPsbtLeNum(v);
     } else if (t === 0x04) {
       if (!k1) throw new Error("Invalid redeem script key");
       if (this.redeem_script) dup("redeem script");
@@ -29454,7 +29782,7 @@ class SSPSBTInputScope {
       if (this.witness_script) dup("witness script");
       this.witness_script = v;
     } else if (t === 0x06) {
-      pointFromPub(key);
+      ssPsbtPubParse(key);
       if (this.bip32_derivations.some((x) => ssPsbtEq(x.pub, key))) dup("derivation path");
       this.bip32_derivations.push({pub: key, der: ssPsbtParseDer(v)});
     } else if (t === 0x07) {
@@ -29468,27 +29796,30 @@ class SSPSBTInputScope {
     } else if (t === 0x0e && k1) {
       this.txid = Uint8Array.from(v);   // (stored here in serialized byte order, as the unsigned transaction has it)
     } else if (t === 0x0f && k1) {
-      this.vout = (v[0] | (v[1] << 8) | (v[2] << 16) | (v[3] << 24)) >>> 0;
+      this.vout = ssPsbtLeNum(v);
     } else if (t === 0x10 && k1) {
-      this.sequence = (v[0] | (v[1] << 8) | (v[2] << 16) | (v[3] << 24)) >>> 0;
+      this.sequence = ssPsbtLeNum(v);
     } else if (t === 0x14) {
-      if (key.length !== 64) throw new Error("Invalid key length");
+      if (k.length !== 65) throw new Error("Invalid key length");
+      ssPsbtXonlyParse(k.slice(1, 33));
+      if (this.taproot_sigs.some((x) => ssPsbtEq(x.key, key))) dup("taproot sig");
       this.taproot_sigs.push({key, val: v});
     } else if (t === 0x15) {
+      if (this.taproot_scripts.some((x) => ssPsbtEq(x.control, key))) dup("taproot script");
       this.taproot_scripts.push({control: key, script: v});
     } else if (t === 0x16) {
-      if (key.length !== 32) throw new Error("Invalid key length");
+      ssPsbtXonlyParse(key);
       if (!this.taproot_bip32_derivations.some((x) => ssPsbtEq(x.pub, key))) {
-        const r = psbtReader(v), num = r.varint(), leaf_hashes = [];
-        for (let i = 0; i < num; i++) leaf_hashes.push(r.bytes(32));
-        this.taproot_bip32_derivations.push({pub: key, leaf_hashes, der: ssPsbtParseDer(r.bytes(v.length - r.pos))});
+        const {leaf_hashes, der} = ssPsbtTapDer(v);
+        this.taproot_bip32_derivations.push({pub: key, leaf_hashes, der});
       }
     } else if (t === 0x17) {
-      this.taproot_internal_key = v;
+      this.taproot_internal_key = ssPsbtXonlyParse(v);
     } else if (t === 0x18) {
       this.taproot_merkle_root = v;
     } else {
-      this.unknown.push({key: concatBytes(Uint8Array.of(t), key), val: v});
+      if (this.unknown.some((x) => ssPsbtEq(x.key, k))) dup("key");
+      this.unknown.push({key: k, val: v});
     }
   }
 
@@ -29535,27 +29866,39 @@ class SSPSBTOutputScope {
     this.unknown = [];
   }
   get vout() { return {value: this.value, script_pubkey: this.script_pubkey}; }
-  read_value(t, key, v) {
-    const k1 = key.length === 0;
-    if (t === 0x00 && k1) { if (this.redeem_script) throw new Error("Duplicated redeem script"); this.redeem_script = v; }
-    else if (t === 0x01 && k1) { if (this.witness_script) throw new Error("Duplicated witness script"); this.witness_script = v; }
-    else if (t === 0x02) {
-      pointFromPub(key);
+  // OutputScope.read_value(stream, k)
+  read_value(s, k) {
+    if (k.length === 0) return;
+    const t = k[0], key = k.slice(1), k1 = k.length === 1;
+    const v = s.string();
+    if (t === 0x00) {
+      if (!k1) throw new Error("Invalid redeem script key");
+      if (this.redeem_script) throw new Error("Duplicated redeem script");
+      this.redeem_script = v;
+    } else if (t === 0x01) {
+      if (!k1) throw new Error("Invalid witness script key");
+      if (this.witness_script) throw new Error("Duplicated witness script");
+      this.witness_script = v;
+    } else if (t === 0x02) {
+      ssPsbtPubParse(key);
       if (this.bip32_derivations.some((x) => ssPsbtEq(x.pub, key))) throw new Error("Duplicated derivation path");
       this.bip32_derivations.push({pub: key, der: ssPsbtParseDer(v)});
-    }
-    else if (t === 0x03 && k1) { this.value = psbtReader(v).i64(); }
-    else if (t === 0x04 && k1) { this.script_pubkey = v; }
-    else if (t === 0x05) { this.taproot_internal_key = v; }
-    else if (t === 0x07) {
-      if (key.length !== 32) throw new Error("Invalid key length");
+    } else if (t === 0x03 && k1) {
+      this.value = ssPsbtLeBig(v);
+    } else if (t === 0x04 && k1) {
+      this.script_pubkey = v;
+    } else if (t === 0x05) {
+      this.taproot_internal_key = ssPsbtXonlyParse(v);
+    } else if (t === 0x07) {
+      ssPsbtXonlyParse(key);
       if (!this.taproot_bip32_derivations.some((x) => ssPsbtEq(x.pub, key))) {
-        const r = psbtReader(v), num = r.varint(), leaf_hashes = [];
-        for (let i = 0; i < num; i++) leaf_hashes.push(r.bytes(32));
-        this.taproot_bip32_derivations.push({pub: key, leaf_hashes, der: ssPsbtParseDer(r.bytes(v.length - r.pos))});
+        const {leaf_hashes, der} = ssPsbtTapDer(v);
+        this.taproot_bip32_derivations.push({pub: key, leaf_hashes, der});
       }
+    } else {
+      if (this.unknown.some((x) => ssPsbtEq(x.key, k))) throw new Error("Duplicated key");
+      this.unknown.push({key: k, val: v});
     }
-    else this.unknown.push({key: concatBytes(Uint8Array.of(t), key), val: v});
   }
   write_to(w, version = null) {
     const rec = (k, v) => { w.str(k); w.str(v); };
@@ -29563,8 +29906,8 @@ class SSPSBTOutputScope {
     if (this.witness_script) rec(Uint8Array.of(0x01), this.witness_script);
     for (const d of this.bip32_derivations) rec(concatBytes(Uint8Array.of(0x02), d.pub), ssPsbtSerDer(d.der));
     if (version === 2) {
-      rec(Uint8Array.of(0x03), svLe64(this.value));
-      rec(Uint8Array.of(0x04), this.script_pubkey);
+      if (this.value !== null) rec(Uint8Array.of(0x03), svLe64(this.value));
+      if (this.script_pubkey !== null) rec(Uint8Array.of(0x04), this.script_pubkey);
     }
     if (this.taproot_internal_key) rec(Uint8Array.of(0x05), this.taproot_internal_key);
     for (const d of this.taproot_bip32_derivations) {
@@ -29576,6 +29919,64 @@ class SSPSBTOutputScope {
     for (const x of this.unknown) rec(x.key, x.val);
     w.raw([0]);
   }
+}
+
+// SIGHASH.check
+function ssPsbtSighashCheck(sighash) {
+  let acp = false;
+  if (sighash & 0x80) { sighash ^= 0x80; acp = true; }
+  if (![0, 1, 2, 3].includes(sighash)) throw new Error("Invalid SIGHASH type");
+  return [sighash, acp];
+}
+// x.to_bytes(n, "little"), with Python's errors for None and for a number that does not fit
+function ssPsbtToBytes(x, n) {
+  if (x === null || x === undefined) throw new Error("'NoneType' object has no attribute 'to_bytes'");
+  const v = BigInt(x);
+  if (v < 0n || v >= (1n << BigInt(8 * n))) throw new Error("int too big to convert");
+  const o = new Uint8Array(n); let y = v;
+  for (let i = 0; i < n; i++) { o[i] = Number(y & 255n); y >>= 8n; }
+  return o;
+}
+// The transaction fields embit's signature hashes read: a PSBT (version 2, or damaged) without them cannot be signed
+// in SeedSigner (embit stops with an error), so it is not signed here either.
+function ssPsbtSighashFields(tx, i, sighash) {
+  const [sh, acp] = ssPsbtSighashCheck(sighash);
+  ssPsbtToBytes(tx.version, 4); ssPsbtToBytes(tx.locktime, 4);
+  for (let j = 0; j < tx.vin.length; j++) {
+    if (acp && j !== i) continue;
+    const x = tx.vin[j];
+    if (!x.txid) throw new Error("'NoneType' object is not reversible");
+    ssPsbtToBytes(x.vout, 4); ssPsbtToBytes(x.sequence, 4);
+  }
+  for (let j = 0; j < tx.vout.length; j++) {
+    if (sh === 2 || (sh === 3 && j !== i)) continue;
+    const o = tx.vout[j];
+    ssPsbtToBytes(o.value, 8);
+    if (!o.script_pubkey) throw new Error("'NoneType' object has no attribute 'serialize'");
+  }
+}
+// embit Transaction.sighash_legacy (SeedSigner signs with it: the script is used as it is, no OP_CODESEPARATOR handling)
+async function ssPsbtSighashLegacy(tx, i, script_pubkey, sighash) {
+  if (i < 0 || i >= tx.vin.length) throw new Error("Invalid input index");
+  let [sh, acp] = ssPsbtSighashCheck(sighash);
+  if (sh === 0) sh = 1;
+  if (sh === 3 && i >= tx.vout.length) { const o = new Uint8Array(32); o[31] = 1; return o; }   // (embit's 00...01)
+  const p = [ssPsbtToBytes(tx.version, 4)];
+  const inp = (x, sc, other) => {
+    const seq = other && (acp || sh === 2 || sh === 3) ? 0 : x.sequence;
+    return [x.txid, ssPsbtToBytes(x.vout, 4), varintBytes(sc.length), sc, ssPsbtToBytes(seq, 4)];
+  };
+  if (acp) p.push(varintBytes(1), ...inp(tx.vin[i], script_pubkey, false));
+  else { p.push(varintBytes(tx.vin.length)); tx.vin.forEach((x, j) => p.push(...inp(x, j === i ? script_pubkey : new Uint8Array(0), j !== i))); }
+  const out = (o) => [ssPsbtToBytes(o.value, 8), varintBytes(o.script_pubkey.length), o.script_pubkey];
+  if (sh === 2) p.push(varintBytes(0));
+  else if (sh === 3) {
+    p.push(varintBytes(i + 1));
+    for (let j = 0; j < i; j++) p.push(ssPsbtToBytes(0xffffffff, 8), Uint8Array.of(0));   // (embit's empty output: value 0xFFFFFFFF)
+    p.push(...out(tx.vout[i]));
+  } else { p.push(varintBytes(tx.vout.length)); for (const o of tx.vout) p.push(...out(o)); }
+  p.push(ssPsbtToBytes(tx.locktime, 4), ssPsbtToBytes(sighash, 4));
+  return dsha256(concatBytes(...p));
 }
 
 // embit psbt.PSBT
@@ -29590,59 +29991,56 @@ class SSPSBT {
     this.unknown = [];
   }
 
-  // psbt.PSBT.parse(bytes)
+  // psbt.PSBT.parse(bytes): PSBT.read_from on a stream, then nothing may be left over (EmbitBase.parse)
   static parse(bytes) {
     bytes = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes);
-    const r = psbtReader(bytes);
-    if (!ssPsbtEq(r.bytes(5), [0x70, 0x73, 0x62, 0x74, 0xff])) throw new Error("Invalid PSBT magic");
+    const s = new SSPsbtStream(bytes);
+    if (!ssPsbtEq(s.read(5), [0x70, 0x73, 0x62, 0x74, 0xff])) throw new Error("Invalid PSBT magic");
     let tx = null, version = null;
     const unknown = [];
     for (;;) {
-      const kl = r.varint();
-      if (kl === 0) break;
-      const key = r.bytes(kl), value = r.bytes(r.varint());
+      const key = s.string();
+      if (key.length === 0) break;
+      const value = s.string();
       if (key.length === 1 && key[0] === 0x00) {
         if (tx) throw new Error("Failed to parse PSBT - duplicated transaction field");
         tx = ssPsbtParseTx(value);
       } else if (key.length === 1 && key[0] === 0xfb) {
-        version = (value[0] | (value[1] << 8) | (value[2] << 16) | (value[3] << 24)) >>> 0;
+        version = ssPsbtLeNum(value);
       } else {
         if (unknown.some((x) => ssPsbtEq(x.key, key))) throw new Error("Duplicated key");
         unknown.push({key, val: value});
       }
     }
     if (tx && version === 2) throw new Error("Global TX field is not allowed in PSBTv2");
-    if (!tx && version !== 2) throw new Error("No transaction in the PSBT");
+    // (embit needs no transaction field when it is not version 2 either: the input and output counts then come from
+    // the 0x04 and 0x05 fields, or are zero)
     const psbt = new SSPSBT(tx, version);
-    let nin = psbt.inputs.length, nout = psbt.outputs.length;
     // parse_unknowns
     for (const u of unknown) {
       const t = u.key[0], k1 = u.key.length === 1;
-      if (t === 0x01 && u.key.length === 79) psbt.xpubs.push({key: u.key.slice(1), der: ssPsbtParseDer(u.val)});
-      else if (t === 0x02 && k1) psbt.tx_version = (u.val[0] | (u.val[1] << 8) | (u.val[2] << 16) | (u.val[3] << 24)) >>> 0;
-      else if (t === 0x03 && k1) psbt.locktime = (u.val[0] | (u.val[1] << 8) | (u.val[2] << 16) | (u.val[3] << 24)) >>> 0;
-      else if (t === 0x04 && k1) { if (nin > 0) throw new Error("Inputs already initialized"); nin = psbtReader(u.val).varint(); }
-      else if (t === 0x05 && k1) { if (nout > 0) throw new Error("Outputs already initialized"); nout = psbtReader(u.val).varint(); }
+      if (t === 0x01) { ssPsbtHDKeyCheck(u.key.slice(1)); psbt.xpubs.push({key: u.key.slice(1), der: ssPsbtParseDer(u.val)}); }
+      else if (t === 0x02 && k1) psbt.tx_version = ssPsbtLeNum(u.val);
+      else if (t === 0x03 && k1) psbt.locktime = ssPsbtLeNum(u.val);
+      else if ((t === 0x04 || t === 0x05) && k1) {
+        const list = t === 0x04 ? psbt.inputs : psbt.outputs;
+        if (list.length > 0) throw new Error(t === 0x04 ? "Inputs already initialized" : "Outputs already initialized");
+        const c = new SSPsbtStream(u.val), n = c.compact();
+        c.end();   // compact.from_bytes: "Too many bytes"
+        // every scope takes at least its one-byte separator, so a count above the bytes left cannot be read (embit
+        // would allocate that many scopes first: a damaged QR would freeze the page)
+        s.count(n);
+        const make = t === 0x04 ? () => new SSPSBTInputScope() : () => new SSPSBTOutputScope();
+        for (let i = 0; i < n; i++) list.push(make());
+      }
       else psbt.unknown.push(u);
     }
-    if (version === 2) {
-      psbt.inputs = Array.from({length: nin}, () => new SSPSBTInputScope());
-      psbt.outputs = Array.from({length: nout}, () => new SSPSBTOutputScope());
-    }
-    const readScope = (scope) => {
-      for (;;) {
-        const kl = r.varint();
-        if (kl === 0) return;
-        const key = r.bytes(kl), value = r.bytes(r.varint());
-        scope.read_value(key[0], key.slice(1), value);
-      }
-    };
-    for (const inp of psbt.inputs) readScope(inp);
-    for (const out of psbt.outputs) readScope(out);
-    if (version === 2) {
-      for (const inp of psbt.inputs) if (!inp.txid || inp.vout === null) throw new Error("Invalid PSBTv2 input");
-      for (const out of psbt.outputs) if (out.value === null || !out.script_pubkey) throw new Error("Invalid PSBTv2 output");
-    }
+    // input and output scopes: each starts from psbt.tx (InputScope(vin=...)), as embit's read_from does
+    const t0 = psbt.tx;
+    s.count(t0.vin.length + t0.vout.length);
+    psbt.inputs = t0.vin.map((vin) => { const x = new SSPSBTInputScope(vin); ssPsbtReadScope(s, x); return x; });
+    psbt.outputs = t0.vout.map((vout) => { const x = new SSPSBTOutputScope(vout); ssPsbtReadScope(s, x); return x; });
+    s.end();
     return psbt;
   }
 
@@ -29705,6 +30103,7 @@ class SSPSBT {
   // PSBT.sighash(i, sighash, ...)
   async sighash(ctx, i, sighash, ext = null) {
     const inp = this.inputs[i];
+    ssPsbtSighashFields(this.tx, i, sighash);
     if (inp.is_taproot) {
       for (const c of ctx.coins) if (!c) throw new Error("Missing previous utxo");
       return svSighashTr(ctx, i, sighash, ext);
@@ -29718,7 +30117,7 @@ class SSPSBT {
     // convert to p2pkh according to bip143
     if (st(sc) === "p2wpkh") sc = ssPsbtP2pkhFromP2wpkh(sc);
     if (is_segwit) return svSighashV0(ctx, i, sc, u.value, sighash);
-    return svSighashLegacy(ctx, i, sc, sighash);
+    return ssPsbtSighashLegacy(this.tx, i, sc, sighash);
   }
 
   // PSBT.sign_input_with_tapkey(key, input_index, inp, sighash). key: the private key (BigInt)
@@ -29766,7 +30165,7 @@ class SSPSBT {
       // get all possible derivations with matching fingerprint
       const bip32_derivations = [];
       if (fingerprint) {
-        for (const d of inp.taproot_bip32_derivations) if (ssPsbtEq(d.der.fingerprint, fingerprint)) bip32_derivations.push({pub: d.pub, der: d.der});
+        for (const d of inp.taproot_bip32_derivations) if (ssPsbtEq(d.der.fingerprint, fingerprint)) bip32_derivations.push({pub: ssPsbtSec(d.pub), der: d.der});   // (embit keeps them as PublicKey: 02 + x)
         for (const d of inp.bip32_derivations) if (ssPsbtEq(d.der.fingerprint, fingerprint)) bip32_derivations.push({pub: d.pub, der: d.der});
       }
       // get derived keys for signing
@@ -30052,6 +30451,7 @@ class SSDescriptor {
   constructor({miniscript = null, sh = false, wsh = true, key = null, wpkh = true, taproot = false} = {}) {
     this.miniscript = miniscript;   // {name: "multi"|"sortedmulti", threshold, keys} or {name: <other>, keys: []} (opaque)
     this.sh = sh; this.wsh = wsh; this.key = key; this.wpkh = wpkh; this.taproot = taproot;
+    this.taptree = null;
     this.text = "";
   }
 
@@ -30077,8 +30477,16 @@ class SSDescriptor {
     const is_miniscript = !(wpkh || taproot || (s.startsWith("pkh(")));
     let d;
     if (!is_miniscript) {
-      if (taproot && inner.includes(",")) throw new Error("SIM: taproot script trees are not supported by this practice signer");
+      // tr(key,{script tree}): the key is read; the tree is kept as text. SeedSigner reads it too, and as it is not a
+      // basic multisig it shows "Not Yet Implemented" for it (no address of it is ever derived here).
+      let taptree = null;
+      if (taproot) {
+        const args = SSDescriptor._split_args(inner);
+        if (args.length > 2 || (args.length === 2 && !args[1].trim())) throw new Error("Invalid taproot descriptor");
+        if (args.length === 2) { inner = args[0]; taptree = args[1]; }
+      }
       d = new SSDescriptor({key: await SSDescriptorKey.parse(inner), sh, wsh: false, wpkh, taproot});
+      d.taptree = taptree;
     } else {
       const m = /^(multi|sortedmulti)\((.*)\)$/.exec(inner);
       if (m) {
@@ -30143,6 +30551,7 @@ class SSDescriptor {
   async script_pubkey(idx, branch_index = null) {
     if (this.key) {
       const pub = await this.key.derive_pub(idx, branch_index);
+      if (this.taproot && this.taptree) throw new Error("SIM: taproot script trees are not supported by this practice signer");
       if (this.taproot) return ssPsbtP2tr(pub);
       if (this.sh) return ssPsbtP2sh(await ssPsbtP2wpkh(pub));
       if (this.wpkh) return ssPsbtP2wpkh(pub);
@@ -30311,17 +30720,21 @@ class SSPSBTParser {
         let sc = new Uint8Array(0);
         const type = this.policy["type"];
         // if older multisig, just use existing script
-        if (type === "p2sh") sc = out.redeem_script ? await ssPsbtP2sh(out.redeem_script) : new Uint8Array(0);
+        // (script.p2sh(None) / script.p2wsh(None) and `"pkh" in None` stop SeedSigner's parser with an error: so here too)
+        const need = (x) => { if (!x) throw new Error("'NoneType' object has no attribute 'data'"); return x; };
+        if (type === "p2sh") sc = await ssPsbtP2sh(need(out.redeem_script));
 
         if (type === "p2wsh") {
           // multisig, we know witness script
-          sc = out.witness_script ? await ssPsbtP2wsh(out.witness_script) : new Uint8Array(0);
+          sc = await ssPsbtP2wsh(need(out.witness_script));
         } else if (type === "p2sh-p2wsh") {
-          sc = out.witness_script ? await ssPsbtP2sh(await ssPsbtP2wsh(out.witness_script)) : new Uint8Array(0);
+          sc = await ssPsbtP2sh(await ssPsbtP2wsh(need(out.witness_script)));
         } else if (type === "p2sh") {
           // Arbitrary p2sh; includes pre-segwit multisig (m/45')
-          sc = out.redeem_script ? await ssPsbtP2sh(out.redeem_script) : new Uint8Array(0);
-        } else if (type && type.includes("pkh")) {
+          sc = await ssPsbtP2sh(need(out.redeem_script));
+        } else if (type === null || type === undefined) {
+          throw new TypeError("argument of type 'NoneType' is not iterable");
+        } else if (type.includes("pkh")) {
           // single-sig
           let my_pubkey = null;
           // should be one or zero for single-key addresses
@@ -30333,7 +30746,7 @@ class SSPSBTParser {
           else if (type === "p2sh-p2wpkh" && my_pubkey !== null) sc = await ssPsbtP2sh(await ssPsbtP2wpkh(my_pubkey));
           else if (type === "p2wpkh" && my_pubkey !== null) sc = await ssPsbtP2wpkh(my_pubkey);
           if (ssPsbtEq(sc, spk)) is_change = true;
-        } else if (type && type.includes("p2tr")) {
+        } else if (type.includes("p2tr")) {
           let my_pubkey = null;
           // should have one or zero derivations for single-key addresses
           if (out.taproot_bip32_derivations.length > 0) {
@@ -30519,8 +30932,7 @@ class SSPSBTParser {
         try {
           if (!root) { await seed._ready; root = await SSPsbtHDKey.from_seed(seed.seed_bytes); }
           const derived_key = await root.derive(derivation_path_obj.derivation);
-          const pk = public_key.length === 32 ? derived_key.xonly() : derived_key.pub;
-          return ssPsbtEq(pk, public_key);   // Public keys match
+          return ssPsbtEq(derived_key.pub, ssPsbtSec(public_key));   // Public keys match
         } catch (e) {
           console.debug("Fingerprint fallback derive failed:", e);
         }
@@ -30556,8 +30968,7 @@ class SSPSBTParser {
     const updated = async (public_key, d) => {
       if (!ssPsbtEq(d.fingerprint, [0, 0, 0, 0])) return null;
       const derived_key = await this.root.derive(d.derivation);
-      const pk = public_key.length === 32 ? derived_key.xonly() : derived_key.pub;
-      if (ssPsbtEq(pk, public_key)) return {fingerprint: Uint8Array.from(signing_seed_fingerprint), derivation: d.derivation};
+      if (ssPsbtEq(derived_key.pub, ssPsbtSec(public_key))) return {fingerprint: Uint8Array.from(signing_seed_fingerprint), derivation: d.derivation};
       return null;
     };
     const fill_scope = async (scope) => {
@@ -31680,7 +32091,7 @@ class SSPSBTSigningErrorView extends SSView {
    10. Wiping (CLEAR ALL, auto-clear, END SESSION and closing the box: see ssPageStop in ss_page.js)
    --------------------------------------------------------------------------------------------------------------------- */
 const SS_PSBT_SCRUB_CLASSES = () => [SSPSBT, SSPSBTInputScope, SSPSBTOutputScope, SSPSBTParser, SSDescriptor, SSDescriptorKey,
-  SSDecodeQR, SSBaseQrDecoder, SSURDecoder, SSSeedsBaseQrEncoder];
+  SSDecodeQR, SSBaseQrDecoder, SSURDecoder, SSURFountainDecoder, SSSeedsBaseQrEncoder];
 // Overwrites the byte arrays of the scanned and signed data (PSBTs, signatures, descriptors, decoder state) and the
 // private keys held for signing, then the caller drops the references. Seeds are wiped by ssPageScrubSeed.
 function ssPsbtScrub(x, seen = new Set()) {
@@ -31730,8 +32141,14 @@ let ssPageOn = false, ssPageRun = 0;
 const SS_PAGE_KEYMAP = { ArrowUp: "KEY_UP", ArrowDown: "KEY_DOWN", ArrowLeft: "KEY_LEFT", ArrowRight: "KEY_RIGHT", Enter: "KEY_PRESS", " ": "KEY_PRESS", "1": "KEY1", "2": "KEY2", "3": "KEY3" };
 const SS_PAGE_KEYS = { ssKUp: "KEY_UP", ssKLeft: "KEY_LEFT", ssKPress: "KEY_PRESS", ssKRight: "KEY_RIGHT", ssKDown: "KEY_DOWN", ssK1: "KEY1", ssK2: "KEY2", ssK3: "KEY3" };
 
-// True while the device runs (auto-clear counts it as something to wipe).
-function ssPageActive() { return ssPageOn; }
+// True while the device runs, or while anything of it is left after the box was closed (settings saved to its
+// simulated microSD, text in the font caches), so auto-clear still wipes it.
+function ssPageActive() {
+  if (ssPageOn) return true;
+  try { if (SS_SIM_MICROSD.settings_json) return true; } catch (e) { /* settings part missing */ }
+  try { if (Object.keys(SSFonts.fonts).length) return true; } catch (e) { /* engine missing */ }
+  return false;
+}
 
 async function ssPageStart() {
   if (ssPageOn) return;
@@ -31794,6 +32211,11 @@ function ssPageStop() {
   const c = ran ? document.getElementById("ssScreen") : null;   // (a device that never drew leaves the screen black already)
   if (c) { const g = c.getContext && c.getContext("2d"); if (g) { g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = "#000"; g.fillRect(0, 0, c.width, c.height); } }
   try { if (SSRenderer._instance) { SSRenderer._instance.canvas = null; SSRenderer._instance.draw = null; } SSRenderer._instance = null; } catch (e) { /* not started */ }
+  // Every text the device ever drew or measured (seed words, passphrase, dice rolls) is a key in its fonts' measuring
+  // caches: drop the fonts (the next start makes new ones), the scratch canvases, and any fields of a screen being built.
+  try { SSFonts.fonts = {}; } catch (e) { /* engine missing */ }
+  try { _ss_scratch = null; _ss_measure_ctx = null; _ss_color_ctx = null; } catch (e) { /* engine missing */ }
+  try { SS_TOOLS_PENDING_FIELDS.length = 0; } catch (e) { /* tools part missing */ }
 }
 
 // CLEAR ALL, auto-clear and END SESSION: stop the device, wipe its memory (and the settings on its simulated microSD),

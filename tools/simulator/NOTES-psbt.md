@@ -9,8 +9,8 @@ Built into the same script block as ss_tools_settings.js PART B (after it), so t
 - gui/screens/psbt_screens.py, all 7 screens: PSBTOverviewScreen (+ TxExplorerAnimationThread), PSBTMathScreen,
   PSBTAddressDetailsScreen, PSBTChangeDetailsScreen, PSBTOpReturnScreen, PSBTFinalizeScreen.
 - models/psbt_parser.py: PSBTParser (every method, including the missing-fingerprint fill and verify_multisig_output).
-- models/encode_qr.py: UrPsbtQrEncoder (on the seeds part's fountain encoder: pure parts repeat, see NOTES-seeds.md).
-- embit, as far as SeedSigner uses it: PSBT (v0 and v2 parse, v0 serialize, fee, sighash, sign_with,
+- models/encode_qr.py: UrPsbtQrEncoder (on the seeds part's fountain encoder: pure parts, then mixed parts, see NOTES-seeds.md).
+- embit, as far as SeedSigner uses it: PSBT (v0 and v2 parse, read from a stream with embit's own checks and leniencies, v0 serialize, fee, sighash, sign_with,
   sign_input_with_tapkey), Descriptor (sh/wsh/sh-wsh multi and sortedmulti; wpkh, sh-wpkh, pkh, tr key; owns,
   check_derivation, derive), and urtypes Output / Account -> descriptor text.
 - The scan routing and decoders: see NOTES-tools-settings.md.
@@ -28,8 +28,8 @@ Built into the same script block as ss_tools_settings.js PART B (after it), so t
   shrink or SHARPEN (as the engine's TextArea).
 - PSBTChangeDetailsView reads the change output's script directly instead of address_to_scriptpubkey(address) (same script).
 - Descriptors: extended public keys only (VOIDFORGE's parseExtendedKey refuses private keys); miniscript other than
-  multi/sortedmulti is kept as text and is not basic multisig (-> NotYetImplementedView, as in SeedSigner); taproot
-  script trees are refused.
+  multi/sortedmulti is kept as text and is not basic multisig (-> NotYetImplementedView, as in SeedSigner); a taproot
+  script tree is kept as text too (tr(key,{tree}) -> NotYetImplementedView, as in SeedSigner).
 - Signing in a taptree leaf (taproot_scripts) is not ported: SeedSigner's PSBTParser.trim drops such a signature, so its
   flow ends on "Signing Failed" either way.
 - Wiping: ssPsbtWipeController (called by ssPageStop) overwrites the PSBT, signatures, descriptor, scanned decoder data

@@ -29,7 +29,8 @@ locale-specific Noto fonts (non-English); concrete QR encoders (with the views).
 
 SIM stand-ins (each marked `// SIM:` in the code):
 - Display is always st7789 320x240; canvas drawn at devicePixelRatio. "Invert colors" applied as a canvas difference pass.
-- GPIO -> key state (keyboard / page buttons); short taps latched 120 ms; key repeat capped at one per 60 ms.
+- GPIO -> key state (keyboard / page buttons); a tap released before the 10 ms poll still counts once (kept until wait_for
+  returns it); key repeat only while a key is held down without a break (SeedSigner's 225/250 ms rule), at most one per 60 ms.
 - wait_for() waits for the Renderer lock before returning a key (Python blocks on `with renderer.lock` right after).
 - TextArea supersampling (2x + LANCZOS + SHARPEN) disabled: canvas already renders at device resolution. filter() = copy.
 - Curved shapes are rasterized with a hard coverage threshold (PIL is aliased) so redraws leave no fringes;
