@@ -327,6 +327,124 @@ async function probe(w, mutated, fast, only, hooks) {
       if ([b1, b2, spk3].some((b) => b.some((x) => x !== 0)) || ws1.some((x) => x) || pm.some((x) => x) || c2._storage !== null || E('SSController._instance') !== null) fails.push(T + 'wipe: the seeds (bytes and words), the pending words and the PSBT in the device are overwritten and dropped');
       if (E('SS_SIM_MICROSD').settings_json !== null || w.ssPageActive()) fails.push(T + 'wipe: the settings on its microSD are wiped and the device is off');
       if (!/ssPageWipe\(\)/.test(w.clearAll.toString()) || !/ssPageWipe\(\)/.test(w.autoWipe.toString()) || !/ssPageWipe\(\)/.test(w.endSession.toString()) || !/ssPsbtWipeController\(ctl\)/.test(w.ssPageStop.toString())) fails.push(T + 'wipe: CLEAR ALL, auto-clear and END SESSION wipe the practice signer'); }
+    // 12. (review fixes) The wipe also drops the fonts' measuring caches (every text the device drew or measured is a key there),
+    // the scratch canvases and the fields of a screen being built; auto-clear still sees the device while any font, or the settings
+    // on its microSD, is left after the box was closed.
+    { const F = E('SSFonts'), MSD = E('SS_SIM_MICROSD'), live = () => w.ssPageActive(), left = () => E('[Object.keys(SSFonts.fonts).length, _ss_scratch, _ss_measure_ctx, _ss_color_ctx, SS_TOOLS_PENDING_FIELDS.length]');
+      w.ssPageStop(); MSD.settings_json = null; const off0 = live();
+      F.get_font('OpenSans-Regular', 17); const onF = live(); w.ssPageStop(); MSD.settings_json = '{"x":1}'; const onS = live(); MSD.settings_json = null;
+      if (off0 || !onF || !onS || live()) fails.push(T + 'wipe: auto-clear sees the device while fonts or microSD settings are left, and not after');
+      F.get_font('OpenSans-Regular', 17); E('_ss_scratch = {}; _ss_measure_ctx = {}; _ss_color_ctx = {}; SS_TOOLS_PENDING_FIELDS.push({ w: "abandon" })'); w.ssPageStop(); const l = left();
+      if (l[0] !== 0) fails.push(T + 'wipe: the font measuring caches are dropped');
+      if (l[1] !== null || l[2] !== null || l[3] !== null) fails.push(T + 'wipe: the scratch canvases are dropped');
+      if (l[4] !== 0) fails.push(T + 'wipe: the fields of a screen being built are dropped'); }
+    // 13. UR fountain codes (BCR-2020-005): every part the encoder makes (the mixed parts after part n too) is the part
+    // @ngraveio/bc-ur makes; the decoder finishes from mixed parts exactly when bc-ur's decoder does, refuses a wrong message
+    // checksum as bc-ur does, and ignores parts of another animation and parts whose numbers no encoder makes.
+    { const { URDecoder } = requireC('@ngraveio/bc-ur'), { FountainEncoderPart } = requireC('@ngraveio/bc-ur/dist/fountainEncoder'), BW = requireC('@ngraveio/bc-ur/dist/bytewords').default, { cborEncode } = requireC('@ngraveio/bc-ur/dist/cbor');
+      const cbOf = (n, k) => cborEncode(Buffer.from(Array.from({ length: n }, (_, i) => (i * k + (i >> 3) + 11) & 255))), ref = (cb, max) => new UREncoder(new UR(cb, 'bytes'), max, 0, 10);
+      const DEN = { 10: SC.DENSITY__LOW, 30: SC.DENSITY__MEDIUM, 120: SC.DENSITY__HIGH };
+      for (const [n, k, max] of [[200, 37, 30], [238, 91, 120], [700, 13, 120], [98, 5, 10], [20, 3, 30]]) {
+        const cb = cbOf(n, k), r = ref(cb, max), e = Object.create(E('SSSeedsBaseFountainQrEncoder').prototype); e.qr_density = DEN[max]; e.seq_num = 0; e._ss_set_message('bytes', P8(cb));
+        let bad = e.seq_len() !== r.fragmentsLength; for (let i = 0; i < 3 * r.fragmentsLength + 12 && !bad; i++) if ((i ? e.next_part() : e.cur_part()).toLowerCase() !== r.nextPart()) bad = true;
+        if (bad) { fails.push(T + 'UR encoder: every part (mixed ones too) is the part @ngraveio/bc-ur makes (' + cb.length + ' bytes, fragments up to ' + max + ')'); break; } }
+      // the decoder, fed with parts made by bc-ur (some pure parts missed, or only mixed parts), side by side with bc-ur's decoder
+      const feed = (parts, d = new (E('SSURDecoder'))(), rd = new URDecoder()) => { let same = true; for (const p of parts) { if (d.is_complete()) break; d.receive_part(p.toUpperCase()); rd.receivePart(p); if (!!d.is_complete() !== !!rd.isComplete()) same = false; } return [d, same, rd]; };
+      const partsOf = (cb, max, count, skip) => { const r = ref(cb, max), o = []; for (let i = 1; i <= count; i++) { const p = r.nextPart(); if (!skip(i, r.fragmentsLength)) o.push(p); } return o; };
+      for (const [n, k, max, skip] of [[200, 37, 30, (i) => i <= 5 && i % 2 === 1], [200, 37, 30, (i, L) => i <= L], [700, 13, 120, (i) => i <= 2], [98, 5, 10, (i, L) => i <= L], [238, 91, 120, (i) => i === 1]]) {
+        const cb = cbOf(n, k), [d, same] = feed(partsOf(cb, max, 80, skip)), res = d.is_success();
+        if (!same || !res || H(res.cbor) !== H(cb) || res.type !== 'bytes') { fails.push(T + 'UR decoder: finishes from mixed parts when @ngraveio/bc-ur\'s decoder does, with the message (' + cb.length + ' bytes)'); break; } }
+      // parts of another animation (another message of the same length) are ignored
+      { const A = partsOf(cbOf(200, 37), 30, 40, () => false), B = partsOf(cbOf(200, 53), 30, 40, () => false), d = new (E('SSURDecoder'))(); let took = false;
+        for (let i = 0; i < 39 && !d.is_complete(); i++) { d.receive_part(A[i].toUpperCase()); if (d.receive_part(B[i + 1].toUpperCase())) took = true; }
+        if (took || !d.is_success() || H(d.is_success().cbor) !== H(cbOf(200, 37))) fails.push(T + 'UR decoder: the parts of another animation are ignored'); }
+      // parts that differ from the first part in one number only, or whose numbers no encoder makes, are ignored
+      { const cb = cbOf(200, 37), A = partsOf(cb, 30, 7, () => false), dec = (p) => FountainEncoderPart.fromCBOR(Buffer.from(BW.decode(p.split('/')[2], BW.STYLES.MINIMAL), 'hex')), a2 = dec(A[1]);
+        const craft = (n, L, ml, crc, frag, path = n + '-' + L) => 'UR:BYTES/' + path + '/' + BW.encode(new FountainEncoderPart(n, L, ml, crc, Buffer.from(frag)).cbor().toString('hex'), BW.STYLES.MINIMAL).toUpperCase();
+        const d = new (E('SSURDecoder'))(), first = d.receive_part(A[0].toUpperCase()), took = [];
+        for (const [what, p] of [['message length', craft(2, 7, a2.messageLength - 1, a2.checksum, a2.fragment)], ['checksum', craft(2, 7, a2.messageLength, (a2.checksum ^ 1) >>> 0, a2.fragment)], ['fragment length', craft(2, 7, a2.messageLength, a2.checksum, [...a2.fragment, 0])], ['part number in the path', craft(2, 7, a2.messageLength, a2.checksum, a2.fragment, '3-7')]]) if (d.receive_part(p)) took.push(what);
+        for (const p of A.slice(1)) d.receive_part(p.toUpperCase());
+        if (!first || took.length || !d.is_success() || H(d.is_success().cbor) !== H(cb)) fails.push(T + 'UR decoder: a part that differs from the first in its ' + (took[0] || 'numbers') + ' is ignored');
+        for (const [what, p] of [['more fragments than the message needs', craft(1, 50, 100, 0, Array(10).fill(7))], ['fragments too short for the message', craft(1, 3, 100, 0, Array(10).fill(7))]]) {
+          const d2 = new (E('SSURDecoder'))(); if (d2.receive_part(p) || d2.expected_part_count() !== null) { fails.push(T + 'UR decoder: a first part with ' + what + ' is ignored'); break; } }
+        // a wrong fragment (part 3 changed, its numbers kept) fails the message checksum, in bc-ur's decoder too
+        const a3 = dec(A[2]), f3 = Buffer.from(a3.fragment); f3[4] ^= 0x20; const [d3, , r3] = feed([...A.slice(0, 2), craft(3, 7, a3.messageLength, a3.checksum, f3).toLowerCase(), ...A.slice(3)]);
+        if (!d3.is_failure() || d3.is_success() || !r3.isError()) fails.push(T + 'UR decoder: a wrong fragment fails the message checksum (CRC-32), as in @ngraveio/bc-ur'); } }
+    // 14. PSBTs are read as embit reads them: a damaged PSBT that @scure/btc-signer (for a global xpub, @scure/bip32) refuses is
+    // refused, and a count larger than the bytes left fails at once (no scope is made for it).
+    { const kv = (k, v) => [k.length, ...k, v.length, ...v], MAGIC = [0x70, 0x73, 0x62, 0x74, 0xff], le32 = (x) => [x & 255, (x >>> 8) & 255, (x >>> 16) & 255, x >>> 24];
+      const derB = (path) => [...Buffer.from(fAB, 'hex'), ...path.flatMap(le32)], wu = (s) => [0x28, 0x23, 0, 0, 0, 0, 0, 0, s.length, ...s];
+      const q0 = kAt("m/84'/0'/0'/0/0").publicKey, q1 = kAt("m/84'/0'/0'/0/1").publicKey, tk = kAt("m/86'/0'/0'/0/0").publicKey.slice(1), tsc = btc.p2tr(tk).script, wsc = btc.p2wpkh(q0).script;
+      const txB = [2, 0, 0, 0, 1, ...Array(32).fill(0x55), 0, 0, 0, 0, 0, 255, 255, 255, 255, 1, 0x40, 0x1f, 0, 0, 0, 0, 0, 0, 22, ...btc.p2wpkh(q1).script, 0, 0, 0, 0];
+      const psbtOf = (ins, outs = [[]], glob = [], tx = txB) => Uint8Array.from([...MAGIC, ...kv([0], tx), ...glob, 0, ...ins.flatMap((m) => [...m, 0]), ...outs.flatMap((m) => [...m, 0])]);
+      const inW = [...kv([1], wu(wsc)), ...kv([6, ...q0], derB([84 + HP, HP, HP, 0, 0]))], inT = [...kv([1], wu(tsc)), ...kv([0x17], tk), ...kv([0x16, ...tk], [0, ...derB([86 + HP, HP, HP, 0, 0])])];
+      let offC = null; for (let t = 1; !offC; t++) { const c = Uint8Array.from([2, ...Array(31).fill(0), t]); try { secp256k1.ProjectivePoint.fromHex(c); } catch (e) { offC = c; } } const offX = [...offC.slice(1)];
+      const xb = (k) => [...b58c.decode(k.publicExtendedKey)], xG = (b) => kv([1, ...b], derB([84 + HP, HP, HP])), acct = kAt("m/84'/0'/0'"), ed = (b, at, ...v) => { const c = b.slice(); c.splice(at, v.length, ...v); return c; };
+      const ssRefuses = (b) => { try { E('SSPSBT').parse(P8(b)); return false; } catch (e) { return true; } }, btcRefuses = (b) => { try { btc.Transaction.fromPSBT(b); return false; } catch (e) { return true; } };
+      const tsig = (v) => kv([0x14, ...tk, ...Array(32).fill(1)], Array(64).fill(v)), tscr = (v) => kv([0x15, 0xc0, ...tk], [v, 0xc0]);
+      if (ssRefuses(psbtOf([inW], [[]], xG(xb(acct)))) || ssRefuses(psbtOf([[...inT, ...tsig(1), ...tscr(0x51)]])) || btcRefuses(psbtOf([inW]))) fails.push(T + 'PSBT: (the test PSBTs are read)');
+      for (const [what, b] of [
+        ['a derivation key off the curve', psbtOf([[...kv([1], wu(wsc)), ...kv([6, ...offC], derB([84 + HP, HP, HP, 0, 0]))]])],
+        ['a partial signature key off the curve', psbtOf([[...inW, ...kv([2, ...offC], [0x30, 1])]])],
+        ['an output derivation key off the curve', psbtOf([inW], [kv([2, ...offC], derB([84 + HP, HP, HP, 1, 0]))])],
+        ['a taproot internal key off the curve', psbtOf([[...kv([1], wu(tsc)), ...kv([0x17], offX)]])],
+        ['a taproot derivation key off the curve', psbtOf([[...kv([1], wu(tsc)), ...kv([0x16, ...offX], [0, ...derB([86 + HP, HP, HP, 0, 0])])]])],
+        ['a taproot signature key off the curve', psbtOf([[...inT, ...kv([0x14, ...offX, ...Array(32).fill(1)], Array(64).fill(1))]])],
+        ['an output taproot internal key off the curve', psbtOf([inT], [kv([5], offX)])],
+        ['an output taproot derivation key off the curve', psbtOf([inT], [kv([7, ...offX], [0, ...derB([86 + HP, HP, HP, 1, 0])])])],
+        ['a duplicated input key', psbtOf([[...inW, ...kv([0x30, 1], [1]), ...kv([0x30, 1], [2])]])],
+        ['a duplicated output key', psbtOf([inW], [[...kv([0x30, 1], [1]), ...kv([0x30, 1], [2])]])],
+        ['a duplicated taproot signature', psbtOf([[...inT, ...tsig(1), ...tsig(2)]])],
+        ['a duplicated taproot script', psbtOf([[...inT, ...tscr(0x51), ...tscr(0x52)]])],
+        ['a utxo with bytes after its script', psbtOf([kv([1], [...wu(wsc), 0])])],
+        ['a utxo script cut short', psbtOf([kv([1], wu(wsc).slice(0, -3))])],
+        ['a derivation path with a broken index', psbtOf([[...kv([1], wu(wsc)), ...kv([6, ...q0], [...derB([84 + HP, HP, HP, 0, 0]), 1, 2])]])],
+        ['a transaction with bytes after it', psbtOf([inW], [[]], [], [...txB, 0])],
+        ['more taproot leaf hashes than bytes', psbtOf([[...kv([1], wu(tsc)), ...kv([0x16, ...tk], [0xfe, 0xa0, 0x86, 1, 0, ...derB([86 + HP, HP, HP, 0, 0])])]])],
+        ['a global xpub key off the curve', psbtOf([inW], [[]], xG(ed(xb(acct), 45, ...offC)))]])
+        if (!btcRefuses(b) || !ssRefuses(b)) { fails.push(T + 'PSBT: ' + what + ' is refused, as @scure/btc-signer refuses it'); break; }
+      for (const [what, b] of [['version 0', ed(xb(acct), 0, 0, 0, 0, 0)], ['a private-key version on a public key', ed(xb(acct), 0, 0x04, 0x88, 0xad, 0xe4)], ['depth 0 with an index', ed(xb(rAB), 12, 5)], ['depth 0 with a parent fingerprint', ed(xb(rAB), 5, 1)]]) {
+        let scure = false; try { HDKey.fromExtendedKey(b58c.encode(Uint8Array.from(b))); } catch (e) { scure = true; }
+        if (!scure || !ssRefuses(psbtOf([inW], [[]], xG(b)))) { fails.push(T + 'PSBT: a global xpub of ' + what + ' is refused, as @scure/bip32 refuses it'); break; } }
+      // PSBTv2 counts: a count with a byte too many is refused (as btc-signer refuses it); 2^32 - 1 inputs fail at once, before any
+      // input scope is made (each one made is counted here, and past 1000 the parse is stopped)
+      const v2 = (cnt) => Uint8Array.from([...MAGIC, ...kv([0xfb], [2, 0, 0, 0]), ...kv([2], [2, 0, 0, 0]), ...kv([4], cnt), ...kv([5], [1]), 0,
+        ...kv([0x0e], Array(32).fill(0x55)), ...kv([0x0f], [0, 0, 0, 0]), ...kv([1], wu(wsc)), 0, ...kv([3], [0x40, 0x1f, 0, 0, 0, 0, 0, 0]), ...kv([4], btc.p2wpkh(q1).script), 0]);
+      if (btcRefuses(v2([1])) || ssRefuses(v2([1])) || !btcRefuses(v2([1, 0])) || !ssRefuses(v2([1, 0]))) fails.push(T + 'PSBTv2: an input count with a byte too many is refused, as @scure/btc-signer refuses it');
+      { const IS = E('SSPSBTInputScope'), OS = E('SSPSBTOutputScope'), set = E('(a, b) => { SSPSBTInputScope = a; SSPSBTOutputScope = b; }'); let made = 0, msg = '';
+        const g = (C) => new Proxy(C, { construct(t, a, nt) { if (++made > 1000) throw new Error('too many scopes'); return Reflect.construct(t, a, nt); } });
+        set(g(IS), g(OS)); try { E('SSPSBT').parse(P8(v2([0xfe, 255, 255, 255, 255]))); } catch (e) { msg = e.message; } finally { set(IS, OS); }
+        if (made || msg !== "Can't read one byte from the stream" || !btcRefuses(v2([0xfe, 255, 255, 255, 255]))) fails.push(T + 'PSBTv2: an input count larger than the bytes left fails at once'); } }
+    // 15. A taproot key with a missing (00000000) fingerprint is the seed's only with an even y, as SeedSigner's sec() comparison
+    // finds it (the parity from @scure/bip32): then it is offered, filled in and signed, else none of these; and an input with
+    // sequence 0 is signed and returned with 0xffffffff, as embit does (the signature checked with btc-signer's hash of that).
+    { const q0 = kAt("m/84'/0'/0'/0/0").publicKey, q1 = kAt("m/84'/0'/0'/0/1").publicKey, P = E('SSPSBTParser');
+      const tapZ = (i) => { const k = kAt(`m/86'/0'/0'/0/${i}`).publicKey, x = k.slice(1), t = new btc.Transaction();
+        t.addInput({ txid: H(sha('vf-ss-tz' + i)), index: 0, witnessUtxo: { script: btc.p2tr(x).script, amount: 7000n }, tapInternalKey: x, tapBip32Derivation: [[x, { hashes: [], der: { fingerprint: 0, path: [86 + HP, HP, HP, 0, i] } }]] });
+        t.addOutput({ script: btc.p2wpkh(q1).script, amount: 6000n }); return [k[0] === 2, t, x]; };
+      const all = [0, 1, 2, 3].map(tapZ);
+      for (const [even, t, x] of [all.find((c) => c[0]), all.find((c) => !c[0])]) {
+        const ps = E('SSPSBT').parse(P8(t.toPSBT())), offered = await P.has_matching_input_fingerprint(E('SSPSBT').parse(P8(t.toPSBT())), sAB), pr = await P.create(ps, sAB, SC.MAINNET);
+        const filled = H(ps.inputs[0].taproot_bip32_derivations[0].der.fingerprint) === fAB, n = await ps.sign_with(pr.root), g = n ? btc.Transaction.fromPSBT(ps.serialize()).getInput(0) : {}, sig = g.tapKeySig || (g.finalScriptWitness && g.finalScriptWitness[0]);
+        const ok = even ? offered && filled && n === 1 && sig && schnorr.verify(sig, t.preimageWitnessV1(0, [btc.p2tr(x).script], 0, [7000n]), btc.p2tr(x).tweakedPubkey) : !offered && !filled && n === 0;
+        if (!ok) { fails.push(T + 'PSBT: a taproot key with a zero fingerprint is the seed\'s only with an even y (' + (even ? 'even' : 'odd') + ' y)'); break; } }
+      const s0 = (seq) => { const t = new btc.Transaction(); t.addInput({ txid: '58'.repeat(32), index: 1, sequence: seq, witnessUtxo: { script: btc.p2wpkh(q0).script, amount: 9000n }, bip32Derivation: [[q0, { fingerprint: FPI, path: [84 + HP, HP, HP, 0, 0] }]] }); t.addOutput({ script: btc.p2wpkh(q1).script, amount: 8000n }); return t; };
+      const p0 = E('SSPSBT').parse(P8(s0(0).toPSBT())), hk = await E('SSPsbtHDKey').from_seed(sAB.seed_bytes), n0 = await p0.sign_with(hk), back = btc.Transaction.fromPSBT(p0.serialize()), sg = back.getInput(0).partialSig || [];
+      if (n0 !== 1 || back.getInput(0).sequence !== 0xffffffff || sg.length !== 1 || !secp256k1.verify(secp256k1.Signature.fromDER(sg[0][1].slice(0, -1)), s0(0xffffffff).preimageWitnessV0(0, btc.p2pkh(q0).script, 1, 9000n), q0)) fails.push(T + 'PSBT: an input with sequence 0 is signed and returned with 0xffffffff, as embit does'); }
+    // 16. Address Explorer: it holds the account's extended public key only (no private key, no seed), from the right path, and
+    // lists the addresses of that network (regtest change: bcrt1 addresses from the change chain), as btc-signer makes them
+    { const st = new (E('SSSeedStorage'))(), S = E('SSSettings').get_instance(), load0 = w.ssToolsLoading; st.seeds.push(sAB);
+      w.ssToolsLoading = () => ({ start() {}, async stop() {} });
+      try { for (const [net, name, sty, chg] of [[SC.REGTEST, 'regtest', SC.NATIVE_SEGWIT, true]]) {
+        const set = { get_value: (k) => (k === SC.SETTING__NETWORK ? net : S.get_value(k)) }, ctl = { storage: st, back_stack: [] }, path = `m/${mk[sty][0]}'/${name === 'main' ? 0 : 1}'/0'`;
+        const v = Object.create(E('SSToolsAddressExplorerAddressTypeView').prototype); Object.assign(v, { seed_num: 0, script_type: sty, custom_derivation: null, controller: ctl, settings: set }); await v._init_address_explorer_data();
+        const d = ctl.address_explorer_data, x = d && d.xpub;
+        if (!x || Object.keys(x).sort().join() !== 'chain_code,child_number,depth,fingerprint,key' || H(x.key) !== H(kAt(path).publicKey) || H(x.chain_code) !== H(kAt(path).chainCode) || d.derivation_path !== path) { fails.push(T + 'address explorer: it holds the account xpub only (' + path + ')'); break; }
+        const lv = Object.create(E('SSToolsAddressExplorerAddressListView').prototype); let got = null; const ac = kAt(path).deriveChild(chg ? 1 : 0);
+        Object.assign(lv, { is_change: chg, start_index: 0, selected_button_index: 0, initial_scroll: 0, controller: ctl, settings: set, run_screen: async (c, kw) => { got = kw.addresses; return E('SS_RET_CODE__BACK_BUTTON'); } }); await lv.run();
+        if (!got || got.join() !== [...Array(10).keys()].map((i) => mk[sty][1](ac.deriveChild(i).publicKey, NETS[name])).join()) { fails.push(T + 'address explorer: the ' + (chg ? 'change' : 'receive') + ' addresses of the network (' + name + ', ' + sty + ')'); break; } }
+      } finally { w.ssToolsLoading = load0; } }
+    w.ssPageWipe();   // (the device's state left as section 11 left it: wiped)
   } catch (e) { if (e instanceof ProbeStop) throw e; fails.push('practice signer: the probe crashed: ' + e.message); }
   finally { if (navOnline) Object.defineProperty(w.navigator, 'onLine', navOnline); else delete w.navigator.onLine; }
   }
@@ -6606,9 +6724,9 @@ const M = [
   ["practice signer: final word view: the real final word not kept", "storage.update_pending_mnemonic(final_mnemonic[final_mnemonic.length - 1], storage.pending_mnemonic.length - 1);", "storage.update_pending_mnemonic(final_mnemonic[0], storage.pending_mnemonic.length - 1);"],
   ["practice signer: mnemonic_to_bytes: checksum not compared", "if (!ignore_checksum && checksum.some((b, i) => b !== computed_checksum[i])) throw new Error(\"Checksum verification failed\");", "if (false) throw new Error(\"Checksum verification failed\");"],
   ["practice signer: mnemonic_to_bytes: one checksum bit too many compared", "bits_to_ignore = 8 - num_remainder;", "bits_to_ignore = 7 - num_remainder;"],
-  ["practice signer: explorer: nested SegWit shown as native", "{[C.NATIVE_SEGWIT]: \"wpkh\", [C.NESTED_SEGWIT]: \"sh-wpkh\", [C.LEGACY_P2PKH]: \"pkh\", [C.TAPROOT]: \"tr\"}[script_type]", "{[C.NATIVE_SEGWIT]: \"wpkh\", [C.NESTED_SEGWIT]: \"wpkh\", [C.LEGACY_P2PKH]: \"pkh\", [C.TAPROOT]: \"tr\"}[script_type]"],
-  ["practice signer: explorer: always mainnet", "const net = embit_network === \"main\" ? \"main\" : \"test\";", "const net = \"main\";"],
-  ["practice signer: explorer: change shown as receive", "const rows = await walletAddressesFrom(xpub.root, xpub.steps, type, net, is_change ? 1 : 0, start, n);", "const rows = await walletAddressesFrom(xpub.root, xpub.steps, type, net, 0, start, n);"],
+  ["practice signer: explorer: nested SegWit shown as native", "out.push(await ssSeedsEmbitUtils.get_single_sig_address(xpub, script_type, i,", "out.push(await ssSeedsEmbitUtils.get_single_sig_address(xpub, script_type === C.NESTED_SEGWIT ? C.NATIVE_SEGWIT : script_type, i,"],
+  ["practice signer: explorer: always mainnet", "get_single_sig_address(xpub, script_type, i, is_change, embit_network));", "get_single_sig_address(xpub, script_type, i, is_change, \"main\"));"],
+  ["practice signer: explorer: change shown as receive", "get_single_sig_address(xpub, script_type, i, is_change, embit_network));", "get_single_sig_address(xpub, script_type, i, false, embit_network));"],
   ["practice signer: explorer: nested path purpose 84", "    else if (script_type === C.NESTED_SEGWIT) return `m/49'/${network_path}/0'`;", "    else if (script_type === C.NESTED_SEGWIT) return `m/84'/${network_path}/0'`;"],
   ["practice signer: net: mainnet bech32 prefix", "main: { hrp: \"bc\", pkh: 0x00,", "main: { hrp: \"tb\", pkh: 0x00,"],
   ["practice signer: net: mainnet legacy version byte", "main: { hrp: \"bc\", pkh: 0x00, sh: 0x05,", "main: { hrp: \"bc\", pkh: 0x6f, sh: 0x05,"],
@@ -6688,7 +6806,7 @@ const M = [
   ["practice signer: taproot: derived keys never sign", "        for (const kp of derived_keypairs) counter += await this.sign_input_with_tapkey(ctx, kp.prv, i, inp, inp_sighash);\n", ""],
   ["practice signer: PSBT: signatures not kept by trim", "        trimmed_psbt.inputs[i].partial_sigs = inp.partial_sigs;", "        trimmed_psbt.inputs[i].partial_sigs = [];"],
   ["practice signer: PSBT: Approve reports no signature as signed", "    if (sig_cnt === SSPSBTParser.sig_count(trimmed_psbt)) {", "    if (false) {"],
-  ["practice signer: PSBT: zero fingerprint not filled in", "      if (ssPsbtEq(pk, public_key)) return {fingerprint: Uint8Array.from(signing_seed_fingerprint), derivation: d.derivation};", "      if (ssPsbtEq(pk, public_key)) return null;"],
+  ["practice signer: PSBT: zero fingerprint not filled in", "      if (ssPsbtEq(derived_key.pub, ssPsbtSec(public_key))) return {fingerprint: Uint8Array.from(signing_seed_fingerprint), derivation: d.derivation};", "      if (ssPsbtEq(derived_key.pub, ssPsbtSec(public_key))) return null;"],
   ["practice signer: PSBT: seed fingerprint match not seen", "      if (hex(derivation_path_obj.fingerprint) === seed_fingerprint) return true;", "      if (hex(derivation_path_obj.fingerprint) === seed_fingerprint) return false;"],
   ["practice signer: PSBT: input amounts not added", "        this.input_amount += Number(inp.witness_utxo.value);", ""],
   ["practice signer: PSBT: fee ignores the outputs", "    for (const out of this.tx.vout) fee -= BigInt(out.value);", ""],
@@ -6699,7 +6817,7 @@ const M = [
   ["practice signer: change: single-key change trusts the PSBT's key", "            const der = out.bip32_derivations[0].der.derivation;\n            my_pubkey = (await this.root.derive(der)).pub;", "            my_pubkey = out.bip32_derivations[0].pub;"],
   ["practice signer: change: taproot change trusts the output's script", "            sc = await ssPsbtP2tr(my_pubkey);", "            sc = spk;"],
   ["practice signer: change: taproot change trusts the PSBT's key", "            const der = out.taproot_bip32_derivations[0].der.derivation;\n            my_pubkey = (await this.root.derive(der)).pub;", "            my_pubkey = Uint8Array.of(2, ...out.taproot_bip32_derivations[0].pub);"],
-  ["practice signer: change: multisig change trusts the output's script", "          sc = out.witness_script ? await ssPsbtP2wsh(out.witness_script) : new Uint8Array(0);", "          sc = out.witness_script ? spk : new Uint8Array(0);"],
+  ["practice signer: change: multisig change trusts the output's script", "          sc = await ssPsbtP2wsh(need(out.witness_script));", "          sc = need(out.witness_script) && spk;"],
   ["practice signer: change: nested single-key seen as plain P2SH", "      else if (scope.redeem_script && ssPsbtScriptType(scope.redeem_script) === \"p2wpkh\") script_type = \"p2sh-p2wpkh\";", ""],
   ["practice signer: multisig: threshold read wrong", "    const m = sc[0] - 0x50;", "    const m = sc[0] - 0x51;"],
   ["practice signer: multisig: change not checked against the descriptor", "            // if derivation is found but scriptpubkey doesn't match - fail\n            return ssPsbtEq(sc, spk);", "            // if derivation is found but scriptpubkey doesn't match - fail\n            return true;"],
@@ -6720,6 +6838,76 @@ const M = [
   ["practice signer: wipe: CLEAR ALL leaves the practice signer", "  if(typeof ssPageWipe === \"function\") ssPageWipe();   // v2.13.0: the practice signer (stops it, wipes its seeds, closes its box)\n", ""],
   ["practice signer: wipe: auto-clear leaves the practice signer", "  if(typeof ssPageWipe === \"function\") ssPageWipe();   // v2.13.0: the practice signer\n", ""],
   ["practice signer: wipe: END SESSION leaves the practice signer", "() => practiceMode(false), () => ssPageWipe(), wipeSeed,", "() => practiceMode(false), wipeSeed,"],
+  // v2.13.0 review fixes (commit 011c62f), caught by section 72 too. Left out as equivalent (not listed): the PSBT scope count
+  // checked against the bytes left after the global map, and the transaction's input, output and witness counts (each item
+  // reads at least one byte through compact.read_from, which fails at the end of the data, so the loop ends there anyway);
+  // the 02/03/04 prefix check of a public key (pointFromPub refuses any other prefix); string()'s short-read check (the next
+  // key's length then cannot be read); the UR part checks message_len < 1, seq_len > message_len, seq_len < 1 and the empty
+  // fragment (each implies a failed fl * (seq_len - 1) < message_len <= fl * seq_len), the fountain decoder's seq_len
+  // comparison (with the same message and fragment length the counts are equal), its "already received" test (a repeated
+  // fragment reduces nothing) and its stop after the result; the even-y 02 prefix added in sign_with (it compares x only).
+  ["practice signer: wipe: font measuring caches kept", "  try { SSFonts.fonts = {}; } catch (e) { /* engine missing */ }\n", ""],
+  ["practice signer: wipe: scratch canvas kept", "try { _ss_scratch = null; _ss_measure_ctx = null; _ss_color_ctx = null; }", "try { _ss_measure_ctx = null; _ss_color_ctx = null; }"],
+  ["practice signer: wipe: measuring canvas kept", "try { _ss_scratch = null; _ss_measure_ctx = null; _ss_color_ctx = null; }", "try { _ss_scratch = null; _ss_color_ctx = null; }"],
+  ["practice signer: wipe: color canvas kept", "try { _ss_scratch = null; _ss_measure_ctx = null; _ss_color_ctx = null; }", "try { _ss_scratch = null; _ss_measure_ctx = null; }"],
+  ["practice signer: wipe: fields of a screen being built kept", "  try { SS_TOOLS_PENDING_FIELDS.length = 0; } catch (e) { /* tools part missing */ }\n", ""],
+  ["practice signer: wipe: auto-clear misses the settings left on the microSD", "  try { if (SS_SIM_MICROSD.settings_json) return true; } catch (e) { /* settings part missing */ }\n", ""],
+  ["practice signer: wipe: auto-clear misses text left in the font caches", "  try { if (Object.keys(SSFonts.fonts).length) return true; } catch (e) { /* engine missing */ }\n", ""],
+  ["practice signer: UR: Xoshiro256** seeded little-endian", "for (let n = 0; n < 8; n++) v = (v << 8n) | BigInt(d[i * 8 + n]);", "for (let n = 0; n < 8; n++) v = (v << 8n) | BigInt(d[i * 8 + 7 - n]);"],
+  ["practice signer: UR: Xoshiro256** multiplier", "SS_UR_M64, 7) * 9n) & SS_UR_M64;", "SS_UR_M64, 7) * 7n) & SS_UR_M64;"],
+  ["practice signer: UR: random integer range one short", "next_int(low, high) { return Math.floor(this.next_double() * (high - low + 1)) + low; }", "next_int(low, high) { return Math.floor(this.next_double() * (high - low)) + low; }"],
+  ["practice signer: UR: sampler weights not scaled", "const P = probs.map((p) => (p * n) / total), S = [], L = [];", "const P = probs.map((p) => p / total), S = [], L = [];"],
+  ["practice signer: UR: sampler lists filled from the bottom", "for (let i = n - 1; i >= 0; i--) (P[i] < 1 ? S : L).push(i);", "for (let i = 0; i < n; i++) (P[i] < 1 ? S : L).push(i);"],
+  ["practice signer: UR: sampler alias and index swapped", "return r2 < this.probs[i] ? i : this.aliases[i];", "return r2 < this.probs[i] ? this.aliases[i] : i;"],
+  ["practice signer: UR: part seqLen taken as mixed", "  if (seq_num <= seq_len) return [seq_num - 1];", "  if (seq_num < seq_len) return [seq_num - 1];"],
+  ["practice signer: UR: degree weights all equal", "const w = []; for (let i = 1; i <= seq_len; i++) w.push(1 / i);", "const w = []; for (let i = 1; i <= seq_len; i++) w.push(1);"],
+  ["practice signer: UR: degree one too small", "const degree = new SSUrSampler(w).next(rng) + 1;", "const degree = new SSUrSampler(w).next(rng);"],
+  ["practice signer: UR decoder: part of another message accepted (message length)", "e.seq_len === p.seq_len && e.message_len === p.message_len && e.checksum", "e.seq_len === p.seq_len && e.checksum"],
+  ["practice signer: UR decoder: part of another message accepted (checksum)", "&& e.checksum === p.checksum && e.fragment_len", "&& e.fragment_len"],
+  ["practice signer: UR decoder: part of another message accepted (fragment length)", " && e.fragment_len === p.data.length;", ";"],
+  ["practice signer: UR decoder: reduced without the subset check", "    if (!b.idx.every((i) => a.idx.includes(i))) return a;\n", ""],
+  ["practice signer: UR decoder: fragments not XORed out", "    for (let i = 0; i < data.length; i++) data[i] ^= b.data[i];", "    for (let i = 0; i < data.length; i++) data[i] = b.data[i];"],
+  ["practice signer: UR decoder: a reduced single fragment not used", "if (r.idx.length === 1) this.queue.push(r); else next.set(SSURFountainDecoder.key(r.idx), r);", "next.set(SSURFountainDecoder.key(r.idx), r);"],
+  ["practice signer: UR decoder: new mixed part not reduced by the known fragments", "    for (const [i, data] of this.received) r = SSURFountainDecoder.reduce(r, {idx: [i], data});\n", ""],
+  ["practice signer: UR decoder: new mixed part not reduced by the other mixed parts", "    for (const m of this.mixed.values()) r = SSURFountainDecoder.reduce(r, m);\n", ""],
+  ["practice signer: UR decoder: message checksum not compared", "this.result = crc32(m) === e.checksum ? m : new Error(\"InvalidChecksum\");", "this.result = m;"],
+  ["practice signer: UR: part numbers in the path and in the part not compared", "      if (seq_num !== p.seq_num || seq_len !== p.seq_len) return false;\n", ""],
+  ["practice signer: UR: fragments too short for the message accepted", "fl * p.seq_len < p.message_len || ", ""],
+  ["practice signer: UR: more fragments than the message needs accepted", " || fl * (p.seq_len - 1) >= p.message_len) return false;", ") return false;"],
+  ["practice signer: UR encoder: mixed fragments not XORed", "for (let j = 0; j < fl; j++) mixed[j] ^= (msg[i * fl + j] || 0);", "for (let j = 0; j < fl; j++) mixed[j] = (msg[i * fl + j] || 0);"],
+  ["practice signer: UR encoder: padded length sent as the message length", "CB.uint(L), CB.uint(msg.length), CB.uint(crc)", "CB.uint(L), CB.uint(L * fl), CB.uint(crc)"],
+  ["practice signer: UR encoder: fragment of the largest size not used", "            if (fl <= max_fragment_len) break;", "            if (fl < max_fragment_len) break;"],
+  ["practice signer: UR encoder: a one-part message sent as a multi-part UR", "        if (L === 1) return (\"ur:\" + this._ur_type + \"/\" + bytewordsMin(msg)).toUpperCase();\n", ""],
+  ["practice signer: PSBT: a public key off the curve accepted", "if (n === 33) { try { pointFromPub(b); } catch (e) { throw new Error(\"Failed parsing public key\"); } return b; }", "if (n === 33) return b;"],
+  ["practice signer: PSBT: x-only keys not checked", "  ssPsbtPubParse(concatBytes(Uint8Array.of(0x02), b));\n", ""],
+  ["practice signer: PSBT: taproot internal key not checked", "} else if (t === 0x17) {\n      this.taproot_internal_key = ssPsbtXonlyParse(v);", "} else if (t === 0x17) {\n      this.taproot_internal_key = v;"],
+  ["practice signer: PSBT: output taproot internal key not checked", "} else if (t === 0x05) {\n      this.taproot_internal_key = ssPsbtXonlyParse(v);", "} else if (t === 0x05) {\n      this.taproot_internal_key = v;"],
+  ["practice signer: PSBT: taproot derivation key not checked", "} else if (t === 0x16) {\n      ssPsbtXonlyParse(key);", "} else if (t === 0x16) {"],
+  ["practice signer: PSBT: taproot signature key not checked", "      ssPsbtXonlyParse(k.slice(1, 33));\n", ""],
+  ["practice signer: PSBT: duplicated taproot signature accepted", "      if (this.taproot_sigs.some((x) => ssPsbtEq(x.key, key))) dup(\"taproot sig\");\n", ""],
+  ["practice signer: PSBT: duplicated taproot script accepted", "      if (this.taproot_scripts.some((x) => ssPsbtEq(x.control, key))) dup(\"taproot script\");\n", ""],
+  ["practice signer: PSBT: duplicated input key accepted", "      if (this.unknown.some((x) => ssPsbtEq(x.key, k))) dup(\"key\");\n", ""],
+  ["practice signer: PSBT: duplicated output key accepted", "      if (this.unknown.some((x) => ssPsbtEq(x.key, k))) throw new Error(\"Duplicated key\");\n", ""],
+  ["practice signer: PSBT: global xpub not checked", "if (t === 0x01) { ssPsbtHDKeyCheck(u.key.slice(1)); psbt.xpubs.push(", "if (t === 0x01) { psbt.xpubs.push("],
+  ["practice signer: PSBT: global xpub of an unknown version accepted", "  if (sub !== \"prv\" && sub !== \"pub\") throw new Error(\"Invalid version\");\n", ""],
+  ["practice signer: PSBT: global xpub with a private version on a public key accepted", "  if (sub === \"prv\" && !is_private) throw new Error(\"Invalid version for private key\");\n", ""],
+  ["practice signer: PSBT: global xpub of depth 0 with an index accepted", "  if (depth[0] === 0 && ssPsbtBeBig(child) !== 0n) throw new Error(\"zero depth with non-zero index\");\n", ""],
+  ["practice signer: PSBT: global xpub of depth 0 with a parent accepted", "  if (depth[0] === 0 && !ssPsbtEq(fingerprint, [0, 0, 0, 0])) throw new Error(\"zero depth with non-zero parent\");\n", ""],
+  ["practice signer: PSBT: global xpub key not checked", "  } else ssPsbtPubParse(k);\n", "  }\n"],
+  ["practice signer: PSBT: bytes after a utxo accepted", "script_pubkey = s.script(); s.end(); return {value, script_pubkey}; }", "script_pubkey = s.script(); return {value, script_pubkey}; }"],
+  ["practice signer: PSBT: bytes after the transaction accepted", "tx = ssPsbtReadTx(s); s.end(); return tx; }", "tx = ssPsbtReadTx(s); return tx; }"],
+  ["practice signer: PSBT: a script cut short accepted", "    if (s.length !== l) throw new Error(`Cant read ${l} bytes`);\n", ""],
+  ["practice signer: PSBT: a broken derivation index accepted", "    if (r.length < 4) throw new Error(\"Invalid length\");\n", ""],
+  ["practice signer: PSBT: taproot leaf hash count not bounded", "  if (num * 32 > s.left) throw new Error(\"Invalid length of taproot leaf hashes\");\n", ""],
+  ["practice signer: PSBTv2: count with a byte too many accepted", "        c.end();   // compact.from_bytes: \"Too many bytes\"\n", ""],
+  ["practice signer: PSBTv2: scope count not bounded by the bytes left", "        s.count(n);\n        const make", "        const make"],
+  ["practice signer: PSBT: counts never bounded by the bytes left", "    if (n * min > this.left) throw new Error(\"Can't read one byte from the stream\");", "    if (false) throw new Error(\"Can't read one byte from the stream\");"],
+  ["practice signer: taproot: zero fingerprint matched with an odd y", "function ssPsbtSec(pub) { return pub.length === 32 ? concatBytes(Uint8Array.of(0x02), pub) : pub; }", "function ssPsbtSec(pub) { return pub.length === 32 ? concatBytes(Uint8Array.of(0x03), pub) : pub; }"],
+  ["practice signer: taproot: an odd-y key with a zero fingerprint offered for signing", "          return ssPsbtEq(derived_key.pub, ssPsbtSec(public_key));   // Public keys match", "          return ssPsbtEq(derived_key.pub.slice(1), public_key.slice(-32));   // Public keys match"],
+  ["practice signer: taproot: an odd-y zero fingerprint filled in", "      if (ssPsbtEq(derived_key.pub, ssPsbtSec(public_key))) return {fingerprint:", "      if (ssPsbtEq(derived_key.pub.slice(1), public_key.slice(-32))) return {fingerprint:"],
+  ["practice signer: PSBT: sequence 0 signed as 0", "script_sig: new Uint8Array(0), sequence: this.sequence || 0xffffffff}; }", "script_sig: new Uint8Array(0), sequence: this.sequence === null ? 0xffffffff : this.sequence}; }"],
+  ["practice signer: explorer: regtest shown with testnet prefixes", "get_single_sig_address(xpub, script_type, i, is_change, embit_network));", "get_single_sig_address(xpub, script_type, i, is_change, embit_network === \"regtest\" ? \"test\" : embit_network));"],
+  ["practice signer: explorer: the account key carries the seed", "  if (typeof seed.get_xpub === \"function\") return seed.get_xpub(derivation_path, network);", "  if (typeof seed.get_xpub === \"function\") return Object.assign(await seed.get_xpub(derivation_path, network), {seed_bytes: seed.seed_bytes});"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
