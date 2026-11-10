@@ -1797,7 +1797,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const r=load(); await r.ready(); const $=r.$, w=r.w, AB='abandon '.repeat(11)+'about';
     const EL_STD='cycle rocket west magnet parrot shuffle foot correct salt library feed song', EL_SW='bitter grass shiver impose acquire brush forget axis eager alone wine silver';
     const DF=async(words,pass,addr)=>{ $('phrase').value=words; $('verifyPass').value=pass; $('detAddr').value=addr; await w.detFind(); return {st:$('detStatus').textContent, cls:$('detStatus').className, out:$('detOut').textContent, shown:$('detOut').style.display!=='none'}; };
-    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.12.0','v2.12.0: the footer shows the new version');
+    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.13.0','v2.13.0: the footer shows the new version');
     ok(html.indexOf('<li><b>2.8.0</b>')>0&&html.indexOf('<li><b>2.8.0</b>')<html.indexOf('<li><b>2.7.0</b>'),'v2.8.0: the changelog lists 2.8.0 first');
     // --- Wallet Detective ---
     ok(!$('detBtn').disabled&&!$('detListBtn').disabled&&$('detStop').disabled&&$('detBtn').className===''&&$('detListBtn').className==='secondary small','Wallet Detective: FIND MY WALLET is the gold main button, enabled after the self-test; LIST and STOP are gray');
@@ -2777,6 +2777,12 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(/\["Taproot multisig"/.test(html)&&/\["multi_a and sortedmulti_a"/.test(html)&&/\["NUMS point \(unspendable key\)"/.test(html),'dictionary: Taproot multisig, multi_a and sortedmulti_a, NUMS point');
     w.setGate('fail','SELF-TEST FAILED','bad'); ok($('msStartBtn').disabled,'Taproot multisig: START MULTISIG SETUP waits for the self-test'); w.setGate('pass','SELF-TEST PASSED','good');
     ok(r.errors.length===0,'Taproot multisig: no page errors '+JSON.stringify(r.errors));
+    r.w.close(); }
+  // v2.13.0: docs and page text for the practice signer (the practice signer itself is tested in tests/simulator.test.mjs)
+  { const r=load(); await r.ready(); const w=r.w, names=w.eval('DICT').map(e=>e[0]);
+    ok(html.indexOf('<li><b>2.13.0</b>')>0&&html.indexOf('<li><b>2.13.0</b>')<html.indexOf('<li><b>2.12.0</b>'),'v2.13.0: the changelog lists 2.13.0 first');
+    ok(['Practice signer','SeedSigner+','PSBT (partly signed Bitcoin transaction)','Descriptor','SeedQR'].every(n=>names.includes(n)),'dictionary: Practice signer, SeedSigner+, PSBT, Descriptor and SeedQR');
+    ok(/Practice signer/.test(html.match(/<summary>Hardware wallet: SeedSigner[\s\S]*?<\/details>/)[0]),'About: the SeedSigner recommendation points to the practice signer');
     r.w.close(); }
   // v2.12.0: Open a signing device's backup (the full checks are in tests/devbackup.test.mjs and the mutation probe, section 71)
   { const r=load(); await r.ready(); const $=r.$, w=r.w, {HDKey}=require('@scure/bip32'), btc=require('@scure/btc-signer');
