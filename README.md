@@ -111,6 +111,17 @@ VOIDFORGE is free software provided **"as is", without warranty of any kind** (s
 - The only online copy is the practice demo at [random21m.gitlab.io/voidforge](https://random21m.gitlab.io/voidforge/), published from `main` by GitLab Pages (`.gitlab-ci.yml`). For real funds, use the downloaded release file.
 - License: MIT
 
+## Recommended hardware wallet: SeedSigner
+
+For real funds, VOIDFORGE recommends [SeedSigner](https://seedsigner.com) as the signing device. The reasons come from its own source code (github.com/SeedSigner/seedsigner, release 0.8.7) and, for the SeedSigner+ kit, its seller's description:
+
+- **Open source** (MIT license), so anyone can read exactly what it does.
+- **It stores no seed.** Seeds live only in memory and are wiped when it is switched off; your backup stays on your paper or steel.
+- **Air-gapped:** it talks to your wallet app only through QR codes, read by its camera and shown on its screen. The SeedSigner+ kit is built on a Raspberry Pi Zero 1.3, which its seller notes is made without Wi-Fi or Bluetooth.
+- **Dice-made seeds** (50 or 99 rolls) and SeedQR backups, which VOIDFORGE can make and check the same way.
+
+A recommendation is not a guarantee: verify the SeedSigner software you install as its project explains, and keep using VOIDFORGE to cross-check its words, fingerprint and addresses.
+
 ## Support the project
 
 VOIDFORGE is free and open source, and it stays that way. Supporting it is optional and changes nothing about how the tool works. If it helped you, you can send a few sats over Lightning:
