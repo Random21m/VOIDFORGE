@@ -86,7 +86,7 @@ A multisig wallet made with VOIDFORGE needs two things to be recovered: **M of t
 
 1. In Sparrow choose *File > New Wallet > Multi Signature*, or import the descriptor text directly (*New Wallet > Descriptor*). In Nunchuk or Bitcoin Core use *import descriptor*.
 2. Check that the first receive and change addresses match the ones on your recovery sheet before you send anything.
-3. To spend, each signer uses its own seed in a signing device or wallet; VOIDFORGE does not sign.
+3. To spend, each signer uses its own seed in a signing device or wallet; VOIDFORGE's tools do not sign. Only its Practice signer signs, and it is for practice only: never give it a real seed.
 
 Key origin used: `m/48'/0'/<account>'/2'` for native SegWit (P2WSH) or `.../1'` for nested SegWit (P2SH-P2WSH); testnet uses `1'` instead of `0'`.
 
