@@ -5,7 +5,7 @@
   "description": "Test dependencies for VOIDFORGE (the tool itself has none: it is one HTML file).",
   "license": "MIT",
   "scripts": {
-    "test": "node --max-old-space-size=4096 tests/test.js && node tests/signed.test.mjs && node tests/slip39.test.mjs && node tests/codex32.test.mjs && node tests/devbackup.test.mjs && node tests/simulator.test.mjs && node tests/vfmethod.test.mjs && node tests/qrdecode.test.mjs && node tests/oracle.test.mjs && node tests/sigcheck.test.mjs && node tests/fuzz.test.mjs && node tests/print.test.mjs && node tests/browsers.test.mjs && node tests/camera.test.mjs && node tests/mutation.test.mjs"
+    "test": "node --max-old-space-size=4096 tests/test.js && node tests/signed.test.mjs && node tests/slip39.test.mjs && node tests/codex32.test.mjs && node tests/devbackup.test.mjs && node tests/simulator.test.mjs && node tests/vfmethod.test.mjs && node tests/qrdecode.test.mjs && node tests/oracle.test.mjs && node tests/sigcheck.test.mjs && node tests/fuzz.test.mjs && node tests/print.test.mjs && node tests/browsers.test.mjs && node tests/camera.test.mjs && node tests/mistakes.test.mjs && node tests/mutation.test.mjs"
   },
   "devDependencies": {
     "@keystonehq/bc-ur-registry": "0.8.1",
