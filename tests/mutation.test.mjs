@@ -451,7 +451,7 @@ async function probe(w, mutated, fast, only, hooks) {
   // v2.14.0: the Damascus method (MAKE A SEED > Damascus, the dm-prefixed code). Its grids, hallmarks, words and bias boxes are
   // compared with the method's reference code (tests/fixtures/damascus/vf.js) and the phrases with @scure/bip39; the review fixes
   // (M1-M6, L1-L20) and the five steps are driven through the page's own boxes and buttons. It ends with CLEAR and the Dice tab.
-  if (SEC(73, "v2.14.0 Damascus method: grids, hallmarks, words, bias boxes, practice by content, mistake finder, five steps, last word from paper, wipes")) {
+  if (SEC(74, "v2.14.0 Damascus method: grids, hallmarks, words, bias boxes, practice by content, mistake finder, five steps, last word from paper, wipes")) {
   const cf0 = w.confirm, pr0 = w.print;
   try {
     const T = 'damascus: ', V = requireC('./fixtures/damascus/vf.js'), $$ = (s) => [...w.document.querySelectorAll(s)];
@@ -7023,7 +7023,7 @@ const M = [
   ["practice signer: PSBT: sequence 0 signed as 0", "script_sig: new Uint8Array(0), sequence: this.sequence || 0xffffffff}; }", "script_sig: new Uint8Array(0), sequence: this.sequence === null ? 0xffffffff : this.sequence}; }"],
   ["practice signer: explorer: regtest shown with testnet prefixes", "get_single_sig_address(xpub, script_type, i, is_change, embit_network));", "get_single_sig_address(xpub, script_type, i, is_change, embit_network === \"regtest\" ? \"test\" : embit_network));"],
   ["practice signer: explorer: the account key carries the seed", "  if (typeof seed.get_xpub === \"function\") return seed.get_xpub(derivation_path, network);", "  if (typeof seed.get_xpub === \"function\") return Object.assign(await seed.get_xpub(derivation_path, network), {seed_bytes: seed.seed_bytes});"],
-  // v2.14.0: the Damascus method (dm-prefixed code), caught by section 73 or the self-test (worked example 1). Left out as
+  // v2.14.0: the Damascus method (dm-prefixed code), caught by section 74 or the self-test (worked example 1). Left out as
   // equivalent (not listed): the rejection test in dmPracticeDraws (a 32-bit number at or above the largest multiple of m comes
   // up about once in 700 million draws, so no practice sheet 1 to 100 changes); the seq guard after checkPhrase in dmRecheck
   // (say() checks the same seq); the new line after a full deck in dmDealCard (the deck plan splits the same cards anyway);
