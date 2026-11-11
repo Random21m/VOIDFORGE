@@ -130,7 +130,7 @@ const box = `
         <p class="status" id="ssForgeStatus" aria-live="polite"></p>
         <h3 class="sec">Lessons</h3>
         <p class="hint" style="margin:0 0 8px;">Short lessons that walk you through the device, one press at a time. Each step moves on by itself when the device shows the right screen. The lessons use public test seeds only (such as abandon ... about): anyone can make them, so never put coins on them.</p>
-        <div class="btn-row"><select id="ssLearnPick" aria-label="Lesson"></select><button type="button" id="ssLearnGo">START LESSON</button></div>
+        <div class="btn-row"><select id="ssLearnPick" aria-label="Lesson"></select><button type="button" id="ssLearnGo" class="secondary small">START LESSON</button></div>
         <div class="ss-l-run" id="ssLearnRun" hidden>
           <p><b id="ssLearnName"></b> &middot; <span id="ssLearnCount"></span></p>
           <p class="hint" id="ssLearnNote"></p>
@@ -142,7 +142,7 @@ const box = `
         <div class="ss-l-cam" id="ssLearnCam" hidden><span>Held up to the device's camera: <b id="ssLearnCamWhat"></b>. <span id="ssLearnCamSay" aria-live="polite"></span></span><button type="button" class="secondary small" id="ssLearnCamOff">PUT IT AWAY</button></div>
         <h3 class="sec">Practice transaction</h3>
         <p class="hint" style="margin:0 0 8px;">Makes a PSBT that spends made-up coins of the seed on the device and holds it up to the device's camera. After you sign it, this page reads the signed PSBT from the device's screen and checks every signature with its own code.</p>
-        <div class="btn-row"><select id="ssTxKind" aria-label="Kind of practice transaction"><option value="single">Single key: 2 inputs</option><option value="multi">2-of-3 multisig: 1 input</option></select><button type="button" id="ssTxGo">PRACTICE TRANSACTION</button></div>
+        <div class="btn-row"><select id="ssTxKind" aria-label="Kind of practice transaction"><option value="single">Single key: 2 inputs</option><option value="multi">2-of-3 multisig: 1 input</option></select><button type="button" id="ssTxGo" class="secondary small">PRACTICE TRANSACTION</button></div>
         <p class="ms-warn" id="ssTxNet" hidden>Mainnet: these coins don't exist; this PSBT can never be broadcast.</p>
         <p class="status" id="ssTxStatus" aria-live="polite"></p>
         <p class="hint" id="ssTxCoins"></p>
