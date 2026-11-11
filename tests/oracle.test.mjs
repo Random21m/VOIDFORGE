@@ -798,7 +798,7 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   const set = (id, v) => { viewOf(id).value = v; viewOf(id).dispatchEvent(new w.Event(id === 'wvAcct' ? 'input' : 'change', {bubbles: true})); };
   for (const [bytes, wc] of [[16, 12], [20, 15], [24, 18], [28, 21], [32, 24]]) for (let r = 0; r < 3; r++) {
     const mn = entropyToMnemonic(new Uint8Array(nc.randomBytes(bytes)), wordlist), pw = r === 0 ? '' : 'Pässwörd ' + r;
-    $('phrase').value = mn; $('verifyPass').value = pw; await w.verify(); await until(() => viewOf('wvFp').textContent.includes(fpOracle(mn, pw)) && viewOf('wvList').querySelectorAll('li').length === 10);
+    $('phrase').value = mn; $('verifyPass').value = pw; await w.verify(); await until(() => viewOf('wvFp').textContent.includes(fpOracle(mn, pw)) && viewOf('wvList').querySelectorAll('li').length === 20);
     const wv = viewOf('walletView');
     n++; if (wv.style.display === 'none' || !viewOf('wvFp').textContent.includes(fpOracle(mn, pw))) { bad++; console.log('WALLET VIEW NOT SHOWN OR FINGERPRINT WRONG', wc); continue; }
     n++; if (!viewOf('wvIcon').innerHTML.includes('<svg')) { bad++; console.log('WALLET VIEW LIFEHASH MISSING', wc); }

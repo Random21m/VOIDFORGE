@@ -1889,7 +1889,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       </div>
       <div class="wv-ctl">
         <select id="wvType" aria-label="Address type"><option value="wpkh">Native SegWit (bc1q...)</option><option value="tr">Taproot (bc1p...)</option><option value="sh-wpkh">Nested SegWit (3...)</option><option value="pkh">Legacy (1...)</option></select>
-        <select id="wvChain" aria-label="Receive or change"><option value="0">Receive</option><option value="1">Change</option><option value="both">Both</option></select>
+        <select id="wvChain" aria-label="Receive or change"><option value="0">Receive</option><option value="1">Change</option><option value="both" selected>Both</option></select>
         <select id="wvNet" aria-label="Network"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
         <input type="text" id="wvAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number">
       </div>
@@ -11833,6 +11833,7 @@ function clearWalletView(){
   hideAddrQr("wvq"); wvSeedQrHide(); wvDecoyHide();
   pnShow(false);   // v2.10.0: the punch plate belongs to the words that were open
   for(const id of ["wvType","wvNet","wvAcct","wvChain"]) document.getElementById(id).disabled = false;
+  document.getElementById("wvChain").value = "both";   // v2.16.0: every wallet opens on its first 10 receive and first 10 change addresses
   if(practiceOn){ document.getElementById("wvNet").value = "test"; document.getElementById("wvNet").disabled = true; }
   if(document.getElementById("wvAcct").value === "-") document.getElementById("wvAcct").value = "0";
   document.getElementById("wvBanner").textContent = "Imported: these words were typed or scanned here, not made by this page. The same words and passphrase give the same wallet in any app.";
@@ -11916,7 +11917,7 @@ async function parseWatchInput(raw){
     if((type === "sh-wpkh") !== (m[6] === ")")) throw new Error("The brackets of this descriptor do not match.");
     if(m[7]){ let ok = false; try { ok = descriptorChecksum(q.slice(0, q.indexOf("#"))) === q; } catch(e) { ok = false; } if(!ok) throw new Error("The descriptor checksum (after #) does not match. Check for a typo."); }
     keyStr = m[4]; if(m[2]) origin = {fp: m[2].toLowerCase(), path: "m" + m[3].replace(/[hH]/g, "'")};
-    chain = m[5] === "/1/*" ? 1 : 0;
+    chain = m[5] === "/1/*" ? 1 : m[5] === "/0/*" ? 0 : null;   // v2.16.0: no ending, or /<0;1>/*: receive and change
   }
   const k = await parseExtendedKey(keyStr);
   if(k.type === "ms-wsh" || k.type === "ms-sh-wsh") throw new Error("This is a multisig cosigner key (Zpub or Ypub). Use the multisig tool in EXTRA TOOLS.");
@@ -11938,7 +11939,7 @@ async function openWatchOnly(){
   if(w.type){ tSel.value = w.type; } tSel.disabled = w.fixedType;
   const parts = w.origin ? w.origin.path.split("/") : [], last = parts.length === 4 ? parts[3].replace(/'/g, "") : "";
   aIn.value = /^[0-9]+$/.test(last) ? last : "-"; aIn.disabled = true;
-  cSel.value = String(w.chain || 0);
+  cSel.value = w.chain === null ? "both" : String(w.chain);
   st.className = "status ok";
   st.textContent = "Watch-only wallet opened: " + (w.net === "test" ? "testnet " : "") + "public key" + (w.key.depth !== 3 ? " at depth " + w.key.depth + " (an account key is usually at depth 3; check the addresses carefully)" : "") + "." + (w.fixedType ? "" : " A plain xpub does not say which address type it is for: pick the type your wallet uses.");
   document.getElementById("wvBanner").textContent = "Watch-only: public key only. It shows addresses but can never spend, and it holds no seed words.";

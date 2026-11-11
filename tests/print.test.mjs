@@ -149,7 +149,7 @@ for (const bits of [128, 160, 192, 224, 256]) {
   const m = generateMnemonic(wordlist, bits), n = m.split(' ').length;
   await p.fill('#phrase', m); await p.dispatchEvent('#phrase', 'input');
   await p.click('#verifyBtn');
-  await p.waitForFunction(() => /^Master fingerprint: [0-9a-f]{8}/.test(document.getElementById('wvFp').textContent) && document.getElementById('wvList').children.length === 10);
+  await p.waitForFunction(() => /^Master fingerprint: [0-9a-f]{8}/.test(document.getElementById('wvFp').textContent) && document.getElementById('wvList').children.length === 20);
   await p.evaluate(() => wvAbbr(true));
   const ab = await p.$$eval('#wvAbbrGrid .wtxt', (es) => es.map((e) => e.textContent));
   ok(ab.join(' ') === m.split(' ').map((w) => w.slice(0, 4)).join(' '), 'check: 4-letter view shows the first 4 letters of all ' + n + ' words');
@@ -296,7 +296,7 @@ await sheet('light theme: summary sheet 24', () => printSummary());
 await p.click('#tab-check');
 await p.fill('#phrase', 'legal winner thank year wave sausage worth useful legal winner thank yellow'); await p.fill('#verifyPass', 'a passphrase');
 await p.click('#verifyBtn');
-await p.waitForFunction(() => /\(with passphrase\)/.test(document.getElementById('wvFp').textContent) && document.getElementById('wvList').children.length === 10);
+await p.waitForFunction(() => /\(with passphrase\)/.test(document.getElementById('wvFp').textContent) && document.getElementById('wvList').children.length === 20);
 await sheet('light theme: check words with a passphrase', () => printSeed('check'));
 await sheet('light theme: check recovery sheet with a passphrase', () => printRecoverySheet());
 ok(await p.evaluate(() => { printSeed('check'); const t = document.getElementById('printOnly').textContent; window.dispatchEvent(new Event('afterprint')); return !t.includes('a passphrase') && /Passphrase used: YES/.test(t); }), 'check words with a passphrase: says one was used, never prints it');
@@ -364,7 +364,7 @@ ok(await p.evaluate(() => {
 await p.click('#tab-check');
 await p.fill('#phrase', 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'); await p.fill('#verifyPass', '');
 await p.click('#verifyBtn');
-await p.waitForFunction(() => document.getElementById('wvList').children.length === 10);
+await p.waitForFunction(() => document.getElementById('wvList').children.length === 20);
 await p.evaluate(async () => { const e = document.getElementById('wvPathIn'); e.value = "m/0'"; e.dispatchEvent(new Event('input')); await wvRefresh(); });
 await sheet('custom path: recovery sheet', () => printRecoverySheet());
 ok(await p.evaluate(() => { printRecoverySheet(); const t = document.getElementById('printOnly').textContent; window.dispatchEvent(new Event('afterprint')); return /Derivation path: m\/0'\/0\/index \(receive\) and m\/0'\/1\/index \(change\), a custom path/.test(t); }), 'custom path: the recovery sheet names the custom path, both chains');

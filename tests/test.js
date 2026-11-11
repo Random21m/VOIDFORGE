@@ -290,9 +290,9 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const pick=(id,v)=>{ t.$(id).value=v; t.$(id).dispatchEvent(new t.w.Event(id==='wvAcct'?'input':'change',{bubbles:true})); };
     const t0=t; t=load(); await t.ready();
     ok(t.$('walletView').style.display==='none','wallet view: hidden until a phrase is checked');
-    t.$('phrase').value=AB; t.$('verifyPass').value=''; await t.w.verify(); await until(()=>rows().length===10);
+    t.$('phrase').value=AB; t.$('verifyPass').value=''; await t.w.verify(); await until(()=>rows().length===20);
     ok(t.$('walletView').style.display!=='none'&&/73c5da0a/.test(t.$('wvFp').textContent)&&t.$('wvIcon').innerHTML.includes('<svg'),'wallet view: opens after VERIFY with the master fingerprint and its picture');
-    ok(rows()[0]==='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'&&t.$('wvList').querySelectorAll('li button.qr-mini').length===10&&rows().every(a=>/^bc1q/.test(a)),'wallet view: the published first SegWit address, ten rows, each with a QR button');
+    ok(rows()[0]==='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'&&rows()[10]==='bc1q8c6fshw2dlwun7ekn9qwf37cu2rn755upcp6el'&&t.$('wvChain').value==='both'&&t.$('wvList').querySelectorAll('li button.qr-mini').length===20&&rows().every(a=>/^bc1q/.test(a)),'wallet view: the published first SegWit receive and change addresses, 10 receive and 10 change rows by default (v2.16.0), each with a QR button');
     ok(/imported/i.test(t.$('wvBanner').textContent)&&/not made by this page/.test(t.$('wvBanner').textContent),'wallet view: says plainly that these words were imported, not made here');
     pick('wvType','tr'); await until(()=>/^bc1p/.test(rows()[0]||'')); ok(rows()[0]==='bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr','wallet view: the published first Taproot (BIP86) address');
     pick('wvType','pkh'); await until(()=>/^1/.test(rows()[0]||'')); ok(rows()[0]==='1LqBGSKuX5yYUonjxT5qGfpUsXKYYWeabA','wallet view: the published first Legacy (BIP44) address');
@@ -300,7 +300,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     pick('wvType','wpkh'); pick('wvNet','test'); await until(()=>/^tb1q/.test(rows()[0]||'')); ok(/TESTNET/.test(t.$('wvPath').textContent)&&/^tb1q/.test(rows()[0]),'wallet view: testnet gives tb1 addresses and a TESTNET note');
     pick('wvNet','main'); await until(()=>/^bc1q/.test(rows()[0]||''));
     const first=rows().slice(); t.$('wvNext').click(); await until(()=>rows()[0]!==first[0]); const second=rows().slice();
-    ok(second.length===10&&!second.some(a=>first.includes(a))&&/addresses 10 to 19/.test(t.$('wvPath').textContent)&&!t.$('wvPrev').disabled,'wallet view: NEXT 10 shows addresses 10 to 19');
+    ok(second.length===20&&!second.some(a=>first.includes(a))&&/addresses 10 to 19/.test(t.$('wvPath').textContent)&&!t.$('wvPrev').disabled,'wallet view: NEXT 10 shows addresses 10 to 19');
     t.$('wvPrev').click(); await until(()=>rows()[0]===first[0]); ok(t.$('wvPrev').disabled&&rows().join()===first.join(),'wallet view: PREVIOUS 10 comes back, and is off at the start');
     pick('wvAcct','2'); await until(()=>rows()[0]!==first[0]); const acc2=rows()[0]; pick('wvChain','1'); await until(()=>rows()[0]!==acc2);
     ok(/m\/84'\/0'\/2'\/1\/index/.test(t.$('wvPath').textContent)&&/Change/.test(t.$('wvPath').textContent),'wallet view: account and change chain are in the path');
@@ -315,17 +315,18 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t.$('phrase').value=AB+' '; t.$('phrase').dispatchEvent(new t.w.Event('input',{bubbles:true}));
     ok(t.$('walletView').style.display==='none'&&t.$('wvList').textContent===''&&t.$('wvsImg').textContent===''&&t.$('wvqImg').textContent===''&&t.$('wvFp').textContent==='','wallet view: editing the words wipes the whole view');
     // a passphrase changes the wallet, and the recovery sheet never prints it
-    t.$('phrase').value=AB; t.$('verifyPass').value='SECRETPASS'; await t.w.verify(); await until(()=>rows().length===10);
+    t.$('phrase').value=AB; t.$('verifyPass').value='SECRETPASS'; await t.w.verify(); await until(()=>rows().length===20);
+    ok(t.$('wvChain').value==='both'&&rows().length===20,'wallet view: a wallet opened after Receive was picked starts again on 10 receive and 10 change addresses');
     ok(rows()[0]!==first[0]&&!/73c5da0a/.test(t.$('wvFp').textContent)&&/with passphrase/.test(t.$('wvFp').textContent),'wallet view: with a passphrase it is a different wallet and says so');
     t.w.printRecoverySheet(); ok(!t.st.printHTML.includes('SECRETPASS')&&/Passphrase used: YES/.test(t.st.printHTML),'recovery sheet: says a passphrase was used, never prints it'); t.w.dispatchEvent(new t.w.Event('afterprint'));
     // other lengths: 24 words has SeedQR, 15 does not
     const e24=await t.w.entropyToMnemonic(new Uint8Array(32)), e15=await t.w.entropyToMnemonic(new Uint8Array(20));
-    t.$('verifyPass').value=''; t.$('phrase').value=e24; await t.w.verify(); await until(()=>rows().length===10);
+    t.$('verifyPass').value=''; t.$('phrase').value=e24; await t.w.verify(); await until(()=>rows().length===20);
     ok(t.$('wvSqBtns').style.display!=='none'&&/24 words/.test(t.$('wvSqNote').textContent),'wallet view: 24 words offer SeedQR');
-    t.$('phrase').value=e15; await t.w.verify(); await until(()=>rows().length===10);
+    t.$('phrase').value=e15; await t.w.verify(); await until(()=>rows().length===20);
     ok(t.$('wvSqBtns').style.display==='none'&&/No SeedQR exists for 15 words/.test(t.$('wvSqNote').textContent),'wallet view: 15 words say plainly that no SeedQR exists');
     t.$('phrase').value='abandon abandon'; await t.w.verify(); ok(t.$('walletView').style.display==='none','wallet view: an invalid phrase opens nothing');
-    t.$('phrase').value=AB; await t.w.verify(); await until(()=>rows().length===10); t.w.wipeSeed(); ok(t.$('walletView').style.display==='none'&&t.$('wvList').textContent==='','wallet view: CLEAR ALL wipes it'); t=t0; }
+    t.$('phrase').value=AB; await t.w.verify(); await until(()=>rows().length===20); t.w.wipeSeed(); ok(t.$('walletView').style.display==='none'&&t.$('wvList').textContent==='','wallet view: CLEAR ALL wipes it'); t=t0; }
   { // v2.2.0: watch-only view, Electrum warning, payment request, backup checklist, key-reuse check
     const AB='abandon '.repeat(11)+'about', sleep=ms=>new Promise(r=>setTimeout(r,ms));
     const until=async f=>{ for(let n=0;n<400&&!f();n++) await sleep(25); return f(); };
@@ -335,12 +336,12 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const openW=async v=>{ t.$('wpIn').value=v; t.$('wpIn').dispatchEvent(new t.w.Event('input',{bubbles:true})); await t.w.openWatchOnly(); };
     // watch-only: the published BIP84 zpub of abandon...about
     const ZPUB='zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs';
-    await openW(ZPUB); await until(()=>rows().length===10);
+    await openW(ZPUB); await until(()=>rows().length===20);
     ok(rows()[0]==='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'&&t.$('wvType').disabled&&t.$('wvType').value==='wpkh'&&t.$('wvNet').disabled,'watch-only: the published zpub gives the published first address, type and network locked');
     ok(/Watch-only/.test(t.$('wvBanner').textContent)&&t.$('wvSqBlock').style.display==='none'&&t.$('wvSheetBtn').style.display==='none'&&/not known/.test(t.$('wvFp').textContent),'watch-only: says so, no SeedQR and no recovery sheet, and no made-up fingerprint');
-    ok(t.$('wvList').querySelectorAll('li button.qr-mini').length===10,'watch-only: a QR button on every row');
+    ok(t.$('wvChain').value==='both'&&t.$('wvList').querySelectorAll('li button.qr-mini').length===20,'watch-only: a plain zpub opens on 10 receive and 10 change addresses, with a QR button on every row');
     const XPUB86='xpub6BgBgsespWvERF3LHQu6CnqdvfEvtMcQjYrcRzx53QJjSxarj2afYWcLteoGVky7D3UKDP9QyrLprQ3VCECoY49yfdDEHGCtMMj92pReUsQ';
-    await openW(XPUB86); await until(()=>rows().length===10);
+    await openW(XPUB86); await until(()=>rows().length===20);
     ok(!t.$('wvType').disabled&&/does not say which address type/.test(t.$('wpStatus').textContent),'watch-only: a plain xpub lets you pick the type and says why');
     pick('wvType','tr'); await until(()=>/^bc1p/.test(rows()[0]||'')); ok(rows()[0]==='bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr','watch-only: the published BIP86 xpub as Taproot gives the published first address');
     { const seed=await t.w.mnemonicToSeed(AB,''), wo=await t.w.watchOnlyFromSeed(seed,'wpkh',0,'main'), desc=wo.receive;
@@ -349,11 +350,13 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(rows()[0]==='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'&&/73c5da0a/.test(t.$('wvFp').textContent)&&t.$('wvIcon').innerHTML.includes('<svg')&&/\[73c5da0a\/84'\/0'\/0'\]\/0\/index/.test(t.$('wvPath').textContent),'watch-only: a descriptor gives the fingerprint, its picture and the key origin in the path');
       await openW(wo.change); await until(()=>rows().length===10&&t.$('wvChain').value==='1'); const ch1=rows()[0]; await openW(desc); await until(()=>rows()[0]==='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu');
       ok(t.$('wvChain').value==='0'&&ch1!==rows()[0]&&/Change/.test('Change'),'watch-only: a /1/* descriptor opens change addresses, and a /0/* one goes back to receive');
+      for(const [end,what] of [['/<0;1>/*)','/<0;1>/*'],[')','no ending']]){ await openW(desc.replace(/#.*$/,'').replace('/0/*)',end)); await until(()=>rows().length===20);
+        ok(t.$('wvChain').value==='both'&&rows()[0]==='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'&&rows()[10]==='bc1q8c6fshw2dlwun7ekn9qwf37cu2rn755upcp6el','watch-only: a descriptor with '+what+' opens 10 receive and 10 change addresses'); }
       await openW(desc.slice(0,-1)+(desc.slice(-1)==='a'?'b':'a')); ok(/checksum/.test(t.$('wpStatus').textContent)&&t.$('walletView').style.display==='none','watch-only: a wrong descriptor checksum is refused');
       await openW('sh(wpkh('+ZPUB+'/0/*))'); ok(/but the key is a zpub/.test(t.$('wpStatus').textContent),'watch-only: a descriptor type that does not match the key is refused'); }
     await openW('xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu'); ok(/PRIVATE/.test(t.$('wpStatus').textContent)&&t.$('walletView').style.display==='none','watch-only: a private key is refused');
     await openW('wsh(sortedmulti(2,'+ZPUB+','+XPUB86+'))'); ok(/multisig/.test(t.$('wpStatus').textContent),'watch-only: a multisig descriptor points to the multisig tool');
-    await openW(ZPUB); await until(()=>rows().length===10); t.$('wpIn').value+=' '; t.$('wpIn').dispatchEvent(new t.w.Event('input',{bubbles:true}));
+    await openW(ZPUB); await until(()=>rows().length===20); t.$('wpIn').value+=' '; t.$('wpIn').dispatchEvent(new t.w.Event('input',{bubbles:true}));
     ok(t.$('walletView').style.display==='none'&&!t.$('wvType').disabled&&!t.$('wvAcct').disabled&&t.$('wvSqBlock').style.display!=='none','watch-only: editing the key wipes the view and puts the controls back');
     // Electrum seed warning
     { const r=await t.w.checkPhrase('wild father tree among universe such mobile favorite target dynamic credit identify');
@@ -364,7 +367,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     // payment request (BIP21)
     { const A=t.w.bip21Amount; ok(A('0.0015').v==='0.0015'&&A('1').v==='1'&&A('1.10000000').v==='1.1'&&A('21000000').v==='21000000'&&A('').v===''&&!A('0').ok&&!A('1.123456789').ok&&!A('21000000.00000001').ok&&!A('1,5').ok&&!A('-1').ok,'payment request: amounts are checked (8 decimals, above 0, at most 21 million)');
       ok(t.w.bip21Uri('bc1qx','0.5','Café & tea','Thanks!')==='bitcoin:bc1qx?amount=0.5&label=Caf%C3%A9%20%26%20tea&message=Thanks!','payment request: link is built and encoded as BIP21 says');
-      t.$('phrase').value=AB; t.$('verifyPass').value=''; await t.w.verify(); await until(()=>rows().length===10);
+      t.$('phrase').value=AB; t.$('verifyPass').value=''; await t.w.verify(); await until(()=>rows().length===20);
       t.$('wvList').querySelector('li button.qr-mini').click(); t.$('wvqAmt').value='0.0015'; t.$('wvqLbl').value='Rent'; t.$('wvqAmt').dispatchEvent(new t.w.Event('input'));
       const uri='bitcoin:bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu?amount=0.0015&label=Rent', d=t.d.createElement('div'); d.innerHTML=t.w.qrSvg(t.w.qrMatrix(uri).rows);
       ok(t.$('wvqUri').textContent===uri&&t.$('wvqImg').innerHTML===d.innerHTML&&/Payment request/.test(t.$('wvqCap').textContent),'payment request: the QR becomes the bitcoin: link');
@@ -377,7 +380,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const words=t.$('genResult').textContent.split('\n')[0]; t.w.drillStart(); t.$('drillWords').value=words; await t.w.drillCheck(); t.w.drillEnd();
       ok(chk('bk2')&&/1 of 4/.test(t.$('bkNote').textContent),'checklist: a passed restore drill ticks itself');
       t.$('bk1').checked=true; t.$('bk3').checked=true; t.w.bkUpdate();
-      t.$('phrase').value=words; await t.w.verify(); await until(()=>rows().length===10); t.w.printRecoverySheet(); t.w.dispatchEvent(new t.w.Event('afterprint'));
+      t.$('phrase').value=words; await t.w.verify(); await until(()=>rows().length===20); t.w.printRecoverySheet(); t.w.dispatchEvent(new t.w.Event('afterprint'));
       ok(chk('bk4')&&/All four done/.test(t.$('bkNote').textContent),'checklist: printing the recovery sheet for these words ticks itself');
       t.$('passphrase').value='x'; t.$('passphrase2').value='x'; t.$('passphrase').dispatchEvent(new t.w.Event('input',{bubbles:true})); await t.w.rePass();
       ok(!chk('bk2')&&!chk('bk4')&&chk('bk1'),'checklist: a passphrase change unticks the drill and the sheet (they were for the old wallet)');
@@ -1609,7 +1612,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(w.parsePath('m/x')===null&&w.parsePath('m/1//2')===null&&w.parsePath('m'+'/1'.repeat(11))===null&&w.parsePath('m/2147483648')===null&&JSON.stringify(w.parsePath('m'))==='[]','custom path: anything that is not a path of at most 10 steps below 2^31 is refused');
     const M12='abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
     const ref=(m,pp,path,type,net)=>{ const k=HDKey.fromMasterSeed(mnemonicToSeedSync(m,'')).derive(pp+'/'+path), N=net==='test'?btc.TEST_NETWORK:btc.NETWORK; return type==='wpkh'?btc.p2wpkh(k.publicKey,N).address:type==='pkh'?btc.p2pkh(k.publicKey,N).address:btc.p2tr(k.publicKey.slice(1),undefined,N).address; };
-    $('phrase').value=M12; $('verifyPass').value=''; await w.openWalletView(M12,''); await until(()=>$('wvList').children.length===10);
+    $('phrase').value=M12; $('verifyPass').value=''; await w.openWalletView(M12,''); await until(()=>$('wvList').children.length===20);
     const def=[...$('wvList').children].map(li=>li.firstChild.textContent);
     $('wvPathIn').value="m/84'/0'/0'"; $('wvPathIn').dispatchEvent(new w.Event('input')); await w.wvRefresh(); eq([...$('wvList').children].map(li=>li.firstChild.textContent).join(),def.join(),'custom path: m/84\'/0\'/0\' gives the same addresses as the default');
     ok(def[0]==='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu','custom path: the default is the BIP84 test vector address');
@@ -1618,7 +1621,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(/m\/0'\/0\/index/.test($('wvPath').textContent)&&$('wvAcct').disabled,'custom path: the path is shown, and the account box is not used');
     $('wvType').value='pkh'; await w.wvRefresh(); eq([...$('wvList').children][1].firstChild.textContent,ref(M12,"m/0'",'0/1','pkh'),'custom path: any address type along the path');
     $('wvChain').value='1'; await w.wvRefresh(); eq([...$('wvList').children][0].firstChild.textContent,ref(M12,"m/0'",'1/0','pkh'),'custom path: change addresses along the path');
-    $('wvChain').value='0'; $('wvType').value='wpkh';
+    $('wvChain').value='both'; $('wvType').value='wpkh';
     $('wvPathIn').value="m/84'/0'/x"; $('wvPathIn').dispatchEvent(new w.Event('input')); await w.wvRefresh(); ok(/The path must look like/.test($('wvErr').textContent)&&$('wvList').children.length===0,'custom path: a bad path shows no addresses and says how to write one');
     $('wvPathIn').value=''; $('wvPathIn').dispatchEvent(new w.Event('input')); await w.wvRefresh(); ok(!$('wvAcct').disabled&&$('wvErr').textContent==='','custom path: empty box goes back to the account number');
     w.clearWalletView(); eq($('wvPathIn').value,'','custom path: cleared with the wallet view');

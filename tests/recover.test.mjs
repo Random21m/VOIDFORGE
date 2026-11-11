@@ -182,8 +182,7 @@ for (const [name, c] of Object.entries(E.cases)) {
   const rows = () => [...$('wvList').children].map((li) => li.firstChild.textContent), tags = () => [...$('wvList').children].map((li) => li.getAttribute('data-n'));
   const set = async (id, v) => { $(id).value = v; $(id).dispatchEvent(new w.Event(id === 'wvPathIn' || id === 'wvStart' || id === 'wvAcct' ? 'input' : 'change')); await w.wvRefresh(); };
   $('phrase').value = AB; await w.openWalletView(AB, ''); await w.wvRefresh();
-  ok(rows().length === 10 && rows()[0] === ref(AB, "m/84'/0'/0'/0/0") && $('wvChain').value === '0', 'the wallet view still opens on 10 receive addresses');
-  await set('wvChain', 'both');
+  ok(rows().length === 20 && rows()[0] === ref(AB, "m/84'/0'/0'/0/0") && rows()[10] === ref(AB, "m/84'/0'/0'/1/0") && $('wvChain').value === 'both', 'the wallet view opens on Receive and change (the house rule: the first 10 receive and the first 10 change addresses)');
   ok(rows().length === 20 && rows().slice(0, 10).join() === [...Array(10).keys()].map((i) => ref(AB, "m/84'/0'/0'/0/" + i)).join() && rows().slice(10).join() === [...Array(10).keys()].map((i) => ref(AB, "m/84'/0'/0'/1/" + i)).join(), 'Receive and change: the first 10 receive and the first 10 change (from @scure)');
   ok(tags()[0] === '0/0' && tags()[10] === '1/0' && $('wvCopy').textContent === 'COPY THESE 20' && /^Receive and change addresses 0 to 9/.test($('wvPath').textContent), 'Receive and change: each row is marked receive or change, COPY THESE 20, the path line');
   ok(w.addrMeta('wvList', $('wvList').children[12].querySelector('button')).change === true && w.addrMeta('wvList', $('wvList').children[2].querySelector('button')).change === false, 'Receive and change: a change row’s QR is printed as a change address');
@@ -200,10 +199,11 @@ for (const [name, c] of Object.entries(E.cases)) {
   await set('wvPathIn', 'm/0/*'); ok(rows()[1] === ref(AB, 'm/0/1', 'pkh'), 'm/0/*: unhardened steps from the master key');
   await set('wvPathIn', "m/0'/5"); await set('wvChain', '1'); ok(rows()[2] === ref(AB, "m/0'/5/1/2", 'pkh') && !$('wvChain').disabled, "an account path (m/0'/5): change addresses under it");
   for (const bad of ['m/x', 'm' + '/1'.repeat(11) + '/*', 'm/2147483648/*', '0/*', 'm/*/1']) { await set('wvPathIn', bad); ok(/^The path must look like/.test($('wvErr').textContent) && rows().length === 0, 'a bad path is refused: ' + bad); }
-  await set('wvPathIn', ''); await set('wvChain', '0'); await set('wvType', 'wpkh'); ok(!$('wvAcct').disabled && rows()[0] === ref(AB, "m/84'/0'/0'/0/0"), 'an empty path box goes back to the account number');
+  await set('wvPathIn', ''); await set('wvChain', 'both'); await set('wvType', 'wpkh'); ok(!$('wvAcct').disabled && rows()[0] === ref(AB, "m/84'/0'/0'/0/0"), 'an empty path box goes back to the account number');
   // an xpub (watch-only) and an xprv below the master
   const acct = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, '')).derive("m/84'/0'/0'");
   $('wpIn').value = acct.publicExtendedKey; await w.openWatchOnly(); await w.wvRefresh();
+  ok($('wvChain').value === 'both' && rows().length === 20 && rows()[10] === ref(AB, "m/84'/0'/0'/1/0"), 'watch-only: a plain xpub opens on Receive and change too');
   ok(!$('wvPathIn').closest('.wv-path') || w.getComputedStyle($('wvPathIn')).display !== 'none', 'watch-only: the path box shows');
   await set('wvPathIn', '0/*'); ok(rows()[4] === ref(AB, "m/84'/0'/0'/0/4"), 'watch-only: 0/* below the key gives its receive addresses');
   await set('wvPathIn', '1/*'); ok(rows()[4] === ref(AB, "m/84'/0'/0'/1/4"), 'watch-only: 1/* gives its change addresses');
@@ -212,7 +212,7 @@ for (const [name, c] of Object.entries(E.cases)) {
   await set('wvPathIn', 'm/0/*'); ok(/without m/.test($('wvErr').textContent), 'watch-only: m/ is refused (the key is not the master key)');
   $('pkIn').value = acct.privateExtendedKey; $('pkIn').dispatchEvent(new w.Event('input')); await w.openPrivateKey(); await w.wvRefresh();
   await set('wvPathIn', "0h/*"); ok(rows()[2] === ref(AB, "m/84'/0'/0'/0'/2"), 'xprv below the master: a hardened step below it works');
-  w.clearWalletView(); ok($('wvStart').value === '0' && !$('wvChain').disabled && $('wvPathIn').value === '', 'clearing the wallet view resets START AT, the chain and the path');
+  w.clearWalletView(); ok($('wvStart').value === '0' && !$('wvChain').disabled && $('wvChain').value === 'both' && $('wvPathIn').value === '', 'clearing the wallet view resets START AT, the chain and the path');
   w.wipeSeed();
 }
 ok(errors.length === 0, 'no page error (' + errors.join(' | ') + ')');

@@ -156,8 +156,8 @@ async function probe(w, mutated, fast, only, hooks) {
     const seg = (p) => bech32.encode('bc', [0, ...bech32.toWords(ripemd160(nsha(root.derive(p).publicKey)))]), leg = (p) => b58c.encode(Uint8Array.from([0, ...ripemd160(nsha(root.derive(p).publicKey))]));
     const rows = () => [...$('wvList').children].map((li) => li.firstChild.textContent), set = async (id, v) => { $(id).value = v; $(id).dispatchEvent(new w.Event(id === 'wvPathIn' || id === 'wvStart' ? 'input' : 'change')); await w.wvRefresh(); };
     w.alert = () => {};
-    await w.openWalletView(AB, ''); await set('wvChain', 'both');
-    if (rows().length !== 20 || rows()[0] !== seg("m/84'/0'/0'/0/0") || rows()[19] !== seg("m/84'/0'/0'/1/9")) fails.push(T + 'receive and change: 10 of each');
+    await w.openWalletView(AB, ''); await w.wvRefresh();
+    if ($('wvChain').value !== 'both' || rows().length !== 20 || rows()[0] !== seg("m/84'/0'/0'/0/0") || rows()[19] !== seg("m/84'/0'/0'/1/9")) fails.push(T + 'receive and change by default: 10 of each');
     await set('wvStart', '5'); if (rows()[0] !== seg("m/84'/0'/0'/0/5") || rows()[10] !== seg("m/84'/0'/0'/1/5")) fails.push(T + 'START AT 5');
     w.apMore(); await w.wvRefresh(); if (rows().length !== 60 || rows()[59] !== seg("m/84'/0'/0'/1/34")) fails.push(T + 'SHOW 20 MORE adds 20 of each');
     await set('wvStart', '0'); await set('wvChain', '0'); await set('wvType', 'pkh'); await set('wvPathIn', 'm/44h/0h/0h/0/*');
@@ -2488,7 +2488,7 @@ async function probe(w, mutated, fast, only, hooks) {
       if (sel.value !== '0' || chk.checked || [...sel.options].map((o) => o.value).join() !== '0,2,5,10,30') fails.push('auto-clear: off by default with the five choices');
       w.autoWipe('setup'); $('autoNote').textContent = '';
       if (w.autoWipe('x') !== false || note() !== '') fails.push('auto-clear: with nothing on the page a wipe does nothing');
-      await arm(); { const wd = $('genResult').textContent.split('\n')[0]; $('phrase').value = wd; await w.verify(); for (let k = 0; k < 400 && $('wvList').querySelectorAll('li').length !== 10; k++) await new Promise((r2) => setTimeout(r2, 25)); w.wvSeedQr('seedqr'); }
+      await arm(); { const wd = $('genResult').textContent.split('\n')[0]; $('phrase').value = wd; await w.verify(); for (let k = 0; k < 400 && $('wvList').querySelectorAll('li').length !== 20; k++) await new Promise((r2) => setTimeout(r2, 25)); w.wvSeedQr('seedqr'); }
       if (w.autoWipe('because of a test') !== true) fails.push('auto-clear: a wipe with secrets reports it');
       if ($('walletView').style.display !== 'none' || $('wvsImg').textContent !== '' || $('wvList').textContent !== '' || $('phrase').value !== '') fails.push('auto-clear: the wallet view and its SeedQR are wiped too');
       if (left().length || w.hasSeed() || $('childOut').textContent !== '' || $('reforgeOut').textContent !== '' || $('reforgeOut').style.display !== 'none' || !/^Wiped automatically because of a test at /.test(note())) fails.push('auto-clear: seed, rolls, passphrases, typed words, Reforge and child outputs wiped (left: ' + left().join(',') + ')');
@@ -2565,10 +2565,11 @@ async function probe(w, mutated, fast, only, hooks) {
     const pick = (id, v) => { $(id).value = v; $(id).dispatchEvent(new w.Event(id === 'wvAcct' ? 'input' : 'change', { bubbles: true })); };
     let printed = 0, ptxt = ''; w.print = () => { printed++; ptxt = $('printOnly').textContent; }; w.confirm = () => true; w.alert = () => {};
     w.clearAll(); await sleep(20);
-    $('phrase').value = AB; $('verifyPass').value = ''; await w.verify(); await until(() => rows().length === 10);
+    $('phrase').value = AB; $('verifyPass').value = ''; await w.verify(); await until(() => rows().length === 20);
     if ($('walletView').style.display === 'none' || !/73c5da0a/.test($('wvFp').textContent) || !$('wvIcon').innerHTML.includes('<svg')) fails.push('wallet view: opens with the master fingerprint and its picture');
     if (rows()[0] !== 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu') fails.push('wallet view: first SegWit address');
-    if ($('wvList').querySelectorAll('li button.qr-mini').length !== 10) fails.push('wallet view: a QR button on every address row');
+    if ($('wvChain').value !== 'both' || rows().length !== 20 || rows()[10] !== 'bc1q8c6fshw2dlwun7ekn9qwf37cu2rn755upcp6el') fails.push('wallet view: opens on the first 10 receive and the first 10 change addresses');
+    if ($('wvList').querySelectorAll('li button.qr-mini').length !== 20) fails.push('wallet view: a QR button on every address row');
     if (!/not made by this page/.test($('wvBanner').textContent)) fails.push('wallet view: says the words were imported');
     pick('wvType', 'tr'); await until(() => /^bc1p/.test(rows()[0] || '')); if (rows()[0] !== 'bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr') fails.push('wallet view: first Taproot address');
     pick('wvType', 'pkh'); await until(() => /^1/.test(rows()[0] || '')); if (rows()[0] !== '1LqBGSKuX5yYUonjxT5qGfpUsXKYYWeabA') fails.push('wallet view: first Legacy address');
@@ -2593,12 +2594,13 @@ async function probe(w, mutated, fast, only, hooks) {
       if (!/Derivation path: m\/84'\/0'\/0'\/0\/index \(receive\) and \.\.\.\/1\/index \(change\)\n/.test(ptxt)) fails.push('recovery sheet: the path line names both chains'); }
     w.dispatchEvent(new w.Event('afterprint'));
     $('phrase').value = AB + ' '; $('phrase').dispatchEvent(new w.Event('input', { bubbles: true })); if ($('walletView').style.display !== 'none' || $('wvList').textContent !== '' || $('wvsImg').textContent !== '' || $('wvqImg').textContent !== '') fails.push('wallet view: editing the words wipes it');
-    $('phrase').value = AB; $('verifyPass').value = 'SECRETPASS'; await w.verify(); await until(() => rows().length === 10);
+    $('phrase').value = AB; $('verifyPass').value = 'SECRETPASS'; await w.verify(); await until(() => rows().length === 20);
     if (rows()[0] === first[0] || !/with passphrase/.test($('wvFp').textContent)) fails.push('wallet view: a passphrase gives a different wallet and says so');
+    if ($('wvChain').value !== 'both' || rows().length !== 20) fails.push('wallet view: a wallet opened after Receive was picked starts again on receive and change');
     printed = 0; w.printRecoverySheet(); if (ptxt.includes('SECRETPASS') || !/Passphrase used: YES/.test(ptxt)) fails.push('recovery sheet: never prints the passphrase'); w.dispatchEvent(new w.Event('afterprint'));
-    const e15 = await w.entropyToMnemonic(new Uint8Array(20)); $('verifyPass').value = ''; $('phrase').value = e15; await w.verify(); await until(() => rows().length === 10);
+    const e15 = await w.entropyToMnemonic(new Uint8Array(20)); $('verifyPass').value = ''; $('phrase').value = e15; await w.verify(); await until(() => rows().length === 20);
     if ($('wvSqBtns').style.display !== 'none' || !/No SeedQR exists for 15 words/.test($('wvSqNote').textContent)) fails.push('wallet view: 15 words have no SeedQR and the page says so');
-    $('phrase').value = AB; await w.verify(); await until(() => rows().length === 10); w.wipeSeed(); if ($('walletView').style.display !== 'none' || $('wvList').textContent !== '') fails.push('wallet view: CLEAR ALL wipes it');
+    $('phrase').value = AB; await w.verify(); await until(() => rows().length === 20); w.wipeSeed(); if ($('walletView').style.display !== 'none' || $('wvList').textContent !== '') fails.push('wallet view: CLEAR ALL wipes it');
     // the same QR button on the Make tab rows
     mode('dice'); words(12); $('rolls').value = D50; $('rolls').oninput(); await w.generate(); await w.eval('passWork'); await until(() => w.document.querySelectorAll('#trChList li').length === 10);
     const mk = [...w.document.querySelectorAll('#addrList li, #chList li, #trList li, #trChList li')]; if (mk.length !== 40 || mk.some((li) => !li.querySelector('button.qr-mini'))) fails.push('address QR: every row under the seed has a QR button');
@@ -2616,12 +2618,12 @@ async function probe(w, mutated, fast, only, hooks) {
     w.clearAll(); await sleep(20);
     const ZPUB = 'zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs';
     const XPUB86 = 'xpub6BgBgsespWvERF3LHQu6CnqdvfEvtMcQjYrcRzx53QJjSxarj2afYWcLteoGVky7D3UKDP9QyrLprQ3VCECoY49yfdDEHGCtMMj92pReUsQ';
-    await openW(ZPUB); await until(() => rows().length === 10);
-    if (rows()[0] !== 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu' || rows()[9] === rows()[0]) fails.push('watch-only: the zpub gives its published addresses');
+    await openW(ZPUB); await until(() => rows().length === 20);
+    if (rows()[0] !== 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu' || rows()[9] === rows()[0] || rows()[10] !== 'bc1q8c6fshw2dlwun7ekn9qwf37cu2rn755upcp6el' || $('wvChain').value !== 'both') fails.push('watch-only: the zpub gives its published addresses, 10 receive and 10 change');
     if (!$('wvType').disabled || $('wvType').value !== 'wpkh' || !$('wvNet').disabled) fails.push('watch-only: a zpub locks the type and network');
     if (!/Watch-only/.test($('wvBanner').textContent) || $('wvSqBlock').style.display !== 'none' || $('wvSheetBtn').style.display !== 'none') fails.push('watch-only: says so, and offers no SeedQR or recovery sheet');
     if (!/not known/.test($('wvFp').textContent)) fails.push('watch-only: no fingerprint is made up for a plain xpub');
-    await openW(XPUB86); await until(() => rows().length === 10); $('wvType').value = 'tr'; $('wvType').dispatchEvent(new w.Event('change', { bubbles: true })); await until(() => /^bc1p/.test(rows()[0] || ''));
+    await openW(XPUB86); await until(() => rows().length === 20); $('wvType').value = 'tr'; $('wvType').dispatchEvent(new w.Event('change', { bubbles: true })); await until(() => /^bc1p/.test(rows()[0] || ''));
     if (rows()[0] !== 'bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr' || $('wvType').disabled) fails.push('watch-only: a plain xpub lets you pick Taproot and gives the published address');
     { const seed = await w.mnemonicToSeed(AB, ''), tw = await w.watchOnlyFromSeed(seed, 'tr', 0, 'test'); let [k, c] = await w.masterFromSeed(seed);
       for (const [i, h] of [[86, true], [1, true], [0, true], [0, false], [0, false]]) [k, c] = await w.ckdPriv(k, c, i, h);
@@ -2632,10 +2634,12 @@ async function probe(w, mutated, fast, only, hooks) {
       if ($('wvChain').value !== '1' || c0 === 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu') fails.push('watch-only: a /1/* descriptor opens change addresses');
       await openW(wo.receive); await until(() => rows()[0] === 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu');
       if ($('wvChain').value !== '0' || !/73c5da0a/.test($('wvFp').textContent) || !$('wvIcon').innerHTML.includes('<svg')) fails.push('watch-only: a /0/* descriptor opens receive addresses with its fingerprint and picture');
+      for (const [end, what] of [['/<0;1>/*)', '/<0;1>/*'], [')', 'no ending']]) { await openW(wo.receive.replace(/#.*$/, '').replace('/0/*)', end)); await until(() => rows().length === 20);
+        if ($('wvChain').value !== 'both' || rows()[0] !== 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu' || rows()[10] !== 'bc1q8c6fshw2dlwun7ekn9qwf37cu2rn755upcp6el') fails.push('watch-only: a descriptor with ' + what + ' opens receive and change addresses'); }
       await openW(wo.receive.slice(0, -1) + (wo.receive.slice(-1) === 'a' ? 'b' : 'a')); if (!/checksum/.test($('wpStatus').textContent) || $('walletView').style.display !== 'none') fails.push('watch-only: a wrong checksum is refused');
       await openW('sh(wpkh(' + ZPUB + '/0/*))'); if (!/but the key is a zpub/.test($('wpStatus').textContent)) fails.push('watch-only: a descriptor that does not match its key is refused'); }
     await openW('xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu'); if (!/PRIVATE/.test($('wpStatus').textContent)) fails.push('watch-only: a private key is refused');
-    await openW(ZPUB); await until(() => rows().length === 10); $('wpIn').value += ' '; $('wpIn').dispatchEvent(new w.Event('input', { bubbles: true }));
+    await openW(ZPUB); await until(() => rows().length === 20); $('wpIn').value += ' '; $('wpIn').dispatchEvent(new w.Event('input', { bubbles: true }));
     if ($('walletView').style.display !== 'none' || $('wvType').disabled || $('wvSqBlock').style.display === 'none') fails.push('watch-only: editing the key wipes the view and restores the controls');
     // Electrum
     { const r = await w.checkPhrase('wild father tree among universe such mobile favorite target dynamic credit identify'); if (r.ok || !/Electrum seed \(SegWit type\)/.test(r.msg)) fails.push('Electrum: the SegWit example seed is named');
@@ -2644,7 +2648,7 @@ async function probe(w, mutated, fast, only, hooks) {
     // payment request
     { const A = w.bip21Amount; if (A('0.0015').v !== '0.0015' || A('1.10000000').v !== '1.1' || A('21000000').v !== '21000000' || A('0').ok || A('1.123456789').ok || A('21000000.00000001').ok) fails.push('payment request: amounts are checked');
       if (w.bip21Uri('bc1qx', '0.5', 'Café & tea', 'Thanks!') !== 'bitcoin:bc1qx?amount=0.5&label=Caf%C3%A9%20%26%20tea&message=Thanks!') fails.push('payment request: the link is built and encoded');
-      $('phrase').value = AB; $('verifyPass').value = ''; await w.verify(); await until(() => rows().length === 10);
+      $('phrase').value = AB; $('verifyPass').value = ''; await w.verify(); await until(() => rows().length === 20);
       $('wvList').querySelector('li button.qr-mini').click(); $('wvqAmt').value = '0.0015'; $('wvqAmt').dispatchEvent(new w.Event('input'));
       const uri = 'bitcoin:bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu?amount=0.0015', d = w.document.createElement('div'); d.innerHTML = w.qrSvg(w.qrMatrix(uri).rows);
       if ($('wvqUri').textContent !== uri || $('wvqImg').innerHTML !== d.innerHTML) fails.push('payment request: the QR becomes the bitcoin: link');
@@ -2654,7 +2658,7 @@ async function probe(w, mutated, fast, only, hooks) {
       if ($('bkList').style.display === 'none' || $('bk2').checked || !/0 of 4/.test($('bkNote').textContent)) fails.push('checklist: appears with the words, nothing ticked');
       const wd = $('genResult').textContent.split('\n')[0]; w.drillStart(); $('drillWords').value = wd; await w.drillCheck(); w.drillEnd();
       if (!$('bk2').checked) fails.push('checklist: a passed drill ticks itself');
-      $('phrase').value = wd; await w.verify(); await until(() => rows().length === 10); w.printRecoverySheet(); w.dispatchEvent(new w.Event('afterprint'));
+      $('phrase').value = wd; await w.verify(); await until(() => rows().length === 20); w.printRecoverySheet(); w.dispatchEvent(new w.Event('afterprint'));
       if (!$('bk4').checked) fails.push('checklist: the recovery sheet for these words ticks itself');
       $('bk1').checked = true; $('bk3').checked = true; w.bkUpdate(); if (!/All four done/.test($('bkNote').textContent)) fails.push('checklist: says when all four are done');
       $('passphrase').value = 'x'; $('passphrase2').value = 'x'; $('passphrase').dispatchEvent(new w.Event('input', { bubbles: true })); await w.rePass();
@@ -3403,7 +3407,7 @@ async function probe(w, mutated, fast, only, hooks) {
       if (!/the printed hand-copy guide \(PRINT HAND-COPY GUIDE\)/.test((pr('printSqBlank', 'check'), P.qr))) fails.push('check: the blank grid points to the printed guide');
       $('wvChain').value = '1'; $('wvNet').value = 'test'; await w.wvRefresh(); w.document.querySelector('#wvList button.qr-mini').click(); pr('printAddrQr', 'wvq');
       if (!/^VOIDFORGE CHANGE ADDRESS \(TESTNET\)/.test(P.qr) || !P.qr.includes("Path: m/84'/1'/0'/1/0\nNetwork: TESTNET")) fails.push('QR prints: a testnet change address is named so, with its path');
-      $('wvChain').value = '0'; $('wvNet').value = 'main'; await w.wvRefresh(); w.hideAddrQr('wvq');
+      $('wvChain').value = 'both'; $('wvNet').value = 'main'; await w.wvRefresh(); w.hideAddrQr('wvq');
       w.wvSeedQrHide(); if (pr('printSqBlank', 'check') !== 0) fails.push('check: nothing after HIDE');
       w.wvAbbr(true); w.clearWalletView(); if ($('wvAbbrGrid').textContent !== '' || pr('printSeed', 'check') !== 0 || !/Check a seed phrase first/.test(al[0] || '')) fails.push('check: cleared with the wallet view');
       $('wpIn').value = 'xpub6BosfCnifzxcFwrSzQiqu2DBVTshkCXacvNsWGYJVVhhawA7d4R5WSWGFNbi8Aw6ZRc1brxMyWMzG3DSSSSoekkudhUd9yLb6qx39T9nMdj'; await w.openWatchOnly(); w.document.querySelector('#wvList button.qr-mini').click(); pr('printAddrQr', 'wvq');
@@ -3693,10 +3697,10 @@ async function probe(w, mutated, fast, only, hooks) {
     const M12 = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
     const refA = (pp, path, type, net) => { const k = HDKey.fromMasterSeed(mnemonicToSeedSync(M12, '')).derive(pp + '/' + path), N = net === 'test' ? btc.TEST_NETWORK : btc.NETWORK; return type === 'pkh' ? btc.p2pkh(k.publicKey, N).address : btc.p2wpkh(k.publicKey, N).address; };
     const L = () => [...$('wvList').children].map((li) => li.firstChild.textContent);
-    $('phrase').value = M12; await w.openWalletView(M12, ''); await until(() => $('wvList').children.length === 10);
+    $('phrase').value = M12; await w.openWalletView(M12, ''); await until(() => $('wvList').children.length === 20);
     $('wvPathIn').value = "m/0'"; $('wvPathIn').dispatchEvent(new w.Event('input')); await w.wvRefresh();
     if (L()[2] !== refA("m/0'", '0/2', 'wpkh') || !$('wvAcct').disabled || !/m\/0'\/0\/index/.test($('wvPath').textContent)) fails.push('custom path: addresses along it');
-    $('wvChain').value = '1'; await w.wvRefresh(); if (L()[0] !== refA("m/0'", '1/0', 'wpkh')) fails.push('custom path: change addresses'); $('wvChain').value = '0';
+    $('wvChain').value = '1'; await w.wvRefresh(); if (L()[0] !== refA("m/0'", '1/0', 'wpkh')) fails.push('custom path: change addresses'); $('wvChain').value = 'both';
     $('wvPathIn').value = 'm/x'; $('wvPathIn').dispatchEvent(new w.Event('input')); await w.wvRefresh(); if (!/The path must look like/.test($('wvErr').textContent) || L().length) fails.push('custom path: a bad path');
     $('wvPathIn').value = ''; $('wvPathIn').dispatchEvent(new w.Event('input')); await w.wvRefresh(); if ($('wvAcct').disabled || L()[0] !== 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu') fails.push('custom path: empty goes back to the account');
     $('wvPathIn').value = "m/0'"; w.clearWalletView(); if ($('wvPathIn').value !== '') fails.push('custom path: cleared with the view');
@@ -5327,8 +5331,11 @@ const M = [
   ["wallet view: PREVIOUS never off", "document.getElementById(\"wvPrev\").disabled = wvFrom === 0;", "document.getElementById(\"wvPrev\").disabled = false;"],
   ["wallet view: testnet note dropped", "(net === \"test\" ? \"TESTNET (practice coins only). \" : \"\") + (star ? \"Addresses\"", "(star ? \"Addresses\""],
   ["recovery sheet: nothing printed", "if(!wvCtx || !wvCtx.shown || !wvCtx.mnemonic) return alert(\"Check a seed phrase first, then open the wallet.\");", "if(true) return;"],
-  ["watch-only: change ending ignored", "    chain = m[5] === \"/1/*\" ? 1 : 0;", "    chain = 0;"],
-  ["watch-only: chain not set on open", "  cSel.value = String(w.chain || 0);", "  "],
+  ["watch-only: change ending ignored", "    chain = m[5] === \"/1/*\" ? 1 : m[5] === \"/0/*\" ? 0 : null;", "    chain = m[5] === \"/0/*\" ? 0 : null;"],
+  ["watch-only: a descriptor without /0/* or /1/* opens receive only", "m[5] === \"/0/*\" ? 0 : null;", "m[5] === \"/0/*\" ? 0 : 0;"],
+  ["watch-only: chain not set on open", "  cSel.value = w.chain === null ? \"both\" : String(w.chain);", "  "],
+  ["watch-only: a plain xpub opens receive only", "  cSel.value = w.chain === null ? \"both\" : String(w.chain);", "  cSel.value = String(w.chain || 0);"],
+  ["wallet view: a new wallet keeps the last chain picked", "  document.getElementById(\"wvChain\").value = \"both\";   // v2.16.0", "  // v2.16.0"],
   ["watch-only: type not locked", "if(w.type){ tSel.value = w.type; } tSel.disabled = w.fixedType;", "if(w.type){ tSel.value = w.type; } tSel.disabled = false;"],
   ["watch-only: network not locked", "nSel.value = w.net; nSel.disabled = true;", "nSel.value = w.net; nSel.disabled = false;"],
   ["watch-only: checksum not checked", "if(!ok) throw new Error(\"The descriptor checksum (after #) does not match. Check for a typo.\");", "if(false) throw new Error(\"The descriptor checksum (after #) does not match. Check for a typo.\");"],
