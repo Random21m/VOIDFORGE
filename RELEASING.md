@@ -58,6 +58,6 @@ Mark the previous release "Superseded by vX", check that the README, REVIEW.md, 
 Then clean up GitLab: delete the release's leftover branches (`dev-X.Y.Z`, the frozen test branch `mutrun-…` and the helpers' result branches `mutres-u1` to `mutres-u16`), each only after checking it is already in `main` or no longer needed. Never touch `main` or any tag.
 
 ## Current build
-`voidforge.html` v2.14.0, SHA256: `83170b39fec72d115cbfbf3ba01c585b5e39c07ef5b8cb915d3a3198fe3f4a23`
-Content ID (CIDv1): `bafkreiedc4ftt7whfuivzp57hoqbywc3ly44a7xvxdfzcxj2ggmp4p2kem`
+`voidforge.html` v2.15.0, SHA256: `55beef7d1189bfaa84eb4849c0f3b1c4282ec2317a1de9bdbe43ef17013c34af`
+Content ID (CIDv1): `bafkreicvx3xx2emjx6vij22ijhaphmoefaxmeml2dxu33psd54lqcpbuv4`
 (Recompute after any edit.)
