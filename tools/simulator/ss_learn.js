@@ -34,13 +34,16 @@ function ssLearnState() {
 const ssLearnKey = (s) => s ? s.view + "|" + s.screen + "|" + s.title : "";
 function ssLearnSeeds() { try { const st = SSController._instance && SSController._instance._storage; return (st && st.seeds) || []; } catch (e) { return []; } }
 function ssLearnHasTestSeed() { return ssLearnSeeds().some((s) => s && s.mnemonic_str === SS_LEARN_ABANDON && !s.passphrase); }
+// The device's settings, read without making them: with the device off there are none (v2.15.0: reading them here used to load
+// them again from the microSD while the device stopped, so a wipe did not bring the defaults back).
+const ssLearnSettings = () => { try { return ssPageOn ? SSSettings.get_instance() : null; } catch (e) { return null; } };
 function ssLearnNet() {   // the device's network setting: Mainnet, Testnet or Regtest
-  try { const v = SSSettings.get_instance().get_value(SSSettingsConstants.SETTING__NETWORK); return v === SSSettingsConstants.TESTNET ? "T" : v === SSSettingsConstants.REGTEST ? "R" : "M"; } catch (e) { return "M"; }
+  try { const s = ssLearnSettings(); if (!s) return "M"; const v = s.get_value(SSSettingsConstants.SETTING__NETWORK); return v === SSSettingsConstants.TESTNET ? "T" : v === SSSettingsConstants.REGTEST ? "R" : "M"; } catch (e) { return "M"; }
 }
 const ssLearnCoin = (n) => n === "M" ? 0 : 1;
 const ssLearnHrp = (n) => n === "M" ? "bc" : n === "T" ? "tb" : "bcrt";
 const ssLearnKeyNet = (n) => n === "M" ? "main" : "test";
-function ssLearnSetting(attr) { try { return SSSettings.get_instance().get_value(attr); } catch (e) { return null; } }
+function ssLearnSetting(attr) { try { const s = ssLearnSettings(); return s ? s.get_value(attr) : null; } catch (e) { return null; } }
 
 // ---------------------------------------------------------------- the practice wallet (a stand-in camera)
 // Shows QR codes on a 640 x 480 "camera picture": a phone screen held in front of the device.
@@ -123,8 +126,8 @@ async function ssLearnAddress(n, branch, index) {   // native SegWit address of 
 }
 async function ssLearnFeed(kind) {   // [frames, what the panel says the practice wallet shows]
   const n = ssLearnNet();
-  if (kind === "seedqr") return [[SS_LEARN_ABANDON.split(" ").map((w) => String(WORDLIST.indexOf(w)).padStart(4, "0")).join("")], "the SeedQR of the test seed abandon ... about"];
-  if (kind === "address") { const a = await ssLearnAddress(n, 0, 3); return [["bitcoin:" + a], "receive address #3 of the test seed: " + a]; }
+  if (kind === "seedqr") return [[SS_LEARN_ABANDON.split(" ").map((w) => String(WORDLIST.indexOf(w)).padStart(4, "0")).join("")], "the SeedQR of the public test seed abandon ... about"];
+  if (kind === "address") { const a = await ssLearnAddress(n, 0, 3); return [["bitcoin:" + a], "receive address #3 of the public test seed: " + a]; }
   if (kind === "signmsg") return [["signmessage m/84h/" + ssLearnCoin(n) + "h/0h/0/0 ascii:Practice message from VOIDFORGE"], "a request to sign the message \"Practice message from VOIDFORGE\""];
   if (kind === "descriptor") { const t = ssLearn.tx && ssLearn.tx.descriptor; return t ? [[t], "the 2-of-3 wallet descriptor"] : [null, ""]; }
   if (kind === "tx") { const t = ssLearn.tx; return t && !t.result ? [t.frames, "the practice transaction (" + t.frames.length + " QR parts)"] : [null, ""]; }
@@ -273,8 +276,8 @@ const ssLearnTxIs = (kind) => () => !!(ssLearn.tx && ssLearn.tx.kind === kind &&
 const ssLearnTxOk = () => !!(ssLearn.tx && ssLearn.tx.result && ssLearn.tx.result.ok);
 const SS_LEARN_HOME = { do: "Go to the Home screen. If you are somewhere else, press the joystick left to select the back arrow at the top left, then press it in. Repeat until you see Home.", see: "Home, with Scan, Seeds, Tools and Settings.", at: ssLearnIs("SSMainMenuView") };
 const SS_LEARN_LOAD = [   // load the test seed abandon ... about by its SeedQR (passed over when it is loaded already)
-  Object.assign({}, SS_LEARN_HOME, { skip: ssLearnHasTestSeed, do: "First, load the test seed. " + SS_LEARN_HOME.do }),
-  { skip: ssLearnHasTestSeed, feed: "seedqr", do: "Scan is selected: press the joystick in. The practice wallet holds the SeedQR of the test seed abandon ... about up to the device's camera.",
+  Object.assign({}, SS_LEARN_HOME, { skip: ssLearnHasTestSeed, do: "First, load the public test seed. " + SS_LEARN_HOME.do }),
+  { skip: ssLearnHasTestSeed, feed: "seedqr", do: "Scan is selected: press the joystick in. The practice wallet holds the SeedQR of the public test seed abandon ... about up to the device's camera.",
     see: "The camera picture, then Finalize Seed with the fingerprint " + SS_LEARN_FP + ". (This page reads a SeedQR only while the computer is offline. If the device says Offline only, turn off the network and scan again.)", at: ssLearnIs("SSSeedFinalizeView") },
   { skip: ssLearnHasTestSeed, do: "Check that the fingerprint is " + SS_LEARN_FP + ". Done is selected: press the joystick in.", see: "A menu titled " + SS_LEARN_FP + ": Scan transaction, Export xpub, Address explorer, Backup seed, Discard seed.", at: ssLearnIs("SSSeedOptionsView") },
 ];
@@ -292,7 +295,7 @@ const SS_LEARN_SEEDNOTE = "This lesson uses the public test seed abandon ... abo
 const SS_LEARN_LESSONS = [
   { id: "dice", name: "Make a seed from dice (12 words)",
     note: "This lesson makes a public test seed: you enter fifty 1s instead of real dice rolls. Anyone can enter the same rolls, so never put coins on this seed.",
-    end: "You made a 12-word seed, wrote it down and checked your copy. For real coins you would do this on a real SeedSigner, not here: roll a real die 50 times and keep the paper safe. This test seed is public: never use it.",
+    end: "You made a 12-word seed, wrote it down and checked your copy. For real coins you would do this on a real SeedSigner, not here: roll a real die 50 times and keep the paper safe. This is a public test seed: never use it.",
     steps: [
       SS_LEARN_HOME,
       { do: "Press the joystick down once to select Tools, then press it in.", see: "Tools: New seed, New seed, Calc 12th/24th word, Address explorer, Verify address.", at: ssLearnIs("SSToolsMenuView") },
@@ -394,8 +397,8 @@ function ssLearnRender() {
   if (L.building) s = "Making the practice transaction...";
   else if (T) {
     const sats = (v) => v.toLocaleString("en-US") + " sats";
-    s = (T.result ? T.result.text : T.status || ((T.own ? "Spends " : "No seed is loaded on the device, so this spends ") + T.nIn + " made-up coin" + (T.nIn > 1 ? "s" : "") + " of seed " + T.fp + (T.kind === "multi" ? " (2-of-3 multisig with two test seeds)" : "") +
-      ": " + sats(T.inSum) + " in, " + sats(T.payAmt) + " to a test address, " + sats(T.chg) + " change, " + sats(T.fee) + " fee. On the device, choose Scan" + (T.own ? "" : " after you load the test seed abandon ... about") + "."));
+    s = (T.result ? T.result.text : T.status || ((T.own ? "Spends " : "No seed is loaded on the device, so this spends ") + T.nIn + " made-up coin" + (T.nIn > 1 ? "s" : "") + " of seed " + T.fp + (T.kind === "multi" ? " (2-of-3 multisig with two public test seeds)" : "") +
+      ": " + sats(T.inSum) + " in, " + sats(T.payAmt) + " to a test address, " + sats(T.chg) + " change, " + sats(T.fee) + " fee. On the device, choose Scan" + (T.own ? "" : " after you load the public test seed abandon ... about") + "."));
   }
   ssLearnSetText("ssTxStatus", s);
   ssLearnSetText("ssTxCoins", T ? "The coins come from made-up transaction " + T.prevTxid.slice(0, 16) + "..., marked \"" + SS_LEARN_MARK + "\"." : "");

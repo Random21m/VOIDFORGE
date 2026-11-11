@@ -1261,6 +1261,63 @@ async function probe(w, mutated, fast, only, hooks) {
   w.confirm = oc; w.c32Combine = realC; w.c32Parse = realP; w.c32Make = realM; w.c32WalletText = realW;
   w.practiceMode(false); w.wipeSeed(); r = await run('dice', 12, D50);
   }
+  // v2.15.0: the Damascus quick path (the dice and the cards are enough; steps 3 to 5 are done by the page) and the guided practice
+  if (SEC(76, "v2.15.0 Damascus quick path and guided practice: steps 3 to 5 worked out by the page, a practice sheet filled in step by step")) {
+  const cf0 = w.confirm;
+  try {
+    const T = 'damascus guided: ', V = requireC('./fixtures/damascus/vf.js');
+    const set = (id, v) => { $(id).value = v; $(id).dispatchEvent(new w.Event('input', { bubbles: true })); };
+    const wsel = (n) => { $('wordSel').value = String(n); $('wordSel').dispatchEvent(new w.Event('change', { bubbles: true })); };
+    const g3 = (s) => s.slice(0, 3) + ' ' + s.slice(3, 7) + ' ' + s.slice(7);
+    w.confirm = () => true; w.setMethod('damascus'); w.dmClear(); wsel(12);
+    // 1. the quick path: a sheet of our own (random), no hallmarks and no words
+    { const dice = [], need = Math.ceil(V.PLAN[12].bits / 5); let g = 0; while (g < need) { const a = 1 + nc.randomInt(6), b = 1 + nc.randomInt(6); dice.push([a, b]); if (V.mirrorCode(a, b) !== null) g++; }
+      const cards = V.cardPlan(V.PLAN[12].bits).map(() => { const d = Array.from({ length: 52 }, (_, i) => i); for (let i = 51; i > 0; i--) { const j = nc.randomInt(i + 1); [d[i], d[j]] = [d[j], d[i]]; } return d.map(V.cardName); });
+      const ref = V.forge({ words: 12, dice, cards }), phrase = ref.E.phrase.join(' ');
+      set('dmDice', dice.map((p) => p.join('')).join(' ')); set('dmCards', cards.map((d) => d.join(' ')).join('\n'));
+      if ($('dmBtn').disabled || !/^Ready: the dice and the cards are complete/.test($('dmReady').textContent)) fails.push(T + 'quick path: the dice and the cards alone turn FORGE SEED on and say Ready');
+      const bar = [...w.document.querySelectorAll('#dmFBar button')];
+      if (!bar.slice(2).every((b) => b.classList.contains('done') && b.classList.contains('page'))) fails.push(T + 'quick path: the step bar shows steps 3 to 5 done by the page');
+      if (!$('dmLiveF').textContent.includes(' 1  ' + g3(ref.E.bits.slice(0, 11)) + '  R ' + ref.E.marks.R[0]) || !ref.E.phrase.slice(0, 11).every((x) => $('dmLiveW').textContent.includes(x))) fails.push(T + 'quick path: steps 3 and 4 show grid F and the words, worked out by the page');
+      await w.dmGenerate(); if (!w.hasSeed() || w.eval('madeMnemonic') !== phrase) fails.push(T + 'quick path: FORGE SEED gives the seed of the dice and the cards');
+      w.dmClear(); }
+    // 2. the guided practice: practice sheet 9, phase by phase
+    w.eval('dmPracticeNext = 9'); const sh = await w.dmPracticeSheet(9, 12);
+    const pairs = sh.dice.split(' ').map((t) => [+t[0], +t[1]]), decks = sh.cards.split('\n').map((l) => l.split(' ').map((c) => c.replace(/^10/, 'T')));
+    const ref = V.forge({ words: 12, dice: pairs, cards: decks }), phrase = ref.E.phrase.join(' '), TX = () => $('dmTourText').textContent;
+    await w.dmTourStart();
+    const fg = pairs.findIndex(([a, b]) => V.mirrorCode(a, b) !== null), [a1, b1] = pairs[fg], c1 = V.mirrorCode(a1, b1).toString(2).padStart(5, '0');
+    const h1 = ref.D.bits.slice(0, 11), an1 = ref.C.bits.slice(0, 11);
+    const box1 = 'Box 1: Hammer ' + h1[0] + ', Anvil ' + an1[0] + ': ' + (h1[0] === an1[0] ? 'the same → 0.' : 'different → 1.');
+    const want = [
+      [1, () => $('dmDice').value === sh.dice.split(' ').slice(0, fg + 1).join(' ') && TX().includes('row ' + a1 + ' (the left die), column ' + b1 + ' (the right die) → ' + c1)],
+      [1, () => $('dmDice').value === sh.dice],
+      [1, () => $('dmHR').value === ref.D.marks.R && $('dmHM').value === ref.D.marks.M],
+      [2, () => TX().includes('Run 1.1 of grid A: ' + ref.C.bits.slice(0, 7) + ' (7 bits)')],
+      [2, () => $('dmCards').value === sh.cards],
+      [2, () => $('dmAR').value === ref.C.marks.R && $('dmAM').value === ref.C.marks.M],
+      [3, () => TX().includes(box1) && TX().includes('Forge   ' + g3(ref.E.bits.slice(0, 11)))],
+      [3, () => $('dmFR').value === ref.E.marks.R && TX().includes('fold   ' + ref.E.marks.R + '\nR(F)')],
+      [4, () => $('dmWords').value === ref.E.phrase.slice(0, 11).join(' ')],
+      [5, () => TX().includes('“' + ref.E.phrase[11] + '”') && TX().includes(ref.E.handWords[11].bits)],
+      [5, () => TX().includes(phrase) && $('dmTourNext').disabled],
+    ];
+    for (const [i, [step, ok]] of want.entries()) {
+      $('dmTourNext').click();
+      if (w.eval('dmStep') !== step || !ok()) fails.push(T + 'phase ' + (i + 1) + ' fills in the sheet\'s values, says where they come from and shows its step');
+      if (w.eval('dmPractice') !== 'practice 9' || !$('dmBtn').disabled) fails.push(T + 'phase ' + (i + 1) + ' stays PRACTICE, FORGE SEED off');
+    }
+    if ($('dmCards').value !== sh.cards || $('dmDice').value !== sh.dice || !/Damascus practice sheet/.test(w.knownPhrase(phrase) || '')) fails.push(T + 'it ends on exactly the practice sheet, a published practice phrase');
+    $('dmTourBack').click(); $('dmTourBack').click(); $('dmTourBack').click();
+    if (!/9 of 12/.test($('dmTourTitle').textContent) || $('dmWords').value || $('dmFR').value !== ref.E.marks.R) fails.push(T + 'BACK goes back, with that phase\'s boxes');
+    $('dmTourStop').click(); if (!$('dmTour').hidden || w.eval('dmPractice') !== 'practice 9') fails.push(T + 'STOP closes the guide and keeps the boxes, PRACTICE');
+    await w.dmTourStart(); if (!/practice sheet 10 /.test($('dmTourTitle').textContent)) fails.push(T + 'the next guided practice takes the next sheet');
+    $('dmTourNext').click(); w.dmClear(); if (!$('dmTour').hidden || w.eval('dmTour') !== null) fails.push(T + 'CLEAR closes the guide');
+    await w.dmTourStart(); wsel(24); if (!$('dmTour').hidden || w.eval('dmTour') !== null) fails.push(T + 'another seed length closes the guide');
+    wsel(12);
+  } catch (e) { if (e instanceof ProbeStop) throw e; fails.push('damascus guided: the probe crashed: ' + e.message); }
+  w.confirm = cf0; w.dmClear(); w.setMethod('dice'); w.wipeSeed(); r = await run('dice', 12, D50);
+  }
   // v2.11.0: Taproot multisig, after the v2.10.0 sections; it leaves no wallet open, and section 0's seed is never touched.
   if (SEC(70, "v2.11.0 Taproot multisig (descriptors and addresses from embit, keys from @scure)")) {
   try {
@@ -2489,7 +2546,7 @@ async function probe(w, mutated, fast, only, hooks) {
       if (doc.querySelectorAll('.tag-rec').length !== 3 || doc.querySelectorAll('option.opt-rec').length !== 1 || labels.length !== 4 || !labels.every((e) => e.querySelector('.tag-rec') || e.classList.contains('opt-rec'))) fails.push('recommended: every label is a gold word or a gold option');
       const notes = [...doc.querySelectorAll('.tag-note')], ros = [...doc.querySelectorAll('.tag-ro')];
       if (notes.length !== 3 || !notes.every((e) => /^ADVANCED$/.test(e.textContent)) || [...doc.querySelectorAll('summary')].some((e) => /\((demo only|advanced)/i.test(e.textContent))) fails.push('tags: ADVANCED is a gray label, not plain (brackets)');
-      if (ros.filter((e) => e.textContent === 'NEW').length !== 3) fails.push('tags: every "NEW" label is the same gray tag-ro style');
+      if (ros.filter((e) => e.textContent === 'NEW').length !== 2 || ros.filter((e) => e.textContent === 'PRACTICE ONLY').length !== 1) fails.push('tags: every "NEW" label is the same gray tag-ro style, and the practice signer is PRACTICE ONLY in it');
       const sheet = mutated.match(/<style>[\s\S]*?<\/style>/)[0];
       if (!/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(sheet) || !/\.tag-rec, body\.light \.tag-rec \{ color: var\(--warn-text\); background: none; \}/.test(sheet) || !/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(sheet)) fails.push('recommended: gold words, no pill');
       if (!/\.tag-secret, body\.light \.tag-secret \{ color: var\(--bad-text\); font-weight: 800; \}/.test(sheet) || !/\.tag-public \{ color: var\(--ok-text\); \}/.test(sheet) || !/\.tag-note, body\.light \.tag-note, \.tag-ro \{ color: var\(--muted\); background: none; \}/.test(sheet)) fails.push('tags: SECRET red, PUBLIC green, the rest gray');
@@ -3605,7 +3662,7 @@ async function probe(w, mutated, fast, only, hooks) {
     if ((await w.practiceMake(new w.Uint8Array(16))).join(' ') !== 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about') fails.push('practice: phrase made from entropy');
     if (!w.practiceCompare(E, 'abandon ability able about').ok || !w.practiceCompare(E, '  ABANDON  ability\nable about ').ok) fails.push('practice: correct copy matches, case and spacing ignored');
     if (!/Word 3 does not match/.test(w.practiceCompare(E, 'abandon ability zoo about').msg) || !/Words 2, 4 do not match/.test(w.practiceCompare(E, 'abandon zoo able zoo').msg)) fails.push('practice: wrong words named by position');
-    if (!/typed 3 words; the practice phrase has 4/.test(w.practiceCompare(E, 'abandon ability able').msg) || !/typed 1 word;/.test(w.practiceCompare(E, 'abandon').msg) || !/typed 5 words/.test(w.practiceCompare(E, 'abandon ability able about zoo').msg)) fails.push('practice: wrong word count reported');
+    if (!/typed 3 words; the public test seed has 4/.test(w.practiceCompare(E, 'abandon ability able').msg) || !/typed 1 word;/.test(w.practiceCompare(E, 'abandon').msg) || !/typed 5 words/.test(w.practiceCompare(E, 'abandon ability able about zoo').msg)) fails.push('practice: wrong word count reported');
     if (w.practiceCompare(E, 'ability abandon able about').ok) fails.push('practice: wrong order does not match');
     await w.practiceStart(); const pw = w.eval('practice.words');
     if (pw.length !== 12 || $p('prWords').children.length !== 12 || $p('prShow').style.display !== 'block' || $p('prCheck').style.display !== 'none') fails.push('practice: start shows 12 words');
@@ -5107,7 +5164,7 @@ const M = [
   ['recommended: menu option not colored', '<option value="ms-wsh" class="opt-rec">', '<option value="ms-wsh">'],
   ['tags: core badge lost', 'Import into Bitcoin Core<span class="tag tag-note">ADVANCED</span>', 'Import into Bitcoin Core (advanced)'],
   ['tags: silent payment badges lost', 'Silent Payment address<span class="tag tag-note">ADVANCED</span><span class="tag tag-ro">NEW</span>', 'Silent Payment address (advanced, new)'],
-  ['tags: NEW badge not unified to cyan', 'ADVANCED</span><span class="tag tag-ro">NEW</span></summary>', 'ADVANCED</span><span class="tag tag-note">NEW</span></summary>'],
+  ['tags: NEW badge not unified to cyan', 'ADVANCED</span><span class="tag tag-ro">NEW</span><small>', 'ADVANCED</span><span class="tag tag-note">NEW</span><small>'],
   ['recommended: badge loses its gold', '.tag-rec, body.light .tag-rec { color: var(--warn-text); background: none; }', '.tag-rec, body.light .tag-rec { color: var(--muted); background: none; }'],
   ['recommended: menu option loses its amber', '.opt-rec { color: var(--warn-text);', '.opt-rec { color: var(--accent);'],
   ['word draw: exact words not matched', '  if(Object.prototype.hasOwnProperty.call(WORD_MAP, tok)) return WORD_MAP[tok];\n', ''],
@@ -7388,9 +7445,9 @@ const M = [
   ["damascus: public dice and cards not recognized (review M2)", "return st.who === \"both\" ? dmPublicKind(st) : \"\";", "return \"\";"],
   ["damascus: worked example 1 not a known phrase (review M2)", "\"a public worked example of the Damascus method\", \"7a25ddb4", "\"a public worked example of the Damascus method\", \"7a25ddb5"],
   ["damascus: practice sheets drawn little-endian", "((buf[at] << 24) >>> 0) + (buf[at + 1] << 16)", "((buf[at + 3] << 24) >>> 0) + (buf[at + 2] << 16)"],
-  ["damascus: practice sheets go past 100", "dmPracticeNext = n % 100 + 1;", "dmPracticeNext = n + 1;"],
+  ["damascus: practice sheets go past 100", "\"practice \" + n)) dmPracticeNext = n % 100 + 1;", "\"practice \" + n)) dmPracticeNext = n + 1;"],
   ["damascus: practice sheet by content named as another public phrase", "if(pr >= 0) return \"practice \" + (pr % 100 + 1);", "if(pr >= 0) return \"practice \" + (pr % 100);"],
-  ["damascus: LOAD EXAMPLE replaces typed boxes without asking (review L14)", "if(own && !confirm(", "if(false && !confirm("],
+  ["damascus: LOAD EXAMPLE replaces typed boxes without asking (review L14)", "if(own && !confirm(\"This replaces", "if(false && !confirm(\"This replaces"],
   ["damascus: FORGE SEED skips What I wrote (review M6)", "flags = dmTyped(\"both\") ? dmFlags(r, st) : [];", "flags = [];"],
   ["damascus: the summary drops the strength's condition (review L17)", "(c.dm ? \" (if the dice or the shuffle was fair", "(false ? \" (if the dice or the shuffle was fair"],
   ["damascus: an assay keeps the other sheet (review L1)", "for(const id of clear) document.getElementById(id).value = \"\";", ""],
@@ -7407,6 +7464,24 @@ const M = [
   ["damascus: the Forge step marks every typed row right", "if(tr[i] === m.R[i]) partsF.push", "if(true) partsF.push"],
   ["damascus: CALCULATE LAST WORD takes a wrong bit count", "if(bv.length !== P.fin) return", "if(false) return"],
   ["damascus: FORGE SEED from paper takes a public example", "if(k && /Damascus/.test(k)){", "if(false){"],
+  // v2.15.0: the quick path and the guided practice (section 76)
+  ['damascus guided: the practice mark is lost while it fills in', 'dmLoaded = {dice: b.dmDice, cards: b.dmCards, kind: "practice " + T.n};', 'dmLoaded = null;'],
+  ['damascus guided: the Hammer hallmarks are not filled in', 'b.dmHR = i >= 3 ? T.mH.R : "";', 'b.dmHR = "";'],
+  ['damascus guided: the first pair is read with the dice the wrong way round', '"Mirror table on the Hammer sheet: row " + a + " (the left die), column " + b + " (the right die) → "', '"Mirror table on the Hammer sheet: row " + b + " (the left die), column " + a + " (the right die) → "'],
+  ['damascus guided: the Forge example folds the wrong way', '(h[k] === a[k] ? "the same → 0." : "different → 1.")', '(h[k] === a[k] ? "different → 1." : "the same → 0.")'],
+  ['damascus guided: the seal folds the wrong hallmarks', '"\\nfold   " + dmXorStr(T.mH.R, T.mA.R)', '"\\nfold   " + dmXorStr(T.mH.R, T.mH.R)'],
+  ['damascus guided: BACK does not go back', 'dmTour.i = Math.max(0, Math.min(DM_TOUR_STEP.length - 1, dmTour.i + d));', 'dmTour.i = Math.max(0, Math.min(DM_TOUR_STEP.length - 1, dmTour.i + Math.abs(d)));'],
+  ['damascus guided: CLEAR leaves the guide open', '  dmTourEnd();   // v2.15.0: CLEAR (and CLEAR ALL) closes the guided practice\n', ''],
+  ['damascus guided: another seed length leaves the guide open', '  if(dmTour && dmWc() !== dmTour.wc) dmTourEnd();', ''],
+  ['damascus guided: the checksum is not SHA-256\'s', 'cs = dmBin((await sha256bytes(dmBytes(F)))[0], 8).slice(0, P.bits / 32);', 'cs = dmBin((await sha256bytes(dmBytes(F)))[1], 8).slice(0, P.bits / 32);'],
+  ['damascus guided: NEXT is not stopped at the end', 'document.getElementById("dmTourNext").disabled = T.i === DM_TOUR_STEP.length - 1;', 'document.getElementById("dmTourNext").disabled = false;'],
+  ['damascus guided: the step is not shown', 'dmStep = DM_TOUR_STEP[T.i]; dmUpdate();', 'dmUpdate();'],
+  ['damascus guided: the same practice sheet every time', 'dmPracticeNext = n % 100 + 1;   // practice sheets 1 to 100, as published, in turn with FILL IN A PRACTICE SHEET', ''],
+  ['damascus guided: the words are not filled in', 'b.dmWords = i >= 9 ? T.phrase.split(" ").slice(0, T.wc - 1).join(" ") : "";', 'b.dmWords = "";'],
+  ['damascus quick path: the step bar does not show steps 3 to 5 done by the page', 'done = L.done[n - 1] || (byPage && n >= 3);', 'done = L.done[n - 1];'],
+  ['damascus quick path: no Ready line', 'r.textContent = !both ? "" : go && ready ?', 'r.textContent = !both ? "" : false ?'],
+  ['damascus quick path: step 3 does not show grid F', '    partsF.push(["pre", dmGridLines(F, wc)]);\n', ''],
+  ['damascus quick path: step 4 does not show the words', 'partsW.push(["pre", hw.slice(0, wc - 1).map(', 'partsW.push(["pre", hw.slice(0, 0).map('],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

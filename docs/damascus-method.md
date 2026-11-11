@@ -69,20 +69,20 @@ The step labels are the ones printed on the sheets. **Time:** about 30 minutes o
    - the other source was good;
    - they never share their sheets;
    - neither sheet was seen before the other was finished. Fill each sheet in private, then fold it closed and hand it over.
-3. Each sheet, with its own last word added by a tool, is a valid BIP39 phrase, and the two phrases are a Coldcard **Seed XOR** pair for your seed. On the Damascus tab, choose "An assayer" under Check my sheets: it shows that sheet's hallmarks and its own Seed XOR phrase, never the seed.
+3. Each sheet, with its own last word added by a tool, is a valid BIP39 seed, and the two are a Coldcard **Seed XOR** pair for your seed. On the Damascus tab, choose "An assayer" under Check my sheets: it shows that sheet's hallmarks and its own Seed XOR phrase, never the seed.
 
 **The order matters.** Worked example 2 shows what happens if the card person sees the dice first: they can choose any seed they want, and every check still passes.
 
 ## Practice sheets: the published rule
 
-PRACTICE on the Damascus tab fills in practice sheet 1, 2, 3 ... up to 100, then starts again at 1. A practice sheet is made by this rule, never by the page's own random numbers (the page makes none), so anyone can make the same sheet:
+FILL IN A PRACTICE SHEET on the Damascus tab fills in practice sheet 1, 2, 3 ... up to 100, then starts again at 1. A practice sheet is made by this rule, never by the page's own random numbers (the page makes none), so anyone can make the same sheet:
 
 1. Practice sheet N reads 32-bit numbers, big-endian, from SHA-256 of the text `VOIDFORGE Damascus practice N block k` (UTF-8), for k = 0, 1, 2 ... Each hash gives eight numbers.
 2. A number from 0 to m - 1 is drawn by rejection: a 32-bit number at or above the largest multiple of m (below 2^32) is skipped; otherwise the draw is the number modulo m.
 3. **Dice:** pairs of draws, each 1 + a draw from 0 to 5 (first throw, then second), until the grid has 26 good pairs (52 for 24 words). Pairs that say "throw again" are kept, as on paper.
 4. **Cards:** for each deck, the 52 cards in the order clubs, diamonds, hearts, spades, Ace to King in each suit, shuffled by Fisher-Yates: for i from 51 down to 1, swap card i with card j, where j is a draw from 0 to i.
 
-The dice and the cards are drawn from one stream, dice first. Practice sheets 1 to 100 of both lengths make public phrases: VOIDFORGE knows all 200 of them (and the three worked examples), says PRACTICE on the Damascus tab whenever the dice and cards make one, keeps FORGE SEED off for them, and warns about them in CHECK A BACKUP. `tests/vfmethod.test.mjs` makes all 200 again from this rule with node:crypto.
+The dice and the cards are drawn from one stream, dice first. Practice sheets 1 to 100 of both lengths make public test seeds: VOIDFORGE knows all 200 of them (and the three worked examples), says PRACTICE on the Damascus tab whenever the dice and cards make one, keeps FORGE SEED off for them, and warns about them in CHECK A BACKUP. `tests/vfmethod.test.mjs` makes all 200 again from this rule with node:crypto.
 
 ## Prior art
 

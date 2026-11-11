@@ -7,7 +7,7 @@ Dated and signed origin record: tag [damascus-origin-2026-11-10](https://gitlab.
 A Damascus seed is a normal 12-word Bitcoin seed that you make by hand from **dice** and **playing cards**, and check by hand as you go. Damascus steel is made by folding two different steels into one blade that is stronger than either. The Damascus method folds dice and cards into one seed.
 
 **Time:** about 30 minutes once you know the steps; allow longer the first time.
-**Practice first** with a practice sheet (PRACTICE on the Damascus tab) or throwaway rolls. Never put money on a practice seed.
+**Practice first** with a practice sheet (FILL IN A PRACTICE SHEET on the Damascus tab) or throwaway rolls. Never put money on a practice seed.
 
 Field-tested: a hand-made Damascus seed checked on a real SeedSigner and in Sparrow (10 November 2026).
 
@@ -88,8 +88,8 @@ A hallmark is a check bit: whether a row or a column holds an odd or an even num
 2. **Work one row at a time:** finger on the same row on both sheets.
 3. **For every box (this is XOR):** Same → 0. Different → 1. Write it in the same box on the Forge sheet.
 4. **Hallmarks on the Forge sheet,** R and M, the same way as in Part 3. (F2)
-5. **The seal:** for each R box and each M box, fold the Hammer hallmark with the Anvil hallmark (Same → 0. Different → 1.). The result must equal the Forge sheet's hallmark.
-6. **If one doesn't match:** the mistake is where that row and that column cross. Fix it before you go on.
+5. **The seal:** for each R box and each M box, fold the Hammer hallmark with the Anvil hallmark (Same → 0. Different → 1.). The result must equal the Forge sheet’s hallmark.
+6. **If one doesn’t match:** the mistake is where that row and that column cross. Fix it before you go on.
 
 **What you should have now:** grid F full, its R and M boxes filled, and the seal agreeing in every box.
 
@@ -101,7 +101,7 @@ A hallmark is a check bit: whether a row or a column holds an odd or an even num
 
 ## Part 5: The words
 
-1. **Split each Forge row** into 3 + 4 + 4 bits: block, row, column. Block: which of the word table's 8 blocks; row and column: where the word sits in that block. (F3)
+1. **Split each Forge row** into 3 + 4 + 4 bits: block, row, column. Block: which of the word table’s 8 blocks; row and column: where the word sits in that block. (F3)
 2. **Look up the word** in the word table with those three parts and write it next to the row. No math needed.
 3. **Check each word back:** find it alphabetically in the table and make sure its bits match the row. (F4)
 
@@ -109,13 +109,13 @@ A hallmark is a check bit: whether a row or a column holds an odd or an even num
 
 ### Why it works
 
-- The 11 bits of a row are the word's place on the BIP39 list (2,048 words, from 0). The word table lays the list out by those bits, so no arithmetic is needed.
+- The 11 bits of a row are the word’s place on the BIP39 list (2,048 words, from 0). The word table lays the list out by those bits, so no arithmetic is needed.
 
 ## Part 6: The last word
 
 Row 12 gives only 7 bits, because the last word also holds a checksum that needs a computer. (F5)
 
-- Your Forge sheet's last row gives the last word's 7 bits (3 for 24 words). These are not new coin flips.
+- Your Forge sheet’s last row gives the last word’s 7 bits (3 for 24 words). These are not new coin flips.
 - SeedSigner asks for them under 'Coin flip entropy'. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.
 - The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.
 
@@ -124,7 +124,7 @@ Row 12 gives only 7 bits, because the last word also holds a checksum that needs
 3. **In VOIDFORGE:** MAKE A SEED > Damascus, step 5 (Last word). Type the same 11 words and the 7 bits, then press CALCULATE LAST WORD.
 4. **Both must show the same last word,** and it must be in the table row that the 7 bits point to.
 5. **Compare the fingerprint** on both. They must match.
-6. **Compare the first address.** On the SeedSigner: Load seed > Done > Address explorer > Native Segwit > Receive addresses, address 0. It must match VOIDFORGE's first address.
+6. **Compare the first address.** On the SeedSigner: Load seed > Done > Address explorer > Native Segwit > Receive addresses, address 0. It must match VOIDFORGE’s first address.
 
 **What you should have now:** the 12th word, the same on both tools, and the same fingerprint and first address on both.
 
@@ -161,7 +161,7 @@ The same steps, with 52 good dice pairs and 6 decks (on deck 6, the last: 4 grou
 
 ## Check it all in VOIDFORGE (optional)
 
-On the Damascus tab, the five steps (Hammer, Anvil, Forge, Words, Last word) follow these parts. Tap your dice and cards in as you go, or type them: VOIDFORGE checks each row, deck and word as you finish it, points to the box of any mistake, and works out the last word, fingerprint and first address. FORGE SEED then puts the seed into the page's usual tools.
+On the Damascus tab, the five steps (Hammer, Anvil, Forge, Words, Last word) follow these parts. Tap your dice and cards in as you go, or type them: VOIDFORGE checks each row, deck and word as you finish it, points to the box of any mistake, and works out the last word, fingerprint and first address. FORGE SEED then puts the seed into the page’s usual tools.
 
 ---
 

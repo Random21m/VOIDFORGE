@@ -497,6 +497,42 @@ SCEN.wipe = async (t, d, ctx, page) => {
   }
 };
 
+// ---- v2.15.0: a wipe (CLEAR ALL, auto-clear, END SESSION) wipes the settings on the simulated microSD, and the next start
+// loads the defaults; closing the box keeps settings saved with Persistent settings on, as a real microSD would
+SCEN.settings_wipe = async (t, d, ctx, page) => {
+  const until = async (f, a, ms = 30000) => { const t0 = Date.now(); let v; while (Date.now() - t0 < ms) { v = await d.ev(f, a); if (v) return v; await sleep(150); } return v; };
+  const reopen = async () => { await page.evaluate(() => { showTab('check'); const b = document.getElementById('ssBox'); b.open = true; b.scrollIntoView(); }); await d.waitView('SSMainMenuView', 30000); };
+  const now = () => d.ev(() => { const C = SSSettingsConstants, s = SSSettings.get_instance(), def = SSSettingsDefinition.get_defaults();
+    def[C.SETTING__DISPLAY_CONFIGURATION] = C.DISPLAY_CONFIGURATION__ST7789__320x240;   // the SeedSigner+ start value (see SSSettings.get_instance)
+    return { net: s.get_value(C.SETTING__NETWORK), msg: s.get_value(C.SETTING__MESSAGE_SIGNING), keep: s.get_value(C.SETTING__PERSISTENT_SETTINGS),
+      card: SS_SIM_MICROSD.settings_json !== null, defaults: JSON.stringify(s._data) === JSON.stringify(def) }; });
+  const change = () => d.ev(() => { const C = SSSettingsConstants, s = SSSettings.get_instance();
+    s.set_value(C.SETTING__PERSISTENT_SETTINGS, C.OPTION__ENABLED); s.set_value(C.SETTING__NETWORK, C.TESTNET); s.set_value(C.SETTING__MESSAGE_SIGNING, C.OPTION__ENABLED); });
+  await d.waitView('SSMainMenuView', 30000);
+  let s = await now();
+  t(s.defaults && s.net === 'M' && !s.card, 'settings: a first start has the defaults (Mainnet, nothing on the microSD) ' + JSON.stringify(s));
+  await change(); s = await now();
+  t(s.net === 'T' && s.msg === 'E' && s.keep === 'E' && s.card && !s.defaults, 'settings: Testnet, message signing and Persistent settings on, saved to the microSD ' + JSON.stringify(s));
+  await page.click('#ssBox > summary'); await until(() => !ssPageOn && !SSController._instance);
+  await reopen(); s = await now();
+  t(s.net === 'T' && s.msg === 'E' && s.keep === 'E' && s.card, 'settings: closing the box and opening it again keeps the settings saved on the microSD ' + JSON.stringify(s));
+  // Persistent settings off removes the file (as SeedSigner removes settings.json): the next start has the defaults again
+  await d.ev(() => SSSettings.get_instance().set_value(SSSettingsConstants.SETTING__PERSISTENT_SETTINGS, SSSettingsConstants.OPTION__DISABLED));
+  t(!(await now()).card, 'settings: Persistent settings off removes the settings file from the microSD');
+  await page.click('#ssBox > summary'); await until(() => !ssPageOn && !SSController._instance);
+  await reopen(); s = await now();
+  t(s.defaults && s.net === 'M' && s.msg === 'D' && s.keep === 'D' && !s.card, 'settings: with the file removed, the next start loads the default settings ' + JSON.stringify(s));
+  for (const [name, act] of [['CLEAR ALL', () => d.ev(() => clearAll())], ['the auto-clear', () => d.ev(() => autoWipe('test'))],
+    ['END SESSION', () => d.ev(() => { window.endSessionReload = () => {}; return endSession(); })]]) {
+    if (!(await now()).card) await change();
+    await act(); await until(() => !ssPageOn && !SSController._instance && !document.getElementById('ssBox').open);
+    const off = await d.ev(() => ({ card: SS_SIM_MICROSD.settings_json !== null, kept: SSSettings._instance !== null, active: ssPageActive() }));
+    t(!off.card && !off.kept && !off.active, name + ': the settings file on the microSD and the settings in memory are gone ' + JSON.stringify(off));
+    await reopen(); s = await now();
+    t(s.defaults && s.net === 'M' && s.msg === 'D' && s.keep === 'D' && !s.card, name + ': the next start loads the default settings (Mainnet, message signing off, Persistent settings off) ' + JSON.stringify(s));
+  }
+};
+
 // ================================================================ stage 2: PSBTs, descriptors, address verification, sign message
 // The test PSBTs are built here with @scure/btc-signer (mainnet; nothing is committed as a binary). Every expected value comes from
 // btc-signer / @scure/bip32 / @noble/curves, never from the page. The stand-in for the camera's QR reading is a replacement of
@@ -1117,7 +1153,7 @@ const lessonSign = async (t, d, ctx, page) => {   // Mainnet (the device's defau
   const r = await r0;
   lessonOk(t, 'sign', r, 13);
   const p = await panel(d);
-  t(p.net && await page.textContent('#ssTxNet') === "Mainnet: these coins don't exist; this PSBT can never be broadcast." && p.tx.ok && /^Signed correctly/.test(p.status), tag + ': the device is on Mainnet, so the page warns "these coins don\'t exist; this PSBT can never be broadcast", and the lesson ends with "Signed correctly"');
+  t(p.net && await page.textContent('#ssTxNet') === 'Mainnet: these coins don\u2019t exist; this PSBT can never be broadcast.' && p.tx.ok && /^Signed correctly/.test(p.status), tag + ': the device is on Mainnet, so the page warns "these coins don\'t exist; this PSBT can never be broadcast", and the lesson ends with "Signed correctly"');
 };
 SCEN.lessons_tx = async (t, d, ctx, page) => {   // "sign", then "multisig" with the test seed already loaded
   await lessonSign(t, d, ctx, page);
@@ -1219,10 +1255,13 @@ SCEN.forge = async (t, d, ctx, page) => {
 
 // ---- v2.14.0: LOAD INTO THE PRACTICE SIGNER from MAKE A SEED > Damascus (practice seeds only), by the seed's Standard SeedQR
 SCEN.damascus = async (t, d, ctx, page) => {
-  await d.waitView('SSMainMenuView');
-  await page.evaluate(() => { document.getElementById('ssBox').open = false; }); await sleep(500);
+  // v2.15.0: every step waits for the state it needs (polled, up to a generous limit), never for a fixed time, so a busy machine
+  // only makes the scenario slower, not flaky
+  const until = async (f, ms = 45000) => { const t0 = Date.now(); let v; while (Date.now() - t0 < ms) { v = await f(); if (v) return v; await sleep(150); } return v; };
+  await d.waitView('SSMainMenuView', 45000);
+  await page.evaluate(() => { document.getElementById('ssBox').open = false; }); await until(() => d.ev(() => !ssPageOn && !SSController._instance));
   const toDamascus = () => page.evaluate(() => { showTab('make'); setMethod('damascus'); scrollTo(0, 0); });
-  const pageResult = async () => { await page.waitForFunction(() => /Master fingerprint [0-9a-f]{8}\./.test(document.getElementById('dmOut').textContent), null, { timeout: 60000 });
+  const pageResult = async () => { await page.waitForFunction(() => /Master fingerprint [0-9a-f]{8}\./.test(document.getElementById('dmOut').textContent), null, { timeout: 120000 });
     return page.evaluate(() => { const o = document.getElementById('dmOut'); return { phrase: o.dataset.practicePhrase || '', fp: o.textContent.match(/Master fingerprint ([0-9a-f]{8})\./)[1], practice: dmPractice }; }); };
   const camInfo = () => d.ev(() => { const st = SSController._instance && SSController._instance._storage; return { key: ssLearnCam.key, frames: ssLearnCam.frames ? ssLearnCam.frames.slice() : null, hidden: document.getElementById('ssLearnCam').hidden,
     text: document.getElementById('ssLearnCam').textContent.replace(/\s+/g, ' '), cache: ssLearnCam.cache.size, seeds: ssLearnSeeds().length, pending: !!(st && st.pending_seed), open: document.getElementById('ssBox').open,
@@ -1231,29 +1270,29 @@ SCEN.damascus = async (t, d, ctx, page) => {
     const pg = await pageResult();
     t(pg.phrase === mnemonic && pg.fp === wantFp && /^(practice|example) \d+$/.test(pg.practice), name + ': the page marks the result as practice and shows fingerprint ' + wantFp + ' (@scure/bip32) (' + pg.fp + ')');
     const before = await d.ev(() => ssLearnSeeds().length);
-    await page.click('#dmSignerBtn'); await d.waitView('SSMainMenuView', 30000);
-    let c = await camInfo();
+    await page.click('#dmSignerBtn'); await d.waitView('SSMainMenuView', 45000);
+    let c = await until(async () => { const x = await camInfo(); return x.key === 'dmseed' && x.frames && !x.hidden ? x : null; }) || await camInfo();
     t(c.tab && c.open && c.key === 'dmseed' && !c.hidden && c.frames && c.frames.length === 1 && c.frames[0] === seedQrDigits(mnemonic) && c.seeds === before && !c.pending,
       name + ': LOAD INTO THE PRACTICE SIGNER opens it in CHECK A BACKUP and the practice wallet holds up the seed\'s Standard SeedQR (' + (c.frames ? c.frames[0].length : 0) + ' digits, as made here); nothing is put into the device\'s memory (' + JSON.stringify({ tab: c.tab, open: c.open, key: c.key, seeds: c.seeds, before, pending: c.pending }) + ')');
-    for (let i = 0; i < 40 && !/fingerprint [0-9a-f]{8}/.test(c.text); i++) { await sleep(150); c = await camInfo(); }
+    c = await until(async () => { const x = await camInfo(); return /fingerprint [0-9a-f]{8}/.test(x.text) && /Choose Scan on the device/.test(x.note) ? x : null; }) || await camInfo();
     t(/Standard SeedQR of Damascus (practice|example) \d+ \(\d+ words\)\. On the device, choose Scan on Home\. It should show the fingerprint /.test(c.text) && c.text.includes(wantFp) && /Choose Scan on the device/.test(c.note),
       name + ': the page (not the device) says to choose Scan, and which fingerprint to expect (' + c.text + ')');
-    await d.waitView('SSMainMenuView', 30000);
+    await d.waitView('SSMainMenuView', 45000);
     const home = await d.state();
     t(JSON.stringify(home.labels) === '["Scan","Seeds","Tools","Settings"]', name + ': the device shows SeedSigner\'s own Home: nothing is drawn on it or added to it');
     await d.pick(/^Scan$/, { wait: 800 });
-    await d.waitView('SSSeedFinalizeView', 30000);
+    await d.waitView('SSSeedFinalizeView', 60000);
     const fp = await d.scr(() => SSController._instance.current_destination.view.screen.fingerprint);
-    await sleep(500); c = await camInfo();
+    c = await until(async () => { const x = await camInfo(); return x.frames === null && x.hidden && x.cache === 0 && x.key === '' ? x : null; }) || await camInfo();
     t(fp === wantFp && fp === pg.fp, name + ': Scan on the device reads the SeedQR: Finalize Seed shows fingerprint ' + fp + ', the page\'s ' + pg.fp);
     t(c.frames === null && c.hidden && c.cache === 0 && c.key === '', name + ': after the scan the practice wallet puts the SeedQR away and drops it');
-    await d.pick(/^Done$/, { wait: 1500 }); await d.waitView('SSSeedOptionsView');
-    const has = await d.ev((m) => ssLearnSeeds().some((s) => s && s.mnemonic_str === m), mnemonic);
+    await d.pick(/^Done$/, { wait: 1500 }); await d.waitView('SSSeedOptionsView', 45000);
+    const has = await until(() => d.ev((m) => ssLearnSeeds().some((s) => s && s.mnemonic_str === m), mnemonic));
     t(has, name + ': Done keeps the seed in the device\'s memory, as on SeedSigner');
   }
   // a practice sheet, 12 words
   await toDamascus(); await page.selectOption('#wordSel', '12');
-  await page.click('#dmPracticeBtn'); await page.waitForFunction(() => !document.getElementById('dmCheckBtn').disabled, null, { timeout: 30000 });
+  await page.click('#dmPracticeBtn'); await page.waitForFunction(() => !document.getElementById('dmCheckBtn').disabled, null, { timeout: 90000 });
   await page.click('#dmCheckBtn');
   const p1 = await pageResult();
   // refused: anything the Damascus tab did not mark as practice (the box stays closed, nothing is held up)
@@ -1268,9 +1307,11 @@ SCEN.damascus = async (t, d, ctx, page) => {
   await viaSigner('Damascus example 3 (24 words)', EX3, fpOf(rootOf(EX3)));
   // the SeedQR held up is overwritten when it is put away (PUT IT AWAY) and by CLEAR ALL
   for (const [how, act] of [['PUT IT AWAY', () => page.click('#ssLearnCamOff')], ['CLEAR ALL', () => d.ev(() => clearAll())]]) {
-    await toDamascus(); await page.click('#dmSignerBtn'); await sleep(600);
+    await toDamascus(); await page.click('#dmSignerBtn');
+    await until(() => d.ev(() => !!(ssLearnCam.frames && ssLearnCam.frames.length && ssLearnCam.cache.size)));   // the SeedQR is held up and drawn
     await d.ev(() => { window.__dmF = ssLearnCam.frames; window.__dmM = [...ssLearnCam.cache.values()]; });
-    await act(); await sleep(500);
+    await act();
+    await until(() => d.ev((all) => ssLearnCam.frames === null && ssLearnCam.cache.size === 0 && (!all || ssLearnSeeds().length === 0), how === 'CLEAR ALL'));
     const w = await d.ev(() => ({ f: window.__dmF.every((x) => x === ''), m: window.__dmM.length > 0 && window.__dmM.every((m) => m.every((r) => r.every((x) => !x))), frames: ssLearnCam.frames, cache: ssLearnCam.cache.size, seeds: ssLearnSeeds().length }));
     t(w.f && w.m && w.frames === null && w.cache === 0 && (how !== 'CLEAR ALL' || w.seeds === 0), 'Damascus: ' + how + ' overwrites the practice seed\'s SeedQR (its digits and its QR picture) and drops it' + (how === 'CLEAR ALL' ? '; the device\'s seeds are wiped too' : '') + ' (' + JSON.stringify(w) + ')');
   }
@@ -1287,14 +1328,14 @@ async function cardOnLoad(browser, w, h, mobile) {
   await page.waitForFunction(() => window.selfTestDone !== undefined, null, { timeout: 90000 }); await page.evaluate(() => window.selfTestDone);
   const go = await page.$('#sgGo'); if (go && await go.isVisible()) await go.click(); await sleep(300);
   const r = await page.evaluate(() => { const c = document.getElementById('ssPromo'), b = document.getElementById('ssPromoBtn'), cr = c.getBoundingClientRect(), br = b.getBoundingClientRect(), s = c.querySelector('span'), cs = getComputedStyle(b);
-    return { top: cr.top, bottom: cr.bottom, h: innerHeight, y: scrollY, bvis: br.bottom <= innerHeight && br.top >= 0, text: s.textContent, btn: b.textContent, gold: !b.classList.contains('secondary'), bg: cs.backgroundColor, lines: Math.round(s.getBoundingClientRect().height / parseFloat(getComputedStyle(s).fontSize) / 1.15), under: !!document.querySelector('header + #ssPromo') }; });
+    return { top: cr.top, bottom: cr.bottom, h: innerHeight, y: scrollY, bvis: br.bottom <= innerHeight && br.top >= 0, text: s.textContent, btn: b.textContent, gold: !b.classList.contains('secondary'), bg: cs.backgroundColor, lines: Math.round(s.getBoundingClientRect().height / parseFloat(getComputedStyle(s).fontSize) / 1.15), under: !!document.querySelector('header #startRow #heirNew + #ssPromo'), heirGold: !document.getElementById('heirBtn').classList.contains('secondary') }; });
   await ctx.close(); return r;
 }
 SCEN.find = async (t, d, ctx, page) => {
   for (const [name, w, h, m] of [['desktop', 1280, 800, false], ['phone', 390, 844, true]]) {
     const r = await cardOnLoad(page.context().browser(), w, h, m);
-    t(r.y === 0 && r.top >= 0 && r.bottom <= r.h && r.bvis && r.under && r.text === 'New: practice on a SeedSigner in your browser. Same screens and buttons as the real device.' && r.btn === 'OPEN PRACTICE SIGNER' && r.gold && (name === 'phone' || r.lines === 1),
-      'card (' + name + ' ' + w + 'x' + h + '): right under the header, the card and its gold OPEN PRACTICE SIGNER button are on screen without scrolling once the start notice is closed' + (name === 'desktop' ? ', one line of text' : '') + ' (' + JSON.stringify({ top: Math.round(r.top), bottom: Math.round(r.bottom), lines: r.lines }) + ')');
+    t(r.y === 0 && r.top >= 0 && r.bottom <= r.h && r.bvis && r.under && r.text === 'Practice on a SeedSigner in your browser, with lessons.' && r.btn === 'OPEN PRACTICE SIGNER' && !r.gold && r.heirGold && (name === 'phone' || r.lines === 1),
+      'start row (' + name + ' ' + w + 'x' + h + '): the practice signer choice sits next to I FOUND A BITCOIN BACKUP in the one start row, with a gray OPEN PRACTICE SIGNER (the row\'s one gold action is I FOUND A BITCOIN BACKUP), on screen without scrolling once the start notice is closed' + (name === 'desktop' ? ', one line of text' : '') + ' (' + JSON.stringify({ top: Math.round(r.top), bottom: Math.round(r.bottom), lines: r.lines }) + ')');
   }
   const closed = async () => { await page.click('#ssBox > summary'); await sleep(400); await page.evaluate(() => { showTab('make'); scrollTo(0, 0); }); await sleep(300); };
   const opened = () => page.evaluate(() => { const b = document.getElementById('ssBox'), r = b.getBoundingClientRect();
@@ -1314,7 +1355,7 @@ SCEN.find = async (t, d, ctx, page) => {
 
 // ================================================================ run
 SCEN.tools.clock = true; SCEN.offline.online = true;
-const order = ['lessons_dice', 'lessons_tx', 'lessons_seed', 'practice_tx', 'damascus', 'forge', 'find', 'review', 'psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
+const order = ['lessons_dice', 'lessons_tx', 'lessons_seed', 'practice_tx', 'damascus', 'forge', 'find', 'review', 'psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'settings_wipe', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
 const want = process.env.SCEN ? process.env.SCEN.split(',') : order;
 const results = [];
 async function runScenario(browser, name) {

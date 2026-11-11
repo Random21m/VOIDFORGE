@@ -5,7 +5,7 @@ Short answers for when something goes wrong. The steps are in [damascus-quick-gu
 ## I lost count while dealing
 
 1. Stop. Do not guess the bits you were not sure of.
-2. Cross out that deck's runs in grid A.
+2. Cross out that deck’s runs in grid A.
 3. Gather the whole deck, shuffle it again (wash, 12 riffles, cut) and deal that deck again from its first group.
 4. With the card record, you can also redo the matches from the cards you wrote down.
 
@@ -38,7 +38,7 @@ Throw that pair again. Only write a pair you saw land flat. A die that is tilted
 
 No.
 
-- Your Forge sheet's last row gives the last word's 7 bits (3 for 24 words). These are not new coin flips.
+- Your Forge sheet’s last row gives the last word’s 7 bits (3 for 24 words). These are not new coin flips.
 - SeedSigner asks for them under 'Coin flip entropy'. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.
 - The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.
 
@@ -58,7 +58,7 @@ The order matters. Whoever fills in a sheet after seeing the other sheet can cho
 
 ## Can I use only dice?
 
-Yes: VOIDFORGE's Dice tab does that. But then one bad die is not covered. With the Damascus method, the seed is fully random if either the dice or the shuffle is good.
+Yes: VOIDFORGE’s Dice tab does that. But then one bad die is not covered. With the Damascus method, the seed is fully random if either the dice or the shuffle is good.
 
 ## Does my wallet take a Damascus seed?
 
@@ -70,4 +70,4 @@ The row and column hallmarks reveal 22 bits of a 12-word seed (34 bits for 24 wo
 
 ## What is an assay?
 
-Someone else (an assayer) checks one sheet only: the Hammer sheet, or the Anvil sheet with its card record. If the other sheet was made well and kept apart, one sheet shows nothing about the seed. In VOIDFORGE, choose "An assayer" under Who checks: it shows that sheet's hallmarks and its own Seed XOR phrase, never the seed.
+Someone else (an assayer) checks one sheet only: the Hammer sheet, or the Anvil sheet with its card record. If the other sheet was made well and kept apart, one sheet shows nothing about the seed. In VOIDFORGE, choose "An assayer" under Who checks: it shows that sheet’s hallmarks and its own Seed XOR part, never the seed.

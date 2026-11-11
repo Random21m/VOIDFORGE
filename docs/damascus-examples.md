@@ -93,7 +93,7 @@ Master fingerprint 70b5da37. First address (BIP84, m/84'/0'/0'/0/0): bc1qk6763xz
 
 ## Example 2 (12 words)
 
-12 words. Dice: the digits of e. Cards: the card person saw the Hammer sheet first and placed the cards to steer the seed. It lands on a published BIP39 test phrase, and every check still passes: hallmarks catch mistakes, not cheating. This is why each sheet is folded closed before the other is seen.
+12 words. Dice: the digits of e. Cards: the card person saw the Hammer sheet first and placed the cards to steer the seed. It lands on a public test seed, and every check still passes: hallmarks catch mistakes, not cheating. This is why each sheet is folded closed before the other is seen.
 
 **Public: never put money on this seed.**
 

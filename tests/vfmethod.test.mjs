@@ -587,6 +587,69 @@ const guide = readFileSync(path.join(here, "..", "docs", "damascus-quick-guide.m
   check("auto-clear knows the paper-only boxes", ["dmLwWords", "dmLwBits"].every((id) => w.eval("AUTO_FIELDS").includes(id)));
   w.dmClear(); check("CLEAR empties the paper-only boxes and their result", !$("dmLwWords").value && !$("dmLwBits").value && !$("dmLwOut").textContent);
 }
+{ // v2.15.0 the quick path: dice and cards are all the page needs; steps 3 to 5 are done by the page (paper checks stay optional)
+  w.dmClear(); who("both"); words(12); w.confirm = () => true;
+  check("quick path: the top of the tab says only the dice and the cards are needed, then FORGE SEED", /^On this page you enter only the dice \(step 1\) and the cards \(step 2\), then press FORGE SEED\./.test($("dmQuick").textContent) && $("dmQuick").closest("#dmBox") && !$("dmQuick").closest("#dmFlow"));
+  check("quick path: FORGE SEED is the tool's one gold button, under the steps (reachable from every step), not inside step 5", !$("dmBtn").closest(".dm-st") && $("dmBtn").closest("#dmGoRow") && !$("dmBtn").classList.contains("secondary"));
+  set("dmDice", RSdice); set("dmCards", RScards);
+  const bar = [...w.document.querySelectorAll("#dmFBar button")];
+  check("quick path: valid dice and cards with no hallmarks and no words turn FORGE SEED on, and say Ready (status ok)", !$("dmBtn").disabled && /^Ready: the dice and the cards are complete\. .*press FORGE SEED\.$/.test($("dmReady").textContent) && /status ok/.test($("dmReady").className) && !$("dmHR").value && !$("dmFR").value && !$("dmWords").value, $("dmReady").textContent);
+  check("quick path: the step bar marks steps 3 to 5 as done by the page (the paper checks stay optional)", bar.every((b) => /✓$/.test(b.textContent) && b.classList.contains("done")) && bar.slice(2).every((b) => b.classList.contains("page") && /Done by the page/.test(b.title)) && !bar[0].classList.contains("page"), bar.map((b) => b.textContent + "/" + b.className).join(" "));
+  { const lf = $("dmLiveF").textContent, lwv = $("dmLiveW").textContent, rowsF = RSref.E.bits.match(/.{1,11}/g);
+    w.dmShowStep(5); for(let t = 0; t < 100 && !/Master fingerprint/.test($("dmLiveL").textContent); t++) await new Promise((r) => setTimeout(r, 50)); w.dmShowStep(1);
+    check("quick path: steps 3 to 5 are worked out by the page with nothing typed: grid F with its R and M, the words, the last word", /^Worked out by the page from your dice and cards: grid F/.test(lf) && rowsF.every((r, i) => lf.includes(String(i + 1).padStart(2) + "  " + r.slice(0, 3) + " " + r.slice(3, 7) + " " + r.slice(7))) && lf.includes("R " + RSref.E.marks.R[0]) && lf.includes(" M  " + RSref.E.marks.M.slice(0, 3))
+      && RSref.E.phrase.slice(0, 11).every((x) => lwv.includes(x)) && $("dmLiveL").textContent.includes("Last word: " + RSref.E.phrase[11] + " (") && !/✓/.test(lf + lwv), lf.slice(0, 160) + " | " + lwv.slice(0, 120));
+    check("quick path: nothing in steps 3 to 5 looks required (the hallmark and word boxes say optional)", ["dmFR", "dmFM", "dmFK", "dmWords"].every((id) => /optional/i.test($(id).placeholder)) && [3, 4, 5].every((n) => /optional|done for you/.test($("dmSt" + n).querySelector("p.hint").textContent)));
+    check("quick path: the restore drill hides the Damascus steps' words too", /body\.drill-on #dmLiveF, body\.drill-on #dmLiveW, body\.drill-on #dmLiveL, body\.drill-on #dmOut, body\.drill-on #dmTour \{ visibility: hidden; \}/.test(w.document.querySelector("style").textContent)); }
+  await w.dmGenerate();
+  check("quick path: FORGE SEED gives the same seed as the reference code (no hallmarks or words typed)", w.hasSeed() && w.eval("madeMnemonic") === RSref.E.phrase.join(" ") && w.eval("seedKind") === "dm", w.eval("madeMnemonic"));
+  who("h"); check("quick path: an assay keeps its own behavior (no Ready line, no FORGE SEED)", !$("dmReady").textContent && $("dmBtn").style.display === "none"); who("both");
+  set("dmCards", RScards.split("\n").slice(0, 2).join("\n"));
+  check("quick path: with a deck missing, FORGE SEED is off and no Ready line, and steps 3 to 5 are not marked", $("dmBtn").disabled && !$("dmReady").textContent && ![...w.document.querySelectorAll("#dmFBar button")].slice(2).some((b) => b.classList.contains("done")));
+  w.dmClear();
+}
+{ // v2.15.0 guided practice: a published practice sheet filled in step by step with NEXT, each value with where it comes from
+  w.dmClear(); words(12); w.eval("dmPracticeNext = 42");
+  const sheet = await w.dmPracticeSheet(42, 12), ref = refForge(12, pairsOf(sheet.dice), sheet.cards.split("\n").map((l) => l.trim().split(/\s+/).map((c) => c.replace(/^10/, "T")))), phrase = ref.E.phrase.join(" ");
+  await w.dmTourStart();
+  const T = () => $("dmTourText").textContent, nextB = $("dmTourNext"), seen = [], bad = [];
+  check("guided practice: GUIDED PRACTICE opens the panel on practice sheet 42, the boxes empty, PRACTICE shown, FORGE SEED off; NEXT is the one gold action, BACK and STOP gray", !$("dmTour").hidden && /practice sheet 42 \(1 of 12\)/.test($("dmTourTitle").textContent) && !$("dmDice").value && /^PRACTICE: practice 42/.test($("dmPracticeBan").textContent) && $("dmBtn").disabled && !nextB.classList.contains("secondary") && $("dmTourBack").classList.contains("secondary") && $("dmTourStop").classList.contains("secondary") && $("dmTourBack").disabled && $("dmTourBtn").classList.contains("secondary") && $("dmPracticeBtn").classList.contains("secondary"));
+  const firstGood = pairsOf(sheet.dice).findIndex(([a, b]) => vf.mirrorCode(a, b) !== null), [a1, b1] = pairsOf(sheet.dice)[firstGood], code1 = vf.mirrorCode(a1, b1).toString(2).padStart(5, "0");
+  const want = [
+    [1, () => $("dmDice").value === sheet.dice.split(" ").slice(0, firstGood + 1).join(" ") && T().includes("row " + a1 + " (the left die), column " + b1 + " (the right die) → " + code1) && T().includes("Write " + code1 + " into run 1 of grid H")],
+    [1, () => $("dmDice").value === sheet.dice && T().includes("run 26") && /pair boxes 1 to \d+/.test(T())],
+    [1, () => $("dmHR").value === ref.D.marks.R && $("dmHM").value === ref.D.marks.M && T().includes("Worked example, row 1 of grid H: ") && T().includes("So R = " + ref.D.marks.R[0]) && T().includes("So M = " + ref.D.marks.M[0])],
+    [2, () => $("dmCards").value === sheet.cards.split("\n")[0].split(" ").slice(0, 8).join(" ") && (T().match(/Match \d \(/g) || []).length === 7 && T().includes("Run 1.1 of grid A: " + ref.C.bits.slice(0, 7) + " (7 bits)")],
+    [2, () => $("dmCards").value === sheet.cards && T().includes("→ " + ref.C.bits.slice(7, 14))],
+    [2, () => $("dmAR").value === ref.C.marks.R && $("dmAM").value === ref.C.marks.M && T().includes("row 1 of grid A")],
+    [3, () => T().includes("the same → 0, different → 1") && T().includes("Forge   " + ref.E.bits.slice(0, 3) + " " + ref.E.bits.slice(3, 7) + " " + ref.E.bits.slice(7, 11)) && !$("dmFR").value],
+    [3, () => $("dmFR").value === ref.E.marks.R && $("dmFM").value === ref.E.marks.M && T().includes("fold   " + ref.E.marks.R) && /The seal holds/.test($("dmLiveF").textContent)],
+    [4, () => $("dmWords").value === phrase.split(" ").slice(0, 11).join(" ") && T().includes("→ “" + phrase.split(" ")[0] + "”") && /11 of 11 words checked/.test($("dmFNow").textContent)],
+    [5, () => T().includes("Coin flip entropy") && T().includes(ref.E.handWords[11].bits) && T().includes("“" + phrase.split(" ")[11] + "”") && T().includes("Calc 12th/24th word")],
+    [5, () => T().includes(phrase) && nextB.disabled && /^The practice sheet is complete/.test($("dmReady").textContent)],
+  ];
+  for(const [i, [step, ok]] of want.entries()){
+    nextB.click();
+    const st = { i: i + 1, step: w.eval("dmStep"), pr: w.eval("dmPractice"), off: $("dmBtn").disabled, ban: $("dmPracticeBan").style.display !== "none" };
+    if(st.step !== step || !ok()) bad.push("phase " + (i + 1) + ": " + T().slice(0, 140));
+    if(st.pr !== "practice 42" || !st.off || !st.ban) bad.push("phase " + (i + 1) + " is not PRACTICE, or FORGE SEED is on");
+  }
+  check("guided practice: each NEXT fills one part from the sheet, says where each value comes from, and shows the right step; PRACTICE stays and FORGE SEED stays off all the way", bad.length === 0, bad.slice(0, 3).join(" | "));
+  check("guided practice: at the end the boxes hold exactly what FILL IN A PRACTICE SHEET puts in (dice and cards), and the words are practice sheet 42's published words", $("dmDice").value === sheet.dice && $("dmCards").value === sheet.cards && /Damascus practice sheet/.test(w.knownPhrase(phrase) || "") && w.eval("dmPublicKind(dmState())") === "practice 42");
+  nextB.click(); check("guided practice: NEXT stops at the end", /12 of 12/.test($("dmTourTitle").textContent));
+  $("dmTourBack").click(); $("dmTourBack").click(); $("dmTourBack").click(); $("dmTourBack").click();
+  check("guided practice: BACK goes to the phase before and its boxes (four back: the Forge hallmarks are empty again)", /8 of 12/.test($("dmTourTitle").textContent) && !$("dmFR").value && !$("dmWords").value && $("dmAR").value === ref.C.marks.R && w.eval("dmStep") === 3);
+  $("dmTourStop").click();
+  check("guided practice: STOP closes the panel and keeps the boxes, still PRACTICE", $("dmTour").hidden && $("dmCards").value === sheet.cards && w.eval("dmPractice") === "practice 42" && $("dmBtn").disabled && !w.document.querySelector("#dmBox .dm-tour-hl"));
+  await w.dmTourStart(); check("guided practice: the next GUIDED PRACTICE takes the next sheet (43), as FILL IN A PRACTICE SHEET does", /practice sheet 43/.test($("dmTourTitle").textContent));
+  nextB.click(); w.dmClear(); check("guided practice: CLEAR closes the guide and empties the boxes", $("dmTour").hidden && !$("dmDice").value && w.eval("dmTour") === null);
+  await w.dmTourStart(); words(24); check("guided practice: another seed length closes the guide", $("dmTour").hidden && w.eval("dmTour") === null); words(12);
+  // 24 words: the whole walk-through, and the last word with its 8 checksum bits
+  words(24); w.eval("dmPracticeNext = 5"); await w.dmTourStart(); for(let i = 0; i < 11; i++) nextB.click();
+  const s24 = await w.dmPracticeSheet(5, 24), r24 = refForge(24, pairsOf(s24.dice), s24.cards.split("\n").map((l) => l.trim().split(/\s+/).map((c) => c.replace(/^10/, "T")))), p24 = r24.E.phrase.join(" ");
+  check("guided practice, 24 words: ends on practice sheet 5's published words, every box as the sheet, FORGE SEED off", T().includes(p24) && $("dmCards").value === s24.cards && $("dmFR").value === r24.E.marks.R && $("dmWords").value === p24.split(" ").slice(0, 23).join(" ") && $("dmBtn").disabled, T().slice(0, 120));
+  w.dmClear(); words(12);
+}
 // the creator line and picture (v2.14.0): top of the Damascus tab, ABOUT & HELP, and the two docs; the picture is docs/damascus/creator.webp
 { const pic = readFileSync(path.join(here, "..", "docs", "damascus", "creator.webp")), want = "data:image/webp;base64," + pic.toString("base64");
   const LINE = "The Damascus method, created by Random, 10 November 2026", REC = "Dated and signed origin record: tag damascus-origin-2026-11-10 on GitLab, timestamped in Bitcoin block 975,337 (OpenTimestamps)";

@@ -459,6 +459,14 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   #heirNew { text-align: center; font-size: 13px; color: var(--muted); margin: 8px 0 0; }
   #heirNew button { margin-left: 6px; }
   body.guided #heirNew { display: none; }
+  /* v2.15.0: one "start here" row under the title: the guide pointer, then the starting choices side by side (one gold main action) */
+  #startRow { padding: 10px 12px; margin: 6px 0 12px; }
+  #startRow #guideNew { margin: 0 0 8px; text-align: left; }
+  #startRow .sr-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(16em, 1fr)); gap: 10px 18px; }
+  #startRow .sr-i { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 6px; margin: 0; font-size: 13px; color: var(--muted); text-align: left; }
+  #startRow .sr-i button { margin: 0; }
+  body.guided #startRow { display: none; }
+  @media print { #startRow { display: none !important; } }
   #heirCard { font-size: 18px; line-height: 1.6; }
   #heirCard h2 { font-size: 24px; line-height: 1.3; }
   #heirCard ol.heir-steps { margin: 12px 0 0 1.4em; }
@@ -503,6 +511,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   /* v2.10.0: the look-alike letter list shows parts of the words (SECRET): never selectable, hidden during the restore drill */
   #smudgeNote, #vSmudge { -webkit-user-select: none; user-select: none; }
   body.drill-on #smudgeNote { visibility: hidden; }
+  body.drill-on #dmLiveF, body.drill-on #dmLiveW, body.drill-on #dmLiveL, body.drill-on #dmOut, body.drill-on #dmTour { visibility: hidden; }   /* v2.15.0: the Damascus steps show the words too */
   #forgePub:empty, #phrasePub:empty, #wvPub:empty, #detPub:empty, #smudgeNote:empty, #vSmudge:empty, #twiceNote:empty { display: none; }
   #oeSeed { -webkit-user-select: none; user-select: none; }   /* v2.10.0: an old Electrum seed in hex is as secret as the words */
   .pass-warn { color: var(--warn-text); font-weight: 600; font-size: 13px; margin: 6px 0 0; }
@@ -613,8 +622,8 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .ms-slot .ms-txt { flex: 1; min-width: 140px; font-size: 13px; }
   .ms-slot .ms-mono { font-family: monospace; font-size: 12px; color: var(--muted); word-break: break-all; }
   .ms-bad { color: var(--danger); font-size: 14px; margin: 6px 0; }
-  .ms-warn { border: 1px solid var(--danger); border-radius: 8px; padding: 8px 10px; font-size: 14px; line-height: 1.5; margin: 8px 0; }
-  .ms-test { background: var(--danger); color: #000; font-weight: 700; font-size: 13px; text-align: center; padding: 6px 8px; border-radius: 8px; margin: 8px 0; }
+  /* v2.15.0: .ms-test is the page's one warning style (PRACTICE, TESTNET, TEST ONLY and other "never put money on this" notices) */
+  .ms-test { background: var(--danger); color: #000; font-weight: 700; font-size: 13px; line-height: 1.45; text-align: left; padding: 6px 10px; border-radius: 8px; margin: 8px 0; }
   .ms-why { display: grid; gap: 8px; margin: 10px 0 12px; }
   .ms-why-i { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; padding: 9px 12px; font-size: 13px; line-height: 1.55; }
   .ms-prog2 { margin: 8px 0 4px; font-size: 13px; color: var(--muted); }
@@ -864,8 +873,6 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .dm-fbar button.on { color: var(--text); border-color: var(--gold); font-weight: 700; }
   .dm-fnow { font-weight: 700; font-size: 14px; margin: 6px 0 0; color: var(--text); }
   .dm-st { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 4px; }
-  .dm-sth { font-size: 15px; margin: 8px 0 4px; }
-  .dm-k { font-weight: 700; font-size: 13px; margin: 10px 0 2px; color: var(--text); }
   .dm-pad { margin: 8px 0 6px; gap: 6px; }
   .dm-boxes { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
   .dm-pb { position: relative; display: inline-block; min-width: 3.4em; padding: 10px 4px 3px; border: 1px solid var(--border); border-radius: 4px; text-align: center; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: var(--text); }
@@ -876,6 +883,12 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .dm-live { margin: 6px 0; }
   .dm-rule { margin: 4px 0 0; }
   .dm-have { border-left: 3px solid var(--gold); padding-left: 8px; }
+  /* v2.15.0 guided practice: the panel that fills in a practice sheet step by step, and what it just filled */
+  .dm-tour { border: 1px solid var(--gold); border-radius: 8px; padding: 6px 12px 2px; margin: 8px 0; scroll-margin-top: 64px; }
+  .dm-tour[hidden] { display: none; }
+  .dm-tour .hint { margin: 6px 0 0; line-height: 1.5; overflow-wrap: anywhere; }
+  .dm-tour h4.sec { margin-top: 6px; }
+  .dm-tour-hl { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 4px; }
   .dm-why { margin: 6px 0 0; }
   .dm-xor { display: flex; gap: 12px; align-items: center; margin: 4px 0; color: var(--text); }
   .dm-xt { border-collapse: collapse; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
@@ -957,6 +970,8 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   #netTag, #selfTestBadge { text-align: left; font-size: 12px; }
   #guideNew { text-align: left; font-size: 12px; margin: 0 0 8px; }
   .sec { font-size: 14px; font-weight: 700; margin: 12px 0 4px; color: var(--text); letter-spacing: .02em; }
+  h4.sec { font-size: 13px; margin: 10px 0 2px; }   /* v2.15.0: a sub-heading inside a section (the Damascus steps' "On paper" and "On this page") */
+  .btn-row.top { margin-top: 8px; }   /* v2.15.0: a button row under an input or a paragraph (instead of an inline margin) */
   .sec-block { margin-top: 14px; padding-top: 4px; border-top: 1px solid var(--border); }
   /* v2.2.0: backup checklist under the words */
   #bkList { margin-top: 12px; border: 1px solid var(--border); border-radius: 8px; padding: 4px 12px 10px; }
@@ -1038,7 +1053,6 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   #ssBox #ssK1 { left: calc(630 * var(--u)); top: calc(63 * var(--u)); }
   #ssBox #ssK2 { left: calc(630 * var(--u)); top: calc(119 * var(--u)); }
   #ssBox #ssK3 { left: calc(630 * var(--u)); top: calc(175 * var(--u)); }
-  #ssBox .ss-warn { color: var(--warn-text); font-weight: 700; font-size: 13px; text-align: center; margin: 10px 0 0; }
   /* v2.14.0 Learn on the practice signer: lessons and a practice transaction, as page text below the device (never on its screen) */
   #ssBox [hidden] { display: none !important; }
   #ssBox .ss-learn { margin: 14px auto 0; max-width: 750px; }
@@ -1049,10 +1063,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   #ssBox .ss-l-do { font-size: 15px; line-height: 1.5; }
   #ssBox .ss-l-cam { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; margin: 0 0 10px; overflow-wrap: anywhere; }
   #ssBox #ssTxStatus { white-space: pre-line; overflow-wrap: anywhere; }
-  /* v2.14.0: the card under the header that opens the practice signer (one line and the button on a wide screen) */
-  #ssPromo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 7px 10px; margin: 0 0 12px; border: 1px solid var(--gold); font-size: 13px; }
-  #ssPromo span { flex: 1 1 16em; min-width: 0; font-size: 12px; }
-  #ssPromo button { flex: none; padding: 6px 12px; font-size: 12px; letter-spacing: .03em; }
+  /* v2.15.0: the practice signer's choice in the start row under the title (laid out by #startRow .sr-i) */
   body.guided #ssPromo { display: none; }
   @media print { #ssPromo { display: none !important; } }
 </style>
@@ -1092,10 +1103,14 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <div id="selfTestBadge" role="status"></div>
   </div>
   <header>
-    <div id="guideNew">New here? Open MENU at the top and press GUIDE ME to be walked through making a seed one screen at a time.</div>
-    <div id="heirNew">Found someone&rsquo;s Bitcoin backup? <button type="button" id="heirBtn" class="small" onclick="heirOpen()" aria-expanded="false" aria-controls="heirCard">I FOUND A BITCOIN BACKUP</button></div>
+    <div class="card" id="startRow" role="group" aria-label="Start here">
+      <div id="guideNew">New here? Open MENU at the top and press GUIDE ME to be walked through making a seed one screen at a time.</div>
+      <div class="sr-row">
+        <div id="heirNew" class="sr-i"><span>Found someone&rsquo;s Bitcoin backup?</span><button type="button" id="heirBtn" class="small" onclick="heirOpen()" aria-expanded="false" aria-controls="heirCard">I FOUND A BITCOIN BACKUP</button></div>
+        <div id="ssPromo" class="sr-i"><span>Practice on a SeedSigner in your browser, with lessons.</span><button type="button" class="secondary small" id="ssPromoBtn" onclick="ssPageOpen()">OPEN PRACTICE SIGNER</button></div>
+      </div>
+    </div>
   </header>
-  <div class="card" id="ssPromo"><span>New: practice on a SeedSigner in your browser. Same screens and buttons as the real device.</span><button type="button" class="small" id="ssPromoBtn" onclick="ssPageOpen()">OPEN PRACTICE SIGNER</button></div>
 
   
   <div class="strip" id="strip"><b>Educational, not independently audited.</b> <span>Use an offline computer, write seeds on paper, start with a small amount.</span> <button type="button" class="linklike" onclick="showTab('about','beforeCard')">Read before real keys &rarr;</button></div>
@@ -1197,7 +1212,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <div id="wdFound" class="hint" aria-live="polite" style="margin:4px 0 0; font-weight:600;"></div>
       </div>
       <div id="wdCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
-      <div id="wdMsg" class="hint" aria-live="polite" style="margin:4px 0 0; color:var(--danger);"></div>
+      <div id="wdMsg" class="status bad" aria-live="polite"></div>
       <div class="hint" style="margin:4px 0 0;">The passphrase (if any) is added after the words are made, in the box under them. Coin: pick which side is 1 and keep it the same for every flip (for BitBox02&rsquo;s last word, T is 1 and H is 0).</div>
       <div class="btn-row" style="margin-top:8px;">
         <button type="button" id="wdBtn" onclick="wdGenerate()" disabled>FORGE SEED</button>
@@ -1207,7 +1222,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div id="wdOut" style="display:none;"></div>
     </details>
     <details id="cdBox" data-g="1">
-      <summary>Cards and hex<span class="tag tag-secret">SECRET</span></summary>
+      <summary>Cards and hex<span class="tag tag-secret">SECRET</span><small>Make a seed from a shuffled deck of playing cards, or from hex digits (a 16-sided die).</small></summary>
       <details class="wd-how"><summary>How cards work</summary><p class="hint" style="margin:6px 0 0;">Use a full deck of 52 cards with the jokers taken out. Shuffle it well (at least seven riffle shuffles), lay the cards out face up and type them in order, such as <b>AS 10H QD 2C</b>: the rank (A, 2 to 10, J, Q, K) and then the suit (C, D, H or S; &spades; &hearts; &diams; &clubs; work too). The <b>Card method</b> menu above decides how the cards become the seed. Both match Ian Coleman&rsquo;s BIP39 tool, so you can check the words there (tick Use Entropy and type the cards with T for a 10, such as <b>AS TH QD 2C</b>).</p><p class="hint" style="margin:6px 0 0;"><b>Ian Coleman, hashed (every card counts)</b>, the default: VOIDFORGE writes the cards as A&spades; 2&clubs; T&diams; and so on and hashes that text with SHA-256. In his tool, set Mnemonic Length to the <b>same number of words</b> (not Use Raw Entropy). EntropyLab&rsquo;s Coleman symbols option makes the same words. A 12-word seed needs <b>25 cards</b>, 15 words 31, 18 words 39 and 21 words 50; a 24-word seed needs <b>the whole deck and then 6 more</b> from a new shuffle.</p><p class="hint" style="margin:6px 0 0;"><b>Ian Coleman, raw entropy</b>: no hashing. Each card is turned into 5, 4 or 2 bits by his table, and the words are made from the last whole blocks of 32 bits (3 words per block); the first bits that do not fill a block are dropped. In his tool, leave Mnemonic Length on <b>Use Raw Entropy (3 words per 32 bits)</b>, his first choice. The number of words follows from the cards, so deal until VOIDFORGE says enough. His tool counts each card as if it were put back in the deck; cards dealt from one deck hold less (his own notes: a full deck gives 225 bits, not 232), so VOIDFORGE shows the strength as &ldquo;at most&rdquo;. A whole deck makes 21 words.</p></details>
       <div id="cdGrid" class="cd-grid" role="group" aria-label="Tap the cards in the order they lie"></div>
       <textarea id="cdCards" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Your cards in order" placeholder="Your cards in order, such as AS 10H QD 2C" oninput="cdUpdate()"></textarea>
@@ -1219,7 +1234,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <div id="cdHexCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
         <div class="btn-row" style="margin-top:8px;"><button type="button" id="cdHexBtn" onclick="cdHexGenerate()" disabled>FORGE SEED</button></div>
       </details>
-      <div id="cdMsg" class="hint" aria-live="polite" style="margin:4px 0 0; color:var(--danger);"></div>
+      <div id="cdMsg" class="status bad" aria-live="polite"></div>
       <div class="hint" style="margin:4px 0 0;">The passphrase (if any) is added after the words are made, in the box under them.</div>
       <div class="btn-row" style="margin-top:8px;"><button type="button" class="secondary small" onclick="cdClear()">CLEAR</button></div>
     </details>
@@ -1228,101 +1243,111 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <!-- v2.14.0: who created the method (the owner's profile picture, embedded as a data: URI; the same line is in docs/damascus-method.md and docs/damascus-quick-guide.md) -->
       <div class="vf-creator" id="dmCreator"><img class="vf-creator-pic" src="data:image/webp;base64,UklGRh4QAABXRUJQVlA4IBIQAABwOQCdASqAAIAAPl0mj0UjoiGYuzZUOAXEtgBjAO9/ZvxV6uy3vhvyN9jar/5D+zfsHgrDK9wvoH26/7n1WfqP2E/1t6V3mK81P/m+rr+u+oR/O/9p1o/7o+yH5dHsqf2r/u/tDZl2J3oD+SaCWOvsA1IO5/G3wF4Bbwe0C778Ummn+hewV+cPRF0WPWfsFfrn1wPRzWD5AXIHSNPn1m78iQWRfHCj8ItxUJsfHfISYUIPg4hrgT1Fnm2qIjhELCcu8hDRvccDmEQ/nLN1lZNnTcHxxXseKn7GHrwsUrJ5smV92BXtG0G1I6H/KaKefJDx9/nSkPnreH+cbiNdnbvlmIEJGhQnGLGo2cS2/MADsytYQ9eF2YiaJe21nwAmACSQxafyP8UGaXODKfCRNOcgvZsQCUu0B1cMW/WeUzi8krmL/42K6hZoRUbjXXfikCA9Uzd0r1Y3EoPn80A3DP5HvTM6UdpKcaXqf8BrDZzTIE1Fega8hLk72ap2SMstSi5eLEdGZKAqfDhMl8uGTBtLsxqcjLo/lS/jn7uUk5fOFX81EyZEJ2IQ0a0FKYDaetCEjNzp3pNKyXg9AtDiD6WPUg5M8KmsKw+T9BlPClG7EOr1JOAA/uxJilX42z8bZ/FDUon3Cv7qZ7SBVCYUlE4U/DBkY+MZx5W1/1pnIyZvw7qgesU11kDszN5BATJd0vNWs99IZlUmNZWaRC86bSuYF0vQDyz8/TcL0yq7tvTTuy334oSWrGhEJHE9KyR6Q84GXReYgl0atME9BcEBLc55MXOGWUfy80eu5LUOwDU17n/Xyz94RENrJ3ncVJEL2pbTA/WZpbnEx5VxoL04zHHwJhxVANbis5xzGqsfye34IYhRYA66tNn4V9qZAG7lj5I9PE7ycRSk0sovJpnFuQ8khFPbDRg5h62hHI9eATTxJHdOZY17bchVxYdmpCOzVN05KcshAjBwj2GV7B8g/tfj8uS9pSM6LrqKo1jvSq5AEN7cjsZLZBspQaA5KeDjfk7i4fK8/0OCzKnGNz2evNA0An4l+AzLhqBGVlE+hvXLDglRToiWHvR0E50BFGeQWHB90vLepNWEiRl5Kf/b8PYULT7XHa31wANt0a2iN1+qfbAtgNKZqGs2u7stkYVa1RV5L0Z3U3Ol183mLM+OuHcAYluuKSQngC89oWtQpd9Jp2rE6QRWvqUxdD79NmsyKWTMnoMffyMWUzm/QVo6l395xDPvoQH8o2Q0A71Qo0XLzNIGCwezZzB9VEHHgcIAym5yK6lFGqICGFiUSrfZzi7nu4ABMogZmYMFb51CRD8aHGJDzUKxFRwdAlBgMoPzvbpsXQdgWK5N0SGqNEG6eiGfZY3jlQUP2bOO3MMIEP9aVzW1O6mlEIdkumpaVQwuyThuVPPaXkqrpE58yM5RrZLntzOVPCTf1wKqkHGFCnOIKmTW+aOA3v78o7Xnp5P29+MVxO3YYdEnh2J5kAQvFtwwmt/xCCdkBXKD8Qp1a6SOhlUl7J/miH5KYP25sDJMo7U7S+kc9Hq5TXtU4RSM90JqBraabpFnSq/WyCAwhtSubdkNIwjVB77u1W49sTF2UbFmx9n5YOV93H433qS0f8cpb1flAo8RIv+rJXsVhryRf6RC7SHtcVu7TspylpLI3oYj6Vnr5eYkoQXDdftXvBeTrQ1qnjfra/ZGnc8n48pCOMuszjuqO9Ep3g+z5jF00BToUMt6/nAlqy1Vq0MH17dcOd9I53d6wO4WtFkkjCi1Vux78aRnM0TCeSEjAAO3SsYGik6xC3MTGQ2LIU8FjKDVPmkEDCSUVfj1JmMD8XAbqTYno69N1y/bAmEWiBj/PtYGNu439dm5rtDrr4oD4PgZO2iSHFwCQ/urRozsqM8Wfmj9u1U9TaNdYBBY8oum7B8G5Ggj+fRv+Dci+MpSk9sSWyLXe5LXI1XO8PN/4xWbpClHirbHa5Oa6QWyGDf2m1wxXS1aIREKtalJ00K6+px7NVN2168+7a5uGp/p2xLIwPnAMgeGn5CkrtF9KW+o2p2A1+SGkWs6wso4wlrUHWxWoPJdVuUxpyFz1wVxVUJSNL2r7tg4GzQVDELrb5xtnmYZQw5qknh24A5xkX1d3xth7uAo3Ej3ummG6T19iicD9eHNZk8AcsxXahKKm0794vMFfrbEbs/R/9y97GlOpBvo4irEAM2Rul4FF624Mgu87Mah/BsTWDsSqkUuImRPW2Yj1S/aFSt2hrbvmMFV9jNSHer2vcdm0RpgY9FLE0rzDlRYKuCXx160dAQy2EttfhWkA+HQIU6CVE2JWdE3BBvoVLQLFQGY6FwJyjdH5ZJOHHPesNcoUFYl55pyMMTe65lv2t8bo/8y/N9hTWqE+aurwTI7isNDdOLwNZMCYHGOKWCuSkeS8nEcsPqYCPrVBR4+jMyG8yY9y3tNn312k8g3cBuTAa/jvAHKubEYdGY8bJIS3ldmAap2diAWyzFKlRaio04/42Ub1n/cO9FssPL/6Louod5CSbWEwDCrWWzPIIJcK8/yjyUp+knbjkAanBjGKURLmJ67eUjR0xXmO+KPq9dr8VCWNOR1P1kqA2W1lhhpGMbEVwpu5ZLmr0G6rudfTfS6wcS/61KjvztW4/S1nVg7GCQ9Pa2FEGU6+ulwSUjWCUQq11bwf2evHz2+8YY1dFPx4bxh0R+mvxC37B3O/5YygHdXEj5Kfth0/X7kh7311IKMfGjZ9gNZKbeLku3drGU2LnShXtcEPposfG4SpVKwEAoZsJMIqwljCgTLntaCBWIeh2dqbtRY+I1s2Ldw2YOQLVLkvfIAQQXzUW2i4IgqcV7Q/N3XPJmfSHVZ4F6/gIYei5s0BnCCd9sFgJUGUXzj7H8fLjRL8jdqQeX0lb0V1p5YlKhkzoiB2Z4vYp1baolpuY1TEpbvRR9RoxAvIzpje3uiOVnJgwKbYJZDbibAYr6JR3D9QvFcBaaEExLrvB+XaYipsJqrv/ImQ334fQV+gCi6gzM13ex2N2H8DkbikekoGZd8QnQLz9j2Y0E5xNcjKxwSI24uvBuur6j7cw7g6iWAtaWURC0O6zppi+DK+4K7vKA+qepKoj5ZC6Ths1g7l/V/8gfDaFVKkI8ZPS99xxQAWmke72ahX/gR75mGUarsYWmcC5BysV4zsswfgmx8sfC9qThmdmxFLTRnLxm+Tsrrh/v6TvtSLKq7AtNdxZCs7XUPSWHYuB8LKmXfG/YLXrEFK59EyHGauZ7HiUozJpxo3nHkg+/pGPjsCz7FKX/bawh2JHCHeTc8Ucij6f1pGmMTPxsiF7TFah82U2jMTw2AM5eX9uGrMI1BM96OnUjbtjKFnoZ1UjdyzGLLdXWvajO9B8j/TBl3HnXDlfyZH2kmr7MCmwsgL5miobC+/FEZ4IN7jcQH7KLc1Ahb7rHwr3R7hhczCJM9xPX2kQsCfrdx4P/1oyIuzVTFrqnD6HkvPYg9TPYq9zB73AiNTSL97aHM70wXRnCYDKYMRxypSc77PHu0T9zVMSRMOcxp827bHH0lKuig4voRkSxct4X1r0LGk46LPW6ZLB7Q/ua30SnJLqKTgf7nECTA7FGQWiT4As3pC9FvthKNMjUkJk3UdPOdchfM9284Vt9AAo45gC3x5mKNZbGfk1dKFzn4DMkvaN5GJcpbS1/HlVSAmIiob5KtR2lBO0+CXo1n+YKDIv3np9noOz+X7h113hLBPp7su2Qa3Js52thIR7xwCW7U4d+Zi81sbgll1sr0o04G/c6pHPpInhnW7av6eQwilEB1LI2qu5wJa3BmiDdm+vrwITffffyfio8sm+gSnRrfjPXUFoY9+YF7wldynj5B80WTOKmzAde/EIhitaksN+zi54p/giYrovu7P4vEOyh5c3wcFEsFcHmEKjmXZfXbr/LuS+nw7v8xWbSh/Eoh+zGj5l4n9SOW1v1BDZ8ssdR7AC/M68pyynsxjOapYPCJaTPycP3kByn+itgO73rxOLleAYgjZynVN5vD9WILVAL72CP1SYPI1Hi2I1hOnYKUv8pWdAR4Zyedp+i4S/cZqthKA7pEGh+kwTFSBVSgqsNgrQh3e2Hoz2EbbJltSE6jyB00FxszNJ/Uw7sgi4dTRK8W4BW3DX2IASiVbIjPvkpIdycNgZiGivGhtC1YaIalJPYcSiOOf0uwZIszBKPuvExaPOB4S7pBZ99v93llZ28OyAjdJuWikuhURPqtqhvUEhQ9w1C+FqnN3pud/CVT7bXqG7hF+FquI0AdfnV3BqjImG34gmwRVEnEhUJpR2dePVp3plC9Um26juDzsKbqnfyKBkEwbc87LsNp+vXJFnxgTisF0q3RVRct/qi8xb0HYzwsY65Azu9gOdRY9qf+JIjAvrTuf+BdxbH66Iz2sg2QNFAOUAbfbW2NbfzJiur+yi0ObmOrW5kRF7MMuyGLwdyldftFsXgIVFV38I8o/GwOTD+SnH9UcYHbkljELOUNI0YqKNfTq1k4nNjdUFdkdMerM3fskEw3i/FULUO5r9GcDyxb+ntBRMb8lHuueabNoxSz3ycv9BVoi+35ikmtmKiU7rROgsb23nzpc2uKNMJz97F1wDwGmBEuBz92/UD4b+gcRUW+vsWJl7LvInNj1xAsxzd2ZPqk77MxTt1vpV9TFAbJorzo3m686Pkm82B38yvmqfXwCTMVmw/cIHCpI29SNwfTAiWib84bEzvZvMTSJMP+Hl44rmnZ5Sq95JnJKqTCy/RouW3Qj2eB9pZx0hLuDlOfj/OGq+JaYMtPMNKR8nvrlb69Lr937UDVLUNgJv+LQmkGi0RF9bpAiqs1CL9zEBwQ5YWKNCV+LZdbVYnEiNqGjFnwXrNBPTSutXKerwQjS9lqiugKx3ucRN+NwwNMRjwjnXfJPUIrFvE+fZpEftb09n5xAltmKwXqNXAAd7/2NI8wpO5Pkrf3KpOl7+Q7i5JIdYa1Jex6fqpcqAbtpwBXzWVLFodymstTxY2+oqIYCTpcGnEu2I6rZR2c0Gu+pzf9MFbcwZD6VErtHvr7gznq9dmyi3eghAroe+jKZl1L5xxrWm9avCJzQUq1KPr6Kk5eK1t4E1jCbwcSPDr33cESATG/YOEpsaTYkwpZqr2OzUYGU0VAiuy3OuJc+VZvnTdy7BBn+s5dzScyKU3MzULmV0JP69tN9nbfbeaiV+UjeGcAk2bNkryUchg3o5c7DDZAbkwbQmXzvfyXT1yZC9MP19dlVKFIpUWg4Zt3DnT5iI+GNkgtaM3FKnTi2g5NX88YCPS5cIsrYFahyhGYcAJxZE6/8VVmBJbto8+VAh571xcXAwvzCPYmCK6mE+eJh4Fua0H+0Mkf+4XtgYflN4dQauGmXAiWmibEhOUqdl51OlpMem1GH4YHvfCmQfiauBbXCrkVvSHzeLvwJWqUuDZIi8J/x/xbhIucILKMTBlMd5AjfKKMciwAAAAA" width="44" height="44" alt="Random's profile picture: a bloodhound in a Bitcoin cap"><div><div class="vf-creator-by">The Damascus method, created by Random, 10 November 2026</div><div class="hint">Dated and signed origin record: tag damascus-origin-2026-11-10 on GitLab, timestamped in Bitcoin block 975,337 (OpenTimestamps)</div></div></div>
       <!-- v2.14.0: the quick guide and the questions, made from docs/damascus-quick-guide.md and docs/damascus-faq.md (tests/vfmethod.test.mjs checks that they say the same) -->
-      <p class="hint dm-p dm-lead" id="dmIntro"><b>Make a seed by hand from dice and playing cards.</b> Follow the five steps with the printed sheets: each step says what to write on paper and what this page expects, and checks each row, deck and word as you finish it. About 30 minutes once you know the steps; allow longer the first time.</p>
-      <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" id="dmPracticeBtn" onclick="dmPracticeFill()">PRACTICE: FILL IN A PRACTICE SHEET</button></div>
+      <p class="hint dm-p dm-lead" id="dmIntro"><b>Make a seed by hand from dice and playing cards.</b> The five steps follow the printed sheets: each says what to write on paper and what this page does with it. About 30 minutes on paper once you know the steps; allow longer the first time.</p>
+      <p class="hint dm-p dm-have" id="dmQuick"><b>On this page you enter only the dice (step 1) and the cards (step 2), then press FORGE SEED.</b> The page does the Forge, the words and the last word for you, as the other MAKE A SEED tabs do. Steps 3 to 5 are the paper path: do them on the Forge sheet, and type what you wrote here only if you want each one checked. Using only the page means trusting its math, as with the other methods; doing steps 3 to 5 on paper is how you check every bit yourself, without trusting any device.</p>
+      <div class="btn-row top"><button type="button" class="secondary small" id="dmTourBtn" onclick="dmTourStart()">GUIDED PRACTICE</button><button type="button" class="secondary small" id="dmPracticeBtn" onclick="dmPracticeFill()">FILL IN A PRACTICE SHEET</button></div>
       <div id="dmPracticeBan" class="ms-test" role="status" style="display:none;"></div>
       <div class="mk-len"><label for="dmWho">Who checks</label><select id="dmWho" aria-label="Who checks"><option value="both">The owner: both sheets</option><option value="h">An assayer: the Hammer sheet only</option><option value="a">An assayer: the Anvil sheet only</option></select></div>
       <div id="dmFlow">
         <ol class="dm-fbar" id="dmFBar" aria-label="Damascus steps"><li><button type="button" data-ds="1">1 Hammer</button></li><li><button type="button" data-ds="2">2 Anvil</button></li><li><button type="button" data-ds="3">3 Forge</button></li><li><button type="button" data-ds="4">4 Words</button></li><li><button type="button" data-ds="5">5 Last word</button></li></ol>
         <div class="entropy-bar" aria-hidden="true"><div class="entropy-fill" id="dmFFill"></div></div>
         <div id="dmFNow" class="dm-fnow" aria-live="polite"></div>
-        <div id="dmCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
-        <div id="dmMsg" class="hint" aria-live="polite" style="margin:4px 0 0; color:var(--danger);"></div>
+        <div id="dmCount" class="status" aria-live="polite"></div>
+        <div id="dmMsg" class="status bad" aria-live="polite"></div>
+        <div id="dmTour" class="dm-tour" role="region" aria-labelledby="dmTourTitle" hidden>
+          <h4 class="sec" id="dmTourTitle">Guided practice</h4>
+          <div id="dmTourText" aria-live="polite"></div>
+          <div class="btn-row top" id="dmTourNav"><button type="button" id="dmTourNext" onclick="dmTourGo(1)">NEXT</button><button type="button" class="secondary small" id="dmTourBack" onclick="dmTourGo(-1)">BACK</button><button type="button" class="secondary small" id="dmTourStop" onclick="dmTourEnd()">STOP</button></div>
+        </div>
         <section class="dm-st" data-ds="1" id="dmSt1">
-          <h3 class="dm-sth">Step 1 of 5: The Hammer (dice)</h3>
-          <div class="dm-k">On paper: the Hammer sheet (H1 to H3)</div>
+          <h3 class="sec">Step 1 of 5: The Hammer (dice)</h3>
+          <h4 class="sec">On paper: the Hammer sheet (H1 to H3)</h4>
           <ol class="hint dm-steps"><li><b>Throw both dice.</b> Read the <b>left</b> die first.</li><li><b>Write both numbers</b> in the next pair box.</li><li><b>Rolled 1-1, 2-2, 3-3 or 4-4?</b> Cross the pair box out and throw both dice again.</li><li><b>Look up the pair</b> in the mirror table on the Hammer sheet (a pair and its mirror, like 2-5 and 5-2, share the first 4 bits): the row is the left die, the column is the right die. It gives you 5 bits (like 01101).</li><li><b>Write the 5 bits</b> into the next shaded run of the grid (a run is the stretch of boxes for one pair or one group of cards, shaded and white in turn).</li><li><b>Repeat</b> until the grid is full (<span class="dm-n" data-n="26|52">26</span> good pairs). The last pair uses only <span class="dm-n" data-n="3 bits|1 bit">3 bits</span>.</li><li><b>Dice check:</b> in the first <span class="dm-n" data-n="26|52">26</span> pair boxes, including crossed-out boxes: <span class="dm-n" data-n="52|104">52</span> numbers, count how often each face came up, and count the repeats (a number the same as the number just before it, reading every number in order: left, right, then the next box). FAIL if any count is <span class="dm-n" data-n="18|29">18</span> or more, or <span class="dm-n" data-n="1|6">1</span> or fewer, or repeats are <span class="dm-n" data-n="2|7">2</span> or fewer. On a FAIL, use other dice and start a new Hammer sheet.</li><li>A hallmark is a check bit: whether a row or a column holds an odd or an even number of 1s (its parity).</li><li><b>Row hallmark R:</b> count the 1s in the row and write the result in the R box at the end of the row: odd: 1 3 5 7 9 11 → 1 · even: 0 2 4 6 8 10 → 0.</li><li><b>Column hallmark M:</b> count the 1s in the column and write the result in the M box under it, the same way.</li></ol>
-          <div class="dm-k">On this page</div>
+          <h4 class="sec">On this page</h4>
           <p class="hint dm-p">Tap the left die, then the right die: two taps for each pair, crossed-out pairs too. Or type the pairs, two numbers each, such as 14 15 26.</p>
           <div id="dmDicePad" class="radio-group dm-pad" role="group" aria-label="Tap the dice: the left die, then the right die"></div>
           <div id="dmPairBoxes" class="dm-boxes" aria-label="Your pair boxes"></div>
           <div id="dmDiceRow"><label for="dmDice" class="dm-lbl">Hammer sheet: the dice pairs, in the order thrown, crossed-out pairs too</label>
             <textarea id="dmDice" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="14 15 26 53 53 23 ..."></textarea>
-            <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" id="dmUndoThrow" onclick="dmUndoThrow()">UNDO LAST THROW</button></div></div>
-          <div class="dm-mine" id="dmMineH"><span>Grid H</span><input type="text" id="dmHR" spellcheck="false" autocomplete="off" aria-label="Row hallmark R of grid H" placeholder="R(H): one bit a row"><input type="text" id="dmHM" spellcheck="false" autocomplete="off" aria-label="Column hallmark M of grid H" placeholder="M(H): 11 bits"></div>
+            <div class="btn-row top"><button type="button" class="secondary small" id="dmUndoThrow" onclick="dmUndoThrow()">UNDO LAST THROW</button></div></div>
+          <div class="dm-mine" id="dmMineH"><span>Grid H</span><input type="text" id="dmHR" spellcheck="false" autocomplete="off" aria-label="Row hallmark R of grid H" placeholder="R(H), optional: one bit a row"><input type="text" id="dmHM" spellcheck="false" autocomplete="off" aria-label="Column hallmark M of grid H" placeholder="M(H), optional: 11 bits"></div>
           <div class="hint dm-rule">Optional: type your hallmarks as you count them; each row and column is checked as you type it.</div>
           <div id="dmLiveH" class="dm-live" aria-live="polite"></div>
           <p class="hint dm-p dm-have"><b>What you should have now:</b> <span class="dm-n" data-n="26|52">26</span> good pairs in the pair boxes, grid H full (rows 1 to <span class="dm-n" data-n="11|23">11</span> with 11 bits, row <span class="dm-n" data-n="12|24">12</span> with <span class="dm-n" data-n="7|3">7</span>), and PASS in the dice check.</p>
           <div class="dm-whyslot" data-parts="1,3"></div>
         </section>
         <section class="dm-st" data-ds="2" id="dmSt2">
-          <h3 class="dm-sth">Step 2 of 5: The Anvil (cards)</h3>
-          <div class="dm-k">On paper: the Anvil sheet (A1 to A4)</div>
+          <h3 class="sec">Step 2 of 5: The Anvil (cards)</h3>
+          <h4 class="sec">On paper: the Anvil sheet (A1 to A4)</h4>
           <ol class="hint dm-steps"><li><b>Shuffle well:</b> spread the cards face down and swirl them for 30 seconds, riffle shuffle <b>12 times</b>, then cut.</li><li><b>Deal 8 cards face up</b> in a row.</li><li><b>Play the 7 matches</b> shown on the sheet: 1 against 2, 3 against 4, 5 against 6, 7 against 8, then the two winners on the left, then the two winners on the right, then the final. In each match write <b>1 if the right card is higher</b>, <b>0 if the left card is higher</b>. A group of 8 cards (an octet) gives 7 bits for its run of grid A; a group of 4 (a quad) gives 3.</li><li><b>Deal the next 8 cards</b> and play again: 6 groups of 8 in all. Then deal 4 cards: 1 against 2, 3 against 4, then the two winners.</li><li><b>Do it <span class="dm-n" data-n="3|6">3</span> times in all:</b> shuffle the same deck again each time. <span id="dmLastDeck">The last deck is shorter: on deck 3, deal 5 groups of 8, then 4 cards, and stop.</span></li><li><b>Card check, while you deal:</b> count the neighbors: two cards dealt one after the other in the same group, with the same suit and ranks next to each other (like 7♥ 8♥). Ace and King are not neighbors, and two cards in different groups never count. After each deck, count its 1s. FAIL a deck if its 1s are 11 or fewer, or 34 or more (full 45-bit decks only), or its neighbors are 6 or more. On a FAIL, shuffle again and redo that deck.</li><li><b>Hallmarks</b> R and M, the same way as on the Hammer sheet.</li></ol>
-          <div class="dm-k">On this page</div>
+          <h4 class="sec">On this page</h4>
           <p class="hint dm-p">Tap each card as you deal it. The page deals them in groups as the sheet does and shows the bits each group gives. A card already dealt from this deck shows its back. Or type the card record, one deck a line, such as 9D 3S AC 10H.</p>
           <div id="dmDeal" class="dm-deal" aria-live="polite"></div>
           <div id="dmCardGrid" class="cd-grid" role="group" aria-label="Tap the cards in the order you deal them"></div>
           <div id="dmCardsRow"><label for="dmCards" class="dm-lbl">Anvil sheet: the card record, deck after deck, in dealt order (or, with no card record, the 1s and 0s of grid A)</label>
             <textarea id="dmCards" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="9D 3S AC 3D 9S 5D 2D 7C ..."></textarea>
-            <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" id="dmUndoCard" onclick="dmUndoCard()">UNDO LAST CARD</button></div></div>
-          <div class="dm-mine" id="dmMineA"><span>Grid A</span><input type="text" id="dmAR" spellcheck="false" autocomplete="off" aria-label="Row hallmark R of grid A" placeholder="R(A): one bit a row"><input type="text" id="dmAM" spellcheck="false" autocomplete="off" aria-label="Column hallmark M of grid A" placeholder="M(A): 11 bits"></div>
+            <div class="btn-row top"><button type="button" class="secondary small" id="dmUndoCard" onclick="dmUndoCard()">UNDO LAST CARD</button></div></div>
+          <div class="dm-mine" id="dmMineA"><span>Grid A</span><input type="text" id="dmAR" spellcheck="false" autocomplete="off" aria-label="Row hallmark R of grid A" placeholder="R(A), optional: one bit a row"><input type="text" id="dmAM" spellcheck="false" autocomplete="off" aria-label="Column hallmark M of grid A" placeholder="M(A), optional: 11 bits"></div>
           <div id="dmLiveA" class="dm-live" aria-live="polite"></div>
           <p class="hint dm-p dm-have"><b>What you should have now:</b> grid A full (<span class="dm-n" data-n="128|256">128</span> bits, row <span class="dm-n" data-n="12|24">12</span> with <span class="dm-n" data-n="7|3">7</span>), the card record if you keep one, and PASS for each deck.</p>
           <div class="dm-whyslot" data-parts="2"></div>
         </section>
         <section class="dm-st" data-ds="3" id="dmSt3">
-          <h3 class="dm-sth">Step 3 of 5: The Forge (XOR)</h3>
-          <div class="dm-k">On paper: the Forge sheet (F1, F2)</div>
+          <h3 class="sec">Step 3 of 5: The Forge (XOR)</h3>
+          <p class="hint dm-p">On paper. On this page it is optional: the page folds the grids itself once the dice and cards are in; type your hallmarks to have your own folding checked.</p>
+          <h4 class="sec">On paper: the Forge sheet (F1, F2)</h4>
           <div class="dm-xor"><span class="dm-pic" data-pic="xor"></span><table class="dm-xt" aria-label="XOR lookup"><tr><td>0 0 → 0</td></tr><tr><td>1 1 → 0</td></tr><tr><td>0 1 → 1</td></tr><tr><td>1 0 → 1</td></tr></table></div>
-          <ol class="hint dm-steps"><li><b>Lay the Hammer and Anvil sheets side by side.</b></li><li><b>Work one row at a time:</b> finger on the same row on both sheets.</li><li><b>For every box (this is XOR):</b> Same → 0. Different → 1. Write it in the same box on the Forge sheet.</li><li><b>Hallmarks on the Forge sheet,</b> R and M, the same way as on the Hammer sheet.</li><li><b>The seal:</b> for each R box and each M box, fold the Hammer hallmark with the Anvil hallmark (Same → 0. Different → 1.). The result must equal the Forge sheet's hallmark.</li><li><b>If one doesn't match:</b> the mistake is where that row and that column cross. Fix it before you go on.</li></ol>
+          <ol class="hint dm-steps"><li><b>Lay the Hammer and Anvil sheets side by side.</b></li><li><b>Work one row at a time:</b> finger on the same row on both sheets.</li><li><b>For every box (this is XOR):</b> Same → 0. Different → 1. Write it in the same box on the Forge sheet.</li><li><b>Hallmarks on the Forge sheet,</b> R and M, the same way as on the Hammer sheet.</li><li><b>The seal:</b> for each R box and each M box, fold the Hammer hallmark with the Anvil hallmark (Same → 0. Different → 1.). The result must equal the Forge sheet&rsquo;s hallmark.</li><li><b>If one doesn&rsquo;t match:</b> the mistake is where that row and that column cross. Fix it before you go on.</li></ol>
           <div class="dm-seal-pic"><span class="dm-pic" data-pic="seal"></span></div>
-          <div class="dm-k">On this page</div>
-          <p class="hint dm-p">Type your Forge sheet's hallmarks as you finish each row: R(F), one bit a row, then M(F) under the columns. Each row is checked as you type it, and a mistake is shown at its row and column.</p>
-          <div id="dmMineF"><div class="dm-mine"><span>Grid F</span><input type="text" id="dmFR" spellcheck="false" autocomplete="off" aria-label="Row hallmark R of grid F" placeholder="R(F): one bit a row"><input type="text" id="dmFM" spellcheck="false" autocomplete="off" aria-label="Column hallmark M of grid F" placeholder="M(F): 11 bits"><input type="text" id="dmFK" spellcheck="false" autocomplete="off" aria-label="Skew hallmark K of grid F" placeholder="K(F): 11 bits, optional"></div>
+          <h4 class="sec">On this page</h4>
+          <p class="hint dm-p">The page shows grid F and its hallmarks below, worked out from your dice and cards. Optional: type your Forge sheet&rsquo;s hallmarks as you finish each row, R(F), one bit a row, then M(F) under the columns, to check your own folding. Each row is checked as you type it, and a mistake is shown at its row and column.</p>
+          <div id="dmMineF"><div class="dm-mine"><span>Grid F</span><input type="text" id="dmFR" spellcheck="false" autocomplete="off" aria-label="Row hallmark R of grid F" placeholder="R(F), optional: one bit a row"><input type="text" id="dmFM" spellcheck="false" autocomplete="off" aria-label="Column hallmark M of grid F" placeholder="M(F), optional: 11 bits"><input type="text" id="dmFK" spellcheck="false" autocomplete="off" aria-label="Skew hallmark K of grid F" placeholder="K(F), optional: 11 bits"></div>
             <label class="dm-opt"><input type="checkbox" id="dmSkew"> I use the skew hallmark K (optional)</label></div>
           <div id="dmLiveF" class="dm-live" aria-live="polite"></div>
           <p class="hint dm-p dm-have"><b>What you should have now:</b> grid F full, its R and M boxes filled, and the seal agreeing in every box.</p>
           <div class="dm-whyslot" data-parts="4"></div>
         </section>
         <section class="dm-st" data-ds="4" id="dmSt4">
-          <h3 class="dm-sth">Step 4 of 5: The words</h3>
-          <div class="dm-k">On paper: the Forge sheet and the word table (F3, F4)</div>
-          <ol class="hint dm-steps"><li><b>Split each Forge row</b> into 3 + 4 + 4 bits: block, row, column. Block: which of the word table's 8 blocks; row and column: where the word sits in that block.</li><li><b>Look up the word</b> in the word table with those three parts and write it next to the row. No math needed.</li><li><b>Check each word back:</b> find it alphabetically in the table and make sure its bits match the row.</li></ol>
-          <div class="dm-k">On this page</div>
-          <p class="hint dm-p">Type each word as you write it (the first four letters are enough). Each word is checked against its row as you type it.</p>
-          <textarea id="dmWords" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The words you wrote" placeholder="Your words, in order (first four letters are enough)"></textarea>
+          <h3 class="sec">Step 4 of 5: The words</h3>
+          <p class="hint dm-p">On paper. On this page it is optional: the page finds the words itself once the dice and cards are in; type the words you wrote to have each one checked.</p>
+          <h4 class="sec">On paper: the Forge sheet and the word table (F3, F4)</h4>
+          <ol class="hint dm-steps"><li><b>Split each Forge row</b> into 3 + 4 + 4 bits: block, row, column. Block: which of the word table&rsquo;s 8 blocks; row and column: where the word sits in that block.</li><li><b>Look up the word</b> in the word table with those three parts and write it next to the row. No math needed.</li><li><b>Check each word back:</b> find it alphabetically in the table and make sure its bits match the row.</li></ol>
+          <h4 class="sec">On this page</h4>
+          <p class="hint dm-p">The page shows the words below, worked out from your dice and cards. Optional: type each word as you write it (the first four letters are enough) to have it checked against its row.</p>
+          <textarea id="dmWords" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The words you wrote" placeholder="Optional: the words you wrote, in order (first four letters are enough)"></textarea>
           <div id="dmLiveW" class="dm-live" aria-live="polite"></div>
           <p class="hint dm-p dm-have"><b>What you should have now:</b> words 1 to <span class="dm-n" data-n="11|23">11</span> next to rows 1 to <span class="dm-n" data-n="11|23">11</span>, each one checked back.</p>
           <div class="dm-whyslot" data-parts="5"></div>
         </section>
         <section class="dm-st" data-ds="5" id="dmSt5">
-          <h3 class="dm-sth">Step 5 of 5: The last word</h3>
-          <div class="dm-k">On paper: the Forge sheet, box 5 (F5)</div>
-          <ul class="hint dm-steps"><li>Your Forge sheet's last row gives the last word's 7 bits (3 for 24 words). These are not new coin flips.</li><li>SeedSigner asks for them under 'Coin flip entropy'. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.</li><li>The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.</li></ul>
+          <h3 class="sec">Step 5 of 5: The last word</h3>
+          <p class="hint dm-p">On paper with a SeedSigner. On this page it is done for you once the dice and cards are in (below). Did it all on paper? The box under it works out the last word from your words and bits.</p>
+          <h4 class="sec">On paper: the Forge sheet, box 5 (F5)</h4>
+          <ul class="hint dm-steps"><li>Your Forge sheet&rsquo;s last row gives the last word&rsquo;s 7 bits (3 for 24 words). These are not new coin flips.</li><li>SeedSigner asks for them under 'Coin flip entropy'. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.</li><li>The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.</li></ul>
           <ol class="hint dm-steps"><li><b>On the SeedSigner:</b> Tools &gt; <b>Calc 12th/24th word</b> &gt; <span class="dm-n" data-n="12|24">12</span> words &gt; type words 1 to <span class="dm-n" data-n="11|23">11</span> &gt; <b>Build Final Word</b> &gt; <b>Coin flip entropy</b> &gt; enter the <span class="dm-n" data-n="7|3">7</span> bits (<b>Heads = 1</b>, Tails = 0).</li><li><b>Final Word Calc</b> shows the last word. Press Next: the <span class="dm-n" data-n="12th|24th">12th</span> Word screen shows the fingerprint.</li><li><b>Compare</b> the last word, the fingerprint and the first address with this page. They must match.</li></ol>
-          <div class="dm-k">On this page</div>
+          <h4 class="sec">On this page</h4>
           <div id="dmLiveL" class="dm-live" aria-live="polite"></div>
           <details class="wd-how" id="dmLwBox"><summary>Did it all on paper? Work out the last word here</summary>
-            <p class="hint dm-p">Type words 1 to 11 (1 to 23 for 24 words) and the 7 bits (3) of your Forge sheet's last row. CALCULATE LAST WORD works like SeedSigner's Calc 12th/24th word: the bits, then the checksum.</p>
+            <p class="hint dm-p">Type words 1 to 11 (1 to 23 for 24 words) and the 7 bits (3) of your Forge sheet&rsquo;s last row. CALCULATE LAST WORD works like SeedSigner&rsquo;s Calc 12th/24th word: the bits, then the checksum.</p>
             <textarea id="dmLwWords" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Words 1 to 11 (or 1 to 23) from your Forge sheet" placeholder="Words 1 to 11 (or 1 to 23), in order"></textarea>
-            <input type="text" id="dmLwBits" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="The last row's bits, as 1 and 0" placeholder="The last row's 7 bits (3 for 24 words), such as 1011001" style="margin-top:6px;">
-            <div class="btn-row" style="margin-top:8px;"><button type="button" class="secondary small" id="dmLwBtn" onclick="dmLwCalc()">CALCULATE LAST WORD</button></div>
+            <input type="text" id="dmLwBits" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="The last row's bits, as 1 and 0" placeholder="The last row’s 7 bits (3 for 24 words), such as 1011001" style="margin-top:6px;">
+            <div class="btn-row top"><button type="button" class="secondary small" id="dmLwBtn" onclick="dmLwCalc()">CALCULATE LAST WORD</button></div>
             <div id="dmLwOut" class="status" role="status" aria-live="polite" style="white-space:pre-wrap;"></div>
           </details>
-          <div class="btn-row" style="margin-top:8px;"><button type="button" id="dmBtn" onclick="dmGenerate()" disabled>FORGE SEED</button></div>
           <p class="hint dm-p dm-have"><b>What you should have now:</b> the <span class="dm-n" data-n="12th|24th">12th</span> word, the same on both tools, and the same fingerprint and first address on both.</p>
           <div class="dm-whyslot" data-parts="6"></div>
         </section>
         <div class="gnav"><button type="button" class="secondary small" id="dmFBack" onclick="dmGo(-1)">&larr; BACK</button><span></span><button type="button" class="secondary small" id="dmFNext" onclick="dmGo(1)">NEXT &rarr;</button></div>
       </div>
-      <div class="btn-row" style="margin-top:8px;">
+      <div id="dmReady" class="status" aria-live="polite"></div>
+      <div class="btn-row top" id="dmGoRow">
+        <button type="button" id="dmBtn" onclick="dmGenerate()" disabled>FORGE SEED</button>
         <button type="button" class="secondary small" id="dmCheckBtn" onclick="dmCheck()" disabled>CHECK MY SHEETS</button>
         <button type="button" class="secondary small" onclick="dmClear()">CLEAR</button>
       </div>
       <div id="dmOut" aria-live="polite" style="display:none;"></div>
-      <h3 class="sec" style="margin-top:14px;">Print the sheets</h3>
-      <div class="mk-len" style="margin-top:8px;"><label for="dmPaper">Paper</label><select id="dmPaper" aria-label="Paper size for the sheets"><option value="letter">US Letter</option><option value="a4">A4</option></select><span>Blank sheets are not secret. A filled-in Forge sheet is your seed.</span></div>
+      <h3 class="sec">Print the sheets</h3>
+      <div class="mk-len"><label for="dmPaper">Paper</label><select id="dmPaper" aria-label="Paper size for the sheets"><option value="letter">US Letter</option><option value="a4">A4</option></select><span>Blank sheets are not secret. A filled-in Forge sheet is your seed.</span></div>
       <div class="btn-row" id="dmPrintRow">
         <button type="button" class="secondary small" id="dmPrintK" onclick="dmPrint('k')">PRINT DAMASCUS KIT</button>
         <button type="button" class="secondary small" id="dmPrintH" onclick="dmPrint('h')">PRINT HAMMER SHEET</button>
@@ -1332,30 +1357,30 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <button type="button" class="secondary small" id="dmPrintC" onclick="dmPrint('c')">PRINT BACKUP CARD</button>
         <button type="button" class="secondary small" id="dmPrintR" onclick="dmPrint('r')">PRINT TRIAL CHECKLIST</button>
       </div>
-      <h3 class="sec" style="margin-top:14px;">The whole method on one page</h3>
+      <h3 class="sec">The whole method on one page</h3>
       <div id="dmGuide">
-      <p class="hint dm-p dm-lead"><b>How to make a Damascus seed.</b> A Damascus seed is a normal 12-word Bitcoin seed that you make by hand from <b>dice</b> and <b>playing cards</b>, and check by hand as you go. Damascus steel is made by folding two different steels into one blade that is stronger than either. The Damascus method folds dice and cards into one seed.</p><p class="hint dm-p"><b>Time:</b> about 30 minutes once you know the steps; allow longer the first time. <b>Practice first</b> with a practice sheet (PRACTICE on the Damascus tab) or throwaway rolls. Never put money on a practice seed.</p><p class="hint dm-p">Field-tested: a hand-made Damascus seed checked on a real SeedSigner and in Sparrow (10 November 2026).</p><p class="hint dm-p">Each part below has the steps, one action per line, then <b>What you should have now</b>, then <b>Why it works</b>. The step labels on the printed sheets (H1, A2, F5 ...) are shown in brackets.</p><details class="wd-how dm-part"><summary>What you need</summary><ul class="hint dm-steps"><li>The printed sheets: <b>Hammer</b> (dice), <b>Anvil</b> (cards), <b>Forge</b> (the result), and the <b>word table</b>. Print them from VOIDFORGE: MAKE A SEED, the Damascus tab.</li><li>Two matching six-sided dice.</li><li>One deck of 52 playing cards.</li><li>A pencil.</li><li>An offline VOIDFORGE and a SeedSigner for the last word.</li></ul><p class="hint dm-p">Work in a private room. Phones away.</p></details><details class="wd-how dm-part"><summary>Part 1: The Hammer (dice)</summary><ol class="hint dm-steps"><li><b>Throw both dice.</b> Read the <b>left</b> die first. (H1)</li><li><b>Write both numbers</b> in the next pair box.</li><li><b>Rolled 1-1, 2-2, 3-3 or 4-4?</b> Cross the pair box out and throw both dice again.</li><li><b>Look up the pair</b> in the mirror table on the Hammer sheet (a pair and its mirror, like 2-5 and 5-2, share the first 4 bits): the row is the left die, the column is the right die. It gives you 5 bits (like 01101).</li><li><b>Write the 5 bits</b> into the next shaded run of the grid (a run is the stretch of boxes for one pair or one group of cards, shaded and white in turn).</li><li><b>Repeat</b> until the grid is full (26 good pairs). The last pair uses only 3 bits.</li><li><b>Dice check:</b> in the first 26 pair boxes, including crossed-out boxes: 52 numbers, count how often each face came up, and count the repeats (a number the same as the number just before it, reading every number in order: left, right, then the next box). FAIL if any count is 18 or more, or 1 or fewer, or repeats are 2 or fewer. On a FAIL, use other dice and start a new Hammer sheet. (H2)</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> 26 good pairs in the pair boxes, grid H full (rows 1 to 11 with 11 bits, row 12 with 7), and PASS in the dice check.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Bit:</b> a 0 or a 1. <b>Entropy:</b> the randomness a seed is made from, 128 bits for 12 words.</li><li>Two dice have 36 results. The 4 doubles 1-1 to 4-4 are thrown again, so 32 are left: exactly the 32 codes of 5 bits, each as likely as the others with fair dice.</li><li>The fifth bit says which die was higher. It stays fair even with a biased die, because a die is as likely to be higher first as second.</li><li>The dice check catches badly broken dice, not small flaws. The cards cover the rest (Part 4).</li></ul></details></details><details class="wd-how dm-part"><summary>Part 2: The Anvil (cards)</summary><ol class="hint dm-steps"><li><b>Shuffle well:</b> spread the cards face down and swirl them for 30 seconds, riffle shuffle <b>12 times</b>, then cut. (A1)</li><li><b>Deal 8 cards face up</b> in a row. (A2)</li><li><b>Play the 7 matches</b> shown on the sheet: 1 against 2, 3 against 4, 5 against 6, 7 against 8, then the two winners on the left, then the two winners on the right, then the final.<ul><li>The higher card wins and plays on.</li><li>In each match write <b>1 if the right card is higher</b>, <b>0 if the left card is higher</b>.</li><li>Ace is lowest, King is highest. For the same rank: clubs &lt; diamonds &lt; hearts &lt; spades.</li><li>A group of 8 cards (an octet) gives 7 bits for its run of grid A; a group of 4 (a quad) gives 3.</li></ul></li><li><b>Deal the next 8 cards</b> and play again: 6 groups of 8 in all.</li><li><b>Then deal 4 cards:</b> 1 against 2, 3 against 4, then the two winners.</li><li><b>Do it 3 times in all:</b> shuffle the same deck again (step 1) each time. The last deck is shorter: on deck 3, deal 5 groups of 8, then 4 cards, and stop.</li><li><b>Card check, while you deal:</b> count the neighbors: two cards dealt one after the other in the same group, with the same suit and ranks next to each other (like 7♥ 8♥). Ace and King are not neighbors, and two cards in different groups never count. After each deck, count its 1s. FAIL a deck if its 1s are 11 or fewer, or 34 or more (full 45-bit decks only), or its neighbors are 6 or more. On a FAIL, shuffle again and redo that deck. (A3)</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> grid A full (128 bits, row 12 with 7), the card record if you keep one, and PASS for each deck.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Match bit:</b> 1 if the right card is higher. In a well-shuffled deck, either card is equally likely to be the higher one, so each match is a fair bit.</li><li>Every card has its own place in the order (rank, then suit), so there are no ties.</li><li>The card check catches a lazy shuffle, not a small flaw. The dice cover the rest (Part 4).</li></ul></details></details><details class="wd-how dm-part"><summary>Part 3: Hallmarks (parity) on each sheet</summary><p class="hint dm-p">A hallmark is a check bit: whether a row or a column holds an odd or an even number of 1s (its parity). On the Hammer sheet and on the Anvil sheet: (H3, A4)</p><ul class="hint dm-steps"><li><b>Row hallmark R:</b> count the 1s in the row and write the result in the R box at the end of the row: odd: 1 3 5 7 9 11 → 1 · even: 0 2 4 6 8 10 → 0.</li><li><b>Column hallmark M:</b> count the 1s in the column and write the result in the M box under it, the same way.</li></ul><p class="hint dm-p dm-have"><b>What you should have now:</b> on both sheets, an R box filled on every row and an M box under every column.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Parity:</b> whether a count is odd or even. A hallmark is the parity of the 1s in its row or column.</li><li>One wrong box changes the parity of its row and of its column, so its hallmarks show where it is.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 4: The Forge (XOR)</summary><ol class="hint dm-steps"><li><b>Lay the Hammer and Anvil sheets side by side.</b> (F1)</li><li><b>Work one row at a time:</b> finger on the same row on both sheets.</li><li><b>For every box (this is XOR):</b> Same → 0. Different → 1. Write it in the same box on the Forge sheet.</li><li><b>Hallmarks on the Forge sheet,</b> R and M, the same way as in Part 3. (F2)</li><li><b>The seal:</b> for each R box and each M box, fold the Hammer hallmark with the Anvil hallmark (Same → 0. Different → 1.). The result must equal the Forge sheet's hallmark.</li><li><b>If one doesn't match:</b> the mistake is where that row and that column cross. Fix it before you go on.</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> grid F full, its R and M boxes filled, and the seal agreeing in every box.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>XOR (folding):</b> two bits in, one bit out: 0 0 → 0, 1 1 → 0, 0 1 → 1, 1 0 → 1. Forge = Hammer XOR Anvil.</li><li>If either sheet is random, the Forge sheet is random too, even if the other sheet is bad or was made by someone you do not trust.</li><li>The parity of a folded row is the fold of the two parities. So the seal checks all your folding at once, without doing it again.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 5: The words</summary><ol class="hint dm-steps"><li><b>Split each Forge row</b> into 3 + 4 + 4 bits: block, row, column. Block: which of the word table's 8 blocks; row and column: where the word sits in that block. (F3)</li><li><b>Look up the word</b> in the word table with those three parts and write it next to the row. No math needed.</li><li><b>Check each word back:</b> find it alphabetically in the table and make sure its bits match the row. (F4)</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> words 1 to 11 next to rows 1 to 11, each one checked back.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li>The 11 bits of a row are the word's place on the BIP39 list (2,048 words, from 0). The word table lays the list out by those bits, so no arithmetic is needed.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 6: The last word</summary><p class="hint dm-p">Row 12 gives only 7 bits, because the last word also holds a checksum that needs a computer. (F5)</p><ul class="hint dm-steps"><li>Your Forge sheet's last row gives the last word's 7 bits (3 for 24 words). These are not new coin flips.</li><li>SeedSigner asks for them under 'Coin flip entropy'. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.</li><li>The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.</li></ul><ol class="hint dm-steps"><li><b>On the SeedSigner:</b> Tools &gt; <b>Calc 12th/24th word</b> &gt; 12 words &gt; type words 1 to 11 &gt; <b>Build Final Word</b> &gt; <b>Coin flip entropy</b> &gt; enter the 7 bits (<b>Heads = 1</b>, Tails = 0).</li><li><b>Final Word Calc</b> shows the last word. Press Next: the 12th Word screen shows the fingerprint.</li><li><b>In VOIDFORGE:</b> MAKE A SEED &gt; Damascus, step 5 (Last word). Type the same 11 words and the 7 bits, then press CALCULATE LAST WORD.</li><li><b>Both must show the same last word,</b> and it must be in the table row that the 7 bits point to.</li><li><b>Compare the fingerprint</b> on both. They must match.</li><li><b>Compare the first address.</b> On the SeedSigner: Load seed &gt; Done &gt; Address explorer &gt; Native Segwit &gt; Receive addresses, address 0. It must match VOIDFORGE's first address.</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> the 12th word, the same on both tools, and the same fingerprint and first address on both.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Checksum:</b> the first 4 bits of SHA-256 of the 128 bits, added to the end so a wallet can tell a mistyped seed. Nobody can work out SHA-256 by hand, so two tools do it and must agree.</li><li>The 7 bits fix the table row, so a tool that gave a word outside that row would be wrong.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 7: Backup</summary><ol class="hint dm-steps"><li><b>Copy the 12 words</b> to your backup (paper or metal). (F6)</li><li><b>Copy the hallmarks next to them</b> (the row hallmarks and the column hallmarks). Later, anyone can recheck the words by hand with them.</li><li><b>Keep the hallmarks only next to the words,</b> because they reveal part of the seed.</li><li><b>Destroy the sheets you do not keep.</b> The Forge sheet <i>is</i> your seed.</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> the words and their hallmarks on your backup, and no other copy of the Forge sheet.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li>The hallmarks reveal 22 bits of the seed: not enough to find it, but they make guessing easier. Next to the words they reveal nothing new.</li></ul></details></details><details class="wd-how dm-part"><summary>24 words</summary><p class="hint dm-p">The same steps, with 52 good dice pairs and 6 decks (on deck 6, the last: 4 groups of 8, then 4 cards). The last row has 3 bits, which pick one block of the word table; use 24 words on the SeedSigner. The dice check counts the first 52 pair boxes: 104 numbers, and FAIL if any count is 29 or more, or 6 or fewer, or repeats are 7 or fewer; the card check is the same. Allow about twice the time.</p></details><details class="wd-how dm-part"><summary>Doing it with a helper (optional)</summary><ol class="hint dm-steps"><li><b>One person does the Hammer sheet, the other the Anvil sheet, in separate rooms.</b></li><li><b>The card person writes down every card</b> in the card record on the Anvil sheet.</li><li><b>Each folds their sheet closed</b> before seeing the other one. This matters: whoever sees the other sheet before finishing their own could steer the seed.</li><li><b>Assay:</b> later, each sheet can be checked by a different person (an assayer) without anyone learning the seed. In VOIDFORGE, choose "An assayer" under Who checks. Optional, for the assay: each sheet is also a Seed XOR part (step H4 on the Hammer sheet).</li></ol></details><details class="wd-how dm-part"><summary>Check it all in VOIDFORGE (optional)</summary><p class="hint dm-p">On the Damascus tab, the five steps (Hammer, Anvil, Forge, Words, Last word) follow these parts. Tap your dice and cards in as you go, or type them: VOIDFORGE checks each row, deck and word as you finish it, points to the box of any mistake, and works out the last word, fingerprint and first address. FORGE SEED then puts the seed into the page's usual tools.</p></details><details class="wd-how dm-part"><summary>What the checks catch, and what they do not</summary><ul class="hint dm-steps"><li><b>The seal and hallmarks</b> catch copying mistakes: every single slip, and nearly all bigger ones. They do not catch cheating.</li><li><b>The dice and card checks</b> catch badly broken dice or a lazy shuffle, not small flaws. Having <b>both</b> dice and cards is what protects you: if either one is good, the seed is fully random.</li><li><b>Two tools agreeing</b> on the last word, fingerprint and address shows the checksum is right.</li></ul><p class="hint dm-p">The full method is in docs/damascus-method.md; the math and the tests are in docs/damascus-method-design.md.</p></details>
+      <p class="hint dm-p dm-lead"><b>How to make a Damascus seed.</b> A Damascus seed is a normal 12-word Bitcoin seed that you make by hand from <b>dice</b> and <b>playing cards</b>, and check by hand as you go. Damascus steel is made by folding two different steels into one blade that is stronger than either. The Damascus method folds dice and cards into one seed.</p><p class="hint dm-p"><b>Time:</b> about 30 minutes once you know the steps; allow longer the first time. <b>Practice first</b> with a practice sheet (FILL IN A PRACTICE SHEET on the Damascus tab) or throwaway rolls. Never put money on a practice seed.</p><p class="hint dm-p">Field-tested: a hand-made Damascus seed checked on a real SeedSigner and in Sparrow (10 November 2026).</p><p class="hint dm-p">Each part below has the steps, one action per line, then <b>What you should have now</b>, then <b>Why it works</b>. The step labels on the printed sheets (H1, A2, F5 ...) are shown in brackets.</p><details class="wd-how dm-part"><summary>What you need</summary><ul class="hint dm-steps"><li>The printed sheets: <b>Hammer</b> (dice), <b>Anvil</b> (cards), <b>Forge</b> (the result), and the <b>word table</b>. Print them from VOIDFORGE: MAKE A SEED, the Damascus tab.</li><li>Two matching six-sided dice.</li><li>One deck of 52 playing cards.</li><li>A pencil.</li><li>An offline VOIDFORGE and a SeedSigner for the last word.</li></ul><p class="hint dm-p">Work in a private room. Phones away.</p></details><details class="wd-how dm-part"><summary>Part 1: The Hammer (dice)</summary><ol class="hint dm-steps"><li><b>Throw both dice.</b> Read the <b>left</b> die first. (H1)</li><li><b>Write both numbers</b> in the next pair box.</li><li><b>Rolled 1-1, 2-2, 3-3 or 4-4?</b> Cross the pair box out and throw both dice again.</li><li><b>Look up the pair</b> in the mirror table on the Hammer sheet (a pair and its mirror, like 2-5 and 5-2, share the first 4 bits): the row is the left die, the column is the right die. It gives you 5 bits (like 01101).</li><li><b>Write the 5 bits</b> into the next shaded run of the grid (a run is the stretch of boxes for one pair or one group of cards, shaded and white in turn).</li><li><b>Repeat</b> until the grid is full (26 good pairs). The last pair uses only 3 bits.</li><li><b>Dice check:</b> in the first 26 pair boxes, including crossed-out boxes: 52 numbers, count how often each face came up, and count the repeats (a number the same as the number just before it, reading every number in order: left, right, then the next box). FAIL if any count is 18 or more, or 1 or fewer, or repeats are 2 or fewer. On a FAIL, use other dice and start a new Hammer sheet. (H2)</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> 26 good pairs in the pair boxes, grid H full (rows 1 to 11 with 11 bits, row 12 with 7), and PASS in the dice check.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Bit:</b> a 0 or a 1. <b>Entropy:</b> the randomness a seed is made from, 128 bits for 12 words.</li><li>Two dice have 36 results. The 4 doubles 1-1 to 4-4 are thrown again, so 32 are left: exactly the 32 codes of 5 bits, each as likely as the others with fair dice.</li><li>The fifth bit says which die was higher. It stays fair even with a biased die, because a die is as likely to be higher first as second.</li><li>The dice check catches badly broken dice, not small flaws. The cards cover the rest (Part 4).</li></ul></details></details><details class="wd-how dm-part"><summary>Part 2: The Anvil (cards)</summary><ol class="hint dm-steps"><li><b>Shuffle well:</b> spread the cards face down and swirl them for 30 seconds, riffle shuffle <b>12 times</b>, then cut. (A1)</li><li><b>Deal 8 cards face up</b> in a row. (A2)</li><li><b>Play the 7 matches</b> shown on the sheet: 1 against 2, 3 against 4, 5 against 6, 7 against 8, then the two winners on the left, then the two winners on the right, then the final.<ul><li>The higher card wins and plays on.</li><li>In each match write <b>1 if the right card is higher</b>, <b>0 if the left card is higher</b>.</li><li>Ace is lowest, King is highest. For the same rank: clubs &lt; diamonds &lt; hearts &lt; spades.</li><li>A group of 8 cards (an octet) gives 7 bits for its run of grid A; a group of 4 (a quad) gives 3.</li></ul></li><li><b>Deal the next 8 cards</b> and play again: 6 groups of 8 in all.</li><li><b>Then deal 4 cards:</b> 1 against 2, 3 against 4, then the two winners.</li><li><b>Do it 3 times in all:</b> shuffle the same deck again (step 1) each time. The last deck is shorter: on deck 3, deal 5 groups of 8, then 4 cards, and stop.</li><li><b>Card check, while you deal:</b> count the neighbors: two cards dealt one after the other in the same group, with the same suit and ranks next to each other (like 7♥ 8♥). Ace and King are not neighbors, and two cards in different groups never count. After each deck, count its 1s. FAIL a deck if its 1s are 11 or fewer, or 34 or more (full 45-bit decks only), or its neighbors are 6 or more. On a FAIL, shuffle again and redo that deck. (A3)</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> grid A full (128 bits, row 12 with 7), the card record if you keep one, and PASS for each deck.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Match bit:</b> 1 if the right card is higher. In a well-shuffled deck, either card is equally likely to be the higher one, so each match is a fair bit.</li><li>Every card has its own place in the order (rank, then suit), so there are no ties.</li><li>The card check catches a lazy shuffle, not a small flaw. The dice cover the rest (Part 4).</li></ul></details></details><details class="wd-how dm-part"><summary>Part 3: Hallmarks (parity) on each sheet</summary><p class="hint dm-p">A hallmark is a check bit: whether a row or a column holds an odd or an even number of 1s (its parity). On the Hammer sheet and on the Anvil sheet: (H3, A4)</p><ul class="hint dm-steps"><li><b>Row hallmark R:</b> count the 1s in the row and write the result in the R box at the end of the row: odd: 1 3 5 7 9 11 → 1 · even: 0 2 4 6 8 10 → 0.</li><li><b>Column hallmark M:</b> count the 1s in the column and write the result in the M box under it, the same way.</li></ul><p class="hint dm-p dm-have"><b>What you should have now:</b> on both sheets, an R box filled on every row and an M box under every column.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Parity:</b> whether a count is odd or even. A hallmark is the parity of the 1s in its row or column.</li><li>One wrong box changes the parity of its row and of its column, so its hallmarks show where it is.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 4: The Forge (XOR)</summary><ol class="hint dm-steps"><li><b>Lay the Hammer and Anvil sheets side by side.</b> (F1)</li><li><b>Work one row at a time:</b> finger on the same row on both sheets.</li><li><b>For every box (this is XOR):</b> Same → 0. Different → 1. Write it in the same box on the Forge sheet.</li><li><b>Hallmarks on the Forge sheet,</b> R and M, the same way as in Part 3. (F2)</li><li><b>The seal:</b> for each R box and each M box, fold the Hammer hallmark with the Anvil hallmark (Same → 0. Different → 1.). The result must equal the Forge sheet&rsquo;s hallmark.</li><li><b>If one doesn&rsquo;t match:</b> the mistake is where that row and that column cross. Fix it before you go on.</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> grid F full, its R and M boxes filled, and the seal agreeing in every box.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>XOR (folding):</b> two bits in, one bit out: 0 0 → 0, 1 1 → 0, 0 1 → 1, 1 0 → 1. Forge = Hammer XOR Anvil.</li><li>If either sheet is random, the Forge sheet is random too, even if the other sheet is bad or was made by someone you do not trust.</li><li>The parity of a folded row is the fold of the two parities. So the seal checks all your folding at once, without doing it again.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 5: The words</summary><ol class="hint dm-steps"><li><b>Split each Forge row</b> into 3 + 4 + 4 bits: block, row, column. Block: which of the word table&rsquo;s 8 blocks; row and column: where the word sits in that block. (F3)</li><li><b>Look up the word</b> in the word table with those three parts and write it next to the row. No math needed.</li><li><b>Check each word back:</b> find it alphabetically in the table and make sure its bits match the row. (F4)</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> words 1 to 11 next to rows 1 to 11, each one checked back.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li>The 11 bits of a row are the word&rsquo;s place on the BIP39 list (2,048 words, from 0). The word table lays the list out by those bits, so no arithmetic is needed.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 6: The last word</summary><p class="hint dm-p">Row 12 gives only 7 bits, because the last word also holds a checksum that needs a computer. (F5)</p><ul class="hint dm-steps"><li>Your Forge sheet&rsquo;s last row gives the last word&rsquo;s 7 bits (3 for 24 words). These are not new coin flips.</li><li>SeedSigner asks for them under 'Coin flip entropy'. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.</li><li>The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.</li></ul><ol class="hint dm-steps"><li><b>On the SeedSigner:</b> Tools &gt; <b>Calc 12th/24th word</b> &gt; 12 words &gt; type words 1 to 11 &gt; <b>Build Final Word</b> &gt; <b>Coin flip entropy</b> &gt; enter the 7 bits (<b>Heads = 1</b>, Tails = 0).</li><li><b>Final Word Calc</b> shows the last word. Press Next: the 12th Word screen shows the fingerprint.</li><li><b>In VOIDFORGE:</b> MAKE A SEED &gt; Damascus, step 5 (Last word). Type the same 11 words and the 7 bits, then press CALCULATE LAST WORD.</li><li><b>Both must show the same last word,</b> and it must be in the table row that the 7 bits point to.</li><li><b>Compare the fingerprint</b> on both. They must match.</li><li><b>Compare the first address.</b> On the SeedSigner: Load seed &gt; Done &gt; Address explorer &gt; Native Segwit &gt; Receive addresses, address 0. It must match VOIDFORGE&rsquo;s first address.</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> the 12th word, the same on both tools, and the same fingerprint and first address on both.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Checksum:</b> the first 4 bits of SHA-256 of the 128 bits, added to the end so a wallet can tell a mistyped seed. Nobody can work out SHA-256 by hand, so two tools do it and must agree.</li><li>The 7 bits fix the table row, so a tool that gave a word outside that row would be wrong.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 7: Backup</summary><ol class="hint dm-steps"><li><b>Copy the 12 words</b> to your backup (paper or metal). (F6)</li><li><b>Copy the hallmarks next to them</b> (the row hallmarks and the column hallmarks). Later, anyone can recheck the words by hand with them.</li><li><b>Keep the hallmarks only next to the words,</b> because they reveal part of the seed.</li><li><b>Destroy the sheets you do not keep.</b> The Forge sheet <i>is</i> your seed.</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> the words and their hallmarks on your backup, and no other copy of the Forge sheet.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li>The hallmarks reveal 22 bits of the seed: not enough to find it, but they make guessing easier. Next to the words they reveal nothing new.</li></ul></details></details><details class="wd-how dm-part"><summary>24 words</summary><p class="hint dm-p">The same steps, with 52 good dice pairs and 6 decks (on deck 6, the last: 4 groups of 8, then 4 cards). The last row has 3 bits, which pick one block of the word table; use 24 words on the SeedSigner. The dice check counts the first 52 pair boxes: 104 numbers, and FAIL if any count is 29 or more, or 6 or fewer, or repeats are 7 or fewer; the card check is the same. Allow about twice the time.</p></details><details class="wd-how dm-part"><summary>Doing it with a helper (optional)</summary><ol class="hint dm-steps"><li><b>One person does the Hammer sheet, the other the Anvil sheet, in separate rooms.</b></li><li><b>The card person writes down every card</b> in the card record on the Anvil sheet.</li><li><b>Each folds their sheet closed</b> before seeing the other one. This matters: whoever sees the other sheet before finishing their own could steer the seed.</li><li><b>Assay:</b> later, each sheet can be checked by a different person (an assayer) without anyone learning the seed. In VOIDFORGE, choose "An assayer" under Who checks. Optional, for the assay: each sheet is also a Seed XOR part (step H4 on the Hammer sheet).</li></ol></details><details class="wd-how dm-part"><summary>Check it all in VOIDFORGE (optional)</summary><p class="hint dm-p">On the Damascus tab, the five steps (Hammer, Anvil, Forge, Words, Last word) follow these parts. Tap your dice and cards in as you go, or type them: VOIDFORGE checks each row, deck and word as you finish it, points to the box of any mistake, and works out the last word, fingerprint and first address. FORGE SEED then puts the seed into the page&rsquo;s usual tools.</p></details><details class="wd-how dm-part"><summary>What the checks catch, and what they do not</summary><ul class="hint dm-steps"><li><b>The seal and hallmarks</b> catch copying mistakes: every single slip, and nearly all bigger ones. They do not catch cheating.</li><li><b>The dice and card checks</b> catch badly broken dice or a lazy shuffle, not small flaws. Having <b>both</b> dice and cards is what protects you: if either one is good, the seed is fully random.</li><li><b>Two tools agreeing</b> on the last word, fingerprint and address shows the checksum is right.</li></ul><p class="hint dm-p">The full method is in docs/damascus-method.md; the math and the tests are in docs/damascus-method-design.md.</p></details>
       </div>
       <details class="wd-how" id="dmFaq"><summary>Questions and fixes</summary>
       <p class="hint dm-p">Short answers for when something goes wrong. The steps are in docs/damascus-quick-guide.md.</p>
-      <details class="wd-how dm-qa"><summary>I lost count while dealing</summary><ol class="hint dm-steps"><li>Stop. Do not guess the bits you were not sure of.</li><li>Cross out that deck's runs in grid A.</li><li>Gather the whole deck, shuffle it again (wash, 12 riffles, cut) and deal that deck again from its first group.</li><li>With the card record, you can also redo the matches from the cards you wrote down.</li></ol></details>
+      <details class="wd-how dm-qa"><summary>I lost count while dealing</summary><ol class="hint dm-steps"><li>Stop. Do not guess the bits you were not sure of.</li><li>Cross out that deck&rsquo;s runs in grid A.</li><li>Gather the whole deck, shuffle it again (wash, 12 riffles, cut) and deal that deck again from its first group.</li><li>With the card record, you can also redo the matches from the cards you wrote down.</li></ol></details>
       <details class="wd-how dm-qa"><summary>A die rolled off the table</summary><p class="hint dm-p">Throw that pair again. Only write a pair you saw land flat. A die that is tilted against something does not count either.</p></details>
       <details class="wd-how dm-qa"><summary>A bias box says FAIL</summary><ul class="hint dm-steps"><li>Dice: a fair pair of dice fails about 2 times in 100. Use other dice and start a new Hammer sheet. Never change the bits by hand.</li><li>Cards: a good shuffle fails about 6 decks in 1,000. Shuffle again and redo that deck.</li><li>The boxes only catch badly broken dice or a lazy shuffle. Small flaws pass. Using both dice and cards is what protects you.</li></ul></details>
       <details class="wd-how dm-qa"><summary>The seal will not match</summary><ol class="hint dm-steps"><li>Find the row whose hallmarks do not agree, and the column whose hallmarks do not agree.</li><li>The mistake is in the box where that row and that column cross.</li><li>Check that box three times: on the Hammer sheet, on the Anvil sheet, and the fold on the Forge sheet (same bits gives 0, different bits gives 1).</li><li>If a row is off but no column is, the row hallmark itself may be miscounted. The same goes for a column.</li><li>CHECK MY SHEETS in VOIDFORGE points to the box for you.</li></ol></details>
       <details class="wd-how dm-qa"><summary>The two tools give different last words</summary><ol class="hint dm-steps"><li>Check that both have the same 11 words (23 for 24 words), in the same order.</li><li>Check the bits you typed for the last word: 7 bits for 12 words, 3 for 24. On the SeedSigner, Heads = 1 and Tails = 0.</li><li>In VOIDFORGE, MAKE A SEED &gt; Damascus, step 5 (Last word), type the same words and bits, in the same order.</li><li>If they still differ, stop. Do not use the seed until you know why.</li></ol></details>
-      <details class="wd-how dm-qa"><summary>Are the last 7 bits coin flips?</summary><p class="hint dm-p">No.</p><ul class="hint dm-steps"><li>Your Forge sheet's last row gives the last word's 7 bits (3 for 24 words). These are not new coin flips.</li><li>SeedSigner asks for them under 'Coin flip entropy'. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.</li><li>The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.</li></ul></details>
+      <details class="wd-how dm-qa"><summary>Are the last 7 bits coin flips?</summary><p class="hint dm-p">No.</p><ul class="hint dm-steps"><li>Your Forge sheet&rsquo;s last row gives the last word&rsquo;s 7 bits (3 for 24 words). These are not new coin flips.</li><li>SeedSigner asks for them under 'Coin flip entropy'. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.</li><li>The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.</li></ul></details>
       <details class="wd-how dm-qa"><summary>How do I make 24 words?</summary><p class="hint dm-p">The same steps, with 52 good dice pairs and 6 decks. Choose 24 words before you print the sheets. The last row of grid F has 3 bits, which pick one block of the word table; choose 24 words on the SeedSigner too.</p></details>
       <details class="wd-how dm-qa"><summary>Can I do it with a helper?</summary><p class="hint dm-p">Yes.</p><ol class="hint dm-steps"><li>One person fills in the Hammer sheet and the other the Anvil sheet, in separate rooms.</li><li>The card person writes down every card in the card record.</li><li>Each folds their sheet closed before seeing the other one.</li></ol><p class="hint dm-p">The order matters. Whoever fills in a sheet after seeing the other sheet can choose the seed, and every check still passes. Worked example 2 shows this.</p></details>
-      <details class="wd-how dm-qa"><summary>Can I use only dice?</summary><p class="hint dm-p">Yes: VOIDFORGE's Dice tab does that. But then one bad die is not covered. With the Damascus method, the seed is fully random if either the dice or the shuffle is good.</p></details>
+      <details class="wd-how dm-qa"><summary>Can I use only dice?</summary><p class="hint dm-p">Yes: VOIDFORGE&rsquo;s Dice tab does that. But then one bad die is not covered. With the Damascus method, the seed is fully random if either the dice or the shuffle is good.</p></details>
       <details class="wd-how dm-qa"><summary>Does my wallet take a Damascus seed?</summary><p class="hint dm-p">Yes, if it takes standard 12- or 24-word BIP39 seeds. A Damascus seed is a normal BIP39 seed. Nothing about it shows how it was made.</p></details>
       <details class="wd-how dm-qa"><summary>What do the hallmarks reveal?</summary><p class="hint dm-p">The row and column hallmarks reveal 22 bits of a 12-word seed (34 bits for 24 words; the two share one bit, the count of all the 1s). That is not enough to find the seed, but it makes guessing easier. Keep them only next to the words, never on their own. Anyone who has the words has the money anyway.</p></details>
-      <details class="wd-how dm-qa"><summary>What is an assay?</summary><p class="hint dm-p">Someone else (an assayer) checks one sheet only: the Hammer sheet, or the Anvil sheet with its card record. If the other sheet was made well and kept apart, one sheet shows nothing about the seed. In VOIDFORGE, choose "An assayer" under Who checks: it shows that sheet's hallmarks and its own Seed XOR phrase, never the seed.</p></details>
+      <details class="wd-how dm-qa"><summary>What is an assay?</summary><p class="hint dm-p">Someone else (an assayer) checks one sheet only: the Hammer sheet, or the Anvil sheet with its card record. If the other sheet was made well and kept apart, one sheet shows nothing about the seed. In VOIDFORGE, choose "An assayer" under Who checks: it shows that sheet&rsquo;s hallmarks and its own Seed XOR part, never the seed.</p></details>
 
       </details>
       <details class="wd-how" id="dmExBox"><summary>Worked examples (public: never put money on these)</summary>
         <p class="hint dm-p">Three worked examples to follow on paper or to load into Check my sheets. They are public: <b>never put money on them</b>. Loading one turns on PRACTICE, so FORGE SEED stays off.</p>
         <div class="dm-ex"><p class="hint dm-p"><b>Example 1.</b> 12 words. Dice: the digits of pi (only 1 to 6, read in pairs). Cards: a published shuffle. Words: <span class="dm-w">kick confirm home few coin pencil praise burst business fix credit sword</span>. Fingerprint 70b5da37.</p><div class="btn-row"><button type="button" class="secondary small" id="dmEx1" onclick="dmLoadExample(1)">LOAD EXAMPLE 1</button></div></div>
-        <div class="dm-ex"><p class="hint dm-p"><b>Example 2.</b> 12 words. Dice: the digits of e. Cards: the card person saw the Hammer sheet first and placed the cards to steer the seed. It lands on a published BIP39 test phrase, and every check still passes: hallmarks catch mistakes, not cheating. This is why each sheet is folded closed before the other is seen. Words: <span class="dm-w">legal winner thank year wave sausage worth useful legal winner thank yellow</span>. Fingerprint b8688df1.</p><div class="btn-row"><button type="button" class="secondary small" id="dmEx2" onclick="dmLoadExample(2)">LOAD EXAMPLE 2</button></div></div>
+        <div class="dm-ex"><p class="hint dm-p"><b>Example 2.</b> 12 words. Dice: the digits of e. Cards: the card person saw the Hammer sheet first and placed the cards to steer the seed. It lands on a public test seed, and every check still passes: hallmarks catch mistakes, not cheating. This is why each sheet is folded closed before the other is seen. Words: <span class="dm-w">legal winner thank year wave sausage worth useful legal winner thank yellow</span>. Fingerprint b8688df1.</p><div class="btn-row"><button type="button" class="secondary small" id="dmEx2" onclick="dmLoadExample(2)">LOAD EXAMPLE 2</button></div></div>
         <div class="dm-ex"><p class="hint dm-p"><b>Example 3.</b> 24 words. Dice: the digits of the square root of 2. Cards: a published shuffle, six decks. Words: <span class="dm-w">candy play giraffe unable song nasty music stay nothing acquire cloud until logic key mango leopard true among genuine lucky family remain lesson artist</span>. Fingerprint 116ab0ba.</p><div class="btn-row"><button type="button" class="secondary small" id="dmEx3" onclick="dmLoadExample(3)">LOAD EXAMPLE 3</button></div></div>
       </details>
     </details>
@@ -1423,7 +1448,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <button class="secondary small needs-words" onclick="downloadSeed()">DOWNLOAD</button>
     </div>
     <details id="advanced" data-g="4">
-      <summary id="advSummary">Passphrase and note (optional)</summary>
+      <summary><span id="advSummary">Passphrase and note (optional)</span><small>A passphrase makes a different wallet from the same words. The note is only for you; it is not part of the seed.</small></summary>
       <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
         <input type="password" id="passphrase" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Optional passphrase" style="flex:1; min-width:0;" oninput="updateAdvSummary()">
         <button type="button" class="secondary small" onclick="togglePassphrase(this)">SHOW</button>
@@ -1472,7 +1497,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div id="autoNote" class="hint" aria-live="polite" style="margin:8px 0 0;"></div>
     </details>
     <details id="drillBox" data-g="5" style="display:none; margin-top:8px;">
-      <summary>Restore drill: prove your paper backup works<span class="tag tag-rec">RECOMMENDED</span></summary>
+      <summary>Restore drill: prove your paper backup works<span class="tag tag-rec">RECOMMENDED</span><small>The words are hidden and you type them back from your paper.</small></summary>
       <p class="hint" style="margin:8px 0 0;">Write the words on paper first. Then press START DRILL: the words are hidden from this screen, and you type them back <b>from your paper</b>. That tests the paper, not your memory of the screen. Nothing is stored anywhere.</p>
       <div id="drillStart" style="margin-top:8px;"><button class="small" onclick="drillStart()">START DRILL</button></div>
       <div id="drillRun" style="display:none;">
@@ -1484,7 +1509,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       </div>
     </details>
     <details id="addrBox" data-g="5" style="display:none; margin-top:8px;">
-      <summary>First 10 receive and 10 change addresses, SegWit and Taproot (to compare in another wallet)</summary>
+      <summary>First 10 receive and 10 change addresses, SegWit and Taproot<small>Compare them in another wallet before you send money to this one.</small></summary>
       <div class="wlabel" id="addrLblR">Receive addresses (native SegWit, m/84'/0'/0'/0/0 to 0/9)</div>
       <ol id="addrList" class="addr-list"></ol>
       <button class="secondary small" onclick="copyAddrList(this,'addrList')">COPY ALL 10</button>
@@ -1504,7 +1529,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       </div>
     </details>
     <details id="checkGuide" data-g="5" style="display:none; margin-top:8px;">
-      <summary>How to check this wallet in a second tool<span class="tag tag-rec">RECOMMENDED</span></summary>
+      <summary>How to check this wallet in a second tool<span class="tag tag-rec">RECOMMENDED</span><small>Restore the words in a second wallet app and compare the fingerprint and addresses.</small></summary>
       <ol>
         <li>On a <b>different</b> device or app, open a watch-only wallet (Sparrow, Electrum, Blue Wallet or Nunchuk).</li>
         <li>Import the <b><span class="term" tabindex="0" data-tip="An extended public key. It lets a wallet app work out all your receiving addresses without any ability to spend.">zpub</span></b> or the <b>receiving <span class="term" tabindex="0" data-tip="A one-line recipe that tells a wallet app exactly how your addresses are built from your keys. Public, no spending power.">descriptor</span></b> from the Watch-only wallet box below (copy it, or show the QR and scan it). <b>Never type your seed words into a connected device.</b></li>
@@ -1563,7 +1588,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <input type="text" id="wAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number" style="width:64px; flex:none;">
       </div>
       <div class="ms-test" id="wTestBan" style="display:none">TESTNET (practice coins only). These keys and addresses are not for real money.</div>
-      <div class="hint" id="wErr" style="margin:0; color:var(--danger);"></div>
+      <div class="status bad" id="wErr"></div>
       <div class="hint" style="margin:0 0 6px;">Pick the address type your wallet app uses and the account number (almost always 0). The default is native SegWit, account 0.</div>
       <div class="wlabel" id="wKeyLabel">Extended public key (zpub): Electrum, Blue Wallet, Sparrow</div>
       <div class="wval" id="wZpub"></div>
@@ -1598,9 +1623,9 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <div class="btn-row" style="justify-content:center;"><button class="secondary small" onclick="printShownQr()">PRINT THIS QR</button><button class="secondary small" onclick="hideQr()">HIDE QR</button></div>
       </div>
       <details id="spBox" class="ms-sub" style="margin-top:12px;">
-        <summary style="cursor:pointer; font-weight:600;">Silent Payment address<span class="tag tag-note">ADVANCED</span><span class="tag tag-ro">NEW</span></summary>
+        <summary style="cursor:pointer; font-weight:600;">Silent Payment address<span class="tag tag-note">ADVANCED</span><span class="tag tag-ro">NEW</span><small>One address to share and reuse; each payment still lands at a new address.</small></summary>
         <p class="hint" style="margin:8px 0;">A <span class="term" tabindex="0" data-tip="A newer kind of Bitcoin address (BIP352). You publish one address and reuse it; each sender secretly derives a fresh, different address from it, so people cannot link your payments by looking at the blockchain.">Silent Payment</span> address is one address you can give out again and again. Each sender makes a fresh hidden address from it, so nobody can link your payments together by address reuse.</p>
-        <div class="ms-test" style="background:#ffb020;">LIMITED WALLET SUPPORT. Few wallets can send to or receive at these addresses yet. Test with a small amount first.</div>
+        <div class="ms-test">LIMITED WALLET SUPPORT. Few wallets can send to or receive at these addresses yet. Test with a small amount first.</div>
         <div class="wlabel" id="spLabel">Silent Payment address</div>
         <div class="wval" id="spAddr"></div>
         <button class="secondary small" onclick="copyWatch(this,'spAddr')">COPY ADDRESS</button>
@@ -1608,7 +1633,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <div class="hint" style="margin:8px 0 0;">Made from your seed at <code>m/352&rsquo;/coin&rsquo;/account&rsquo;</code> (BIP352), so it follows the Network and Account choices above. It contains only public keys. To receive you need a wallet that supports Silent Payments and scans the blockchain for you, together with this same seed, so keep your seed backup safe. Your normal addresses and descriptors are not affected.</div>
       </details>
       <details id="coreBox" class="ms-sub" style="margin-top:12px;">
-        <summary style="cursor:pointer; font-weight:600;">Import into Bitcoin Core<span class="tag tag-note">ADVANCED</span></summary>
+        <summary style="cursor:pointer; font-weight:600;">Import into Bitcoin Core<span class="tag tag-note">ADVANCED</span><small>Watch this wallet in Bitcoin Core without any private key.</small></summary>
         <p class="hint" style="margin:8px 0;">Bitcoin Core can watch this wallet without holding any private key. These two commands first make an empty watch-only wallet, then load the descriptors into it. Core then shows the balance and addresses but can never spend. Run them in Core&rsquo;s console or with <code>bitcoin-cli</code>.</p>
         <label for="coreWhen" style="font-weight:600; font-size: 13px;">Has this wallet been used before?</label>
         <select id="coreWhen" aria-label="Has this wallet been used before" style="width:100%; margin:4px 0 6px;"><option value="now">No, it is brand new (no scan needed)</option><option value="0">Yes, it already has history (scan the whole chain, slow)</option></select>
@@ -1629,11 +1654,11 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <h2>CHECK A BACKUP</h2>
     <p class="sub">Type the words from your backup to see that they are valid and match your wallet. Nothing is saved or sent.</p>
     <details id="practiceBox">
-      <summary>Practice making a backup<span class="tag tag-ro">NO REAL KEYS</span><small>Rehearse writing words on paper and checking them, with a throwaway phrase.</small></summary>
-      <p class="hint" style="margin:8px 0;">Copying words by hand is where real backups go wrong. This gives you a <b>practice phrase</b> to write on paper, hides it, then checks the copy you type back in. Do it once before the real thing. <b>The practice phrases are public test phrases from the BIP39 standard, for practice only: never put money on them.</b></p>
+      <summary>Practice making a backup<span class="tag tag-ro">NO REAL KEYS</span><small>Rehearse writing words on paper and checking them, with a public test seed.</small></summary>
+      <p class="hint" style="margin:8px 0;">Copying words by hand is where real backups go wrong. This gives you a <b>public test seed</b> to write on paper, hides it, then checks the copy you type back in. Do it once before the real thing. <b>These are published test seeds from the BIP39 standard, for practice only: never put money on them.</b></p>
       <div class="btn-row" style="margin-top:6px;"><button type="button" id="prStart" onclick="practiceStart()">START PRACTICE</button><button type="button" class="secondary small" onclick="practiceClear()">CLEAR</button></div>
       <div id="prShow" style="display:none; margin-top:10px;">
-        <div class="ms-warn" style="margin:0 0 8px;"><b>PRACTICE ONLY. Never fund this phrase.</b> Write the 12 words on paper, in order, with a pen. Then press HIDE.</div>
+        <div class="ms-test">PRACTICE ONLY. Never put money on this public test seed. Write the 12 words on paper, in order, with a pen. Then press HIDE.</div>
         <ol id="prWords" style="columns:2; margin:0 0 8px 36px; padding:0; font-family:'Courier New',monospace; font-size:15px;"></ol>
         <button type="button" class="small" id="prHide" onclick="practiceHide()">I HAVE WRITTEN THEM DOWN: HIDE</button>
       </div>
@@ -1644,12 +1669,12 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       </div>
       <div class="status" id="prStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <h3 class="sec">Practice mode for the whole page</h3>
-      <p class="hint" style="margin:6px 0;">Rehearse the whole job with worthless test coins. While it is on, every address on the page is on the test network (tb1..., 2..., m... or n...), the network menus stay on Testnet, and printed sheets with addresses or keys say TESTNET. A seed made while it is on is an ordinary seed: the test network only changes which addresses are shown, and seed backups print as usual. Turn it on or off when no multisig wallet is being made. OPEN A PRACTICE WALLET opens a public practice phrase in CHECK A BACKUP, so you can try receiving test coins with nothing at stake.</p>
+      <p class="hint" style="margin:6px 0;">Rehearse the whole job with worthless test coins. While it is on, every address on the page is on the test network (tb1..., 2..., m... or n...), the network menus stay on Testnet, and printed sheets with addresses or keys say TESTNET. A seed made while it is on is an ordinary seed: the test network only changes which addresses are shown, and seed backups print as usual. Turn it on or off when no multisig wallet is being made. OPEN A PRACTICE WALLET opens a public test seed in CHECK A BACKUP, so you can try receiving test coins with nothing at stake.</p>
       <label class="pr-mode"><input type="checkbox" id="practiceMode" autocomplete="off" onchange="practiceMode(this.checked)"> Practice mode: test network everywhere</label>
-      <div class="btn-row" style="margin-top:6px;"><button type="button" class="small" id="prWalletBtn" onclick="practiceWallet()">OPEN A PRACTICE WALLET</button></div>
+      <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" id="prWalletBtn" onclick="practiceWallet()">OPEN A PRACTICE WALLET</button></div>
     </details>
     <details id="ssBox">
-      <summary>Practice signer: works like SeedSigner<span class="tag tag-ro">NEW</span></summary>
+      <summary>Practice signer: works like SeedSigner<span class="tag tag-ro">PRACTICE ONLY</span><small>The same screens and buttons as a real SeedSigner, with step-by-step lessons and a practice transaction.</small></summary>
       <p class="hint" style="margin:8px 0;">A practice copy of SeedSigner 0.8.7 on the SeedSigner+ screen (320 x 240): the same screens, menus and buttons. Seeds made here are for practice only.</p>
       <div class="ss-wrap">
         <div class="ss-dev" id="ssDevice" tabindex="0" role="application" aria-label="Practice signer. While it has focus: arrow keys move, Enter or Space presses the joystick, 1, 2 and 3 are KEY1, KEY2 and KEY3.">
@@ -1664,7 +1689,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
           <button type="button" class="ss-k" id="ssK3" tabindex="-1" aria-label="KEY3"></button>
         </div>
       </div>
-      <p class="ss-warn">PRACTICE ONLY: never put real coins on a seed made here.<br>It is a real signer: never type in or scan a real seed.</p>
+      <p class="ms-test">PRACTICE ONLY: never put real coins on a seed made here. It is a real signer: never type in or scan a real seed.</p>
       <div class="ss-learn" id="ssLearn">
         <h3 class="sec">Use the seed in VOIDFORGE</h3>
         <p class="hint" style="margin:0 0 8px;">FORGE SEED takes the seed loaded on the device, with its passphrase if one is applied, and shows it in MAKE A SEED like the other methods do: the words, fingerprint, addresses, SeedQR and watch-only wallet. It is marked PRACTICE.</p>
@@ -1681,11 +1706,11 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
           <p class="status ok" id="ssLearnState" aria-live="polite"></p>
           <div class="btn-row" style="margin:6px 0 0;"><button type="button" class="secondary small" id="ssLearnBack">BACK</button><button type="button" class="secondary small" id="ssLearnNext">NEXT</button><button type="button" class="secondary small" id="ssLearnRestart">RESTART LESSON</button></div>
         </div>
-        <div class="ss-l-cam" id="ssLearnCam" hidden><span>Held up to the device's camera: <b id="ssLearnCamWhat"></b>. <span id="ssLearnCamSay" aria-live="polite"></span></span><button type="button" class="secondary small" id="ssLearnCamOff">PUT IT AWAY</button></div>
+        <div class="ss-l-cam" id="ssLearnCam" hidden><span>Held up to the device&rsquo;s camera: <b id="ssLearnCamWhat"></b>. <span id="ssLearnCamSay" aria-live="polite"></span></span><button type="button" class="secondary small" id="ssLearnCamOff">PUT IT AWAY</button></div>
         <h3 class="sec">Practice transaction</h3>
-        <p class="hint" style="margin:0 0 8px;">Makes a PSBT that spends made-up coins of the seed on the device and holds it up to the device's camera. After you sign it, this page reads the signed PSBT from the device's screen and checks every signature with its own code.</p>
+        <p class="hint" style="margin:0 0 8px;">Makes a PSBT that spends made-up coins of the seed on the device and holds it up to the device&rsquo;s camera. After you sign it, this page reads the signed PSBT from the device&rsquo;s screen and checks every signature with its own code.</p>
         <div class="btn-row"><select id="ssTxKind" aria-label="Kind of practice transaction"><option value="single">Single key: 2 inputs</option><option value="multi">2-of-3 multisig: 1 input</option></select><button type="button" id="ssTxGo" class="secondary small">PRACTICE TRANSACTION</button></div>
-        <p class="ms-warn" id="ssTxNet" hidden>Mainnet: these coins don't exist; this PSBT can never be broadcast.</p>
+        <p class="ms-test" id="ssTxNet" hidden>Mainnet: these coins don&rsquo;t exist; this PSBT can never be broadcast.</p>
         <p class="status" id="ssTxStatus" aria-live="polite"></p>
         <p class="hint" id="ssTxCoins"></p>
       </div>
@@ -1720,7 +1745,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <label>Your name<input type="text" id="plOwner" maxlength="60" spellcheck="false" autocomplete="off"></label>
         <label>Who inherits (optional)<input type="text" id="plHeir" maxlength="60" spellcheck="false" autocomplete="off"></label>
         <label>Your lawyer or executor (optional)<input type="text" id="plLawyer" maxlength="60" spellcheck="false" autocomplete="off"></label>
-        <label>Where the recovery steps and this plan are kept<input type="text" id="plWhere" maxlength="80" spellcheck="false" autocomplete="off" placeholder="such as: with my will, at my lawyer's office"></label>
+        <label>Where the recovery steps and this plan are kept<input type="text" id="plWhere" maxlength="80" spellcheck="false" autocomplete="off" placeholder="such as: with my will, at my lawyer’s office"></label>
       </div>
       <p class="hint" style="margin:6px 0 0;">The key details sheet takes the fingerprint, address type, addresses and watch-only key from the wallet open in CHECK A BACKUP (type the words, then VERIFY), if its fingerprint is the one on this plan. Otherwise it prints blank lines to fill in by hand.</p>
       <div class="btn-row" style="margin-top:8px;"><button type="button" class="secondary small" onclick="printInherit('letter')">PRINT LETTER FOR THE EXECUTOR</button><button type="button" class="secondary small" onclick="printInherit('heir')">PRINT STEPS FOR THE HEIR</button><button type="button" class="secondary small" onclick="printInherit('keys')">PRINT KEY DETAILS</button><button type="button" class="secondary small" onclick="printInherit('contacts')">PRINT TRUSTED CONTACTS</button></div>
@@ -1828,7 +1853,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       </div>
       <input type="text" id="wvPathIn" class="wv-path" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Custom account path (optional)" placeholder="Custom account path (optional), such as m/0' or m/44'/0'/1'">
       <div class="hint wv-path" style="margin:0 0 6px;">Most wallet apps use the standard path for the address type, so leave this empty. For an older or unusual app, type its account path; the address type above still decides how the addresses are written.</div>
-      <div class="hint" id="wvErr" style="margin:0; color:var(--danger);"></div>
+      <div class="status bad" id="wvErr"></div>
       <div class="hint" id="wvPath" style="margin:0;"></div>
       <ol id="wvList" class="addr-list"></ol>
       <div class="btn-row" id="wvPager"><button type="button" class="secondary small" id="wvPrev" onclick="wvPage(-1)">PREVIOUS 10</button><button type="button" class="secondary small" id="wvNext" onclick="wvPage(1)">NEXT 10</button><button type="button" class="secondary small" onclick="copyAddrList(this,'wvList')">COPY THESE 10</button><button type="button" class="secondary small" id="wvSheetBtn" onclick="printRecoverySheet()">PRINT RECOVERY SHEET</button></div>
@@ -1888,7 +1913,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <p class="hint" style="margin:0 0 6px;">A .bip138 file (made by Liana or by VOIDFORGE) holds a wallet&rsquo;s descriptor, encrypted with the wallet&rsquo;s own public keys. Choose the file or paste its text, then type the words of ONE of the wallet&rsquo;s keys in the boxes at the top of this tab (with its passphrase, if it has one), or paste one of the wallet&rsquo;s public keys (xpub) below: a public key opens it too. VOIDFORGE shows the descriptor, its checksum, the first 10 receive and 10 change addresses, and which key opened it.</p>
       <textarea id="b138In" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The backup as text (Base64)" placeholder="The backup as text (it starts with QklQMTM4), or choose the file below"></textarea>
       <input type="file" id="b138File" accept=".bip138,.txt,application/octet-stream,text/plain" aria-label="Choose the backup file" style="width:100%; margin-top:6px;">
-      <input type="text" id="b138Pub" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="One of the wallet's public keys (optional)" placeholder="Or one of the wallet's public keys: xpub..., tpub..., Zpub... (optional)" style="margin-top:6px;">
+      <input type="text" id="b138Pub" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="One of the wallet's public keys (optional)" placeholder="Or one of the wallet’s public keys: xpub..., tpub..., Zpub... (optional)" style="margin-top:6px;">
       <div class="btn-row" style="margin-top:8px;"><button type="button" id="b138Btn" onclick="b138OpenUi()" disabled>OPEN BACKUP</button><button type="button" class="secondary small" onclick="b138OpenClear()">CLEAR</button></div>
       <div class="status" id="b138Status" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
       <pre id="b138Out" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
@@ -1960,7 +1985,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <pre id="reforgeOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
     </details>
     <details id="dcBox">
-      <summary>Check your device's dice<span class="tag tag-ro">TEST ONLY</span><small>Does your hardware wallet really make its words from your dice? Check it with throwaway rolls.</small></summary>
+      <summary>Check your device&rsquo;s dice<span class="tag tag-ro">TEST ONLY</span><small>Does your hardware wallet really make its words from your dice? Check it with throwaway rolls.</small></summary>
       <p class="hint" style="margin:8px 0;">A hardware wallet that takes dice rolls should make its words from them alone. If its software ignored your rolls, the words would still look normal. So check it once: type the same throwaway rolls here and on the device, and the words must be the same. Then reset the device before making your real wallet, because test rolls and their words are not secret.</p>
       <div style="display:flex; gap:6px; flex-wrap:wrap;">
         <select id="dcDev" aria-label="Device" onchange="dcClear(true)" style="flex:1; min-width:0;"><option value="seedsigner">SeedSigner</option><option value="coldcard">Coldcard</option><option value="keystone">Keystone</option><option value="bitbox02">BitBox02 (no dice: compare an address)</option></select>
@@ -2256,7 +2281,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <div class="ms-bad" id="msRunErr"></div>
         <div id="msDone" style="display:none">
           <div class="ms-done-head"><span class="ms-tick" aria-hidden="true">&#10003;</span>Your multisig wallet is ready</div>
-          <div class="ms-warn" id="msOneDev" style="display:none"><b>All keys were made on this one device.</b> That is convenient, but it puts every key in one place for a while: anyone who could read this device&rsquo;s memory during setup could get all of them. For real protection, make each key on a different device (or at least after a restart), store each backup in a different place, and use the paste option above to combine only the public keys.</div>
+          <div class="ms-test" id="msOneDev" style="display:none"><b>All keys were made on this one device.</b> That is convenient, but it puts every key in one place for a while: anyone who could read this device&rsquo;s memory during setup could get all of them. For real protection, make each key on a different device (or at least after a restart), store each backup in a different place, and use the paste option above to combine only the public keys.</div>
           <div class="ms-sub">
           <div class="wlabel" id="msDescLabel">Descriptor (public, safe to keep): import it in Sparrow, Nunchuk or Bitcoin Core</div>
           <div class="wval" id="msDescR"></div>
@@ -2278,7 +2303,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
           </div>
           </div>
           <details id="msCoreBox" class="ms-sub">
-          <summary style="cursor:pointer; font-weight:600;">Import this wallet into Bitcoin Core<span class="tag tag-note">ADVANCED</span></summary>
+          <summary style="cursor:pointer; font-weight:600;">Import this wallet into Bitcoin Core<span class="tag tag-note">ADVANCED</span><small>Watch this multisig wallet in Bitcoin Core without any private key.</small></summary>
           <p class="hint" style="margin:8px 0;">Bitcoin Core can watch this wallet without holding any private key. These two commands first make an empty watch-only wallet, then load the receive and change descriptors into it. Core then shows the balance and addresses but can never spend. Run them in Core&rsquo;s console or with <code>bitcoin-cli</code>. A Taproot multisig wallet needs Bitcoin Core 24.0.1 or later.</p>
           <label for="msCoreWhen" style="font-weight:600; font-size: 13px;">Has this wallet been used before?</label>
           <select id="msCoreWhen" aria-label="Has this multisig wallet been used before" style="width:100%; margin:4px 0 6px;"><option value="now">No, it is brand new (no scan needed)</option><option value="0">Yes, it already has history (scan the whole chain, slow)</option></select>
@@ -2449,7 +2474,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <li><b>Your secrets live only in the page&rsquo;s memory while it is open.</b> The WIPE button and closing the tab clear them from the page, but not from anything your computer copied in the meantime (see the safety checklist above).</li>
         <li><b>Things leave the page only when you press a button for them:</b> COPY (to your clipboard), PRINT, and DOWNLOAD. Each one makes a copy outside the page, so each is your call.</li>
         <li><b>Secret and public are labeled.</b> Words, the passphrase and SeedQR are secret. The fingerprint, addresses, watch-only export and multisig descriptor are public data, safe to show a second computer, though they let others see your balance.</li>
-        <li><b>The practice phrase is not a real seed.</b> It is one of the published BIP39 test phrases, used only to practice writing words down. The page makes no random numbers of its own.</li>
+        <li><b>The practice backup uses a public test seed, not a real seed.</b> It is one of the published BIP39 test vectors, used only to practice writing words down. The page makes no random numbers of its own.</li>
       </ul>
     </details>
     <details id="multiHelp">
@@ -2594,7 +2619,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
 <div class="sg-item"><div class="sg-ico">2</div><div><b>Copying can leak.</b> Clipboard history can keep what you copy or paste, and may sync it to your other devices.<span class="sg-fix"><b>What to do:</b> write seeds on paper; avoid copy and paste for anything secret, and turn clipboard history off.</span></div></div>
 <div class="sg-item"><div class="sg-ico">3</div><div><b>Keys can stay in memory after you finish.</b> Wiping the page is a precaution, not a guarantee.<span class="sg-fix"><b>What to do:</b> when you are done, close the browser and restart the computer.</span></div></div>
 </div>
-<button type="button" class="sg-go" id="sgGo" onclick="startGateClose()">I understand, let's go</button>
+<button type="button" class="sg-go" id="sgGo" onclick="startGateClose()">I understand, let&rsquo;s go</button>
 <p class="sg-foot">Practicing with a test seed? Nothing here applies. For real money, start with a small amount. Offline, this shows once in each browser tab; online, every time the page opens. END SESSION in the MENU wipes the page and shows it again.</p></div></div>
 
 <script>
@@ -5017,7 +5042,7 @@ const DICT = [
   ["Forge sheet", "The printed Damascus sheet that holds the result (letter F): each box is the Hammer box folded with the Anvil box (same bits give 0, different bits give 1). Its rows become the words, so it is the seed: keep it secret.", "MAKE A SEED: Damascus tab, PRINT FORGE SHEET.", "VOIDFORGE"],
   ["Hallmark", "A check bit on a Damascus grid: 1 if a row or a column has an odd number of 1s, otherwise 0. Hallmarks catch copying mistakes, not cheating. They reveal part of the seed (22 bits for 12 words, 34 for 24), so keep them only next to the words.", "MAKE A SEED: Damascus tab; CHECK A BACKUP: Recheck a Damascus backup.", "VOIDFORGE"],
   ["Skew hallmark", "An optional third hallmark (K) of a 12-word Damascus seed. It also catches two words written in swapped places, which the row and column hallmarks cannot see. Like the others, it reveals part of the seed.", "CHECK A BACKUP: Recheck a Damascus backup.", "VOIDFORGE"],
-  ["Assay", "A check of one Damascus sheet by a second person (an assayer). They see that sheet's hallmarks and its own Seed XOR phrase, never the seed. It shows nothing about the seed only if the other sheet was made well and kept apart.", "MAKE A SEED: Damascus tab, Who checks: An assayer.", "VOIDFORGE"],
+  ["Assay", "A check of one Damascus sheet by a second person (an assayer). They see that sheet's hallmarks and its own Seed XOR part, never the seed. It shows nothing about the seed only if the other sheet was made well and kept apart.", "MAKE A SEED: Damascus tab, Who checks: An assayer.", "VOIDFORGE"],
   ["Bias box", "The counting box on a Damascus sheet: how often each die face came up and how many repeats, or the neighbors and 1s in a card deal. It catches badly broken dice or a lazy shuffle, not small flaws, so passing is not proof of fairness.", "MAKE A SEED: Damascus tab (Hammer and Anvil sheets).", "VOIDFORGE"],
   ["Binary word table", "A printed table of all 2,048 BIP39 words by their 11 bits: the first 3 bits pick a block, the next 4 a row and the last 4 a column. It finds a word, and checks one, without any math.", "MAKE A SEED: Damascus tab, PRINT WORD TABLE.", "VOIDFORGE"],
   ["Practice sheet", "A Damascus sheet filled in by the page from a published rule (SHA-256 of a fixed text), not from random numbers, so anyone can make the same one. It is for learning only and is never a seed to keep.", "MAKE A SEED: Damascus tab, PRACTICE: FILL IN A PRACTICE SHEET.", "VOIDFORGE"],
@@ -6618,7 +6643,7 @@ let practice = null;
 async function practiceMake(entropy){ return (await entropyToMnemonic(entropy)).split(" "); }
 function practiceCompare(expected, typed){ // positions (1-based) that differ, or a count problem
   const got = typed.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if(got.length !== expected.length) return {ok:false, msg:"You typed " + got.length + " word" + (got.length===1?"":"s") + "; the practice phrase has " + expected.length + ". Check for a missing or extra word."};
+  if(got.length !== expected.length) return {ok:false, msg:"You typed " + got.length + " word" + (got.length===1?"":"s") + "; the public test seed has " + expected.length + ". Check for a missing or extra word."};
   const bad = []; expected.forEach((w,i)=>{ if(got[i] !== w) bad.push(i+1); });
   if(bad.length === 0) return {ok:true, msg:"Your paper copy matches, word for word. Do exactly this with a real backup: write, hide, read it back, check."};
   return {ok:false, msg:"Word" + (bad.length===1?"":"s") + " " + bad.join(", ") + " do" + (bad.length===1?"es":"") + " not match. On a real backup, find and fix this before you trust the paper."};
@@ -13978,13 +14003,14 @@ function dmMineBits(id, n){
 function dmDiff(a, b){ const out = []; for(let i = 0; i < a.length; i++) if(a[i] !== b[i]) out.push(i + 1); return out; }
 function dmUpdate(){
   staleCheck();
+  if(dmTour && dmWc() !== dmTour.wc) dmTourEnd();   // v2.15.0: another seed length ends the guided practice
   const st = dmState(), who = st.who, both = who === "both";
   document.getElementById("dmDiceRow").style.display = who === "a" ? "none" : "";
   document.getElementById("dmCardsRow").style.display = who === "h" ? "none" : "";
   for(const k of ["H", "A", "F"]) document.getElementById("dmMine" + k).style.display = (k === "F" ? both : k === "H" ? who !== "a" : who !== "h") ? "" : "none";
   document.getElementById("dmBtn").style.display = both ? "" : "none";
   document.getElementById("dmCount").textContent = st.count.join(" ");
-  document.getElementById("dmMsg").textContent = st.msg;
+  { const m = document.getElementById("dmMsg"); m.textContent = st.msg; m.className = "status bad"; }
   const ready = selfTestState === "pass" && st.ok && (who !== "a" ? !!st.pairs : true) && (who !== "h" ? !!st.anvil : true);
   document.getElementById("dmCheckBtn").disabled = !ready;
   dmPractice = dmPracticeKind(st);
@@ -14000,6 +14026,12 @@ function dmUpdate(){
   try { dmPadBuild(); dmPicsFill(); dmWhyFill(); } catch(e) { /* during page load, before the die faces exist: the next update builds them */ }
   const lw = dmLwState(), paperOnly = !document.getElementById("dmDice").value.trim() && !document.getElementById("dmCards").value.trim();
   document.getElementById("dmBtn").disabled = !(selfTestState === "pass" && both && ((ready && !dmPractice) || (paperOnly && lw.ok)));
+  // v2.15.0: the quick path, said plainly: the dice and the cards are all the page needs before FORGE SEED
+  { const r = document.getElementById("dmReady"), go = !document.getElementById("dmBtn").disabled;
+    r.textContent = !both ? "" : go && ready ? "Ready: the dice and the cards are complete. The page did the Forge, the words and the last word: press FORGE SEED."
+      : go ? "Ready: press FORGE SEED for the words and the last word you worked out on paper."
+      : ready && dmPractice ? "The practice sheet is complete: the page did the Forge, the words and the last word. FORGE SEED stays off for practice; CHECK MY SHEETS checks it all." : "";
+    r.className = "status" + (go ? " ok" : ""); }
   document.getElementById("dmLwBtn").disabled = selfTestState !== "pass";
   dmFlowRender(st, dmLiveAll(st));
   return st;
@@ -14038,6 +14070,7 @@ function dmSig(){
 const DM_MINE = ["dmHM", "dmHR", "dmAM", "dmAR", "dmFM", "dmFR", "dmFK", "dmWords"];
 function dmWipeOut(){ dmSeq++; const o = document.getElementById("dmOut"); o.textContent = ""; o.style.display = "none"; delete o.dataset.sig; delete o.dataset.practicePhrase; }
 function dmClear(){
+  dmTourEnd();   // v2.15.0: CLEAR (and CLEAR ALL) closes the guided practice
   for(const id of ["dmDice", "dmCards", ...DM_MINE]) document.getElementById(id).value = "";
   for(const id of ["dmLwWords", "dmLwBits"]) document.getElementById(id).value = "";
   dmPractice = ""; dmLoaded = null; dmStep = 1; dmWipeOut(); dmLwWipe(); dmUpdate(); dmrClear();
@@ -14057,7 +14090,7 @@ async function dmRun(forge){
   const seq = ++dmSeq, sig = dmSig();
   const r = await dmForge(st.wc, who !== "a" ? st.pairs : null, who !== "h" ? st.anvil : null);
   if(seq !== dmSeq) return null;
-  if(r.error){ document.getElementById("dmMsg").textContent = r.error; return null; }
+  if(r.error){ const m = document.getElementById("dmMsg"); m.textContent = r.error; m.className = "status bad"; return null; }
   if(!forge) await dmShow(r, st, seq, sig);
   return r;
 }
@@ -14223,7 +14256,7 @@ const DM_EXAMPLES = [
   {n: 1, wc: 12, about: "12 words. Dice: the digits of pi (only 1 to 6, read in pairs). Cards: a published shuffle.", lesson: "", words: "kick confirm home few coin pencil praise burst business fix credit sword", fp: "70b5da37",
    dice: "14 15 26 53 53 23 46 26 43 33 25 24 11 63 35 15 24 44 52 31 64 62 62 62 34 25 34 21 16 21 46 51 32 23 66 43 44 65 55 22",
    cards: "9D 3S AC 3D 9S 5D 2D 7C 4C TC 2S 8D JD QD JH TS 4D QS 8S AH AS 2H 7D 6D 3H KD 2C 9C 8H KS JC KC 5C KH 7H 4H 6C TD JS QH 3C 4S 6S 7S TH AD 5H 5S QC 9H 6H 8C\nJH 3D 5D 4C AS 8S 6S 6H 4S TS 8H TD KS KC 5S 5H JC TH AH QC AD 2C 4D KH 3H 4H 3S QD 9H 6C 2D QH 7S 8D QS TC 9S 6D 2H JD 7D KD 5C JS 7H 8C 3C 2S 9D 7C AC 9C\nAS 7H 6S 8S 3D 3S AC AH JS 9D JD 8C 9H 7S KD 5S 7D 2H 4H 9S 5H AD 7C 3C TC JC QC TH QD 6C 8D QS 4C 5D 6H TS KS 4D 6D TD 2D JH 4S 3H 8H 9C KH QH 2S KC 2C 5C"},
-  {n: 2, wc: 12, about: "12 words. Dice: the digits of e. Cards: the card person saw the Hammer sheet first and placed the cards to steer the seed.", lesson: "It lands on a published BIP39 test phrase, and every check still passes: hallmarks catch mistakes, not cheating. This is why each sheet is folded closed before the other is seen.", words: "legal winner thank year wave sausage worth useful legal winner thank yellow", fp: "b8688df1",
+  {n: 2, wc: 12, about: "12 words. Dice: the digits of e. Cards: the card person saw the Hammer sheet first and placed the cards to steer the seed.", lesson: "It lands on a public test seed, and every check still passes: hallmarks catch mistakes, not cheating. This is why each sheet is folded closed before the other is seen.", words: "legal winner thank year wave sausage worth useful legal winner thank yellow", fp: "b8688df1",
    dice: "12 12 45 45 23 53 62 41 35 26 62 45 24 36 55 46 66 62 24 66 33 53 54 54 51 32 15 25 16 64 24 24 66 31 32 35 21 14 13 56",
    cards: "5D 3D 2S 3H 8D TH 7C KC 8H TD 4S 4C 7H 6H JD AC 5C 4D TC 6S JH KH QH QS KS 9H 7D 9C 6D 2C 3S 7S 2D 3C AS 2H QC 8S 9D KD 9S TS 8C JS 4H AH 6C QD JC 5S AD 5H\n9D 4C 6H 7C TC KS QC 9H 3H 5C 6S 7H 3D TD JD 7S 2H AS 4S QH 8H 6C JH 5S 8S QD 3C AC KC QS 6D 5D 9C 3S TS JC TH 4H 9S AD 5H 8D 8C 4D KH KD 2S 2D 2C 7D JS AH\nJD JH 4C 2D KC 8H 7C 8D 9D 8C 9H 6D QH 6S AD AC 5C 4D QS 7S 6H 2H 3D 9C TS TC KH 2C 2S TH QC KD 5S 4H 7H 9S KS 3H 5H 4S 5D JS 8S TD QD AS 6C AH 3S JC 7D 3C"},
   {n: 3, wc: 24, about: "24 words. Dice: the digits of the square root of 2. Cards: a published shuffle, six decks.", lesson: "", words: "candy play giraffe unable song nasty music stay nothing acquire cloud until logic key mango leopard true among genuine lucky family remain lesson artist", fp: "116ab0ba",
@@ -14253,6 +14286,7 @@ function dmSetLength(wc){
 function dmSetBoxes(dice, cards, kind){
   const ids = ["dmDice", "dmCards", ...DM_MINE], own = !dmPractice && ids.some(id => document.getElementById(id).value.trim());
   if(own && !confirm("This replaces what you typed in the Damascus boxes (dice, cards, hallmarks and words) with " + (/^practice/.test(kind) ? "practice sheet " + kind.slice(9) : "worked " + kind) + ". Continue?")) return false;
+  dmTourEnd();
   for(const id of ids) document.getElementById(id).value = "";
   document.getElementById("dmWho").value = "both";
   document.getElementById("dmDice").value = dice; document.getElementById("dmCards").value = cards;
@@ -14276,6 +14310,158 @@ async function dmPracticeFill(){
   const n = dmPracticeNext, sh = await dmPracticeSheet(n, wc);
   if(dmSetBoxes(sh.dice, sh.cards, "practice " + n)) dmPracticeNext = n % 100 + 1;   // practice sheets 1 to 100, as published
 }
+// ---- v2.15.0 guided practice: a published practice sheet (the same rule as FILL IN A PRACTICE SHEET), filled in one part at a
+// time with NEXT, in the order of the five steps, each value with where it comes from and which box of which sheet it goes in.
+// No randomness: the sheet is dmPracticeSheet(n). Every phase sets the boxes from the sheet alone, so BACK simply shows the phase
+// before. The boxes stay PRACTICE all the way (dmLoaded follows each fill), so FORGE SEED stays off.
+let dmTour = null;
+const DM_TOUR_STEP = [1, 1, 1, 1, 2, 2, 2, 3, 3, 4, 5, 5];   // the Damascus step each phase shows
+const dmG3 = (s) => s.slice(0, 3) + " " + s.slice(3, 7) + " " + s.slice(7);
+const dmCardShow = (c) => (c[0] === "T" ? "10" : c[0]) + c[1];
+const dmParity = (n) => n + (n === 1 ? " one" : " ones") + ": " + (n % 2 ? "odd → 1" : "even → 0");
+async function dmTourStart(){
+  const wc = dmWc();
+  if(!DM_PLAN[wc]) return alert("The Damascus method makes 12 or 24 words. Choose 12 or 24 words above first.");
+  const ids = ["dmDice", "dmCards", ...DM_MINE], own = !dmPractice && ids.some(id => document.getElementById(id).value.trim());
+  if(own && !confirm("Guided practice replaces what you typed in the Damascus boxes (dice, cards, hallmarks and words) with a practice sheet. Continue?")) return false;
+  const n = dmPracticeNext, P = DM_PLAN[wc], sh = await dmPracticeSheet(n, wc);
+  const pairs = dmParseDice(sh.dice).pairs, decks = dmParseCards(sh.cards, wc).decks;
+  const H = dmDiceBits(pairs, P.bits).bits, A = dmCardBits(decks, P.bits), F = H.map((x, i) => x ^ A.bits[i]);
+  const phrase = await entropyToMnemonic(dmBytes(F)), cs = dmBin((await sha256bytes(dmBytes(F)))[0], 8).slice(0, P.bits / 32);
+  dmPracticeNext = n % 100 + 1;   // practice sheets 1 to 100, as published, in turn with FILL IN A PRACTICE SHEET
+  dmTour = {n, wc, P, sh, pairs, decks, H, A, F, mH: dmMarks(H), mA: dmMarks(A.bits), mF: dmMarks(F), hw: dmHandWords(F), phrase, cs, i: 0};
+  dmTourShow();
+  return true;
+}
+function dmTourEnd(){
+  dmTour = null;
+  const p = document.getElementById("dmTour"); if(p) p.hidden = true;
+  for(const e of document.querySelectorAll("#dmBox .dm-tour-hl")) e.classList.remove("dm-tour-hl");
+}
+function dmTourGo(d){ if(!dmTour) return; dmTour.i = Math.max(0, Math.min(DM_TOUR_STEP.length - 1, dmTour.i + d)); dmTourShow(); }
+// What the boxes hold after phase i, from the sheet alone.
+function dmTourBoxes(T, i){
+  const firstGood = T.pairs.findIndex(([a, b]) => dmMirror(a, b) !== null), toks = T.sh.dice.split(" "), deck1 = T.sh.cards.split("\n")[0].split(" ");
+  const b = {dmDice: i >= 2 ? T.sh.dice : i >= 1 ? toks.slice(0, firstGood + 1).join(" ") : "", dmCards: i >= 5 ? T.sh.cards : i >= 4 ? deck1.slice(0, 8).join(" ") : ""};
+  b.dmHR = i >= 3 ? T.mH.R : ""; b.dmHM = i >= 3 ? T.mH.M : ""; b.dmAR = i >= 6 ? T.mA.R : ""; b.dmAM = i >= 6 ? T.mA.M : "";
+  b.dmFR = i >= 8 ? T.mF.R : ""; b.dmFM = i >= 8 ? T.mF.M : ""; b.dmFK = "";
+  b.dmWords = i >= 9 ? T.phrase.split(" ").slice(0, T.wc - 1).join(" ") : "";
+  return b;
+}
+function dmTourShow(){
+  const T = dmTour; if(!T) return;
+  const b = dmTourBoxes(T, T.i);
+  document.getElementById("dmWho").value = "both"; document.getElementById("dmSkew").checked = false;
+  for(const [id, v] of Object.entries(b)) document.getElementById(id).value = v;
+  dmLoaded = {dice: b.dmDice, cards: b.dmCards, kind: "practice " + T.n};   // the boxes hold exactly what the guide put in: PRACTICE
+  dmStep = DM_TOUR_STEP[T.i]; dmUpdate();
+  const [title, parts, hl] = dmTourText(T, T.i), box = document.getElementById("dmTourText");
+  document.getElementById("dmTourTitle").textContent = "Guided practice, practice sheet " + T.n + " (" + (T.i + 1) + " of " + DM_TOUR_STEP.length + "): " + title;
+  box.textContent = "";
+  for(const [kind, text] of parts){ const e = document.createElement(kind === "pre" ? "pre" : "p"); e.className = kind === "pre" ? "dm-grid" : "hint" + (kind ? " " + kind : ""); e.textContent = text; box.appendChild(e); }
+  for(const e of document.querySelectorAll("#dmBox .dm-tour-hl")) e.classList.remove("dm-tour-hl");
+  for(const id of hl){ const e = document.getElementById(id); if(e) e.classList.add("dm-tour-hl"); }
+  const p = document.getElementById("dmTour"); p.hidden = false;
+  document.getElementById("dmTourBack").disabled = T.i === 0;
+  document.getElementById("dmTourNext").disabled = T.i === DM_TOUR_STEP.length - 1;
+  reveal(p, {block: "start"});
+}
+// The explanation of phase i: [title, [[kind, text], ...], ids of what it filled]. kind "" is a hint line, "pre" a grid.
+function dmTourText(T, i){
+  const P = T.P, wc = T.wc, rows = (bits) => dmRows(bits).map(r => r.join(""));
+  const at = (k) => "row " + (Math.floor(k / 11) + 1) + " column " + (k % 11 + 1);
+  const span = (k, n) => Math.floor(k / 11) === Math.floor((k + n - 1) / 11) ? "row " + (Math.floor(k / 11) + 1) + ", columns " + (k % 11 + 1) + " to " + ((k + n - 1) % 11 + 1) : at(k) + " to " + at(k + n - 1);
+  const grid = (name, bits, m) => rows(bits).map((s, r) => name + String(r + 1).padStart(3) + "  " + dmG3(s.padEnd(11, " ")) + "  R " + m.R[r]).concat(["   M   " + dmG3(m.M)]).join("\n");
+  const hallmarks = (name, sheet, bits, m, paper) => {
+    const r1 = rows(bits)[0], ones = [...r1].filter(x => x === "1").length, col = rows(bits).map(s => s[0]), c1 = col.filter(x => x === "1").length;
+    return [["", "A hallmark is a check bit: it says whether a row or a column holds an odd or an even number of 1s (its parity). Odd → 1, even → 0. With it, a copying mistake can be found later without doing the work again."],
+      ["", "Worked example, row 1 of grid " + name + ": " + dmG3(r1) + ". Count its 1s: " + dmParity(ones) + ". So R = " + m.R[0] + ": write " + m.R[0] + " in the R box at the end of row 1 (" + paper + ")."],
+      ["", "Column 1 of grid " + name + ", read down rows 1 to " + P.rows + ": " + col.join(" ") + ". " + dmParity(c1) + ". So M = " + m.M[0] + ": write " + m.M[0] + " in the M box under column 1."],
+      ["", "The other rows and columns the same way. R, one bit a row from row 1 down: " + m.R + ". M, one bit a column from column 1: " + m.M + ". The short last row counts only its own boxes; a column counts every box in it."],
+      ["", "On this page they go into R(" + name + ") and M(" + name + ") on the " + sheet + " step, and each row is ticked ✓ as it is checked."]];
+  };
+  if(i === 0) return ["start", [["", "Practice sheet " + T.n + " is published (made from SHA-256 of the text “VOIDFORGE Damascus practice " + T.n + "”, never from random numbers), so anyone can make it again: learn with it, never put money on its words."],
+    ["", "Each NEXT fills in one part, in the order you work on paper: the Hammer sheet (dice), the Anvil sheet (cards), the Forge sheet (folding, hallmarks, words) and the last word. For every value it says where it comes from and which box of which sheet it goes in. Print the sheets (below) to follow along on paper."],
+    ["", "Press NEXT to throw the first pair of dice."]], []];
+  if(i === 1){
+    const k = T.pairs.findIndex(([a, b]) => dmMirror(a, b) !== null), [a, b] = T.pairs[k], s = dmBin(dmMirror(a, b), 5), out = [];
+    out.push(["", "On paper: the Hammer sheet (H1), the pair boxes, then grid H."]);
+    for(let j = 0; j < k; j++) out.push(["", "Pair box " + (j + 1) + ": " + T.pairs[j][0] + "-" + T.pairs[j][1] + " is a double from 1-1 to 4-4: cross the box out and throw both dice again (5-5 and 6-6 count)."]);
+    out.push(["", "Pair box " + (k + 1) + ": the left die shows " + a + ", the right die " + b + "."]);
+    out.push(["", "Mirror table on the Hammer sheet: row " + a + " (the left die), column " + b + " (the right die) → " + s + " (5 bits)."]);
+    out.push(["", a === b ? "A double: 5-5 gives 11110 and 6-6 gives 11111." : "The first 4 bits, " + s.slice(0, 4) + ", are the same for " + a + "-" + b + " and its mirror " + b + "-" + a + ". The 5th bit is " + s[4] + " because the " + (b > a ? "right" : "left") + " die is higher (1 when the right die is higher)."]);
+    out.push(["", "Write " + s + " into run 1 of grid H: " + span(0, 5) + ". On this page the pair box shows " + a + " " + b + " and the Hammer step shows run 1 in grid H."]);
+    out.push(["", "Next: the other pairs, the same way."]);
+    return ["the Hammer, the first pair", out, ["dmPairBoxes", "dmLiveH"]];
+  }
+  if(i === 2){
+    const need = Math.ceil(P.bits / 5), notes = []; let run = 0;
+    T.pairs.forEach(([a, b], j) => { const c = dmMirror(a, b); if(c === null){ notes.push((j + 1) + ": " + a + "-" + b + " crossed out"); return; } if(run >= need) return; const s = dmBin(c, 5), use = Math.min(5, P.bits - run * 5); notes.push((j + 1) + ": " + a + "-" + b + " → " + (use < 5 ? s.slice(0, use) + " (" + s + ", first " + use + (use === 1 ? " bit)" : " bits)") : s) + " run " + (run + 1)); run++; });
+    return ["the Hammer, every pair", [["", "On paper: the Hammer sheet, pair boxes 1 to " + T.pairs.length + ", and runs 1 to " + need + " of grid H. Each good pair is looked up in the mirror table like the first one; doubles from 1-1 to 4-4 are crossed out."],
+      ["", "Pair box: throw → bits, and the run of grid H they go in: " + notes.join(" · ") + "."],
+      ["", "Grid H holds " + P.bits + " bits, so the last run uses only its first " + (P.bits - (need - 1) * 5) + " bits. The dice check (H2) counts the faces of the first " + P.tally + " pair boxes and the repeats; the Hammer step shows the counts and PASS."],
+      ["pre", grid("H", T.H, T.mH).split("\n").slice(0, P.rows).map(l => l.replace(/\s+R \d$/, "")).join("\n")]], ["dmPairBoxes", "dmLiveH"]];
+  }
+  if(i === 3) return ["the Hammer hallmarks", hallmarks("H", "Hammer", T.H, T.mH, "H3").concat([["pre", grid("H", T.H, T.mH)]]), ["dmHR", "dmHM", "dmLiveH"]];
+  if(i === 4){
+    const d1 = T.decks[0].slice(0, 8), v = d1.map(dmCardValue), out = [], names = d1.map(dmCardShow); let r = v.map((x, k) => k), bitAt = 0;
+    out.push(["", "On paper: the Anvil sheet (A2), the card record (deck 1, oct 1), then run 1.1 of grid A."]);
+    out.push(["", "Deal 8 cards face up in a row: " + names.join(" ") + "."]);
+    out.push(["", "The higher card wins. Ace is lowest, King is highest; for the same rank, ♣ < ♦ < ♥ < ♠. Write 1 when the right card is higher, 0 when the left card is higher."]);
+    const bits = [], label = ["Match 1 (cards 1 and 2)", "Match 2 (cards 3 and 4)", "Match 3 (cards 5 and 6)", "Match 4 (cards 7 and 8)", "Match 5 (the two winners on the left)", "Match 6 (the two winners on the right)", "Match 7 (the final)"];
+    while(r.length > 1){ const nr = []; for(let k = 0; k < r.length; k += 2){ const L = r[k], R = r[k + 1], bt = v[R] > v[L] ? 1 : 0; bits.push(bt); out.push(["", label[bitAt++] + ": " + names[L] + " against " + names[R] + ": the " + (bt ? "right" : "left") + " card is higher → " + bt + " (" + names[bt ? R : L] + " plays on)."]); nr.push(bt ? R : L); } r = nr; }
+    out.push(["", "Run 1.1 of grid A: " + bits.join("") + " (7 bits), " + span(0, 7) + ". On this page the card record shows the 8 cards and the Anvil step shows run 1.1 in grid A."]);
+    out.push(["", "Next: the other groups and decks, the same way."]);
+    return ["the Anvil, the first group of cards", out, ["dmCards", "dmDeal", "dmLiveA"]];
+  }
+  if(i === 5){
+    const lines = []; T.A.log.forEach((dl, d) => { let p = 0; dl.groups.forEach((g, k) => { const n = g.cards.length, cards = T.decks[d].slice(p, p + n).map(dmCardShow); p += n; const run = (d + 1) + (n === 8 ? "." + (k + 1) : "q"); lines.push(run.padEnd(4) + " " + cards.map(c => c.padStart(3)).join(" ") + "  → " + g.bits); }); });
+    const plan = dmCardPlan(P.bits);
+    return ["the Anvil, every group", [["", "On paper: the Anvil sheet, the card record, and every run of grid A. " + plan.length + " decks, each shuffled again (A1): " + plan.map((g, d) => "deck " + (d + 1) + ": " + g.filter(x => x === 8).length + " groups of 8 and a group of 4").join("; ") + ". A group of 8 gives 7 bits (7 matches), a group of 4 gives 3."],
+      ["", "Run, the cards in dealt order → the bits (1 when the right card is higher):"], ["pre", lines.join("\n")],
+      ["", "The card check (A3) counts each deck's 1s and its neighbors (the same suit, ranks next to each other, one after the other in a group); the Anvil step shows PASS for each deck."]], ["dmCards", "dmLiveA"]];
+  }
+  if(i === 6) return ["the Anvil hallmarks", hallmarks("A", "Anvil", T.A.bits, T.mA, "A4").concat([["pre", grid("A", T.A.bits, T.mA)]]), ["dmAR", "dmAM", "dmLiveA"]];
+  if(i === 7){
+    const h = rows(T.H)[0], a = rows(T.A.bits)[0], f = rows(T.F)[0], box = [];
+    for(let k = 0; k < 3; k++) box.push("Box " + (k + 1) + ": Hammer " + h[k] + ", Anvil " + a[k] + ": " + (h[k] === a[k] ? "the same → 0." : "different → 1."));
+    return ["the Forge (XOR)", [["", "On paper: the Forge sheet, grid F (F1). Lay the Hammer and Anvil sheets side by side and work one row at a time, finger on the same row on both."],
+      ["", "For every box, fold the two bits (this is XOR): the same → 0, different → 1. That is all: 0 and 0 → 0, 1 and 1 → 0, 0 and 1 → 1, 1 and 0 → 1."],
+      ["", "Worked example, row 1, box by box from the left:"], ["pre", "Hammer  " + dmG3(h) + "\nAnvil   " + dmG3(a) + "\nForge   " + dmG3(f)],
+      ["", box.join(" ") + " And so on to box 11. Write each result in the same box of grid F."],
+      ["", "All of grid F (the seed of practice sheet " + T.n + ", public):"], ["pre", rows(T.F).map((s, r) => "F" + String(r + 1).padStart(3) + "  " + dmG3(s)).join("\n")],
+      ["", "Why it works: if either sheet is random, grid F is random too, even if the other sheet is bad. Next: the hallmarks check your folding."]], ["dmLiveF"]];
+  }
+  if(i === 8){
+    const f = rows(T.F)[0], ones = [...f].filter(x => x === "1").length, rH = T.mH.R[0], rA = T.mA.R[0], mH = T.mH.M[0], mA = T.mA.M[0];
+    return ["the Forge hallmarks and the seal", [["", "On paper: the Forge sheet, the R and M boxes of grid F and the seal (F2)."],
+      ["", "First count grid F's own hallmarks, as on the other sheets. Row 1 of grid F: " + dmG3(f) + ": " + dmParity(ones) + ". So R(F) = " + T.mF.R[0] + "."],
+      ["", "Then the seal checks all your folding at once, without folding again: fold the Hammer hallmark with the Anvil hallmark (the same → 0, different → 1). It must equal grid F's own hallmark."],
+      ["", "Row 1: R(H) " + rH + " and R(A) " + rA + ": " + (rH === rA ? "the same → 0" : "different → 1") + ". Grid F's own R is " + T.mF.R[0] + ": " + (dmXorStr(rH, rA) === T.mF.R[0] ? "they agree, row 1 is sealed." : "they differ.")],
+      ["", "Column 1: M(H) " + mH + " and M(A) " + mA + ": " + (mH === mA ? "the same → 0" : "different → 1") + ". Grid F's own M is " + T.mF.M[0] + ": " + (dmXorStr(mH, mA) === T.mF.M[0] ? "they agree." : "they differ.")],
+      ["pre", "R(H)   " + T.mH.R + "\nR(A)   " + T.mA.R + "\nfold   " + dmXorStr(T.mH.R, T.mA.R) + "\nR(F)   " + T.mF.R + "\n\nM(H)   " + dmG3(T.mH.M) + "\nM(A)   " + dmG3(T.mA.M) + "\nfold   " + dmG3(dmXorStr(T.mH.M, T.mA.M)) + "\nM(F)   " + dmG3(T.mF.M)],
+      ["", "Every row and column agrees, so the folding is right. Why: one wrong box in grid F changes the count of 1s in its row and in its column, so that row's R and that column's M would not agree, and the mistake is where they cross."],
+      ["", "On this page R(F) and M(F) go into the Forge step, which checks each one and says when the seal holds."]], ["dmFR", "dmFM", "dmLiveF"]];
+  }
+  if(i === 9){
+    const w0 = T.hw[0], lines = T.hw.slice(0, wc - 1).map(x => String(x.row).padStart(2) + "  " + dmG3(x.bits) + "  → " + String(x.number).padStart(4) + " " + x.word);
+    return ["the words", [["", "On paper: the Forge sheet, the word next to each row (F3), and the binary word table."],
+      ["", "Split each row of grid F into 3 + 4 + 4 bits: block, row, column of the word table. No arithmetic: the table is laid out by these bits."],
+      ["", "Worked example, row 1: " + dmG3(w0.bits) + ": block " + w0.bits.slice(0, 3) + ", row " + w0.bits.slice(3, 7) + ", column " + w0.bits.slice(7) + " → “" + w0.word + "” (number " + w0.number + " on the numbered list). Check it back (F4): find “" + w0.word + "” in the table, alphabetically, and read its block, row and column: they must be the row's bits."],
+      ["", "Every full row, its bits → the word's number and the word:"], ["pre", lines.join("\n")],
+      ["", "On this page the words go into the Words step, which checks each one against its row."]], ["dmWords", "dmLiveW"]];
+  }
+  if(i === 10){
+    const last = T.hw[T.hw.length - 1], idx = parseInt(last.bits + T.cs, 2), flips = [...last.bits].map(x => x === "1" ? "H" : "T").join(" ");
+    return ["the last word", [["", "On paper: the Forge sheet, box 5 (F5)."],
+      ["", "Row " + P.rows + " of grid F has only " + P.fin + " bits: " + last.bits + ". These are not new coin flips: they are your Forge sheet's bits. The last word also holds a checksum that needs a computer."],
+      ["", "On the SeedSigner: Tools > Calc 12th/24th word > " + wc + " words > type words 1 to " + (wc - 1) + " > Build Final Word > Coin flip entropy > enter the " + P.fin + " bits as Heads = 1, Tails = 0: " + flips + "."],
+      ["", "The device adds the checksum: the first " + T.cs.length + " bits of SHA-256 of all " + P.bits + " bits of grid F: " + T.cs + ". " + last.bits + " and " + T.cs + " make 11 bits, " + dmG3(last.bits + T.cs) + " → number " + (idx + 1) + ": “" + WORDLIST[idx] + "”."],
+      ["", "It must lie between " + last.firstWord + " (" + last.firstNumber + ") and " + last.lastWord + " (" + last.lastNumber + "), the part of the word table that the " + P.fin + " bits point to. VOIDFORGE shows the same last word below, with the fingerprint and the first address: on the SeedSigner, press Next and compare the fingerprint, then the first address (Load seed > Done > Address explorer > Native Segwit > Receive addresses, address 0)."]], ["dmLiveL"]];
+  }
+  return ["done", [["", "Practice sheet " + T.n + " is filled in, every value from the sheet: " + T.phrase + "."],
+    ["", "These words are public (a practice seed): never put money on them. FORGE SEED stays off. CHECK MY SHEETS checks the whole sheet as it would your own. To practice again, press GUIDED PRACTICE for the next sheet; STOP closes the guide and keeps the boxes."]], []];
+}
 function dmLoadExample(n){
   const e = DM_EXAMPLES[n - 1]; dmSetLength(e.wc);
   if(dmSetBoxes(e.dice, e.cards, "example " + n)) jumpTo("dmDice");
@@ -14283,7 +14469,7 @@ function dmLoadExample(n){
 function dmPracticeText(){
   return /^practice/.test(dmPractice) ? "PRACTICE: " + dmPractice + " comes from a published rule, not from dice you threw and cards you dealt. Anyone can make it again: learn with it, never use these words for money. FORGE SEED is off."
     : /^example/.test(dmPractice) ? "PRACTICE: worked " + dmPractice + " is public. Never put money on it. FORGE SEED is off."
-    : dmPractice ? "PRACTICE: these dice and cards make a public phrase (" + dmPractice.slice(8) + "). Anyone can take money sent to it. FORGE SEED is off." : "";
+    : dmPractice ? "PRACTICE: these dice and cards make a public test seed (" + dmPractice.slice(8) + "). Anyone can take money sent to it. FORGE SEED is off." : "";
 }
 // The practice signer (CHECK A BACKUP) can take a practice Damascus seed, and only a practice one.
 // window.vfSignerLoadSeed (tools/simulator/ss_learn.js) opens the practice signer and holds the seed's Standard SeedQR up to its
@@ -14417,7 +14603,7 @@ function dmDecksNow(wc){
 }
 function dmDealCard(c){
   const wc = dmWc(), D = dmDecksNow(wc); if(!D) return;
-  if(D.cur < 0){ document.getElementById("dmMsg").textContent = "The grid is full: the last deck needs no more cards."; return; }
+  if(D.cur < 0){ const m = document.getElementById("dmMsg"); m.textContent = "The grid is full: the last deck needs no more cards."; m.className = "status"; return; }
   while(D.decks.length <= D.cur) D.decks.push([]);
   if(D.decks[D.cur].includes(c)) return;   // already dealt from this deck (its card shows the back)
   D.decks[D.cur].push(c);
@@ -14542,6 +14728,9 @@ function dmLiveAll(st){
   if(!F) partsF.push(["", "The Forge step checks your hallmarks once the dice (step 1) and the cards (step 2) are in."]);
   else {
     const m = dmMarks(F), tr = dmTypedBits("dmFR"), tm = dmTypedBits("dmFM"), rows = dmRows(F), wrongR = [], wrongM = [];
+    // v2.15.0: the page does steps 3 to 5 itself once the dice and cards are in (secret, like the words after FORGE SEED)
+    partsF.push(["", pr + "Worked out by the page from your dice and cards: grid F (Hammer XOR Anvil) and its hallmarks R and M. Your Forge sheet must show the same. Typing your R(F) and M(F) above is optional: it checks your own folding."]);
+    partsF.push(["pre", dmGridLines(F, wc)]);
     for(let i = 0; i < Math.min(tr.length, P.rows); i++){
       const s = rows[i].join(""), ones = [...s].filter(x => x === "1").length;
       if(tr[i] === m.R[i]) partsF.push(["ok", "Row " + (i + 1) + ": R " + m.R[i] + " ✓"]);
@@ -14562,6 +14751,8 @@ function dmLiveAll(st){
   if(toks.length && !F) partsW.push(["", "Enter the dice and the cards (steps 1 and 2) to have each word checked against its row."]);
   if(F){
     const hw = dmHandWords(F);
+    partsW.push(["", pr + "Worked out by the page: the words of rows 1 to " + (wc - 1) + " (word " + wc + " is in step 5). Typing your words above is optional: each one is checked against its row."]);
+    partsW.push(["pre", hw.slice(0, wc - 1).map(x => String(x.row).padStart(2) + "  " + x.bits.slice(0, 3) + " " + x.bits.slice(3, 7) + " " + x.bits.slice(7) + "  " + x.word).join("\n")]);
     toks.forEach((t, i) => {
       if(i >= wc) return;
       const n = wdResolve(t);
@@ -14597,17 +14788,21 @@ function dmFlowRender(st, L){
   const who = st.who, only = who === "h" ? 1 : who === "a" ? 2 : 0;
   if(only) dmStep = only;
   for(const s of document.querySelectorAll("#dmFlow .dm-st")) s.hidden = +s.dataset.ds !== dmStep;
+  // v2.15.0: once the dice and the cards are in, the page has done steps 3 to 5 itself (your paper checks stay open there)
+  const byPage = !only && st.ok && !!st.pairs && !!st.anvil;
   for(const b of document.querySelectorAll("#dmFBar button")){
-    const n = +b.dataset.ds; b.parentNode.hidden = !!only && n !== only;
-    b.classList.toggle("on", n === dmStep); b.classList.toggle("done", L.done[n - 1]);
+    const n = +b.dataset.ds, done = L.done[n - 1] || (byPage && n >= 3); b.parentNode.hidden = !!only && n !== only;
+    b.classList.toggle("on", n === dmStep); b.classList.toggle("done", done); b.classList.toggle("page", byPage && n >= 3 && !L.done[n - 1]);
     if(n === dmStep) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
-    b.textContent = n + " " + ["Hammer", "Anvil", "Forge", "Words", "Last word"][n - 1] + (L.done[n - 1] ? " ✓" : "");
+    b.textContent = n + " " + ["Hammer", "Anvil", "Forge", "Words", "Last word"][n - 1] + (done ? " ✓" : "");
+    if(byPage && n >= 3 && !L.done[n - 1]) b.title = "Done by the page from your dice and cards. Your paper check is optional."; else b.removeAttribute("title");
   }
   const P = DM_PLAN[st.wc], f = only ? L.prog[only - 1] : L.prog.reduce((a, b) => a + b, 0) / 5;
   document.getElementById("dmFFill").style.width = Math.round(f * 100) + "%";
   const pairs = P ? Math.ceil(P.bits / 5) : 0, cards = P ? dmCardPlan(P.bits).reduce((a, g) => a + g.reduce((x, y) => x + y, 0), 0) : 0;
   const det = [Math.round(L.prog[0] * pairs) + " of " + pairs + " good pairs", Math.round(L.prog[1] * cards) + " of " + cards + " cards", Math.round(L.prog[2] * 100) + "% of the Forge hallmarks checked", Math.round(L.prog[3] * (st.wc - 1)) + " of " + (st.wc - 1) + " words checked", L.done[4] ? "seed forged" : "not forged yet"][dmStep - 1];
-  document.getElementById("dmFNow").textContent = only ? "Assay: " + DM_STEP_NAMES[dmStep - 1] + (P ? " · " + det : "") : P ? "Progress: " + det : "";
+  const detNow = byPage && dmStep >= 3 && !L.done[dmStep - 1] ? (dmStep === 5 ? "the page worked out the last word" + (dmPractice ? " (practice: FORGE SEED is off)" : ": press FORGE SEED") : det + "; the page did this step, your paper check is optional") : det;
+  document.getElementById("dmFNow").textContent = only ? "Assay: " + DM_STEP_NAMES[dmStep - 1] + (P ? " · " + det : "") : P ? "Progress: " + detNow : "";
   document.getElementById("dmFBack").disabled = !!only || dmStep <= 1; document.getElementById("dmFNext").disabled = !!only || dmStep >= 5;
   document.querySelector("#dmFlow .gnav").hidden = !!only;
 }
@@ -33850,9 +34045,13 @@ function ssPageStop() {
 
 // CLEAR ALL, auto-clear and END SESSION: stop the device, wipe its memory (and the settings on its simulated microSD),
 // and close the box.
+// v2.15.0: the microSD's settings file goes first, and the settings object is dropped again after the stop, so a part that
+// reads a setting while the device stops (the lesson panel asks for the network) cannot bring the old settings back: the
+// next start loads the defaults.
 function ssPageWipe() {
-  ssPageStop();
   try { SS_SIM_MICROSD.settings_json = null; } catch (e) { /* settings part missing */ }
+  ssPageStop();
+  try { SSSettings._instance = null; } catch (e) { /* settings part missing */ }
   const b = document.getElementById("ssBox");
   if (b && b.open) b.open = false;
 }
@@ -33945,13 +34144,16 @@ function ssLearnState() {
 const ssLearnKey = (s) => s ? s.view + "|" + s.screen + "|" + s.title : "";
 function ssLearnSeeds() { try { const st = SSController._instance && SSController._instance._storage; return (st && st.seeds) || []; } catch (e) { return []; } }
 function ssLearnHasTestSeed() { return ssLearnSeeds().some((s) => s && s.mnemonic_str === SS_LEARN_ABANDON && !s.passphrase); }
+// The device's settings, read without making them: with the device off there are none (v2.15.0: reading them here used to load
+// them again from the microSD while the device stopped, so a wipe did not bring the defaults back).
+const ssLearnSettings = () => { try { return ssPageOn ? SSSettings.get_instance() : null; } catch (e) { return null; } };
 function ssLearnNet() {   // the device's network setting: Mainnet, Testnet or Regtest
-  try { const v = SSSettings.get_instance().get_value(SSSettingsConstants.SETTING__NETWORK); return v === SSSettingsConstants.TESTNET ? "T" : v === SSSettingsConstants.REGTEST ? "R" : "M"; } catch (e) { return "M"; }
+  try { const s = ssLearnSettings(); if (!s) return "M"; const v = s.get_value(SSSettingsConstants.SETTING__NETWORK); return v === SSSettingsConstants.TESTNET ? "T" : v === SSSettingsConstants.REGTEST ? "R" : "M"; } catch (e) { return "M"; }
 }
 const ssLearnCoin = (n) => n === "M" ? 0 : 1;
 const ssLearnHrp = (n) => n === "M" ? "bc" : n === "T" ? "tb" : "bcrt";
 const ssLearnKeyNet = (n) => n === "M" ? "main" : "test";
-function ssLearnSetting(attr) { try { return SSSettings.get_instance().get_value(attr); } catch (e) { return null; } }
+function ssLearnSetting(attr) { try { const s = ssLearnSettings(); return s ? s.get_value(attr) : null; } catch (e) { return null; } }
 
 // ---------------------------------------------------------------- the practice wallet (a stand-in camera)
 // Shows QR codes on a 640 x 480 "camera picture": a phone screen held in front of the device.
@@ -34034,8 +34236,8 @@ async function ssLearnAddress(n, branch, index) {   // native SegWit address of 
 }
 async function ssLearnFeed(kind) {   // [frames, what the panel says the practice wallet shows]
   const n = ssLearnNet();
-  if (kind === "seedqr") return [[SS_LEARN_ABANDON.split(" ").map((w) => String(WORDLIST.indexOf(w)).padStart(4, "0")).join("")], "the SeedQR of the test seed abandon ... about"];
-  if (kind === "address") { const a = await ssLearnAddress(n, 0, 3); return [["bitcoin:" + a], "receive address #3 of the test seed: " + a]; }
+  if (kind === "seedqr") return [[SS_LEARN_ABANDON.split(" ").map((w) => String(WORDLIST.indexOf(w)).padStart(4, "0")).join("")], "the SeedQR of the public test seed abandon ... about"];
+  if (kind === "address") { const a = await ssLearnAddress(n, 0, 3); return [["bitcoin:" + a], "receive address #3 of the public test seed: " + a]; }
   if (kind === "signmsg") return [["signmessage m/84h/" + ssLearnCoin(n) + "h/0h/0/0 ascii:Practice message from VOIDFORGE"], "a request to sign the message \"Practice message from VOIDFORGE\""];
   if (kind === "descriptor") { const t = ssLearn.tx && ssLearn.tx.descriptor; return t ? [[t], "the 2-of-3 wallet descriptor"] : [null, ""]; }
   if (kind === "tx") { const t = ssLearn.tx; return t && !t.result ? [t.frames, "the practice transaction (" + t.frames.length + " QR parts)"] : [null, ""]; }
@@ -34184,8 +34386,8 @@ const ssLearnTxIs = (kind) => () => !!(ssLearn.tx && ssLearn.tx.kind === kind &&
 const ssLearnTxOk = () => !!(ssLearn.tx && ssLearn.tx.result && ssLearn.tx.result.ok);
 const SS_LEARN_HOME = { do: "Go to the Home screen. If you are somewhere else, press the joystick left to select the back arrow at the top left, then press it in. Repeat until you see Home.", see: "Home, with Scan, Seeds, Tools and Settings.", at: ssLearnIs("SSMainMenuView") };
 const SS_LEARN_LOAD = [   // load the test seed abandon ... about by its SeedQR (passed over when it is loaded already)
-  Object.assign({}, SS_LEARN_HOME, { skip: ssLearnHasTestSeed, do: "First, load the test seed. " + SS_LEARN_HOME.do }),
-  { skip: ssLearnHasTestSeed, feed: "seedqr", do: "Scan is selected: press the joystick in. The practice wallet holds the SeedQR of the test seed abandon ... about up to the device's camera.",
+  Object.assign({}, SS_LEARN_HOME, { skip: ssLearnHasTestSeed, do: "First, load the public test seed. " + SS_LEARN_HOME.do }),
+  { skip: ssLearnHasTestSeed, feed: "seedqr", do: "Scan is selected: press the joystick in. The practice wallet holds the SeedQR of the public test seed abandon ... about up to the device's camera.",
     see: "The camera picture, then Finalize Seed with the fingerprint " + SS_LEARN_FP + ". (This page reads a SeedQR only while the computer is offline. If the device says Offline only, turn off the network and scan again.)", at: ssLearnIs("SSSeedFinalizeView") },
   { skip: ssLearnHasTestSeed, do: "Check that the fingerprint is " + SS_LEARN_FP + ". Done is selected: press the joystick in.", see: "A menu titled " + SS_LEARN_FP + ": Scan transaction, Export xpub, Address explorer, Backup seed, Discard seed.", at: ssLearnIs("SSSeedOptionsView") },
 ];
@@ -34203,7 +34405,7 @@ const SS_LEARN_SEEDNOTE = "This lesson uses the public test seed abandon ... abo
 const SS_LEARN_LESSONS = [
   { id: "dice", name: "Make a seed from dice (12 words)",
     note: "This lesson makes a public test seed: you enter fifty 1s instead of real dice rolls. Anyone can enter the same rolls, so never put coins on this seed.",
-    end: "You made a 12-word seed, wrote it down and checked your copy. For real coins you would do this on a real SeedSigner, not here: roll a real die 50 times and keep the paper safe. This test seed is public: never use it.",
+    end: "You made a 12-word seed, wrote it down and checked your copy. For real coins you would do this on a real SeedSigner, not here: roll a real die 50 times and keep the paper safe. This is a public test seed: never use it.",
     steps: [
       SS_LEARN_HOME,
       { do: "Press the joystick down once to select Tools, then press it in.", see: "Tools: New seed, New seed, Calc 12th/24th word, Address explorer, Verify address.", at: ssLearnIs("SSToolsMenuView") },
@@ -34305,8 +34507,8 @@ function ssLearnRender() {
   if (L.building) s = "Making the practice transaction...";
   else if (T) {
     const sats = (v) => v.toLocaleString("en-US") + " sats";
-    s = (T.result ? T.result.text : T.status || ((T.own ? "Spends " : "No seed is loaded on the device, so this spends ") + T.nIn + " made-up coin" + (T.nIn > 1 ? "s" : "") + " of seed " + T.fp + (T.kind === "multi" ? " (2-of-3 multisig with two test seeds)" : "") +
-      ": " + sats(T.inSum) + " in, " + sats(T.payAmt) + " to a test address, " + sats(T.chg) + " change, " + sats(T.fee) + " fee. On the device, choose Scan" + (T.own ? "" : " after you load the test seed abandon ... about") + "."));
+    s = (T.result ? T.result.text : T.status || ((T.own ? "Spends " : "No seed is loaded on the device, so this spends ") + T.nIn + " made-up coin" + (T.nIn > 1 ? "s" : "") + " of seed " + T.fp + (T.kind === "multi" ? " (2-of-3 multisig with two public test seeds)" : "") +
+      ": " + sats(T.inSum) + " in, " + sats(T.payAmt) + " to a test address, " + sats(T.chg) + " change, " + sats(T.fee) + " fee. On the device, choose Scan" + (T.own ? "" : " after you load the public test seed abandon ... about") + "."));
   }
   ssLearnSetText("ssTxStatus", s);
   ssLearnSetText("ssTxCoins", T ? "The coins come from made-up transaction " + T.prevTxid.slice(0, 16) + "..., marked \"" + SS_LEARN_MARK + "\"." : "");

@@ -90,9 +90,13 @@ function ssPageStop() {
 
 // CLEAR ALL, auto-clear and END SESSION: stop the device, wipe its memory (and the settings on its simulated microSD),
 // and close the box.
+// v2.15.0: the microSD's settings file goes first, and the settings object is dropped again after the stop, so a part that
+// reads a setting while the device stops (the lesson panel asks for the network) cannot bring the old settings back: the
+// next start loads the defaults.
 function ssPageWipe() {
-  ssPageStop();
   try { SS_SIM_MICROSD.settings_json = null; } catch (e) { /* settings part missing */ }
+  ssPageStop();
+  try { SSSettings._instance = null; } catch (e) { /* settings part missing */ }
   const b = document.getElementById("ssBox");
   if (b && b.open) b.open = false;
 }

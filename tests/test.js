@@ -856,7 +856,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       ok(/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(css)&&/\.tag-rec, body\.light \.tag-rec \{ color: var\(--warn-text\); background: none; \}/.test(css)&&/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(css),'labels: RECOMMENDED, SECRET, PUBLIC and the gray ones are plain colored words (no pill, border or fill)');
       { const notes=[...t.w.document.querySelectorAll('.tag-note')], ros=[...t.w.document.querySelectorAll('.tag-ro')];
         ok(notes.length===3&&notes.every(e=>/^ADVANCED$/.test(e.textContent))&&![...t.w.document.querySelectorAll('summary')].some(e=>/\((demo only|advanced)/i.test(e.textContent)),'tags: ADVANCED is a gray label, not plain (brackets) in the headings');
-        ok(ros.filter(e=>e.textContent==='NEW').length===3,'tags: every "NEW" badge (Multisig header, Silent Payment address and the practice signer) looks the same -- the same gray tag-ro style, not two different colors for the same word');
+        ok(ros.filter(e=>e.textContent==='NEW').length===2&&ros.filter(e=>e.textContent==='PRACTICE ONLY').length===1,'tags: every "NEW" badge (Multisig header, Silent Payment address) looks the same, and the practice signer is PRACTICE ONLY in that style -- the same gray tag-ro style, not two different colors for the same word');
  }
     }
     ok(/#statusLine \{ position: relative; z-index: 1;/.test(html),'status line sits above the page background');
@@ -960,10 +960,10 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const E=['abandon','ability','able','about'];
     ok(tp.w.practiceCompare(E,'abandon ability able about').ok&&tp.w.practiceCompare(E,'  ABANDON  ability\nable about ').ok,'practice: a correct copy matches (case and spacing do not matter)');
     ok(/Word 3 does not match/.test(tp.w.practiceCompare(E,'abandon ability zoo about').msg)&&/Words 2, 4 do not match/.test(tp.w.practiceCompare(E,'abandon zoo able zoo').msg),'practice: wrong words are named by position');
-    ok(/typed 3 words; the practice phrase has 4/.test(tp.w.practiceCompare(E,'abandon ability able').msg)&&/typed 5 words/.test(tp.w.practiceCompare(E,'abandon ability able about zoo').msg)&&/typed 1 word;/.test(tp.w.practiceCompare(E,'abandon').msg),'practice: a missing or extra word is reported by count');
+    ok(/typed 3 words; the public test seed has 4/.test(tp.w.practiceCompare(E,'abandon ability able').msg)&&/typed 5 words/.test(tp.w.practiceCompare(E,'abandon ability able about zoo').msg)&&/typed 1 word;/.test(tp.w.practiceCompare(E,'abandon').msg),'practice: a missing or extra word is reported by count');
     ok(!tp.w.practiceCompare(E,'ability abandon able about').ok,'practice: right words in the wrong order do not match');
     await tp.w.practiceStart(); const words=tp.w.eval('practice.words');
-    ok(words.length===12&&$('prWords').children.length===12&&$('prShow').style.display==='block'&&$('prCheck').style.display==='none'&&/Never fund this phrase/.test($('prShow').textContent),'practice: START shows 12 numbered words with a never-fund warning');
+    ok(words.length===12&&$('prWords').children.length===12&&$('prShow').style.display==='block'&&$('prCheck').style.display==='none'&&/Never put money on this public test seed/.test($('prShow').textContent)&&!!$('prShow').querySelector('.ms-test'),'practice: START shows 12 numbered words with a never-fund warning');
     ok(words.every(w=>tp.w.eval('WORD_MAP')[w]!==undefined),'practice: every word is a real BIP39 word');
     tp.w.practiceHide(); ok($('prWords').textContent===''&&$('prShow').style.display==='none'&&$('prCheck').style.display==='block'&&!$('practiceBox').textContent.includes(words.join(' ')),'practice: HIDE removes the words from the practice box');
     $('prInput').value=words.join(' '); tp.w.practiceCheck(); ok(/ok/.test($('prStatus').className)&&/matches, word for word/.test($('prStatus').textContent),'practice: the correct paper copy is confirmed');
@@ -1207,7 +1207,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     { tf.st.focus.length=0; tf.w.matchMedia=q=>({matches:/pointer:\s*coarse/.test(q)}); tf.w.startGateClose(); ok(!tf.st.focus.some(x=>x[0]==='rolls'),'closing the notice on a phone or tablet (touch pointer) does not focus the rolls box, so the on-screen keyboard stays down');
       tf.st.focus.length=0; tf.w.matchMedia=()=>({matches:false}); tf.w.startGateClose(); ok(tf.st.focus.some(x=>x[0]==='rolls'),'closing the notice with a mouse still focuses the rolls box'); delete tf.w.matchMedia; }
     { const tg=load(); await tg.ready(); const g=tg.$('startGate'); ok(!!g&&g.getAttribute('role')==='dialog'&&g.getAttribute('aria-modal')==='true'&&/educational tool/.test(g.textContent)&&/not been independently audited/.test(g.textContent)&&g.querySelectorAll('.sg-item').length===3&&/swap files, hibernation/.test(g.textContent)&&/Clipboard history/.test(g.textContent)&&/restart the computer/.test(g.textContent),'notice: educational, not audited, and the three warnings with what to do');
-      ok(g.querySelectorAll('.sg-fix').length===3&&/I understand, let's go/.test(tg.$('sgGo').textContent),'notice: each warning has a fix and one button closes it');
+      ok(g.querySelectorAll('.sg-fix').length===3&&/I understand, let\u2019s go/.test(tg.$('sgGo').textContent),'notice: each warning has a fix and one button closes it');
       tg.d.dispatchEvent(new tg.w.KeyboardEvent('keydown',{key:'Escape'})); ok(!tg.$('startGate'),'notice: Escape closes it');
       const t5=load(); await t5.ready(); ok(!!t5.$('startGate'),'notice: shows again each time the file is opened');
       // v2.3.0: once per browser session while offline, every load while online; END SESSION forgets it

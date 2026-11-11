@@ -20,11 +20,16 @@ const HOOKS = [
   for(const id of AUTO_FIELDS)`, `  reforgeStop(); msReset(); dbClear(); wipeSeed(); planClear(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
   if(typeof ssPageWipe === "function") ssPageWipe();   // v2.13.0: the practice signer
   for(const id of AUTO_FIELDS)`],
-  // v2.14.0: the practice signer is easy to find: a small card right under the header, and a MENU entry (both: ssPageOpen)
-  [`  </header>
+  // v2.14.0: the practice signer is easy to find: a choice in the start row under the title, and a MENU entry (both: ssPageOpen).
+  // v2.15.0: the choice sits next to I FOUND A BITCOIN BACKUP in the one start row, gray (the start row has one gold action).
+  // The third item is the v2.14.0 form (a gold card after the header), so a page built with it still unbuilds.
+  [`I FOUND A BITCOIN BACKUP</button></div>
+`, `I FOUND A BITCOIN BACKUP</button></div>
+        <div id="ssPromo" class="sr-i"><span>Practice on a SeedSigner in your browser, with lessons.</span><button type="button" class="secondary small" id="ssPromoBtn" onclick="ssPageOpen()">OPEN PRACTICE SIGNER</button></div>
+`, [`  </header>
 `, `  </header>
   <div class="card" id="ssPromo"><span>New: practice on a SeedSigner in your browser. Same screens and buttons as the real device.</span><button type="button" class="small" id="ssPromoBtn" onclick="ssPageOpen()">OPEN PRACTICE SIGNER</button></div>
-`],
+`]],
   [`<button class="guide-btn" id="guideBtn" onclick="toggleGuide()" aria-pressed="false">GUIDE ME</button>
 `, `<button class="guide-btn" id="guideBtn" onclick="toggleGuide()" aria-pressed="false">GUIDE ME</button>
 <button class="secondary small" id="ssMenuBtn" onclick="ssPageOpen()">PRACTICE SIGNER</button>
@@ -39,7 +44,8 @@ function unbuild(h) {
   const boxA = h.indexOf('\n    <details id="ssBox">'); must(boxA > 0, "unbuild: box start");
   const boxZ = h.indexOf("</details>", boxA); must(boxZ > boxA, "unbuild: box end");
   h = h.slice(0, boxA) + h.slice(boxZ + 10);
-  for (const [a, b] of HOOKS) {
+  for (const [a, b, old] of HOOKS) {
+    if (old && h.indexOf(b) < 0 && once(h, old[1])) { h = h.replace(old[1], () => old[0]); continue; }   // a page built with the hook's older form
     if (h.indexOf(b) < 0 && once(h, a)) continue;   // a page built before this hook was added (v2.14.0 card and MENU entry)
     must(once(h, b), "unbuild: hook not exactly once: " + a.slice(0, 60)); h = h.replace(b, () => a);
   }
@@ -84,7 +90,6 @@ const css = `
   #ssBox #ssK1 { left: calc(630 * var(--u)); top: calc(63 * var(--u)); }
   #ssBox #ssK2 { left: calc(630 * var(--u)); top: calc(119 * var(--u)); }
   #ssBox #ssK3 { left: calc(630 * var(--u)); top: calc(175 * var(--u)); }
-  #ssBox .ss-warn { color: var(--warn-text); font-weight: 700; font-size: 13px; text-align: center; margin: 10px 0 0; }
   /* v2.14.0 Learn on the practice signer: lessons and a practice transaction, as page text below the device (never on its screen) */
   #ssBox [hidden] { display: none !important; }
   #ssBox .ss-learn { margin: 14px auto 0; max-width: 750px; }
@@ -95,10 +100,7 @@ const css = `
   #ssBox .ss-l-do { font-size: 15px; line-height: 1.5; }
   #ssBox .ss-l-cam { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; margin: 0 0 10px; overflow-wrap: anywhere; }
   #ssBox #ssTxStatus { white-space: pre-line; overflow-wrap: anywhere; }
-  /* v2.14.0: the card under the header that opens the practice signer (one line and the button on a wide screen) */
-  #ssPromo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 7px 10px; margin: 0 0 12px; border: 1px solid var(--gold); font-size: 13px; }
-  #ssPromo span { flex: 1 1 16em; min-width: 0; font-size: 12px; }
-  #ssPromo button { flex: none; padding: 6px 12px; font-size: 12px; letter-spacing: .03em; }
+  /* v2.15.0: the practice signer's choice in the start row under the title (laid out by #startRow .sr-i) */
   body.guided #ssPromo { display: none; }
   @media print { #ssPromo { display: none !important; } }
 `;
@@ -107,7 +109,7 @@ rep("\n</style>", css + "</style>");
 // ---- 2. the box, right after <details id="practiceBox"> ... </details> in CHECK A BACKUP ----
 const box = `
     <details id="ssBox">
-      <summary>Practice signer: works like SeedSigner<span class="tag tag-ro">NEW</span></summary>
+      <summary>Practice signer: works like SeedSigner<span class="tag tag-ro">PRACTICE ONLY</span><small>The same screens and buttons as a real SeedSigner, with step-by-step lessons and a practice transaction.</small></summary>
       <p class="hint" style="margin:8px 0;">A practice copy of SeedSigner 0.8.7 on the SeedSigner+ screen (320 x 240): the same screens, menus and buttons. Seeds made here are for practice only.</p>
       <div class="ss-wrap">
         <div class="ss-dev" id="ssDevice" tabindex="0" role="application" aria-label="Practice signer. While it has focus: arrow keys move, Enter or Space presses the joystick, 1, 2 and 3 are KEY1, KEY2 and KEY3.">
@@ -122,7 +124,7 @@ const box = `
           <button type="button" class="ss-k" id="ssK3" tabindex="-1" aria-label="KEY3"></button>
         </div>
       </div>
-      <p class="ss-warn">PRACTICE ONLY: never put real coins on a seed made here.<br>It is a real signer: never type in or scan a real seed.</p>
+      <p class="ms-test">PRACTICE ONLY: never put real coins on a seed made here. It is a real signer: never type in or scan a real seed.</p>
       <div class="ss-learn" id="ssLearn">
         <h3 class="sec">Use the seed in VOIDFORGE</h3>
         <p class="hint" style="margin:0 0 8px;">FORGE SEED takes the seed loaded on the device, with its passphrase if one is applied, and shows it in MAKE A SEED like the other methods do: the words, fingerprint, addresses, SeedQR and watch-only wallet. It is marked PRACTICE.</p>
@@ -139,11 +141,11 @@ const box = `
           <p class="status ok" id="ssLearnState" aria-live="polite"></p>
           <div class="btn-row" style="margin:6px 0 0;"><button type="button" class="secondary small" id="ssLearnBack">BACK</button><button type="button" class="secondary small" id="ssLearnNext">NEXT</button><button type="button" class="secondary small" id="ssLearnRestart">RESTART LESSON</button></div>
         </div>
-        <div class="ss-l-cam" id="ssLearnCam" hidden><span>Held up to the device's camera: <b id="ssLearnCamWhat"></b>. <span id="ssLearnCamSay" aria-live="polite"></span></span><button type="button" class="secondary small" id="ssLearnCamOff">PUT IT AWAY</button></div>
+        <div class="ss-l-cam" id="ssLearnCam" hidden><span>Held up to the device&rsquo;s camera: <b id="ssLearnCamWhat"></b>. <span id="ssLearnCamSay" aria-live="polite"></span></span><button type="button" class="secondary small" id="ssLearnCamOff">PUT IT AWAY</button></div>
         <h3 class="sec">Practice transaction</h3>
-        <p class="hint" style="margin:0 0 8px;">Makes a PSBT that spends made-up coins of the seed on the device and holds it up to the device's camera. After you sign it, this page reads the signed PSBT from the device's screen and checks every signature with its own code.</p>
+        <p class="hint" style="margin:0 0 8px;">Makes a PSBT that spends made-up coins of the seed on the device and holds it up to the device&rsquo;s camera. After you sign it, this page reads the signed PSBT from the device&rsquo;s screen and checks every signature with its own code.</p>
         <div class="btn-row"><select id="ssTxKind" aria-label="Kind of practice transaction"><option value="single">Single key: 2 inputs</option><option value="multi">2-of-3 multisig: 1 input</option></select><button type="button" id="ssTxGo" class="secondary small">PRACTICE TRANSACTION</button></div>
-        <p class="ms-warn" id="ssTxNet" hidden>Mainnet: these coins don't exist; this PSBT can never be broadcast.</p>
+        <p class="ms-test" id="ssTxNet" hidden>Mainnet: these coins don&rsquo;t exist; this PSBT can never be broadcast.</p>
         <p class="status" id="ssTxStatus" aria-live="polite"></p>
         <p class="hint" id="ssTxCoins"></p>
       </div>
