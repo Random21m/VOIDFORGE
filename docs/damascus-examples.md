@@ -2,7 +2,7 @@
 
 **Public: never put money on these.** Anyone can make these seeds from this page.
 
-Each example lists what was written on the Hammer and Anvil sheets, and what VOIDFORGE's Check my sheets works out from them. Load them on the page: MAKE A SEED, the Damascus tab, Worked examples.
+Each example lists what was written on the Hammer and Anvil sheets, and what VOIDFORGE's CHECK MY SHEETS works out from them. Load them on the page: MAKE A SEED, the Damascus tab, Worked examples.
 
 ## Example 1 (12 words)
 
