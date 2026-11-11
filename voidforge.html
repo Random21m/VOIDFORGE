@@ -34007,6 +34007,9 @@ function ssLearnCamHandle() {
 function ssLearnShow(frames, what, key) {
   if (ssLearnCam.key === "dmseed") ssLearnForget();   // a practice seed's SeedQR is wiped as soon as it is put away
   ssLearnCam.say = ""; ssLearnCam.read = false;
+  // a scan seen earlier says nothing about these QR codes: without this, a decoder kept from an earlier scan (the timer stops when
+  // the QR is put away, before ssLearnTick sees the scan end) put the next QR away on the first tick (a second Damascus seed)
+  ssLearn.scanDec = null;
   ssLearnCam.byLesson = false; ssLearnCam.frames = frames && frames.length ? frames.slice() : null; ssLearnCam.what = ssLearnCam.frames ? what : ""; ssLearnCam.key = ssLearnCam.frames ? key || "" : "";
   ssLearnCam.t0 = Date.now(); ssLearnTimer(); ssLearnRender();
 }
