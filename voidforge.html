@@ -12,7 +12,7 @@
 // watchSigns() in the main script reads them. VF_OWN_DATA: every data- attribute name the page itself uses (tests/test.js checks that the
 // list is complete). Once the page has loaded (vfReady), any element added straight under <body> or <html> that is not one of the page's
 // own (vfOwnTop) is noted too: the page never adds one, and extensions often add one there to hold hidden content.
-var VF_OWN_DATA = ["1p-ignore", "a", "addr", "b", "bwignore", "c", "code", "ds", "form-type", "g", "gs", "i", "k", "lpignore", "m", "meta", "method", "n", "net", "parts", "pic", "practice-phrase", "r", "s", "seed", "sig", "tab", "text", "tip", "used", "v", "w"];
+var VF_OWN_DATA = ["1p-ignore", "a", "addr", "b", "bwignore", "c", "code", "ds", "form-type", "g", "gs", "i", "k", "lpignore", "m", "meta", "method", "n", "net", "parts", "pic", "practice-phrase", "r", "rh", "s", "seed", "sig", "tab", "text", "tip", "used", "v", "w"];
 window.vfWatchSeen = []; window.vfOwnEls = [document.currentScript];
 try {
   new MutationObserver(function(rs){ try {   // fixes release: never throw, also while the page is closing
@@ -511,7 +511,8 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   /* v2.10.0: the look-alike letter list shows parts of the words (SECRET): never selectable, hidden during the restore drill */
   #smudgeNote, #vSmudge { -webkit-user-select: none; user-select: none; }
   body.drill-on #smudgeNote { visibility: hidden; }
-  body.drill-on #dmLiveF, body.drill-on #dmLiveW, body.drill-on #dmLiveL, body.drill-on #dmOut, body.drill-on #dmTour { visibility: hidden; }   /* v2.15.0: the Damascus steps show the words too */
+  body.drill-on #dmLiveF, body.drill-on #dmLiveW, body.drill-on #dmLiveL, body.drill-on #dmOut, body.drill-on #dmTour,
+  body.drill-on #dmWords, body.drill-on #dmLwWords, body.drill-on #dmLwBits, body.drill-on #dmLwOut, body.drill-on #dmFR, body.drill-on #dmFM, body.drill-on #dmFK { visibility: hidden; }   /* v2.15.0: the Damascus steps show the words too */
   #forgePub:empty, #phrasePub:empty, #wvPub:empty, #detPub:empty, #smudgeNote:empty, #vSmudge:empty, #twiceNote:empty { display: none; }
   #oeSeed { -webkit-user-select: none; user-select: none; }   /* v2.10.0: an old Electrum seed in hex is as secret as the words */
   .pass-warn { color: var(--warn-text); font-weight: 600; font-size: 13px; margin: 6px 0 0; }
@@ -831,8 +832,14 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   #rhBar button { margin: 0; flex: none; }
   body.light #rhBar { box-shadow: 0 6px 20px rgba(0,0,0,.18); }
   @media print { #rhBar { display: none !important; } }
+  /* re-hide: a covered picture (or a grid whose pattern a blur would not hide) is taken off the screen, a gray box in its place;
+     and every place the script covers (data-rh) stays off paper when the browser's Print prints the page */
+  .rh-cov svg, .rh-cov canvas, .rh-cov img, .rh-solid > * { visibility: hidden !important; }
+  .rh-solid { background: var(--surface2) !important; outline: 2px dashed var(--muted); outline-offset: -2px; filter: none !important; }   /* nothing left to blur: a plain gray box */
+  .rh-cov:has(svg, canvas, img) { background: var(--surface2) !important; outline: 2px dashed var(--border); outline-offset: -2px; }
+  @media print { body:not(.print-seed):not(.print-qr) [data-rh] { visibility: hidden !important; } }
   .ppk { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
-  .ppk:empty { display: none; }
+  .ppk[hidden] { display: none; }
   .ppk .ppk-use { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
   .ppk .ppk-v { font-family: "Courier New", monospace; font-size: 15px; color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; overflow-wrap: anywhere; white-space: pre-wrap; }
   .ppk .ppk-m { color: var(--accent); font-weight: 700; }
@@ -984,6 +991,8 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .guide-btn, .size-btn, .theme-toggle { padding: 5px 10px; font-size: 12px; }
   .big-count.short, .big-sub.short, #rollCount.short { color: var(--muted) !important; }
   #ignoredNote { color: var(--muted) !important; font-weight: 500 !important; }
+  #twiceNote, #ignoredNote { font-size: 13px; margin-top: 4px; font-weight: 600; }
+  #twiceNote { color: var(--warn-text); }   /* v2.15.0: the look of these two result lines moved here from inline styles (house style) */
   #onlineWarn, #fatalWarn, #noJs { background: transparent; color: var(--text); border: 1px solid var(--bad-text); border-left-width: 4px; text-align: left; font-weight: 600; font-size: 13px; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; }
   #statusLine { justify-content: flex-start; margin-bottom: 4px; }
   #netTag, #selfTestBadge { text-align: left; font-size: 12px; }
@@ -1233,7 +1242,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div id="wdCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
       <div id="wdMsg" class="status bad" aria-live="polite"></div>
       <div class="hint" style="margin:4px 0 0;">The passphrase (if any) is added after the words are made, in the box under them. Coin: pick which side is 1 and keep it the same for every flip (for BitBox02&rsquo;s last word, T is 1 and H is 0).</div>
-      <div class="btn-row" style="margin-top:8px;">
+      <div class="btn-row top">
         <button type="button" id="wdBtn" onclick="wdGenerate()" disabled>FORGE SEED</button>
         <button type="button" class="secondary small" id="wdSheetBtn" onclick="printWordSheet()">PRINT WORD SHEET</button>
         <button type="button" class="secondary small" onclick="wdClear()">CLEAR</button>
@@ -1246,16 +1255,16 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div id="cdGrid" class="cd-grid" role="group" aria-label="Tap the cards in the order they lie"></div>
       <textarea id="cdCards" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Your cards in order" placeholder="Your cards in order, such as AS 10H QD 2C" oninput="cdUpdate()"></textarea>
       <div id="cdCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
-      <div class="btn-row" style="margin-top:8px;"><button type="button" id="cdBtn" onclick="cdGenerate()" disabled>FORGE SEED</button><button type="button" class="secondary small" id="cdUndoBtn" onclick="cdUndo()">UNDO LAST CARD</button><button type="button" class="secondary small" id="cdSheetBtn" onclick="printCardSheet()">PRINT CARD SHEET</button></div>
+      <div class="btn-row top"><button type="button" id="cdBtn" onclick="cdGenerate()" disabled>FORGE SEED</button><button type="button" class="secondary small" id="cdUndoBtn" onclick="cdUndo()">UNDO LAST CARD</button><button type="button" class="secondary small" id="cdSheetBtn" onclick="printCardSheet()">PRINT CARD SHEET</button></div>
       <details class="wd-how" id="cdHexBox" style="margin-top:12px;"><summary>Or hex: a 16-sided die, or checking another tool</summary>
         <p class="hint" style="margin:6px 0 0;">Type exactly <b>32</b> hex digits (0 to 9 and a to f) for 12 words, 40 for 15 words, 48 for 18 words, 56 for 21 words or <b>64</b> for 24 words. They are used <b>directly</b> as the seed&rsquo;s randomness, with no hashing, as in Ian Coleman&rsquo;s tool with Hexadecimal and raw entropy chosen. For a real seed, roll a 16-sided die yourself (one digit per roll). Never use hex that a website or a program made for you.</p>
         <input type="text" id="cdHex" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Hex digits" placeholder="32 to 64 hex digits" oninput="cdUpdate()" style="margin-top:6px;">
         <div id="cdHexCount" class="hint" aria-live="polite" style="margin:6px 0 0; font-weight:600;"></div>
-        <div class="btn-row" style="margin-top:8px;"><button type="button" id="cdHexBtn" onclick="cdHexGenerate()" disabled>FORGE SEED</button></div>
+        <div class="btn-row top"><button type="button" id="cdHexBtn" onclick="cdHexGenerate()" disabled>FORGE SEED</button></div>
       </details>
       <div id="cdMsg" class="status bad" aria-live="polite"></div>
       <div class="hint" style="margin:4px 0 0;">The passphrase (if any) is added after the words are made, in the box under them.</div>
-      <div class="btn-row" style="margin-top:8px;"><button type="button" class="secondary small" onclick="cdClear()">CLEAR</button></div>
+      <div class="btn-row top"><button type="button" class="secondary small" onclick="cdClear()">CLEAR</button></div>
     </details>
     <details id="dmBox" data-g="1">
       <summary>The Damascus method<span class="tag tag-secret">SECRET</span><small>Make a seed by hand from dice and playing cards, folded together and checked at every step.</small></summary>
@@ -1342,7 +1351,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
           <h3 class="sec">Step 5 of 5: The last word</h3>
           <p class="hint dm-p">On paper with a SeedSigner. On this page it is done for you once the dice and cards are in (below). Did it all on paper? The box under it works out the last word from your words and bits.</p>
           <h4 class="sec">On paper: the Forge sheet, box 5 (F5)</h4>
-          <ul class="hint dm-steps"><li>Your Forge sheet&rsquo;s last row gives the last word&rsquo;s 7 bits (3 for 24 words). These are not new coin flips.</li><li>SeedSigner asks for them under 'Coin flip entropy'. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.</li><li>The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.</li></ul>
+          <ul class="hint dm-steps"><li>Your Forge sheet&rsquo;s last row gives the last word&rsquo;s 7 bits (3 for 24 words). These are not new coin flips.</li><li>SeedSigner asks for them under &lsquo;Coin flip entropy&rsquo;. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.</li><li>The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.</li></ul>
           <ol class="hint dm-steps"><li><b>On the SeedSigner:</b> Tools &gt; <b>Calc 12th/24th word</b> &gt; <span class="dm-n" data-n="12|24">12</span> words &gt; type words 1 to <span class="dm-n" data-n="11|23">11</span> &gt; <b>Build Final Word</b> &gt; <b>Coin flip entropy</b> &gt; enter the <span class="dm-n" data-n="7|3">7</span> bits (<b>Heads = 1</b>, Tails = 0).</li><li><b>Final Word Calc</b> shows the last word. Press Next: the <span class="dm-n" data-n="12th|24th">12th</span> Word screen shows the fingerprint.</li><li><b>Compare</b> the last word, the fingerprint and the first address with this page. They must match.</li></ol>
           <h4 class="sec">On this page</h4>
           <div id="dmLiveL" class="dm-live" aria-live="polite"></div>
@@ -1378,7 +1387,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       </div>
       <h3 class="sec">The whole method on one page</h3>
       <div id="dmGuide">
-      <p class="hint dm-p dm-lead"><b>How to make a Damascus seed.</b> A Damascus seed is a normal 12-word Bitcoin seed that you make by hand from <b>dice</b> and <b>playing cards</b>, and check by hand as you go. Damascus steel is made by folding two different steels into one blade that is stronger than either. The Damascus method folds dice and cards into one seed.</p><p class="hint dm-p"><b>Time:</b> about 30 minutes once you know the steps; allow longer the first time. <b>Practice first</b> with a practice sheet (FILL IN A PRACTICE SHEET on the Damascus tab) or throwaway rolls. Never put money on a practice seed.</p><p class="hint dm-p">Field-tested: a hand-made Damascus seed checked on a real SeedSigner and in Sparrow (10 November 2026).</p><p class="hint dm-p">Each part below has the steps, one action per line, then <b>What you should have now</b>, then <b>Why it works</b>. The step labels on the printed sheets (H1, A2, F5 ...) are shown in brackets.</p><details class="wd-how dm-part"><summary>What you need</summary><ul class="hint dm-steps"><li>The printed sheets: <b>Hammer</b> (dice), <b>Anvil</b> (cards), <b>Forge</b> (the result), and the <b>word table</b>. Print them from VOIDFORGE: MAKE A SEED, the Damascus tab.</li><li>Two matching six-sided dice.</li><li>One deck of 52 playing cards.</li><li>A pencil.</li><li>An offline VOIDFORGE and a SeedSigner for the last word.</li></ul><p class="hint dm-p">Work in a private room. Phones away.</p></details><details class="wd-how dm-part"><summary>Part 1: The Hammer (dice)</summary><ol class="hint dm-steps"><li><b>Throw both dice.</b> Read the <b>left</b> die first. (H1)</li><li><b>Write both numbers</b> in the next pair box.</li><li><b>Rolled 1-1, 2-2, 3-3 or 4-4?</b> Cross the pair box out and throw both dice again.</li><li><b>Look up the pair</b> in the mirror table on the Hammer sheet (a pair and its mirror, like 2-5 and 5-2, share the first 4 bits): the row is the left die, the column is the right die. It gives you 5 bits (like 01101).</li><li><b>Write the 5 bits</b> into the next shaded run of the grid (a run is the stretch of boxes for one pair or one group of cards, shaded and white in turn).</li><li><b>Repeat</b> until the grid is full (26 good pairs). The last pair uses only 3 bits.</li><li><b>Dice check:</b> in the first 26 pair boxes, including crossed-out boxes: 52 numbers, count how often each face came up, and count the repeats (a number the same as the number just before it, reading every number in order: left, right, then the next box). FAIL if any count is 18 or more, or 1 or fewer, or repeats are 2 or fewer. On a FAIL, use other dice and start a new Hammer sheet. (H2)</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> 26 good pairs in the pair boxes, grid H full (rows 1 to 11 with 11 bits, row 12 with 7), and PASS in the dice check.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Bit:</b> a 0 or a 1. <b>Entropy:</b> the randomness a seed is made from, 128 bits for 12 words.</li><li>Two dice have 36 results. The 4 doubles 1-1 to 4-4 are thrown again, so 32 are left: exactly the 32 codes of 5 bits, each as likely as the others with fair dice.</li><li>The fifth bit says which die was higher. It stays fair even with a biased die, because a die is as likely to be higher first as second.</li><li>The dice check catches badly broken dice, not small flaws. The cards cover the rest (Part 4).</li></ul></details></details><details class="wd-how dm-part"><summary>Part 2: The Anvil (cards)</summary><ol class="hint dm-steps"><li><b>Shuffle well:</b> spread the cards face down and swirl them for 30 seconds, riffle shuffle <b>12 times</b>, then cut. (A1)</li><li><b>Deal 8 cards face up</b> in a row. (A2)</li><li><b>Play the 7 matches</b> shown on the sheet: 1 against 2, 3 against 4, 5 against 6, 7 against 8, then the two winners on the left, then the two winners on the right, then the final.<ul><li>The higher card wins and plays on.</li><li>In each match write <b>1 if the right card is higher</b>, <b>0 if the left card is higher</b>.</li><li>Ace is lowest, King is highest. For the same rank: clubs &lt; diamonds &lt; hearts &lt; spades.</li><li>A group of 8 cards (an octet) gives 7 bits for its run of grid A; a group of 4 (a quad) gives 3.</li></ul></li><li><b>Deal the next 8 cards</b> and play again: 6 groups of 8 in all.</li><li><b>Then deal 4 cards:</b> 1 against 2, 3 against 4, then the two winners.</li><li><b>Do it 3 times in all:</b> shuffle the same deck again (step 1) each time. The last deck is shorter: on deck 3, deal 5 groups of 8, then 4 cards, and stop.</li><li><b>Card check, while you deal:</b> count the neighbors: two cards dealt one after the other in the same group, with the same suit and ranks next to each other (like 7♥ 8♥). Ace and King are not neighbors, and two cards in different groups never count. After each deck, count its 1s. FAIL a deck if its 1s are 11 or fewer, or 34 or more (full 45-bit decks only), or its neighbors are 6 or more. On a FAIL, shuffle again and redo that deck. (A3)</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> grid A full (128 bits, row 12 with 7), the card record if you keep one, and PASS for each deck.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Match bit:</b> 1 if the right card is higher. In a well-shuffled deck, either card is equally likely to be the higher one, so each match is a fair bit.</li><li>Every card has its own place in the order (rank, then suit), so there are no ties.</li><li>The card check catches a lazy shuffle, not a small flaw. The dice cover the rest (Part 4).</li></ul></details></details><details class="wd-how dm-part"><summary>Part 3: Hallmarks (parity) on each sheet</summary><p class="hint dm-p">A hallmark is a check bit: whether a row or a column holds an odd or an even number of 1s (its parity). On the Hammer sheet and on the Anvil sheet: (H3, A4)</p><ul class="hint dm-steps"><li><b>Row hallmark R:</b> count the 1s in the row and write the result in the R box at the end of the row: odd: 1 3 5 7 9 11 → 1 · even: 0 2 4 6 8 10 → 0.</li><li><b>Column hallmark M:</b> count the 1s in the column and write the result in the M box under it, the same way.</li></ul><p class="hint dm-p dm-have"><b>What you should have now:</b> on both sheets, an R box filled on every row and an M box under every column.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Parity:</b> whether a count is odd or even. A hallmark is the parity of the 1s in its row or column.</li><li>One wrong box changes the parity of its row and of its column, so its hallmarks show where it is.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 4: The Forge (XOR)</summary><ol class="hint dm-steps"><li><b>Lay the Hammer and Anvil sheets side by side.</b> (F1)</li><li><b>Work one row at a time:</b> finger on the same row on both sheets.</li><li><b>For every box (this is XOR):</b> Same → 0. Different → 1. Write it in the same box on the Forge sheet.</li><li><b>Hallmarks on the Forge sheet,</b> R and M, the same way as in Part 3. (F2)</li><li><b>The seal:</b> for each R box and each M box, fold the Hammer hallmark with the Anvil hallmark (Same → 0. Different → 1.). The result must equal the Forge sheet&rsquo;s hallmark.</li><li><b>If one doesn&rsquo;t match:</b> the mistake is where that row and that column cross. Fix it before you go on.</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> grid F full, its R and M boxes filled, and the seal agreeing in every box.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>XOR (folding):</b> two bits in, one bit out: 0 0 → 0, 1 1 → 0, 0 1 → 1, 1 0 → 1. Forge = Hammer XOR Anvil.</li><li>If either sheet is random, the Forge sheet is random too, even if the other sheet is bad or was made by someone you do not trust.</li><li>The parity of a folded row is the fold of the two parities. So the seal checks all your folding at once, without doing it again.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 5: The words</summary><ol class="hint dm-steps"><li><b>Split each Forge row</b> into 3 + 4 + 4 bits: block, row, column. Block: which of the word table&rsquo;s 8 blocks; row and column: where the word sits in that block. (F3)</li><li><b>Look up the word</b> in the word table with those three parts and write it next to the row. No math needed.</li><li><b>Check each word back:</b> find it alphabetically in the table and make sure its bits match the row. (F4)</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> words 1 to 11 next to rows 1 to 11, each one checked back.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li>The 11 bits of a row are the word&rsquo;s place on the BIP39 list (2,048 words, from 0). The word table lays the list out by those bits, so no arithmetic is needed.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 6: The last word</summary><p class="hint dm-p">Row 12 gives only 7 bits, because the last word also holds a checksum that needs a computer. (F5)</p><ul class="hint dm-steps"><li>Your Forge sheet&rsquo;s last row gives the last word&rsquo;s 7 bits (3 for 24 words). These are not new coin flips.</li><li>SeedSigner asks for them under 'Coin flip entropy'. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.</li><li>The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.</li></ul><ol class="hint dm-steps"><li><b>On the SeedSigner:</b> Tools &gt; <b>Calc 12th/24th word</b> &gt; 12 words &gt; type words 1 to 11 &gt; <b>Build Final Word</b> &gt; <b>Coin flip entropy</b> &gt; enter the 7 bits (<b>Heads = 1</b>, Tails = 0).</li><li><b>Final Word Calc</b> shows the last word. Press Next: the 12th Word screen shows the fingerprint.</li><li><b>In VOIDFORGE:</b> MAKE A SEED &gt; Damascus, step 5 (Last word). Type the same 11 words and the 7 bits, then press CALCULATE LAST WORD.</li><li><b>Both must show the same last word,</b> and it must be in the table row that the 7 bits point to.</li><li><b>Compare the fingerprint</b> on both. They must match.</li><li><b>Compare the first address.</b> On the SeedSigner: Load seed &gt; Done &gt; Address explorer &gt; Native Segwit &gt; Receive addresses, address 0. It must match VOIDFORGE&rsquo;s first address.</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> the 12th word, the same on both tools, and the same fingerprint and first address on both.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Checksum:</b> the first 4 bits of SHA-256 of the 128 bits, added to the end so a wallet can tell a mistyped seed. Nobody can work out SHA-256 by hand, so two tools do it and must agree.</li><li>The 7 bits fix the table row, so a tool that gave a word outside that row would be wrong.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 7: Backup</summary><ol class="hint dm-steps"><li><b>Copy the 12 words</b> to your backup (paper or metal). (F6)</li><li><b>Copy the hallmarks next to them</b> (the row hallmarks and the column hallmarks). Later, anyone can recheck the words by hand with them.</li><li><b>Keep the hallmarks only next to the words,</b> because they reveal part of the seed.</li><li><b>Destroy the sheets you do not keep.</b> The Forge sheet <i>is</i> your seed.</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> the words and their hallmarks on your backup, and no other copy of the Forge sheet.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li>The hallmarks reveal 22 bits of the seed: not enough to find it, but they make guessing easier. Next to the words they reveal nothing new.</li></ul></details></details><details class="wd-how dm-part"><summary>24 words</summary><p class="hint dm-p">The same steps, with 52 good dice pairs and 6 decks (on deck 6, the last: 4 groups of 8, then 4 cards). The last row has 3 bits, which pick one block of the word table; use 24 words on the SeedSigner. The dice check counts the first 52 pair boxes: 104 numbers, and FAIL if any count is 29 or more, or 6 or fewer, or repeats are 7 or fewer; the card check is the same. Allow about twice the time.</p></details><details class="wd-how dm-part"><summary>Doing it with a helper (optional)</summary><ol class="hint dm-steps"><li><b>One person does the Hammer sheet, the other the Anvil sheet, in separate rooms.</b></li><li><b>The card person writes down every card</b> in the card record on the Anvil sheet.</li><li><b>Each folds their sheet closed</b> before seeing the other one. This matters: whoever sees the other sheet before finishing their own could steer the seed.</li><li><b>Assay:</b> later, each sheet can be checked by a different person (an assayer) without anyone learning the seed. In VOIDFORGE, choose "An assayer" under Who checks. Optional, for the assay: each sheet is also a Seed XOR part (step H4 on the Hammer sheet).</li></ol></details><details class="wd-how dm-part"><summary>Check it all in VOIDFORGE (optional)</summary><p class="hint dm-p">On the Damascus tab, the five steps (Hammer, Anvil, Forge, Words, Last word) follow these parts. Tap your dice and cards in as you go, or type them: VOIDFORGE checks each row, deck and word as you finish it, points to the box of any mistake, and works out the last word, fingerprint and first address. FORGE SEED then puts the seed into the page&rsquo;s usual tools.</p></details><details class="wd-how dm-part"><summary>What the checks catch, and what they do not</summary><ul class="hint dm-steps"><li><b>The seal and hallmarks</b> catch copying mistakes: every single slip, and nearly all bigger ones. They do not catch cheating.</li><li><b>The dice and card checks</b> catch badly broken dice or a lazy shuffle, not small flaws. Having <b>both</b> dice and cards is what protects you: if either one is good, the seed is fully random.</li><li><b>Two tools agreeing</b> on the last word, fingerprint and address shows the checksum is right.</li></ul><p class="hint dm-p">The full method is in docs/damascus-method.md; the math and the tests are in docs/damascus-method-design.md.</p></details>
+      <p class="hint dm-p dm-lead"><b>How to make a Damascus seed.</b> A Damascus seed is a normal 12-word Bitcoin seed that you make by hand from <b>dice</b> and <b>playing cards</b>, and check by hand as you go. Damascus steel is made by folding two different steels into one blade that is stronger than either. The Damascus method folds dice and cards into one seed.</p><p class="hint dm-p"><b>Time:</b> about 30 minutes once you know the steps; allow longer the first time. <b>Practice first</b> with a practice sheet (FILL IN A PRACTICE SHEET on the Damascus tab) or throwaway rolls. Never put money on a practice seed.</p><p class="hint dm-p">Field-tested: a hand-made Damascus seed checked on a real SeedSigner and in Sparrow (10 November 2026).</p><p class="hint dm-p">Each part below has the steps, one action per line, then <b>What you should have now</b>, then <b>Why it works</b>. The step labels on the printed sheets (H1, A2, F5 ...) are shown in brackets.</p><details class="wd-how dm-part"><summary>What you need</summary><ul class="hint dm-steps"><li>The printed sheets: <b>Hammer</b> (dice), <b>Anvil</b> (cards), <b>Forge</b> (the result), and the <b>word table</b>. Print them from VOIDFORGE: MAKE A SEED, the Damascus tab.</li><li>Two matching six-sided dice.</li><li>One deck of 52 playing cards.</li><li>A pencil.</li><li>An offline VOIDFORGE and a SeedSigner for the last word.</li></ul><p class="hint dm-p">Work in a private room. Phones away.</p></details><details class="wd-how dm-part"><summary>Part 1: The Hammer (dice)</summary><ol class="hint dm-steps"><li><b>Throw both dice.</b> Read the <b>left</b> die first. (H1)</li><li><b>Write both numbers</b> in the next pair box.</li><li><b>Rolled 1-1, 2-2, 3-3 or 4-4?</b> Cross the pair box out and throw both dice again.</li><li><b>Look up the pair</b> in the mirror table on the Hammer sheet (a pair and its mirror, like 2-5 and 5-2, share the first 4 bits): the row is the left die, the column is the right die. It gives you 5 bits (like 01101).</li><li><b>Write the 5 bits</b> into the next shaded run of the grid (a run is the stretch of boxes for one pair or one group of cards, shaded and white in turn).</li><li><b>Repeat</b> until the grid is full (26 good pairs). The last pair uses only 3 bits.</li><li><b>Dice check:</b> in the first 26 pair boxes, including crossed-out boxes: 52 numbers, count how often each face came up, and count the repeats (a number the same as the number just before it, reading every number in order: left, right, then the next box). FAIL if any count is 18 or more, or 1 or fewer, or repeats are 2 or fewer. On a FAIL, use other dice and start a new Hammer sheet. (H2)</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> 26 good pairs in the pair boxes, grid H full (rows 1 to 11 with 11 bits, row 12 with 7), and PASS in the dice check.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Bit:</b> a 0 or a 1. <b>Entropy:</b> the randomness a seed is made from, 128 bits for 12 words.</li><li>Two dice have 36 results. The 4 doubles 1-1 to 4-4 are thrown again, so 32 are left: exactly the 32 codes of 5 bits, each as likely as the others with fair dice.</li><li>The fifth bit says which die was higher. It stays fair even with a biased die, because a die is as likely to be higher first as second.</li><li>The dice check catches badly broken dice, not small flaws. The cards cover the rest (Part 4).</li></ul></details></details><details class="wd-how dm-part"><summary>Part 2: The Anvil (cards)</summary><ol class="hint dm-steps"><li><b>Shuffle well:</b> spread the cards face down and swirl them for 30 seconds, riffle shuffle <b>12 times</b>, then cut. (A1)</li><li><b>Deal 8 cards face up</b> in a row. (A2)</li><li><b>Play the 7 matches</b> shown on the sheet: 1 against 2, 3 against 4, 5 against 6, 7 against 8, then the two winners on the left, then the two winners on the right, then the final.<ul><li>The higher card wins and plays on.</li><li>In each match write <b>1 if the right card is higher</b>, <b>0 if the left card is higher</b>.</li><li>Ace is lowest, King is highest. For the same rank: clubs &lt; diamonds &lt; hearts &lt; spades.</li><li>A group of 8 cards (an octet) gives 7 bits for its run of grid A; a group of 4 (a quad) gives 3.</li></ul></li><li><b>Deal the next 8 cards</b> and play again: 6 groups of 8 in all.</li><li><b>Then deal 4 cards:</b> 1 against 2, 3 against 4, then the two winners.</li><li><b>Do it 3 times in all:</b> shuffle the same deck again (step 1) each time. The last deck is shorter: on deck 3, deal 5 groups of 8, then 4 cards, and stop.</li><li><b>Card check, while you deal:</b> count the neighbors: two cards dealt one after the other in the same group, with the same suit and ranks next to each other (like 7♥ 8♥). Ace and King are not neighbors, and two cards in different groups never count. After each deck, count its 1s. FAIL a deck if its 1s are 11 or fewer, or 34 or more (full 45-bit decks only), or its neighbors are 6 or more. On a FAIL, shuffle again and redo that deck. (A3)</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> grid A full (128 bits, row 12 with 7), the card record if you keep one, and PASS for each deck.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Match bit:</b> 1 if the right card is higher. In a well-shuffled deck, either card is equally likely to be the higher one, so each match is a fair bit.</li><li>Every card has its own place in the order (rank, then suit), so there are no ties.</li><li>The card check catches a lazy shuffle, not a small flaw. The dice cover the rest (Part 4).</li></ul></details></details><details class="wd-how dm-part"><summary>Part 3: Hallmarks (parity) on each sheet</summary><p class="hint dm-p">A hallmark is a check bit: whether a row or a column holds an odd or an even number of 1s (its parity). On the Hammer sheet and on the Anvil sheet: (H3, A4)</p><ul class="hint dm-steps"><li><b>Row hallmark R:</b> count the 1s in the row and write the result in the R box at the end of the row: odd: 1 3 5 7 9 11 → 1 · even: 0 2 4 6 8 10 → 0.</li><li><b>Column hallmark M:</b> count the 1s in the column and write the result in the M box under it, the same way.</li></ul><p class="hint dm-p dm-have"><b>What you should have now:</b> on both sheets, an R box filled on every row and an M box under every column.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Parity:</b> whether a count is odd or even. A hallmark is the parity of the 1s in its row or column.</li><li>One wrong box changes the parity of its row and of its column, so its hallmarks show where it is.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 4: The Forge (XOR)</summary><ol class="hint dm-steps"><li><b>Lay the Hammer and Anvil sheets side by side.</b> (F1)</li><li><b>Work one row at a time:</b> finger on the same row on both sheets.</li><li><b>For every box (this is XOR):</b> Same → 0. Different → 1. Write it in the same box on the Forge sheet.</li><li><b>Hallmarks on the Forge sheet,</b> R and M, the same way as in Part 3. (F2)</li><li><b>The seal:</b> for each R box and each M box, fold the Hammer hallmark with the Anvil hallmark (Same → 0. Different → 1.). The result must equal the Forge sheet&rsquo;s hallmark.</li><li><b>If one doesn&rsquo;t match:</b> the mistake is where that row and that column cross. Fix it before you go on.</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> grid F full, its R and M boxes filled, and the seal agreeing in every box.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>XOR (folding):</b> two bits in, one bit out: 0 0 → 0, 1 1 → 0, 0 1 → 1, 1 0 → 1. Forge = Hammer XOR Anvil.</li><li>If either sheet is random, the Forge sheet is random too, even if the other sheet is bad or was made by someone you do not trust.</li><li>The parity of a folded row is the fold of the two parities. So the seal checks all your folding at once, without doing it again.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 5: The words</summary><ol class="hint dm-steps"><li><b>Split each Forge row</b> into 3 + 4 + 4 bits: block, row, column. Block: which of the word table&rsquo;s 8 blocks; row and column: where the word sits in that block. (F3)</li><li><b>Look up the word</b> in the word table with those three parts and write it next to the row. No math needed.</li><li><b>Check each word back:</b> find it alphabetically in the table and make sure its bits match the row. (F4)</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> words 1 to 11 next to rows 1 to 11, each one checked back.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li>The 11 bits of a row are the word&rsquo;s place on the BIP39 list (2,048 words, from 0). The word table lays the list out by those bits, so no arithmetic is needed.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 6: The last word</summary><p class="hint dm-p">Row 12 gives only 7 bits, because the last word also holds a checksum that needs a computer. (F5)</p><ul class="hint dm-steps"><li>Your Forge sheet&rsquo;s last row gives the last word&rsquo;s 7 bits (3 for 24 words). These are not new coin flips.</li><li>SeedSigner asks for them under &lsquo;Coin flip entropy&rsquo;. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.</li><li>The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.</li></ul><ol class="hint dm-steps"><li><b>On the SeedSigner:</b> Tools &gt; <b>Calc 12th/24th word</b> &gt; 12 words &gt; type words 1 to 11 &gt; <b>Build Final Word</b> &gt; <b>Coin flip entropy</b> &gt; enter the 7 bits (<b>Heads = 1</b>, Tails = 0).</li><li><b>Final Word Calc</b> shows the last word. Press Next: the 12th Word screen shows the fingerprint.</li><li><b>In VOIDFORGE:</b> MAKE A SEED &gt; Damascus, step 5 (Last word). Type the same 11 words and the 7 bits, then press CALCULATE LAST WORD.</li><li><b>Both must show the same last word,</b> and it must be in the table row that the 7 bits point to.</li><li><b>Compare the fingerprint</b> on both. They must match.</li><li><b>Compare the first address.</b> On the SeedSigner: Load seed &gt; Done &gt; Address explorer &gt; Native Segwit &gt; Receive addresses, address 0. It must match VOIDFORGE&rsquo;s first address.</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> the 12th word, the same on both tools, and the same fingerprint and first address on both.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li><b>Checksum:</b> the first 4 bits of SHA-256 of the 128 bits, added to the end so a wallet can tell a mistyped seed. Nobody can work out SHA-256 by hand, so two tools do it and must agree.</li><li>The 7 bits fix the table row, so a tool that gave a word outside that row would be wrong.</li></ul></details></details><details class="wd-how dm-part"><summary>Part 7: Backup</summary><ol class="hint dm-steps"><li><b>Copy the 12 words</b> to your backup (paper or metal). (F6)</li><li><b>Copy the hallmarks next to them</b> (the row hallmarks and the column hallmarks). Later, anyone can recheck the words by hand with them.</li><li><b>Keep the hallmarks only next to the words,</b> because they reveal part of the seed.</li><li><b>Destroy the sheets you do not keep.</b> The Forge sheet <i>is</i> your seed.</li></ol><p class="hint dm-p dm-have"><b>What you should have now:</b> the words and their hallmarks on your backup, and no other copy of the Forge sheet.</p><details class="wd-how dm-why"><summary>Why it works</summary><ul class="hint dm-steps"><li>The hallmarks reveal 22 bits of the seed: not enough to find it, but they make guessing easier. Next to the words they reveal nothing new.</li></ul></details></details><details class="wd-how dm-part"><summary>24 words</summary><p class="hint dm-p">The same steps, with 52 good dice pairs and 6 decks (on deck 6, the last: 4 groups of 8, then 4 cards). The last row has 3 bits, which pick one block of the word table; use 24 words on the SeedSigner. The dice check counts the first 52 pair boxes: 104 numbers, and FAIL if any count is 29 or more, or 6 or fewer, or repeats are 7 or fewer; the card check is the same. Allow about twice the time.</p></details><details class="wd-how dm-part"><summary>Doing it with a helper (optional)</summary><ol class="hint dm-steps"><li><b>One person does the Hammer sheet, the other the Anvil sheet, in separate rooms.</b></li><li><b>The card person writes down every card</b> in the card record on the Anvil sheet.</li><li><b>Each folds their sheet closed</b> before seeing the other one. This matters: whoever sees the other sheet before finishing their own could steer the seed.</li><li><b>Assay:</b> later, each sheet can be checked by a different person (an assayer) without anyone learning the seed. In VOIDFORGE, choose "An assayer" under Who checks. Optional, for the assay: each sheet is also a Seed XOR part (step H4 on the Hammer sheet).</li></ol></details><details class="wd-how dm-part"><summary>Check it all in VOIDFORGE (optional)</summary><p class="hint dm-p">On the Damascus tab, the five steps (Hammer, Anvil, Forge, Words, Last word) follow these parts. Tap your dice and cards in as you go, or type them: VOIDFORGE checks each row, deck and word as you finish it, points to the box of any mistake, and works out the last word, fingerprint and first address. FORGE SEED then puts the seed into the page&rsquo;s usual tools.</p></details><details class="wd-how dm-part"><summary>What the checks catch, and what they do not</summary><ul class="hint dm-steps"><li><b>The seal and hallmarks</b> catch copying mistakes: every single slip, and nearly all bigger ones. They do not catch cheating.</li><li><b>The dice and card checks</b> catch badly broken dice or a lazy shuffle, not small flaws. Having <b>both</b> dice and cards is what protects you: if either one is good, the seed is fully random.</li><li><b>Two tools agreeing</b> on the last word, fingerprint and address shows the checksum is right.</li></ul><p class="hint dm-p">The full method is in docs/damascus-method.md; the math and the tests are in docs/damascus-method-design.md.</p></details>
       </div>
       <details class="wd-how" id="dmFaq"><summary>Questions and fixes</summary>
       <p class="hint dm-p">Short answers for when something goes wrong. The steps are in docs/damascus-quick-guide.md.</p>
@@ -1387,7 +1396,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <details class="wd-how dm-qa"><summary>A bias box says FAIL</summary><ul class="hint dm-steps"><li>Dice: a fair pair of dice fails about 2 times in 100. Use other dice and start a new Hammer sheet. Never change the bits by hand.</li><li>Cards: a good shuffle fails about 6 decks in 1,000. Shuffle again and redo that deck.</li><li>The boxes only catch badly broken dice or a lazy shuffle. Small flaws pass. Using both dice and cards is what protects you.</li></ul></details>
       <details class="wd-how dm-qa"><summary>The seal will not match</summary><ol class="hint dm-steps"><li>Find the row whose hallmarks do not agree, and the column whose hallmarks do not agree.</li><li>The mistake is in the box where that row and that column cross.</li><li>Check that box three times: on the Hammer sheet, on the Anvil sheet, and the fold on the Forge sheet (same bits gives 0, different bits gives 1).</li><li>If a row is off but no column is, the row hallmark itself may be miscounted. The same goes for a column.</li><li>CHECK MY SHEETS in VOIDFORGE points to the box for you.</li></ol></details>
       <details class="wd-how dm-qa"><summary>The two tools give different last words</summary><ol class="hint dm-steps"><li>Check that both have the same 11 words (23 for 24 words), in the same order.</li><li>Check the bits you typed for the last word: 7 bits for 12 words, 3 for 24. On the SeedSigner, Heads = 1 and Tails = 0.</li><li>In VOIDFORGE, MAKE A SEED &gt; Damascus, step 5 (Last word), type the same words and bits, in the same order.</li><li>If they still differ, stop. Do not use the seed until you know why.</li></ol></details>
-      <details class="wd-how dm-qa"><summary>Are the last 7 bits coin flips?</summary><p class="hint dm-p">No.</p><ul class="hint dm-steps"><li>Your Forge sheet&rsquo;s last row gives the last word&rsquo;s 7 bits (3 for 24 words). These are not new coin flips.</li><li>SeedSigner asks for them under 'Coin flip entropy'. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.</li><li>The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.</li></ul></details>
+      <details class="wd-how dm-qa"><summary>Are the last 7 bits coin flips?</summary><p class="hint dm-p">No.</p><ul class="hint dm-steps"><li>Your Forge sheet&rsquo;s last row gives the last word&rsquo;s 7 bits (3 for 24 words). These are not new coin flips.</li><li>SeedSigner asks for them under &lsquo;Coin flip entropy&rsquo;. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.</li><li>The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.</li></ul></details>
       <details class="wd-how dm-qa"><summary>How do I make 24 words?</summary><p class="hint dm-p">The same steps, with 52 good dice pairs and 6 decks. Choose 24 words before you print the sheets. The last row of grid F has 3 bits, which pick one block of the word table; choose 24 words on the SeedSigner too.</p></details>
       <details class="wd-how dm-qa"><summary>Can I do it with a helper?</summary><p class="hint dm-p">Yes.</p><ol class="hint dm-steps"><li>One person fills in the Hammer sheet and the other the Anvil sheet, in separate rooms.</li><li>The card person writes down every card in the card record.</li><li>Each folds their sheet closed before seeing the other one.</li></ol><p class="hint dm-p">The order matters. Whoever fills in a sheet after seeing the other sheet can choose the seed, and every check still passes. Worked example 2 shows this.</p></details>
       <details class="wd-how dm-qa"><summary>Can I use only dice?</summary><p class="hint dm-p">Yes: VOIDFORGE&rsquo;s Dice tab does that. But then one bad die is not covered. With the Damascus method, the seed is fully random if either the dice or the shuffle is good.</p></details>
@@ -1397,7 +1406,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
 
       </details>
       <details class="wd-how" id="dmExBox"><summary>Worked examples (public: never put money on these)</summary>
-        <p class="hint dm-p">Three worked examples to follow on paper or to load into Check my sheets. They are public: <b>never put money on them</b>. Loading one turns on PRACTICE, so FORGE SEED stays off.</p>
+        <p class="hint dm-p">Three worked examples to follow on paper or to load into CHECK MY SHEETS. They are public: <b>never put money on them</b>. Loading one turns on PRACTICE, so FORGE SEED stays off.</p>
         <div class="dm-ex"><p class="hint dm-p"><b>Example 1.</b> 12 words. Dice: the digits of pi (only 1 to 6, read in pairs). Cards: a published shuffle. Words: <span class="dm-w">kick confirm home few coin pencil praise burst business fix credit sword</span>. Fingerprint 70b5da37.</p><div class="btn-row"><button type="button" class="secondary small" id="dmEx1" onclick="dmLoadExample(1)">LOAD EXAMPLE 1</button></div></div>
         <div class="dm-ex"><p class="hint dm-p"><b>Example 2.</b> 12 words. Dice: the digits of e. Cards: the card person saw the Hammer sheet first and placed the cards to steer the seed. It lands on a public test seed, and every check still passes: hallmarks catch mistakes, not cheating. This is why each sheet is folded closed before the other is seen. Words: <span class="dm-w">legal winner thank year wave sausage worth useful legal winner thank yellow</span>. Fingerprint b8688df1.</p><div class="btn-row"><button type="button" class="secondary small" id="dmEx2" onclick="dmLoadExample(2)">LOAD EXAMPLE 2</button></div></div>
         <div class="dm-ex"><p class="hint dm-p"><b>Example 3.</b> 24 words. Dice: the digits of the square root of 2. Cards: a published shuffle, six decks. Words: <span class="dm-w">candy play giraffe unable song nasty music stay nothing acquire cloud until logic key mango leopard true among genuine lucky family remain lesson artist</span>. Fingerprint 116ab0ba.</p><div class="btn-row"><button type="button" class="secondary small" id="dmEx3" onclick="dmLoadExample(3)">LOAD EXAMPLE 3</button></div></div>
@@ -1427,8 +1436,8 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <div id="entropyStatus" data-g="2" style="font-size: 13px; margin-top:4px; font-weight:600;"></div>
     <div id="bitsNote" data-g="2" style="font-size: 13px; margin-top:4px; color:var(--muted);"></div>
     <div id="countNote" data-g="2" class="hint" aria-live="polite" style="margin:4px 0 0;"></div>
-    <div id="twiceNote" data-g="2" aria-live="polite" style="font-size: 13px; margin-top:4px; font-weight:600; color:var(--warn-text);"></div>
-    <div id="ignoredNote" data-g="2" style="font-size: 13px; margin-top:4px; font-weight:600; color:var(--danger);"></div>
+    <div id="twiceNote" data-g="2" aria-live="polite"></div>
+    <div id="ignoredNote" data-g="2"></div>
     <details id="rollStats" data-g="2">
       <summary>Your rolls: history and fairness chart<small>See what you rolled and whether the faces came up evenly, or test your dice without making a seed.</small></summary>
     <label class="dt-switch"><input type="checkbox" id="diceTest" autocomplete="off" onchange="diceTestToggle()"><span><b>Test only, no seed:</b> roll the same die (or flip the same coin) many times to see whether it comes up evenly. FORGE SEED is off while this is on.</span></label>
@@ -1511,16 +1520,16 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details id="autoClearBox" style="margin-top:8px;">
       <summary>Auto-clear: let the page wipe itself<small>Optional. Off unless you turn it on.</small></summary>
       <p class="hint" style="margin:8px 0 0;">Off by default. When on, VOIDFORGE wipes the seed, rolls, passphrase and results without asking, so words are not left on the screen if you walk away. <b>Write your words down first:</b> a wipe cannot be undone. Nothing about this setting is saved; it is off again when the page reloads.</p>
-      <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;"><label for="autoIdle" style="font-weight:600;">Wipe after no activity for</label><select id="autoIdle" aria-label="Wipe after no activity for" onchange="autoClearSet()"><option value="0">never</option><option value="2">2 minutes</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="30">30 minutes</option></select></div>
-      <label style="display:flex; gap:8px; align-items:center; margin-top:8px;"><input type="checkbox" id="autoHide" onchange="autoClearSet()"> Also wipe when I switch to another tab or window, or the screen locks</label>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;"><label for="autoIdle" style="font-weight:600;">Wipe after no activity for</label><select id="autoIdle" autocomplete="off" aria-label="Wipe after no activity for" onchange="autoClearSet()"><option value="0">never</option><option value="2">2 minutes</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="30">30 minutes</option></select></div>
+      <label style="display:flex; gap:8px; align-items:center; margin-top:8px;"><input type="checkbox" id="autoHide" autocomplete="off" onchange="autoClearSet()"> Also wipe when I switch to another tab or window, or the screen locks</label>
       <div id="autoNote" class="hint" aria-live="polite" style="margin:8px 0 0;"></div>
     </details>
     <!-- v2.15.0: Re-hide (the notice is #rhBar at the end of the page; the list of covered places is RH_PLACES in the script) -->
     <details id="rhBox" style="margin-top:8px;">
       <summary>Re-hide: cover secrets when you look away<small>On. Nothing is wiped: tap SHOW to see them again.</small></summary>
-      <p class="hint" style="margin:8px 0 0;">While words, rolls, a passphrase or another secret are on the page, VOIDFORGE covers them again when you switch to another tab or app, when you click another window, when you print the page with the browser&rsquo;s own Print, and after a while with no activity. Passphrase boxes go back to dots. VOIDFORGE&rsquo;s own PRINT buttons still print what they say. The practice signer is not covered: it holds practice seeds only. Nothing about this setting is saved; it is back to 2 minutes when the page reloads.</p>
-      <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;"><label for="rhIdle" style="font-weight:600;">Also cover after no activity for</label><select id="rhIdle" aria-label="Also cover after no activity for" onchange="rhSet()"><option value="0">never</option><option value="1">1 minute</option><option value="2" selected>2 minutes</option><option value="5">5 minutes</option></select></div>
-      <label style="display:flex; gap:8px; align-items:center; margin-top:8px;"><input type="checkbox" id="rhBlur" checked onchange="rhSet()"> Also cover when I click another window</label>
+      <p class="hint" style="margin:8px 0 0;">While words, rolls, a passphrase or another secret are on the page, VOIDFORGE covers them again when you switch to another tab or app, when you click another window, when you print the page with the browser&rsquo;s own Print, and after a while with no activity. Text is blurred; QR codes and other pictures are taken off the screen. Passphrase boxes go back to dots. VOIDFORGE&rsquo;s own PRINT buttons still print what they say. The practice signer is not covered: it holds practice seeds only. Nothing about this setting is saved; it is back to 5 minutes when the page reloads.</p>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;"><label for="rhIdle" style="font-weight:600;">Also cover after no activity for</label><select id="rhIdle" autocomplete="off" aria-label="Also cover after no activity for" onchange="rhSet()"><option value="0">never</option><option value="1">1 minute</option><option value="2">2 minutes</option><option value="5" selected>5 minutes</option></select></div>
+      <label style="display:flex; gap:8px; align-items:center; margin-top:8px;"><input type="checkbox" id="rhBlur" autocomplete="off" checked onchange="rhSet()"> Also cover when I click another window</label>
       <div id="rhNote" class="hint" aria-live="polite" style="margin:8px 0 0;"></div>
     </details>
     <details id="drillBox" data-g="5" style="display:none; margin-top:8px;">
@@ -1531,7 +1540,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <label for="drillWords" id="drillLabel">Type your words from paper, in order</label>
         <textarea id="drillWords" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="word1 word2 word3 ..."></textarea>
         <div id="drillPassRow" style="display:none;"><label for="drillPass">Passphrase (from your separate note)</label><input type="password" id="drillPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" autocomplete="off" spellcheck="false"></div>
-        <div class="btn-row" style="margin-top:8px;"><button onclick="drillCheck()">CHECK MY PAPER</button><button class="secondary small" onclick="drillEnd()">END DRILL, SHOW WORDS</button></div>
+        <div class="btn-row top"><button onclick="drillCheck()">CHECK MY PAPER</button><button class="secondary small" onclick="drillEnd()">END DRILL, SHOW WORDS</button></div>
         <div class="status" id="drillStatus" aria-live="polite"></div>
       </div>
     </details>
@@ -1569,7 +1578,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details id="explainBox" data-g="5" style="display:none; margin-top:10px;">
       <summary>How your seed was made<span class="tag tag-secret">SECRET</span><small>Optional: watch your dice rolls turn into these words, one step at a time.</small></summary>
       <p class="hint" style="margin:8px 0 0;">This shows every step from the rolls you typed to the words above, using the same math as FORGE. It prints the secret numbers in between, so only open it where nobody can see your screen. It never shows your passphrase.</p>
-      <div class="btn-row" style="margin-top:8px;">
+      <div class="btn-row top">
         <button class="secondary small" onclick="showExplain()">SHOW THE STEPS</button>
         <button class="secondary small" onclick="hideExplain()">HIDE</button>
       </div>
@@ -1579,7 +1588,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details id="seedQrBox" data-g="5" style="display:none; margin-top:10px;">
       <summary>Paper backup as a SeedQR<span class="tag tag-secret">SECRET</span><small>For SeedSigner and similar offline devices. Print it or copy it by hand.</small></summary>
       <p class="hint" style="margin:8px 0 0;">A SeedQR is your seed words as a QR code, so <b>anyone who can scan it controls the funds</b>: treat it exactly like the written words. Scan it only with an offline device such as a SeedSigner, never with a phone camera app. It does not contain the passphrase. <b>SeedQR</b> is the digit format (25&times;25 squares for 12 words, 29&times;29 for 24). <b>CompactSeedQR</b> is smaller (21&times;21 or 25&times;25). SeedSigner reads both.</p>
-      <div class="btn-row" style="margin-top:8px;">
+      <div class="btn-row top">
         <button class="secondary small" onclick="showSeedQr('seedqr')">SHOW SEEDQR</button>
         <button class="secondary small" onclick="showSeedQr('compact')">SHOW COMPACTSEEDQR</button>
         <button class="secondary small" onclick="hideSeedQr()">HIDE</button>
@@ -1764,7 +1773,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <h3 class="sec">Stress test: what happens if...</h3>
       <ul id="plTest"></ul>
       <p class="hint" id="plNext" style="margin:8px 0 0;"></p>
-      <div class="btn-row" style="margin-top:8px;"><button type="button" class="secondary small" id="plPrint" onclick="printPlan()">PRINT BACKUP PLAN</button><button type="button" class="secondary small" onclick="planClear()">CLEAR</button></div>
+      <div class="btn-row top"><button type="button" class="secondary small" id="plPrint" onclick="printPlan()">PRINT BACKUP PLAN</button><button type="button" class="secondary small" onclick="planClear()">CLEAR</button></div>
       <div class="status" id="plStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <h3 class="sec">Inheritance documents</h3>
       <p class="hint" style="margin:6px 0;">Four more sheets for the people who would settle your estate: a letter for your lawyer or executor, recovery steps for your heir, the key details (public data only) and a sheet of trusted contacts. Like the plan, none of them holds the words or the passphrase, and they refuse to print if a box above looks like a secret. They use what you filled in above.</p>
@@ -1775,7 +1784,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <label>Where the recovery steps and this plan are kept<input type="text" id="plWhere" maxlength="80" spellcheck="false" autocomplete="off" placeholder="such as: with my will, at my lawyer’s office"></label>
       </div>
       <p class="hint" style="margin:6px 0 0;">The key details sheet takes the fingerprint, address type, addresses and watch-only key from the wallet open in CHECK A BACKUP (type the words, then VERIFY), if its fingerprint is the one on this plan. Otherwise it prints blank lines to fill in by hand.</p>
-      <div class="btn-row" style="margin-top:8px;"><button type="button" class="secondary small" onclick="printInherit('letter')">PRINT LETTER FOR THE EXECUTOR</button><button type="button" class="secondary small" onclick="printInherit('heir')">PRINT STEPS FOR THE HEIR</button><button type="button" class="secondary small" onclick="printInherit('keys')">PRINT KEY DETAILS</button><button type="button" class="secondary small" onclick="printInherit('contacts')">PRINT TRUSTED CONTACTS</button></div>
+      <div class="btn-row top"><button type="button" class="secondary small" onclick="printInherit('letter')">PRINT LETTER FOR THE EXECUTOR</button><button type="button" class="secondary small" onclick="printInherit('heir')">PRINT STEPS FOR THE HEIR</button><button type="button" class="secondary small" onclick="printInherit('keys')">PRINT KEY DETAILS</button><button type="button" class="secondary small" onclick="printInherit('contacts')">PRINT TRUSTED CONTACTS</button></div>
       <h3 class="sec">Tamper-evident bags</h3>
       <p class="hint" style="margin:6px 0;">A tamper-evident bag shows when it has been opened, and each bag has its own serial number. Seal each copy of the words in its own bag. Write down the serial (or photograph the sealed bag, never the words) and keep that record apart from the bag. At each check-up (the 5-minute routine on the printed plan), first check that the seal is intact and that the serial matches your record. <b>A changed serial or a broken seal means: assume the backup was seen,</b> and move the money to a new wallet. If you open a bag yourself to read the words, seal them in a new bag and write down its serial. PRINT BAG LOG prints a sheet for all of this.</p>
       <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" onclick="printInherit('bags')">PRINT BAG LOG</button></div>
@@ -1786,7 +1795,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <p class="hint" style="margin:8px 0;">A Damascus backup keeps the row hallmark R of each word and the column hallmark M (and maybe the skew hallmark K) with the words. They catch any single wrong word except a wrong last word from the same table row (block, for 24 words): its last bits are not in the hallmarks, so only the checksum catches it, and RECHECK checks the checksum too. <b>By hand:</b> look up each word in the binary word table, write its 11 bits in a blank Forge grid (the last word: its first 7 bits, or 3 for 24 words), count the hallmarks again (an odd number of 1s gives 1) and compare.</p>
       <textarea id="dmrWords" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The backup words" placeholder="The 12 or 24 words, in order (first four letters are enough)"></textarea>
       <div class="dm-mine"><input type="text" id="dmrM" spellcheck="false" autocomplete="off" aria-label="Column hallmark M" placeholder="M: 11 bits"><input type="text" id="dmrR" spellcheck="false" autocomplete="off" aria-label="Row hallmark R" placeholder="R: one bit a word"><input type="text" id="dmrK" spellcheck="false" autocomplete="off" aria-label="Skew hallmark K" placeholder="K: 11 bits, optional"></div>
-      <div class="btn-row" style="margin-top:8px;"><button type="button" id="dmrBtn" onclick="dmRecheck()">RECHECK</button><button type="button" class="secondary small" onclick="dmrClear()">CLEAR</button></div>
+      <div class="btn-row top"><button type="button" id="dmrBtn" onclick="dmRecheck()">RECHECK</button><button type="button" class="secondary small" onclick="dmrClear()">CLEAR</button></div>
       <div id="dmrOut" class="status" role="status" aria-live="polite" style="white-space:pre-wrap;"></div>
     </details>
     <details id="pnRdBox">
@@ -1796,7 +1805,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <textarea id="pnRdNums" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Word numbers, in order" placeholder="Word numbers in order, separated by spaces"></textarea>
       <div id="pnRdGrid" aria-label="Tick the punched holes, one row for each word"></div>
       <input type="hidden" id="pnRdTicks" value="">
-      <div class="btn-row" style="margin-top:8px;"><button type="button" id="pnRdBtn" onclick="pnReadUi()">FILL THE WORDS BOX</button><button type="button" class="secondary small" onclick="printPlateBlank('read')">PRINT BLANK PLATE</button><button type="button" class="secondary small" onclick="pnRdClear()">CLEAR</button></div>
+      <div class="btn-row top"><button type="button" id="pnRdBtn" onclick="pnReadUi()">FILL THE WORDS BOX</button><button type="button" class="secondary small" onclick="printPlateBlank('read')">PRINT BLANK PLATE</button><button type="button" class="secondary small" onclick="pnRdClear()">CLEAR</button></div>
       <div class="status" id="pnRdStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
     </details>
     <h3 class="sec">Check your words</h3>
@@ -1810,7 +1819,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <div class="pass-warn" id="verifyPassWarn" role="status" aria-live="polite"></div>
     <input type="text" id="verifyRecorded" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="What your wallet app shows (optional)" style="margin-top:6px;">
     <div class="hint" style="margin:4px 0 0;">Optional: paste the fingerprint, an address (any of the first 10 receive or 10 change), zpub or descriptor your wallet app showed, and VERIFY tells you MATCH or NO MATCH.</div>
-    <div class="btn-row" style="margin-top:8px;">
+    <div class="btn-row top">
       <button id="verifyBtn" onclick="verify()" disabled>VERIFY</button>
     </div>
     <div id="verifyIcons" style="display:flex; gap:18px; margin-top:8px;">
@@ -1914,7 +1923,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <div class="status" id="payOut" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
         <div class="pay-diff" id="payDiff" aria-hidden="true"></div>
       </details>
-      <div class="btn-row" style="margin-top:8px;"><button type="button" id="checkAddrBtn" onclick="checkAddress()">CHECK ADDRESS</button><button type="button" id="checkAcctsBtn" onclick="checkAllAccounts()">TRY ACCOUNTS 0 TO 20</button><button type="button" id="checkAcctsStop" class="secondary small" onclick="acctScanStop = true" disabled>STOP</button></div>
+      <div class="btn-row top"><button type="button" id="checkAddrBtn" onclick="checkAddress()">CHECK ADDRESS</button><button type="button" id="checkAcctsBtn" onclick="checkAllAccounts()">TRY ACCOUNTS 0 TO 20</button><button type="button" id="checkAcctsStop" class="secondary small" onclick="acctScanStop = true" disabled>STOP</button></div>
       <div class="hint" style="margin:6px 0 0;">Not sure of the account? TRY ACCOUNTS 0 TO 20 looks at the first 20 receive and change addresses of each account (the account box is ignored), with and without the passphrase above. It takes a while; STOP ends it.</div>
       <div class="status" id="addrCheckStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
     </div>
@@ -1922,7 +1931,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <h3 class="sec">My wallet shows zero: Wallet Detective<span class="tag tag-secret">USES THE WORDS ABOVE</span></h3>
       <p class="hint" style="margin:0 0 6px;">When the right words open an empty wallet, the app is often looking in a different place: another address type, account or path, a passphrase, or an Electrum seed. Type the words (and the passphrase, if any) in the boxes at the top of this tab, then one address you know this wallet received to (from an old message, invoice or exchange withdrawal). FIND MY WALLET tries the settings of well-known wallet apps until that address matches, then names the apps that use them and how to open it. It never looks up a balance. A search can take a minute or two (longer with a passphrase); STOP ends it. No address? LIST FIRST ADDRESSES shows the first address of each common setting, to look up on another device.</p>
       <input type="text" id="detAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="An address this wallet received to" placeholder="An address this wallet received to (bc1q, bc1p, 3 or 1)" oninput="detClear(true)">
-      <div class="btn-row" style="margin-top:8px;"><button type="button" id="detBtn" onclick="detFind()" disabled>FIND MY WALLET</button><button type="button" class="secondary small" id="detListBtn" onclick="detList()" disabled>LIST FIRST ADDRESSES</button><button type="button" class="secondary small" id="detStop" onclick="detStop()" disabled>STOP</button><button type="button" class="secondary small" onclick="detClear()">CLEAR</button></div>
+      <div class="btn-row top"><button type="button" id="detBtn" onclick="detFind()" disabled>FIND MY WALLET</button><button type="button" class="secondary small" id="detListBtn" onclick="detList()" disabled>LIST FIRST ADDRESSES</button><button type="button" class="secondary small" id="detStop" onclick="detStop()" disabled>STOP</button><button type="button" class="secondary small" onclick="detClear()">CLEAR</button></div>
       <div class="status bad" id="detPub" role="status" style="word-break:break-word;"></div>
       <div class="status" id="detStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <pre id="detOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
@@ -1932,7 +1941,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <p class="hint" style="margin:0 0 6px;">For a multisig wallet (or any wallet with a descriptor): paste its setup file, the output descriptor, the Coldcard multisig setup file or the BSMS record (or choose the file), with the seed words (and passphrase, if any) typed in the boxes above. VOIDFORGE checks every key in the file: is it made by this seed, with the fingerprint, path and key all matching? So you know which key of the wallet this backup is, before you rely on it. The file holds only public keys.</p>
       <textarea id="kcIn" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Wallet file: descriptor, Coldcard multisig setup file or BSMS record" placeholder="wsh(sortedmulti(2,[fp/48h/0h/0h/2h]xpub.../0/*,...))#checksum&#10;or a Coldcard multisig setup file, or a BSMS record" oninput="kcClear(true)"></textarea>
       <input type="file" id="kcFileIn" accept=".txt,.bsms,.json,text/plain" aria-label="Choose the wallet file" onchange="kcFile()" style="width:100%; margin-top:6px;">
-      <div class="btn-row" style="margin-top:8px;"><button type="button" id="kcBtn" onclick="kcUi()" disabled>CHECK THIS SEED</button><button type="button" class="secondary small" onclick="kcClear()">CLEAR</button></div>
+      <div class="btn-row top"><button type="button" id="kcBtn" onclick="kcUi()" disabled>CHECK THIS SEED</button><button type="button" class="secondary small" onclick="kcClear()">CLEAR</button></div>
       <div class="status" id="kcStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
     </div>
     <div class="sec-block" id="b138Block">
@@ -1941,7 +1950,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <textarea id="b138In" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The backup as text (Base64)" placeholder="The backup as text (it starts with QklQMTM4), or choose the file below"></textarea>
       <input type="file" id="b138File" accept=".bip138,.txt,application/octet-stream,text/plain" aria-label="Choose the backup file" style="width:100%; margin-top:6px;">
       <input type="text" id="b138Pub" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="One of the wallet's public keys (optional)" placeholder="Or one of the wallet’s public keys: xpub..., tpub..., Zpub... (optional)" style="margin-top:6px;">
-      <div class="btn-row" style="margin-top:8px;"><button type="button" id="b138Btn" onclick="b138OpenUi()" disabled>OPEN BACKUP</button><button type="button" class="secondary small" onclick="b138OpenClear()">CLEAR</button></div>
+      <div class="btn-row top"><button type="button" id="b138Btn" onclick="b138OpenUi()" disabled>OPEN BACKUP</button><button type="button" class="secondary small" onclick="b138OpenClear()">CLEAR</button></div>
       <div class="status" id="b138Status" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
       <pre id="b138Out" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
       <div class="btn-row" id="b138CopyRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" onclick="b138CopyDesc(this)">COPY DESCRIPTOR</button></div>
@@ -1955,7 +1964,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <textarea id="dbIn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Or the backup as text" placeholder="Or paste it as text: the encrypted QR&rsquo;s text (Krux), seeds.json, or a TAPSIGNER .sh backup" style="margin-top:6px;" oninput="dbWipe()"></textarea>
       <input type="password" id="dbKey" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="The backup's key or password" placeholder="Key or password: 32 characters from the card, the Krux key, or the 12 Coldcard words" style="width:100%; margin-top:6px;" oninput="dbWipe()">
       <label style="display:block; margin-top:4px; font-size:13px;"><input type="checkbox" id="dbShowKey" onchange="document.getElementById('dbKey').type = this.checked ? 'text' : 'password'"> Show what I type</label>
-      <div class="btn-row" style="margin-top:8px;"><button type="button" id="dbBtn" onclick="dbOpenUi()" disabled>OPEN BACKUP</button><button type="button" class="secondary small" onclick="dbClear()">CLEAR</button></div>
+      <div class="btn-row top"><button type="button" id="dbBtn" onclick="dbOpenUi()" disabled>OPEN BACKUP</button><button type="button" class="secondary small" onclick="dbClear()">CLEAR</button></div>
       <div class="status" id="dbStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
       <pre id="dbOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
       <div class="btn-row" id="dbSecretRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" id="dbShowBtn" onclick="dbReveal()">SHOW THE SECRET</button><button type="button" class="secondary small" id="dbUseBtn" onclick="dbUseWords()">PUT THE WORDS IN THE BOX ABOVE</button></div>
@@ -1967,7 +1976,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <textarea id="lbIn" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Label file (BIP329, one JSON record per line)" placeholder='{"type": "addr", "ref": "bc1q...", "label": "Savings"}' oninput="lbClear(true)"></textarea>
       <input type="file" id="lbFileIn" accept=".jsonl,.json,.txt,text/plain,application/json" aria-label="Choose the label file" onchange="lbFile()" style="width:100%; margin-top:6px;">
       <label style="display:block; margin-top:6px; font-size:13px;"><input type="checkbox" id="lbPrintText"> Print the label text too (labels can be private)</label>
-      <div class="btn-row" style="margin-top:8px;"><button type="button" id="lbBtn" onclick="lbUi()" disabled>READ LABELS</button><button type="button" class="secondary small" id="lbPrintBtn" onclick="printLabels()" disabled>PRINT LABEL SHEET</button><button type="button" class="secondary small" onclick="lbClear()">CLEAR</button></div>
+      <div class="btn-row top"><button type="button" id="lbBtn" onclick="lbUi()" disabled>READ LABELS</button><button type="button" class="secondary small" id="lbPrintBtn" onclick="printLabels()" disabled>PRINT LABEL SHEET</button><button type="button" class="secondary small" onclick="lbClear()">CLEAR</button></div>
       <div class="status" id="lbStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
       <pre id="lbOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
     </div>
@@ -2032,13 +2041,13 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <!-- v2.15.0: Practice your passphrase (public test seed only; covered by re-hide, wiped by CLEAR, CLEAR ALL, auto-clear and END SESSION) -->
     <details id="ppBox">
       <summary>Practice your passphrase<span class="tag tag-secret">SECRET</span><small>Type it, then type it again from memory: see whether they match, with a public test seed.</small></summary>
-      <p class="hint" style="margin:8px 0;">A passphrase is used exactly as typed, and a wrong one opens an empty wallet without any warning. Rehearse it here: type it in the first box, then type it again from memory in the second (pasting is turned off there). Nothing is stored. This never uses your seed words: the fingerprint below comes from the public test seed <b>abandon abandon &hellip; about</b> with your passphrase. To rehearse on a hardware wallet, load that test seed there, type the passphrase on the device, and compare the fingerprint it shows. <b>Keep that fingerprint private:</b> with the public test seed, anyone who sees it can check guesses of your passphrase.</p>
+      <p class="hint" style="margin:8px 0;">A passphrase is used exactly as typed, and a wrong one opens an empty wallet without any warning. Rehearse it here: type it in the first box, then type it again from memory in the second (pasting is turned off there). Nothing is stored. This never uses your seed words: the fingerprint below comes from the public test seed <b>abandon ... about</b> with your passphrase. To rehearse on a hardware wallet, load that test seed there, type the passphrase on the device, and compare the fingerprint it shows. <b>Keep that fingerprint private:</b> with the public test seed, anyone who sees it can check guesses of your passphrase.</p>
       <div style="display:flex; gap:6px; align-items:center;">
         <input type="password" id="ppA" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="Your passphrase" placeholder="Your passphrase" style="flex:1; min-width:0;" oninput="ppWipe()">
         <button type="button" class="secondary small" onclick="ppToggle(this)">SHOW</button>
       </div>
       <input type="password" id="ppB" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="The passphrase again, typed from memory" placeholder="Type it again, from memory" style="margin-top:6px;" oninput="ppWipe()">
-      <div class="btn-row" style="margin-top:8px;"><button type="button" id="ppBtn" onclick="ppCheck()">CHECK MY PASSPHRASE</button><button type="button" class="secondary small" onclick="ppClear()">CLEAR</button></div>
+      <div class="btn-row top"><button type="button" id="ppBtn" onclick="ppCheck()">CHECK MY PASSPHRASE</button><button type="button" class="secondary small" onclick="ppClear()">CLEAR</button></div>
       <div class="status" id="ppStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <div id="ppFp" aria-live="polite"></div>
     </details>
@@ -2144,11 +2153,11 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
           <select id="xorFrom" aria-label="Where the parts come from" style="width:auto; flex:none;" onchange="document.getElementById('xorRolls').style.display = this.value === 'dice' ? '' : 'none'"><option value="dice" selected>From new dice rolls</option><option value="coldcard">The same parts a Coldcard makes</option></select>
         </div>
         <textarea id="xorRolls" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="New dice rolls for the parts" placeholder="New dice rolls, 1 to 6, not the rolls of the seed" style="margin-top:6px;"></textarea>
-        <div class="btn-row" style="margin-top:8px;"><button type="button" id="xorSplitBtn" onclick="seedXorUi('split')" disabled>SPLIT THE WORDS</button><button type="button" class="secondary small" onclick="clearXor()">CLEAR</button></div>
+        <div class="btn-row top"><button type="button" id="xorSplitBtn" onclick="seedXorUi('split')" disabled>SPLIT THE WORDS</button><button type="button" class="secondary small" onclick="clearXor()">CLEAR</button></div>
       </div>
       <div id="xorCombinePanel" style="display:none;">
         <textarea id="xorIn" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The parts, one per line" placeholder="Part A words&#10;Part B words&#10;Part C words"></textarea>
-        <div class="btn-row" style="margin-top:8px;"><button type="button" id="xorCombineBtn" onclick="seedXorUi('combine')" disabled>COMBINE THE PARTS</button><button type="button" class="secondary small" onclick="clearXor()">CLEAR</button></div>
+        <div class="btn-row top"><button type="button" id="xorCombineBtn" onclick="seedXorUi('combine')" disabled>COMBINE THE PARTS</button><button type="button" class="secondary small" onclick="clearXor()">CLEAR</button></div>
       </div>
       <div class="status" id="xorStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
       <pre id="xorOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
@@ -2164,7 +2173,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div id="s39CombinePanel">
         <textarea id="s39In" rows="5" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="SLIP39 shares, one per line" placeholder="One share per line (20 or 33 words each)"></textarea>
         <input type="password" id="s39Pass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="Passphrase of the backup, if it has one" placeholder="Passphrase, only if the backup has one" style="margin-top:6px;">
-        <div class="btn-row" style="margin-top:8px;"><button type="button" id="s39Btn" onclick="s39Ui()" disabled>CHECK AND COMBINE</button><button type="button" class="secondary small" onclick="clearS39()">CLEAR</button></div>
+        <div class="btn-row top"><button type="button" id="s39Btn" onclick="s39Ui()" disabled>CHECK AND COMBINE</button><button type="button" class="secondary small" onclick="clearS39()">CLEAR</button></div>
         <div class="status" id="s39Status" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
         <pre id="s39Out" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
       </div>
@@ -2190,7 +2199,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         </div>
         <p class="hint" style="margin:6px 0;">Leave these as they are unless you know you need another value. New shares should be extendable, as SLIP39 says (more sets of shares can then be made later for the same wallet); turn it off only for a wallet app too old to read such shares. The iteration exponent sets how much work (PBKDF2 iterations) the passphrase takes to try; a higher one makes guessing a passphrase slower, and opening the wallet too.</p>
         <textarea id="s39mRolls" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Dice rolls for the new shares" placeholder="Dice rolls, 1 to 6: at least 50 for 20 words, 99 for 33 words" style="margin-top:6px;"></textarea>
-        <div class="btn-row" style="margin-top:8px;"><button type="button" id="s39mBtn" onclick="s39mUi()" disabled>MAKE THE SHARES</button><button type="button" class="secondary small" onclick="s39mClear()">CLEAR</button></div>
+        <div class="btn-row top"><button type="button" id="s39mBtn" onclick="s39mUi()" disabled>MAKE THE SHARES</button><button type="button" class="secondary small" onclick="s39mClear()">CLEAR</button></div>
         <div class="status" id="s39mStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
         <pre id="s39mOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0; -webkit-user-select:none; user-select:none;"></pre>
         <pre id="s39mInfo" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
@@ -2206,7 +2215,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       </div>
       <div id="c32CombinePanel">
         <textarea id="c32In" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Codex32 strings, one per line" placeholder="One string per line, starting with MS1 (48 characters for 128 bits, 74 for 256 bits; spaces are ignored)"></textarea>
-        <div class="btn-row" style="margin-top:8px;"><button type="button" id="c32Btn" onclick="c32Ui()" disabled>CHECK AND COMBINE</button><button type="button" class="secondary small" onclick="clearC32()">CLEAR</button></div>
+        <div class="btn-row top"><button type="button" id="c32Btn" onclick="c32Ui()" disabled>CHECK AND COMBINE</button><button type="button" class="secondary small" onclick="clearC32()">CLEAR</button></div>
         <div class="status" id="c32Status" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
         <pre id="c32Out" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
       </div>
@@ -2219,7 +2228,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
           <select id="c32mN" aria-label="Shares in all" style="width:auto; flex:none;"><option value="2">of 2 shares</option><option value="3" selected>of 3 shares</option><option value="4">of 4 shares</option><option value="5">of 5 shares</option><option value="6">of 6 shares</option><option value="7">of 7 shares</option><option value="8">of 8 shares</option><option value="9">of 9 shares</option><option value="10">of 10 shares</option><option value="11">of 11 shares</option><option value="12">of 12 shares</option><option value="13">of 13 shares</option><option value="14">of 14 shares</option><option value="15">of 15 shares</option><option value="16">of 16 shares</option><option value="17">of 17 shares</option><option value="18">of 18 shares</option><option value="19">of 19 shares</option><option value="20">of 20 shares</option><option value="21">of 21 shares</option><option value="22">of 22 shares</option><option value="23">of 23 shares</option><option value="24">of 24 shares</option><option value="25">of 25 shares</option><option value="26">of 26 shares</option><option value="27">of 27 shares</option><option value="28">of 28 shares</option><option value="29">of 29 shares</option><option value="30">of 30 shares</option><option value="31">of 31 shares</option></select>
         </div>
         <textarea id="c32mRolls" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Dice rolls for the new codex32 strings" placeholder="Dice rolls, 1 to 6: at least 50 for 128 bits, 99 for 256 bits" style="margin-top:6px;"></textarea>
-        <div class="btn-row" style="margin-top:8px;"><button type="button" id="c32mBtn" onclick="c32mUi()" disabled>MAKE THE SHARES</button><button type="button" class="secondary small" onclick="c32mClear()">CLEAR</button></div>
+        <div class="btn-row top"><button type="button" id="c32mBtn" onclick="c32mUi()" disabled>MAKE THE SHARES</button><button type="button" class="secondary small" onclick="c32mClear()">CLEAR</button></div>
         <div class="status" id="c32mStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
         <pre id="c32mOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:15px; -webkit-user-select:none; user-select:none; margin:8px 0 0;"></pre>
         <pre id="c32mInfo" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
@@ -2268,9 +2277,9 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <!-- v2.15.0: Link as QR (public text only: refuses anything that looks like a secret) -->
     <details id="lqBox">
       <summary>Link as QR<span class="tag tag-public">PUBLIC TEXT ONLY</span><small>Turn a link or a short public text into a QR code, to open it on a phone.</small></summary>
-      <p class="hint" style="margin:8px 0;">Paste a link, such as a wallet&rsquo;s download page, or a short public text. MAKE QR draws it on screen with the page&rsquo;s own QR code maker, so a phone can open it without you typing it. Check the text on the phone before you open it. A QR code shows anyone what it holds, so this tool refuses anything that looks like seed words, a private key (WIF), an xprv, SeedQR digits or a codex32 share.</p>
+      <p class="hint" style="margin:8px 0;">Paste a link, such as a wallet&rsquo;s download page, or a short public text. MAKE QR draws it on screen with the page&rsquo;s own QR code maker, so a phone can open it without you typing it. Check the text on the phone before you open it. A QR code shows anyone what it holds, so this tool refuses anything that looks like a secret: seed words (also with typos, inside a link or after a label), SLIP39 shares, a private key, an xprv, SeedQR digits, dice rolls, a codex32 share, a passphrase after its label, or hex the size of a key. A transaction ID or a file&rsquo;s hash is fine when you write txid or sha256 in front of it. It cannot know every secret: never paste one here.</p>
       <textarea id="lqIn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Link or public text" placeholder="A link, or a short public text" oninput="lqWipe()"></textarea>
-      <div class="btn-row" style="margin-top:8px;"><button type="button" id="lqBtn" onclick="lqMake()">MAKE QR</button><button type="button" class="secondary small" onclick="lqPrint()">PRINT</button><button type="button" class="secondary small" onclick="lqClear()">CLEAR</button></div>
+      <div class="btn-row top"><button type="button" id="lqBtn" onclick="lqMake()">MAKE QR</button><button type="button" class="secondary small" onclick="lqPrint()">PRINT</button><button type="button" class="secondary small" onclick="lqClear()">CLEAR</button></div>
       <div class="status" id="lqStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <div id="lqImg" style="width:min(100%,300px); margin:8px auto 0; background:#fff; line-height:0;"></div>
     </details>
@@ -7405,7 +7414,7 @@ function openSqGuide(){
   sqGuideBlock(0, true);
 }
 function sqGuideFull(){
-  if(!sqRows) return;
+  if(!sqRows || rhOn) return;   // v2.15.0: nothing moves while re-hide covers the guide
   const n = sqRows.length; sqBlock = 0;
   document.getElementById("sqMini").textContent = "";
   document.getElementById("sqGuideImg").innerHTML = qrGridSvg(sqRows, 0, 0, n, n, qrBlockSize(n), false);
@@ -7413,7 +7422,7 @@ function sqGuideFull(){
   document.getElementById("sqGuide").style.display = "";
 }
 function sqGuideBlock(delta, first){
-  if(!sqRows) return;
+  if(!sqRows || rhOn) return;   // v2.15.0: NEXT and PREVIOUS BLOCK do nothing while re-hide covers the guide
   const n = sqRows.length, b = qrBlockSize(n), per = Math.ceil(n / b), total = per * per;
   sqBlock = first ? 1 : ((sqBlock - 1 + delta + total) % total) + 1;
   const r = Math.floor((sqBlock - 1) / per), c = (sqBlock - 1) % per, x0 = c * b, y0 = r * b, x1 = x0 + b, y1 = y0 + b;
@@ -10664,6 +10673,8 @@ function endSession(){
   return Promise.race([clip, new Promise(r => setTimeout(r, 1500))]).then(() => endSessionReload());
 }
 function endSessionReload(){ location.reload(); }
+// The SHOW/HIDE buttons of the boxes that hold a passphrase or a key (they go back to SHOW when the boxes go back to dots).
+const PW_TOGGLES = 'button[onclick^="togglePassphrase("], button[onclick^="toggleVerifyPassphrase("], button[onclick^="togglePkShow("], button[onclick^="ppToggle("]';
 // Wipes the seed, rolls, passphrase and everything derived from them from the page (no question asked). Used by CLEAR ALL and by the multisig flow.
 function wipeSeed(){
   forgeRun++;
@@ -10672,7 +10683,7 @@ function wipeSeed(){
   document.getElementById("passphrase2").value="";
   document.getElementById("passphrase").type="password";
   document.getElementById("passphrase2").type="password";
-  document.querySelectorAll("button").forEach(b=>{ if(b.textContent==="HIDE") b.textContent="SHOW"; });
+  document.querySelectorAll(PW_TOGGLES).forEach(b=>{ if(b.textContent==="HIDE") b.textContent="SHOW"; });   // v2.15.0: only the passphrase and key boxes' own SHOW buttons (the HIDE buttons that close a panel stay HIDE)
   document.getElementById("note").value="";
   document.getElementById("phrase").value="";
   document.getElementById("verifyPass").value="";
@@ -10711,6 +10722,7 @@ function wipeSeed(){
   document.getElementById("diceVisual").textContent="";
   safeCopy("").catch(()=>{});
   updateCount();
+  rhSettle();   // v2.15.0: nothing secret left, so the re-hide notice goes and the boxes open again
 }
 
 // Auto-clear (v1.34.0): optional, off at every page load, nothing stored. Wipes the secrets without asking after idle time or when the tab is hidden.
@@ -10726,7 +10738,7 @@ function autoWipe(why){
   if(typeof ssPageWipe === "function") ssPageWipe();   // v2.13.0: the practice signer
   for(const id of AUTO_FIELDS){ const e = document.getElementById(id); if(e) e.value = ""; }
   const ro = document.getElementById("reforgeOut"); ro.textContent = ""; ro.style.display = "none";
-  updateCount(); autoTouch();
+  updateCount(); autoTouch(); rhSettle();
   document.getElementById("autoNote").textContent = "Wiped automatically " + why + " at " + new Date().toLocaleTimeString() + ".";
   return true;
 }
@@ -10746,61 +10758,96 @@ document.addEventListener("visibilitychange", () => { if(document.hidden) camSto
 // ===== v2.15.0 "Stop costly mistakes": re-hide secrets, the passphrase check, passphrase practice and Link as QR =====
 // Re-hide. One list of every place on the page that shows a secret: RH_PLACES below, plus every secret box in AUTO_FIELDS (the
 // list auto-clear and CLEAR ALL already use, so a box added there is covered too). While any of them holds a secret, the page
-// covers them all again (blurred and locked, never wiped) when the tab is hidden, when the window loses focus (a setting), when
-// the page is printed with the browser's own Print, and after a set time with no activity (a setting: off, 1, 2 or 5 minutes;
-// 2 at every page load, kept only in memory). Passphrase boxes go back to dots. SHOW uncovers them.
+// covers them all again (locked, never wiped) when the tab is hidden, when the window loses focus (a setting), when the page is
+// printed with the browser's own Print, and after a set time with no activity (a setting: off, 1, 2 or 5 minutes; 5 at every
+// page load, kept only in memory). Text is blurred; anything drawn (a QR code, the hand-copy guide, a punch plate, the card
+// pickers) is not blurred but taken off the screen, with a gray outline in its place, because a blurred picture can be read back
+// from a screenshot. Passphrase boxes go back to dots. SHOW uncovers them.
 // VOIDFORGE's own PRINT sheets are left alone: while one prints, the body has the class print-seed or print-qr, and the print
 // event does not cover anything. The sheet sits in #printOnly or #printQr, which are never covered, and the rest of the page is
-// left out of the printed page anyway, so leaving the tab or the window while it prints still covers the screen safely.
+// left out of the printed page anyway, so leaving the tab or the window while it prints still covers the screen safely. The
+// page's own questions and notices (confirm, alert) and its print dialog take the focus from the window for a moment: that is
+// not "looking away", so a window blur then covers nothing.
 // Not covered: the practice signer (it holds practice seeds only, tells people never to give it a real seed, and covering its
 // screen would get in the way of its lessons; auto-clear and CLEAR ALL still wipe it), the practice phrase of "Practice making a
-// backup" (a published test phrase), and public data (fingerprints, addresses, public keys, descriptors).
+// backup" (a published test phrase), and public data (fingerprints, addresses, public keys, descriptors). Public practice
+// content in the Damascus boxes (a worked example, a practice sheet, the guided practice) is covered with the rest but is never
+// a reason to cover on its own.
 const RH_PLACES = [
   // MAKE A SEED: the words (and their gray preview), the look-alike letters note, the rolls shown back, Word draw, Cards and the
-  // Damascus method, the dice passphrase, How your seed was made, the SeedQR and its copying guide
+  // Damascus method, the dice passphrase, How your seed was made, the SeedQR and its copying guide, the passphrase notes
   "wordGrid", "genResult", "smudgeNote", "rollHistory", "diceVisual", "wdOut", "wdFound", "cdGrid",
   "dmPairBoxes", "dmDeal", "dmCardGrid", "dmLiveH", "dmLiveA", "dmLiveF", "dmLiveW", "dmLiveL", "dmLwOut", "dmOut",
-  "dpOut", "exOut", "sqImg", "sqGuideImg", "sqMini",
+  "dpOut", "exOut", "sqImg", "sqGuideImg", "sqMini", "sqGuideCaption", "passWarn",
   // CHECK A BACKUP: the Damascus recheck, the punch plate read-back, look-alike letters, the old Electrum seed, the first 4
-  // letters, the punch plate and the SeedQR of the open wallet, the secret from a signing device's backup
-  "dmrOut", "pnRdGrid", "vSmudge", "oeSeed", "wvAbbrGrid", "pnView", "wvsImg", "dbSecret",
+  // letters, the punch plate and the SeedQR of the open wallet, the secret from a signing device's backup, and the status lines
+  // that can repeat a word typed in (VERIFY, the drill, the passphrase note, a private key)
+  "dmrOut", "pnRdGrid", "vSmudge", "oeSeed", "wvAbbrGrid", "pnView", "wvsImg", "dbSecret", "verifyStatus", "verifyPassWarn",
+  "drillStatus", "pkStatus",
   // EXTRA TOOLS: what Reforge found, the device dice check, the Coldcard seed mix, Seed XOR, new SLIP39 shares and codex32
-  // strings, the child seed, passphrase practice, and the dice for encrypted descriptor backups
+  // strings, the child seed, passphrase practice, and the dice for encrypted descriptor backups, with the status lines that can
+  // repeat a word or a share typed in
   "reforgeOut", "dcOut", "cmxOut", "xorIn", "xorRolls", "xorOut", "s39mOut", "c32mOut", "childOut", "ppB", "ppFp",
-  "wpbRolls", "msbRolls", "mxbRolls"];
+  "wpbRolls", "msbRolls", "mxbRolls", "reforgeStatus", "cmxStatus", "xorStatus", "s39Status", "c32Status"];
 // Covered with the rest, but never a reason to cover on their own (they always show something, or only echo a box listed above).
-const RH_ONLY_COVER = ["rollHistory", "diceVisual", "cdGrid", "dmPairBoxes", "dmDeal", "dmCardGrid", "dmLiveH", "dmLiveA", "dmLiveF", "dmLiveW", "dmLiveL", "pnRdGrid", "smudgeNote", "vSmudge"];
-// In AUTO_FIELDS but not secret (a fingerprint, an address, a hidden copy of ticks), or practice only.
-const RH_NOT = ["verifyRecorded", "checkAddr", "pnRdTicks", "prInput"];
+const RH_ONLY_COVER = ["rollHistory", "diceVisual", "cdGrid", "dmPairBoxes", "dmDeal", "dmCardGrid", "dmLiveH", "dmLiveA", "dmLiveF", "dmLiveW", "dmLiveL", "pnRdGrid", "smudgeNote", "vSmudge",
+  "sqGuideCaption", "passWarn", "verifyPassWarn", "verifyStatus", "drillStatus", "pkStatus", "reforgeStatus", "cmxStatus", "xorStatus", "s39Status", "c32Status"];
+// Places whose whole content is taken off the screen while covered (a picture, or a grid whose pattern a blur does not hide).
+// Any other place that holds a picture (svg, canvas, img) has the picture taken off too (the style sheet: .rh-cov svg ...).
+const RH_SOLID = ["sqImg", "sqGuideImg", "sqMini", "wvsImg", "pnView", "pnRdGrid", "cdGrid", "dmCardGrid"];
+// In AUTO_FIELDS but not secret (a fingerprint, a hidden copy of ticks), or practice only.
+const RH_NOT = ["verifyRecorded", "pnRdTicks", "prInput"];
+// Covered always, but a reason to cover only when it holds a secret: the address box, when Explain an address says it is one.
+const RH_IF = {checkAddr: () => /SEED WORDS|PRIVATE|SECRET|SeedQR digits/.test(document.getElementById("addrExplain").textContent)};
 const RH_WHY = {tab: "you switched to another tab or app", blur: "this window lost focus", print: "the page was printed with the browser\u2019s Print", idle: "nothing happened for a while"};
-let rhOn = false, rhLast = Date.now(), rhPrinting = false, rhMasked = 0;
+const RH_IDLE_DEFAULT = "5";
+let rhOn = false, rhLast = Date.now(), rhPrinting = false, rhMasked = 0, rhFocus = null, rhDlg = 0, rhDlgEnd = 0;
 const rhCovered = new Map();   // each covered place, with the inline style values it had before (some boxes have user-select: none of their own)
-const RH_STYLE = ["filter", "pointer-events", "user-select", "visibility"];
+const RH_STYLE = ["filter", "pointer-events", "user-select", "-webkit-user-select", "visibility"];
 const rhPw = [...document.querySelectorAll('input[type="password"]')];   // every passphrase and key box, as the page first shows it
 function rhIds(){ return [...RH_PLACES, ...AUTO_FIELDS.filter(id => !RH_NOT.includes(id)), ...PPK_IDS.map(id => "ppk-" + id)]; }
 function rhEls(){ return rhIds().map(id => document.getElementById(id)).filter(Boolean); }
+// The Damascus boxes and views while they hold public practice content (dmPractice), and the address box unless it holds a secret.
+function rhPublicNow(e){
+  if(RH_IF[e.id]) return !RH_IF[e.id]();
+  let pr = ""; try { pr = dmPractice; } catch(err) { /* while the page loads, before the Damascus code has run */ }
+  return !!pr && /^dm(?!r|Lw)/.test(e.id);
+}
 // Does this place hold a secret right now? A box: any text in it. Anything else: a letter or symbol (not just slot numbers and
 // dashes), or a drawn picture (a QR code).
 function rhHolds(e){
-  if(RH_ONLY_COVER.includes(e.id) || e.hidden || e.style.display === "none") return false;
+  if(RH_ONLY_COVER.includes(e.id) || e.hidden || e.style.display === "none" || rhPublicNow(e)) return false;
   if(e.tagName === "INPUT" || e.tagName === "TEXTAREA") return e.type !== "hidden" && e.value !== "";
   return /[^\s\d.\u2014\u2013-]/.test(e.textContent) || !!e.querySelector("svg, canvas, img");
 }
 function rhAny(){ return rhEls().some(rhHolds); }
 function rhMinutes(){ return parseInt(document.getElementById("rhIdle").value, 10) || 0; }
 function rhOwnPrint(){ return document.body.classList.contains("print-seed") || document.body.classList.contains("print-qr"); }
+// The page's own dialogs (confirm, alert, prompt) and its print dialog: a window blur while one is open, or just after, is not
+// the person looking away. Each is wrapped once here; the page calls them by these names.
+for(const k of ["alert", "confirm", "prompt", "print"]){
+  const f = window[k]; if(typeof f !== "function") continue;
+  window[k] = function(){ rhDlg++; try { return f.apply(window, arguments); } finally { rhDlg--; rhDlgEnd = Date.now(); } };
+}
+function rhOwnDialog(){ return rhDlg > 0 || Date.now() - rhDlgEnd < 500; }   // the focus comes back as the dialog closes
 function rhCover(e){
   if(rhCovered.has(e)) return;
   rhCovered.set(e, RH_STYLE.map(p => [p, e.style.getPropertyValue(p), e.style.getPropertyPriority(p)]));
-  e.style.setProperty("filter", "blur(9px)"); e.style.setProperty("pointer-events", "none"); e.style.setProperty("user-select", "none");
+  e.style.setProperty("filter", "blur(9px)"); e.style.setProperty("pointer-events", "none"); e.style.setProperty("user-select", "none"); e.style.setProperty("-webkit-user-select", "none");
+  e.classList.add("rh-cov"); if(RH_SOLID.includes(e.id)) e.classList.add("rh-solid");
   e.inert = true;
 }
+// Every place carries data-rh, so the style sheet keeps it off paper when the browser's Print prints the page, even if the
+// beforeprint event never comes. Marked once the whole script has run (the boxes added to AUTO_FIELDS later count too).
+function rhMark(){ for(const e of rhEls()) e.setAttribute("data-rh", ""); }
+document.addEventListener("DOMContentLoaded", rhMark);
 // Cover every place now (when one holds a secret). `why` is a key of RH_WHY. Returns true if it covered.
 function rhHide(why){
   if(!rhAny()) return false;
   const a = document.activeElement;
+  rhMark();
   for(const e of rhEls()) rhCover(e);
-  if(a && rhCovered.has(a) && a.blur) a.blur();
+  if(a && a !== document.body && a.id !== "rhShowBtn"){ if(!rhFocus) rhFocus = a; if([...rhCovered.keys()].some(e => e.contains(a)) && a.blur) a.blur(); }
   if(!rhOn) rhMasked = 0;
   for(const e of rhPw){
     if(e.type === "password") continue;
@@ -10810,19 +10857,27 @@ function rhHide(why){
   const sk = document.getElementById("dbShowKey"); if(sk) sk.checked = false;
   ppkRenderAll();
   rhOn = true;
+  // the notice shows first, then its text is set, so a screen reader announces it
+  document.getElementById("rhBar").classList.add("on");
   const m = document.getElementById("rhMsg"), b = document.createElement("b");
   m.textContent = "";
   b.textContent = "Secrets hidden"; m.appendChild(b);
   m.appendChild(document.createTextNode(" because " + (why === "idle" ? "nothing happened for " + rhMinutes() + (rhMinutes() === 1 ? " minute" : " minutes") : RH_WHY[why] || RH_WHY.tab) + ". Tap SHOW to reveal them again." + (rhMasked ? " Passphrase boxes are back to dots." : "")));
-  document.getElementById("rhBar").classList.add("on");
+  // with the page in front (no activity for a while), SHOW gets the focus, so a keyboard reaches it at once
+  if(document.hasFocus && document.hasFocus() && !document.hidden) try { document.getElementById("rhShowBtn").focus({preventScroll: true}); } catch(e) {}
   return true;
 }
-// SHOW: uncover everything (passphrase boxes stay as dots until their own SHOW).
+// SHOW: uncover everything (passphrase boxes stay as dots until their own SHOW), and give the focus back where it was.
 function rhShow(){
-  for(const [e, old] of rhCovered){ for(const [p, v, pr] of old){ if(v) e.style.setProperty(p, v, pr); else e.style.removeProperty(p); } e.inert = false; }
+  for(const [e, old] of rhCovered){ for(const [p, v, pr] of old){ if(v) e.style.setProperty(p, v, pr); else e.style.removeProperty(p); } e.classList.remove("rh-cov", "rh-solid"); e.inert = false; }
   rhCovered.clear(); rhOn = false; rhLast = Date.now();
+  const btn = document.getElementById("rhShowBtn"), back = rhFocus; rhFocus = null;
+  const had = document.activeElement === btn;
   document.getElementById("rhBar").classList.remove("on"); document.getElementById("rhMsg").textContent = "";
+  if(had || document.activeElement === document.body){ if(back && back.isConnected && back.focus) try { back.focus({preventScroll: true}); } catch(e) {} else if(had) btn.blur(); }
 }
+// After a wipe (CLEAR ALL, auto-clear) nothing secret is left: the notice goes and the boxes open again.
+function rhSettle(){ if(rhOn && !rhAny()) rhShow(); }
 function rhTouch(){ rhLast = Date.now(); }
 ["keydown", "pointerdown", "pointermove", "input", "touchstart", "wheel", "scroll"].forEach(e => document.addEventListener(e, rhTouch, {capture: true, passive: true}));
 function rhTick(now){
@@ -10831,6 +10886,7 @@ function rhTick(now){
   if(!rhOn && m && now - rhLast >= m * 60000) rhHide("idle");
   if(rhOn){ for(const e of rhEls()) rhCover(e); }   // a result that arrived while covered (Reforge, a slow check) is covered too
   for(const id of PPK_IDS){ const e = document.getElementById(id), b = document.getElementById("ppk-" + id); if(e && b && !e.value && b.textContent) ppkRender(id); }   // a box emptied by a wipe
+  rhSettle();
 }
 setInterval(() => rhTick(), 5000);
 function rhSet(){
@@ -10838,8 +10894,12 @@ function rhSet(){
   const m = rhMinutes(), w = document.getElementById("rhBlur").checked;
   document.getElementById("rhNote").textContent = "Re-hide is on: when you switch tabs or apps, when you print the page" + (w ? ", when you click another window" : "") + (m ? " and after " + m + (m === 1 ? " minute" : " minutes") + " with no activity." : ". Not after a time with no activity.");
 }
+// The settings start as the page sets them at every load (some browsers fill form boxes in again after a reload): re-hide after
+// 5 minutes and on a window blur, auto-clear off.
+document.getElementById("rhIdle").value = RH_IDLE_DEFAULT; document.getElementById("rhBlur").checked = true;
+document.getElementById("autoIdle").value = "0"; document.getElementById("autoHide").checked = false;
 document.addEventListener("visibilitychange", () => { if(document.hidden) rhHide("tab"); });
-window.addEventListener("blur", () => { if(document.getElementById("rhBlur").checked) rhHide(document.hidden ? "tab" : "blur"); });
+window.addEventListener("blur", () => { if(!document.getElementById("rhBlur").checked) return; if(document.hidden) return rhHide("tab"); if(!rhOwnDialog()) rhHide("blur"); });
 window.addEventListener("beforeprint", () => {
   if(rhOwnPrint()) return;   // one of VOIDFORGE's own PRINT sheets: it is meant to hold what it prints
   rhPrinting = true;
@@ -10859,10 +10919,24 @@ const PPK_LONG = 60, PPK_MAX_CC = 100;
 const PPK_IDS = ["passphrase", "verifyPass", "drillPass", "reforgeWordsPass", "ppA"];
 const PPK_NOTED = ["passphrase", "verifyPass"];   // these already have the space and invisible-character note (passHiddenNote)
 function ppkCheck(p){
-  const s = String(p || ""), n = s.normalize("NFKD"), cps = [...s];
-  const changed = cps.filter(c => c.normalize("NFKD") !== c);
-  return {len: cps.length, used: n, changed: changed.map(c => [c, c.normalize("NFKD")]), long: cps.length > PPK_LONG, overCc: cps.length > PPK_MAX_CC,
-    nonAscii: /[^\x20-\x7e]/.test(n), lead: /^\s/.test(n), trail: /\s$/.test(n), dbl: / {2}/.test(n), breaks: /[\t\n\r\v\f]/.test(n), invisible: /\p{Cf}/u.test(n)};
+  const s = String(p || ""), n = s.normalize("NFKD"), cps = [...s], used = [...n];
+  const ch = cps.filter(c => c.normalize("NFKD") !== c), odd = used.filter(c => /[^\x20-\x7e]/.test(c));
+  // what changes, each character once (a repeated one is listed once); and a text that changes only as a whole (its accent
+  // marks put in another order) is reported too. The lengths count what the wallet uses, after NFKD.
+  return {len: used.length, used: n, changed: [...new Set(ch)].map(c => [c, c.normalize("NFKD")]), nChanged: ch.length, reordered: !ch.length && n !== s,
+    long: used.length > PPK_LONG, overCc: used.length > PPK_MAX_CC,
+    nonAscii: odd.length > 0, oddShown: odd.some(c => !/[\p{Cc}\p{Cf}\p{Z}]/u.test(c)), oddMarked: odd.some(c => /[\p{Cc}\p{Cf}\p{Z}]/u.test(c)),
+    lead: /^\s/.test(n), trail: /\s$/.test(n), dbl: / {2}/.test(n), breaks: /[\t\n\r\v\f]/.test(n), ctrl: /[\x00-\x08\x0e-\x1f\x7f-\x9f]/.test(n), invisible: /\p{Cf}/u.test(n)};
+}
+// A character as the passphrase check names it: spaces and invisible characters by name, an accent mark as such.
+function ppkName(c){
+  if(c === " ") return "a plain space";
+  if(c === "\u00a0") return "a no-break space";
+  if(/\p{M}/u.test(c)) return "a separate accent mark";
+  const u = "U+" + c.codePointAt(0).toString(16).toUpperCase().padStart(4, "0");
+  if(/\p{Z}/u.test(c)) return "a special space (" + u + ")";
+  if(/[\p{Cc}\p{Cf}]/u.test(c)) return "an invisible character (" + u + ")";
+  return c;
 }
 // What will be used, as [text, kind] pieces: kind "m" a mark for a space or an invisible character, "x" a character no
 // passphrase keyboard of Coldcard or SeedSigner has, "" plain. Masked: every other character is a dot.
@@ -10883,34 +10957,37 @@ function ppkMarks(p, masked){
 function ppkLines(p, id, masked){
   const r = ppkCheck(p), L = [];
   if(!PPK_NOTED.includes(id)){
-    const sp = [r.lead && "starts with a space", r.trail && "ends with a space", r.dbl && "has two spaces in a row", r.breaks && "has a tab or a line break", r.invisible && "has an invisible character"].filter(Boolean);
+    const sp = [r.lead && "starts with a space", r.trail && "ends with a space", r.dbl && "has two spaces in a row", r.breaks && "has a tab or a line break", r.ctrl && "has a control character", r.invisible && "has an invisible character"].filter(Boolean);
     if(sp.length) L.push("It " + (sp.length === 1 ? sp[0] : sp.slice(0, -1).join(", ") + " and " + sp[sp.length - 1]) + ". That is part of the passphrase, and easy to miss when you restore.");
   }
-  if(r.changed.length) L.push("BIP39 rewrites a passphrase in its NFKD form before using it, and " + (r.changed.length === 1 ? "1 character" : r.changed.length + " characters") + " here change" + (r.changed.length === 1 ? "s" : "") + (masked ? "" : " (" + r.changed.slice(0, 3).map(([a, b]) => a + " becomes " + [...b].map(x => /\p{M}/u.test(x) ? "a separate accent mark" : x).join(" + ")).join("; ") + ")") + ". Wallets that follow BIP39 do the same, so the wallet is the same, but write down and type the plain form" + (masked ? "." : " shown above."));
-  if(r.nonAscii) L.push("It has characters outside plain ASCII (such as accented letters, emoji, or the curly quotes phones type)" + (masked ? "" : ", underlined above") + ". A Coldcard accepts only ASCII 32 to 126 in a passphrase, and SeedSigner\u2019s passphrase keyboard has no other keys, so neither could type it. Check that every device you might restore on can.");
-  if(r.overCc) L.push("It is " + r.len + " characters long. A Coldcard accepts at most " + PPK_MAX_CC + ", so it could not open this wallet.");
-  else if(r.long) L.push("It is " + r.len + " characters long. Every one must be typed exactly on each restore, often on a small device keyboard. Check it once more against your written copy.");
+  if(r.changed.length) L.push("BIP39 rewrites a passphrase in its NFKD form before using it, and " + (r.nChanged === 1 ? "1 character" : r.nChanged + " characters") + " here change" + (r.nChanged === 1 ? "s" : "") + (masked ? "" : " (" + r.changed.slice(0, 3).map(([a, b]) => ppkName(a) + " becomes " + [...b].map(ppkName).join(" + ")).join("; ") + (r.changed.length > 3 ? "; and more" : "") + ")") + ". Wallets that follow BIP39 do the same, so the wallet is the same, but write down and type the plain form" + (masked ? "." : " shown above."));
+  else if(r.reordered) L.push("BIP39 rewrites a passphrase in its NFKD form before using it, and here that puts accent marks in another order. Wallets that follow BIP39 do the same, so the wallet is the same, but write down and type the form shown above.");
+  if(r.nonAscii) L.push("It has characters outside plain ASCII" + (r.oddShown ? " (such as accented letters, emoji, or the curly quotes phones type)" + (masked ? "" : ", underlined above") : "") + (r.oddMarked ? (r.oddShown ? ", and " : ": ") + "a tab, a line break, a special space or an invisible character, shown as a mark above" : "") + ". A Coldcard accepts only ASCII 32 to 126 in a passphrase, and SeedSigner\u2019s passphrase keyboard has no other keys, so neither could type it. Check that every device you might restore on can.");
+  if(r.overCc) L.push("It is " + r.len + " characters long, as the wallet uses it. A Coldcard accepts at most " + PPK_MAX_CC + ", so it could not open this wallet.");
+  else if(r.long) L.push("It is " + r.len + " characters long, as the wallet uses it. Every one must be typed exactly on each restore, often on a small device keyboard. Check it once more against your written copy.");
   return L;
 }
+// The box under a passphrase field: the line "What the wallet will use" (rebuilt as you type, not read out), and the warnings in
+// a live region of their own, changed (and so read out by a screen reader) only when the list of warnings changes.
 function ppkRender(id){
   const box = document.getElementById("ppk-" + id), inp = document.getElementById(id); if(!box || !inp) return;
-  box.textContent = "";
-  const p = inp.value; if(!p) return;
-  const masked = inp.type === "password", use = document.createElement("div"), v = document.createElement("span");
-  use.className = "ppk-use"; v.className = "ppk-v";
+  let use = box.querySelector(".ppk-use"), warn = box.querySelector(".ppk-w");
+  if(!use){ box.textContent = ""; use = document.createElement("div"); use.className = "ppk-use"; warn = document.createElement("div"); warn.className = "ppk-w"; warn.setAttribute("aria-live", "polite"); box.append(use, warn); }
+  const p = inp.value, masked = inp.type === "password", L = p ? ppkLines(p, id, masked) : [], key = L.join("\n");
+  use.textContent = ""; box.hidden = !p;
+  if(warn.dataset.k !== key){ warn.textContent = ""; warn.dataset.k = key; if(L.length){ const ul = document.createElement("ul"); for(const t of L){ const li = document.createElement("li"); li.textContent = t; ul.appendChild(li); } warn.appendChild(ul); } }
+  if(!p) return;
+  const v = document.createElement("span"); v.className = "ppk-v";
   for(const [t, k] of ppkMarks(p, masked)){ if(!k){ v.appendChild(document.createTextNode(t)); continue; } const s = document.createElement("span"); s.className = k === "m" ? "ppk-m" : "ppk-x"; s.textContent = t; v.appendChild(s); }
   const len = ppkCheck(p).len;
-  use.append("What the wallet will use" + (masked ? " (dots, as in the box)" : "") + ":", v, len + (len === 1 ? " character" : " characters") + "; \u2423 marks a space.");
-  box.appendChild(use);
-  const L = ppkLines(p, id, masked);
-  if(L.length){ const ul = document.createElement("ul"); for(const t of L){ const li = document.createElement("li"); li.textContent = t; ul.appendChild(li); } box.appendChild(ul); }
+  use.append("What the wallet will use" + (masked ? " (dots, as in the box; spaces still show, so someone looking on can see where they are)" : "") + ":", v, len + (len === 1 ? " character" : " characters") + "; \u2423 marks a space.");
   if(rhOn) rhCover(box);
 }
 function ppkRenderAll(){ PPK_IDS.forEach(ppkRender); }
 // One box under each passphrase field, made once (after the field's own warning, if it has one).
 for(const id of PPK_IDS){
   const inp = document.getElementById(id); if(!inp) continue;
-  const box = document.createElement("div"); box.className = "ppk"; box.id = "ppk-" + id; box.setAttribute("aria-live", "polite");
+  const box = document.createElement("div"); box.className = "ppk"; box.id = "ppk-" + id; box.hidden = true;
   const after = {passphrase: "passWarn", verifyPass: "verifyPassWarn"}[id], row = inp.parentElement;
   const anchor = after ? document.getElementById(after) : row && row.style.display === "flex" && row.children.length > 1 ? row : inp;
   anchor.after(box);
@@ -10924,7 +11001,7 @@ for(const id of PPK_IDS){
 const PP_TEST = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 let ppSeq = 0;
 AUTO_FIELDS.push("ppA", "ppB");   // auto-clear and CLEAR ALL wipe these too, and know the page holds a secret while they are filled
-document.getElementById("ppB").addEventListener("paste", (ev) => { ev.preventDefault(); ppSay("bad", "Pasting is turned off in this box: type the passphrase from memory, the way you will on a device."); });
+for(const t of ["paste", "drop"]) document.getElementById("ppB").addEventListener(t, (ev) => { ev.preventDefault(); ppSay("bad", "Pasting is turned off in this box: type the passphrase from memory, the way you will on a device."); });
 function ppSay(cls, t){ const s = document.getElementById("ppStatus"); s.className = "status" + (cls ? " " + cls : ""); s.textContent = t; }
 function ppWipe(){ ppSeq++; ppSay("", ""); document.getElementById("ppFp").textContent = ""; }
 function ppClear(){ for(const id of ["ppA", "ppB"]){ const e = document.getElementById(id); e.value = ""; e.type = "password"; } const b = document.querySelector("#ppBox button.secondary"); if(b) b.textContent = "SHOW"; ppWipe(); ppkRender("ppA"); }
@@ -10941,35 +11018,136 @@ async function ppCheck(){
   document.getElementById("ppFp").textContent = "";
   if(!a || !b) return ppSay("bad", "Type your passphrase in the first box, then again from memory in the second.");
   const d = ppDiff(a, b);
-  if(d) return ppSay("bad", "NO MATCH: they differ at character " + d.at + (d.la !== d.lb ? " (the first has " + d.la + " characters, the second " + d.lb + ")" : "") + ". A wallet would open a different, empty wallet with the second. Look at both with SHOW, then try again.");
+  if(d) return ppSay("bad", "NO MATCH: they differ at character " + d.at + (d.la !== d.lb ? " (the first has " + d.la + " characters, the second " + d.lb + ")" : "") + ". A wallet would open a different, empty wallet with the second. Look at the first with SHOW, then type the second again.");
   ppSay("ok", "MATCH: both are exactly the same, " + ppkCheck(a).len + " characters, as a wallet uses them. Working out the test fingerprint...");
   const fp = await mnemonicFingerprint(PP_TEST, a);
   if(my !== ppSeq) return;
   ppSay("ok", "MATCH: both are exactly the same, " + ppkCheck(a).len + " characters, as a wallet uses them.");
   const o = document.getElementById("ppFp"), f = document.createElement("b");
   f.className = "ppk-fp"; f.textContent = fp;
-  o.append("With the public test seed abandon \u2026 about and this passphrase, the master fingerprint is ", f, ". Load that test seed on your hardware wallet, type the passphrase there, and it must show this fingerprint. Keep it private (see above).");
+  o.append("With the public test seed abandon ... about and this passphrase, the master fingerprint is ", f, ". Load that test seed on your hardware wallet, type the passphrase there, and it must show this fingerprint. Keep it private (see above).");
   if(rhOn) rhCover(o);
 }
 
 // Link as QR (v2.15.0, EXTRA TOOLS): a link or a short public text drawn as a QR code by the page's own QR code maker (qrMatrix,
 // the same one the self-test checks against an independent library). Anything that looks like a secret is refused, not drawn.
 let lqText = null, lqRows = null;
-// Why this text must not become a QR code, or "" if it may: seed words (as in Explain an address), SeedQR digits, a codex32
-// share, raw hex the size of a seed or a key, and any word in it that is a private key (WIF or mini key) or an xprv.
+// Why this text must not become a QR code, or "" if it may. Secrets are found by their shape, before any checksum (a key with
+// one wrong character is still a key), anywhere in the text (inside a link, after a label, URL-encoded with + or %20, wrapped
+// over lines). In turn: a passphrase or other secret after a label; an xprv (or yprv, zprv, tprv ...), a WIF key, a BIP38 key
+// and a Nostr nsec; anything Explain an address calls a private key or a private descriptor; a mini key; a codex32 share (also
+// in groups of 4); seed words (BIP39 with typos and 4-letter forms, SLIP39 share words, old Electrum words, words run together);
+// SeedQR digits, dice rolls and coin flips (also with separators); and hex the size of a seed or a key. Public look-alikes are
+// let through: a transaction ID, a file's SHA-256, a git commit or a PGP fingerprint is fine when the text says what it is
+// (txid, sha256, hash, commit, fingerprint ...), and a plain sentence or a shopping list that happens to use some BIP39 words.
+const LQ_B58 = "[1-9A-HJ-NP-Za-km-z]";
+const LQ_LABEL = /\b(pass\s*phrase|password|passwort|pin|25th\s*word|seed\s*(words|phrase)|recovery\s*phrase|mnemonic|private\s*key|priv\s*key|wif|xprv|secret)\s*[:=]\s*\S/i;
+const LQ_PUB = /(txid|\btxn?\b|transaction|\bsha-?(1|224|256|384|512)?\b|\bhash|checksum|digest|\bcommit|fingerprint|\bgpg\b|\bpgp\b|\bmd5\b|\bblock\b|blockhash|merkle|outpoint|\bpsbt\b|public\s*key|\bpubkey|x-?only)/gi;
+const LQ_SEC = /(\bpriv(ate)?\b|secret|\bseed\b|entropy|mnemonic|\bwif\b|xprv|pass\s*phrase|password|\bkey\b|\bpk\b)/gi;
+let lqBy2 = null;   // BIP39 words by their first two letters (for a word with one typo), made once
+// A BIP39 word (also with one typo after its first two letters, or its first 4 letters) or a SLIP39 word.
+function lqWord(t){
+  if(Object.prototype.hasOwnProperty.call(WORD_MAP, t) || S39_WORD_INDEX.has(t)) return true;
+  if(t.length === 4) return !!wordFromPrefix(t);
+  if(t.length < 5) return false;
+  if(!lqBy2){ lqBy2 = new Map(); for(const w of WORDLIST){ const k = w.slice(0, 2); if(!lqBy2.has(k)) lqBy2.set(k, []); lqBy2.get(k).push(w); } }
+  return (lqBy2.get(t.slice(0, 2)) || []).some(w => wordDistance(t, w, 1) <= 1);
+}
+// How many BIP39 words make up a run of letters exactly (words written with no space between them), or 0.
+function lqJoined(t){
+  const best = new Array(t.length + 1).fill(-1); best[0] = 0;
+  for(let i = 0; i < t.length; i++){ if(best[i] < 0) continue; for(let L = 3; L <= 8 && i + L <= t.length; L++) if(Object.prototype.hasOwnProperty.call(WORD_MAP, t.slice(i, i + L))) best[i + L] = Math.max(best[i + L], best[i] + 1); }
+  return Math.max(0, best[t.length]);
+}
+function lqSeedWords(s){
+  const all = s.toLowerCase().split(/[^a-z]+/).filter(Boolean);
+  let old = 0; for(const t of all){ old = OLD_EL_MAP.has(t) ? old + 1 : 0; if(old >= 12) return true; }   // 12 old Electrum words in a row
+  const toks = all.filter(t => t.length >= 3), k = toks.map(lqWord), known = k.filter(Boolean).length, share = toks.length ? known / toks.length : 0;
+  // the longest run with at most one other word in it (a label, a typo too far off), and the longest run with none
+  let lo = 0, miss = 0, run = 0, strict = 0, cur = 0;
+  for(let i = 0; i < k.length; i++){
+    if(!k[i]){ miss++; cur = 0; while(miss > 1){ if(!k[lo]) miss--; lo++; } } else { cur++; strict = Math.max(strict, cur); }
+    run = Math.max(run, i - lo + 1 - miss);
+  }
+  // 12 words in a row anywhere; or 6 in a row when nearly every word is one (half a seed); or 8 in a row in a short label
+  if(run >= 12 || (strict >= 6 && share >= 0.95) || (strict >= 8 && share >= 0.8)) return true;
+  return all.some(t => t.length >= 36 && lqJoined(t) >= 12);
+}
+// Runs of groups (digits, or hex) with spaces, commas, colons, dots or dashes between them: [{x: the groups joined, at, n}].
+function lqRuns(s, group){
+  const out = []; let cur = null;
+  const end = () => { if(cur) out.push(cur); cur = null; };
+  for(const m of s.matchAll(/[0-9a-z]+|[^0-9a-z]+/gi)){
+    const x = m[0];
+    if(/^[0-9a-z]/i.test(x)){ if(group.test(x)){ if(!cur) cur = {g: [], at: m.index}; cur.g.push(x); } else end(); }
+    else if(!/^[\s:,.\-]+$/.test(x) || /\n\s*\n/.test(x)) end();
+  }
+  end();
+  return out;
+}
+const lqSeedQr = (d) => [48, 60, 72, 84, 96].includes(d.length) && d.match(/.{4}/g).every(x => +x <= 2047);
+function lqDigits(s){
+  for(const r of lqRuns(s, /^\d+$/)){
+    const d = r.g.join("");
+    if(lqSeedQr(d)) return "These look like SeedQR digits (seed words written as numbers)";
+    let n4 = 0; for(const x of r.g){ n4 = x.length === 4 && +x <= 2047 ? n4 + 1 : 0; if(n4 >= 12) return "These look like SeedQR digits (seed words written as numbers)"; }
+    for(const [re, min, what] of [[/^[1-6]+$/, 50, "These look like dice rolls, which make a seed"], [/^[01]+$/, 100, "These look like coin flips, which make a seed"]]){
+      let n = 0; for(const x of r.g){ n = re.test(x) ? n + x.length : 0; if(n >= min) return what; }
+    }
+  }
+  return "";
+}
+function lqHex(s){
+  const t = s.replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, (u) => " ".repeat(u.length)).replace(/\b0x(?=[0-9a-f])/gi, "  ");   // a UUID is not a key
+  const url = /:\/\/|^www\./i.test(t);
+  for(const r of lqRuns(t, /^[0-9a-f]+$/i)){
+    // the whole run, and the run without groups at its ends that are not as long as the others (a word such as "added")
+    const len = (g) => { const c = {}; g.forEach(x => c[x.length] = (c[x.length] || 0) + 1); return +Object.keys(c).sort((a, b) => c[b] - c[a])[0]; };
+    const L0 = len(r.g); let a = 0, b = r.g.length; while(r.g.length > 2 && a < b && r.g[a].length !== L0) a++; while(r.g.length > 2 && b > a && r.g[b - 1].length !== L0) b--;
+    for(const h of new Set([r.g.join(""), r.g.slice(a, b).join("")])){
+      const n = h.length;
+      if(![32, 40, 48, 56, 64, 128].includes(n) || !/\d/.test(h) || !/[a-f]/i.test(h)) continue;
+      // the nearest label in front of it (within 40 characters) says what it is
+      const before = t.slice(Math.max(0, r.at - 40), r.at), last = (re) => { let p = -1; for(const m of before.matchAll(re)) p = m.index + m[0].length; return p; };
+      const pub = last(LQ_PUB), sec = last(LQ_SEC);
+      if(sec > pub) return "This is " + n + " hex characters labeled as a key, a seed or a secret";
+      if(pub >= 0 || n === 40 || (url && t[r.at - 1] === "/")) continue;   // a txid, hash, commit or fingerprint; 40 is a commit or a PGP fingerprint; a link's path
+      return "This is " + n + " hex characters, which could be a private key or a seed. If it is a transaction ID or a file\u2019s hash, write txid or sha256 in front of it and press MAKE QR again";
+    }
+  }
+  return "";
+}
+// A key by its shape: an xprv-like key (also wrapped over lines), a WIF key (5, K, L, 9 or c and 50 or 51 more), a BIP38 key
+// (6P and 56 more) or a Nostr nsec. A key holds digits, capitals and small letters mixed; joined words never do.
+function lqKeyShape(s){
+  if(new RegExp("[xyztuvYZUV]prv" + LQ_B58 + "{100,}").test(s.replace(/\s+/g, ""))) return "This holds an extended PRIVATE key (xprv or similar)";
+  if(/nsec1[02-9ac-hj-np-z]{58}/i.test(s.replace(/\s+/g, ""))) return "This holds a Nostr PRIVATE key (nsec)";
+  const joined = s.replace(new RegExp("(" + LQ_B58 + "{4,})[ \\t]*\\r?\\n[ \\t]*(?=" + LQ_B58 + "{4,})|(" + LQ_B58 + "{4,}) +(?=" + LQ_B58 + "{4,})", "g"), "$1$2");   // a key wrapped over lines or written in groups
+  const mixed = (k) => /\d/.test(k) && (k.match(/[A-Z]/g) || []).length >= 2 && (k.match(/[a-z]/g) || []).length >= 2;
+  for(const x of [s, joined]){
+    for(const m of x.matchAll(new RegExp("(^|[^1-9A-HJ-NP-Za-km-z])([5KL9c]" + LQ_B58 + "{50,51}|6P" + LQ_B58 + "{56})(?![1-9A-HJ-NP-Za-km-z])", "g"))){
+      if(mixed(m[2])) return m[2].startsWith("6P") ? "This holds a password-protected PRIVATE key (BIP38)" : "This holds a PRIVATE KEY (WIF)";
+    }
+  }
+  return "";
+}
 async function lqSecret(text){
-  const t = String(text || "").trim(), flat = t.replace(/\s+/g, "");
-  const toks = t.toLowerCase().split(/[^a-z]+/).filter(Boolean), known = toks.filter(x => OLD_EL_MAP.has(x) || wordFromPrefix(x) || Object.prototype.hasOwnProperty.call(WORD_MAP, x)).length;   // as Explain an address
-  if(known >= 6 && known >= 0.8 * toks.length) return "These look like SEED WORDS";
-  if(/^\d{48,96}$/.test(flat) && flat.length % 12 === 0) return "These look like SeedQR digits (seed words written as numbers)";
-  if(/(^|[^a-z0-9])ms1[02-9ac-hj-np-z]{44,}/i.test(t)) return "This looks like a codex32 share (a seed written as a string)";
-  if(/^(0x)?[0-9a-f]+$/i.test(flat) && [32, 40, 48, 56, 64].includes(flat.replace(/^0x/i, "").length)) return "This is " + flat.replace(/^0x/i, "").length + " hex characters, which could be a seed or a private key";
-  for(const w of t.split(/[\s\/?#&=:;,"'<>()\[\]{}|]+/)){
-    if(/^S[1-9A-HJ-NP-Za-km-z]{21,29}$/.test(w) && (await sha256bytes(new TextEncoder().encode(w + "?")))[0] === 0) return "This holds a mini PRIVATE KEY";
-    if(!/^[1-9A-HJ-NP-Za-km-z]{50,112}$/.test(w)) continue;
-    let raw; try { raw = await base58decode(w); } catch(e) { continue; }
-    if((raw.length === 33 || (raw.length === 34 && raw[33] === 1)) && (raw[0] === 0x80 || raw[0] === 0xef)) return "This holds a PRIVATE KEY (WIF)";
-    if(raw.length === 78 && EXT_PRIVATE.indexOf(hex(raw.subarray(0, 4))) >= 0) return "This holds an extended PRIVATE key (xprv or similar)";
+  const t = String(text || "").trim();
+  let dec = t.replace(/\+/g, " ").replace(/%([0-9a-f]{2})/gi, (m, h) => String.fromCharCode(parseInt(h, 16)));   // as a link carries it
+  try { dec = decodeURIComponent(t.replace(/\+/g, " ")); } catch(e) { /* a stray %: the byte by byte form above */ }
+  for(const s of t === dec ? [t] : [t, dec]){
+    if(LQ_LABEL.test(s)) return "This holds a passphrase, a password or another secret after its label";
+    const k = lqKeyShape(s); if(k) return k;
+    for(const w of s.split(/[\s\/?#&=:;,"'<>()\[\]{}|]+/)) if(/^S[1-9A-HJ-NP-Za-km-z]{21,29}$/.test(w) && (await sha256bytes(new TextEncoder().encode(w + "?")))[0] === 0) return "This holds a mini PRIVATE KEY";
+    for(const w of s.split(/\s+/)){   // as Explain an address reads keys and descriptors (not plain hex: that is below, with its labels)
+      if(!(/^[1-9A-HJ-NP-Za-km-z]{22,}$/.test(w) || /^[a-z]{2,12}\(.+\)/i.test(w)) || /^[0-9a-f]+$/i.test(w)) continue;
+      const e = await explainAddress(w);
+      if(e && e.level === "bad" && /PRIVATE/.test(e.text)) return "This holds a PRIVATE key (" + (/BIP38/.test(e.text) ? "BIP38" : /descriptor/.test(e.text) ? "a private descriptor" : "as Explain an address reads it") + ")";
+    }
+    if(/(^|[^a-z0-9])ms1[02-9ac-hj-np-z]{44,}/i.test(s) || /ms1[02-9ac-hj-np-z]{44,}/i.test(s.replace(/\s+/g, ""))) return "This looks like a codex32 share (a seed written as a string)";
+    if(lqSeedWords(s)) return "These look like SEED WORDS";
+    const d = lqDigits(s); if(d) return d;
+    const h = lqHex(s); if(h) return h;
   }
   return "";
 }
@@ -10977,6 +11155,7 @@ function lqSay(cls, t){ const s = document.getElementById("lqStatus"); s.classNa
 function lqWipe(){ lqText = null; lqRows = null; document.getElementById("lqImg").textContent = ""; lqSay("", ""); }
 function lqClear(){ document.getElementById("lqIn").value = ""; lqWipe(); }
 async function lqMake(){
+  if(!gateOk()) return;
   const t = document.getElementById("lqIn").value.trim();
   lqWipe();
   if(!t) return lqSay("bad", "Paste a link or a short public text first.");
@@ -10993,15 +11172,17 @@ function lqPrint(){
   printSqSheet("VOIDFORGE LINK AS QR", qrSvg(lqRows), false, "This code holds:\n" + lqText + "\n\nPublic text only: VOIDFORGE refuses to make a code of anything that looks like a secret. Check that a phone opens exactly this before you trust it.");
 }
 // CLEAR ALL, auto-clear and END SESSION (from wipeSeed): passphrase practice and the passphrase checks under each box.
-function mkWipe(){ ppSeq++; ppSay("", ""); document.getElementById("ppFp").textContent = ""; ppkRenderAll(); setTimeout(ppkRenderAll, 0); }   // again once auto-clear has emptied the boxes after this
+function mkWipe(){ ppClear(); lqClear(); ppkRenderAll(); setTimeout(() => { ppkRenderAll(); rhSettle(); }, 0); }   // again once auto-clear has emptied the boxes after this
 // The self-test's known answers for these tools (worked out by hand, and the fingerprint from @scure/bip32, independent code).
 function mkSelfTests(eq){
   eq("Passphrase check: spaces, NFKD changes, characters outside ASCII and length are named (worked out by hand)", () => [" a  b", "\ufb01\u00e9", "x".repeat(61), "x".repeat(101), "plain"].map(p => { const r = ppkCheck(p); return [r.lead, r.dbl, r.changed.length, r.nonAscii, r.long, r.overCc].map(Number).join(""); }).join(" "), "110000 002100 000010 000011 000000");
   eq("Passphrase check: what the wallet will use shows spaces, tabs and invisible characters as marks, and dots while masked", () => ppkMarks(" a  b\t\u200b\ufb01", false).map(x => x[0]).join("") + " " + ppkMarks(" a  b\t\u200b\ufb01", true).map(x => x[0]).join(""), "\u2423a\u2423\u2423b\u21e5\u27e8U+200B\u27e9fi \u2423\u2022\u2423\u2423\u2022\u21e5\u27e8U+200B\u27e9\u2022\u2022");
   eq("Passphrase practice: the public test seed with passphrase TREZOR gives fingerprint b4e3f5ed (from @scure/bip32)", () => mnemonicFingerprint(PP_TEST, "TREZOR"), "b4e3f5ed");
   eq("Passphrase practice: a typed and a composed \u00e9 match, a trailing space does not", () => JSON.stringify([ppDiff("caf\u00e9", "cafe\u0301"), ppDiff("pass", "pass ")]), JSON.stringify([null, {at: 5, la: 4, lb: 5}]));
-  eq("Link as QR: refuses seed words, SeedQR digits, a codex32 share, a WIF key and an xprv; a link is fine", async () => (await Promise.all([PP_TEST, "0".repeat(48), "ms10tests" + "x".repeat(40), "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ",
-    "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi", "example.org/wallet?ref=about"].map(lqSecret))).map(x => x ? x.split(" ").slice(-1)[0].replace(/\W/g, "") : "-").join(" "), "WORDS numbers string WIF similar -");
+  eq("Link as QR: refuses seed words (also in a link), SeedQR digits, a codex32 share, a WIF key (also with a wrong character), an xprv, dice rolls and bare hex; a link and a labeled txid are fine", async () => (await Promise.all([PP_TEST, "0".repeat(48), "ms10tests" + "x".repeat(40), "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ",
+    "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi", "example.org/wallet?ref=about",
+    "example.org/restore?m=" + PP_TEST.replace(/ /g, "%20"), "key-5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTK", "123456".repeat(9), "0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d",
+    "txid 0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d"].map(lqSecret))).map(x => x ? x.split(" ").slice(-1)[0].replace(/\W/g, "") : "-").join(" "), "WORDS numbers string WIF similar - WORDS WIF seed again -");
   eq("Re-hide: every place it covers is on the page", () => rhIds().filter(id => !document.getElementById(id)).join(" "), "");
 }
 // ===== v2.10.0 punch plates: binary grid (TinySeed style), Stackbit 1248 and word numbers =====
@@ -14201,7 +14382,7 @@ function dmSheetF(wc){
   const seal = k => ["H", "A", "H &oplus; A", "F"].map(r => "<tr><th>" + k + "(" + r + ")</th>" + Array.from({length: k === "M" ? 11 : P.rows}, () => '<td class="c"></td>').join("") + "</tr>").join("");
   const L = w => '<span class="dm-line" style="min-width:' + w + 'in"></span>';
   // box 5: the same three sentences as the guide and the page's last-word step (the bits are not coin flips; review follow-up)
-  const block = '<div class="dm-note dm-cs">Your Forge sheet&#39;s last row gives the last word&#39;s 7 bits (3 for 24 words). These are not new coin flips. SeedSigner asks for them under &#39;Coin flip entropy&#39;. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0. The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.</div>' +
+  const block = '<div class="dm-note dm-cs">Your Forge sheet&rsquo;s last row gives the last word&rsquo;s 7 bits (3 for 24 words). These are not new coin flips. SeedSigner asks for them under &lsquo;Coin flip entropy&rsquo;. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0. The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.</div>' +
 '<table class="dm-final">' +
 '<tr><th>Last ' + last + " bits of grid F</th><td></td></tr>" +
 "<tr><th>Word " + wc + " must be between</th><td>" + L(0.85) + " and " + L(0.85) + '<br><span class="dm-note">' + (big ? "the 3 bits = block: one of its 256 words" : "bits 1-3 = block, 4-7 = row: one of that row&rsquo;s 16 words") + "</span></td></tr>" +
@@ -14345,8 +14526,8 @@ function dmUpdate(){
   const lw = dmLwState(), paperOnly = !document.getElementById("dmDice").value.trim() && !document.getElementById("dmCards").value.trim();
   document.getElementById("dmBtn").disabled = !(selfTestState === "pass" && both && ((ready && !dmPractice) || (paperOnly && lw.ok)));
   // v2.15.0: the quick path, said plainly: the dice and the cards are all the page needs before FORGE SEED
-  { const r = document.getElementById("dmReady"), go = !document.getElementById("dmBtn").disabled;
-    r.textContent = !both ? "" : go && ready ? "Ready: the dice and the cards are complete. The page did the Forge, the words and the last word: press FORGE SEED."
+  { const r = document.getElementById("dmReady"), go = !document.getElementById("dmBtn").disabled, forged = hasSeed() && seedKind === "dm";
+    r.textContent = !both ? "" : go && forged ? "Seed forged from these boxes: the words are shown below. Write them on paper." : go && ready ? "Ready: the dice and the cards are complete. The page did the Forge, the words and the last word: press FORGE SEED."
       : go ? "Ready: press FORGE SEED for the words and the last word you worked out on paper."
       : ready && dmPractice ? "The practice sheet is complete: the page did the Forge, the words and the last word. FORGE SEED stays off for practice; CHECK MY SHEETS checks it all." : "";
     r.className = "status" + (go ? " ok" : ""); }
@@ -14680,8 +14861,11 @@ function dmTourShow(){
   for(const e of document.querySelectorAll("#dmBox .dm-tour-hl")) e.classList.remove("dm-tour-hl");
   for(const id of hl){ const e = document.getElementById(id); if(e) e.classList.add("dm-tour-hl"); }
   const p = document.getElementById("dmTour"); p.hidden = false;
-  document.getElementById("dmTourBack").disabled = T.i === 0;
+  const back = document.getElementById("dmTourBack"), next = document.getElementById("dmTourNext"), had = document.activeElement;
+  back.disabled = T.i === 0;
   document.getElementById("dmTourNext").disabled = T.i === DM_TOUR_STEP.length - 1;
+  // a button that turns off while it has the focus hands the focus on (NEXT at the last part to BACK, BACK at the first to NEXT)
+  if(had === next && next.disabled) back.focus(); else if(had === back && back.disabled) next.focus();
   reveal(p, {block: "start"});
 }
 // The explanation of phase i: [title, [[kind, text], ...], ids of what it filled]. kind "" is a hint line, "pre" a grid.
@@ -14737,7 +14921,7 @@ function dmTourText(T, i){
     const plan = dmCardPlan(P.bits);
     return ["the Anvil, every group", [["", "On paper: the Anvil sheet, the card record, and every run of grid A. " + plan.length + " decks, each shuffled again (A1): " + plan.map((g, d) => "deck " + (d + 1) + ": " + g.filter(x => x === 8).length + " groups of 8 and a group of 4").join("; ") + ". A group of 8 gives 7 bits (7 matches), a group of 4 gives 3."],
       ["", "Run, the cards in dealt order → the bits (1 when the right card is higher):"], ["pre", lines.join("\n")],
-      ["", "The card check (A3) counts each deck's 1s and its neighbors (the same suit, ranks next to each other, one after the other in a group); the Anvil step shows PASS for each deck."]], ["dmCards", "dmLiveA"]];
+      ["", "The card check (A3) counts each deck\u2019s 1s and its neighbors (the same suit, ranks next to each other, one after the other in a group); the Anvil step shows PASS for each deck."]], ["dmCards", "dmLiveA"]];
   }
   if(i === 6) return ["the Anvil hallmarks", hallmarks("A", "Anvil", T.A.bits, T.mA, "A4").concat([["pre", grid("A", T.A.bits, T.mA)]]), ["dmAR", "dmAM", "dmLiveA"]];
   if(i === 7){
@@ -14753,26 +14937,26 @@ function dmTourText(T, i){
   if(i === 8){
     const f = rows(T.F)[0], ones = [...f].filter(x => x === "1").length, rH = T.mH.R[0], rA = T.mA.R[0], mH = T.mH.M[0], mA = T.mA.M[0];
     return ["the Forge hallmarks and the seal", [["", "On paper: the Forge sheet, the R and M boxes of grid F and the seal (F2)."],
-      ["", "First count grid F's own hallmarks, as on the other sheets. Row 1 of grid F: " + dmG3(f) + ": " + dmParity(ones) + ". So R(F) = " + T.mF.R[0] + "."],
-      ["", "Then the seal checks all your folding at once, without folding again: fold the Hammer hallmark with the Anvil hallmark (the same → 0, different → 1). It must equal grid F's own hallmark."],
-      ["", "Row 1: R(H) " + rH + " and R(A) " + rA + ": " + (rH === rA ? "the same → 0" : "different → 1") + ". Grid F's own R is " + T.mF.R[0] + ": " + (dmXorStr(rH, rA) === T.mF.R[0] ? "they agree, row 1 is sealed." : "they differ.")],
-      ["", "Column 1: M(H) " + mH + " and M(A) " + mA + ": " + (mH === mA ? "the same → 0" : "different → 1") + ". Grid F's own M is " + T.mF.M[0] + ": " + (dmXorStr(mH, mA) === T.mF.M[0] ? "they agree." : "they differ.")],
+      ["", "First count grid F\u2019s own hallmarks, as on the other sheets. Row 1 of grid F: " + dmG3(f) + ": " + dmParity(ones) + ". So R(F) = " + T.mF.R[0] + "."],
+      ["", "Then the seal checks all your folding at once, without folding again: fold the Hammer hallmark with the Anvil hallmark (the same → 0, different → 1). It must equal grid F\u2019s own hallmark."],
+      ["", "Row 1: R(H) " + rH + " and R(A) " + rA + ": " + (rH === rA ? "the same → 0" : "different → 1") + ". Grid F\u2019s own R is " + T.mF.R[0] + ": " + (dmXorStr(rH, rA) === T.mF.R[0] ? "they agree, row 1 is sealed." : "they differ.")],
+      ["", "Column 1: M(H) " + mH + " and M(A) " + mA + ": " + (mH === mA ? "the same → 0" : "different → 1") + ". Grid F\u2019s own M is " + T.mF.M[0] + ": " + (dmXorStr(mH, mA) === T.mF.M[0] ? "they agree." : "they differ.")],
       ["pre", "R(H)   " + T.mH.R + "\nR(A)   " + T.mA.R + "\nfold   " + dmXorStr(T.mH.R, T.mA.R) + "\nR(F)   " + T.mF.R + "\n\nM(H)   " + dmG3(T.mH.M) + "\nM(A)   " + dmG3(T.mA.M) + "\nfold   " + dmG3(dmXorStr(T.mH.M, T.mA.M)) + "\nM(F)   " + dmG3(T.mF.M)],
-      ["", "Every row and column agrees, so the folding is right. Why: one wrong box in grid F changes the count of 1s in its row and in its column, so that row's R and that column's M would not agree, and the mistake is where they cross."],
+      ["", "Every row and column agrees, so the folding is right. Why: one wrong box in grid F changes the count of 1s in its row and in its column, so that row\u2019s R and that column\u2019s M would not agree, and the mistake is where they cross."],
       ["", "On this page R(F) and M(F) go into the Forge step, which checks each one and says when the seal holds."]], ["dmFR", "dmFM", "dmLiveF"]];
   }
   if(i === 9){
     const w0 = T.hw[0], lines = T.hw.slice(0, wc - 1).map(x => String(x.row).padStart(2) + "  " + dmG3(x.bits) + "  → " + String(x.number).padStart(4) + " " + x.word);
     return ["the words", [["", "On paper: the Forge sheet, the word next to each row (F3), and the binary word table."],
       ["", "Split each row of grid F into 3 + 4 + 4 bits: block, row, column of the word table. No arithmetic: the table is laid out by these bits."],
-      ["", "Worked example, row 1: " + dmG3(w0.bits) + ": block " + w0.bits.slice(0, 3) + ", row " + w0.bits.slice(3, 7) + ", column " + w0.bits.slice(7) + " → “" + w0.word + "” (number " + w0.number + " on the numbered list). Check it back (F4): find “" + w0.word + "” in the table, alphabetically, and read its block, row and column: they must be the row's bits."],
-      ["", "Every full row, its bits → the word's number and the word:"], ["pre", lines.join("\n")],
+      ["", "Worked example, row 1: " + dmG3(w0.bits) + ": block " + w0.bits.slice(0, 3) + ", row " + w0.bits.slice(3, 7) + ", column " + w0.bits.slice(7) + " → “" + w0.word + "” (number " + w0.number + " on the numbered list). Check it back (F4): find “" + w0.word + "” in the table, alphabetically, and read its block, row and column: they must be the row\u2019s bits."],
+      ["", "Every full row, its bits → the word\u2019s number and the word:"], ["pre", lines.join("\n")],
       ["", "On this page the words go into the Words step, which checks each one against its row."]], ["dmWords", "dmLiveW"]];
   }
   if(i === 10){
     const last = T.hw[T.hw.length - 1], idx = parseInt(last.bits + T.cs, 2), flips = [...last.bits].map(x => x === "1" ? "H" : "T").join(" ");
     return ["the last word", [["", "On paper: the Forge sheet, box 5 (F5)."],
-      ["", "Row " + P.rows + " of grid F has only " + P.fin + " bits: " + last.bits + ". These are not new coin flips: they are your Forge sheet's bits. The last word also holds a checksum that needs a computer."],
+      ["", "Row " + P.rows + " of grid F has only " + P.fin + " bits: " + last.bits + ". These are not new coin flips: they are your Forge sheet\u2019s bits. The last word also holds a checksum that needs a computer."],
       ["", "On the SeedSigner: Tools > Calc 12th/24th word > " + wc + " words > type words 1 to " + (wc - 1) + " > Build Final Word > Coin flip entropy > enter the " + P.fin + " bits as Heads = 1, Tails = 0: " + flips + "."],
       ["", "The device adds the checksum: the first " + T.cs.length + " bits of SHA-256 of all " + P.bits + " bits of grid F: " + T.cs + ". " + last.bits + " and " + T.cs + " make 11 bits, " + dmG3(last.bits + T.cs) + " → number " + (idx + 1) + ": “" + WORDLIST[idx] + "”."],
       ["", "It must lie between " + last.firstWord + " (" + last.firstNumber + ") and " + last.lastWord + " (" + last.lastNumber + "), the part of the word table that the " + P.fin + " bits point to. VOIDFORGE shows the same last word below, with the fingerprint and the first address: on the SeedSigner, press Next and compare the fingerprint, then the first address (Load seed > Done > Address explorer > Native Segwit > Receive addresses, address 0)."]], ["dmLiveL"]];
@@ -15055,7 +15239,7 @@ function dmLiveAll(st){
       else { wrongR.push(i + 1); partsF.push(["bad", "Row " + (i + 1) + ": you wrote R " + tr[i] + ". This row of grid F (Hammer XOR Anvil) is " + s.slice(0, 3) + " " + s.slice(3, 7) + " " + s.slice(7) + ": " + ones + " ones (" + (ones % 2 ? "odd" : "even") + ") → " + m.R[i] + ". Check the folding in row " + (i + 1) + ", box by box."]); }
     }
     for(let k = 0; k < Math.min(tm.length, 11); k++) if(tm[k] !== m.M[k]) wrongM.push(k + 1);
-    if(tm.length) partsF.push([wrongM.length ? "bad" : "ok", wrongM.length ? "Column" + (wrongM.length > 1 ? "s " : " ") + wrongM.join(", ") + ": your M differs from grid F's." : "M: " + tm.length + " of 11 columns typed, all ✓."]);
+    if(tm.length) partsF.push([wrongM.length ? "bad" : "ok", wrongM.length ? "Column" + (wrongM.length > 1 ? "s " : " ") + wrongM.join(", ") + ": your M differs from grid F\u2019s." : "M: " + tm.length + " of 11 columns typed, all ✓."]);
     if(wrongR.length && wrongM.length && tr.length >= P.rows && tm.length >= 11) for(const l of dmExplain("F", {H: {bits: H.bits}, A: {bits: A.bits}, F: {bits: F}}, st, wrongM, wrongR)) partsF.push(["bad", l]);
     if(tr.length > P.rows || tm.length > 11) partsF.push(["bad", "Grid F has " + P.rows + " rows and 11 columns: R has one bit a row, M one bit a column."]);
     prog[2] = Math.min(1, (Math.min(tr.length, P.rows) + Math.min(tm.length, 11)) / (P.rows + 11));
@@ -15086,7 +15270,7 @@ function dmLiveAll(st){
   // Last word: the last row's bits, the range, then the word, fingerprint and address (worked out once for each grid F)
   if(F){
     const hw = dmHandWords(F), last = hw[hw.length - 1], key = (pr ? "p" : "") + F.join("");
-    dmLiveSet("dmLiveL", [["", pr + "Your Forge sheet's last row: " + last.bits + " (" + P.fin + " bits). Word " + wc + " is between " + last.firstWord + " (" + last.firstNumber + ") and " + last.lastWord + " (" + last.lastNumber + ")."], ["dm-id", dmLive.key === key ? dmLive.text : "Working out the last word, the fingerprint and the first address..."]]);
+    dmLiveSet("dmLiveL", [["", pr + "Your Forge sheet\u2019s last row: " + last.bits + " (" + P.fin + " bits). Word " + wc + " is between " + last.firstWord + " (" + last.firstNumber + ") and " + last.lastWord + " (" + last.lastNumber + ")."], ["dm-id", dmLive.key === key ? dmLive.text : "Working out the last word, the fingerprint and the first address..."]]);
     if(dmLive.key !== key){
       const seq = ++dmLive.seq;
       (async () => {
@@ -15098,7 +15282,7 @@ function dmLiveAll(st){
         } catch(e) { /* the next change works it out again */ }
       })();
     }
-  } else { dmLive.seq++; dmLive.key = ""; dmLive.text = ""; dmLiveSet("dmLiveL", [["", "With the dice and the cards entered here (steps 1 and 2), this step shows the last row's bits, the last word, the fingerprint and the first address. Did it all on paper? Use the box below."]]); }
+  } else { dmLive.seq++; dmLive.key = ""; dmLive.text = ""; dmLiveSet("dmLiveL", [["", "With the dice and the cards entered here (steps 1 and 2), this step shows the last row\u2019s bits, the last word, the fingerprint and the first address. Did it all on paper? Use the box below."]]); }
   prog[4] = hasSeed() && seedKind === "dm" ? 1 : 0; done[4] = prog[4] === 1;
   return {prog, done};
 }
@@ -15109,7 +15293,7 @@ function dmFlowRender(st, L){
   // v2.15.0: once the dice and the cards are in, the page has done steps 3 to 5 itself (your paper checks stay open there)
   const byPage = !only && st.ok && !!st.pairs && !!st.anvil;
   for(const b of document.querySelectorAll("#dmFBar button")){
-    const n = +b.dataset.ds, done = L.done[n - 1] || (byPage && n >= 3); b.parentNode.hidden = !!only && n !== only;
+    const n = +b.dataset.ds, done = L.done[n - 1] || (byPage && n >= 3 && n < 5); b.parentNode.hidden = !!only && n !== only;   // step 5 has its tick once the seed is forged
     b.classList.toggle("on", n === dmStep); b.classList.toggle("done", done); b.classList.toggle("page", byPage && n >= 3 && !L.done[n - 1]);
     if(n === dmStep) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
     b.textContent = n + " " + ["Hammer", "Anvil", "Forge", "Words", "Last word"][n - 1] + (done ? " ✓" : "");
@@ -15181,7 +15365,7 @@ function dmSheetTrial(wc){
 '<p>Write the clock time when you start and end each part. About 30 minutes once you know the steps; allow longer the first time' + (wc === 24 ? ", and about twice as long for 24 words" : "") + '.</p>' +
 '<table class="dm-tr"><tr><th>Part</th><th>What</th><th>Start</th><th>End</th><th>Minutes</th></tr>' + parts.map(p => "<tr><td>" + p[0] + "</td><td>" + p[1] + "</td><td></td><td></td><td></td></tr>").join("") + '<tr><td></td><td><b>Total</b></td><td></td><td></td><td></td></tr></table>' +
 '<h3>Check it</h3><table class="dm-tr"><tr><th>Check</th><th>Result</th></tr>' +
-["Dice pairs thrown (all, crossed out too)", "Hammer bias box: PASS or FAIL", "Anvil bias boxes: PASS or FAIL for each deck", "Seal: all hallmarks agree (yes / no; which box was wrong?)", "Every word checked back in the table", "Last word: SeedSigner / VOIDFORGE", "Fingerprint: SeedSigner / VOIDFORGE / wallet", "First address: SeedSigner / VOIDFORGE / wallet", "VOIDFORGE Check my sheets agrees (yes / no)"].map(x => "<tr><td>" + x + '</td><td class="w"></td></tr>').join("") + "</table>" +
+["Dice pairs thrown (all, crossed out too)", "Hammer bias box: PASS or FAIL", "Anvil bias boxes: PASS or FAIL for each deck", "Seal: all hallmarks agree (yes / no; which box was wrong?)", "Every word checked back in the table", "Last word: SeedSigner / VOIDFORGE", "Fingerprint: SeedSigner / VOIDFORGE / wallet", "First address: SeedSigner / VOIDFORGE / wallet", "VOIDFORGE CHECK MY SHEETS agrees (yes / no)"].map(x => "<tr><td>" + x + '</td><td class="w"></td></tr>').join("") + "</table>" +
 '<h3>Feedback</h3><p>Which step was confusing? ' + L(4.6) + "</p><p>" + L(7.3) + "</p><p>Where did you make a mistake, and what happened? " + L(3.5) + "</p><p>" + L(7.3) + "</p><p>Did a check catch it (bias box, seal, word check)? yes / no / no mistake</p><p>Total time: " + L(0.8) + " min &nbsp; Anything else: " + L(4.2) + "</p>" +
 '<div class="dm-foot">Damascus method, trial checklist. Made with VOIDFORGE.</div></section>';
 }
@@ -15231,7 +15415,7 @@ function dmKitFile(wc){
 
 // The worked examples written out in full (docs/damascus-examples.md, made by tools/damascus/build-docs.mjs from this page).
 async function dmExamplesMd(){
-  const out = ["# Damascus method: worked examples", "", "**Public: never put money on these.** Anyone can make these seeds from this page.", "", "Each example lists what was written on the Hammer and Anvil sheets, and what VOIDFORGE's Check my sheets works out from them. Load them on the page: MAKE A SEED, the Damascus tab, Worked examples.", ""];
+  const out = ["# Damascus method: worked examples", "", "**Public: never put money on these.** Anyone can make these seeds from this page.", "", "Each example lists what was written on the Hammer and Anvil sheets, and what VOIDFORGE's CHECK MY SHEETS works out from them. Load them on the page: MAKE A SEED, the Damascus tab, Worked examples.", ""];
   for(const e of DM_EXAMPLES){
     const r = await dmForge(e.wc, dmParseDice(e.dice).pairs, dmParseCards(e.cards, e.wc).decks), hw = r.F.handWords, last = hw[hw.length - 1];
     const fp = await mnemonicFingerprint(r.F.phrase, ""), ad = await firstAddressOn("main", r.F.phrase, "");

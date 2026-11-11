@@ -74,7 +74,7 @@ const LH_EXPECT = Object.fromEntries(LH_FPS.map((f) => [f, Array.from(LifeHash.m
 const D50 = '31415926535897932384626433832795028841971693993751'.replace(/[0789]/g, c => ({ 0: '6', 7: '2', 8: '4', 9: '5' }[c]));
 const D99 = (D50 + D50).slice(0, 99);
 const C128 = '10110011100011110000111110000011111100000011111110000000111111110101010011001100111000111100001111000001111100000011111100000010'.slice(0, 128);
-const UNI = 'éﬁ pässwörd ｆｕｌｌ';
+const UNI = 'e\u0301ﬁ pässwörd ｆｕｌｌ';
 const expect = {
   d50: entropyToMnemonic(sha(D50).slice(0, 16), wordlist),
   d99: entropyToMnemonic(sha(D99).slice(0, 32), wordlist),
@@ -116,6 +116,7 @@ async function probe(w, mutated, fast, only, hooks) {
     const cov = (id) => $(id).style.filter === 'blur(9px)' && $(id).inert === true, bar = () => $('rhBar').classList.contains('on');
     const tabAway = () => { Object.defineProperty(d, 'hidden', { configurable: true, get: () => true }); ev('visibilitychange', d); delete d.hidden; };
     const typeIn = (id, v) => { $(id).value = v; $(id).dispatchEvent(new w.Event('input', { bubbles: true })); };
+    if ($('rhIdle').value !== '5') fails.push(T + 'the idle default is 5 minutes at load');
     w.rhShow(); $('rhIdle').value = '2'; $('rhBlur').checked = true; w.rhSet();
     $('rolls').value = $('rolls').value || D50;
     tabAway(); if (!bar() || !cov('wordGrid') || !cov('rolls')) fails.push(T + 'leaving the tab covers the words and the rolls');
@@ -141,8 +142,39 @@ async function probe(w, mutated, fast, only, hooks) {
     if (!/^MATCH/.test($('ppStatus').textContent) || ($('ppFp').querySelector('b') || {}).textContent !== fp(AB, pw)) fails.push(T + 'practice gives the test seed fingerprint with the passphrase');
     // Link as QR: a refused secret is not left in the box
     $('lqIn').value = AB; await w.lqMake(); if ($('lqIn').value !== '' || $('lqImg').innerHTML !== '') fails.push(T + 'Link as QR refuses seed words and empties the box');
-    // CLEAR ALL wipes the practice, then the seed of section 0 is made again
-    w.clearAll(); if ($('ppA').value || $('ppB').value || $('ppFp').textContent || $('ppStatus').textContent || $('ppk-ppA').textContent) fails.push(T + 'CLEAR ALL wipes passphrase practice');
+    // v2.15.0 review fixes: the default, pictures off the screen, the guide's buttons, own dialogs, status lines, the address box,
+    // the focus, the passphrase check's counts and names, a drop into the practice box, and Link as QR's rules
+    w.showSeedQr('seedqr'); w.openSqGuide(); const g0 = $('sqGuideImg').innerHTML;
+    tabAway(); if (!$('sqImg').classList.contains('rh-solid') || !$('sqGuideImg').classList.contains('rh-cov')) fails.push(T + 'a covered SeedQR and guide are taken off the screen (rh-solid)');
+    w.sqGuideBlock(1); if ($('sqGuideImg').innerHTML !== g0) fails.push(T + 'NEXT BLOCK does nothing while covered');
+    if (!cov('verifyStatus')) fails.push(T + 'the VERIFY status line is covered');
+    w.rhShow(); w.hideSeedQr();
+    w.confirm('probe'); ev('blur'); if (bar()) fails.push(T + 'a window blur right after the page\'s own question covers nothing'); w.eval('rhDlgEnd = 0'); w.rhShow();
+    { tabAway(); w.eval('rhFocus = document.getElementById("rolls")'); const n0 = w.__focus ? w.__focus.length : 0; w.rhShow();   // the probe's page records focus() calls (newPage)
+      if (w.__focus && !w.__focus.slice(n0).some(([id]) => id === 'rolls')) fails.push(T + 'SHOW gives the focus back'); }
+    typeIn('verifyPass', 'ﬁ'.repeat(60)); if (!/120 characters long/.test($('ppk-verifyPass').textContent)) fails.push(T + 'the passphrase check counts the characters the wallet uses (NFKD)');
+    typeIn('verifyPass', 'a\u00a0b'); $('verifyPass').type = 'text'; w.ppkRender('verifyPass'); if (!/a no-break space becomes a plain space/.test($('ppk-verifyPass').textContent)) fails.push(T + 'a no-break space is named'); $('verifyPass').type = 'password'; typeIn('verifyPass', '');
+    { const e2 = new w.Event('drop', { cancelable: true }); $('ppB').dispatchEvent(e2); if (!e2.defaultPrevented) fails.push(T + 'a drop into the from-memory box is refused'); }
+    const lqr = async (t) => w.lqSecret(t);
+    const WIFX = '5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTK', XPRVX = 'xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHj';
+    const H64 = '0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d', S39 = 'math email academic acid afraid painting cylinder typical gather ajar froth pulse expect carve watch deal usual herd insect response';
+    const LQR = [['a WIF with one wrong character', 'key-' + WIFX], ['an xprv with one wrong character, over two lines', XPRVX.slice(0, 60) + '\n' + XPRVX.slice(60)], ['a WIF URL-encoded in a link', 'https://x.org/?k%3D' + WIFX],
+      ['12 words after a long label', 'Backup of the hardware wallet in the kitchen drawer, written 2026: ' + AB], ['12 words with 3 typos', 'legal winner thank year wave sausege worth usefull legal winner thank yelow'],
+      ['12 words run together', AB.replace(/ /g, '')], ['a SLIP39 share', S39], ['dice rolls', '123456'.repeat(9)], ['SeedQR digits after a year', 'written 2026: ' + '0001 '.repeat(12).trim()],
+      ['a passphrase after its label', 'passphrase: correct horse battery staple'], ['a codex32 share in groups of 4', 'ms12z8xta9ynufs7hf0zyend24zdqp5yqdntlk63f7y3gcuu'.match(/.{1,4}/g).join(' ')],
+      ['a key labeled after a hash label', 'sha256 of the private key ' + H64], ['bare 64 hex', H64]];
+    for (const [n, t] of LQR) if (!(await lqr(t))) fails.push(T + 'Link as QR refuses ' + n);
+    for (const [n, t] of [['a labeled txid', 'txid ' + H64], ['a shopping list', 'Milk, butter, cheese, rice, potato, tomato, onion, carrot, apple, banana, lemon, orange'], ['a link', 'https://sparrowwallet.com/download/']]) if (await lqr(t)) fails.push(T + 'Link as QR allows ' + n);
+    w.eval('selfTestState = "fail"'); $('lqIn').value = 'https://example.org/'; await w.lqMake(); w.eval('selfTestState = "pass"'); if ($('lqImg').innerHTML) fails.push(T + 'Link as QR waits for the self-test');
+    $('lqIn').value = 'https://example.org/'; await w.lqMake();
+    // CLEAR ALL (while covered) wipes the practice and Link as QR, then the seed of section 0 is made again
+    tabAway(); w.clearAll(); if ($('ppA').value || $('ppB').value || $('ppFp').textContent || $('ppStatus').textContent || $('ppk-ppA').textContent) fails.push(T + 'CLEAR ALL wipes passphrase practice');
+    if ($('lqIn').value || $('lqImg').innerHTML) fails.push(T + 'CLEAR ALL empties Link as QR');
+    if ($('rhBar').classList.contains('on') || $('rolls').inert) fails.push(T + 'CLEAR ALL while covered leaves no notice and no locked box');
+    if ([...d.querySelectorAll('button')].filter((b) => /^(hideExplain|hideSeedQr|clearChild|wvSeedQrHide)\(/.test(b.getAttribute('onclick') || '')).some((b) => b.textContent !== 'HIDE')) fails.push(T + 'CLEAR ALL leaves the panels\' HIDE buttons alone');
+    w.setMethod('damascus'); w.dmLoadExample(1); if (w.eval('rhAny()')) fails.push(T + 'a public Damascus example is not a secret'); w.dmClear(); w.setMethod('dice');
+    typeIn('ppA', 'x'); if (!w.eval('rhAny()') || !w.eval('autoHasSecrets()')) fails.push(T + 'the practice box alone counts as a secret (re-hide and auto-clear)'); typeIn('ppA', '');
+    $('checkAddr').value = AB; await w.explainAddrUi(); if (!w.eval('rhAny()')) fails.push(T + 'seed words in Explain an address count as a secret'); $('checkAddr').value = ''; await w.explainAddrUi();
     w.rhShow(); await run('dice', 12, D50);
   }
   // v2.13.0: the SeedSigner+ practice signer (CHECK A BACKUP > Practice signer; tools/simulator/). Its money-critical code is driven
@@ -1314,9 +1346,10 @@ async function probe(w, mutated, fast, only, hooks) {
       set('dmDice', dice.map((p) => p.join('')).join(' ')); set('dmCards', cards.map((d) => d.join(' ')).join('\n'));
       if ($('dmBtn').disabled || !/^Ready: the dice and the cards are complete/.test($('dmReady').textContent)) fails.push(T + 'quick path: the dice and the cards alone turn FORGE SEED on and say Ready');
       const bar = [...w.document.querySelectorAll('#dmFBar button')];
-      if (!bar.slice(2).every((b) => b.classList.contains('done') && b.classList.contains('page'))) fails.push(T + 'quick path: the step bar shows steps 3 to 5 done by the page');
+      if (!bar.slice(2, 4).every((b) => b.classList.contains('done') && b.classList.contains('page')) || bar[4].classList.contains('done') || !bar[4].classList.contains('page')) fails.push(T + 'quick path: the step bar shows steps 3 and 4 done by the page, step 5 by the page but not done before FORGE SEED');
       if (!$('dmLiveF').textContent.includes(' 1  ' + g3(ref.E.bits.slice(0, 11)) + '  R ' + ref.E.marks.R[0]) || !ref.E.phrase.slice(0, 11).every((x) => $('dmLiveW').textContent.includes(x))) fails.push(T + 'quick path: steps 3 and 4 show grid F and the words, worked out by the page');
       await w.dmGenerate(); if (!w.hasSeed() || w.eval('madeMnemonic') !== phrase) fails.push(T + 'quick path: FORGE SEED gives the seed of the dice and the cards');
+      if (!/^Seed forged/.test($('dmReady').textContent) || !w.document.querySelectorAll('#dmFBar button')[4].classList.contains('done')) fails.push(T + 'quick path: after FORGE SEED the Ready line says forged and step 5 is done');
       w.dmClear(); }
     // 2. the guided practice: practice sheet 9, phase by phase
     w.eval('dmPracticeNext = 9'); const sh = await w.dmPracticeSheet(9, 12);
@@ -4749,7 +4782,7 @@ const M = [
   ['auto-clear: off note dropped', ': "Auto-clear is off.";', ': "";'],
   ['auto-clear: 30 minutes missing', '<option value="30">30 minutes</option>', ''],
   ['auto-clear: choice not wired', 'aria-label="Wipe after no activity for" onchange="autoClearSet()"', 'aria-label="Wipe after no activity for" onchange=""'],
-  ['auto-clear: tab option not wired', 'id="autoHide" onchange="autoClearSet()"', 'id="autoHide" onchange=""'],
+  ['auto-clear: tab option not wired', 'id="autoHide" autocomplete="off" onchange="autoClearSet()"', 'id="autoHide" autocomplete="off" onchange=""'],
   ['roll sheet: one box short', 'for(let i = 1; i <= need; i++)', 'for(let i = 1; i < need; i++)'],
   ['roll sheet: boxes not numbered', 'i <= need; i++){ const c = add("ps-cell", "", g); add("ps-n", String(i), c);', 'i <= need; i++){ const c = add("ps-cell", "", g); add("ps-n", "", c);'],
   ['roll sheet: ignores coin mode', 'const coin = getMode() === "coin", wc', 'const coin = false, wc'],
@@ -7515,13 +7548,15 @@ const M = [
   ['damascus guided: the step is not shown', 'dmStep = DM_TOUR_STEP[T.i]; dmUpdate();', 'dmUpdate();'],
   ['damascus guided: the same practice sheet every time', 'dmPracticeNext = n % 100 + 1;   // practice sheets 1 to 100, as published, in turn with FILL IN A PRACTICE SHEET', ''],
   ['damascus guided: the words are not filled in', 'b.dmWords = i >= 9 ? T.phrase.split(" ").slice(0, T.wc - 1).join(" ") : "";', 'b.dmWords = "";'],
-  ['damascus quick path: the step bar does not show steps 3 to 5 done by the page', 'done = L.done[n - 1] || (byPage && n >= 3);', 'done = L.done[n - 1];'],
-  ['damascus quick path: no Ready line', 'r.textContent = !both ? "" : go && ready ?', 'r.textContent = !both ? "" : false ?'],
+  ['damascus quick path: the step bar does not show steps 3 to 5 done by the page', 'done = L.done[n - 1] || (byPage && n >= 3 && n < 5);', 'done = L.done[n - 1];'],
+  ['damascus quick path: step 5 ticked before the seed is forged', 'done = L.done[n - 1] || (byPage && n >= 3 && n < 5);', 'done = L.done[n - 1] || (byPage && n >= 3);'],
+  ['damascus quick path: the Ready line says press FORGE SEED after forging', 'r.textContent = !both ? "" : go && forged ?', 'r.textContent = !both ? "" : false ?'],
+  ['damascus quick path: no Ready line', ' : go && ready ? "Ready: the dice', ' : false ? "Ready: the dice'],
   ['damascus quick path: step 3 does not show grid F', '    partsF.push(["pre", dmGridLines(F, wc)]);\n', ''],
   ['damascus quick path: step 4 does not show the words', 'partsW.push(["pre", hw.slice(0, wc - 1).map(', 'partsW.push(["pre", hw.slice(0, 0).map('],
   // v2.15.0 "Stop costly mistakes" (probe section 75 and the in-page self-test)
   ["re-hide: a hidden tab covers nothing", "document.addEventListener(\"visibilitychange\", () => { if(document.hidden) rhHide(\"tab\"); });", ""],
-  ["re-hide: a window blur covers nothing", "if(document.getElementById(\"rhBlur\").checked) rhHide(", "if(false) rhHide("],
+  ["re-hide: a window blur covers nothing", "if(!rhOwnDialog()) rhHide(\"blur\");", "if(false) rhHide(\"blur\");"],
   ["re-hide: the browser's Print covers nothing", "  rhPrinting = true;\n  if(rhHide(\"print\") || rhOn)", "  rhPrinting = true;\n  if(false)"],
   ["re-hide: VOIDFORGE's own PRINT sheets get covered", "  if(rhOwnPrint()) return;   // one of VOIDFORGE", "  // one of VOIDFORGE"],
   ["re-hide: idle time counted in tenths", "now - rhLast >= m * 60000", "now - rhLast >= m * 6000"],
@@ -7529,22 +7564,50 @@ const M = [
   ["re-hide: the words left off the list", "\"wordGrid\", \"genResult\", \"smudgeNote\"", "\"genResult\", \"smudgeNote\""],
   ["re-hide: the AUTO_FIELDS boxes not covered", "...AUTO_FIELDS.filter(id => !RH_NOT.includes(id)), ", ""],
   ["re-hide: passphrase boxes stay shown", "    e.type = \"password\"; rhMasked++;", "    rhMasked++;"],
-  ["re-hide: SHOW leaves the blur", "for(const [p, v, pr] of old){ if(v) e.style.setProperty(p, v, pr); else e.style.removeProperty(p); } e.inert = false;", "e.inert = false;"],
+  ["re-hide: SHOW leaves the blur", "for(const [p, v, pr] of old){ if(v) e.style.setProperty(p, v, pr); else e.style.removeProperty(p); } e.classList.remove(", "e.classList.remove("],
   ["re-hide: covered boxes can still be typed in", "  e.inert = true;\n", ""],
   ["re-hide: Print leaves the words on paper", "for(const e of rhCovered.keys()) e.style.setProperty(\"visibility\", \"hidden\");", "{}"],
   ["passphrase check: NFKD changes not named", "if(r.changed.length) L.push(", "if(false) L.push("],
-  ["passphrase check: Coldcard limit off by one", "overCc: cps.length > PPK_MAX_CC", "overCc: cps.length >= PPK_MAX_CC"],
-  ["passphrase check: characters outside ASCII not found", "nonAscii: /[^\\x20-\\x7e]/.test(n)", "nonAscii: false"],
+  ["passphrase check: Coldcard limit off by one", "overCc: used.length > PPK_MAX_CC", "overCc: used.length >= PPK_MAX_CC"],
+  ["passphrase check: characters outside ASCII not found", "nonAscii: odd.length > 0", "nonAscii: false"],
   ["passphrase check: masked box shows the text", "else if(masked) { if(!/\\p{M}/u.test(c)) out.push([\"\\u2022\", \"\"]); }", ""],
   ["passphrase check: leading space not found", "lead: /^\\s/.test(n)", "lead: false"],
   ["passphrase practice: any two entries match", "if(x[i] !== y[i]) return {at: i + 1", "if(false) return {at: i + 1"],
   ["passphrase practice: fingerprint without the passphrase", "const fp = await mnemonicFingerprint(PP_TEST, a);", "const fp = await mnemonicFingerprint(PP_TEST, \"\");"],
   ["passphrase practice: CLEAR ALL keeps the result", "  mkWipe();   // v2.15.0", "  // v2.15.0"],
   ["passphrase practice: CLEAR ALL keeps the boxes", "AUTO_FIELDS.push(\"ppA\", \"ppB\");", ""],
-  ["Link as QR: seed words accepted", "if(known >= 6 && known >= 0.8 * toks.length) return \"These look like SEED WORDS\";", ""],
-  ["Link as QR: WIF accepted", "(raw[0] === 0x80 || raw[0] === 0xef)) return \"This holds a PRIVATE KEY (WIF)\"", "(raw[0] === 0x81)) return \"This holds a PRIVATE KEY (WIF)\""],
-  ["Link as QR: xprv accepted", "EXT_PRIVATE.indexOf(hex(raw.subarray(0, 4))) >= 0) return", "EXT_PRIVATE.indexOf(\"x\") >= 0) return"],
-  ["Link as QR: SeedQR digits accepted", "if(/^\\d{48,96}$/.test(flat) && flat.length % 12 === 0) return \"These look like SeedQR", "if(false) return \"These look like SeedQR"],
+  ["Link as QR: seed words accepted", "if(lqSeedWords(s)) return \"These look like SEED WORDS\";", ""],
+  ["Link as QR: WIF accepted", "([5KL9c]\" + LQ_B58 + \"{50,51}|6P\"", "([5KL9c]\" + LQ_B58 + \"{90,91}|6P\""],
+  ["Link as QR: xprv accepted", "\"[xyztuvYZUV]prv\" + LQ_B58 + \"{100,}\"", "\"[xyztuvYZUV]prv\" + LQ_B58 + \"{200,}\""],
+  ["Link as QR: SeedQR digits accepted", "const lqSeedQr = (d) => [48, 60, 72, 84, 96].includes(d.length)", "const lqSeedQr = (d) => false && [48, 60, 72, 84, 96].includes(d.length)"],
+  // v2.15.0 review fixes (H1 to L14): probe section 75
+  ["re-hide: the idle default is 2 minutes", "const RH_IDLE_DEFAULT = \"5\";", "const RH_IDLE_DEFAULT = \"2\";"],
+  ["re-hide: a covered picture stays on screen (blurred only)", "e.classList.add(\"rh-cov\"); if(RH_SOLID.includes(e.id)) e.classList.add(\"rh-solid\");", ""],
+  ["re-hide: the hand-copy guide moves on while covered", "if(!sqRows || rhOn) return;   // v2.15.0: NEXT and PREVIOUS BLOCK", "if(!sqRows) return;   // v2.15.0: NEXT and PREVIOUS BLOCK"],
+  ["re-hide: a wipe while covered leaves the page covered", "function rhSettle(){ if(rhOn && !rhAny()) rhShow(); }", "function rhSettle(){ }"],
+  ["re-hide: the page's own dialogs count as looking away", "if(!rhOwnDialog()) rhHide(\"blur\");", "rhHide(\"blur\");"],
+  ["re-hide: public Damascus practice content counts as a secret", "return !!pr && /^dm(?!r|Lw)/.test(e.id);", "return false;"],
+  ["re-hide: the address box never counts as a secret", "if(RH_IF[e.id]) return !RH_IF[e.id]();", "if(RH_IF[e.id]) return true;"],
+  ["re-hide: the VERIFY status line is not covered", "\"wvsImg\", \"dbSecret\", \"verifyStatus\", \"verifyPassWarn\",", "\"wvsImg\", \"dbSecret\", \"verifyPassWarn\","],
+  ["re-hide: SHOW does not give the focus back", "const btn = document.getElementById(\"rhShowBtn\"), back = rhFocus; rhFocus = null;", "const btn = document.getElementById(\"rhShowBtn\"), back = null; rhFocus = null;"],
+  ["CLEAR ALL: every HIDE button turns into SHOW", "document.querySelectorAll(PW_TOGGLES).forEach(", "document.querySelectorAll(\"button\").forEach("],
+  ["passphrase check: length counted as typed", "return {len: used.length,", "return {len: cps.length,"],
+  ["passphrase check: a no-break space is not named", "if(c === \"\\u00a0\") return \"a no-break space\";", ""],
+  ["passphrase practice: a drop into the from-memory box", "for(const t of [\"paste\", \"drop\"])", "for(const t of [\"paste\"])"],
+  ["Link as QR: CLEAR ALL keeps the link", "function mkWipe(){ ppClear(); lqClear();", "function mkWipe(){ ppClear();"],
+  ["Link as QR: no self-test gate", "async function lqMake(){\n  if(!gateOk()) return;\n", "async function lqMake(){\n"],
+  ["Link as QR: a URL-encoded secret is not decoded", "for(const s of t === dec ? [t] : [t, dec]){", "for(const s of [t]){"],
+  ["Link as QR: 12 words after a long label accepted", "if(run >= 12 || (strict >= 6", "if(false || (strict >= 6"],
+  ["Link as QR: a word with a typo is not a word", "return (lqBy2.get(t.slice(0, 2)) || []).some(w => wordDistance(t, w, 1) <= 1);", "return false;"],
+  ["Link as QR: words run together accepted", "return all.some(t => t.length >= 36 && lqJoined(t) >= 12);", "return false;"],
+  ["Link as QR: SLIP39 words unknown", "if(Object.prototype.hasOwnProperty.call(WORD_MAP, t) || S39_WORD_INDEX.has(t)) return true;", "if(Object.prototype.hasOwnProperty.call(WORD_MAP, t)) return true;"],
+  ["Link as QR: dice rolls accepted", "[[/^[1-6]+$/, 50, ", "[[/^[1-6]+$/, 5000, "],
+  ["Link as QR: SeedQR digits in groups after a year accepted", "if(n4 >= 12) return", "if(n4 >= 120) return"],
+  ["Link as QR: a passphrase after its label accepted", "if(LQ_LABEL.test(s)) return", "if(false) return"],
+  ["Link as QR: a codex32 share in groups accepted", " || /ms1[02-9ac-hj-np-z]{44,}/i.test(s.replace(/\\s+/g, \"\"))", ""],
+  ["Link as QR: a labeled txid refused", "if(pub >= 0 || n === 40 ||", "if(n === 40 ||"],
+  ["Link as QR: a key label after a hash label ignored", "if(sec > pub) return \"This is \" + n + \" hex characters labeled", "if(false) return \"This is \" + n + \" hex characters labeled"],
+  ["Link as QR: bare 64 hex accepted", "      return \"This is \" + n + \" hex characters, which could be a private key or a seed.", "      return \"\"; \"This is \" + n + \" hex characters, which could be a private key or a seed."],
   ["Link as QR: a refused secret stays in the box", "if(why){ document.getElementById(\"lqIn\").value = \"\"; return", "if(why){ return"],
 ];
 
