@@ -32,10 +32,10 @@ Work in a private room. Phones away.
 1. **Throw both dice.** Read the **left** die first. (H1)
 2. **Write both numbers** in the next pair box.
 3. **Rolled 1-1, 2-2, 3-3 or 4-4?** Cross the pair box out and throw both dice again.
-4. **Look up the pair** in the mirror table on the Hammer sheet: the row is the left die, the column is the right die. It gives you 5 bits (like `01101`).
-5. **Write the 5 bits** into the next shaded run of the grid.
+4. **Look up the pair** in the mirror table on the Hammer sheet (a pair and its mirror, like 2-5 and 5-2, share the first 4 bits): the row is the left die, the column is the right die. It gives you 5 bits (like `01101`).
+5. **Write the 5 bits** into the next shaded run of the grid (a run is the stretch of boxes for one pair or one group of cards, shaded and white in turn).
 6. **Repeat** until the grid is full (26 good pairs). The last pair uses only 3 bits.
-7. **Dice check:** in the first 26 pair boxes (crossed-out ones too), count how often each face came up, and count the repeats (a number the same as the number just before it, reading every number in order: left, right, then the next box). The sheet says when it is a FAIL. On a FAIL, use other dice and start a new Hammer sheet. (H2)
+7. **Dice check:** in the first 26 pair boxes, including crossed-out boxes: 52 numbers, count how often each face came up, and count the repeats (a number the same as the number just before it, reading every number in order: left, right, then the next box). FAIL if any count is 18 or more, or 1 or fewer, or repeats are 2 or fewer. On a FAIL, use other dice and start a new Hammer sheet. (H2)
 
 **What you should have now:** 26 good pairs in the pair boxes, grid H full (rows 1 to 11 with 11 bits, row 12 with 7), and PASS in the dice check.
 
@@ -54,10 +54,11 @@ Work in a private room. Phones away.
    - The higher card wins and plays on.
    - In each match write **1 if the right card is higher**, **0 if the left card is higher**.
    - Ace is lowest, King is highest. For the same rank: clubs < diamonds < hearts < spades.
+   - A group of 8 cards (an octet) gives 7 bits for its run of grid A; a group of 4 (a quad) gives 3.
 4. **Deal the next 8 cards** and play again: 6 groups of 8 in all.
 5. **Then deal 4 cards:** 1 against 2, 3 against 4, then the two winners.
 6. **Do it 3 times in all:** shuffle the same deck again (step 1) each time. The last deck is shorter: on deck 3, deal 5 groups of 8, then 4 cards, and stop.
-7. **Card check, while you deal:** count the neighbors, two cards side by side with the same suit and ranks next to each other (like 7♥ 8♥; Ace and King are not neighbors). After each deck, count its 1s. The sheet says when it is a FAIL. On a FAIL, shuffle again and redo that deck. (A3)
+7. **Card check, while you deal:** count the neighbors: two cards dealt one after the other in the same group, with the same suit and ranks next to each other (like 7♥ 8♥). Ace and King are not neighbors, and two cards in different groups never count. After each deck, count its 1s. FAIL a deck if its 1s are 11 or fewer, or 34 or more (full 45-bit decks only), or its neighbors are 6 or more. On a FAIL, shuffle again and redo that deck. (A3)
 
 **What you should have now:** grid A full (128 bits, row 12 with 7), the card record if you keep one, and PASS for each deck.
 
@@ -69,7 +70,7 @@ Work in a private room. Phones away.
 
 ## Part 3: Hallmarks (parity) on each sheet
 
-On the Hammer sheet and on the Anvil sheet: (H3, A4)
+A hallmark is a check bit: whether a row or a column holds an odd or an even number of 1s (its parity). On the Hammer sheet and on the Anvil sheet: (H3, A4)
 
 - **Row hallmark R:** count the 1s in the row and write the result in the R box at the end of the row: odd: 1 3 5 7 9 11 → 1 · even: 0 2 4 6 8 10 → 0.
 - **Column hallmark M:** count the 1s in the column and write the result in the M box under it, the same way.
@@ -85,7 +86,7 @@ On the Hammer sheet and on the Anvil sheet: (H3, A4)
 
 1. **Lay the Hammer and Anvil sheets side by side.** (F1)
 2. **Work one row at a time:** finger on the same row on both sheets.
-3. **For every box:** Same → 0. Different → 1. Write it in the same box on the Forge sheet.
+3. **For every box (this is XOR):** Same → 0. Different → 1. Write it in the same box on the Forge sheet.
 4. **Hallmarks on the Forge sheet,** R and M, the same way as in Part 3. (F2)
 5. **The seal:** for each R box and each M box, fold the Hammer hallmark with the Anvil hallmark (Same → 0. Different → 1.). The result must equal the Forge sheet's hallmark.
 6. **If one doesn't match:** the mistake is where that row and that column cross. Fix it before you go on.
@@ -100,7 +101,7 @@ On the Hammer sheet and on the Anvil sheet: (H3, A4)
 
 ## Part 5: The words
 
-1. **Split each Forge row** into 3 + 4 + 4 bits: block, row, column. (F3)
+1. **Split each Forge row** into 3 + 4 + 4 bits: block, row, column. Block: which of the word table's 8 blocks; row and column: where the word sits in that block. (F3)
 2. **Look up the word** in the word table with those three parts and write it next to the row. No math needed.
 3. **Check each word back:** find it alphabetically in the table and make sure its bits match the row. (F4)
 
@@ -149,14 +150,14 @@ Row 12 gives only 7 bits, because the last word also holds a checksum that needs
 
 ## 24 words
 
-The same steps, with 52 good dice pairs and 6 decks (on deck 6, the last: 4 groups of 8, then 4 cards). The last row has 3 bits, which pick one block of the word table; use 24 words on the SeedSigner. Allow about twice the time.
+The same steps, with 52 good dice pairs and 6 decks (on deck 6, the last: 4 groups of 8, then 4 cards). The last row has 3 bits, which pick one block of the word table; use 24 words on the SeedSigner. The dice check counts the first 52 pair boxes: 104 numbers, and FAIL if any count is 29 or more, or 6 or fewer, or repeats are 7 or fewer; the card check is the same. Allow about twice the time.
 
 ## Doing it with a helper (optional)
 
 1. **One person does the Hammer sheet, the other the Anvil sheet, in separate rooms.**
 2. **The card person writes down every card** in the card record on the Anvil sheet.
 3. **Each folds their sheet closed** before seeing the other one. This matters: whoever sees the other sheet before finishing their own could steer the seed.
-4. **Assay:** later, each sheet can be checked by a different person (an assayer) without anyone learning the seed. In VOIDFORGE, choose "An assayer" under Who checks.
+4. **Assay:** later, each sheet can be checked by a different person (an assayer) without anyone learning the seed. In VOIDFORGE, choose "An assayer" under Who checks. Optional, for the assay: each sheet is also a Seed XOR part (step H4 on the Hammer sheet).
 
 ## Check it all in VOIDFORGE (optional)
 
