@@ -1,0 +1,23 @@
+{
+    "accounts": {
+        "0": {
+            "0": [],
+            "1": [],
+            "xpub": "xpub661MyMwAqRbcFWohJWt7PHsFEJfZAvw9ZxwQoDa4SoMgsDDM1T7WK3u9E4edkC4ugRnZ8E4xDZRpk8Rnts3Nbt97dPwT52CwBdDWroaZf8U"
+        }
+    },
+    "gap_limit": 20,
+    "labels": {
+        "0": "Main account"
+    },
+    "master_private_keys": {
+        "x/": "vxbN3cgQX7/3CGVgVL78O6ePLSwADgIdChRdpePjKr1RoFkxEm3juV666Sdd2rwNE448F2BOgzANxl3kUx64NM+ewFqWmF/C4WRHqwpSgZAhLsW0QCLvFQWDBoKIAT1dwbn14xh9CJhUo+Ay7QUMsZC7J1yvsiePpSXkiSedD88="
+    },
+    "master_public_keys": {
+        "x/": "xpub661MyMwAqRbcFWohJWt7PHsFEJfZAvw9ZxwQoDa4SoMgsDDM1T7WK3u9E4edkC4ugRnZ8E4xDZRpk8Rnts3Nbt97dPwT52CwBdDWroaZf8U"
+    },
+    "seed": "8HlAiX8VIg9clIIw3EOsiQgmX8tq9fEVavdQmE86m32SRTK7f/J1utGGZ5jpITBoHI+uo96ESJd8IUbVy2ojpqf2lUGKle5NJ39Qin1yS3jMLLYsuCe2M6QeNWP02A09",
+    "seed_version": 11,
+    "use_encryption": true,
+    "wallet_type": "standard"
+}

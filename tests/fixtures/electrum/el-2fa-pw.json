@@ -1,0 +1,31 @@
+{
+    "genesis_blockhash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+    "labels": {},
+    "seed_version": 74,
+    "use_encryption": true,
+    "wallet_type": "2fa",
+    "x1": {
+        "derivation": "m/0h",
+        "pw_hash_version": 1,
+        "root_fingerprint": "82078976",
+        "type": "bip32",
+        "xprv": "2UKbPMRUTF80d/zLMDcy2pwFsNxZylRvvmpoaot/3qgy+ckTaYkMNkLSW0j03JlRXEflexne7rTbiC+WgrlbfYONSjIFkk2TbW5G5cC9IOrKs39OMFw3XUhaKHoJHGgKSu86a3y0O1LkQgm9J6QPbT26CbX4X8OBjUd1UgLV9Dk=",
+        "xpub": "xpub68qvwUg8sewQvcUgwxuTYr9rrgu5nfn6BwajQpYT9p8fXWxdCRHpN86UWruWJAD1ede8Sv8ERrTa22Gyc4SBfm7zFpcyoVWVBKCVwnw6s1J"
+    },
+    "x2": {
+        "derivation": "m/1h",
+        "pw_hash_version": 1,
+        "root_fingerprint": "82078976",
+        "type": "bip32",
+        "xprv": null,
+        "xpub": "xpub68qvwUg8sewQxoXBXCTLrFKbHkx3QLY5M63EiejxTQRKSFPHjmWCwK8byvZMM2wZNYA3SmxXoma3M1zxhGESHZwtB7SwrxRgKXAG8dCD2eS"
+    },
+    "x3": {
+        "derivation": "m",
+        "pw_hash_version": 1,
+        "root_fingerprint": "bba3ef7f",
+        "type": "bip32",
+        "xprv": null,
+        "xpub": "xpub661MyMwAqRbcFdt4UtM9behU5BJPahxjPUgau2WnQSS3m8HnqLyaaaQvzojADW886MP9VpWQ2cKxCBWtbGS6c5C1extsdP5b9CfwZJset75"
+    }
+}

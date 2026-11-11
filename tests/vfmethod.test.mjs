@@ -38,7 +38,7 @@ function check(name, ok, detail){
 const N = +(process.env.VF_RANDOM || 1000);   // random sheets per length
 const w = await ready(loadPage(readHtml()));
 const $ = (id) => w.document.getElementById(id);
-check("the page self-test passes 147/147 (141, and 6 from v2.15.0)", /SELF-TEST PASSED \(147\/147\)/.test($("selfTestBadge").textContent), $("selfTestBadge").textContent);
+check("the page self-test passes 152/152 (141, 6 from v2.15.0 and 5 from v2.16.0)", /SELF-TEST PASSED \(152\/152\)/.test($("selfTestBadge").textContent), $("selfTestBadge").textContent);
 
 // ---------- helpers
 const ex = [1, 2, 3].map((i) => JSON.parse(readFileSync(path.join(here, "fixtures", "damascus", "example-" + i + ".json"), "utf8")));

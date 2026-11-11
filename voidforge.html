@@ -531,7 +531,13 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .cost-row label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
   @media (max-width: 560px) { .cost-row { grid-template-columns: 1fr; } }
   #wvPathIn { margin: 0 0 4px; }
-  #walletView.wv-pub .wv-path, #walletView.wv-single .wv-path, #walletView.wv-single .wv-ctl, #walletView.wv-single #wvPager { display: none; }
+  /* v2.16.0 part A: any path in Open this wallet: each address shows its number (receive or change / index), START AT, SHOW 20 MORE */
+  #wvList { list-style: none; padding-left: 0; }
+  #wvList li[data-n]::before { content: attr(data-n); flex: 0 0 4.6em; color: var(--muted); }
+  #wvList li.ap-gap { margin-top: 14px; }
+  .wv-start { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 13px; }
+  .wv-start input { width: 120px; flex: none; }
+  #walletView.wv-single .wv-path, #walletView.wv-single .wv-start, #walletView.wv-single .wv-ctl, #walletView.wv-single #wvPager { display: none; }
   .wv-born { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; margin-top: 8px; max-width: 22em; }
   /* v2.5.0 backup plan */
   #planBox .pl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-top: 8px; }
@@ -1883,16 +1889,17 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       </div>
       <div class="wv-ctl">
         <select id="wvType" aria-label="Address type"><option value="wpkh">Native SegWit (bc1q...)</option><option value="tr">Taproot (bc1p...)</option><option value="sh-wpkh">Nested SegWit (3...)</option><option value="pkh">Legacy (1...)</option></select>
-        <select id="wvChain" aria-label="Receive or change"><option value="0">Receive</option><option value="1">Change</option></select>
+        <select id="wvChain" aria-label="Receive or change"><option value="0">Receive</option><option value="1">Change</option><option value="both">Both</option></select>
         <select id="wvNet" aria-label="Network"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
         <input type="text" id="wvAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number">
       </div>
-      <input type="text" id="wvPathIn" class="wv-path" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Custom account path (optional)" placeholder="Custom account path (optional), such as m/0' or m/44'/0'/1'">
-      <div class="hint wv-path" style="margin:0 0 6px;">Most wallet apps use the standard path for the address type, so leave this empty. For an older or unusual app, type its account path; the address type above still decides how the addresses are written.</div>
+      <input type="text" id="wvPathIn" class="wv-path" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Custom path (optional)" placeholder="Custom path (optional), such as m/0' or m/44'/0'/1', or m/44'/0'/0'/0/*">
+      <div class="hint wv-path" style="margin:0 0 6px;">Most wallet apps use the standard path for the address type, so leave this empty. For an older or unusual app, type its path: an account path (its receive and change addresses go under it), or any path ending in <code>/*</code> for the addresses right under it, such as <code>m/0/*</code>. With a public key open, type the path below the key, such as <code>0/*</code> or <code>2/0/*</code>. Write a hardened step with <code>'</code> or <code>h</code>. The address type above still decides how the addresses are written.</div>
+      <label class="wv-start" for="wvStart">Start at address number<input type="text" id="wvStart" value="0" inputmode="numeric" spellcheck="false" autocomplete="off"></label>
       <div class="status bad" id="wvErr"></div>
       <div class="hint" id="wvPath" style="margin:0;"></div>
       <ol id="wvList" class="addr-list"></ol>
-      <div class="btn-row" id="wvPager"><button type="button" class="secondary small" id="wvPrev" onclick="wvPage(-1)">PREVIOUS 10</button><button type="button" class="secondary small" id="wvNext" onclick="wvPage(1)">NEXT 10</button><button type="button" class="secondary small" onclick="copyAddrList(this,'wvList')">COPY THESE 10</button><button type="button" class="secondary small" id="wvSheetBtn" onclick="printRecoverySheet()">PRINT RECOVERY SHEET</button></div>
+      <div class="btn-row" id="wvPager"><button type="button" class="secondary small" id="wvPrev" onclick="wvPage(-1)">PREVIOUS 10</button><button type="button" class="secondary small" id="wvNext" onclick="wvPage(1)">NEXT 10</button><button type="button" class="secondary small" id="wvMore" onclick="apMore()">SHOW 20 MORE</button><button type="button" class="secondary small" id="wvCopy" onclick="copyAddrList(this,'wvList')">COPY THESE 10</button><button type="button" class="secondary small" id="wvSheetBtn" onclick="printRecoverySheet()">PRINT RECOVERY SHEET</button></div>
       <label class="wv-born" for="wvBorn">Wallet made on, if you know (printed on the recovery sheet)<input type="date" id="wvBorn"></label>
       <p class="hint" id="wvSheetHint" style="margin:6px 0 0;">The recovery sheet holds no words and no passphrase: only the fingerprint, address type, path and the first addresses, plus how to restore. Keep it with your paper backup so someone you trust can tell which wallet the words belong to.</p>
       <div id="wvqBox" class="qrbox"><div id="wvqCap" class="hint"></div><div id="wvqImg" class="qr-img"></div><details class="bip21" id="wvqReq"><summary>Payment request (BIP21)<small>Add an amount, label or message; the QR becomes a bitcoin: link.</small></summary><div class="b21-row"><input type="text" id="wvqAmt" inputmode="decimal" placeholder="Amount in BTC (optional)" aria-label="Amount in BTC" autocomplete="off" spellcheck="false"><input type="text" id="wvqLbl" placeholder="Label (optional)" aria-label="Label" autocomplete="off" spellcheck="false"><input type="text" id="wvqMsg" placeholder="Message (optional)" aria-label="Message" autocomplete="off" spellcheck="false"></div><div class="hint" id="wvqUri" style="word-break:break-all;"></div><button type="button" class="secondary small" onclick="copyReq(this,'wvq')">COPY LINK</button></details><button type="button" class="secondary small" onclick="printAddrQr('wvq')">PRINT THIS QR</button><button type="button" class="secondary small" onclick="hideAddrQr('wvq')">HIDE QR</button></div>
@@ -1970,6 +1977,20 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div class="btn-row" id="dbSecretRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" id="dbShowBtn" onclick="dbReveal()">SHOW THE SECRET</button><button type="button" class="secondary small" id="dbUseBtn" onclick="dbUseWords()">PUT THE WORDS IN THE BOX ABOVE</button></div>
       <pre id="dbSecret" style="-webkit-user-select:none; user-select:none; display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:15px; margin:8px 0 0;"></pre>
     </div>
+    <!-- v2.16.0 part A: Open an Electrum wallet file (the code is in the part A block of the script) -->
+    <details id="ewBox">
+      <summary>Open an Electrum wallet file<span class="tag tag-secret">SECRET</span><small>Read an Electrum wallet file offline: what kind of wallet it is, its keys and first addresses, and its seed with the password.</small></summary>
+      <p class="hint" style="margin:8px 0 6px;">Electrum keeps each wallet in one file, in the <code>wallets</code> folder of its data folder: <code>~/.electrum</code> on Linux and macOS, <code>%APPDATA%\Electrum</code> on Windows (the file is <code>default_wallet</code> unless you named it; testnet wallets are under <code>testnet</code>). Choose the file, drop it on this box or paste its text, and type the wallet password if it has one. VOIDFORGE only reads it: the file is never changed and nothing leaves the page. It reads files from Electrum 1.x to 4.8: wallets from an Electrum seed, a BIP39 seed or a master key, old seeds from before Electrum 2.0, imported addresses and private keys, hardware wallet and watch-only files, multisig and two-factor (2FA) wallets, with the keys encrypted with the password or the whole file encrypted. It cannot open a file encrypted with a hardware wallet, and it does not show Lightning channels.</p>
+      <input type="file" id="ewFile" aria-label="Choose the Electrum wallet file" style="width:100%;">
+      <div class="hint" id="ewDrop" aria-live="polite"></div>
+      <textarea id="ewIn" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Or the wallet file as text" placeholder="Or paste the file&rsquo;s text: it starts with { (or with QklFMQ when the whole file is encrypted)" style="margin-top:6px;"></textarea>
+      <div style="display:flex; gap:6px; margin-top:6px; align-items:center;"><input type="password" id="ewPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="Wallet password" placeholder="Wallet password (if it has one)" style="flex:1; min-width:0;"><button type="button" class="secondary small" id="ewPassBtn" onclick="ewTogglePass(this)">SHOW</button></div>
+      <div class="btn-row top"><button type="button" id="ewBtn" onclick="ewOpenUi()" disabled>OPEN WALLET FILE</button><button type="button" class="secondary small" id="ewPrintBtn" onclick="ewPrint()" disabled>PRINT SUMMARY</button><button type="button" class="secondary small" onclick="ewClear()">CLEAR</button></div>
+      <div class="status" id="ewStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+      <pre id="ewOut" style="display:none; white-space:pre-wrap; overflow-wrap:anywhere; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
+      <div class="btn-row top" id="ewSecretRow" style="display:none;"><button type="button" class="secondary small" id="ewShowBtn" onclick="ewReveal()">SHOW THE SECRET</button><button type="button" class="secondary small" id="ewUseBtn" onclick="ewUseWords()">PUT THE WORDS IN THE BOX ABOVE</button></div>
+      <pre id="ewSecret" style="-webkit-user-select:none; user-select:none; display:none; white-space:pre-wrap; overflow-wrap:anywhere; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+    </details>
     <div class="sec-block" id="lbBlock">
       <h3 class="sec">Read a label file (BIP329)<span class="tag tag-private">PRIVATE</span></h3>
       <p class="hint" style="margin:0 0 6px;">Wallet apps such as Sparrow, Bitcoin Core and Nunchuk can export their labels (&ldquo;Rent, March&rdquo;, &ldquo;Savings&rdquo;) as a BIP329 file. Paste it or choose it: VOIDFORGE lists every label and, with the seed words typed above, says which labeled addresses are this seed&rsquo;s (the first 100 receive and change addresses of each address type, account 0). Labels are private: they link coins to you. The file is only read here, never stored or sent.</p>
@@ -4802,7 +4823,12 @@ const DICT = [
   ["BIP350", "The standard that defines bech32m, used by Taproot (bc1p) addresses.", "", "Standards (BIPs)"],
   ["BIP38", "A standard for locking one private key with a password. The locked key starts with 6P; anyone who has it and the password can spend.", "Explain an address calls one out.", "Standards (BIPs)"],
   ["Address poisoning", "A scam: someone sends you a tiny payment from an address that starts and ends like one you use, hoping you copy it from your history later and pay them by mistake.", "Check an address before you pay, in CHECK A BACKUP.", "Addresses & scripts"],
-  ["Custom derivation path", "An account path that is not the standard one for the address type, such as m/0' used by some older apps. The same words then make different addresses.", "Open this wallet: the custom account path box.", "Keys & seeds"],
+  ["Custom derivation path", "An account path that is not the standard one for the address type, such as m/0' used by some older apps, or any path ending in /* for the addresses right under it, such as m/0/*. The same words then make different addresses.", "Open this wallet: the custom path box, receive and change together (Both), the start box and SHOW 20 MORE.", "Keys & seeds"],
+  ["Electrum wallet file", "The file Electrum keeps for each wallet (default_wallet unless it was named), as JSON text: its keys or public keys, addresses, labels and settings. With a password, Electrum encrypts the seed and keys in it; today’s Electrum app also encrypts the whole file, older versions did not.", "CHECK A BACKUP: Open an Electrum wallet file reads it offline, without changing it.", "Wallets & backups"],
+  ["Seed extension (Electrum)", "Electrum’s name for a passphrase added to its seed words (Options, Extend this seed with custom words). Like a BIP39 passphrase it makes a different wallet. Electrum ignores capital letters and accents in it.", "Open an Electrum wallet file shows it with the seed.", "Keys & seeds"],
+  ["Two-factor wallet (Electrum 2FA)", "An Electrum wallet that is 2-of-3 multisig: two keys come from its 2FA seed words and the third is held by the TrustedCoin service, which signs after a one-time code. Restoring the 2FA seed in Electrum can turn two-factor off, so the coins can be spent without the service.", "Open an Electrum wallet file reads it.", "Wallets & backups"],
+  ["AES", "The Advanced Encryption Standard: the most used way to encrypt data with a secret key of 128 or 256 bits. Wallet files and device backups use it, with a key made from the password.", "Open an Electrum wallet file, Open a signing device’s backup.", "Privacy & security"],
+  ["ECIES", "Encryption to a public key: a new key pair is made for each message, its shared secret with the receiver’s key gives the encryption key and a check key, and only the receiver’s private key opens it. Electrum encrypts a whole wallet file this way, with a key pair made from the password.", "Open an Electrum wallet file.", "Privacy & security"],
   ["BIP389 (multipath descriptors)", "One descriptor for both receiving and change addresses: the step that is 0 or 1 is written as 0;1 between angle brackets. Sparrow and newer wallet apps read it.", "The watch-only file.", "Standards (BIPs)"],
   ["Hidden characters", "Spaces at either end, double spaces, tabs and invisible characters. In a passphrase they count like any letter, so one added by accident opens a different wallet.", "VOIDFORGE warns about them under each passphrase box.", "Keys & seeds"],
   ["Practice mode", "A switch that puts every address and key on the test network, with worthless test coins, so the whole job can be rehearsed without risk. The seed words themselves are the same on every network.", "Practice making a backup, in CHECK A BACKUP.", "VOIDFORGE"],
@@ -7018,6 +7044,7 @@ async function runSelfTests(auto){
   b138SelfTests(eq);   // v2.10.0: BIP138 encrypted descriptor backups (official vectors) and descriptor addresses (embit)
   c32SelfTests(eq);   // v2.11.0: codex32 (BIP93 test vectors, and strings made from fixed rolls)
   dbSelfTests(eq);   // v2.12.0: device backups (Krux and Coinkite test data)
+  ewSelfTests(eq);   // v2.16.0: Electrum wallet files (Electrum’s own code) and any path in Open this wallet
   mkSelfTests(eq);   // v2.15.0: the passphrase check, passphrase practice, Link as QR and re-hide
   // v2.14.0: the Damascus method, worked example 1 (public: digits of pi and a published shuffle); words and hallmarks from the method's reference code
   eq("Damascus method: worked example 1 gives its words and hallmarks (the method's reference code)", ()=>dmSelfTest(), DM_SELFTEST_WANT);
@@ -7572,7 +7599,7 @@ function addrMeta(list, b){
   const i = [...document.getElementById(list).children].indexOf(b.closest("li"));
   if(list !== "wvList"){ const t = document.getElementById("addrBox").dataset.net === "test", [pu, ch] = ADDR_LISTS[list]; return {path: "m/" + pu + "'/" + (t ? 1 : 0) + "'/0'/" + ch + "/" + i, change: ch === 1, test: t}; }
   const sh = wvCtx && wvCtx.shown, row = sh && sh.rows[i];
-  return row ? {path: row.path, change: sh.chain === 1, test: (wvCtx.kind === "pub" ? wvCtx.net : sh.net) === "test"} : {};
+  return row ? {path: row.path, change: row.chain === 1 || (row.chain === undefined && sh.chain === 1), test: (wvCtx.kind === "pub" ? wvCtx.net : sh.net) === "test"} : {};
 }
 function showAddrs(list, trList, net, chList, trChList){
   hideAddrQr("aq");
@@ -10706,6 +10733,7 @@ function wipeSeed(){
   dpClear(); dcClear();   // v2.7.0: the dice passphrase and the device dice check
   detClear();   // v2.8.0: the Wallet Detective
   kcClear();   // v2.9.0: the wallet file check
+  ewClear();   // v2.16.0: the Electrum wallet file (its file, text, password, result and secrets)
   b138ClearAll();   // v2.10.0: BIP138 backups (dice rolls, files, results)
   lbClear();   // v2.9.0: the label file (private)
   clearXor();   // v2.9.0: Seed XOR parts (secret)
@@ -10737,7 +10765,7 @@ let autoLast = Date.now(), autoTimer = null;
 function autoTouch(){ autoLast = Date.now(); }
 ["keydown", "pointerdown", "input", "touchstart", "wheel"].forEach(e => document.addEventListener(e, autoTouch, {capture: true, passive: true}));
 function autoMinutes(){ return parseInt(document.getElementById("autoIdle").value, 10) || 0; }
-function autoHasSecrets(){ return hasSeed() || !!dbGot || (typeof ssPageActive === "function" && ssPageActive()) || AUTO_FIELDS.some(id => { const e = document.getElementById(id); return !!(e && e.value); }); }
+function autoHasSecrets(){ return hasSeed() || !!dbGot || ewHolds() || (typeof ssPageActive === "function" && ssPageActive()) || AUTO_FIELDS.some(id => { const e = document.getElementById(id); return !!(e && e.value); }); }
 function autoWipe(why){
   if(!autoHasSecrets()) return false;
   reforgeStop(); msReset(); dbClear(); wipeSeed(); planClear(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
@@ -11769,13 +11797,13 @@ function wvAbbr(on){
 }
 function clearWalletView(){
   wvAbbr(false);
-  wvCtx = null; wvFrom = 0; wvSeq++; document.getElementById("wvBorn").value = "";
+  wvCtx = null; wvFrom = 0; wvSeq++; document.getElementById("wvBorn").value = ""; apReset();   // v2.16.0: START AT and SHOW 20 MORE
   document.getElementById("wvList").textContent = ""; document.getElementById("wvFp").textContent = ""; document.getElementById("wvIcon").textContent = "";
   knownShow("wvPub", "");   // v2.10.0
   document.getElementById("wvErr").textContent = ""; document.getElementById("wvPath").textContent = "";
   hideAddrQr("wvq"); wvSeedQrHide(); wvDecoyHide();
   pnShow(false);   // v2.10.0: the punch plate belongs to the words that were open
-  for(const id of ["wvType","wvNet","wvAcct"]) document.getElementById(id).disabled = false;
+  for(const id of ["wvType","wvNet","wvAcct","wvChain"]) document.getElementById(id).disabled = false;
   if(practiceOn){ document.getElementById("wvNet").value = "test"; document.getElementById("wvNet").disabled = true; }
   if(document.getElementById("wvAcct").value === "-") document.getElementById("wvAcct").value = "0";
   document.getElementById("wvBanner").textContent = "Imported: these words were typed or scanned here, not made by this page. The same words and passphrase give the same wallet in any app.";
@@ -11787,35 +11815,38 @@ async function wvRefresh(){
   if(!wvCtx) return;
   const mine = ++wvSeq, err = document.getElementById("wvErr"), raw = document.getElementById("wvAcct").value.trim();
   hideAddrQr("wvq");
-  const custom = wvCtx.kind === "pub" || wvCtx.kind === "single" ? null : document.getElementById("wvPathIn").value.trim(), steps = custom ? parsePath(custom) : null;
+  // v2.16.0: any path (apParse, in the part A block): an account path, a path ending in /*, or with a key open a path below it
+  const custom = wvCtx.kind === "single" ? "" : document.getElementById("wvPathIn").value.trim(), P = custom ? apParse(custom, wvCtx.kind === "pub") : null;
   document.getElementById("wvAcct").disabled = wvCtx.kind === "pub" || !!custom;
-  if(custom && !steps){ err.textContent = "The path must look like m/84'/0'/0': numbers, with ' (or h) after each hardened step, at most 10 steps."; document.getElementById("wvList").textContent = ""; document.getElementById("wvPath").textContent = ""; return; }
+  document.getElementById("wvChain").disabled = !!(P && P.star);
+  const why = custom ? apRefuse(P, wvCtx) : "";
+  if(why){ err.textContent = why; apListClear(); return; }
   if(wvCtx.kind === "single") return wvRefreshSingle(mine);
   const badAcct = wvCtx.kind !== "pub" && !custom && (!/^[0-9]{1,10}$/.test(raw) || parseInt(raw, 10) > 2147483647);
-  if(badAcct){ err.textContent = "The account must be a whole number from 0 to 2147483647."; document.getElementById("wvList").textContent = ""; document.getElementById("wvPath").textContent = ""; return; }
+  if(badAcct){ err.textContent = "The account must be a whole number from 0 to 2147483647."; apListClear(); return; }
+  if(apStartOf() === null){ err.textContent = "The start must be a whole number from 0 to 2147483647."; apListClear(); return; }
   err.textContent = "";
-  const type = document.getElementById("wvType").value, net = document.getElementById("wvNet").value, chain = parseInt(document.getElementById("wvChain").value, 10), acct = parseInt(raw, 10);
-  let rows, sheet = null;
+  const type = document.getElementById("wvType").value, net = document.getElementById("wvNet").value, chainSel = document.getElementById("wvChain").value, acct = parseInt(raw, 10);
+  let R, sheet = null;
   try {
-    if(wvCtx.kind === "pub") rows = await watchAddresses(wvCtx, type, chain, wvFrom, WV_PAGE);
-    else {
-      const root = wvCtx.kind === "root" ? wvCtx.root : await masterFromSeed(await mnemonicToSeed(wvCtx.mnemonic, wvCtx.pass)), path = steps || [[SCRIPT_TYPES[type].purpose, true], [NETS[net].coin, true], [acct, true]];
-      rows = await walletAddressesFrom(root, path, type, net, chain, wvFrom, WV_PAGE);
-      // v2.8.1: the recovery sheet lists the first 10 receive and the first 10 change addresses, whichever page is on screen
-      if(wvCtx.mnemonic) sheet = {recv: await walletAddressesFrom(root, path, type, net, 0, 0, ADDR_SHOWN), change: await walletAddressesFrom(root, path, type, net, 1, 0, ADDR_SHOWN)};
-    }
+    R = await apRows(wvCtx, P, chainSel, type, net, acct);
+    // v2.8.1: the recovery sheet lists the first 10 receive and the first 10 change addresses, whichever page is on screen
+    if(wvCtx.mnemonic && !(P && P.star)) sheet = {recv: await apAddrs(R.src, R.steps, 0, type, net, 0, ADDR_SHOWN, "m"), change: await apAddrs(R.src, R.steps, 1, type, net, 0, ADDR_SHOWN, "m")};
   }
   catch(e) { if(mine === wvSeq) err.textContent = "Addresses unavailable: " + e.message; return; }
   if(mine !== wvSeq || !wvCtx) return;
-  const ol = document.getElementById("wvList"); ol.textContent = "";
-  rows.forEach(r => ol.appendChild(addrLi(r.address, "address " + r.index)));
-  document.getElementById("wvPath").textContent = (net === "test" ? "TESTNET (practice coins only). " : "") + (chain ? "Change" : "Receive") + " addresses " + rows[0].index + " to " + rows[rows.length - 1].index + ", " + SCRIPT_TYPES[type].label + ": " + rows[0].path.replace(/\/[0-9]+$/, "/") + "index";
-  wvCtx.shown = {type, net, chain, acct, rows, sheet, custom: steps ? custom.replace(/[hH]/g, "'") : ""};
+  const rows = R.rows, both = R.chains.length === 2, star = R.chains[0] === null, each = rows.filter(r => r.chain === R.chains[0]);
+  apRender(rows, both);
+  const tail = (r) => r.path.replace(/\/[0-9]+$/, "/") + "index";
+  document.getElementById("wvPath").textContent = (net === "test" ? "TESTNET (practice coins only). " : "") + (star ? "Addresses" : both ? "Receive and change addresses" : R.chains[0] ? "Change addresses" : "Receive addresses") + " " + each[0].index + " to " + each[each.length - 1].index + ", " + SCRIPT_TYPES[type].label + ": " + tail(rows[0]) + (both ? " and " + tail(rows[each.length]) : "");
+  wvCtx.shown = {type, net, chain: both ? "both" : R.chains[0], acct, rows, sheet, custom: P ? custom.replace(/\s+/g, "").replace(/[hH]/g, "'") : "", star};
   document.getElementById("wvPrev").disabled = wvFrom === 0;
   document.getElementById("wvNext").disabled = wvFrom + WV_PAGE > 2147483647;
+  document.getElementById("wvMore").disabled = apCount >= AP_MAX;
 }
 function printRecoverySheet(){
   if(!wvCtx || !wvCtx.shown || !wvCtx.mnemonic) return alert("Check a seed phrase first, then open the wallet.");
+  if(wvCtx.shown.star) return alert("The recovery sheet lists an account’s first receive and change addresses. Type the account path instead of a path ending in /* (or leave the box empty), then print.");   // v2.16.0
   const sh = wvCtx.shown, n = wvCtx.mnemonic.split(" ").length, T = SCRIPT_TYPES[sh.type];
   if(hasSeed() && wvCtx.mnemonic === madeMnemonic && wvCtx.pass === document.getElementById("passphrase").value && !passMismatchQuiet()) bkTick("bk4");
   const po = document.getElementById("printOnly"); po.textContent = "";
@@ -11839,9 +11870,9 @@ function printRecoverySheet(){
 }
 function wvPage(d){
   if(!wvCtx) return;
-  wvFrom = Math.max(0, Math.min(2147483647 - WV_PAGE + 1, wvFrom + d * WV_PAGE)); wvRefresh();
+  wvFrom = Math.max(0, Math.min(2147483647 - WV_PAGE + 1, wvFrom + d * WV_PAGE)); apReset(); wvRefresh();
 }
-function wvReset(){ if(!wvCtx) return; wvFrom = 0; wvRefresh(); }
+function wvReset(){ if(!wvCtx) return; wvFrom = 0; apReset(); wvRefresh(); }
 // Watch-only input (v2.2.0): an account extended public key or a single-key descriptor wpkh / sh(wpkh) / pkh / tr, with an optional
 // [fingerprint/path] key origin, an optional /0/*, /1/* or /<0;1>/* ending and an optional #checksum. Private keys are refused.
 async function parseWatchInput(raw){
@@ -11946,7 +11977,7 @@ async function openPrivateKey(){
     document.getElementById("wvFp").textContent = "Master fingerprint: " + fp; showFpIcon("wvIcon", fp);
     st.className = "status ok"; st.textContent = "Opened read only: a master private key" + (p.net === "test" ? " (testnet)" : "") + ". It works like a seed: pick the address type and account, or type a custom path.";
   } else if(p.kind === "xprv"){
-    wvCtx = {kind: "pub", key: {pub: pubOfPriv(p.k, true), chain: p.chain, depth: p.depth, net: p.net}, net: p.net, origin: null, secret: true};
+    wvCtx = {kind: "pub", key: {pub: pubOfPriv(p.k, true), chain: p.chain, depth: p.depth, net: p.net}, net: p.net, origin: null, secret: true, xk: p.k};
     view.classList.add("wv-pub");
     if(p.type){ tSel.value = p.type; tSel.disabled = true; }
     aIn.value = "-"; aIn.disabled = true;
@@ -14069,6 +14100,637 @@ function dbUseWords(){
   const ph = document.getElementById("phrase"); ph.value = dbGot.words; dbPut = dbGot.words; ph.dispatchEvent(new Event("input", {bubbles: true}));
   reveal(ph);
 }
+// ===== v2.16.0 "Recover old wallets", part A: any path in Open this wallet, and Open an Electrum wallet file =====
+// ---- Any path, more addresses (Open this wallet, CHECK A BACKUP) ----
+// The custom path box takes any BIP32 path, with ' or h after a hardened step: an account path (its receive and change addresses
+// go under it, as before), or a path ending in /* for the addresses right under it (m/44'/0'/0'/0/*, or m/0/* for some old apps).
+// With a public key open (or a private key below the master), the path is the one below that key: 0/*, 2/0/* or 5 (receive and
+// change under it); a hardened step needs the private key. Receive and change shows both lists, START AT picks the first address
+// number and SHOW 20 MORE adds 20 to each list shown (up to AP_MAX). Nothing here is new math: BIP32 steps (ckdPriv, ckdPub) and
+// the page's own address code.
+const AP_MORE = 20, AP_MAX = 200;
+let apCount = WV_PAGE;
+// "m/44'/0'/0'/0/*" -> {steps: [[44, true], [0, true], [0, true], [0, false]], star: true}. rel: a path below an open key (no m).
+// Null when it is not such a path; {m: true} when a path below a key starts with m.
+function apParse(t, rel){
+  const s = String(t || "").replace(/\s+/g, "").replace(/[hH]/g, "'"), parts = s.split("/");
+  if(rel && parts[0] === "m") return {m: true};
+  if(!rel && parts.shift() !== "m") return null;
+  const star = parts.length > 0 && parts[parts.length - 1] === "*";
+  if(star) parts.pop();
+  if(parts.length > 10 || (rel && !parts.length && !star) || !parts.every(x => /^[0-9]{1,10}'?$/.test(x))) return null;
+  const steps = parts.map(x => [parseInt(x, 10), x.endsWith("'")]);
+  return steps.every(([i]) => i <= 2147483647) ? {steps, star} : null;
+}
+function apPathText(steps, base){ return (base === undefined ? "m" : base) + steps.map(([i, h]) => "/" + i + (h ? "'" : "")).join(""); }
+// Why a typed path cannot be used for what is open ("" when it can).
+function apRefuse(P, ctx){
+  const rel = ctx.kind === "pub";
+  if(P && P.m) return "With a key open, type the path below the key, without m: such as 0/* or 2/0/*. This key is not the master key, so m does not fit.";
+  if(!P) return rel ? "The path below the key must look like 0/* or 2/0/* (the addresses right under it) or 5 (receive and change under it): numbers, with ' (or h) after a hardened step, at most 10 steps."
+    : "The path must look like m/84'/0'/0' (an account: its receive and change addresses go under it) or m/44'/0'/0'/0/* (the addresses right under it): numbers, with ' (or h) after each hardened step, at most 10 steps.";
+  if(rel && !ctx.xk && P.steps.some(([, h]) => h)) return "A public key cannot make a hardened step (a number with ' or h). Open the private key (xprv) instead, or leave out the ' marks.";
+  return "";
+}
+// The addresses along a path, from a private key ({k, chain}: a seed’s master key, a master xprv or an xprv below it) or a public
+// one ({pub, chain}). steps: the path below it; chain: 0 or 1 (receive or change) after the steps, or null for a path that ends
+// in /* (the addresses right under it). base: how the path is written before the steps ("m", or the key’s origin). The public key
+// of the last step is worked out once and given to every child, as walletAddressesFrom does it one at a time.
+async function apAddrs(src, steps, chain, type, net, from, n, base){
+  const all = chain === null ? steps : steps.concat([[chain, false]]);
+  let k = src.k === undefined ? null : src.k, c = src.chain, pub = src.pub;
+  for(const [i, h] of all){
+    if(k !== null) [k, c] = await ckdPriv(k, c, i, h);
+    else { if(h) throw new Error("a public key cannot make a hardened step"); [pub, c] = await ckdPub(pub, c, i); }
+  }
+  const head = apPathText(all, base) + "/", par = k !== null ? pubkeyBytes(k) : pub, out = [];
+  for(let i = from; i < from + n && i <= 2147483647; i++){
+    let a;
+    if(k !== null){ const [ck] = await ckdPriv(k, c, i, false, par); a = await addressFromKey(type, ck, net); }
+    else { const [pk] = await ckdPub(par, c, i); a = await addressFromPub(type, pk, net); }
+    out.push({index: i, chain, path: head + i, address: a});
+  }
+  return out;
+}
+// What is open in the wallet view, as a key to start from: {src, base} (the root of a seed or master xprv, or an open key).
+async function apSource(ctx){
+  if(ctx.kind === "pub") return {src: ctx.xk ? {k: ctx.xk, chain: ctx.key.chain} : {pub: ctx.key.pub, chain: ctx.key.chain}, base: ctx.origin ? "[" + ctx.origin.fp + ctx.origin.path.slice(1) + "]" : "key"};
+  const [k, c] = ctx.kind === "root" ? ctx.root : await masterFromSeed(await mnemonicToSeed(ctx.mnemonic, ctx.pass));
+  return {src: {k, chain: c}, base: "m"};
+}
+// The start box: a whole number from 0 to 2147483647, or null.
+function apStartOf(){ const v = document.getElementById("wvStart").value.trim(); return /^[0-9]{1,10}$/.test(v) && parseInt(v, 10) <= 2147483647 ? parseInt(v, 10) : null; }
+function apReset(){ apCount = WV_PAGE; document.getElementById("wvStart").value = String(wvFrom); }
+function apRender(rows, both){
+  const ol = document.getElementById("wvList"); ol.textContent = "";
+  let firstChange = true;
+  for(const r of rows){
+    const li = addrLi(r.address, (both ? (r.chain ? "change " : "receive ") : "") + "address " + r.index);
+    li.setAttribute("data-n", (r.chain === null ? "" : r.chain + "/") + r.index);
+    if(both && r.chain === 1 && firstChange){ li.className = "ap-gap"; firstChange = false; }
+    ol.appendChild(li);
+  }
+  const cp = document.getElementById("wvCopy"); if(cp) cp.textContent = "COPY THESE " + rows.length;
+}
+function apListClear(){ document.getElementById("wvList").textContent = ""; document.getElementById("wvPath").textContent = ""; }
+// The list for the wallet view: every chain asked for, from the start box, apCount addresses each.
+async function apRows(ctx, P, chainSel, type, net, acct){
+  const {src, base} = await apSource(ctx), steps = P ? P.steps : ctx.kind === "pub" ? [] : [[SCRIPT_TYPES[type].purpose, true], [NETS[net].coin, true], [acct, true]];
+  const chains = P && P.star ? [null] : chainSel === "both" ? [0, 1] : [parseInt(chainSel, 10)], rows = [];
+  for(const c of chains) rows.push(...await apAddrs(src, steps, c, type, net, wvFrom, apCount, base));
+  return {rows, steps, chains, base, src};
+}
+function apMore(){
+  if(!wvCtx || apCount >= AP_MAX) return;
+  apCount = Math.min(AP_MAX, apCount + AP_MORE); wvRefresh();
+}
+function apStartInput(){
+  if(!wvCtx) return;
+  const v = apStartOf();
+  if(v === null){ wvSeq++; document.getElementById("wvErr").textContent = "The start must be a whole number from 0 to 2147483647."; apListClear(); return; }
+  wvFrom = v; apCount = WV_PAGE; wvRefresh();
+}
+document.getElementById("wvStart").addEventListener("input", apStartInput);
+
+// ---- Open an Electrum wallet file (read only), CHECK A BACKUP ----
+// Read exactly as Electrum reads it. Sources: spesmilo/electrum at commit b991f249ded484541240ddedb9be904a4cfc7bac (Electrum
+// 4.8.4), and the tags 1.9.8 and 2.0 for the older files.
+// - storage.py WalletStorage: the file is UTF-8 text. When it is Base64 whose first 4 bytes are BIE1, the whole file is encrypted
+//   with the password: get_eckey_from_password is PBKDF2-HMAC-SHA512 of the password (UTF-8), with an empty salt and 1024 rounds,
+//   64 bytes taken as a number mod n (electrum_ecc ECPrivkey.from_arbitrary_size_secret); decrypt is zlib.decompress of
+//   ecies_decrypt_message(key, text, magic BIE1). BIE2 is the same with a key from a hardware wallet (XPUB_PASSWORD), which this
+//   page cannot make.
+// - crypto.py ecies_decrypt_message: Base64 of magic (4 bytes), an ephemeral public key (33), the ciphertext and an HMAC-SHA256
+//   (32). The shared point (ephemeral key times our key, compressed) is hashed with SHA-512: bytes 0-16 are the IV, 16-32 the
+//   AES-128 key, 32-64 the MAC key. The MAC covers everything before it; a wrong password fails there. AES-128-CBC, PKCS7.
+// - json_db.py JsonDB.load_data: a JSON object, maybe followed by JSON patches (",\n" and one patch each, from partial writes),
+//   read as "[" + text + "]" and applied in order (add, replace, remove: RFC 6902); a file cut off inside a patch keeps its
+//   complete part (maybe_load_incomplete_data); a file that is not JSON is a Python literal (maybe_load_ast_data), as Electrum
+//   1.x wrote it (1.9.8 lib/wallet.py: repr(self.data), read with ast.literal_eval).
+// - crypto.py pw_decode, used by keystore.py for the seed, the seed extension, the xprv and imported keys when use_encryption is
+//   on: Base64 of a 16-byte IV and AES-256-CBC (PKCS7) with the key SHA-256(SHA-256(password as UTF-8)), pw_hash_version 1
+//   (Electrum itself refuses version 2). 1.9.8 and 2.0 do the same (Hash = sha256d; the IV in front). The variant with a version
+//   byte and a MAC (pw_decode_with_version_and_mac) is only used for Lightning channel backups (lnutil.py), not in wallet files.
+// - wallet_db.py: seed_version (when missing: 4 if master_public_key has 128 hex digits, else 11); _convert_wallet_type and
+//   _convert_imported for files from before Electrum 2.7 (no "keystore"); the keystores "keystore", "x1" to "x15" (older "x1/").
+//   keystore.py: BIP32_KeyStore (xpub, xprv, seed, passphrase, derivation, root_fingerprint; check_password compares the xprv’s
+//   chain code with the xpub’s), Old_KeyStore (hex seed, mpk; the fingerprint is HASH160 of the compressed mpk), Imported_KeyStore
+//   (public key -> WIF whose first byte also holds the script type: bitcoin.py serialize_privkey internal_use, WIF_SCRIPT_TYPES)
+//   and Hardware_KeyStore. wallet.py: Standard_Wallet uses xpub/0/i and xpub/1/i; Multisig_Wallet sorts the public keys
+//   (pubkeys_to_scriptcode) and is p2sh, p2wsh-p2sh or p2wsh by the xpub type (constants.py XPUB_HEADERS); Wallet_2fa is 2 of 3.
+// tests/fixtures/electrum/ holds wallet files made by Electrum 4.8.4 itself (make.py) and what Electrum says about each.
+const EW_MAX = 64 * 1048576;
+const EW_XTYPE = {other: "standard", "sh-wpkh": "p2wpkh-p2sh", wpkh: "p2wpkh", "ms-sh-wsh": "p2wsh-p2sh", "ms-wsh": "p2wsh"};
+const EW_SINGLE = {standard: "pkh", "p2wpkh-p2sh": "sh-wpkh", p2wpkh: "wpkh"};
+const EW_MULTI = {standard: "p2sh", "p2wsh-p2sh": "p2wsh-p2sh", p2wsh: "p2wsh"};
+const EW_TYPE_NAME = {pkh: "legacy (1...)", "sh-wpkh": "nested SegWit (3...)", wpkh: "native SegWit (bc1q...)", p2sh: "legacy multisig (3...)", "p2wsh-p2sh": "nested SegWit multisig (3...)", p2wsh: "native SegWit multisig (bc1q...)", old: "legacy (1...), uncompressed keys"};
+const EW_WIF_TYPES = {0: "p2pkh", 1: "p2wpkh", 2: "p2wpkh-p2sh", 5: "p2sh", 6: "p2wsh", 7: "p2wsh-p2sh"};
+const EW_IMP_TYPE = {p2pkh: "pkh", p2wpkh: "wpkh", "p2wpkh-p2sh": "sh-wpkh"};
+const ewOwn = (o, k) => o !== null && typeof o === "object" && Object.prototype.hasOwnProperty.call(o, k);
+const ewSet = (o, k, v) => Object.defineProperty(o, k, {value: v, writable: true, enumerable: true, configurable: true});   // never the prototype, even for a key named __proto__
+const ewObj = (o) => o !== null && typeof o === "object" && !Array.isArray(o);
+// A Python literal, as ast.literal_eval reads it: dicts, lists, tuples, strings (u, b and r prefixes, the usual escapes), numbers
+// (Python 2 longs end in L), True, False and None. Dict keys become text, as Electrum’s JSON round trip makes them.
+function ewPyLiteral(s){
+  let i = 0;
+  const n = s.length, fail = (w) => { throw new Error("not a Python literal (" + w + " at character " + i + ")"); };
+  const ws = () => { while(i < n && " \t\r\n\f\v".includes(s[i])) i++; };
+  const ESC = {"\\": "\\", "'": "'", "\"": "\"", n: "\n", r: "\r", t: "\t", a: "\x07", b: "\b", f: "\f", v: "\v", "\n": ""};
+  function str(){
+    let pre = ""; while(/[uUbBrR]/.test(s[i] || "") && pre.length < 2) pre += s[i++].toLowerCase();
+    const q = s[i]; if(q !== "'" && q !== "\"") fail("a string was expected");
+    if(s.startsWith(q + q + q, i)) fail("a triple-quoted string");
+    i++; let out = "";
+    for(;;){
+      if(i >= n) fail("a string does not end");
+      const c = s[i++];
+      if(c === q) return out;
+      if(c === "\n") fail("a line break inside a string");
+      if(c !== "\\" || pre.includes("r")){ if(c === "\\" && i < n) out += c + s[i++]; else out += c; continue; }
+      const e = s[i++];
+      if(ewOwn(ESC, e)) out += ESC[e];
+      else if(e === "x" && /^[0-9a-fA-F]{2}$/.test(s.slice(i, i + 2))){ out += String.fromCharCode(parseInt(s.slice(i, i + 2), 16)); i += 2; }
+      else if(e === "u" && !pre.includes("b") && /^[0-9a-fA-F]{4}$/.test(s.slice(i, i + 4))){ out += String.fromCharCode(parseInt(s.slice(i, i + 4), 16)); i += 4; }
+      else if(e === "U" && !pre.includes("b") && /^[0-9a-fA-F]{8}$/.test(s.slice(i, i + 8))){ out += String.fromCodePoint(parseInt(s.slice(i, i + 8), 16)); i += 8; }
+      else if(/[0-7]/.test(e)){ let o = e; while(o.length < 3 && /[0-7]/.test(s[i] || "")) o += s[i++]; out += String.fromCharCode(parseInt(o, 8) & 255); }
+      else out += "\\" + e;
+    }
+  }
+  function val(){
+    ws(); const c = s[i];
+    if(c === "{"){
+      i++; const o = {}; ws(); if(s[i] === "}"){ i++; return o; }
+      for(;;){ const k = val(); ws(); if(s[i] !== ":") fail("a colon was expected"); i++; ewSet(o, Array.isArray(k) ? k.join(",") : String(k), val()); ws();
+        if(s[i] === ","){ i++; ws(); if(s[i] === "}"){ i++; return o; } continue; } if(s[i] === "}"){ i++; return o; } fail("a comma or } was expected"); }
+    }
+    if(c === "[" || c === "("){
+      const end = c === "[" ? "]" : ")"; i++; const a = []; ws(); if(s[i] === end){ i++; return a; }
+      for(;;){ a.push(val()); ws(); if(s[i] === ","){ i++; ws(); if(s[i] === end){ i++; return a; } continue; } if(s[i] === end){ i++; return a; } fail("a comma or " + end + " was expected"); }
+    }
+    if(/[uUbBrR'"]/.test(c || "") && /^[uUbBrR]{0,2}['"]/.test(s.slice(i, i + 3))) return str();
+    const m = /^-?(?:[0-9]+\.?[0-9]*(?:[eE][-+]?[0-9]+)?)[lL]?/.exec(s.slice(i, i + 400));
+    if(m && m[0] !== "-"){ i += m[0].length; return Number(m[0].replace(/[lL]$/, "")); }
+    for(const [w, v] of [["True", true], ["False", false], ["None", null]]) if(s.startsWith(w, i) && !/[A-Za-z0-9_]/.test(s[i + w.length] || "")){ i += w.length; return v; }
+    fail("unexpected text");
+  }
+  const v = val(); ws(); if(i !== n) fail("more text after the end");
+  return v;
+}
+// One JSON patch (RFC 6902) as jsonpatch applies it: add, replace or remove at a JSON pointer.
+function ewPatch(doc, p){
+  const bad = (w) => { throw new Error("a change saved at the end of the file " + w + " (the file may be damaged)"); };
+  if(!ewObj(p) || typeof p.path !== "string" || !["add", "replace", "remove"].includes(p.op)) bad("is not one Electrum writes");
+  if(p.path === "") return p.op === "remove" ? bad("removes everything") : p.value;
+  if(p.path[0] !== "/") bad("has a bad path");
+  const parts = p.path.slice(1).split("/").map(x => x.replace(/~1/g, "/").replace(/~0/g, "~")), k = parts.pop();
+  let o = doc;
+  for(const x of parts){ if(Array.isArray(o) ? !/^[0-9]+$/.test(x) || +x >= o.length : !ewOwn(o, x)) bad("points to a place that is not there"); o = o[Array.isArray(o) ? +x : x]; if(o === null || typeof o !== "object") bad("points into a value"); }
+  if(Array.isArray(o)){
+    const ix = k === "-" && p.op === "add" ? o.length : /^[0-9]+$/.test(k) ? +k : -1;
+    if(ix < 0 || ix > o.length || (p.op !== "add" && ix >= o.length)) bad("points past the end of a list");
+    if(p.op === "add") o.splice(ix, 0, p.value); else if(p.op === "replace") o[ix] = p.value; else o.splice(ix, 1);
+  } else {
+    if(p.op !== "add" && !ewOwn(o, k)) bad("changes a value that is not there");
+    if(p.op === "remove") delete o[k]; else ewSet(o, k, p.value);
+  }
+  return doc;
+}
+// The text of a wallet file -> {data, patches, dropped, python}. Electrum’s order: JSON (with patches), then a Python literal, then
+// a file cut off during a partial write (the complete part is kept).
+function ewLoadText(s){
+  const done = (arr, extra) => { let d = arr[0]; for(const p of arr.slice(1)) d = ewPatch(d, p); if(!ewObj(d)) throw new Error("This file holds JSON, but not a wallet (Electrum: Malformed wallet file, not dict)."); return Object.assign({data: d, patches: arr.length - 1, dropped: 0, python: false}, extra || {}); };
+  let arr = null; try { arr = JSON.parse("[" + s + "]"); } catch(e) { arr = null; }
+  if(arr) return done(arr);
+  try { const d = ewPyLiteral(s); if(ewObj(d)) return {data: JSON.parse(JSON.stringify(d)), patches: 0, dropped: 0, python: true}; } catch(e) { /* not a Python literal either */ }
+  const t = s.replace(/,\s*$/, "");
+  let tries = 0;
+  for(let at = t.length; at > 0 && tries < 4000; at = t.lastIndexOf(",\n", at - 1), tries++){
+    if(at < 2) break;
+    try { arr = JSON.parse("[" + t.slice(0, at) + "]"); } catch(e) { arr = null; }
+    if(arr && at < s.length) return done(arr, {dropped: s.length - at});
+  }
+  throw new Error("This is not an Electrum wallet file: it is not JSON, not an Electrum 1.x file and not a file Electrum encrypted.");
+}
+// AES-CBC with PKCS7 padding (WebCrypto): a wrong key almost always fails the padding.
+async function ewAesCbc(key, iv, ct){
+  const k = await crypto.subtle.importKey("raw", key, {name: "AES-CBC"}, false, ["decrypt"]);
+  return new Uint8Array(await crypto.subtle.decrypt({name: "AES-CBC", iv}, k, ct));
+}
+async function ewHmac256(key, data){
+  const k = await crypto.subtle.importKey("raw", key, {name: "HMAC", hash: "SHA-256"}, false, ["sign"]);
+  return new Uint8Array(await crypto.subtle.sign("HMAC", k, data));
+}
+// storage.py get_eckey_from_password: PBKDF2-HMAC-SHA512, empty salt, 1024 rounds, 64 bytes, mod n.
+async function ewStorageKey(password){
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const s = new Uint8Array(await crypto.subtle.deriveBits({name: "PBKDF2", hash: "SHA-512", iterations: 1024, salt: new Uint8Array(0)}, key, 512));
+  const k = BigInt("0x" + hex(s)) % SN;
+  if(k === 0n) throw new Error("this password gives no key");
+  return k;
+}
+// crypto.py ecies_decrypt_message, then zlib.decompress (a zlib stream: 2 header bytes, raw DEFLATE, Adler-32 of the result).
+async function ewOpenStorage(b, password){
+  if(b.length < 85) throw new Error("This encrypted wallet file is too short: it is damaged or cut off.");
+  const k = await ewStorageKey(password);
+  let P; try { P = pointFromPub(b.slice(4, 37)); } catch(e) { throw new Error("This encrypted wallet file is damaged (its key part is not a valid point)."); }
+  const kk = new Uint8Array(await crypto.subtle.digest("SHA-512", pubFromPoint(emul(k, P))));
+  const mac = await ewHmac256(kk.slice(32, 64), b.slice(0, b.length - 32));
+  if(!dbEq(mac, b.slice(b.length - 32))) throw new Error("WRONG PASSWORD: this password does not open the file (or the file is damaged). Electrum asks for the same password; check capital letters, spaces and the keyboard layout.");
+  let z; try { z = await ewAesCbc(kk.slice(16, 32), kk.slice(0, 16), b.slice(37, b.length - 32)); } catch(e) { throw new Error("The password is right, but the file is damaged (its encrypted part does not decrypt)."); }
+  return ewInflateZlib(z);
+}
+function ewAdler32(b){ let a = 1, c = 0; for(let i = 0; i < b.length; i++){ a = (a + b[i]) % 65521; c = (c + a) % 65521; } return ((c << 16) | a) >>> 0; }
+function ewInflateZlib(z){
+  if(z.length < 6 || (z[0] & 15) !== 8 || (z[0] >> 4) > 7 || ((z[0] << 8) | z[1]) % 31 || (z[1] & 32)) throw new Error("The file opened, but its contents are not compressed as Electrum compresses them (zlib).");
+  const out = inflateRaw(z.slice(2)), t = z.length - 4, want = ((z[t] << 24) | (z[t + 1] << 16) | (z[t + 2] << 8) | z[t + 3]) >>> 0;
+  if(ewAdler32(out) !== want) throw new Error("The file opened, but its compressed contents are damaged (the Adler-32 check fails).");
+  return out;
+}
+// crypto.py pw_decode (pw_hash_version 1): IV (16 bytes) and AES-256-CBC with SHA-256(SHA-256(password)). Text out (UTF-8).
+async function ewPwDecode(b64, password){
+  const b = b64bytes(String(b64 || ""));
+  if(!b || b.length < 32 || b.length % 16) throw new Error("bad");
+  const key = await sha256bytes(await sha256bytes(new TextEncoder().encode(password)));
+  return new TextDecoder("utf-8", {fatal: true}).decode(await ewAesCbc(key, b.slice(0, 16), b.slice(16)));
+}
+// The wallet’s storage version, as WalletDB.get_seed_version sees it, with Electrum’s own reasons for the versions it refuses.
+function ewSeedVersion(d){
+  let v = d.seed_version;
+  if(!v) v = typeof d.master_public_key === "string" && d.master_public_key.length === 128 ? 4 : 11;
+  if(typeof v !== "number" || !Number.isInteger(v) || v < 1) throw new Error("This file has no valid storage version (seed_version), so it is not an Electrum wallet file Electrum could open.");
+  if(v === 14 && d.seed_type === "segwit") throw new Error("This is an Electrum wallet from a development version of SegWit seeds (storage version 14). Electrum itself cannot open it; its seed words can still be restored in Electrum.");
+  if(v < 12 && v !== 4 && v !== 11) throw new Error("This wallet file has storage version " + v + ", which Electrum itself does not open" + (v === 6 ? " (Electrum 1.9.8 made such files when a wrong seed was typed while restoring; open it with Electrum 1.9.8 and move the coins)." : "."));
+  return v;
+}
+const EW_HW = ["trezor", "keepkey", "ledger", "btchip"];
+// Files from before Electrum 2.7 (no keystore): turned into today’s layout as wallet_db.py does (_convert_imported, then
+// _convert_wallet_type). The keys keep their encryption.
+function ewLegacy(d){
+  const o = JSON.parse(JSON.stringify(d)), imp = ewObj(o.accounts) && ewObj(o.accounts["/x"]) && ewObj(o.accounts["/x"].imported) ? o.accounts["/x"].imported : null;
+  if(imp && Object.keys(imp).length){
+    const addrs = [], pairs = {};
+    for(const [a, v] of Object.entries(imp)){ if(!Array.isArray(v)) continue; if(v[1]) ewSet(pairs, String(v[0]), v[1]); else addrs.push(a); }
+    if(addrs.length && Object.keys(pairs).length) throw new Error("This old file mixes imported addresses and imported keys, which Electrum itself refuses (mixed addresses and privkeys).");
+    if(addrs.length) return {wallet_type: "imported", addresses: Object.fromEntries(addrs.map(a => [a, {}])), _legacy: true};
+    o.wallet_type = "standard"; o.key_type = "imported"; o.keypairs = pairs;
+  }
+  const wt = o.wallet_type === "btchip" ? "ledger" : o.wallet_type, sv = ewSeedVersion(o), xp = ewObj(o.master_public_keys) ? o.master_public_keys : {}, xv = ewObj(o.master_private_keys) ? o.master_private_keys : {};
+  const out = {wallet_type: "standard", use_encryption: o.use_encryption, labels: o.labels, seed_version: sv, _legacy: true};
+  if(ewObj(o.accounts) && Object.keys(o.accounts).length > 1 && ["bip44", "trezor", "keepkey", "ledger"].includes(wt)) out._accounts = Object.keys(o.accounts).length;
+  if(sv === 4 || wt === "old") out.keystore = {type: "old", seed: o.seed, mpk: o.master_public_key};
+  else if(o.key_type === "imported") out.keystore = {type: "imported", keypairs: o.keypairs};
+  else if(wt === "xpub" || wt === "standard"){ if(!xp["x/"]) throw new Error("This old standard wallet file has no master public key (x/)."); out.keystore = {type: "bip32", xpub: xp["x/"], xprv: xv["x/"] || null, seed: o.seed || ""}; }
+  else if(wt === "bip44"){ out.keystore = {type: "bip32", xpub: xp["x/0'"], xprv: xv["x/0'"] || null}; }
+  else if(EW_HW.includes(wt)) out.keystore = {type: "hardware", hw_type: wt, xpub: xp["x/0'"], derivation: o.derivation || "m/44'/0'/0'"};
+  else if(wt === "2fa" || /^[0-9]+of[0-9]+$/.test(String(wt))){
+    out.wallet_type = wt;
+    for(const key of Object.keys(xp)){ const ks = {type: "bip32", xpub: xp[key], xprv: xv[key] || null}; if(key === "x1/" && o.seed) ks.seed = o.seed; out[key] = ks; }
+  } else throw new Error("Electrum cannot tell what kind of wallet this old file is (wallet type " + String(wt) + ").");
+  if(sv === 4 && ewObj(o.imported_keys) && Object.keys(o.imported_keys).length) out._importedKeys = o.imported_keys;   // Electrum 1.x imported keys (see ewRead)
+  return out;
+}
+// One keystore -> what this page needs. Throws with a plain reason when Electrum itself would not read it.
+async function ewKeystore(d, name){
+  if(!ewObj(d) || !d.type) throw new Error("The wallet file has no keystore " + name + " (Electrum: Wallet format requires update).");
+  if(d.pw_hash_version !== undefined && d.pw_hash_version !== 1) throw new Error("The keys of this wallet are encrypted with password version " + d.pw_hash_version + ", which Electrum itself does not support (it says: Unsupported password hash version). Restore from the seed words instead.");
+  const ks = {name, type: d.type, seed: d.seed || "", passphrase: d.passphrase || "", xprv: d.xprv || null, derivation: d.derivation || null, fp: /^[0-9a-f]{8}$/i.test(d.root_fingerprint || "") ? d.root_fingerprint.toLowerCase() : null, hwType: d.hw_type || "", label: d.label || "", seedType: d.seed_type || ""};
+  if(d.type === "bip32" || d.type === "hardware"){
+    if(typeof d.xpub !== "string") throw new Error("Keystore " + name + " has no xpub.");
+    try { ks.key = await parseExtendedKey(d.xpub); } catch(e) { throw new Error("Keystore " + name + " has an xpub this page cannot read: " + e.message + "."); }
+    ks.xpub = d.xpub; ks.xtype = EW_XTYPE[ks.key.type]; ks.net = ks.key.net;
+    if(!ks.xtype) throw new Error("Keystore " + name + " has a key type Electrum does not use.");
+    // wallet_db.py _convert_version_20: an old file without them gets m (depth 0) or the one step (depth 1), and that fingerprint
+    if(!ks.derivation && ks.key.depth === 0) ks.derivation = "m";
+    if(!ks.derivation && ks.key.depth === 1) ks.derivation = "m/" + (ks.key.childNum & 0x7fffffff) + (ks.key.childNum >= 0x80000000 ? "h" : "");
+    if(!ks.fp && ks.key.depth === 0) ks.fp = hex((await hash160(ks.key.pub)).slice(0, 4));
+    if(!ks.fp && ks.key.depth === 1) ks.fp = ks.key.parentFp;
+  } else if(d.type === "old"){
+    if(!/^[0-9a-fA-F]{128}$/.test(d.mpk || "")) throw new Error("This old Electrum wallet has no valid master public key (mpk).");
+    const mpk = fromHex(d.mpk.toLowerCase()), P = [BigInt("0x" + d.mpk.slice(0, 64)), BigInt("0x" + d.mpk.slice(64))];
+    if(emod(P[1] * P[1] - P[0] * P[0] * P[0] - 7n) !== 0n) throw new Error("The master public key (mpk) of this old wallet is not a point on the curve: the file is damaged.");
+    ks.old = {P, mpk}; ks.net = "main"; ks.fp = hex((await hash160(pubFromPoint(P))).slice(0, 4));
+  } else if(d.type === "imported"){
+    ks.keypairs = ewObj(d.keypairs) ? d.keypairs : {};
+  } else throw new Error("Keystore " + name + " is of a type this page does not know (" + String(d.type).slice(0, 20) + ").");
+  return ks;
+}
+// Electrum’s own seed words, as the keystore keeps them: new seeds (standard, SegWit, 2FA) or an old seed as hex (old_mnemonic.py
+// mn_encode: every 8 hex digits are 3 words from the old list).
+function ewOldWords(h){
+  if(!/^[0-9a-f]+$/.test(h) || h.length % 8) return null;
+  const n = OLD_EL_WORDS.length, out = [];
+  for(let i = 0; i < h.length; i += 8){ const x = parseInt(h.slice(i, i + 8), 16), w1 = x % n, w2 = (Math.floor(x / n) + w1) % n, w3 = (Math.floor(x / n / n) + w2) % n; out.push(OLD_EL_WORDS[w1], OLD_EL_WORDS[w2], OLD_EL_WORDS[w3]); }
+  return out.join(" ");
+}
+// An imported key as Electrum keeps it (Imported_KeyStore): WIF whose first byte is 0x80 (0xef on testnet) plus the script type,
+// or "type:WIF". -> {k, compressed, type (Electrum’s name), net}
+async function ewWif(s){
+  let t = String(s || "").trim(), type = null;
+  const c = t.indexOf(":"); if(c > 0){ type = t.slice(0, c); t = t.slice(c + 1); }
+  const b = await base58decode(t);
+  if(!(b.length === 33 || (b.length === 34 && b[33] === 1))) throw new Error("bad");
+  const net = b[0] >= 0xef ? "test" : "main", code = b[0] - (net === "test" ? 0xef : 0x80);
+  if(type === null) type = EW_WIF_TYPES[code]; else if(code !== 0) throw new Error("bad");
+  if(!type) throw new Error("bad");
+  const k = BigInt("0x" + hex(b.slice(1, 33))); if(k <= 0n || k >= SN) throw new Error("bad");
+  return {k, compressed: b.length === 34, type, net, wif: await base58check(Uint8Array.from([net === "test" ? 0xef : 0x80, ...b.slice(1, 33), ...(b.length === 34 ? [1] : [])]))};
+}
+async function ewPubAddr(type, pubHex, net){
+  const p = fromHex(pubHex), N = NETS[net];
+  if(p.length === 65 && p[0] === 4){ if(type !== "pkh") throw new Error("an uncompressed key has only a legacy address"); return base58check(Uint8Array.of(N.pkh, ...await hash160(p))); }
+  return addressFromPub(type, p, net);
+}
+async function ewKeyPub(k, compressed){ return hex(compressed ? pubkeyBytes(k) : pubOfPriv(k, false)); }
+// Every multisig address of the wallet: the keys at chain/i of each xpub, sorted, in an M-of-N script (wallet.py Multisig_Wallet).
+async function ewMultiAddr(W, chain, i){
+  const {script} = await multisigScript(W.m, W.keystores.map(k => ({key: k.key})), chain, i), N = NETS[W.net];
+  if(W.script === "p2wsh") return bech32Encode(N.hrp, 0, await sha256bytes(script));
+  if(W.script === "p2wsh-p2sh") return base58check(Uint8Array.of(N.sh, ...await hash160(Uint8Array.of(0, 32, ...await sha256bytes(script)))));
+  return base58check(Uint8Array.of(N.sh, ...await hash160(script)));
+}
+async function ewAddrs(W, chain, n){
+  const out = [];
+  if(W.kind === "imported") return out;
+  if(W.kind === "old"){ for(let i = 0; i < n; i++) out.push(await oldElAddr(W.keystores[0].old, chain, i, "main")); return out; }
+  if(W.kind === "multi"){ for(let i = 0; i < n; i++) out.push(await ewMultiAddr(W, chain, i)); return out; }
+  const K = W.keystores[0].key, [cp, cc] = await ckdPub(K.pub, K.chain, chain);
+  for(let i = 0; i < n; i++){ const [pk] = await ckdPub(cp, cc, i); out.push(await addressFromPub(W.script, pk, W.net)); }
+  return out;
+}
+// The whole read: the file’s text (already decrypted) and the password (or "") -> the wallet, in plain words, and its secrets.
+async function ewRead(data, password, how){
+  const W = {notes: [], secrets: [], keystores: [], words: null, labels: ewObj(data.labels) ? Object.keys(data.labels).length : 0, how};
+  let d = data;
+  W.version = ewSeedVersion(d);
+  const xNames = (o) => { const r = []; for(let i = 1; i <= 15; i++){ const k = ewOwn(o, "x" + i) ? "x" + i : ewOwn(o, "x" + i + "/") ? "x" + i + "/" : null; if(!k) break; r.push(k); } return r; };
+  if(!d.keystore && !xNames(d).length && d.wallet_type !== "imported" && W.version <= 13) d = ewLegacy(d);
+  W.legacy = !!d._legacy; W.walletType = String(d.wallet_type || "standard");
+  const enc = !!d.use_encryption && !!password, locked = !!d.use_encryption && !password;
+  W.locked = locked; W.encKeys = !!d.use_encryption;
+  const dec = async (v, what) => { if(!enc || !v) return v; try { return await ewPwDecode(v, password); } catch(e) { throw new Error("WRONG PASSWORD: this password does not open the " + what + " in this file. Electrum asks for the same password; check capital letters, spaces and the keyboard layout."); } };
+  // multisig and two-factor
+  const mm = /^([0-9]+)of([0-9]+)$/.exec(W.walletType);
+  if(mm || W.walletType === "2fa"){
+    W.kind = "multi"; W.m = mm ? +mm[1] : 2; W.n = mm ? +mm[2] : 3;
+    const names = xNames(d);
+    if(names.length !== W.n) throw new Error("This " + W.m + "-of-" + W.n + " wallet file has " + names.length + " keystores, not " + W.n + ": it is damaged.");
+    for(const nm of names) W.keystores.push(await ewKeystore(d[nm], nm.replace("/", "")));
+    if(W.keystores.some(k => !k.key)) throw new Error("A multisig keystore without an xpub (an old Electrum key) cannot be read; Electrum itself refuses it (storage version 51).");
+    const xt = W.keystores[0].xtype; W.net = W.keystores[0].net;
+    if(W.keystores.some(k => k.xtype !== xt || k.net !== W.net)) throw new Error("The keys of this multisig wallet are of different types (xpub, Ypub, Zpub), which Electrum itself refuses.");
+    W.script = EW_MULTI[xt]; if(!W.script) throw new Error("This multisig wallet has single-key keys (ypub or zpub), which Electrum does not use for multisig.");
+  } else if(W.walletType === "imported" || (ewObj(d.keystore) && d.keystore.type === "imported")){
+    W.kind = "imported"; W.imported = [];
+    const ks = ewObj(d.keystore) ? await ewKeystore(d.keystore, "keystore") : null; if(ks) W.keystores.push(ks);
+    const pairs = ks ? ks.keypairs : {}, addrs = ewObj(d.addresses) && !Array.isArray(d.addresses.receiving) ? d.addresses : null;
+    if(Array.isArray(d.addresses)) for(const a of d.addresses) W.imported.push({addr: String(a), type: "", pub: ""});   // Electrum 2.x: a list (wallet_db.py _convert_version_14)
+    else if(addrs) for(const [a, v] of Object.entries(addrs)) W.imported.push({addr: a, type: ewObj(v) && v.type ? v.type : "", pub: ewObj(v) && v.pubkey ? v.pubkey : ""});
+    else for(const pub of Object.keys(pairs)) W.imported.push({addr: "", type: "p2pkh", pub});   // as _convert_version_13_b reads them: legacy addresses
+    W.net = W.imported.some(x => /^(tb1|[mn2])/.test(x.addr)) ? "test" : "main";
+    for(const x of W.imported) if(x.pub && EW_IMP_TYPE[x.type]){ const a = await ewPubAddr(EW_IMP_TYPE[x.type], x.pub, W.net); if(x.addr && a !== x.addr) throw new Error("The file says " + x.addr + " belongs to a key that makes " + a + ": the file is damaged."); x.addr = a; }
+    if(ks && enc) for(const x of W.imported){
+      if(!x.pub || !ewOwn(pairs, x.pub)) continue;
+      const w = await dec(pairs[x.pub], "imported keys"); let r = null; try { r = await ewWif(w); } catch(e) { r = null; }
+      if(!r || await ewKeyPub(r.k, r.compressed) !== x.pub.toLowerCase()) throw new Error("WRONG PASSWORD: this password does not open the imported keys in this file. Electrum asks for the same password; check capital letters, spaces and the keyboard layout.");
+      x.wif = r.type + ":" + r.wif;
+    } else if(ks && !d.use_encryption) for(const x of W.imported){ if(!x.pub || !ewOwn(pairs, x.pub)) continue; const r = await ewWif(pairs[x.pub]); if(await ewKeyPub(r.k, r.compressed) !== x.pub.toLowerCase()) throw new Error("An imported key in this file does not match its public key: the file is damaged."); x.wif = r.type + ":" + r.wif; }
+  } else {
+    if(!ewObj(d.keystore)) throw new Error("This wallet file has no keystore (wallet type " + W.walletType.slice(0, 20) + ").");
+    const ks = await ewKeystore(d.keystore, "keystore"); W.keystores.push(ks);
+    if(ks.type === "old"){ W.kind = "old"; W.script = "old"; W.net = "main"; }
+    else { W.kind = "single"; W.net = ks.net; W.script = EW_SINGLE[ks.xtype]; if(!W.script) throw new Error("This standard wallet has a multisig key (Ypub or Zpub), which Electrum does not use for one key."); }
+  }
+  if(d._accounts) W.notes.push("This old file holds " + d._accounts + " accounts. Electrum splits such a file into one wallet per account when it opens it; this page shows the first one.");
+  // the secrets, decrypted with the password (Electrum’s check_password: the xprv must match the xpub, the old seed must make the mpk)
+  for(const ks of W.keystores){
+    if(ks.type === "imported") continue;
+    const tag = W.keystores.length > 1 ? "Keystore " + ks.name + ": " : "";
+    if(locked){ if(ks.xprv || ks.seed) W.secretsLocked = true; continue; }
+    if(ks.type === "old"){
+      if(!ks.seed) continue;
+      const h = String(await dec(ks.seed, "seed")).toLowerCase();
+      let K = null; try { K = /^[0-9a-f]+$/.test(h) ? oldElKeys(h) : null; } catch(e) { K = null; }
+      if(!K || !dbEq(K.mpk, ks.old.mpk)) throw new Error(enc ? "WRONG PASSWORD: this password does not open the seed in this file. Electrum asks for the same password; check capital letters, spaces and the keyboard layout." : "The seed in this file does not make its master public key: the file is damaged.");
+      const words = ewOldWords(h);
+      W.secrets.push("OLD ELECTRUM SEED (" + (words ? "12 words from Electrum’s old list, not BIP39" : "hex only: it cannot be written as words") + "): anyone with it can spend\n" + (words ? numberedWords(words) + "\n" : "") + "As hex: " + h);
+      if(words) W.words = words;
+      continue;
+    }
+    if(ks.xprv){
+      const x = await dec(ks.xprv, "master private key");
+      let raw = null; try { raw = await base58decode(String(x)); } catch(e) { raw = null; }
+      if(!raw || raw.length !== 78 || raw[45] !== 0 || !dbEq(raw.slice(13, 45), ks.key.chain) || !dbEq(pubkeyBytes(BigInt("0x" + hex(raw.slice(46)))), ks.key.pub))
+        throw new Error(enc ? "WRONG PASSWORD: this password does not open the master private key in this file. Electrum asks for the same password; check capital letters, spaces and the keyboard layout." : "The master private key in this file does not match its public key: the file is damaged.");
+      ks.xprvPlain = x; ks.xk = BigInt("0x" + hex(raw.slice(46)));
+    }
+    if(ks.seed){
+      const sd = String(await dec(ks.seed, "seed")), pp = ks.passphrase ? String(await dec(ks.passphrase, "seed extension")) : "";
+      ks.seedPlain = sd; ks.passPlain = pp;
+      let et = null; try { et = await electrumSeedType(sd); } catch(e) { et = null; }
+      ks.seedKind = et;
+      if(ks.type === "bip32" && et && !/two-factor/.test(et)){
+        // the seed must make this keystore’s key: Electrum’s seed -> BIP32 root -> the keystore’s derivation (m for standard, m/0' for SegWit)
+        const [rk, rc] = await masterFromSeed(await electrumToSeed(sd, pp)); let [k, c] = [rk, rc];
+        const steps = parsePath(String(ks.derivation || (et === "SegWit" ? "m/0'" : "m")));
+        if(steps) for(const [i, h] of steps) [k, c] = await ckdPriv(k, c, i, h);
+        ks.seedOk = !!steps && dbEq(pubkeyBytes(k), ks.key.pub) && dbEq(c, ks.key.chain);
+        if(!ks.seedOk) W.notes.push(tag + "the seed words in the file do not make this wallet’s key at " + (ks.derivation || "m") + ". Keep the file: restore from the key below, not only from these words.");
+        ks.rootFp = hex((await hash160(pubkeyBytes(rk))).slice(0, 4));
+      }
+      W.secrets.push(tag + "SEED WORDS (" + (et ? "Electrum seed, " + et : "as Electrum kept them") + "): anyone with them can spend\n" + numberedWords(sd.trim().split(/\s+/).join(" ")) +
+        (pp ? "\nSEED EXTENSION (Electrum’s name for a passphrase): " + pp : "\nSeed extension: none"));
+      if(!W.words && et && !/two-factor/.test(et)) W.words = sd.trim().split(/\s+/).join(" ");
+    }
+    if(ks.xprvPlain) W.secrets.push(tag + (ks.key.depth ? "EXTENDED PRIVATE KEY (" + ks.xprvPlain.slice(0, 4) + (ks.derivation ? ", the key at " + ks.derivation.replace(/h/g, "'") : "") + ")" : "MASTER PRIVATE KEY (" + ks.xprvPlain.slice(0, 4) + ")") + ": anyone with it can spend\n" + ks.xprvPlain);
+  }
+  if(W.kind === "imported"){
+    if(locked && W.keystores.length && Object.keys(W.keystores[0].keypairs).length) W.secretsLocked = true;
+    const ks = W.imported.filter(x => x.wif);
+    if(ks.length) W.secrets.push("PRIVATE KEYS (Electrum’s import form, type:WIF; other apps take the part after the colon with that address type): anyone with them can spend\n" + ks.map(x => x.addr + "\n  " + x.wif).join("\n"));
+  }
+  // Electrum 1.x imported keys (imported_keys: address -> WIF, encrypted with the password like the seed). Electrum 2.0 moved them
+  // into the wallet (Wallet.convert_imported_keys); today’s wallet_db.py does not read them, so they are shown here.
+  if(d._importedKeys){
+    const list = Object.entries(d._importedKeys);
+    W.oldImported = list.map(([a]) => a);
+    if(locked) W.secretsLocked = true;
+    else {
+      const rows = [];
+      for(const [a, v] of list){
+        const w = await dec(v, "imported keys"); let r = null; try { r = await ewWif(w); } catch(e) { r = null; }
+        const got = r ? await ewPubAddr("pkh", await ewKeyPub(r.k, r.compressed), r.net) : null;
+        if(got !== a) throw new Error(enc ? "WRONG PASSWORD: this password does not open the imported keys in this file. Electrum asks for the same password; check capital letters, spaces and the keyboard layout." : "An imported key in this file does not make its address: the file is damaged.");
+        rows.push(a + "\n  " + r.wif);
+      }
+      W.secrets.push("IMPORTED PRIVATE KEYS (WIF, legacy addresses): anyone with them can spend\n" + rows.join("\n"));
+    }
+  }
+  // what the file itself lists (deterministic wallets keep their addresses in "addresses": receiving and change)
+  W.fileAddrs = ewObj(d.addresses) && Array.isArray(d.addresses.receiving) ? {recv: d.addresses.receiving, change: Array.isArray(d.addresses.change) ? d.addresses.change : []} : null;
+  W.channels = ewObj(data.channels) ? Object.keys(data.channels).length : 0;
+  return W;
+}
+// The wallet in plain words: public facts, the first 10 receive and 10 change addresses, and what to do.
+async function ewReport(W){
+  const L = [], ks = W.keystores[0], net = W.net === "test" ? " TESTNET (practice coins only)" : "";
+  const kindText = W.kind === "multi" ? (W.walletType === "2fa" ? "two-factor (2FA) wallet with TrustedCoin, 2 of 3 keys" : "multisig wallet, " + W.m + " of " + W.n + " keys")
+    : W.kind === "imported" ? "imported " + (ks && Object.keys(ks.keypairs).length ? "private keys" : "addresses (watch only)")
+    : W.kind === "old" ? "old Electrum wallet (made before Electrum 2.0)"
+    : ks.type === "hardware" ? "hardware wallet (" + (ks.hwType || "device") + (ks.label ? ", “" + ks.label + "”" : "") + "): the keys stay on the device"
+    : ks.xprv ? (ks.seed ? "standard wallet from an Electrum seed" : ks.key.depth === 3 && /^m\/(44|49|84)/.test((ks.derivation || "").replace(/h/g, "'")) ? "standard wallet from a BIP39 seed or a master key (Electrum keeps only the account key)" : "standard wallet from a master private key")
+    : "watch-only wallet (public key only)";
+  L.push("Electrum wallet file: " + kindText + "." + net);
+  L.push("Address type: " + (W.kind === "imported" ? "per address (below)" : EW_TYPE_NAME[W.script]) + ". Storage version " + W.version + (W.legacy ? " (from before Electrum 2.7)" : "") + ".");
+  L.push("Password: " + (W.how.encFile ? "the whole file is encrypted with it (opened with the password typed)" : W.encKeys ? (W.locked ? "the keys are encrypted with it; type it to see them" : "the keys are encrypted with it (opened with the password typed)") : "none (anyone who has the file can spend)") + ".");
+  if(W.how.patches) L.push("The file has " + W.how.patches + " change" + (W.how.patches === 1 ? "" : "s") + " saved at its end (Electrum’s partial writes); they are applied, as Electrum does.");
+  if(W.how.dropped) L.push("The end of the file is cut off (" + W.how.dropped + " characters); the complete part is read, as Electrum does.");
+  if(W.how.python) L.push("This is an Electrum 1.x file (written as a Python literal).");
+  for(const k of W.keystores.filter(x => x.key || x.old)){
+    const tag = W.keystores.length > 1 ? "Key " + k.name.slice(1) + (W.walletType === "2fa" && k.name === "x3" ? " (TrustedCoin’s)" : "") + ": " : "";
+    if(k.old){ L.push(tag + "Master public key (old Electrum mpk): " + hex(k.old.mpk)); L.push(tag + "Fingerprint Electrum shows for it: " + k.fp + " (HASH160 of the master public key; an old wallet has no BIP32 fingerprint)."); continue; }
+    L.push(tag + "Master fingerprint: " + (k.fp || "not in the file") + (k.rootFp && k.fp && k.rootFp !== k.fp ? " (the seed in the file gives " + k.rootFp + ")" : ""));
+    L.push(tag + "Derivation: " + (k.derivation ? k.derivation.replace(/h/g, "'") : "not in the file") + ". Extended public key (" + k.xpub.slice(0, 4) + "): " + k.xpub);
+    if(k.seedOk) L.push(tag + "Checked: the seed in the file makes this key.");
+  }
+  if(W.kind === "imported"){
+    L.push("", W.imported.length + " imported address" + (W.imported.length === 1 ? "" : "es") + (W.imported.length > 20 ? " (the first 20):" : ":"));
+    for(const x of W.imported.slice(0, 20)) L.push("  " + (x.addr || "(no address in the file)") + (x.type ? "  " + x.type : ""));
+  } else {
+    const r = await ewAddrs(W, 0, ADDR_SHOWN), c = await ewAddrs(W, 1, ADDR_SHOWN), last = ADDR_SHOWN - 1;
+    const path = W.kind === "old" ? "m" : W.kind === "multi" ? "each key" : ks.derivation ? ks.derivation.replace(/h/g, "'") : "key";
+    L.push("", "First " + ADDR_SHOWN + " receive addresses (" + path + "/0/0 to 0/" + last + "):", ...r.map((a, i) => ("0/" + i).padEnd(5) + a));
+    L.push("", "First " + ADDR_SHOWN + " change addresses (" + path + "/1/0 to 1/" + last + "):", ...c.map((a, i) => ("1/" + i).padEnd(5) + a));
+    W.recv = r; W.change = c;
+    if(W.fileAddrs && W.fileAddrs.recv.length){
+      const n = Math.min(ADDR_SHOWN, W.fileAddrs.recv.length), m = Math.min(ADDR_SHOWN, W.fileAddrs.change.length);
+      const same = W.fileAddrs.recv.slice(0, n).every((a, i) => a === r[i]) && W.fileAddrs.change.slice(0, m).every((a, i) => a === c[i]);
+      W.fileMatch = same;
+      L.push("", same ? "Checked: these are the first addresses Electrum saved in the file (" + W.fileAddrs.recv.length + " receive and " + W.fileAddrs.change.length + " change addresses in all)."
+        : "WARNING: these are NOT the addresses Electrum saved in the file. Do not rely on this list; open the file in Electrum itself.");
+    }
+  }
+  if(W.oldImported) L.push("", "Electrum 1.x imported keys: " + W.oldImported.length + " (" + W.oldImported.slice(0, 5).join(", ") + (W.oldImported.length > 5 ? ", ..." : "") + "). Today’s Electrum does not read them when it opens this file, so keep the file or the keys below.");
+  L.push("", "Labels: " + W.labels + (W.labels ? " (private notes Electrum keeps with addresses and payments; not shown here)." : "."));
+  if(W.channels) L.push("Lightning channels: " + W.channels + ". Funds in channels are not on these addresses; Electrum itself (or its channel backup) closes them.");
+  for(const n of W.notes) L.push(n);
+  L.push("", "What to do: " + ewAdvice(W));
+  return L.join("\n");
+}
+function ewAdvice(W){
+  const ks = W.keystores[0], move = " Then send everything to a new wallet whose seed you made and backed up yourself, soon if anyone else may have had the file and its password.";
+  const where = "Do it on a trusted computer, offline if you can, and check that the first address in the app matches the list above.";
+  if(W.secretsLocked) return "type the wallet password and press OPEN WALLET FILE again to see the seed or keys. The addresses above need no password.";
+  if(W.kind === "multi"){
+    if(W.walletType === "2fa") return "only Electrum restores a two-factor wallet: File, New/Restore, Wallet with two-factor authentication, I already have a seed, and type its 2FA seed words; Electrum then offers to disable two-factor, so the coins can be spent without TrustedCoin. " + (W.secrets.length ? "This file holds the first key only; it cannot spend alone." : "This file holds no private key.") + move;
+    return "a multisig wallet needs " + W.m + " of its " + W.n + " keys to spend. Restore it in Electrum (File, New/Restore, Multi-signature wallet) with the same " + W.n + " keys; " + (W.secrets.length ? "the secret below is one of them." : "this file holds no private key.") + " " + where + move;
+  }
+  if(W.kind === "imported") return W.secrets.length ? "in Electrum: File, New/Restore, Import Bitcoin addresses or private keys, and paste the keys below (with their type: part), or sweep them into a new wallet. " + where + move : "this file holds addresses only, no keys: it can watch them but never spend.";
+  if(W.kind === "old") return W.words ? OLD_EL_HOWTO + " " + where + move : "the seed below opens it in Electrum (hex is accepted where Electrum asks for the seed). " + where + move;
+  if(ks.type === "hardware") return "this file holds no private key: the coins are spent with the hardware wallet, or restored from that device’s own seed words. The file is still useful to see which addresses and path the wallet used.";
+  if(!ks.xprv) return "this is a watch-only file: it holds no private key and can never spend. The coins are spent with the wallet whose seed made this key.";
+  if(ks.seed) return "restore the seed words in Electrum: File, New/Restore, Standard wallet, I already have a seed, type the words" + (ks.passphrase ? ", press Options and tick Extend this seed with custom words, then type the seed extension" : "") + ". Other apps do not open Electrum seeds. " + where + move;
+  return "Electrum keeps only this key, not seed words. Restore your seed words if you have them (VERIFY above, then Open this wallet, shows the same addresses), or in Electrum: File, New/Restore, Standard wallet, Use a master key, and paste the key below. " + where + move;
+}
+// The page side: one file (chosen, dropped or pasted) and the password; the result and the secrets are kept only until CLEAR,
+// CLEAR ALL, END SESSION or auto-clear, or until the file, the text or the password changes.
+let ewRun = 0, ewGot = null, ewDropped = null;
+function ewHolds(){ const f = document.getElementById("ewFile"); return !!ewGot || !!ewDropped || !!(f && f.files && f.files.length); }
+function ewSay(cls, t){ const st = document.getElementById("ewStatus"); st.className = "status" + (cls ? " " + cls : ""); st.textContent = t; }
+function ewWipe(){
+  ewRun++; ewGot = null; ewSay("", "");
+  for(const id of ["ewOut", "ewSecret"]){ const e = document.getElementById(id); e.textContent = ""; e.style.display = "none"; }
+  document.getElementById("ewSecretRow").style.display = "none"; document.getElementById("ewShowBtn").textContent = "SHOW THE SECRET";
+  document.getElementById("ewPrintBtn").disabled = true;
+}
+function ewClear(){
+  ewWipe(); ewDropped = null;
+  for(const id of ["ewIn", "ewPass", "ewFile"]) document.getElementById(id).value = "";
+  document.getElementById("ewPass").type = "password"; document.getElementById("ewPassBtn").textContent = "SHOW";
+  document.getElementById("ewDrop").textContent = "";
+}
+function ewTogglePass(b){ const e = document.getElementById("ewPass"), show = e.type === "password"; e.type = show ? "text" : "password"; b.textContent = show ? "HIDE" : "SHOW"; }
+async function ewOpenUi(){
+  if(!gateOk()) return;
+  ewWipe();
+  const run = ewRun, fi = document.getElementById("ewFile"), f = ewDropped || (fi.files && fi.files[0]) || null, typed = document.getElementById("ewIn").value, pw = document.getElementById("ewPass").value;
+  if(!f && !typed.trim()) return ewSay("bad", "Choose the wallet file (or drop it on this box), or paste its text.");
+  if(f && typed.trim()) return ewSay("bad", "A file is chosen and text is pasted too: use one of them (CLEAR, then choose or paste again).");
+  if(f && f.size > EW_MAX) return ewSay("bad", "This file is too big to be an Electrum wallet file this page reads (over 64 MB).");
+  ewSay("", "Reading...");
+  try {
+    let text;
+    if(f){ const b = await dbReadFile(f); try { text = new TextDecoder("utf-8", {fatal: true}).decode(b); } catch(e) { throw new Error("This file is not text, so it is not an Electrum wallet file (Electrum: Cannot read wallet file, not an Electrum wallet file?). A Bitcoin Core wallet.dat is a different kind of file."); } }
+    else text = typed;
+    const how = {encFile: false};
+    const raw = b64bytes(text.trim()), magic = raw && raw.length >= 4 ? String.fromCharCode(...raw.slice(0, 4)) : "";
+    if(magic === "BIE2") throw new Error("This file is encrypted with a hardware wallet (Electrum’s option to encrypt the file with the device). Only Electrum, with that device connected, can open it. This page cannot.");
+    if(magic === "BIE1"){
+      if(!pw) throw new Error("The whole file is encrypted with the wallet password. Type the password, then press OPEN WALLET FILE again.");
+      ewSay("", "Decrypting the file...");
+      let plain; try { plain = new TextDecoder("utf-8", {fatal: true}).decode(await ewOpenStorage(raw, pw)); } catch(e) { if(/^WRONG|damaged|compressed/.test(e.message)) throw e; throw new Error("The file could not be decrypted: " + e.message); }
+      text = plain; how.encFile = true;
+    }
+    const L = ewLoadText(text); Object.assign(how, {patches: L.patches, dropped: L.dropped, python: L.python});
+    if(run !== ewRun) return;
+    const W = await ewRead(L.data, pw, how), out = await ewReport(W);
+    if(run !== ewRun) return;
+    ewGot = {W, out, secret: W.secrets.join("\n\n"), words: W.words};
+    ewSay(W.fileMatch === false ? "bad" : "ok", W.fileMatch === false ? "Opened, but the addresses do not match the ones in the file (see below)." : "Opened read only: " + out.split("\n")[0].replace(/^Electrum wallet file: /, "") + (W.secrets.length ? " The seed or keys are behind SHOW THE SECRET." : W.secretsLocked ? " Type the password to see the seed or keys." : ""));
+    const o = document.getElementById("ewOut"); o.textContent = out; o.style.display = "";
+    document.getElementById("ewSecretRow").style.display = W.secrets.length ? "" : "none"; document.getElementById("ewUseBtn").style.display = W.words ? "" : "none";
+    document.getElementById("ewPrintBtn").disabled = false;
+  } catch(e) { if(run === ewRun) ewSay("bad", e.message); }
+}
+function ewReveal(){
+  const s = document.getElementById("ewSecret"), b = document.getElementById("ewShowBtn");
+  if(s.style.display === "none"){ if(!ewGot || !ewGot.secret) return; s.textContent = ewGot.secret; s.style.display = ""; b.textContent = "HIDE THE SECRET"; }
+  else { s.style.display = "none"; s.textContent = ""; b.textContent = "SHOW THE SECRET"; }
+}
+function ewUseWords(){
+  if(!ewGot || !ewGot.words) return;
+  const ph = document.getElementById("phrase");
+  if(ph.value.trim() && ph.value.trim() !== ewGot.words && !confirm("The words box above already holds words. Replace them with the seed words from the wallet file?")) return;
+  ph.value = ewGot.words; ph.dispatchEvent(new Event("input", {bubbles: true}));
+  reveal(ph);
+}
+// PRINT SUMMARY: the public part only (type, fingerprint, keys, addresses, what to do), never the seed or keys.
+function ewPrint(){
+  if(!ewGot) return;
+  const po = document.getElementById("printOnly"); po.textContent = "";
+  const add = (cls, text) => { const d = document.createElement("div"); d.className = cls; d.textContent = text; po.appendChild(d); };
+  add("ps-title", "VOIDFORGE: ELECTRUM WALLET FILE SUMMARY");
+  add("ps-sub", "Public facts only: no seed words, no private key and no password are on this sheet.");
+  add("ps-info", ewGot.out);
+  add("ps-warn", "Addresses and extended public keys are public, but anyone who sees them can link them to this wallet. Do not post this sheet.");
+  document.body.classList.add("print-seed");
+  let done = false;
+  const cleanup = () => { if(done) return; done = true; while(po.firstChild) po.removeChild(po.firstChild); document.body.classList.remove("print-seed"); };
+  window.addEventListener("afterprint", cleanup, {once: true});
+  setTimeout(cleanup, 120000);
+  window.print();
+}
+// The self-test checks: known answers made with Electrum’s own code (tests/fixtures/electrum/kat.py: storage.py and crypto.py),
+// an Electrum 1.x file as Python literal, a patched file, and a path ending in /* (BIP44’s first address of the public test seed).
+const EW_KAT_BIE1 = "QklFMQNpA9cOpOqaj2OwLSDcodE9HQCgdUZNm+udI0+YORrfKSy7mSyk3uTdIfQM1QTO+gisK9BfZrdf81+Sfk41E8bSbNo218XR7+3BGAx/AH51dBlNlCY1pacaHWfoiDGIkMkHh3F7jst+j7x0xcPBeTD+htRv2DJRYlQIfqAJMqhVsg==";
+const EW_KAT_PW = "aqV6eedgXR7XQ3OaAiVOTf6VadFwoblHAyb61FvCbrKNB8YFcwIs1mASmE7qqs6k4Y4rA8PtiSSic2UyldQqXUZvkG9LEgeO2eApscBGaOHNPucndBRTlWMYdpTO0uss";
+const EW_KAT_OLD = "{\"seed_version\": 4, \"use_encryption\": False, u\"master_public_key\": u\"e9d4b7866dd1e91c862aebf62a49548c7dbf7bcc6e4b7b8c9da820c7737968df9c09d5a3e271dc814a29981f81b3faaf2737b551ef5dcc6189cf0f8252c442b3\", \"labels\": {u\"1FJEEB8ihPMbzs2SkLmr37dHyRFzakqUmo\": u\"Caf\\xe9\"}, \"accounts\": {0: {0: [], 1: []}}}";   // (Python 2 wrote single quotes; double quotes are the same literal)
+function ewSelfTests(eq){
+  eq("Electrum wallet file: a whole file encrypted with its password (BIE1: PBKDF2-HMAC-SHA512, ECIES, zlib) opens (made with Electrum’s storage.py)", async () => new TextDecoder().decode(await ewOpenStorage(b64bytes(EW_KAT_BIE1), "test password")), "{\"seed_version\": 74, \"wallet_type\": \"standard\"}");
+  eq("Electrum wallet file: a seed encrypted with the wallet password (AES-256-CBC, key SHA-256 twice) opens (made with Electrum’s crypto.py pw_encode)", () => ewPwDecode(EW_KAT_PW, "test password"), "bitter grass shiver impose acquire brush forget axis eager alone wine silver");
+  eq("Electrum 1.x wallet file (a Python literal): its master public key gives the first receive and change address (Electrum’s test wallet)", async () => { const W = await ewRead(ewLoadText(EW_KAT_OLD).data, "", {}); return W.labels + " " + (await ewAddrs(W, 0, 1))[0] + " " + (await ewAddrs(W, 1, 1))[0]; }, "1 1FJEEB8ihPMbzs2SkLmr37dHyRFzakqUmo 1KRW8pH6HFHZh889VDq6fEKvmrsmApwNfe");
+  eq("Electrum wallet file: changes saved at its end (JSON patches) are applied, and a cut-off end is left out", () => { const L = ewLoadText("{\"labels\": {\"a\": \"x\"}, \"n\": [1]},\n{\"op\": \"add\", \"path\": \"/labels/b~1c\", \"value\": \"y\"},\n{\"op\": \"remove\", \"path\": \"/labels/a\"},\n{\"op\": \"add\", \"path\": \"/n/-\", \"value\": 2},\n{\"op\": \"repl"); return JSON.stringify(L.data) + " " + L.patches + " " + L.dropped; }, "{\"labels\":{\"b/c\":\"y\"},\"n\":[1,2]} 3 14");
+  eq("Any path: m/44h/0h/0h/0/* gives the first BIP44 address of abandon ... about, and 0/* below its account key the same (from @scure/bip32)", async () => { const sd = await mnemonicToSeed("abandon ".repeat(11) + "about", ""), [k, c] = await masterFromSeed(sd), P = apParse("m/44h/0h/0h/0/*", false), a = (await apAddrs({k, chain: c}, P.steps, null, "pkh", "main", 0, 1, "m"))[0];
+    let [ak, ac] = [k, c]; for(const [i, h] of [[44, true], [0, true], [0, true]]) [ak, ac] = await ckdPriv(ak, ac, i, h); const b = (await apAddrs({pub: pubkeyBytes(ak), chain: ac}, apParse("0/*", true).steps, null, "pkh", "main", 0, 1, "key"))[0];
+    return a.path + " " + a.address + " " + b.path + " " + b.address; }, "m/44'/0'/0'/0/0 1LqBGSKuX5yYUonjxT5qGfpUsXKYYWeabA key/0/0 1LqBGSKuX5yYUonjxT5qGfpUsXKYYWeabA");
+}
+AUTO_FIELDS.push("ewIn", "ewPass");   // auto-clear and CLEAR ALL wipe these too, and know the page holds a secret while they are filled
+RH_PLACES.push("ewSecret");   // re-hide covers the shown seed or keys (the pasted file and the password are covered through AUTO_FIELDS)
+document.getElementById("ewFile").addEventListener("change", () => { ewDropped = null; document.getElementById("ewDrop").textContent = ""; ewWipe(); });
+for(const id of ["ewIn", "ewPass"]) document.getElementById(id).addEventListener("input", ewWipe);   // an old result belongs to the inputs that made it
+{ const box = document.getElementById("ewBox");
+  box.addEventListener("dragover", (e) => { e.preventDefault(); });
+  box.addEventListener("drop", (e) => { e.preventDefault(); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if(!f) return; document.getElementById("ewFile").value = ""; ewWipe(); ewDropped = f; document.getElementById("ewDrop").textContent = "File ready: " + f.name + " (" + f.size + " bytes). Press OPEN WALLET FILE."; }); }
+// ===== end of v2.16.0 part A =====
 // ===== The Damascus method (v2.14.0) =====
 // Damascus steel is made by folding two different steels into one blade. The Damascus method folds dice (the Hammer sheet,
 // grid H) and shuffled playing cards (the Anvil sheet, grid A) into one seed by hand: grid F = H XOR A, cell by cell, so the
@@ -15515,6 +16177,7 @@ function setGate(state, text, cls){
   document.getElementById("s39mBtn").disabled = !on;   // v2.10.0: SLIP39 shares from dice
   for(const id of ["c32Btn", "c32mBtn"]) document.getElementById(id).disabled = !on;   // v2.11.0: codex32
   document.getElementById("dbBtn").disabled = !on;   // v2.12.0: device backups
+  document.getElementById("ewBtn").disabled = !on;   // v2.16.0: Open an Electrum wallet file
   document.getElementById("cmxBtn").disabled = !on;   // v2.10.0: Check a Coldcard seed mix
   document.getElementById("wpBtn").disabled = !on;
   document.getElementById("reuseBtn").disabled = !on;

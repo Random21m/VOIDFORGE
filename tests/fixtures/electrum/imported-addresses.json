@@ -1,0 +1,36 @@
+{
+    "addr_history": {
+        "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2": [],
+        "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy": [],
+        "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu": []
+    },
+    "addresses": {
+        "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2": {},
+        "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy": {},
+        "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu": {}
+    },
+    "db_metadata": {
+        "creation_timestamp": 1794409492,
+        "first_electrum_version_used": "4.8.4"
+    },
+    "fiat_value": {},
+    "frozen_coins": {},
+    "genesis_blockhash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+    "invoices": {},
+    "labels": {
+        "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2": "Old address"
+    },
+    "num_parents": {},
+    "payment_requests": {},
+    "prevouts_by_scripthash": {},
+    "seed_version": 74,
+    "spent_outpoints": {},
+    "transactions": {},
+    "tx_batches": {},
+    "tx_fees": {},
+    "txi": {},
+    "txo": {},
+    "use_encryption": false,
+    "verified_tx3": {},
+    "wallet_type": "imported"
+}

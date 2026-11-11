@@ -1,0 +1,46 @@
+{
+    "addr_history": {
+        "15iKdSRri3ikw9uxPi6o4d7wcegiP9vzNg": [],
+        "bc1qq4g2nydjjafz5faahe0c2qfy6vnk3flw6h4yr5": []
+    },
+    "addresses": {
+        "15iKdSRri3ikw9uxPi6o4d7wcegiP9vzNg": {
+            "pubkey": "03ee7174d8103cc245c7aed15cf7beedf3ce26575e2022f8b2fdb79b89014df353",
+            "type": "p2pkh"
+        },
+        "bc1qq4g2nydjjafz5faahe0c2qfy6vnk3flw6h4yr5": {
+            "pubkey": "03883da9beefec4475452ef1597c3e5163b79a1bfb9b6ca0367988854c4362096e",
+            "type": "p2wpkh"
+        }
+    },
+    "db_metadata": {
+        "creation_timestamp": 1794409492,
+        "first_electrum_version_used": "4.8.4"
+    },
+    "fiat_value": {},
+    "frozen_coins": {},
+    "genesis_blockhash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+    "invoices": {},
+    "keystore": {
+        "keypairs": {
+            "03883da9beefec4475452ef1597c3e5163b79a1bfb9b6ca0367988854c4362096e": "AbqJ0QlvdvwTFlqMaCezG9FNoKdABblDNdPDfXvYdJk/iRJUFLbmFi9UrFQ1AKAhg9axhfe12ThHpFLNYsWIFtH8Xqyk8y7KobKeED93aXk=",
+            "03ee7174d8103cc245c7aed15cf7beedf3ce26575e2022f8b2fdb79b89014df353": "PTMi7zbD3uteDtsip2BeTam2zdXyjPyHzp/M9BfUu3LG8/povOHn6qcDcggV8Gqe3DR7RsTNrikS1Hlcw5oT78CmiuYvFfxmVbSlRrCi9I4="
+        },
+        "pw_hash_version": 1,
+        "type": "imported"
+    },
+    "labels": {},
+    "num_parents": {},
+    "payment_requests": {},
+    "prevouts_by_scripthash": {},
+    "seed_version": 74,
+    "spent_outpoints": {},
+    "transactions": {},
+    "tx_batches": {},
+    "tx_fees": {},
+    "txi": {},
+    "txo": {},
+    "use_encryption": true,
+    "verified_tx3": {},
+    "wallet_type": "imported"
+}

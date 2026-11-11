@@ -108,6 +108,62 @@ async function probe(w, mutated, fast, only, hooks) {
   if (adOf() !== addr(expect.d50, '')) fails.push('first receive address');
   }
   if (hooks && hooks.afterBase) await hooks.afterBase();
+  // v2.16.0 "Recover old wallets", part A: Open an Electrum wallet file (files made by Electrum 4.8.4 itself and what Electrum said
+  // about them, tests/fixtures/electrum/), and any path with more addresses in Open this wallet (addresses from @scure/bip32). It
+  // ends with the reader and the wallet view cleared, so the sections after it start as before.
+  if (SEC(77, "v2.16.0 part A: Electrum wallet files and any path in Open this wallet")) {
+  const al0 = w.alert;
+  try {
+    const T = 'recover: ', FXD = new URL('./fixtures/electrum/', import.meta.url), fx = (n) => fs.readFileSync(new URL(n, FXD), 'utf8'), EX = JSON.parse(fx('expected-electrum.json')).cases;
+    const open = async (text, pw = '') => { w.ewClear(); $('ewIn').value = text; $('ewPass').value = pw; await w.ewOpenUi(); const g = w.eval('ewGot'); return { st: $('ewStatus').textContent, out: $('ewOut').textContent, secret: g ? g.secret : '' }; };
+    const addrsOf = (out) => { const l = out.split('\n'); return [l.filter((x) => /^0\/\d /.test(x)).map((x) => x.split(/\s+/)[1]).join(), l.filter((x) => /^1\/\d /.test(x)).map((x) => x.split(/\s+/)[1]).join()]; };
+    const same = (r, n) => { const [a, b] = addrsOf(r.out); return a === EX[n].recv.join() && b === EX[n].change.join(); };
+    const flat = (s) => s.replace(/\s*\d+\.\s+/g, ' ').replace(/\s+/g, ' ');
+    let r = await open(fx('el-segwit-encrypted'), 'test password');
+    if (!same(r, 'el-segwit-encrypted') || !flat(r.secret).includes(EX['el-segwit-encrypted'].seed)) fails.push(T + 'a whole-file encrypted Electrum wallet opens: addresses and seed as Electrum gives them');
+    if (!/^WRONG PASSWORD/.test((await open(fx('el-segwit-encrypted'), 'test passwort')).st)) fails.push(T + 'a wrong password does not open an encrypted file');
+    { const b = Buffer.from(fx('el-segwit-encrypted'), 'base64'); b[b.length - 40] ^= 1; if (!/^WRONG PASSWORD/.test((await open(b.toString('base64'), 'test password')).st)) fails.push(T + 'a changed byte in an encrypted file is caught by its MAC'); }
+    r = await open(fx('el-standard-ext-pw.json'), 'test password');
+    if (!same(r, 'el-standard-ext-pw.json') || !r.secret.includes(': ' + EX['el-standard-ext-pw.json'].passphrase) || !r.secret.includes(EX['el-standard-ext-pw.json'].xprv) || !/Checked: the seed in the file makes this key/.test(r.out)) fails.push(T + 'keys encrypted with the password: seed, extension and xprv, the seed checked against the key');
+    if (!/^WRONG PASSWORD/.test((await open(fx('el-standard-ext-pw.json'), 'test passwort')).st)) fails.push(T + 'a wrong password does not open encrypted keys');
+    for (const n of ['multisig-2of2-pw.json', 'el-2fa-pw.json', 'bip39-49.json', 'xprv-master-pw.json', 'electrum-2.0-wallet.json']) { r = await open(fx(n), EX[n].password || ''); if (!same(r, n)) fails.push(T + n + ': the addresses Electrum gives'); }
+    r = await open(fx('el-old-pw.json'), 'test password'); if (!same(r, 'el-old-pw.json') || !flat(r.secret).includes(EX['el-old-pw.json'].seed)) fails.push(T + 'an old Electrum seed wallet: addresses and the 12 old words');
+    r = await open(fx('electrum-1x-default_wallet'), 'test password');
+    if (!same(r, 'electrum-1x-default_wallet') || !Object.entries(EX['electrum-1x-default_wallet'].imported_keys).every(([a, k]) => r.secret.includes(a + '\n  ' + k)) || !/Labels: 2\b/.test(r.out)) fails.push(T + 'an Electrum 1.x file (Python literal): addresses, labels and its imported key');
+    r = await open(fx('imported-keys-pw.json'), 'test password'); if (!EX['imported-keys-pw.json'].keys.every((k) => r.secret.includes(k))) fails.push(T + 'imported keys with their script type, as Electrum exports them');
+    r = await open(fx('el-segwit-patched.json')); if (!/Labels: 2\b/.test(r.out)) fails.push(T + 'changes saved at the end of the file (JSON patches) are applied');
+    { const t = fx('el-segwit-patched.json'); r = await open(t.slice(0, t.length - 30)); if (!/The end of the file is cut off/.test(r.out) || !/Labels: 1\b/.test(r.out)) fails.push(T + 'a file cut off in its last change keeps its complete part'); }
+    { const d = JSON.parse(fx('el-segwit-plain.json')); d.keystore.xprv = JSON.parse(fx('xprv-master-pw.json')).keystore.xpub.replace('xpub', 'xprv'); d.keystore.xprv = EX['el-standard-ext-pw.json'].xprv;
+      if (!/does not match its public key: the file is damaged/.test((await open(JSON.stringify(d))).st)) fails.push(T + 'an xprv that does not match the xpub is refused'); }
+    { const d = JSON.parse(fx('el-segwit-plain.json')); d.keystore.seed = EX['el-standard-ext-pw.json'].seed; if (!/do not make this wallet’s key/.test((await open(JSON.stringify(d))).out)) fails.push(T + 'seed words that do not make the key are named'); }
+    { const d = JSON.parse(fx('el-segwit-plain.json')); d.addresses.receiving[3] = EX['bip39-84-pw.json'].recv[3]; r = await open(JSON.stringify(d)); if (!/^WARNING: these are NOT the addresses Electrum saved/m.test(r.out) || !/do not match/.test(r.st)) fails.push(T + 'addresses that differ from the ones in the file are flagged'); }
+    if (w.ewPyLiteral("{'a': 'it\\'s\\n', u'b': [True, None]}").a !== "it's\n") fails.push(T + 'Python literal: string escapes');
+    { let m = ''; try { w.ewLoadText('{"a": {}},\n{"op": "add", "path": "/__proto__/x", "value": 1}'); } catch (e) { m = e.message; } if (!/not there/.test(m) || w.eval('({}).x') !== undefined) fails.push(T + 'a JSON patch into __proto__ is refused'); }
+    r = await open(fx('el-standard-ext-pw.json'), 'test password');
+    if (!w.eval('rhIds()').includes('ewSecret') || !w.eval('AUTO_FIELDS').includes('ewIn') || !w.eval('AUTO_FIELDS').includes('ewPass')) fails.push(T + 're-hide and auto-clear know the secret, the file text and the password');
+    $('ewIn').value = ''; $('ewPass').value = ''; if (!w.eval('autoHasSecrets()')) fails.push(T + 'auto-clear knows an opened wallet file holds secrets');
+    w.wipeSeed(); if (w.eval('ewGot') || $('ewOut').textContent) fails.push(T + 'CLEAR ALL wipes the opened wallet file');
+    w.setGate('fail', 'SELF-TEST FAILED', 'bad'); $('ewIn').value = fx('el-segwit-plain.json'); await w.ewOpenUi(); const gated = !w.eval('ewGot'); w.setGate('pass', 'SELF-TEST PASSED', 'ok'); if (!gated) fails.push(T + 'a failed self-test stops OPEN WALLET FILE');
+    w.ewClear();
+    // any path
+    const AB = 'abandon '.repeat(11) + 'about', root = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, ''));
+    const seg = (p) => bech32.encode('bc', [0, ...bech32.toWords(ripemd160(nsha(root.derive(p).publicKey)))]), leg = (p) => b58c.encode(Uint8Array.from([0, ...ripemd160(nsha(root.derive(p).publicKey))]));
+    const rows = () => [...$('wvList').children].map((li) => li.firstChild.textContent), set = async (id, v) => { $(id).value = v; $(id).dispatchEvent(new w.Event(id === 'wvPathIn' || id === 'wvStart' ? 'input' : 'change')); await w.wvRefresh(); };
+    w.alert = () => {};
+    await w.openWalletView(AB, ''); await set('wvChain', 'both');
+    if (rows().length !== 20 || rows()[0] !== seg("m/84'/0'/0'/0/0") || rows()[19] !== seg("m/84'/0'/0'/1/9")) fails.push(T + 'receive and change: 10 of each');
+    await set('wvStart', '5'); if (rows()[0] !== seg("m/84'/0'/0'/0/5") || rows()[10] !== seg("m/84'/0'/0'/1/5")) fails.push(T + 'START AT 5');
+    w.apMore(); await w.wvRefresh(); if (rows().length !== 60 || rows()[59] !== seg("m/84'/0'/0'/1/34")) fails.push(T + 'SHOW 20 MORE adds 20 of each');
+    await set('wvStart', '0'); await set('wvChain', '0'); await set('wvType', 'pkh'); await set('wvPathIn', 'm/44h/0h/0h/0/*');
+    if (rows()[2] !== leg("m/44'/0'/0'/0/2") || rows().length !== 10) fails.push(T + 'a path ending in /*: the addresses right under it');
+    await set('wvPathIn', ''); await set('wvType', 'wpkh'); $('wpIn').value = root.derive("m/84'/0'/0'").publicExtendedKey; await w.openWatchOnly(); await set('wvType', 'wpkh'); await set('wvPathIn', '1/*');
+    if (rows()[3] !== seg("m/84'/0'/0'/1/3")) fails.push(T + 'a path below an xpub (1/*)');
+    await set('wvPathIn', "0'/*"); if (!/^A public key cannot make a hardened step/.test($('wvErr').textContent) || rows().length) fails.push(T + 'a hardened step below an xpub is refused');
+    await set('wvPathIn', 'm/0/*'); if (!/without m/.test($('wvErr').textContent)) fails.push(T + 'm/ below an xpub is refused');
+    w.clearWalletView(); $('wpIn').value = '';
+  } catch (e) { fails.push('recover: the probe crashed: ' + e.message); }
+  w.alert = al0;
+  }
   // v2.15.0 "Stop costly mistakes": re-hide (tab, window, Print, idle, own PRINT sheets, passphrase boxes back to dots, SHOW), the
   // passphrase check, passphrase practice (fingerprint from @scure/bip32) and Link as QR. It runs on the seed of section 0 and ends
   // with CLEAR ALL and that seed made again, so the sections after it start as before.
@@ -5155,10 +5211,10 @@ const M = [
   ['dictionary: topic filter never resets', 'b.onclick = () => { dictCat = c;', 'b.onclick = () => { dictCat = dictCat;'],
   ['dictionary: pressed state not shown', 'x.setAttribute("aria-pressed", x === b ? "true" : "false"));', 'x.setAttribute("aria-pressed", "false"));'],
   ['dictionary: no-match line loses the topic', '(dictCat === "All" ? "" : " in " + dictCat)', '""'],
-  ["wallet view: coin type ignored", "steps || [[SCRIPT_TYPES[type].purpose, true], [NETS[net].coin, true], [acct, true]]", "steps || [[SCRIPT_TYPES[type].purpose, true], [0, true], [acct, true]]"],
-  ["wallet view: account ignored", "steps || [[SCRIPT_TYPES[type].purpose, true], [NETS[net].coin, true], [acct, true]]", "steps || [[SCRIPT_TYPES[type].purpose, true], [NETS[net].coin, true], [0, true]]"],
+  ["wallet view: coin type ignored", "[[SCRIPT_TYPES[type].purpose, true], [NETS[net].coin, true], [acct, true]];\n  const chains", "[[SCRIPT_TYPES[type].purpose, true], [0, true], [acct, true]];\n  const chains"],
+  ["wallet view: account ignored", "[[SCRIPT_TYPES[type].purpose, true], [NETS[net].coin, true], [acct, true]];\n  const chains", "[[SCRIPT_TYPES[type].purpose, true], [NETS[net].coin, true], [0, true]];\n  const chains"],
   ["wallet view: chain ignored", "for(const [i,h] of steps.concat([[chain, false]]))", "for(const [i,h] of steps.concat([[0, false]]))"],
-  ["wallet view: second page shows the first", "rows = await walletAddressesFrom(root, path, type, net, chain, wvFrom, WV_PAGE);", "rows = await walletAddressesFrom(root, path, type, net, chain, 0, WV_PAGE);"],
+  ["wallet view: second page shows the first", "  wvFrom = Math.max(0, Math.min(2147483647 - WV_PAGE + 1, wvFrom + d * WV_PAGE)); apReset();", "  wvFrom = 0; apReset();"],
   ["wallet view: no QR button on a row", "  li.appendChild(b); return li;", "  return li;"],
   ["wallet view: QR shows another address", "let q; try { q = qrMatrix(text); } catch(e) {\n", "let q; try { q = qrMatrix(text + \"x\"); } catch(e) {\n"],
   ["wallet view: not called imported", "textContent = \"Imported: these words were typed or scanned here, not made by this page.", "textContent = \"These words were typed or scanned here."],
@@ -5171,7 +5227,7 @@ const M = [
   ["wallet view: CLEAR ALL leaves it", "document.getElementById(\"verifyStatus\").textContent=\"\"; verifySeq++; clearWalletView(); clearChild();", "document.getElementById(\"verifyStatus\").textContent=\"\"; verifySeq++; clearChild();"],
   ["address QR: no button under the seed", "(arr || []).forEach((a, i) => ol.appendChild(addrLi(a, label + \" \" + (i + 1))));", "(arr || []).forEach((a, i) => { const li = document.createElement(\"li\"); li.textContent = a; ol.appendChild(li); });"],
   ["wallet view: PREVIOUS never off", "document.getElementById(\"wvPrev\").disabled = wvFrom === 0;", "document.getElementById(\"wvPrev\").disabled = false;"],
-  ["wallet view: testnet note dropped", "(net === \"test\" ? \"TESTNET (practice coins only). \" : \"\") + (chain ? \"Change\" : \"Receive\")", "(chain ? \"Change\" : \"Receive\")"],
+  ["wallet view: testnet note dropped", "(net === \"test\" ? \"TESTNET (practice coins only). \" : \"\") + (star ? \"Addresses\"", "(star ? \"Addresses\""],
   ["recovery sheet: nothing printed", "if(!wvCtx || !wvCtx.shown || !wvCtx.mnemonic) return alert(\"Check a seed phrase first, then open the wallet.\");", "if(true) return;"],
   ["watch-only: change ending ignored", "    chain = m[5] === \"/1/*\" ? 1 : 0;", "    chain = 0;"],
   ["watch-only: chain not set on open", "  cSel.value = String(w.chain || 0);", "  "],
@@ -5182,7 +5238,7 @@ const M = [
   ["watch-only: SeedQR offered", "document.getElementById(\"wvSqBlock\").style.display = \"none\"; document.getElementById(\"wvSheetBtn\")", "document.getElementById(\"wvSqBlock\").style.display = \"\"; document.getElementById(\"wvSheetBtn\")"],
   ["watch-only: no fingerprint from the descriptor", "  if(w.origin){ document.getElementById(\"wvFp\").textContent = \"Master fingerprint (from the descriptor): \" + w.origin.fp; showFpIcon(\"wvIcon\", w.origin.fp); }", "  if(false){ }"],
   ["watch-only: edit keeps the view", "document.getElementById(\"wpIn\").addEventListener(\"input\", () => { if(wvCtx && wvCtx.kind === \"pub\" && !wvCtx.secret) clearWalletView();", "document.getElementById(\"wpIn\").addEventListener(\"input\", () => {"],
-  ["watch-only: controls stay locked after", "  for(const id of [\"wvType\",\"wvNet\",\"wvAcct\"]) document.getElementById(id).disabled = false;\n", "\n"],
+  ["watch-only: controls stay locked after", "  for(const id of [\"wvType\",\"wvNet\",\"wvAcct\",\"wvChain\"]) document.getElementById(id).disabled = false;\n", "\n"],
   ["watch-only: taproot ignores the point", "  if(type === \"tr\") return taprootAddressFromPoint(pointFromPub(pub), N.hrp);", "  if(type === \"tr\") return taprootAddressFromPoint(pointFromPub(pub), \"bc\").then(a => a + \"\");\n  if(false) return;"],
   ["Electrum: SegWit prefix wrong", "  if(h.startsWith(\"100\")) return \"SegWit\";", "  if(h.startsWith(\"10\")) return \"SegWit\";"],
   ["Electrum: wrong HMAC key", "new TextEncoder().encode(\"Seed version\")", "new TextEncoder().encode(\"Seed\")"],
@@ -6199,7 +6255,7 @@ const M = [
   ["birthday: a seed made here is not dated", "  sumCtx.date = todayISO();", ""],
   ["birthday: not on the summary sheet", "c.date ? \"Wallet made on: \" + c.date + \" (its birthday, by this computer's clock: a restore can start a day earlier to be safe)\" : \"\", ", "\"\", "],
   ["birthday: not filled in Open this wallet", "  if(sumCtx && sumCtx.date && hasSeed() && mnemonic === madeMnemonic && pass === document.getElementById(\"passphrase\").value) document.getElementById(\"wvBorn\").value = sumCtx.date;\n", ""],
-  ["birthday: kept after the wallet view is cleared", " document.getElementById(\"wvBorn\").value = \"\";\n", "\n"],
+  ["birthday: kept after the wallet view is cleared", " document.getElementById(\"wvBorn\").value = \"\"; apReset();", " apReset();"],
   ["birthday: not on the recovery sheet", "\"\\nWallet made on: \" + (document.getElementById(\"wvBorn\").value || \"____________\") + ", ""],
   ["practice: menus not locked", "if(on){ practiceSaved[id] = e.value; e.value = \"test\"; e.disabled = true; }", "if(on){ practiceSaved[id] = e.value; e.value = \"test\"; }"],
   ["practice: menus not switched", "if(on){ practiceSaved[id] = e.value; e.value = \"test\"; e.disabled = true; }", "if(on){ practiceSaved[id] = e.value; e.disabled = true; }"],
@@ -6267,7 +6323,7 @@ const M = [
   ["address QR: no path", "(meta.path ? \"Path: \" + meta.path + \"\\n\" : \"\")", "\"\""],
   ["address QR: unknown fingerprint printed", "fp = /^Master fingerprint[^:]*: [0-9a-f]{8}/.test(fpT) ? fpT : \"\";", "fp = fpT;"],
   ["address QR: Taproot path", "return {path: \"m/\" + pu + \"'/\"", "return {path: \"m/\" + 84 + \"'/\""],
-  ["address QR: wallet-view chain", "change: sh.chain === 1, test:", "change: false, test:"],
+  ["address QR: wallet-view chain", "change: row.chain === 1 || (row.chain === undefined && sh.chain === 1), test:", "change: false, test:"],
   ["dice test: seed cleared without saying so", "(seed ? \"\\n\\nThe seed words on screen, made from these rolls, are cleared too. Write them down first if you still need them.\" : \"\")", "\"\""],
   ["dice test: old result message kept", "  if(seed){ seedSig = null; forgeRun++; setResult(\"\\u2014\");", "  if(false){ seedSig = null; forgeRun++; setResult(\"\\u2014\");"],
   ["dice test: step bar frozen", "    document.querySelectorAll(\"#stepBar li\").forEach(li => { const k = +li.getAttribute(\"data-s\"); li.className = k < 2 ? \"done\" : k === 2 ? \"cur\" : \"\";", "    document.querySelectorAll(\"#stepBar li\").forEach(li => { const k = +li.getAttribute(\"data-s\"); li.className = k < 4 ? \"done\" : k === 4 ? \"cur\" : \"\";"],
@@ -6317,8 +6373,8 @@ const M = [
   ["custom path: capital H not hardened", "const s = String(t || \"\").trim().replace(/[hH]/g, \"'\");", "const s = String(t || \"\").trim().replace(/h/g, \"'\");"],
   ["custom path: 11 steps allowed", "if(!/^m(\\/[0-9]{1,10}'?){0,10}$/.test(s)) return null;", "if(!/^m(\\/[0-9]{1,10}'?){0,11}$/.test(s)) return null;"],
   ["custom path: 2^31 allowed", "return steps.every(([i]) => i <= 2147483647) ? steps : null;", "return steps;"],
-  ["custom path: ignored", "path = steps || [[SCRIPT_TYPES[type].purpose, true]", "path = null || [[SCRIPT_TYPES[type].purpose, true]"],
-  ["custom path: a bad path still lists", "if(custom && !steps){ err.textContent", "if(false){ err.textContent"],
+  ["custom path: ignored", "steps = P ? P.steps : ctx.kind", "steps = null ? P.steps : ctx.kind"],
+  ["custom path: a bad path still lists", "if(why){ err.textContent = why; apListClear(); return; }", "if(false){ err.textContent = why; apListClear(); return; }"],
   ["custom path: account box still used", "document.getElementById(\"wvAcct\").disabled = wvCtx.kind === \"pub\" || !!custom;", "document.getElementById(\"wvAcct\").disabled = wvCtx.kind === \"pub\";"],
   ["custom path: hardened mark missing in the label", "steps.map(([i,h]) => \"/\" + i + (h ? \"'\" : \"\")).join(\"\")", "steps.map(([i,h]) => \"/\" + i).join(\"\")"],
   ["custom path: kept after the view closes", "  document.getElementById(\"wvPathIn\").value = \"\";\n", ""],
@@ -6484,7 +6540,7 @@ const M = [
   ["watch file: change addresses left out", "    ...change.map((a, i) => \"#   \" + i + \": \" + a),", ""],
   ["compare: change addresses not searched", "for(const chain of [0, 1]){ const [k2,c2]", "for(const chain of [0]){ const [k2,c2]"],
   ["compare: a bc1q address only matches the first address", "if(kind === \"tr\" || kind === \"addr\"){ const a =", "if(kind === \"tr\"){ const a ="],
-  ["recovery sheet: change addresses from the receive chain", "change: await walletAddressesFrom(root, path, type, net, 1, 0, ADDR_SHOWN)", "change: await walletAddressesFrom(root, path, type, net, 0, 0, ADDR_SHOWN)"],
+  ["recovery sheet: change addresses from the receive chain", "change: await apAddrs(R.src, R.steps, 1, type, net, 0, ADDR_SHOWN, \"m\")", "change: await apAddrs(R.src, R.steps, 0, type, net, 0, ADDR_SHOWN, \"m\")"],
   ["recovery sheet: only the page on screen", "addrSheetLines(sh.sheet.recv.map(r => r.address), sh.sheet.change.map(r => r.address))", "addrSheetLines(sh.rows.map(r => r.address), [])"],
   ["summary sheet: no address lists", "if(recv.length && chg.length){ add(\"ps-rule\", \"\");", "if(false){ add(\"ps-rule\", \"\");"],
   ["sheets: receive and change swapped", "out.push(String(i).padStart(3) + \":  \" + (recv[i] || \"\").padEnd(w + 3) + (chg[i] || \"\"));", "out.push(String(i).padStart(3) + \":  \" + (chg[i] || \"\").padEnd(w + 3) + (recv[i] || \"\"));"],
@@ -7609,6 +7665,35 @@ const M = [
   ["Link as QR: a key label after a hash label ignored", "if(sec > pub) return \"This is \" + n + \" hex characters labeled", "if(false) return \"This is \" + n + \" hex characters labeled"],
   ["Link as QR: bare 64 hex accepted", "      return \"This is \" + n + \" hex characters, which could be a private key or a seed.", "      return \"\"; \"This is \" + n + \" hex characters, which could be a private key or a seed."],
   ["Link as QR: a refused secret stays in the box", "if(why){ document.getElementById(\"lqIn\").value = \"\"; return", "if(why){ return"],
+  // v2.16.0 "Recover old wallets", part A: Open an Electrum wallet file and any path in Open this wallet (probe section 77 and the self-test)
+  ['electrum file: storage key with 1023 rounds', 'iterations: 1024, salt: new Uint8Array(0)', 'iterations: 1023, salt: new Uint8Array(0)'],
+  ['electrum file: ECIES IV and AES key swapped', 'ewAesCbc(kk.slice(16, 32), kk.slice(0, 16),', 'ewAesCbc(kk.slice(0, 16), kk.slice(16, 32),'],
+  ['electrum file: ECIES MAC not checked', 'if(!dbEq(mac, b.slice(b.length - 32))) throw', 'if(false) throw'],
+  ['electrum file: ECIES shared point hashed without its parity byte', 'digest("SHA-512", pubFromPoint(emul(k, P)))', 'digest("SHA-512", pubFromPoint(emul(k, P)).slice(1))'],
+  ['electrum file: keystore key is SHA-256 once', 'const key = await sha256bytes(await sha256bytes(new TextEncoder().encode(password)));', 'const key = await sha256bytes(new TextEncoder().encode(password));'],
+  ['electrum file: an xprv that does not match the xpub accepted', 'if(!raw || raw.length !== 78 || raw[45] !== 0 || !dbEq(raw.slice(13, 45), ks.key.chain) || !dbEq(pubkeyBytes(BigInt("0x" + hex(raw.slice(46)))), ks.key.pub))', 'if(!raw || raw.length !== 78)'],
+  ['electrum file: JSON patches ignored', 'let d = arr[0]; for(const p of arr.slice(1)) d = ewPatch(d, p);', 'let d = arr[0];'],
+  ['electrum file: a cut-off file refused', 'if(arr && at < s.length) return done(arr, {dropped: s.length - at});', 'if(false) return done(arr, {dropped: s.length - at});'],
+  ['electrum file: native SegWit multisig script hashed wrong', 'if(W.script === "p2wsh") return bech32Encode(N.hrp, 0, await sha256bytes(script));', 'if(W.script === "p2wsh") return bech32Encode(N.hrp, 0, await sha256bytes(script.slice(1)));'],
+  ['electrum file: 2FA read as 2 of 2', 'W.m = mm ? +mm[1] : 2; W.n = mm ? +mm[2] : 3;', 'W.m = mm ? +mm[1] : 2; W.n = mm ? +mm[2] : 2;'],
+  ['electrum file: old seed words in the wrong order', 'out.push(OLD_EL_WORDS[w1], OLD_EL_WORDS[w2], OLD_EL_WORDS[w3]);', 'out.push(OLD_EL_WORDS[w1], OLD_EL_WORDS[w3], OLD_EL_WORDS[w2]);'],
+  ['electrum file: the script type in an imported key ignored', 'code = b[0] - (net === "test" ? 0xef : 0x80);', 'code = 0;'],
+  ['electrum file: Python string escapes ignored', 'if(ewOwn(ESC, e)) out += ESC[e];', 'if(ewOwn(ESC, e)) out += e;'],
+  ['electrum file: Electrum 1.x imported keys not shown', 'if(sv === 4 && ewObj(o.imported_keys) && Object.keys(o.imported_keys).length) out._importedKeys = o.imported_keys;', ''],
+  ['electrum file: a JSON patch can reach __proto__', 'for(const x of parts){ if(Array.isArray(o) ? !/^[0-9]+$/.test(x) || +x >= o.length : !ewOwn(o, x)) bad("points to a place that is not there");', 'for(const x of parts){'],
+  ['electrum file: the seed is not checked against the key', 'ks.seedOk = !!steps && dbEq(pubkeyBytes(k), ks.key.pub) && dbEq(c, ks.key.chain);', 'ks.seedOk = true;'],
+  ['electrum file: the addresses saved in the file not compared', 'W.fileMatch = same;', 'W.fileMatch = true;'],
+  ['electrum file: the secret is not covered by re-hide', 'RH_PLACES.push("ewSecret");', ''],
+  ['electrum file: auto-clear does not see an opened file', 'return hasSeed() || !!dbGot || ewHolds() || ', 'return hasSeed() || !!dbGot || '],
+  ['electrum file: CLEAR ALL keeps the wallet file', '  ewClear();   // v2.16.0: the Electrum wallet file (its file, text, password, result and secrets)\n', ''],
+  ['electrum file: no self-test gate', 'async function ewOpenUi(){\n  if(!gateOk()) return;\n', 'async function ewOpenUi(){\n'],
+  ['any path: a path ending in /* gets a chain step too', 'const all = chain === null ? steps : steps.concat([[chain, false]]);', 'const all = steps.concat([[chain || 0, false]]);'],
+  ['any path: START AT ignored', 'for(const c of chains) rows.push(...await apAddrs(src, steps, c, type, net, wvFrom, apCount, base));', 'for(const c of chains) rows.push(...await apAddrs(src, steps, c, type, net, 0, apCount, base));'],
+  ['any path: SHOW 20 MORE adds 10', 'apCount = Math.min(AP_MAX, apCount + AP_MORE);', 'apCount = Math.min(AP_MAX, apCount + 10);'],
+  ['any path: receive and change shows receive twice', 'chainSel === "both" ? [0, 1]', 'chainSel === "both" ? [0, 0]'],
+  ['any path: a hardened step below an xpub not refused', 'if(rel && !ctx.xk && P.steps.some(([, h]) => h)) return "A public key', 'if(false) return "A public key'],
+  ['any path: m/ below a key not refused', 'if(rel && parts[0] === "m") return {m: true};', ''],
+  ['any path: the h mark read as unhardened', 'const s = String(t || "").replace(/\\s+/g, "").replace(/[hH]/g, "\'"), parts = s.split("/");', 'const s = String(t || "").replace(/\\s+/g, "").replace(/[hH]/g, ""), parts = s.split("/");'],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
