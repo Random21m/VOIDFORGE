@@ -12,6 +12,7 @@ import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import nc from 'node:crypto';
+import fs from 'node:fs';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright-core');
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -247,6 +248,32 @@ for (const [how, wipe] of Object.entries(ssWipes)) {
   if (how === 'closing the box') {
     const ran = await p.evaluate(() => { document.getElementById('autoNote').textContent = ''; const r = autoWipe('in the memory test'); return { r, active: ssPageActive() }; });
     ok(!ran.active, 'practice signer: after closing the box nothing of it is left for a later auto-clear to wipe (ssPageActive ' + ran.active + ')');
+  }
+}
+
+// Read a Bitcoin Core wallet file (v2.16.0): an encrypted legacy wallet opened with its passphrase and an unencrypted one, the
+// private keys shown (WIF and the HD master xprv appear nowhere else on the page), then CLEAR ALL, and again with auto-clear.
+{
+  const FXW = path.join(here, 'fixtures', 'walletdat'), MFW = JSON.parse(fs.readFileSync(path.join(FXW, 'manifest.json'), 'utf8'));
+  const open = async (f, pw) => {
+    await p.evaluate(() => { showTab('check'); document.getElementById('wdatBox').open = true; });
+    await p.setInputFiles('#wdatFile', path.join(FXW, f)); await p.fill('#wdatPass', pw); await p.click('#wdatBtn');
+    await p.waitForFunction(() => /^(Read|Passphrase right)/.test(document.getElementById('wdatStatus').textContent), null, { timeout: 60000 });
+    await p.click('#wdatShowBtn'); await p.waitForFunction(() => /WIF/.test(document.getElementById('wdatSecret').textContent), null, { timeout: 60000 });
+    return p.evaluate(() => document.getElementById('wdatSecret').textContent);
+  };
+  for (const [how, wipe] of [['CLEAR ALL', () => p.evaluate(() => clearAll())], ['auto-clear', () => p.evaluate(() => autoWipe('in the memory test'))]]) {
+    const t1 = await open(MFW.legacyHd.file, MFW.legacyHd.pass);
+    const t2 = await open(MFW.legacyOld.file, '');   // (reading a second file drops the first one's keys)
+    const wifs = [...(t1 + t2).matchAll(/\b([5KL][1-9A-HJ-NP-Za-km-z]{50,51})\b/g)].map((m) => m[1]), xprv = (t1.match(/xprv[1-9A-HJ-NP-Za-km-z]{100,}/) || [''])[0];
+    // (the self-test's own wallet has the same public test seed, so its xprv and first WIF are in the page source: those are left out)
+    const src = fs.readFileSync(FILE.replace('file://', ''), 'utf8');
+    const needles = [['the HD master xprv', xprv], ['a WIF of the encrypted wallet', wifs[5]], ['another WIF of the encrypted wallet', wifs[20]], ['a WIF of the old wallet', wifs[wifs.length - 1]], ['the wallet passphrase', MFW.legacyHd.pass]].filter(([, v]) => v && !src.includes(v));
+    if (how === 'CLEAR ALL') { const s = await heapStrings(), there = findIn(s, needles); ok(wifs.length >= 26 && needles.length >= 3 && there.length >= 1, 'wallet.dat control: the keys of two wallet files are shown, and before a wipe the search finds the shown one (' + there.join(', ') + ')'); }
+    await wipe(); await p.waitForTimeout(1500);
+    const s = await heapStrings(), there = findIn(s, needles);
+    ok(there.length === 0, 'wallet.dat, ' + how + ': no private key, xprv or passphrase is still held' + (there.length ? ' (still held: ' + there.join(', ') + ')' : ''));
+    if (process.env.MEM_DEBUG && there.length) for (const [n, v] of needles) for (const x of s) if (x.includes(v)) console.log('  ' + n + ' inside: ' + JSON.stringify(x.slice(0, 160)));
   }
 }
 

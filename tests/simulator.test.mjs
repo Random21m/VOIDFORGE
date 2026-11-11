@@ -48,7 +48,7 @@
 //               the passphrase "Ab1", go into MAKE A SEED: words, fingerprint (and the device's, "match"), the first receive and
 //               change addresses (@scure/bip39, @scure/bip32, @scure/btc-signer), SeedQR, xpub and watch-only, the PRACTICE banner,
 //               PRACTICE in the downloaded file; two seeds: pick one by fingerprint; CLEAR ALL and closing the box clear it
-// And: the page self-test passes (147/147) in every page opened, and no page error or console error happens in any of them.
+// And: the page self-test passes (150/150) in every page opened, and no page error or console error happens in any of them.
 // Run: node tests/simulator.test.mjs        (SCEN=dice12,wipe to run some; SIM_CONC=4 to run fewer at a time)
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
@@ -1474,7 +1474,7 @@ const queue = want.filter((n) => SCEN[n]); const CONC = +(process.env.SIM_CONC |
 await Promise.all(Array.from({ length: Math.min(CONC, queue.length) }, async () => { while (queue.length) await runScenario(browser, queue.shift()); }));
 await browser.close();
 if (!process.env.SCEN) {
-  ok(badges.size === 1 && [...badges][0] === 'SELF-TEST PASSED (147/147)', 'the page self-test passes 147/147 in every page opened (' + [...badges].join(' / ') + ')');
+  ok(badges.size === 1 && [...badges][0] === 'SELF-TEST PASSED (150/150)', 'the page self-test passes 150/150 in every page opened (' + [...badges].join(' / ') + ')');
 }
 ok(pageProblems.length === 0, 'no page error and no console error in any page during the whole run' + (pageProblems.length ? ': ' + pageProblems.slice(0, 4).join(' || ') : ''));
 console.log('(scenario times: ' + results.map((r) => r.name + ' ' + r.secs + 's').join(', ') + '; total ' + Math.round((Date.now() - T0) / 1000) + 's)');

@@ -1,0 +1,176 @@
+{
+ "legacyHd": {
+  "file": "legacy-hd-encrypted.dat",
+  "pass": "Test passphrase: grüße 🔑",
+  "rounds": 61234,
+  "ext": 150,
+  "int": 150,
+  "seedKey": "69011cd375f48a10d2296a2fa93edb9320e1ca67cd16ae2b6f2eb40cc7077534",
+  "master": "584df31b54f78d3e2cfa737c1b6efd3125bdd013e31e4dbba07abaec8e0356e0"
+ },
+ "legacyOld": {
+  "file": "legacy-old-be.dat",
+  "keys": [
+   {
+    "k": "ffef6076d34c35e9de8a0d51cd2cde975779a47eee4d8190d421758439309724",
+    "c": false,
+    "w": false
+   },
+   {
+    "k": "ea26a853177013d26d6d004413981a8afe26ae568ab03df63042ef6331d1e9f3",
+    "c": false,
+    "w": false
+   },
+   {
+    "k": "5108c21067b9b50b2e833d89573f5e9387b5012df9d087013af04914667f2af9",
+    "c": false,
+    "w": false
+   },
+   {
+    "k": "a7ad6432d3f496ec141755d63f06ec37f64ea622971067fb2a547fef1a502e00",
+    "c": true,
+    "w": false
+   },
+   {
+    "k": "0ae6e98fcb1a4a819afbddd56c5bb8c5ff024172ac02916fd76aa7d769fe98ef",
+    "c": true,
+    "w": false
+   },
+   {
+    "k": "ed30c2fd8a196167dff569e5b9db8fa9d0f5c6aa7fe80dafa270b2ce7370eef5",
+    "c": false,
+    "w": true
+   }
+  ]
+ },
+ "descriptor": {
+  "file": "descriptor.sqlite",
+  "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+  "descs": [
+   {
+    "s": "pkh(xpub661MyMwAqRbcFkPHucMnrGNzDwb6teAX1RbKQmqtEF8kK3Z7LZ59qafCjB9eCRLiTVG3uxBxgKvRgbubRhqSKXnGGb1aoaqLrpMBDrVxga8/44h/0h/0h/0/*)",
+    "purpose": 44,
+    "internal": 0,
+    "id": "3e05f78614cf7c600c83838a794a3fbc4240787889ad64e64fe86449095c2f3b"
+   },
+   {
+    "s": "pkh(xpub661MyMwAqRbcFkPHucMnrGNzDwb6teAX1RbKQmqtEF8kK3Z7LZ59qafCjB9eCRLiTVG3uxBxgKvRgbubRhqSKXnGGb1aoaqLrpMBDrVxga8/44h/0h/0h/1/*)",
+    "purpose": 44,
+    "internal": 1,
+    "id": "f1ceb0bcbc4ce24327ce5c796ae66620795d92e59a3313794ca4003a61b75cb0"
+   },
+   {
+    "s": "sh(wpkh(xpub661MyMwAqRbcFkPHucMnrGNzDwb6teAX1RbKQmqtEF8kK3Z7LZ59qafCjB9eCRLiTVG3uxBxgKvRgbubRhqSKXnGGb1aoaqLrpMBDrVxga8/49h/0h/0h/0/*))",
+    "purpose": 49,
+    "internal": 0,
+    "id": "d8c7c0a01e288d0d8db16462934e9bf2a03a4c1e7e15a1484acc15887536a527"
+   },
+   {
+    "s": "sh(wpkh(xpub661MyMwAqRbcFkPHucMnrGNzDwb6teAX1RbKQmqtEF8kK3Z7LZ59qafCjB9eCRLiTVG3uxBxgKvRgbubRhqSKXnGGb1aoaqLrpMBDrVxga8/49h/0h/0h/1/*))",
+    "purpose": 49,
+    "internal": 1,
+    "id": "9df630ee5b281d7c202a71cbffdb0c06beb1190be8d2546720b17fdf6a8f08c0"
+   },
+   {
+    "s": "wpkh(xpub661MyMwAqRbcFkPHucMnrGNzDwb6teAX1RbKQmqtEF8kK3Z7LZ59qafCjB9eCRLiTVG3uxBxgKvRgbubRhqSKXnGGb1aoaqLrpMBDrVxga8/84h/0h/0h/0/*)",
+    "purpose": 84,
+    "internal": 0,
+    "id": "077eeca9e85192ae009e6641b4b17f6f280b376ee5e0f279398e12c7609470e0"
+   },
+   {
+    "s": "wpkh(xpub661MyMwAqRbcFkPHucMnrGNzDwb6teAX1RbKQmqtEF8kK3Z7LZ59qafCjB9eCRLiTVG3uxBxgKvRgbubRhqSKXnGGb1aoaqLrpMBDrVxga8/84h/0h/0h/1/*)",
+    "purpose": 84,
+    "internal": 1,
+    "id": "7ceee37adaec43448e889b2e37c644c1b6f4bf67b209226a2ef1920e3ba9cd18"
+   },
+   {
+    "s": "tr(xpub661MyMwAqRbcFkPHucMnrGNzDwb6teAX1RbKQmqtEF8kK3Z7LZ59qafCjB9eCRLiTVG3uxBxgKvRgbubRhqSKXnGGb1aoaqLrpMBDrVxga8/86h/0h/0h/0/*)",
+    "purpose": 86,
+    "internal": 0,
+    "id": "74d7e6c429847d6eebeb26eaba1bde9d75b91960e14f677dffb920a764f47cae"
+   },
+   {
+    "s": "tr(xpub661MyMwAqRbcFkPHucMnrGNzDwb6teAX1RbKQmqtEF8kK3Z7LZ59qafCjB9eCRLiTVG3uxBxgKvRgbubRhqSKXnGGb1aoaqLrpMBDrVxga8/86h/0h/0h/1/*)",
+    "purpose": 86,
+    "internal": 1,
+    "id": "6d056bb97c66c768a68d4fadf5b453c1ef975b9a05c92393dd1f84e259153f80"
+   },
+   {
+    "s": "combo(xpub661MyMwAqRbcEdvH5kRscepmZhsrpfbGm5WLkzkLWe37Wf6VRPa5ugYg3hsNF9t8LEMdyEYmQuoQprS2CfsotPgynzyCftw6pfVSAMPgq7P/0h/0h/*h)",
+    "combo": true,
+    "seed": "ab365cabe1546163381072df31f0436dd04ac9a824e16e37552eb9f848a4311b"
+   },
+   {
+    "s": "wpkh(036776c51861de55aa03e83825aa6ce3431497adb52013fe3f1f3fb56ba72f1583)",
+    "key": "7e52ee1579f0a2c23b1ebf4b8277523ade2c7d85c940add84db2b24fe3f73a69"
+   }
+  ]
+ },
+ "descriptorEncrypted": {
+  "file": "descriptor-encrypted.sqlite",
+  "seed": "000102030405060708090a0b0c0d0e0f",
+  "pass": "correct horse battery staple",
+  "rounds": 50000,
+  "descs": [
+   {
+    "s": "pkh(tpubD6NzVbkrYhZ4XgiXtGrdW5XDAPFCL9h7we1vwNCpn8tGbBcgfVYjXyhWo4E1xkh56hjod1RhGjxbaTLV3X4FyWuejifB9jusQ46QzG87VKp/44h/1h/0h/0/*)",
+    "purpose": 44,
+    "internal": 0,
+    "id": "979bf667a02fd96752967bbd9fce62341a67028883e768ecda802df3835a9c9f"
+   },
+   {
+    "s": "pkh(tpubD6NzVbkrYhZ4XgiXtGrdW5XDAPFCL9h7we1vwNCpn8tGbBcgfVYjXyhWo4E1xkh56hjod1RhGjxbaTLV3X4FyWuejifB9jusQ46QzG87VKp/44h/1h/0h/1/*)",
+    "purpose": 44,
+    "internal": 1,
+    "id": "af7eb202d0067f18c4669b11cafb320fdab51d42f21fd16dc8a68544b11fa649"
+   },
+   {
+    "s": "sh(wpkh(tpubD6NzVbkrYhZ4XgiXtGrdW5XDAPFCL9h7we1vwNCpn8tGbBcgfVYjXyhWo4E1xkh56hjod1RhGjxbaTLV3X4FyWuejifB9jusQ46QzG87VKp/49h/1h/0h/0/*))",
+    "purpose": 49,
+    "internal": 0,
+    "id": "e408b99c5ef11f7306ed4b29a01ab1f59b5659e2893bf7abd818c5252cebf8fc"
+   },
+   {
+    "s": "sh(wpkh(tpubD6NzVbkrYhZ4XgiXtGrdW5XDAPFCL9h7we1vwNCpn8tGbBcgfVYjXyhWo4E1xkh56hjod1RhGjxbaTLV3X4FyWuejifB9jusQ46QzG87VKp/49h/1h/0h/1/*))",
+    "purpose": 49,
+    "internal": 1,
+    "id": "260af0b567265076f54d2e71900ce7403f03321889fe9aa0410656dc3558dc39"
+   },
+   {
+    "s": "wpkh(tpubD6NzVbkrYhZ4XgiXtGrdW5XDAPFCL9h7we1vwNCpn8tGbBcgfVYjXyhWo4E1xkh56hjod1RhGjxbaTLV3X4FyWuejifB9jusQ46QzG87VKp/84h/1h/0h/0/*)",
+    "purpose": 84,
+    "internal": 0,
+    "id": "52a5f975041231292695810d68cc933d549b22576ecaa37ccd2e10e03ca264c0"
+   },
+   {
+    "s": "wpkh(tpubD6NzVbkrYhZ4XgiXtGrdW5XDAPFCL9h7we1vwNCpn8tGbBcgfVYjXyhWo4E1xkh56hjod1RhGjxbaTLV3X4FyWuejifB9jusQ46QzG87VKp/84h/1h/0h/1/*)",
+    "purpose": 84,
+    "internal": 1,
+    "id": "57e6bf7e9d66cfb6e9b2a62e107926c6f7857164dcd4b8aa326a542ebbf99638"
+   },
+   {
+    "s": "tr(tpubD6NzVbkrYhZ4XgiXtGrdW5XDAPFCL9h7we1vwNCpn8tGbBcgfVYjXyhWo4E1xkh56hjod1RhGjxbaTLV3X4FyWuejifB9jusQ46QzG87VKp/86h/1h/0h/0/*)",
+    "purpose": 86,
+    "internal": 0,
+    "id": "24b7849c9b38f4e5cb2d204a184536b20867a9ad691a8fe2e1c7fc3ff63c135d"
+   },
+   {
+    "s": "tr(tpubD6NzVbkrYhZ4XgiXtGrdW5XDAPFCL9h7we1vwNCpn8tGbBcgfVYjXyhWo4E1xkh56hjod1RhGjxbaTLV3X4FyWuejifB9jusQ46QzG87VKp/86h/1h/0h/1/*)",
+    "purpose": 86,
+    "internal": 1,
+    "id": "30ccdc8cecb4fe650badb560d63f1fdb331a7aa812024f0ce9960b83197157b9"
+   }
+  ]
+ },
+ "katLegacy": {
+  "file": "kat-legacy.dat",
+  "pass": "voidforge",
+  "seedKey": "69011cd375f48a10d2296a2fa93edb9320e1ca67cd16ae2b6f2eb40cc7077534",
+  "master": "584df31b54f78d3e2cfa737c1b6efd3125bdd013e31e4dbba07abaec8e0356e0"
+ },
+ "katDescriptor": {
+  "file": "kat-descriptor.sqlite",
+  "pass": "voidforge",
+  "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+ }
+}

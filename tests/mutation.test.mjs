@@ -108,6 +108,98 @@ async function probe(w, mutated, fast, only, hooks) {
   if (adOf() !== addr(expect.d50, '')) fails.push('first receive address');
   }
   if (hooks && hooks.afterBase) await hooks.afterBase();
+  // v2.16.0 Read a Bitcoin Core wallet file (wallet.dat): the files in tests/fixtures/walletdat (written by Berkeley DB 5.3 and
+  // SQLite, records as Bitcoin Core's source lays them out; tests/fixtures/walletdat/gen.mjs), every expected key and address from
+  // @scure and node:crypto, hand-made damaged records, and the box (gate, CLEAR ALL, auto-clear, re-hide). It ends with CLEAR ALL
+  // and the seed of section 0 made again, so the sections after it start as before.
+  if (SEC(78, "v2.16.0 wallet.dat: Berkeley DB and SQLite files, encryption, descriptors, legacy keys, damaged files, the box")) {
+    const T = 'wallet.dat: ', FXW = new URL('./fixtures/walletdat/', import.meta.url), MFW = JSON.parse(fs.readFileSync(new URL('manifest.json', FXW), 'utf8'));
+    const fileW = (f) => new Uint8Array(fs.readFileSync(new URL(f, FXW))), hxW = (b) => Buffer.from(b).toString('hex'), TW = (s) => sha(Buffer.from('VOIDFORGE wallet.dat test: ' + s));
+    const sh = (b) => nc.createHash('sha256').update(b).digest(), dsh = (b) => sh(sh(b)), b58w = createBase58check(nsha);
+    const wifW = (k, c, t) => b58w.encode(Uint8Array.from([t ? 0xef : 0x80, ...k, ...(c ? [1] : [])]));
+    const unl = (wl, pw) => w.wdatUnlock(wl, pw, async () => {}, () => false);
+    const cs = (n) => n < 253 ? Buffer.from([n]) : Buffer.from([253, n & 255, n >> 8]), vecW = (b) => Buffer.concat([cs(b.length), Buffer.from(b)]), strW = (s) => vecW(Buffer.from(s));
+    try {
+      { let k = 0; w.wdatSelfTests(() => { k++; }); if (k !== 3 || !/\n\s*wdatSelfTests\(eq\);/.test(w.runSelfTests.toString())) fails.push(T + 'the self-test runs the three wallet.dat checks'); }
+      // A: encrypted legacy HD wallet (Berkeley DB, little-endian, 4096-byte pages, internal pages)
+      const A = MFW.legacyHd, seedA = Buffer.from(A.seedKey, 'hex'), rootA = HDKey.fromMasterSeed(seedA);
+      const wa = await w.wdatRead(fileW(A.file)); await w.wdatHash160s(wa);
+      if (wa.fmt !== 'bdb' || wa.db.big || wa.counts.ckey !== 301 || wa.counts.name !== 3 || wa.counts.pool !== 296 || wa.hdchain.ext !== 150 || wa.hdchain.int !== 150 || wa.version !== 170100) fails.push(T + 'legacy HD: the records of a Berkeley DB file with internal pages');
+      for (const i of [0, 1, 150, 299]) { const { x, m } = wa.lines[i], k = rootA.derive(m.path), want = [btc.p2pkh(k.publicKey).address, btc.p2sh(btc.p2wpkh(k.publicKey)).address, btc.p2wpkh(k.publicKey).address];
+        if ((await w.wdatKeyAddrs(wa, x.pub)).join() !== want.join()) { fails.push(T + 'legacy HD: the addresses of key ' + m.path); break; } }
+      if ([...wa.book.values()].filter((x) => x.purpose === 'receive').length !== 2) fails.push(T + 'legacy HD: names and purposes');
+      if (!(await unl(await w.wdatRead(fileW(A.file)), A.pass.normalize('NFD'))).wrong) fails.push(T + 'legacy HD: the passphrase is used exactly as typed');
+      const ua = await unl(wa, A.pass);
+      if (!ua.ok || ua.bad || hxW(wa.lines[5].x.secret) !== hxW(rootA.derive(wa.lines[5].m.path).privateKey)) fails.push(T + 'legacy HD: the right passphrase decrypts the keys');
+      const headA = await w.wdatSecretHead(wa); if (!headA.includes(rootA.privateExtendedKey + '/0h/1h/*h)#')) fails.push(T + 'legacy HD: the HD master xprv and the combo() descriptors');
+      if (!(await w.wdatSecretItem(wa, 0)).includes(wifW(rootA.derive("m/0'/0'/0'").privateKey, true))) fails.push(T + 'legacy HD: a WIF');
+      { const all = await w.wdatBdb(fileW(A.file), async () => {}, () => true), tx = all.records.find(([k]) => w.wdatKeyType(k) === 'tx'); if (!tx || tx[1].length !== 6400) fails.push(T + 'Berkeley DB: a 6,400-byte record over a chain of overflow pages'); }
+      { // a name record and its value both flagged deleted (0x80): skipped, as migrate.cpp does
+        const b = fileW(A.file), ps = 4096; let done = false;
+        for (let p = 1; p < b.length / ps && !done; p++) { const o = p * ps; if (b[o + 25] !== 5 || b[o + 24] !== 1) continue; const n = b[o + 20] | b[o + 21] << 8;
+          for (let i = 0; i + 1 < n; i += 2) { const at = o + (b[o + 26 + 2 * i] | b[o + 27 + 2 * i] << 8); if (b[at + 2] === 1 && b[at + 3] === 4 && Buffer.from(b.subarray(at + 4, at + 8)).toString() === 'name') { const at2 = o + (b[o + 28 + 2 * i] | b[o + 29 + 2 * i] << 8); b[at + 2] |= 0x80; b[at2 + 2] |= 0x80; done = true; break; } } }
+        const wd = done ? await w.wdatRead(b) : null; if (!wd || wd.counts.name !== 2 || wd.counts.purpose !== 3) fails.push(T + 'Berkeley DB: deleted records are skipped');
+      }
+      { const b = fileW(A.file); const e = await w.wdatRead(b.slice(0, b.length - 4096)).then(() => null, (x) => x); if (!e || !/cut short/.test(e.message)) fails.push(T + 'Berkeley DB: a cut-short file is refused as cut short'); }
+      { const b = fileW(A.file); b[24] = 1; const e = await w.wdatRead(b).then(() => null, (x) => x); if (!e || !/own encryption/.test(e.message)) fails.push(T + 'Berkeley DB: its own encryption is refused'); }
+      // B: old wallet, big-endian, 1024-byte pages, overflow records, a wkey, keys without hash
+      const B0 = MFW.legacyOld, wb = await w.wdatRead(fileW(B0.file));
+      if (!wb.db.big || wb.keys.size !== 6 || wb.counts.wkey !== 1) fails.push(T + 'old wallet: a big-endian file, 6 keys (one wkey)');
+      for (const k of B0.keys) { const s = Buffer.from(k.k, 'hex'), pub = secp256k1.getPublicKey(s, k.c), x = wb.keys.get(hxW(pub)); if (!x || hxW(x.secret) !== k.k) { fails.push(T + 'old wallet: the private keys (DER, overflow pages)'); break; } }
+      { const items = []; for (let i = 0; i < 6; i++) items.push(await w.wdatSecretItem(wb, i)); const t2 = items.join('\n');
+        if (!B0.keys.every((k) => t2.includes(wifW(Buffer.from(k.k, 'hex'), k.c))) || /DOES NOT MATCH/.test(t2)) fails.push(T + 'old wallet: WIFs, compressed and uncompressed, each matching its public key'); }
+      // C: descriptor wallet, not encrypted (SQLite, mainnet)
+      const C = MFW.descriptor, rootC = HDKey.fromMasterSeed(mnemonicToSeedSync(C.mnemonic)), wc = await w.wdatRead(fileW(C.file));
+      if (wc.net !== 'main' || wc.db.app !== 'f9beb4d9' || wc.descs.size !== 10 || !wc.descriptor) fails.push(T + 'descriptor: an SQLite mainnet file, 10 descriptors');
+      const rowsC = await w.wdatActiveRows(wc);
+      if (!rowsC[0].startsWith('Legacy (pkh), receive') || !rowsC[0].includes(btc.p2pkh(rootC.derive("m/44'/0'/0'/0/9").publicKey).address) || !rowsC[1].startsWith('Legacy (pkh), change') || !rowsC[1].includes(btc.p2pkh(rootC.derive("m/44'/0'/0'/1/0").publicKey).address)
+        || !rowsC[5].includes(btc.p2wpkh(rootC.derive("m/84'/0'/0'/1/3").publicKey).address) || !rowsC[6].includes(btc.p2tr(rootC.derive("m/86'/0'/0'/0/0").publicKey.slice(1)).address)) fails.push(T + 'descriptor: the active descriptors, receive and change, and their addresses');
+      const dW = [...wc.descs.values()].find((D) => /^wpkh\(xpub/.test(D.str) && /\/0\/\*\)/.test(D.str));
+      if (await w.wdatWatchForm(wc, dW) !== w.descriptorChecksum('wpkh([73c5da0a/84h/0h/0h]' + rootC.derive("m/84'/0'/0'").publicExtendedKey + '/0/*)')) fails.push(T + 'descriptor: the watch-only form');
+      if ((await w.wdatPrivDesc(wc, dW)).text !== w.descriptorChecksum('wpkh(' + rootC.privateExtendedKey + '/84h/0h/0h/0/*)')) fails.push(T + 'descriptor: the private descriptor');
+      { const combo = [...wc.descs.values()].find((D) => /^combo/.test(D.str)), m2 = HDKey.fromMasterSeed(TW('migrated HD seed')); combo.keys.clear();
+        const p0 = m2.derive("m/0'/0'/1'").publicKey; if (await w.wdatAddrAt(wc, combo, 1) !== [btc.p2pkh(p0).address, btc.p2wpkh(p0).address, btc.p2sh(btc.p2wpkh(p0)).address].join('  ')) fails.push(T + 'descriptor: combo() from the derived cache, with no private key'); }
+      { const imp = [...wc.descs.values()].find((D) => /^wpkh\(0[23]/.test(D.str)), ik = TW('imported key'); if ((await w.wdatPrivDesc(wc, imp)).text !== w.descriptorChecksum('wpkh(' + wifW(ik, true) + ')')) fails.push(T + 'descriptor: an imported key as WIF'); }
+      // D: descriptor wallet, encrypted, testnet3, 1024-byte pages (interior pages, an overflow chain)
+      const D0 = MFW.descriptorEncrypted, rootD = HDKey.fromMasterSeed(Buffer.from(D0.seed, 'hex'), { private: 0x04358394, public: 0x043587cf }), wd = await w.wdatRead(fileW(D0.file));
+      if (wd.net !== 'test' || wd.netName !== 'testnet3' || wd.book.size !== 300 || wd.counts.tx !== 1) fails.push(T + 'encrypted descriptor: testnet3, 300 labels (interior pages), the overflowing transaction');
+      { const ll = [...wd.book.values()].find((x) => /^Long label: /.test(x.label || '')); if (!ll || ll.label.length < 9000 || /[^x]/.test(ll.label.slice(12))) fails.push(T + 'SQLite: a row that keeps only the minimum M bytes on its page, the rest in overflow pages'); }
+      const dT = [...wd.descs.values()].find((D) => /^tr\(/.test(D.str) && /\/1\/\*\)/.test(D.str));
+      if (await w.wdatAddrAt(wd, dT, 4) !== btc.p2tr(rootD.derive("m/86'/1'/0'/1/4").publicKey.slice(1), undefined, btc.TEST_NETWORK).address) fails.push(T + 'encrypted descriptor: addresses from the public key cache before the passphrase');
+      if (!(await unl(wd, 'correct horse battery staplE')).wrong) fails.push(T + 'encrypted descriptor: a wrong passphrase is wrong');
+      if (!(await unl(wd, D0.pass)).ok || (await w.wdatPrivDesc(wd, dT)).text !== w.descriptorChecksum('tr(' + rootD.privateExtendedKey + '/86h/1h/0h/1/*)')) fails.push(T + 'encrypted descriptor: the passphrase opens it, and the private descriptor has the tprv');
+      if (await w.wdatWif(Buffer.alloc(32, 1), true, 'test') !== wifW(Buffer.alloc(32, 1), true, true)) fails.push(T + 'a testnet WIF');
+      // the passphrase checks Bitcoin Core makes, on hand-made damage
+      const KL = fileW(MFW.katLegacy.file);
+      { const x = await w.wdatRead(KL), c = w.wdatCrypted(x); c[0].pub = c[1].pub; if (!(await unl(x, 'voidforge')).wrong) fails.push(T + 'a master key that does not decrypt a key to its own public key is a wrong passphrase'); }
+      { const x = await w.wdatRead(KL), c = w.wdatCrypted(x); c[c.length - 1].crypted = c[c.length - 1].crypted.map((v) => v ^ 1); const u = await unl(x, 'voidforge'); if (!u.ok || u.bad !== 1) fails.push(T + 'a key that will not decrypt is counted (a damaged file)'); }
+      { const x = await w.wdatRead(KL), m = x.mkeys[0]; let buf = nc.createHash('sha512').update(Buffer.concat([Buffer.from('voidforge'), Buffer.from(m.salt)])).digest(); for (let i = 1; i < m.rounds; i++) buf = nc.createHash('sha512').update(buf).digest();
+        const ci = nc.createCipheriv('aes-256-cbc', buf.subarray(0, 32), buf.subarray(32, 48)); m.crypted = new Uint8Array(Buffer.concat([ci.update(Buffer.alloc(16, 9)), ci.final()])); x.keys.clear();
+        if (!(await unl(x, 'voidforge')).wrong) fails.push(T + 'a master key that is not 32 bytes is refused'); }
+      { const x = await w.wdatRead(KL); x.mkeys[0].method = 1; if (!/method 1/.test((await unl(x, 'voidforge')).error || '')) fails.push(T + 'derivation method 1 is refused'); }
+      // records made by hand: check hashes, versions, compact sizes
+      { const k = TW('hand key'), pub = secp256k1.getPublicKey(k, true), der = Buffer.concat([Buffer.from('3081d30201010420', 'hex'), k, Buffer.alloc(174, 1)]);
+        const recs = [[Buffer.concat([strW('key'), vecW(pub)]), Buffer.concat([vecW(der), Buffer.alloc(32, 7)])], [Buffer.concat([strW('ckey'), vecW(secp256k1.getPublicKey(TW('c'), true))]), Buffer.concat([vecW(Buffer.alloc(48, 3)), Buffer.alloc(32, 5)])],
+          [Buffer.concat([strW('keymeta'), vecW(pub)]), Buffer.concat([Buffer.from([10, 0, 0, 0]), Buffer.alloc(8), strW("m/0'/0'/7'"), Buffer.alloc(20, 2)])], [strW('hdchain'), Buffer.concat([Buffer.from([1, 0, 0, 0, 5, 0, 0, 0]), Buffer.alloc(20, 3)])]];
+        const x = await w.wdatParse(recs.map(([a, b]) => [new Uint8Array(a), new Uint8Array(b)]), async () => {});
+        if (!x.problems.key || !x.problems.ckey || x.keys.size) fails.push(T + 'a key or ckey record whose check hash does not match is not used');
+        if (!x.metas.get(hxW(pub)) || x.metas.get(hxW(pub)).path !== "m/0'/0'/7'" || x.problems.keymeta) fails.push(T + 'key metadata of version 10 (no key origin)');
+        if (!x.hdchain || x.hdchain.int !== null || x.hdchain.ext !== 5 || x.problems.hdchain) fails.push(T + 'an hdchain of version 1 (no change counter)'); }
+      { const c2 = (b) => { try { return w.wdatRd(Uint8Array.from(b)).cs(); } catch (e) { return 'X'; } }; if (c2([253, 253, 0]) !== 253 || c2([253, 252, 0]) !== 'X' || c2([254, 0, 0, 1, 0]) !== 65536) fails.push(T + 'compact sizes, shortest form only'); }
+      { const e = await w.wdatRead(fileW(C.file).slice(0, 3000)).then(() => null, (x) => x); if (!e || !/cut short|shorter/.test(e.message)) fails.push(T + 'SQLite: a cut-short file is refused'); }
+      // the box: gate, show, re-hide, auto-clear, CLEAR ALL
+      w.setGate('fail', 'SELF-TEST FAILED', 'bad'); const gated = $('wdatBtn').disabled; w.setGate('pass', 'SELF-TEST PASSED', 'good'); if (!gated || $('wdatBtn').disabled) fails.push(T + 'READ WALLET FILE follows the self-test gate');
+      { w.eval('selfTestState = "fail"'); let al = 0; const oa = w.alert; w.alert = () => { al++; }; await w.wdatOpenUi(); w.alert = oa; w.eval('selfTestState = "pass"'); if (al !== 1) fails.push(T + 'READ WALLET FILE refuses with a failed self-test'); }
+      w.clearAll(); await w.wdatShow(fileW(B0.file), '');   // with no seed on the page: only the keys read from the file are secret
+      if (!w.eval('autoHasSecrets()') || !w.autoWipe('in the probe') || w.eval('wdatHasSecret()') || $('wdatOut').textContent) fails.push(T + 'auto-clear sees and wipes the keys read from an unencrypted wallet file');
+      await w.wdatShow(fileW(B0.file), ''); await w.wdatReveal();
+      if (!$('wdatSecret').textContent.includes(wifW(Buffer.from(B0.keys[0].k, 'hex'), B0.keys[0].c)) || !w.eval('autoHasSecrets()') || !w.eval('rhAny()') || !w.rhIds().includes('wdatSecret')) fails.push(T + 'the box shows the keys, and auto-clear and re-hide know it');
+      w.rhHide('tab'); if ($('wdatSecret').style.filter !== 'blur(9px)') fails.push(T + 're-hide covers the private keys'); w.rhShow();
+      $('wdatPass').value = 'x'; w.clearAll();
+      if (w.eval('wdatHasSecret()') || $('wdatSecret').textContent || $('wdatOut').textContent || $('wdatPass').value) fails.push(T + 'CLEAR ALL wipes the wallet file reader');
+    } catch (e) { fails.push(T + 'the probe crashed: ' + e.message); }
+    w.rhShow(); await run('dice', 12, D50);
+  }
   // v2.15.0 "Stop costly mistakes": re-hide (tab, window, Print, idle, own PRINT sheets, passphrase boxes back to dots, SHOW), the
   // passphrase check, passphrase practice (fingerprint from @scure/bip32) and Link as QR. It runs on the seed of section 0 and ends
   // with CLEAR ALL and that seed made again, so the sections after it start as before.
@@ -7608,7 +7700,63 @@ const M = [
   ["Link as QR: a labeled txid refused", "if(pub >= 0 || n === 40 ||", "if(n === 40 ||"],
   ["Link as QR: a key label after a hash label ignored", "if(sec > pub) return \"This is \" + n + \" hex characters labeled", "if(false) return \"This is \" + n + \" hex characters labeled"],
   ["Link as QR: bare 64 hex accepted", "      return \"This is \" + n + \" hex characters, which could be a private key or a seed.", "      return \"\"; \"This is \" + n + \" hex characters, which could be a private key or a seed."],
-  ["Link as QR: a refused secret stays in the box", "if(why){ document.getElementById(\"lqIn\").value = \"\"; return", "if(why){ return"],
+  ["Link as QR: a refused secret stays in the box", "if(why){ document.getElementById(\"lqIn\").value = \"\"; return", "if(why){ return"],  // v2.16.0 Read a Bitcoin Core wallet file (wallet.dat): probe section 78
+  ["wallet.dat: big-endian Berkeley DB files not recognized", "=== 0x62310500;   // BTREE_MAGIC_OE", "=== 0x62310501;   // BTREE_MAGIC_OE"],
+  ["wallet.dat: Berkeley DB root page number read from the wrong place", "root: u32(o + 88)}", "root: u32(o + 84)}"],
+  ["wallet.dat: Berkeley DB deleted records not skipped", "if(r.del) continue;   // a deleted record", "if(false) continue;   // a deleted record"],
+  ["wallet.dat: Berkeley DB overflow data read from the wrong offset", "parts.push(b.subarray(h.o + 26, h.o + 26 + h.hf))", "parts.push(b.subarray(h.o + 25, h.o + 25 + h.hf))"],
+  ["wallet.dat: Berkeley DB overflow chain stops after one page", "got += h.hf; pg = h.next;", "got += h.hf; pg = 0;"],
+  ["wallet.dat: Berkeley DB subdatabase page number read little-endian", "mainPg = (d[0] << 24 | d[1] << 16 | d[2] << 8 | d[3]) >>> 0;", "mainPg = (d[3] << 24 | d[2] << 16 | d[1] << 8 | d[0]) >>> 0;"],
+  ["wallet.dat: Berkeley DB internal pages not followed", "if(h.type === 3){ for(const r of items(h, true)) if(!r.del) stack.push(r.page); }", "if(h.type === 3){ }"],
+  ["wallet.dat: Berkeley DB cut-short file not called cut short", "if(outer.last !== Math.floor(b.length / ps) - 1) throw", "if(false) throw"],
+  ["wallet.dat: Berkeley DB own encryption accepted", "if(outer.encrypt) throw", "if(false) throw"],
+  ["wallet.dat: Berkeley DB record data offset", "out.push({del, data: b.subarray(o + 3, o + 3 + len)});", "out.push({del, data: b.subarray(o + 2, o + 2 + len)});"],
+  ["wallet.dat: SQLite overflow local size formula", "const M = Math.floor((U - 12) * 32 / 255) - 23,", "const M = Math.floor((U - 12) * 32 / 255) - 22,"],
+  ["wallet.dat: SQLite overflow chain read from the wrong place", "got += n; pg = be32(po);", "got += n; pg = be32(po + 4);"],
+  ["wallet.dat: SQLite interior pages lose their right-most child", "stack.push(be32(h + 8));   // the right-most child", "// the right-most child"],
+  ["wallet.dat: SQLite varint continuation bit ignored", "if(!(c & 0x80)) return [v, k + 1];", "return [v, k + 1];"],
+  ["wallet.dat: SQLite page 1 header offset", "h = po + (pg === 1 ? 100 : 0)", "h = po + (pg === 1 ? 0 : 0)"],
+  ["wallet.dat: SQLite text read as blobs", "vals.push(t % 2 ? {text: dec.decode(v)} : {blob: v});", "vals.push({blob: v});"],
+  ["wallet.dat: SQLite application ID read from the wrong place", "app: hex(b.subarray(68, 72))", "app: hex(b.subarray(64, 68))"],
+  ["wallet.dat: SQLite cut-short file read", "if(!pages || pages * ps > b.length) throw", "if(!pages) throw"],
+  ["wallet.dat: compact size 253 form read as 4 bytes", "if(x === 253){ n = r.u16();", "if(x === 253){ n = r.u32();"],
+  ["wallet.dat: non-shortest compact sizes accepted", "if(x === 253){ n = r.u16(); if(n < 253) throw", "if(x === 253){ n = r.u16(); if(false) throw"],
+  ["wallet.dat: key IV from a single SHA-256", "(await dsha256(c.pub)).slice(0, 16)", "(await sha256bytes(c.pub)).slice(0, 16)"],
+  ["wallet.dat: key stretch one round too many", "for(let left = rounds - 1; left > 0;)", "for(let left = rounds; left > 0;)"],
+  ["wallet.dat: key and IV split wrongly", "return [out.slice(0, 32), out.slice(32, 48)];", "return [out.slice(0, 32), out.slice(16, 32)];"],
+  ["wallet.dat: SHA-512 rounds: wrong padding length", "wh[15] = 0; wl[15] = 512;", "wh[15] = 0; wl[15] = 511;"],
+  ["wallet.dat: SHA-512 rounds: a sigma rotation", "const S1h = ((eh >>> 14) | (el << 18))", "const S1h = ((eh >>> 15) | (el << 17))"],
+  ["wallet.dat: SHA-512 constants from square roots instead of cube roots", "const v = root(BigInt(p) << 192n, 3) & M;", "const v = root(BigInt(p) << 128n, 2) & M;"],
+  ["wallet.dat: a key that does not give its own public key accepted", "if(!s || !wdatMatches(s, all[0].pub)){ if(s) s.fill(0); continue; }", "if(!s){ continue; }"],
+  ["wallet.dat: master key length not checked", "if(!mkRaw || mkRaw.length !== 32){", "if(!mkRaw){"],
+  ["wallet.dat: keys that will not decrypt not counted", "if(s) c.secret = s; else bad++;", "if(s) c.secret = s;"],
+  ["wallet.dat: derivation method not checked", "if(m.method !== 0) return {error:", "if(false) return {error:"],
+  ["wallet.dat: the passphrase normalized", "const pw = new TextEncoder().encode(pass), all", "const pw = new TextEncoder().encode(pass.normalize(\"NFKD\")), all"],
+  ["wallet.dat: DER private key read one byte late", "k.set(d.subarray(i, i + os), 32 - os);", "k.set(d.subarray(i + 1, i + 1 + os), 32 - os);"],
+  ["wallet.dat: key record check hash not checked", "if(h.some(x => x) && !wdatEq(await dsha256(concatBytes(pub, d)), h)) throw", "if(false) throw"],
+  ["wallet.dat: ckey checksum not checked", "if(v.left() >= 32 && !wdatEq(await dsha256(c), v.bytes(32))) throw", "if(false) throw"],
+  ["wallet.dat: key origin read from version 10 key metadata", "if(m.ver >= 12){ m.fp", "if(m.ver >= 10){ m.fp"],
+  ["wallet.dat: hdchain change counter read for version 1", "int: ver >= 2 ? v.u32() : null", "int: v.u32()"],
+  ["wallet.dat: wkey read without its version", "if(type === \"wkey\") v.i32();", ""],
+  ["wallet.dat: WIF without the compressed flag", "compressed ? Uint8Array.of(1) : new Uint8Array(0)", "new Uint8Array(0)"],
+  ["wallet.dat: testnet WIF prefix", "net === \"test\" ? 0xef : 0x80", "net === \"test\" ? 0x80 : 0x80"],
+  ["wallet.dat: tprv written as xprv", "Uint8Array.from(net === \"test\" ? [0x04, 0x35, 0x83, 0x94] : [0x04, 0x88, 0xad, 0xe4])", "Uint8Array.from(net === \"test\" ? [0x04, 0x88, 0xad, 0xe4] : [0x04, 0x88, 0xad, 0xe4])"],
+  ["wallet.dat: uncompressed public keys compared as compressed", "if(n.length === 33) return pubFromPoint(P);", "return pubFromPoint(P);"],
+  ["wallet.dat: P2SH-P2WPKH left out for legacy keys", "(pub.length === 33 ? [\"pkh\", \"sh-wpkh\", \"wpkh\"] : [\"pkh\"])", "(pub.length === 33 ? [\"pkh\", \"wpkh\"] : [\"pkh\"])"],
+  ["wallet.dat: parent xpub cache ignored", "if(par && wild !== \"h\") return hex(", "if(false) return hex("],
+  ["wallet.dat: derived xpub cache ignored", "const der = D.derived.get(j + \"/\" + i); if(der) return", "const der = null; if(der) return"],
+  ["wallet.dat: change and receive descriptors swapped", "internal: type === \"activeinternalspk\"", "internal: type === \"activeexternalspk\""],
+  ["wallet.dat: private descriptor keeps the xpub", "if(s) rep = t.t.replace(m[3], await wdatXprv(", "if(false) rep = t.t.replace(m[3], await wdatXprv("],
+  ["wallet.dat: imported key not written as WIF", "if(s) rep = t.t.replace(m[3], await wdatWif(", "if(false) rep = t.t.replace(m[3], await wdatWif("],
+  ["wallet.dat: watch-only form fingerprint of the wrong key", "hex((await hash160(raw.subarray(45, 78))).slice(0, 4))", "hex((await hash160(raw.subarray(44, 77))).slice(0, 4))"],
+  ["wallet.dat: HD seed key not found", "if(x.h160 === w.hdchain.seed) return x;", "if(x.h160 === w.hdchain.seed.slice(1)) return x;"],
+  ["wallet.dat: combo() for the HD change chain left out", "(w.hdchain.int !== null ? \"\\n\" + descriptorChecksum(\"combo(\" + xprv + \"/0h/1h/*h)\") : \"\")", "\"\""],
+  ["wallet.dat: CLEAR ALL leaves the wallet file reader", "  wdatClear();   // v2.16.0: the wallet.dat reader", "  // v2.16.0: the wallet.dat reader"],
+  ["wallet.dat: auto-clear does not see the keys", "return hasSeed() || !!dbGot || wdatHasSecret() ||", "return hasSeed() || !!dbGot ||"],
+  ["wallet.dat: re-hide leaves the private keys", "RH_PLACES.push(\"wdatSecret\");", ""],
+  ["wallet.dat: no self-test gate", "async function wdatOpenUi(){\n  if(!gateOk()) return;\n", "async function wdatOpenUi(){\n"],
+  ["wallet.dat: the button ignores the self-test", "document.getElementById(\"wdatBtn\").disabled = !on;", "document.getElementById(\"wdatBtn\").disabled = false;"],
+  ["wallet.dat: the self-test left out", "  wdatSelfTests(eq);   // v2.16.0", "  // v2.16.0"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
