@@ -680,6 +680,120 @@ async function probe(w, mutated, fast, only, hooks) {
     if (navOnline) Object.defineProperty(w.navigator, 'onLine', navOnline); else delete w.navigator.onLine;
   }
   }
+  // v2.14.0: the Damascus method (MAKE A SEED > Damascus, the dm-prefixed code). Its grids, hallmarks, words and bias boxes are
+  // compared with the method's reference code (tests/fixtures/damascus/vf.js) and the phrases with @scure/bip39; the review fixes
+  // (M1-M6, L1-L20) and the five steps are driven through the page's own boxes and buttons. It ends with CLEAR and the Dice tab.
+  if (SEC(74, "v2.14.0 Damascus method: grids, hallmarks, words, bias boxes, practice by content, mistake finder, five steps, last word from paper, wipes")) {
+  const cf0 = w.confirm, pr0 = w.print;
+  try {
+    const T = 'damascus: ', V = requireC('./fixtures/damascus/vf.js'), $$ = (s) => [...w.document.querySelectorAll(s)];
+    const EX = [1, 2, 3].map((i) => JSON.parse(fs.readFileSync(new URL('./fixtures/damascus/example-' + i + '.json', import.meta.url), 'utf8')));
+    const pairsOf = (s) => String(s).trim().split(/\s+/).map((t) => [+t[0], +t[1]]), cardsTxt = (c) => c.map((d) => (Array.isArray(d) ? d.join(' ') : d)).join('\n');
+    const set = (id, v) => { $(id).value = v; $(id).dispatchEvent(new w.Event('input', { bubbles: true })); };
+    const wsel = (n) => { $('wordSel').value = String(n); $('wordSel').dispatchEvent(new w.Event('change', { bubbles: true })); };
+    const who = (v) => { $('dmWho').value = v; $('dmWho').dispatchEvent(new w.Event('change', { bubbles: true })); };
+    let asked = ''; w.confirm = (m) => { asked = m; return true; };
+    w.setMethod('damascus'); wsel(12);
+    const rnd = (n) => { const dice = [], need = Math.ceil(V.PLAN[n].bits / 5); let g = 0; while (g < need + 2) { const a = 1 + nc.randomInt(6), b = 1 + nc.randomInt(6); dice.push([a, b]); if (V.mirrorCode(a, b) !== null) g++; }
+      const cards = V.cardPlan(V.PLAN[n].bits).map(() => { const d = Array.from({ length: 52 }, (_, i) => i); for (let i = 51; i > 0; i--) { const j = nc.randomInt(i + 1); [d[i], d[j]] = [d[j], d[i]]; } return d.map(V.cardName); });
+      return { words: n, dice, cards }; };
+    // 1. the forge: the three worked examples and six random sheets against the reference code and @scure/bip39
+    const sheets = EX.map((e) => ({ words: e.words, dice: pairsOf(e.dice), cards: e.cards.map((d) => (Array.isArray(d) ? d : String(d).trim().split(/\s+/))) })).concat([12, 24, 12, 24, 12, 24].map(rnd));
+    for (const [k, s] of sheets.entries()) {
+      const r = V.forge(s), p = await w.dmForge(s.words, s.dice, w.dmParseCards(cardsTxt(s.cards), s.words).decks);
+      const bias = (b) => JSON.stringify([b.counts, b.repeats, b.pass]), cb = (l) => JSON.stringify(l.map((b) => [b.ones, b.neighbors === undefined ? b.neighbours : b.neighbors, b.pass]));
+      if (!p.F || p.H.bits.join('') !== r.D.bits || p.A.bits.join('') !== r.C.bits || p.F.bits.join('') !== r.E.bits) { fails.push(T + 'sheet ' + k + ': the grids H, A and F are the reference code\'s'); continue; }
+      for (const [a, b, n] of [[p.H.marks, r.D.marks, 'H'], [p.A.marks, r.C.marks, 'A'], [p.F.marks, r.E.marks, 'F']]) for (const x of ['M', 'R', 'K']) if (a[x] !== b[x]) fails.push(T + 'sheet ' + k + ': hallmark ' + x + '(' + n + ') is the reference code\'s');
+      if (JSON.stringify(p.F.handWords) !== JSON.stringify(r.E.handWords)) fails.push(T + 'sheet ' + k + ': the hand words and the last-word range are the reference code\'s');
+      if (p.F.phrase !== entropyToMnemonic(Uint8Array.from(r.E.bits.match(/.{8}/g).map((b) => parseInt(b, 2))), wordlist)) fails.push(T + 'sheet ' + k + ': the words are @scure/bip39\'s');
+      if (bias(p.H.bias) !== bias(r.bias.dice) || cb(p.A.bias) !== cb(r.bias.cards)) fails.push(T + 'sheet ' + k + ': the bias boxes are the reference code\'s');
+    }
+    // the bias box thresholds at their edges: a face 18 times fails, 17 does not; 11 ones of 45 fail, 12 do not; 6 neighbors fail, 5 do not
+    { const dice = (c18) => { const t = []; for (let i = 0; i < c18; i++) t.push(1); let f = 2; while (t.length < 52) { t.push(f); f = f === 6 ? 2 : f + 1; } const p = []; for (let i = 0; i < 52; i += 2) p.push([t[i], t[i + 1]]); return p; };
+      const fa = (b) => b.fail.some((x) => /came up 18 times/.test(x));
+      if (!fa(w.dmDiceBias(dice(18), 12)) || w.dmDiceBias(dice(17), 12).fail.some((x) => /came up \d+ times \(fail at 18/.test(x))) fails.push(T + 'dice bias box: a face 18 times fails, 17 times does not');
+      const deck = (ones, nb) => { const cards = [0, 4, 8, 12, 16, 20, 24, 28].slice(0, nb + 1).concat([1, 33, 50, 23, 46, 39, 30].slice(0, 7 - nb)); return w.dmCardBias([{ deck: 1, groups: [{ cards, bits: '1'.repeat(ones) + '0'.repeat(45 - ones) }] }], 12)[0]; };
+      if (deck(11, 0).pass || !deck(12, 0).pass || deck(20, 6).pass || !deck(20, 5).pass) fails.push(T + 'card bias box: 11 ones fail and 12 do not; 6 neighbors fail and 5 do not'); }
+    // 2. the boxes: M1 (no pair made from loose digits), L15 (a missing card is said as missing), a card twice is refused
+    const E1 = EX[0], d1 = E1.dice, c1 = cardsTxt(E1.cards);
+    set('dmDice', d1.replace('26 53', '2 53')); set('dmCards', c1);
+    if (!/^Pair 3 is missing a throw/.test($('dmMsg').textContent) || !$('dmCheckBtn').disabled) fails.push(T + 'review M1: a pair with one throw stops the check');
+    set('dmDice', d1);
+    { const c = E1.cards.map((d) => String(Array.isArray(d) ? d.join(' ') : d).split(' ')); set('dmCards', [c[0].slice(1).join(' '), c[1].join(' '), c[2].join(' ')].join('\n'));
+      if (!/^Deck 1 \(line 1\) has 51 cards/.test($('dmMsg').textContent)) fails.push(T + 'review L15: one deck a line, a missing card is named as missing');
+      c[1][6] = c[1][1]; set('dmCards', c.map((d) => d.join(' ')).join('\n')); await w.dmCheck();
+      if (!/^Deck 2 has the .+ twice \(cards 2 and 7\)/.test($('dmMsg').textContent)) fails.push(T + 'a card twice in a deck is refused'); }
+    // 3. practice by content (M2, M4), the practice rule, the public list
+    set('dmCards', c1);
+    if (!/^PRACTICE: worked example 1 is public/.test($('dmPracticeBan').textContent) || !$('dmBtn').disabled) fails.push(T + 'review M2: worked example 1 typed by hand says PRACTICE and FORGE SEED stays off');
+    if (!/worked example of the Damascus/.test(w.knownPhrase(V.forge(sheets[0]).E.phrase.join(' ')) || '')) fails.push(T + 'review M2: worked example 1 is a known public phrase');
+    const rule = (n, words) => { let block = 0, buf = Buffer.alloc(0), at = 0; const draw = (m) => { const lim = Math.floor(4294967296 / m) * m; for (;;) { if (at + 4 > buf.length) { buf = nc.createHash('sha256').update('VOIDFORGE Damascus practice ' + n + ' block ' + block++).digest(); at = 0; } const v = buf.readUInt32BE(at); at += 4; if (v < lim) return v % m; } };
+      const pairs = []; let g = 0; while (g < Math.ceil(V.PLAN[words].bits / 5)) { const a = 1 + draw(6), b = 1 + draw(6); pairs.push(a + '' + b); if (V.mirrorCode(a, b) !== null) g++; } return pairs.join(' '); };
+    w.eval('dmPracticeNext = 100'); await w.dmPracticeFill();
+    if ($('dmDice').value !== rule(100, 12) || !/^PRACTICE: practice 100 comes from a published rule/.test($('dmPracticeBan').textContent)) fails.push(T + 'practice sheet 100 is made by the published rule');
+    await w.dmPracticeFill();
+    if ($('dmDice').value !== rule(1, 12)) fails.push(T + 'after practice sheet 100 comes practice sheet 1 (sheets 1 to 100)');
+    set('dmDice', $('dmDice').value + ' 12');
+    if (!/^PRACTICE: practice 1 comes from a published rule/.test($('dmPracticeBan').textContent) || !$('dmBtn').disabled) fails.push(T + 'review M2: a practice sheet is still PRACTICE by its content after an edit that keeps the seed');
+    const R = sheets[3], Rd = R.dice.map((p) => p.join('')).join(' '), Rc = cardsTxt(R.cards), Rref = V.forge(R), Rph = Rref.E.phrase.join(' ');
+    set('dmDice', Rd);
+    if ($('dmPracticeBan').style.display !== 'none' || w.eval('dmPractice') !== '') fails.push(T + 'review M4: real dice in place of the practice dice end PRACTICE at once');
+    { set('dmCards', Rc); set('dmDice', ''); set('dmCards', ''); set('dmWords', 'zoo'); asked = ''; w.confirm = (m) => { asked = m; return false; }; await w.dmLoadExample(1); w.confirm = (m) => { asked = m; return true; };
+      if ($('dmWords').value !== 'zoo' || !/This replaces what you typed/.test(asked)) fails.push(T + 'review L14: LOAD EXAMPLE asks before it replaces typed boxes'); set('dmWords', ''); }
+    // 4. FORGE SEED: What I wrote is checked first (M6); the summary's condition (L17); an assay clears the seed and the other sheet (L1)
+    wsel(12); set('dmDice', Rd); set('dmCards', Rc);
+    { const ws = Rph.split(' '); ws[2] = ws[2] === 'zoo' ? 'abandon' : 'zoo'; set('dmWords', ws.join(' ')); asked = ''; w.confirm = (m) => { asked = m; return false; }; await w.dmGenerate(); w.confirm = (m) => { asked = m; return true; };
+      if ((w.hasSeed() && w.eval('seedKind') === 'dm') || !/What you wrote does not match/.test(asked)) fails.push(T + 'review M6: FORGE SEED checks What I wrote and asks first'); set('dmWords', ''); }
+    await w.dmGenerate();
+    if (!w.hasSeed() || w.eval('madeMnemonic') !== Rph) fails.push(T + 'FORGE SEED makes the reference code\'s words');
+    { const S = w.seedSummary(); if (!S || !S.lines.some((l) => /if the dice or the shuffle was fair/.test(l))) fails.push(T + 'review L17: the summary gives the strength with its condition'); }
+    who('h');
+    if (w.hasSeed() || $('dmCards').value) fails.push(T + 'review L1: an assay clears the seed and the other sheet\'s box');
+    who('both'); set('dmCards', Rc);
+    // 5. the mistake finder: one wrong box in grid F and in grid H, a word next to the right one
+    { const P = await w.dmForge(12, R.dice, w.dmParseCards(Rc, 12).decks), i = 40, Fb = P.F.bits.map((b, k) => (k === i ? b ^ 1 : b)), m = w.dmMarks(Fb);
+      set('dmFM', m.M); set('dmFR', m.R); await w.dmCheck();
+      if (!$('dmOut').textContent.includes('One box is most likely wrong: row 4, column 8: the Forge box should be ' + P.F.bits[i])) fails.push(T + 'the mistake finder names a wrong box of grid F');
+      set('dmFM', ''); set('dmFR', '');
+      const j = 37, mh = w.dmMarks(P.H.bits.map((b, k) => (k === j ? b ^ 1 : b))); set('dmHM', mh.M); set('dmHR', mh.R); await w.dmCheck();
+      const good = R.dice.map((p, k) => (V.mirrorCode(p[0], p[1]) !== null ? k : -1)).filter((k) => k >= 0), pb = good[Math.floor(j / 5)];
+      if (!$('dmOut').textContent.includes('It is bit ' + (j % 5 + 1) + ' of run ' + (Math.floor(j / 5) + 1) + ': pair box ' + (pb + 1) + ',')) fails.push(T + 'the mistake finder names the run and the pair box in grid H');
+      set('dmHM', ''); set('dmHR', '');
+      const ws = Rph.split(' '), want = wordlist.indexOf(ws[1]); ws[1] = wordlist[want === 2047 ? 2046 : want + 1]; set('dmWords', ws.join(' ')); await w.dmCheck();
+      if (!$('dmOut').textContent.includes('Word 2: you wrote ' + ws[1] + ', the word next to ')) fails.push(T + 'the mistake finder says a word is the one next to the right one'); set('dmWords', ''); }
+    // 6. the five steps: the dice pad, the card picker, the live checks
+    w.dmClear(); wsel(12);
+    { const pad = $$('#dmDicePad button'); for (const t of '14152653') pad[+t - 1].click();
+      if ($('dmDice').value !== '14 15 26 53') fails.push(T + 'the dice pad writes two taps as one pair');
+      const card = (c) => c[0] + { C: '♣', D: '♦', H: '♥', S: '♠' }[c[1]];
+      w.dmDealCard(card('9D')); w.dmDealCard(card('9D')); w.dmDealCard(card('3S'));
+      if ($('dmCards').value !== '9D 3S') fails.push(T + 'the card picker deals a card once a deck');
+      w.dmClear(); set('dmDice', d1); set('dmCards', c1); set('dmHR', V.forge(sheets[0]).D.marks.R.slice(0, 5));
+      if (($('dmLiveH').textContent.match(/✓/g) || []).length !== 5 || /you wrote R/.test($('dmLiveH').textContent)) fails.push(T + 'the Hammer step checks each typed row hallmark');
+      const RF = V.forge(sheets[0]).E.marks.R; set('dmFR', RF.slice(0, 3) + (RF[3] === '1' ? '0' : '1'));
+      if (!/Row 4: you wrote R/.test($('dmLiveF').textContent) || /Row [1-3]: you wrote/.test($('dmLiveF').textContent)) fails.push(T + 'the Forge step checks grid F row by row'); }
+    // 7. the last word from paper only, as SeedSigner's Calc 12th/24th word; a public phrase is refused
+    w.dmClear();
+    { const m = entropyToMnemonic(nc.randomBytes(16), wordlist).split(' '), bits = wordlist.indexOf(m[11]).toString(2).padStart(11, '0').slice(0, 7);
+      set('dmLwWords', m.slice(0, 11).join(' ')); set('dmLwBits', bits); await w.dmLwCalc();
+      if (!$('dmLwOut').textContent.startsWith('Last word: ' + m[11] + ' (') || !$('dmLwOut').textContent.includes(fp(m.join(' '), ''))) fails.push(T + 'CALCULATE LAST WORD gives @scure/bip39\'s last word and fingerprint');
+      set('dmLwBits', bits.slice(1)); await w.dmLwCalc();
+      if (!/^Type the 7 bits of your Forge sheet's last row: you typed 6\./.test($('dmLwOut').textContent)) fails.push(T + 'CALCULATE LAST WORD names a wrong bit count');
+      const ph = V.forge(sheets[0]).E.phrase; set('dmLwWords', ph.slice(0, 11).join(' ')); set('dmLwBits', V.forge(sheets[0]).E.handWords[11].bits); await w.dmGenerate();
+      if (w.hasSeed() && w.eval('madeMnemonic') === ph.join(' ')) fails.push(T + 'FORGE SEED from paper refuses a public worked example'); }
+    // 8. the backup recheck: a swap without K is never put down to the last word alone; a recheck still working writes nothing after CLEAR
+    { const r0 = V.forge(sheets[0]), ws = r0.E.phrase.slice(), mk = r0.E.marks; let a = 0, b = 1; outer: for (a = 0; a < 11; a++) for (b = a + 1; b < 11; b++) if (mk.R[a] === mk.R[b] && ws[a] !== ws[b]) break outer;
+      [ws[a], ws[b]] = [ws[b], ws[a]]; $('dmrWords').value = ws.join(' '); $('dmrM').value = mk.M; $('dmrR').value = mk.R; $('dmrK').value = ''; await w.dmRecheck();
+      const o = $('dmrOut').textContent; if (/BIP39 checksum is wrong/.test(o) ? !/- two words in swapped places \(the row and column hallmarks miss/.test(o) : !/Without the skew hallmark K, two words in swapped places can still pass/.test(o)) fails.push(T + 'review M3: a swap without K is named as a possible cause');
+      $('dmrWords').value = r0.E.phrase.join(' '); const p = w.dmRecheck(); w.dmrClear(); await p;
+      if ($('dmrOut').textContent) fails.push(T + 'review L4: a recheck still working writes nothing after CLEAR'); }
+    // 9. printing waits for the self-test (L6)
+    { let n = 0; w.print = () => { n++; }; const al = w.alert; w.alert = () => {}; w.eval("selfTestState = 'fail'"); w.dmPrint('h'); w.eval("selfTestState = 'pass'"); w.alert = al;
+      if (n) fails.push(T + 'review L6: no sheet prints while the self-test has not passed'); w.dispatchEvent(new w.Event('afterprint')); }
+  } catch (e) { if (e instanceof ProbeStop) throw e; fails.push('damascus: the probe crashed: ' + e.message); }
+  finally { w.confirm = cf0; w.print = pr0; try { w.dmClear(); w.eval("dmPracticeNext = 1"); $('dmWho').value = 'both'; $('wordSel').value = '12'; $('wordSel').dispatchEvent(new w.Event('change', { bubbles: true })); w.setMethod('dice'); } catch (e) { /* the page may be broken */ }
+    try { await run('dice', 12, D50); } catch (e) { /* section 0's seed again, for the sections after this one */ } }
+  }
   // v2.10.0: right after section 0 (and after the map's start mark), so a mutation of these tools fails within seconds; it ends with CLEAR ALL, then makes section 0's seed again.
   if (SEC(66, "v2.10.0 Coldcard seed mix and flawed-device questions")) {
   try {
@@ -3551,7 +3665,8 @@ async function probe(w, mutated, fast, only, hooks) {
       if (/#rollCount \{ display: none; \}/.test(css)) fails.push('calmer page: the roll count stays on every screen size');
       w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if (d.body.classList.contains('has-seed')) fails.push('calmer page: no seed, so seed buttons stay hidden');
       await run('dice', 12, D50); if (!d.body.classList.contains('has-seed')) fails.push('calmer page: a seed shows the seed buttons'); }
-    if ($('ownerLogo') || [...w.document.querySelectorAll('img')].some((im) => !(im.matches('img.vf-creator-pic') && im.closest('.vf-creator')))) fails.push('redesign: no picture is built into the page'); }   // v2.14.0: only the Damascus creator picture (img.vf-creator-pic inside .vf-creator)
+    // v2.14.0: the only pictures are the Damascus creator's picture (top of the Damascus tab and ABOUT & HELP)
+    if ($('ownerLogo') || [...w.document.querySelectorAll('img')].some((i) => i.className !== 'vf-creator-pic' || !i.closest('.vf-creator'))) fails.push('redesign: no picture is built into the page but the Damascus creator picture'); }
   }
   if (SEC(50, "v2.6.0 review fixes (expected addresses from @scure): CLEAR ALL, pract")) {
   try { // v2.6.0 review fixes (expected addresses from @scure): CLEAR ALL, practice-mode COPY ADDRESS and recorded address, Word draw download, P2WSH, password managers
@@ -5012,7 +5127,7 @@ const M = [
   ['step help: never updated', '  document.getElementById("stepWhy").textContent = WHY[cur];\n', ''],
   ['preview: too-few-rolls FORGE wipes the gray words', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote(); previewRefresh();', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote();'],
   ["preview: gray note stays after FORGE", "wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body", "wdWipe(); drillEnd(); bkReset(!!words); document.body"],
-  ["word draw: dice FORGE leaves old steps", "  madeMnemonic = words ? words.join(\" \") : \"\";\n  sumCtx = null;\n  wdWipe(); drillEnd();", "  madeMnemonic = words ? words.join(\" \") : \"\";\n  sumCtx = null;\n  drillEnd();"],
+  ["word draw: dice FORGE leaves old steps", "  sumCtx = null;\n  wdWipe(); drillEnd();", "  sumCtx = null;\n  drillEnd();"],
   ['word draw: CLEAR leaves the boxes', '  wdClear(); cdClear(); clearS39();\n', '  cdClear(); clearS39();\n'],
   ['word draw: CLEAR button leaves the words', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();'],
   ['word draw: CLEAR button leaves the flips', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdWords").value = "";\n  wdWipe(); wdUpdate();'],
@@ -5495,7 +5610,7 @@ const M = [
   ['exit guide: button moved into step 1 only', '<div class="gtop"><div class="gtitle" id="gTitle">Step 1 of 5</div><button type="button" class="secondary small" id="gExit" onclick="toggleGuide()">EXIT GUIDE</button></div>', '<div class="gtop"><div class="gtitle" id="gTitle">Step 1 of 5</div></div>'],
   ['exit guide: button label wrong', '>EXIT GUIDE</button>', '>GUIDE</button>'],
   // v1.26.1 stale-result guard
-  ["run counter: a stale clear does not move it on", "  seedSig = null; forgeRun++;", "  seedSig = null;"],
+  ["run counter: a stale clear does not move it on", "  seedSig = null; forgeRun++;\n  if(seedKind === \"cd\"", "  seedSig = null;\n  if(seedKind === \"cd\""],
   ["run counter: old fingerprint written back", "    if(run !== forgeRun) return;\n    fpEl.textContent = \"Master fingerprint: \"", "    fpEl.textContent = \"Master fingerprint: \""],
   ["run counter: old first address written back", "    if(run !== forgeRun) return;\n    adEl.textContent = (practiceOn ?", "    adEl.textContent = (practiceOn ?"],
   ["run counter: old address list written back", "    if(run !== forgeRun) return;\n    showAddrs(segwit, taproot, net, segwitCh, taprootCh);", "    showAddrs(segwit, taproot, net, segwitCh, taprootCh);"],
@@ -5878,7 +5993,7 @@ const M = [
   ["address QR: old request kept when too long", "    delete box.dataset.text; document.getElementById(pfx + \"Img\").textContent = \"\";", "    document.getElementById(pfx + \"Img\").textContent = \"\";"],
   ["CLEAR ALL: child result kept", "clearWalletView(); clearChild();\n  document.getElementById(\"checkAddr\").value=\"\";", "clearWalletView();\n  document.getElementById(\"checkAddr\").value=\"\";"],
   ["CLEAR ALL: address and explanation kept", "  document.getElementById(\"checkAddr\").value=\"\"; explainSeq++; document.getElementById(\"addrExplain\").textContent=\"\"; document.getElementById(\"addrExplain\").className=\"status\";\n", ""],
-  ["summary: older seed kept in the line", "  madeMnemonic = words ? words.join(\" \") : \"\";\n  sumCtx = null;\n", "  madeMnemonic = words ? words.join(\" \") : \"\";\n"],
+  ["summary: older seed kept in the line", "ssfRender();\n  sumCtx = null;\n  wdWipe();", "ssfRender();\n  wdWipe();"],
   ["summary: mismatch not explained", "  if(!hasSeed()) return alert(\"Generate a seed first\");\n  if(passMismatch()) return;\n  const S = seedSummary(); if(!S) return;", "  if(!hasSeed()) return alert(\"Generate a seed first\");\n  const S = seedSummary(); if(!S) return;"],
   ["child: words shown after HIDE", "parent = await mnemonicFingerprint(r.mnemonic, vp);\n    if(my !== childSeq) return;", "parent = await mnemonicFingerprint(r.mnemonic, vp);"],
   ["child: key shown after HIDE", "o = document.getElementById(\"childOut\");\n    if(my !== childSeq) return;", "o = document.getElementById(\"childOut\");"],
@@ -6123,7 +6238,7 @@ const M = [
   ["recorded: shown network always used", "if(net !== (practiceOn ? \"test\" : \"main\")){ try { c0 =", "if(false){ try { c0 ="],
   ["recorded: network read wrongly", "const net = /^tb1/i.test(rawRec.replace(/\\s+/g, \"\")) ? \"test\" : \"main\";", "const net = \"main\";"],
   ["recorded: firstAddressOn networks swapped", "async function firstAddressOn(net, mnemonic, passphrase){ return net === \"test\" ?", "async function firstAddressOn(net, mnemonic, passphrase){ return net !== \"test\" ?"],
-  ["download: Word draw gets the rolls box", "const input = seedKind === \"dm\" ? dmInputText() : seedKind === \"wd\" ?", "const input = seedKind === \"dm\" ? dmInputText() : false ?"],
+  ["download: Word draw gets the rolls box", ": seedKind === \"dm\" ? dmInputText() : seedKind === \"wd\" ?", ": seedKind === \"dm\" ? dmInputText() : false ?"],
   ["download: Word draw flips left out", "(wdFl ? \"; coin flips for the last word: \" + wdFl : \"\")", "\"\""],
   ["P2WSH: CHECK ADDRESS searches it", "{ const sn = scriptAddrNote(addr); if(sn) return say(\"bad\", sn); }\n  const kind0 =", "const kind0 ="],
   ["P2WSH: Try accounts searches it", "{ const sn = scriptAddrNote(addr); if(sn) return say(\"bad\", sn); }\n  const type = addressTypeOf(addr);", "const type = addressTypeOf(addr);"],
@@ -7225,6 +7340,52 @@ const M = [
   ["learn: wipe: practice PSBT records kept", "    for (const m of [T.global, ...T.inMaps, ...T.outMaps]) for (const kv of m) for (const x of kv) if (x instanceof Uint8Array) x.fill(0);\n", ""],
   ["learn: wipe: the practice wallet's QR codes not overwritten", "  ssLearnForget(); ssForgeReset();\n", "  ssForgeReset();\n"],
   ["learn: wipe: the practice wallet still holds its QR codes", "  ssLearnCam.frames = null; ssLearnCam.byLesson = false; ssLearnCam.what = \"\";", "  ssLearnCam.byLesson = false; ssLearnCam.what = \"\";"],
+  // v2.14.0: the Damascus method (dm-prefixed code), caught by section 74 or the self-test (worked example 1). Left out as
+  // equivalent (not listed): the rejection test in dmPracticeDraws (a 32-bit number at or above the largest multiple of m comes
+  // up about once in 700 million draws, so no practice sheet 1 to 100 changes); the seq guard after checkPhrase in dmRecheck
+  // (say() checks the same seq); the new line after a full deck in dmDealCard (the deck plan splits the same cards anyway);
+  // "<= 1" for the rank step in dmNeighbor (two cards of one suit never share a rank).
+  ["damascus: mirror table, the 5th bit the wrong way round", "return (k << 1) | (b > a ? 1 : 0);", "return (k << 1) | (b < a ? 1 : 0);"],
+  ["damascus: 4-4 taken as a good pair", "if(a === b) return a <= 4 ? null : 30 + (a === 6 ? 1 : 0);", "if(a === b) return a <= 3 ? null : 30 + (a === 6 ? 1 : 0);"],
+  ["damascus: a throw-again pair still counted", "if(c === null || bits.length >= nBits) continue;", "if(bits.length >= nBits) continue;"],
+  ["damascus: knockout bit the wrong way round", "bits.push(r[i + 1] > r[i] ? 1 : 0); n.push(Math.max(r[i], r[i + 1]));", "bits.push(r[i + 1] < r[i] ? 1 : 0); n.push(Math.max(r[i], r[i + 1]));"],
+  ["damascus: the lower card plays on", "bits.push(r[i + 1] > r[i] ? 1 : 0); n.push(Math.max(r[i], r[i + 1]));", "bits.push(r[i + 1] > r[i] ? 1 : 0); n.push(Math.min(r[i], r[i + 1]));"],
+  ["damascus: the last deck deals a sixth group of 8 (review M5)", "if(cards >= 8 && need > 3)", "if(cards >= 8 && need > 2)"],
+  ["damascus: card order by suit first", "return CD_RANKS.indexOf(c[0]) * 4 + CD_SUITS.indexOf(c[1]);", "return CD_SUITS.indexOf(c[1]) * 13 + CD_RANKS.indexOf(c[0]);"],
+  ["damascus: skew letters shifted", "K[(r + c) % 11] ^= x;", "K[(r + c + 1) % 11] ^= x;"],
+  ["damascus: row hallmark inverted", "R.push(p); });", "R.push(p ^ 1); });"],
+  ["damascus: grid F made with OR", "const F = out.H.bits.map((x, i) => x ^ out.A.bits[i])", "const F = out.H.bits.map((x, i) => x | out.A.bits[i])"],
+  ["damascus: last-word range one word too long", "hi = lo + (1 << k) - 1;", "hi = lo + (1 << k);"],
+  ["damascus: dice repeats counted two throws back", "if(throws[i] === throws[i - 1]) repeats++;", "if(i > 1 && throws[i] === throws[i - 2]) repeats++;"],
+  ["damascus: dice bias box a face 18 times passes", "if(hi >= th.diceHigh)", "if(hi > th.diceHigh)"],
+  ["damascus: card bias box 11 ones pass", "if(full && (ones <= th.onesLow", "if(full && (ones < th.onesLow"],
+  ["damascus: neighbors of different suits", "return (x & 3) === (y & 3) &&", "return (x & 3) !== (y & 3) &&"],
+  ["damascus: a pair with one throw accepted (review M1)", "if(t.length === 1) return {pairs, missing", "if(t.length === 0) return {pairs, missing"],
+  ["damascus: one deck a line ignored (review L15)", "if(sizes.length > 1 && lines.length === sizes.length)", "if(false && sizes.length > 1 && lines.length === sizes.length)"],
+  ["damascus: a card twice in a deck accepted", "if(first.has(c)) return {error", "if(false) return {error"],
+  ["damascus: PRACTICE outlives the boxes (review M4)", "if(dmLoaded && dice === dmLoaded.dice && cards === dmLoaded.cards) return dmLoaded.kind;", "if(dmLoaded) return dmLoaded.kind;"],
+  ["damascus: public dice and cards not recognized (review M2)", "return st.who === \"both\" ? dmPublicKind(st) : \"\";", "return \"\";"],
+  ["damascus: worked example 1 not a known phrase (review M2)", "\"a public worked example of the Damascus method\", \"7a25ddb4", "\"a public worked example of the Damascus method\", \"7a25ddb5"],
+  ["damascus: practice sheets drawn little-endian", "((buf[at] << 24) >>> 0) + (buf[at + 1] << 16)", "((buf[at + 3] << 24) >>> 0) + (buf[at + 2] << 16)"],
+  ["damascus: practice sheets go past 100", "dmPracticeNext = n % 100 + 1;", "dmPracticeNext = n + 1;"],
+  ["damascus: practice sheet by content named as another public phrase", "if(pr >= 0) return \"practice \" + (pr % 100 + 1);", "if(pr >= 0) return \"practice \" + (pr % 100);"],
+  ["damascus: LOAD EXAMPLE replaces typed boxes without asking (review L14)", "if(own && !confirm(", "if(false && !confirm("],
+  ["damascus: FORGE SEED skips What I wrote (review M6)", "flags = dmTyped(\"both\") ? dmFlags(r, st) : [];", "flags = [];"],
+  ["damascus: the summary drops the strength's condition (review L17)", "(c.dm ? \" (if the dice or the shuffle was fair", "(false ? \" (if the dice or the shuffle was fair"],
+  ["damascus: an assay keeps the other sheet (review L1)", "for(const id of clear) document.getElementById(id).value = \"\";", ""],
+  ["damascus: who checks not part of the seed's inputs (review L1)", "return dmWho() + \"|\" +", "return \"both\" + \"|\" +"],
+  ["damascus: the mistake finder points to the wrong box", "const i = (rows[0] - 1) * 11 + cols[0] - 1;", "const i = (rows[0] - 1) * 11 + cols[0];"],
+  ["damascus: the mistake finder names the wrong run", "const run = Math.floor(i / 5), k = good[run]", "const run = Math.floor(i / 6), k = good[run]"],
+  ["damascus: a neighboring word not named", "if(Math.abs(got - want) === 1)", "if(Math.abs(got - want) === 2)"],
+  ["damascus: recheck without K blames the last word (review M3)", "(gk ? \"- most likely", "(true ? \"- most likely"],
+  ["damascus: recheck writes after CLEAR (review L4)", "function dmrWipe(){ dmrSeq++;", "function dmrWipe(){"],
+  ["damascus: sheets print before the self-test (review L6)", "if(!gateOk()) return;   // review L6", "if(false) return;   // review L6"],
+  ["damascus: the dice pad splits a pair", "(/^[1-6]$/.test(last) ? \"\" : t ? \" \" : \"\")", "(/^[1-6]$/.test(last) ? \" \" : t ? \" \" : \"\")"],
+  ["damascus: the card picker deals a card twice", "if(D.decks[D.cur].includes(c)) return;", ""],
+  ["damascus: the Hammer step marks every typed hallmark right", "else if(+t === m.R.charCodeAt(i) - 48) mark", "else if(true) mark"],
+  ["damascus: the Forge step marks every typed row right", "if(tr[i] === m.R[i]) partsF.push", "if(true) partsF.push"],
+  ["damascus: CALCULATE LAST WORD takes a wrong bit count", "if(bv.length !== P.fin) return", "if(false) return"],
+  ["damascus: FORGE SEED from paper takes a public example", "if(k && /Damascus/.test(k)){", "if(false){"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

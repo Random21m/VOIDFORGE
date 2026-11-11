@@ -138,8 +138,19 @@ const words = (n) => { $("wordSel").value = String(n); $("wordSel").dispatchEven
 w.setMethod("damascus");
 check("the Damascus tab opens its box and says what it needs", w.document.body.classList.contains("m-damascus") && $("mt-damascus").getAttribute("aria-selected") === "true" && $("dmBox").open && /26 good dice pairs and 3 shuffled decks/.test($("lenNote").textContent), $("lenNote").textContent);
 const E1 = exRes[0], E3 = exRes[2];
+w.confirm = () => true;   // the questions before an assay, a practice sheet and a mismatched forge (each one is tested below)
+// a random sheet of our own (not public), for FORGE SEED
+const RS = randomSheet(12), RSref = refForge(12, RS.dice, RS.cards), RSdice = RS.dice.map((p) => p.join("")).join(" "), RScards = pageCards(RS.cards.map((d) => d.join(" ").replace(/T/g, "10")));
+set("dmDice", RSdice); set("dmCards", RScards);
+check("both sheets typed (a sheet of our own): CHECK MY SHEETS and FORGE SEED turn on, no PRACTICE", !$("dmCheckBtn").disabled && !$("dmBtn").disabled && $("dmPracticeBan").style.display === "none", $("dmCount").textContent + " / " + $("dmMsg").textContent);
 set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards));
-check("both sheets typed: CHECK MY SHEETS and FORGE SEED turn on", !$("dmCheckBtn").disabled && !$("dmBtn").disabled, $("dmCount").textContent + " / " + $("dmMsg").textContent);
+check("review M2: worked example 1 typed by hand is recognized by its content: PRACTICE shows and FORGE SEED stays off", !$("dmCheckBtn").disabled && $("dmBtn").disabled && /PRACTICE: worked example 1 is public/.test($("dmPracticeBan").textContent), $("dmPracticeBan").textContent);
+{ const d = E1.e.dice.replace("26 53", "2 53"); set("dmDice", d);
+  check("review M1: a pair typed with one throw stops the check (Pair 3 is missing a throw); nothing is paired up again", $("dmCheckBtn").disabled && $("dmBtn").disabled && /^Pair 3 is missing a throw\. Write each pair as two numbers/.test($("dmMsg").textContent), $("dmMsg").textContent);
+  set("dmDice", "14 15 2"); check("review M1: the last pair with one throw: Pair 3 is missing a throw, tap or type the second", $("dmCheckBtn").disabled && $("dmMsg").textContent === "Pair 3 is missing a throw. Tap or type its second throw.", $("dmMsg").textContent);
+  set("dmDice", "14 1526"); check("review M1: three or more throws in one pair are refused", $("dmCheckBtn").disabled && /^Pair 2 \(“1526”\) has more than two throws/.test($("dmMsg").textContent), $("dmMsg").textContent);
+  set("dmDice", E1.e.dice.replace(/ /g, ", ").replace(/(\d)(\d)/g, "$1-$2")); check("pairs written 1-4, with commas, still work", !$("dmCheckBtn").disabled && !$("dmMsg").textContent, $("dmMsg").textContent);
+  set("dmDice", E1.e.dice); }
 await w.dmCheck();
 let out = $("dmOut").textContent;
 check("check: shows grids H, A and F, the seal, the range, the last word, fingerprint and first address", /Hammer sheet \(grid H\)/.test(out) && /Forge sheet/.test(out) && out.includes("M(F) " + E1.p.F.marks.M) && out.includes("Last word sword. Master fingerprint 70b5da37") && out.includes(E1.ad) && /between \w+ \(\d+\) and \w+ \(\d+\)/.test(out), out.slice(-400));
@@ -189,11 +200,21 @@ set("dmFM", E1.p.F.marks.M); set("dmFR", E1.p.F.marks.R);
 { const m = E1.p.H.marks.M, bad = m.slice(0, 3) + (m[3] === "1" ? "0" : "1") + m.slice(4); set("dmWords", ""); set("dmHM", bad); await w.dmCheck(); out = $("dmOut").textContent;
   check("a wrong column hallmark on the Hammer sheet: the check names the column", out.includes("Your column hallmark M(H) differs in column 4."), out.slice(-300)); set("dmHM", ""); }
 $("dmSkew").checked = true; $("dmSkew").dispatchEvent(new w.Event("change")); set("dmFK", E1.p.F.marks.K.replace(/^./, (x) => x === "1" ? "0" : "1")); await w.dmCheck(); out = $("dmOut").textContent;
-check("skew hallmark K: shown when chosen, and a wrong letter is named", out.includes("Skew hallmark K(F) " + E1.p.F.marks.K) && out.includes("Your skew hallmark K(F) differs in letter 1."), out.slice(-300));
-set("dmFK", ""); $("dmSkew").checked = false; $("dmSkew").dispatchEvent(new w.Event("change"));
+check("skew hallmark K: shown when chosen, and a wrong letter is named by its letter (a to k, as on the sheet)", out.includes("Skew hallmark K(F) " + E1.p.F.marks.K) && out.includes("Your skew hallmark K(F) differs in letter a."), out.slice(-300));
+$("dmSkew").checked = false; $("dmSkew").dispatchEvent(new w.Event("change")); await w.dmCheck(); out = $("dmOut").textContent;
+check("review L3: a K typed without the tick is checked too", out.includes("Your skew hallmark K(F) differs in letter a."), out.slice(-300));
+set("dmFK", "");
+{ // review L3: the other mistake-finder messages
+  const ws = E1.p.F.phrase.split(" "); ws[2] = "hxme"; set("dmWords", ws.join(" ")); await w.dmCheck(); out = $("dmOut").textContent;
+  check("review L3: a word that is not a BIP39 word is named, and the words after it are not shifted", out.includes("Your word 3 (hxme) is not a BIP39 word") && !/Word \d+: you wrote/.test(out), out.slice(-300));
+  set("dmWords", E1.p.F.phrase.split(" ").slice(0, 5).join(" ")); await w.dmCheck(); out = $("dmOut").textContent;
+  check("review L3: only 5 of 12 words typed: it says words 6 to 12 are not checked", out.includes("You typed 5 of the 12 words: words 6 to 12 are not checked.") && !/What you wrote matches/.test(out), out.slice(-300));
+  set("dmWords", ""); set("dmHM", "1102"); await w.dmCheck(); out = $("dmOut").textContent;
+  check("review L3: a hallmark with another digit is named in plain grammar", out.includes("Your column hallmark M(H) has a digit other than 1 and 0."), out.slice(-300)); set("dmHM", ""); }
 // the assay: one sheet only
 for(const [k, name, s, other] of [["h", "Hammer", "H", "A"], ["a", "Anvil", "A", "H"]]){
-  who(k);
+  who("both"); set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards)); who(k);
+  check("review L1: choosing the " + name + " assay clears the other sheet's box", k === "h" ? !$("dmCards").value && !!$("dmDice").value : !$("dmDice").value && !!$("dmCards").value);
   check("assay " + name + ": only that sheet's box shows, FORGE SEED is hidden", ($("dmDiceRow").style.display === "none") === (k === "a") && ($("dmCardsRow").style.display === "none") === (k === "h") && $("dmBtn").style.display === "none" && $("dmMineF").style.display === "none");
   await w.dmCheck(); out = $("dmOut").textContent;
   const mine = E1.p[s], theirs = E1.p[other], fw = E1.p.F.phrase.split(" ");
@@ -201,8 +222,12 @@ for(const [k, name, s, other] of [["h", "Hammer", "H", "A"], ["a", "Anvil", "A",
   check("assay " + name + ": shows no grid F, no seed words, no fingerprint and nothing of the other sheet", !/Forge sheet|grid F:|fingerprint/i.test(out.replace("grid F are not shown", "")) && !out.includes(theirs.marks.M) && !out.includes(" " + fw.slice(0, 3).join(" ")) && !out.includes(E1.fp), out.slice(-300));
 }
 // the phrases on the two assay screens XOR to the seed
-{ const read = async (k) => { who(k); await w.dmCheck(); return [...$("dmOut").querySelectorAll("pre")].pop().textContent.split("\n").map((l) => l.replace(/^\s*\d+\.\s/, "")).join(" "); };
-  const pH = await read("h"), pA = await read("a"); who("both");
+{ const read = async (k) => { who("both"); set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards)); who(k); await w.dmCheck(); return [...$("dmOut").querySelectorAll("pre")].pop().textContent.split("\n").map((l) => l.replace(/^\s*\d+\.\s/, "")).join(" "); };
+  const pH = await read("h");
+  w.document.getElementById("dmFM").value = "0"; await w.dmCheck();
+  check("review L3: in an assay, a Forge box that is not shown does not count as written", /Type your hallmarks and words/.test($("dmOut").textContent) && !/What you wrote matches/.test($("dmOut").textContent));
+  w.document.getElementById("dmFM").value = "";
+  const pA = await read("a"); who("both"); set("dmDice", E1.e.dice);
   check("the two assay screens' phrases are valid and Seed-XOR to worked example 1's seed (@scure/bip39)", bip39.entropyToMnemonic(xorB(ent(pH), ent(pA)), wordlist) === E1.p.F.phrase, pH + " / " + pA); }
 // grid A typed as bits (no card record)
 set("dmCards", E1.p.A.bits.join("").replace(/(.{11})/g, "$1 ")); await w.dmCheck(); out = $("dmOut").textContent;
@@ -213,7 +238,12 @@ set("dmDice", "14 15 27"); check("a 7 is not a die face", /“7” is not a die 
 set("dmDice", "14 15 26"); check("too few dice pairs: CHECK stays off and the count says so", $("dmCheckBtn").disabled && /Hammer: 3 pairs, 3 of 26 good pairs/.test($("dmCount").textContent), $("dmCount").textContent);
 set("dmDice", E1.e.dice);
 { const c = E1.e.cards.map((d) => d.split(" ")); c[1][5] = c[1][4]; set("dmCards", c.map((d) => d.join(" ")).join("\n")); await w.dmCheck();
-  check("a card twice in one deck is refused", /Deck 2 has the .+ twice/.test($("dmMsg").textContent), $("dmMsg").textContent); }
+  check("a card twice in one deck is refused", /Deck 2 has the .+ twice \(cards 5 and 6\)/.test($("dmMsg").textContent), $("dmMsg").textContent); }
+{ const c = E1.e.cards.map((d) => d.split(" ")); c[0] = c[0].slice(1);
+  set("dmCards", c.map((d) => d.join(" ")).join("\n"));
+  check("review L15: one deck a line, the first card of deck 1 left out: deck 1 has 51 cards, a card is missing", $("dmCheckBtn").disabled && /^Deck 1 \(line 1\) has 51 cards; a deck has 52\. A card is missing from it\./.test($("dmMsg").textContent), $("dmMsg").textContent);
+  set("dmCards", c.map((d) => d.join(" ")).join(" ")); await w.dmCheck();
+  check("review L15: all on one line, the same mistake: it says a card may be missing (not only a double card)", /^Deck 1 has the .+ twice \(cards \d+ and 52\)\. One shuffled deck has each card once: a card may be missing before card 52/.test($("dmMsg").textContent), $("dmMsg").textContent); }
 { const c = E1.e.cards.map((d) => d.split(" ")); c[2] = c[2].slice(0, 43); set("dmCards", c.map((d) => d.join(" ")).join("\n"));
   check("the last deck short of a card: CHECK stays off", $("dmCheckBtn").disabled && /deck 3 43\/44/.test($("dmCount").textContent), $("dmCount").textContent);
   c[2] = E1.e.cards[2].split(" ").slice(0, 44); set("dmCards", c.map((d) => d.join(" ")).join("\n"));
@@ -299,10 +329,26 @@ words(12); set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards));
   check("practice: a refusal by the hook is said plainly", /^Not loaded: only a practice seed/.test($("dmSignerNote").textContent));
   w.vfSignerLoadSeed = hook;
   set("dmDice", $("dmDice").value + " 12");
-  check("practice: editing a box keeps PRACTICE on", $("dmBtn").disabled && $("dmPracticeBan").style.display !== "none");
+  check("practice: an edit that keeps the same seed (a pair after the grid is full) still says PRACTICE, by content", $("dmBtn").disabled && $("dmPracticeBan").style.display !== "none" && /practice 1 comes from a published rule/.test($("dmPracticeBan").textContent), $("dmPracticeBan").textContent);
+  { const keepC = $("dmCards").value, keepD = $("dmDice").value; set("dmDice", RSdice);
+    check("review M4: real dice in place of the practice dice: PRACTICE ends at once", $("dmPracticeBan").style.display === "none" && w.eval("dmPractice") === "");
+    set("dmCards", RScards); await w.dmCheck();
+    check("review M4: then real cards: no PRACTICE anywhere, no practice phrase kept, FORGE SEED on, and the practice signer hook refuses", !/PRACTICE/.test($("dmOut").textContent) && !$("dmOut").dataset.practicePhrase && !$("dmBtn").disabled && w.vfSignerLoadSeed(RSref.E.phrase.join(" ")) === false && !$("dmSignerBtn"));
+    set("dmDice", keepD); set("dmCards", keepC);
+    check("review M2: the practice sheet's dice and cards typed back: PRACTICE again, by content", $("dmBtn").disabled && /practice 1 comes from a published rule/.test($("dmPracticeBan").textContent)); }
   set("dmDice", ""); set("dmCards", "");
   check("practice: emptying both boxes ends PRACTICE", $("dmPracticeBan").style.display === "none" && w.eval("dmPractice") === "");
   check("practice: after PRACTICE ends, vfSignerLoadSeed refuses the practice words too", w.vfSignerLoadSeed(ph1) === false);
+  { let asked = ""; set("dmDice", RSdice); w.confirm = (m) => { asked = m; return false; }; await w.dmPracticeFill(); w.confirm = () => true;
+    check("review L14: PRACTICE asks before it replaces dice you typed, and No keeps them", /This replaces what you typed in the Damascus boxes/.test(asked) && $("dmDice").value === RSdice, asked); set("dmDice", ""); set("dmCards", ""); }
+  // review M2 and L9: practice sheets 1 to 100 of both lengths, made again here from the published rule and folded with the
+  // reference code, are all known public phrases, as are the three worked examples
+  { let bad = [];
+    for(const n of [12, 24]) for(let k = 1; k <= 100; k++){ const s = sheetOf(k, n), r = vf.diceToBits(pairsOf(s.dice), vf.PLAN[n].bits), c = vf.cardsToBits(s.cards.split("\n").map((d) => d.split(" ").map((x) => x.replace("10", "T"))), vf.PLAN[n].bits);
+      const ph = bip39.entropyToMnemonic(Uint8Array.from(vf.bitsToBytes ? vf.bitsToBytes(r.bits.map((x, i) => x ^ c.bits[i])) : Buffer.from(r.bits.map((x, i) => x ^ c.bits[i]).join("").match(/.{8}/g).map((b) => parseInt(b, 2)))), wordlist);
+      if(!/^a Damascus practice sheet/.test(w.knownPhrase(ph) || "")) bad.push(n + ":" + k); }
+    check("review M2: practice sheets 1 to 100 (12 and 24 words), made from the published rule, are known public phrases", bad.length === 0, bad.slice(0, 5).join(" "));
+    check("review M2: worked examples 1 and 3 are known public phrases (example 2 is an official BIP39 vector)", /worked example of the Damascus method/.test(w.knownPhrase(exRes[0].p.F.phrase)) && /worked example of the Damascus method/.test(w.knownPhrase(exRes[2].p.F.phrase)) && /official BIP39/.test(w.knownPhrase(exRes[1].p.F.phrase))); }
   words(24); await w.dmPracticeFill(); const want2 = sheetOf(2, 24);
   check("practice: the next press gives practice sheet 2 (24 words here), again by the rule", $("dmDice").value === want2.dice && $("dmCards").value === want2.cards && /practice 2/.test($("dmPracticeBan").textContent));
   w.dmClear(); words(12);
@@ -316,7 +362,7 @@ w.dmClear(); words(12);
 { // Recheck a Damascus backup (CHECK A BACKUP)
   const rc = async (ws, M, R, K) => { $("dmrWords").value = ws; $("dmrM").value = M; $("dmrR").value = R; $("dmrK").value = K || ""; await w.dmRecheck(); return $("dmrOut").textContent; };
   const ph = E1.p.F.phrase, mk = E1.p.F.marks;
-  check("recheck: the right words and hallmarks match", /The hallmarks match these 12 words, and the checksum is right/.test(await rc(ph, mk.M, mk.R, mk.K)));
+  check("recheck: the right words and hallmarks match", /The hallmarks match these 12 words, and the BIP39 checksum is right/.test(await rc(ph, mk.M, mk.R, mk.K)));
   check("recheck: four-letter words work too", /The hallmarks match/.test(await rc(ph.split(" ").map((x) => x.slice(0, 4)).join(" "), mk.M, mk.R)));
   let bad = [];
   for(let t = 0; t < 30; t++){
@@ -334,6 +380,24 @@ w.dmClear(); words(12);
     [ws[a], ws[b]] = [ws[b], ws[a]]; const o = await rc(ws.join(" "), mk.M, mk.R, mk.K);
     check("recheck: a swap that the row hallmarks miss is caught by the skew hallmark K", /Only the skew hallmark K differs: two words may be in swapped places/.test(o), o); }
   check("recheck: a wrong hallmark length is named", /The hallmark R has 11 digits, needs 12/.test(await rc(ph, mk.M, mk.R.slice(1))));
+  { // review M3: two swapped words on random seeds, with and without K: never put down to the last word alone, never "the words that were forged" without K
+    let bad = [], seen = 0;
+    for(let t = 0; t < 120; t++){
+      const n = t % 2 ? 24 : 12, m = bip39.generateMnemonic(wordlist, n === 12 ? 128 : 256), ws = m.split(" "), P = vf.PLAN[n];
+      const bits = ws.flatMap((x, i) => [...wordlist.indexOf(x).toString(2).padStart(11, "0")].slice(0, i < n - 1 ? 11 : P.finalBits).map(Number)), mk2 = vf.marks(bits);
+      let a = randomInt(n - 1), b; do b = randomInt(n - 1); while(b === a || ws[a] === ws[b]); [ws[a], ws[b]] = [ws[b], ws[a]];
+      for(const K of [null, mk2.K]){
+        const o = await rc(ws.join(" "), mk2.M, mk2.R, K || "");
+        if(/^The hallmarks match/.test(o)) seen++;
+        if(/the last word is wrong\. Work it out again/.test(o) || (!K && /(these are|almost certainly) the words that were forged/i.test(o)) || (/checksum is wrong/.test(o) && /^The hallmarks match/.test(o) && !/two words in swapped places/.test(o))) bad.push(n + (K ? "K" : "") + ": " + o.slice(0, 120));
+      }
+    }
+    check("review M3: 120 random seeds with two words swapped (with and without K): a checksum error lists a swap too, never only the last word, and no 'words that were forged' without K (" + seen + " passed the hallmarks)", bad.length === 0 && seen > 20, bad.slice(0, 2).join(" | "));
+    const o = await rc(ph, mk.M, mk.R);
+    check("review M3: right words without K: hallmarks and checksum agree, and it says a swap could still pass", /^The hallmarks match these 12 words, and the BIP39 checksum is right\. Without the skew hallmark K, two words in swapped places can still pass/.test(o), o); }
+  { // review L4: a recheck still working writes nothing after CLEAR
+    $("dmrWords").value = ph; $("dmrM").value = mk.M; $("dmrR").value = mk.R; const pr = w.dmRecheck(); w.dmrClear(); await pr;
+    check("review L4: a recheck still working when CLEAR is pressed writes nothing", !$("dmrOut").textContent, $("dmrOut").textContent); }
   check("recheck: 24 words work (worked example 3)", /The hallmarks match these 24 words/.test(await rc(E3.p.F.phrase, E3.p.F.marks.M, E3.p.F.marks.R)));
   check("recheck: the box explains the check by hand with the word table", /By hand:.*binary word table/.test($("dmrBox").textContent));
   for(const id of ["dmrWords", "dmrM", "dmrR", "dmrK"]) check("auto-clear knows the recheck box " + id, w.eval("AUTO_FIELDS").includes(id));
@@ -342,20 +406,35 @@ w.dmClear(); words(12);
 }
 
 // ---------- 5. FORGE SEED, the stale guard and the wipes
-set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards));
+set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards)); await w.dmGenerate();
+check("review M2: FORGE SEED makes no seed from worked example 1 typed by hand", !w.hasSeed());
+set("dmDice", RSdice); set("dmCards", RScards);
+{ // review M6: FORGE SEED checks What I wrote first
+  const ws = RSref.E.phrase.slice(); ws[3] = ws[3] === "zoo" ? "abandon" : "zoo"; set("dmWords", ws.join(" ")); set("dmFR", RSref.E.marks.R.replace(/^./, (x) => x === "1" ? "0" : "1"));
+  let asked = ""; w.confirm = (m) => { asked = m; return false; }; await w.dmGenerate();
+  check("review M6: FORGE SEED with a wrong word and hallmark under What I wrote: it shows where, asks first, and No forges nothing", !w.hasSeed() && /What you wrote does not match what your dice and cards give \(\d+ differences/.test(asked) && /Word 4: you wrote/.test($("dmOut").textContent) && /Row 1 of the Forge grid/.test($("dmOut").textContent), asked);
+  w.confirm = () => true; set("dmWords", RSref.E.phrase.join(" ")); set("dmFR", RSref.E.marks.R); asked = ""; w.confirm = (m) => { asked = m; return true; }; await w.dmGenerate(); w.confirm = () => true;
+  check("review M6: with What I wrote right, FORGE SEED asks nothing about it", w.hasSeed() && !/What you wrote/.test(asked), asked);
+  set("dmWords", ""); set("dmFR", ""); }
 await w.dmGenerate();
-check("FORGE SEED: the Damascus seed goes into the page's normal result (words, fingerprint, first address)", w.hasSeed() && w.eval("madeMnemonic") === E1.p.F.phrase && /70b5da37/.test($("fingerprint").textContent) && $("address").textContent.includes(E1.ad) && w.eval("seedKind") === "dm", $("fingerprint").textContent);
+const RSfp = fpOf(RSref.E.phrase.join(" ")), RSad = addrOf(RSref.E.phrase.join(" "));
+check("FORGE SEED: the Damascus seed goes into the page's normal result (words, fingerprint, first address)", w.hasSeed() && w.eval("madeMnemonic") === RSref.E.phrase.join(" ") && $("fingerprint").textContent.includes(RSfp) && $("address").textContent.includes(RSad) && w.eval("seedKind") === "dm", $("fingerprint").textContent);
+{ const S = w.seedSummary();
+  check("review L17: the seed summary gives the strength with its condition (the dice or the shuffle fair)", S && S.lines.some((l) => /^Strength: the words hold 128 bits of randomness \(if the dice or the shuffle was fair: either one is enough\)$/.test(l)), S && S.lines.join(" | ")); }
 check("FORGE SEED: the summary says the Damascus method", /the Damascus method/.test($("sumLine").textContent), $("sumLine").textContent);
-set("dmDice", E1.e.dice + " 12");
-check("changing the dice after FORGE SEED clears the words (stale guard)", !w.hasSeed() && /You changed the dice pairs, the cards or the word count after FORGE SEED/.test($("genResult").textContent));
-set("dmDice", E1.e.dice); await w.dmGenerate(); await w.dmCheck();
+set("dmDice", RSdice + " 12");
+check("changing the dice after FORGE SEED clears the words (stale guard)", !w.hasSeed() && /You changed the dice pairs, the cards, the word count or who checks after FORGE SEED/.test($("genResult").textContent));
+set("dmDice", RSdice); await w.dmGenerate();
+who("h");
+check("review L1: choosing an assay after FORGE SEED clears the seed and the Anvil sheet box", !w.hasSeed() && !$("dmCards").value && /who checks/.test($("genResult").textContent));
+who("both"); set("dmCards", RScards); await w.dmGenerate(); await w.dmCheck();
 check("before the wipes: a seed and a check are on screen", w.hasSeed() && $("dmOut").textContent.length > 100 && w.eval("autoHasSecrets()"));
 for(const id of ["dmDice", "dmCards", "dmHM", "dmHR", "dmAM", "dmAR", "dmFM", "dmFR", "dmFK", "dmWords"]) check("auto-clear knows the box " + id, w.eval("AUTO_FIELDS").includes(id));
 w.clearAll();
 check("CLEAR ALL wipes the Damascus boxes, its result and the seed", !w.hasSeed() && !$("dmDice").value && !$("dmCards").value && !$("dmOut").textContent && $("dmOut").style.display === "none");
 set("dmFM", "0101"); check("one typed hallmark counts as a secret for auto-clear", w.eval("autoHasSecrets()"));
 set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards)); await w.dmCheck();
-check("auto-clear wipes the Damascus boxes and the result", w.autoWipe("test") === true && !$("dmDice").value && !$("dmCards").value && !$("dmFM").value && !$("dmOut").textContent);
+check("auto-clear wipes the Damascus boxes, the result and the five steps' views", w.autoWipe("test") === true && !$("dmDice").value && !$("dmCards").value && !$("dmFM").value && !$("dmOut").textContent && !$("dmPairBoxes").children.length && !$("dmLiveH").textContent && !$("dmLiveA").textContent && !/Last word:/.test($("dmLiveL").textContent) && !/[0-9JQKA][\u2660-\u2667]/.test($("dmDeal").textContent));
 set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards)); await w.dmCheck(); who("h");
 w.endSessionReload = () => {}; await w.endSession();
 check("END SESSION wipes the Damascus boxes and result and puts the choices back", !$("dmDice").value && !$("dmCards").value && !$("dmOut").textContent && $("dmWho").value === "both");
@@ -372,11 +451,22 @@ for(const n of [12, 24]){
   const cells = [...H.matchAll(/data-a="(\d)" data-b="(\d)" data-code="([01]{5}|again)"/g)];
   check(n + " words, Hammer sheet: the 36 mirror cells are the reference code's", cells.length === 36 && cells.every(([, a, b, c]) => (vf.mirrorCode(+a, +b) === null ? "again" : vf.bin(vf.mirrorCode(+a, +b), 5)) === c));
   check(n + " words, Hammer sheet: the bias box thresholds are the ones the page checks", H.includes("<b>FAIL</b> if any count is " + th.diceHigh + " or more, or " + th.diceLow + " or fewer, or repeats are " + th.repeatsLow + " or fewer") && w.eval("DM_BIAS")[n].diceHigh === th.diceHigh && w.eval("DM_BIAS")[n].diceLow === th.diceLow && w.eval("DM_BIAS")[n].repeatsLow === th.repeatsLow);
-  check(n + " words, Anvil sheet: card bias thresholds, 12 riffles, steps A1-A4", A.includes("1s are " + th.cardOnesLow + " or fewer, or " + th.cardOnesHigh + " or more") && A.includes("neighbors are " + th.cardNeighboursHigh + " or more") && /riffle shuffle <b>12 times<\/b>/.test(A) && ["A1", "A2", "A3", "A4"].every((s) => A.includes(s + " \u00b7")));
+  check(n + " words, Anvil sheet: card bias thresholds, 12 riffles, steps A1-A4", A.includes("1s are " + th.cardOnesLow + " or fewer, or " + th.cardOnesHigh + " or more") && A.includes("neighbors are " + th.cardNeighboursHigh + " or more") && /riffle shuffle <b>12 times<\/b>/.test(A) && ["A1", "A2", "A3", "A4"].every((s) => A.includes('<span class="dm-tm">' + s)));
+  { const plan = vf.cardPlan(vf.PLAN[n].bits), last = plan[plan.length - 1], C = sheet("c", n), bits = vf.PLAN[n].rows + 10;
+    check(n + " words, review M5: step A2 names the last deck's plan, as the code deals it (deck " + plan.length + ": " + (last.length - 1) + " groups of 8, then 4 cards)", A.includes("The last deck is shorter: on deck " + plan.length + ", deal " + (last.length - 1) + " groups of 8, then 4 cards, and stop.") && last.slice(0, -1).every((x) => x === 8) && last[last.length - 1] === 4 && JSON.stringify(plan) === JSON.stringify(w.dmCardPlan(vf.PLAN[n].bits)));
+    check(n + " words, review L11: the Forge sheet and the backup card say the hallmarks reveal " + bits + " bits", Fh.includes("reveal part of the seed (" + bits + " bits)") && C.includes("reveal part of the seed (" + bits + " bits)"));
+    check(n + " words, review L10 and L16: repeats and neighbors are defined, and the last pair's bits are counted right", H.includes("a number the same as the number just before it, reading every number in order") && A.includes("Ace and King are not neighbors") && H.includes(n === 12 ? "uses only 3 bits." : "uses only 1 bit.")); }
   const sk = [...Fh.matchAll(/data-r="(\d+)" data-c="(\d+)" data-k="([a-k])"/g)];
-  check(n + " words, Forge sheet: " + sk.length + " skew letters as the reference; steps F1-F6", sk.length === vf.PLAN[n].bits && sk.every(([, r, c, k]) => vf.skewLetter(+r - 1, +c - 1) === k) && ["F1", "F2", "F3", "F4", "F5", "F6"].every((s) => Fh.includes(s + " \u00b7")) && ["H1", "H2", "H3", "H4"].every((s) => H.includes(s + " \u00b7")));
+  check(n + " words, Forge sheet: " + sk.length + " skew letters as the reference; steps F1-F6", sk.length === vf.PLAN[n].bits && sk.every(([, r, c, k]) => vf.skewLetter(+r - 1, +c - 1) === k) && ["F1", "F2", "F3", "F4", "F5", "F6"].every((s) => Fh.includes('<span class="dm-tm">' + s)) && ["H1", "H2", "H3", "H4"].every((s) => H.includes('<span class="dm-tm">' + s)));
   check(n + " words: the sheets say Hammer, Anvil, Forge, hallmarks and assayer, never audit", /HAMMER SHEET/.test(H) && /ANVIL SHEET/.test(A) && /FORGE SHEET/.test(Fh) && /[Hh]allmark/.test(H + A + Fh) && /Assayer/.test(H + A) && !/audit/i.test(H + A + Fh));
 }
+{ // review L6: no sheet prints before the self-test passed; review L2: the results cannot be selected
+  let calls = 0; const pr = w.print, al = w.alert; w.print = () => { calls++; }; w.alert = () => {}; w.eval("selfTestState = 'fail'"); w.dmUpdate();
+  const off = ["dmPrintK", "dmPrintH", "dmPrintT"].every((id) => $(id).disabled); w.dmPrint("h"); w.dmPrint("t"); w.dmPrint("k");
+  w.eval("selfTestState = 'pass'"); w.dmUpdate(); w.print = pr; w.alert = al;
+  check("review L6: with the self-test failed, the print buttons are off and dmPrint prints nothing", off && calls === 0 && !$("dmPrintH").disabled);
+  const css = [...w.document.querySelectorAll("style")].map((x) => x.textContent).join("\n");
+  check("review L2: the Damascus check, the live view and the backup recheck cannot be selected", /#dmOut, #dmrOut, #dmLwOut, \.dm-live, \.dm-boxes, \.dm-deal \{ -webkit-user-select: none; user-select: none; \}/.test(css)); }
 { const T = sheet("t", 12), cells = [...T.matchAll(/data-i="(\d+)"(?: class="l")?>([a-z]+)</g)];
   check("binary word table: 2,048 words in their places (@scure/bip39 English list)", cells.length === 2048 && cells.every(([, i, x]) => wordlist[+i] === x)); }
 const SS_LABELS = ["Tools", "Calc 12th/24th word", "12 words", "Build Final Word", "Coin flip entropy", "Heads = 1", "Tails = 0", "Final Word Calc", "Next", "12th Word", "Load seed", "Done", "Address explorer", "Native Segwit", "Receive addresses"];
@@ -407,17 +497,96 @@ const guide = readFileSync(path.join(here, "..", "docs", "damascus-quick-guide.m
   const box = $("dmBox").textContent.replace(/\s+/g, " "), miss = steps.filter((x) => !box.includes(x)).concat(parts.filter((x) => !box.includes(x)));
   check("the Damascus tab shows the quick guide word for word: " + parts.length + " parts, " + steps.length + " steps", miss.length === 0 && parts.filter((x) => /^Part \d/.test(x)).length === 7 && $("dmGuide").querySelectorAll("details.dm-part").length === parts.length, miss.slice(0, 3).join(" | "));
   const H = textOf(sheet("h", 12)), A = textOf(sheet("a", 12)), Fh = textOf(sheet("f", 12)), all = H + " " + A + " " + Fh, g = plain(guide);
-  const same = ["Throw both dice. Read the left die first.", "Write both numbers in the next pair box.", "Rolled 1-1, 2-2, 3-3 or 4-4? Cross the pair box out and throw again.", "the row is the left die, the column is the right die. It gives you 5 bits", "Write the 5 bits into the next shaded run of the grid.", "Repeat until the grid is full (26 good pairs). The last pair uses only 3 bits.",
-    "in the first 26 pair boxes (crossed-out ones too), count how often each face came up, and count the repeats (a throw the same as the one before).", "On a FAIL, use other dice and start a new Hammer sheet.",
+  const same = ["Throw both dice. Read the left die first.", "Write both numbers in the next pair box.", "Rolled 1-1, 2-2, 3-3 or 4-4? Cross the pair box out and throw both dice again.", "the row is the left die, the column is the right die. It gives you 5 bits", "Write the 5 bits into the next shaded run of the grid", "Repeat until the grid is full (26 good pairs). The last pair uses only 3 bits.",
+    "in the first 26 pair boxes, including crossed-out boxes: 52 numbers, count how often each face came up, and count the repeats (a number the same as the number just before it, reading every number in order: left, right, then the next box).", "On a FAIL, use other dice and start a new Hammer sheet.",
     "spread the cards face down and swirl them for 30 seconds, riffle shuffle 12 times, then cut.", "Deal 8 cards face up in a row.", "1 against 2, 3 against 4, 5 against 6, 7 against 8, then the two winners on the left, then the two winners on the right, then the final.", "The higher card wins and plays on.",
     "1 if the right card is higher", "0 if the left card is higher", "Ace is lowest, King is highest. For the same rank: clubs < diamonds < hearts < spades", "Deal the next 8 cards and play again: 6 groups of 8 in all.", "Then deal 4 cards: 1 against 2, 3 against 4, then the two winners.",
-    "count the neighbors, two cards side by side with the same suit and ranks next to each other (like 7\u2665 8\u2665). After each deck, count its 1s.", "On a FAIL, shuffle again and redo that deck.",
-    "at the end of each row, write 1 if the row has an odd number of 1s, otherwise 0.", "write 1 if the column has an odd number of 1s, otherwise 0.", "Lay the Hammer and Anvil sheets side by side.", "same bits gives 0, different bits gives 1. Write it in the same box", "(Hammer hallmark and Anvil hallmark: same gives 0, different gives 1)", "The result must equal the Forge sheet's hallmarks.".replace("'", "\u2019"),
-    "If one does not match, the mistake is where that row and that column cross. Fix it before you go on.", "Split each", "into 3 + 4 + 4 bits: block, row, column.", "Look up the word in the word table with those three parts and write it next to the row. No math needed.", "Check each word back: find it alphabetically in the table and make sure its bits match the row.",
-    "gives only 7 bits, because the last word also holds a checksum that needs a computer.", "Tools > Calc 12th/24th word > 12 words > type words 1 to 11 > Build Final Word > Coin flip entropy > enter the 7 bits (Heads = 1, Tails = 0).", "Final Word Calc shows the last word", "the 12th Word screen shows the fingerprint", "Load seed > Done > Address explorer > Native Segwit > Receive addresses, address 0.",
-    "MAKE A SEED > Word draw. Type the same 11 words, and the 7 bits as the coin flips.", "Copy the 12 words to your backup", "Keep the hallmarks only next to the words, because they reveal part of the seed", "Destroy the sheets you do not keep."];
-  const bad = same.filter((x) => !all.includes(x) || !g.replace(/'/g, "\u2019").includes(x.replace(/'/g, "\u2019")));
-  check("the printed sheets and the quick guide give the same instructions in the same words (" + same.length + " sentences)", bad.length === 0, bad.slice(0, 3).join(" | ")); }
+    "count the neighbors: two cards dealt one after the other in the same group, with the same suit and ranks next to each other (like 7\u2665 8\u2665). Ace and King are not neighbors, and two cards in different groups never count. After each deck, count its 1s.", "FAIL if any count is 18 or more, or 1 or fewer, or repeats are 2 or fewer.", "FAIL a deck if its 1s are 11 or fewer, or 34 or more (full 45-bit decks only), or its neighbors are 6 or more.", "(a pair and its mirror, like 2-5 and 5-2, share the first 4 bits): the row is the left die", "into the next shaded run of the grid (a run is the stretch of boxes for one pair or one group of cards, shaded and white in turn).", "A group of 8 cards (an octet) gives 7 bits for its run of grid A; a group of 4 (a quad) gives 3.", "A hallmark is a check bit: whether a row or a column holds an odd or an even number of 1s (its parity).", "Block: which of the word table's 8 blocks; row and column: where the word sits in that block.", "The last deck is shorter: on deck 3, deal 5 groups of 8, then 4 cards, and stop.", "On a FAIL, shuffle again and redo that deck.",
+    "Row hallmark R: count the 1s in the row and write the result in the R box at the end of the row: odd: 1 3 5 7 9 11 → 1 · even: 0 2 4 6 8 10 → 0.", "Column hallmark M: count the 1s in the column and write the result in the M box under it, the same way.",
+    "Lay the Hammer and Anvil sheets side by side.", "Work one row at a time: finger on the same row on both sheets.", "For every box (this is XOR): Same \u2192 0. Different \u2192 1. Write it in the same box on the Forge sheet.", "Forge = Hammer XOR Anvil",
+    "for each R box and each M box, fold the Hammer hallmark with the Anvil hallmark (Same → 0. Different → 1.). The result must equal the Forge sheet's hallmark.",
+    "If one doesn't match: the mistake is where that row and that column cross. Fix it before you go on.",
+    "Your Forge sheet's last row gives the last word's 7 bits (3 for 24 words). These are not new coin flips.", "SeedSigner asks for them under 'Coin flip entropy'. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.", "The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.", "Split each", "into 3 + 4 + 4 bits: block, row, column.", "Look up the word in the word table with those three parts and write it next to the row. No math needed.", "Check each word back: find it alphabetically in the table and make sure its bits match the row.",
+    "gives only 7 bits, because the last word also holds a checksum that needs a computer", "Tools > Calc 12th/24th word > 12 words > type words 1 to 11 > Build Final Word > Coin flip entropy > enter the 7 bits (Heads = 1, Tails = 0).", "Final Word Calc shows the last word", "the 12th Word screen shows the fingerprint", "Load seed > Done > Address explorer > Native Segwit > Receive addresses, address 0.",
+    "MAKE A SEED > Damascus, step 5 (Last word). Type the same 11 words and the 7 bits, then press CALCULATE LAST WORD.", "Copy the 12 words to your backup", "Keep the hallmarks only next to the words, because they reveal part of the seed", "Destroy the sheets you do not keep."];
+  const ap = (t) => t.replace(/[’']/g, "'"), bad = same.filter((x) => !ap(all).includes(ap(x)) || !ap(g).includes(ap(x)));
+  check("the printed sheets and the quick guide give the same instructions in the same words (" + same.length + " sentences)", bad.length === 0, bad.slice(0, 3).join(" | "));
+  // the five steps on the page use the same words as the guide and the sheets (12 words shown)
+  const flow = ap($("dmFlow").textContent.replace(/\s+/g, " ")), flowSame = same.filter((x) => !/^(1 if the right|0 if the left|Ace is lowest|The higher card|Then deal 4|Split each|into 3|Final Word Calc|the 12th Word|Load seed|MAKE A SEED|Copy the 12|Keep the hallmarks|Destroy the|gives only 7|Forge = Hammer XOR Anvil)/.test(x));
+  const fbad = flowSame.filter((x) => !flow.includes(ap(x)));
+  const have = guide.split("\n").filter((l) => /^\*\*What you should have now:\*\*/.test(l)).map((l) => plain(l)), hbad = have.slice(0, 7).filter((x, i) => i !== 2 && i !== 6 && !flow.includes(ap(x)));
+  check("brief B/C: the five steps say what to do on paper in the guide's and the sheets' words (" + flowSame.length + " sentences), and each step's 'What you should have now' is the guide's", fbad.length === 0 && hbad.length === 0 && have.length === 7, fbad.concat(hbad).slice(0, 3).join(" | "));
+  const hk = "odd: 1 3 5 7 9 11 → 1 · even: 0 2 4 6 8 10 → 0";
+  check("beginner test: the Hammer sheet's H4 is marked optional, for the assay, and the guide's assay step names it", H.includes("H4 (optional, for the assay).") && g.includes("Optional, for the assay: each sheet is also a Seed XOR part (step H4 on the Hammer sheet)."));
+  check("brief C: the hallmark rule is next to the hallmark boxes on all three grids, and the Forge rows say Same → 0. Different → 1. on every row", H.includes(hk) && A.includes(hk) && Fh.includes(hk) && (sheet("f", 12).match(/Same \u2192 0\. Different \u2192 1\./g) || []).length >= 12 + 2 && /0 0 \u2192 0.*1 1 \u2192 0.*0 1 \u2192 1.*1 0 \u2192 1/.test(sheet("f", 12)) && /role="img"/.test(sheet("f", 12)));
+  check("brief C5/C6: the guide says about 30 minutes once you know the steps and the field test; no 37-minute or 40-minute estimate is left", /about 30 minutes once you know the steps; allow longer the first time/.test(g) && /Field-tested: a hand-made Damascus seed checked on a real SeedSigner and in Sparrow \(10 November 2026\)\./.test(g) && !/37 min|about 40 minutes|nobody has timed/i.test(g + $("dmBox").textContent + textOf(sheet("r", 12)) + readFileSync(path.join(here, "..", "docs", "damascus-method.md"), "utf8"))); }
+{ // brief B: the five steps, the dice pad, the card picker, the live checks
+  w.dmClear(); words(12); who("both");
+  const E = exRes[0], pad = [...$("dmDicePad").querySelectorAll("button")];
+  for(const t of E.e.dice.replace(/ /g, "")) pad[+t - 1].click();
+  check("brief B1: the dice pad (the Dice tab's faces, two taps a pair) writes the pairs exactly as typed, with a pair box each", pad.length === 6 && $("dmDice").value === E.e.dice && $("dmPairBoxes").children.length === 40 && $("dmPairBoxes").querySelectorAll(".again").length === 5, $("dmDice").value.slice(0, 40));
+  pad[2].click(); const half = $("dmPairBoxes").lastChild.className, m1 = $("dmMsg").textContent; w.dmUndoThrow();
+  check("brief B1: a half pair shows as such and stops the check; UNDO LAST THROW takes it back", /half/.test(half) && /^Pair 41 is missing a throw/.test(m1) && $("dmDice").value === E.e.dice, m1);
+  const suit = { C: "♣", D: "♦", H: "♥", S: "♠" }, decks = E.e.cards.map((d) => d.split(" "));
+  decks.forEach((d, i) => d.slice(0, i === 2 ? 44 : 52).forEach((c, k) => { if(i === 0 && k === 9) w.dmDealCard(d[3][0] + suit[d[3][1]]); w.dmDealCard(c[0] + suit[c[1]]); }));
+  const lines = $("dmCards").value.split("\n");
+  check("brief B1: the card picker deals deck after deck, one deck a line, refuses a card already dealt from the deck, and the seed is the same", lines.length === 3 && lines.every((l, i) => l.split(" ").length === (i === 2 ? 44 : 52)) && !$("dmCheckBtn").disabled && /PRACTICE: worked example 1/.test($("dmPracticeBan").textContent), $("dmCards").value.slice(0, 50));
+  w.dmDealCard("A♠");
+  check("brief B1: after the last deck the picker says the grid is full", /The grid is full/.test($("dmMsg").textContent));
+  check("brief B2: the step bar and progress: Hammer and Anvil done, the bar part full", /✓/.test($("dmFBar").querySelector('[data-ds="1"]').textContent) && /✓/.test($("dmFBar").querySelector('[data-ds="2"]').textContent) && parseInt($("dmFFill").style.width) >= 40 && /^Progress: 26 of 26 good pairs/.test($("dmFNow").textContent) && !$("dmSt1").hidden, $("dmFNow").textContent + " " + $("dmFFill").style.width);
+  w.dmShowStep(2); const hid = [...w.document.querySelectorAll("#dmFlow .dm-st")].map((s) => s.hidden);
+  check("brief B2: one step at a time; NEXT and BACK move between them", JSON.stringify(hid) === "[true,false,true,true,true]" && /^Progress: 148 of 148 cards/.test($("dmFNow").textContent), $("dmFNow").textContent);
+  // live checks: a wrong row hallmark in grid H, the Anvil decks, grid F row by row, the words
+  const RH = E.p.H.marks.R, badR = RH.slice(0, 3) + (RH[3] === "1" ? "0" : "1"); set("dmHR", badR);
+  check("brief B3: a wrong row hallmark in grid H is shown at its row as soon as it is typed", $("dmLiveH").textContent.includes("Row 4 of grid H: you wrote R " + badR[3]) && ($("dmLiveH").textContent.match(/✓/g) || []).length === 3, $("dmLiveH").textContent.slice(-300));
+  set("dmHR", "");
+  check("brief B3: each finished deck is checked (its card check) as soon as it is dealt", ($("dmLiveA").textContent.match(/Deck \d done: \d+ different cards/g) || []).length === 3);
+  { const c = E.e.cards.map((d) => d.split(" ")); c[1][7] = c[1][2]; set("dmCards", c.map((d) => d.join(" ")).join("\n"));
+    check("brief B3: a card dealt twice is shown at its deck and place", $("dmLiveA").textContent.includes("Deck 2: card 8 (" + w.dmCardText(c[1][2].replace(/[CDHS]$/, (x) => suit[x])) + ") was already dealt as card 3 of this deck"), $("dmLiveA").textContent.slice(0, 200));
+    set("dmCards", pageCards(E.e.cards)); }
+  const RF = E.p.F.marks.R; set("dmFR", RF.slice(0, 4) + (RF[4] === "1" ? "0" : "1"));
+  check("brief B3: grid F is checked row by row as R(F) is typed; a wrong row says what the row holds and where to look", ($("dmLiveF").textContent.match(/✓/g) || []).length === 4 && $("dmLiveF").textContent.includes("Row 5: you wrote R ") && /Check the folding in row 5/.test($("dmLiveF").textContent) && !$("dmLiveF").textContent.includes("Row 6"), $("dmLiveF").textContent.slice(0, 300));
+  { const i = 5 * 11 + 2, Fb = E.p.F.bits.map((b, k) => k === i ? b ^ 1 : b), mm = w.dmMarks(Fb); set("dmFR", mm.R); set("dmFM", mm.M);
+    check("brief B3: with R(F) and M(F) typed, one wrong box is named at its row and column", $("dmLiveF").textContent.includes("One box is most likely wrong: row 6, column 3: the Forge box should be " + E.p.F.bits[i]), $("dmLiveF").textContent.slice(-300)); }
+  set("dmFR", E.p.F.marks.R); set("dmFM", E.p.F.marks.M);
+  check("brief B3: right R(F) and M(F): the seal holds and step 3 is done", /The seal holds/.test($("dmLiveF").textContent) && /✓/.test($("dmFBar").querySelector('[data-ds="3"]').textContent));
+  { const ws = E.p.F.phrase.split(" "); ws[6] = ws[6] === "zoo" ? "abandon" : "zoo"; set("dmWords", ws.slice(0, 8).join(" "));
+    check("brief B3: each word is checked against its row as it is typed", ($("dmLiveW").textContent.match(/✓/g) || []).length === 7 && $("dmLiveW").textContent.includes("Word 7: you wrote"), $("dmLiveW").textContent.slice(-200));
+    set("dmWords", E.p.F.phrase); check("brief B3: all words right: step 4 is done", /✓/.test($("dmFBar").querySelector('[data-ds="4"]').textContent)); }
+  w.dmShowStep(5); for(let t = 0; t < 100 && !/Master fingerprint/.test($("dmLiveL").textContent); t++) await new Promise((r) => setTimeout(r, 50));
+  check("coordinator: the last-word step shows the last row's bits, the final word, fingerprint and first address, and says they must match the SeedSigner", $("dmLiveL").textContent.includes("Your Forge sheet's last row: " + E.p.F.handWords[11].bits + " (7 bits)") && $("dmLiveL").textContent.includes("Last word: sword (") && $("dmLiveL").textContent.includes("Master fingerprint 70b5da37") && $("dmLiveL").textContent.includes(E.ad) && /must match the SeedSigner/.test($("dmLiveL").textContent), $("dmLiveL").textContent);
+  check("the five steps leave no sign for the watch check (their data- attributes are the page's own)", w.watchSigns().length === 0, JSON.stringify(w.watchSigns()).slice(0, 200));
+  who("h"); const only = [...w.document.querySelectorAll("#dmFBar li")].map((l) => l.hidden);
+  check("brief B: an assay shows its own sheet's step only", JSON.stringify(only) === "[false,true,true,true,true]" && !w.document.getElementById("dmSt1").hidden, JSON.stringify(only));
+  who("both"); w.dmClear();
+  check("CLEAR empties the steps' views: no pair box, no live text, step 1", !$("dmPairBoxes").children.length && !$("dmLiveH").textContent && !$("dmDeal").textContent.includes("9") && w.eval("dmStep") === 1);
+}
+{ // coordinator: the last word from paper only (words 1 to 11 or 23 and the bits), as SeedSigner's Calc 12th/24th word
+  const lw = async (ws, b) => { $("dmLwWords").value = ws; $("dmLwBits").value = b; $("dmLwWords").dispatchEvent(new w.Event("input")); await w.dmLwCalc(); return $("dmLwOut").textContent; };
+  let bad = [];
+  for(let t = 0; t < 40; t++){
+    const n = t % 2 ? 24 : 12; words(n); const m = bip39.generateMnemonic(wordlist, n === 12 ? 128 : 256).split(" "), fb = vf.PLAN[n].finalBits, bits = wordlist.indexOf(m[n - 1]).toString(2).padStart(11, "0").slice(0, fb);
+    const o = await lw(m.slice(0, n - 1).join(" "), bits);
+    if(!o.startsWith("Last word: " + m[n - 1] + " (") || !o.includes("Master fingerprint " + fpOf(m.join(" "))) || !o.includes(addrOf(m.join(" ")))) bad.push(n + ": " + o.slice(0, 80));
+  }
+  check("coordinator: CALCULATE LAST WORD from words and bits alone gives @scure/bip39's last word, fingerprint (@scure/bip32) and first address (40 random 12- and 24-word seeds)", bad.length === 0, bad.slice(0, 2).join(" | "));
+  words(12); const ws = exRes[0].p.F.phrase.split(" ").slice(0, 11).join(" ");
+  const msgs = [[ws.split(" ").slice(0, 10).join(" "), "1101110", /^Type words 1 to 11 \(the last word is what this works out\): you typed 10\./], [ws.replace(/^kick/, "kxck"), "1101110", /^Word 1 \(kxck\) is not a BIP39 word\./], [ws, "1101120", /^The bits are 1s and 0s only: “2” is not a bit\./], [ws, "110111", /^Type the 7 bits of your Forge sheet's last row: you typed 6\./]];
+  const got = []; for(const [a, b, re] of msgs){ const o = await lw(a, b); if(!re.test(o) || !/status bad/.test($("dmLwOut").className)) got.push(o); }
+  words(15); const o15 = await lw(ws, "1101110"); words(12);
+  check("coordinator: every bad input to CALCULATE LAST WORD gets its own plain message (word count, a word that is not BIP39, a bit that is not 0 or 1, the bit count, 15 words)", got.length === 0 && /makes 12 or 24 words/.test(o15), got.concat(o15).join(" | "));
+  const o1 = await lw(ws, exRes[0].p.F.handWords[11].bits);
+  check("coordinator: worked example 1 from paper: sword, its fingerprint, and the public-phrase warning", /^Last word: sword \(/.test(o1) && o1.includes("70b5da37") && /PUBLIC EXAMPLE PHRASE/.test(o1), o1);
+  await w.dmGenerate(); check("FORGE SEED from paper only refuses a public worked example", !w.hasSeed() && /PRACTICE: these words are a public worked example/.test($("dmLwOut").textContent));
+  const m = RSref.E.phrase; await lw(m.slice(0, 11).join(" "), RSref.E.handWords[11].bits);
+  check("FORGE SEED is on for words and bits from paper only (no dice or cards on the page)", !$("dmBtn").disabled);
+  await w.dmGenerate();
+  check("FORGE SEED from paper only: the seed goes into the page's normal result, and the summary says the Damascus method", w.hasSeed() && w.eval("madeMnemonic") === m.join(" ") && w.eval("seedKind") === "dm" && /the Damascus method/.test($("sumLine").textContent));
+  $("dmLwBits").value = "0000000"; $("dmLwBits").dispatchEvent(new w.Event("input"));
+  check("changing the paper-only boxes after FORGE SEED clears the words (stale guard)", !w.hasSeed());
+  check("auto-clear knows the paper-only boxes", ["dmLwWords", "dmLwBits"].every((id) => w.eval("AUTO_FIELDS").includes(id)));
+  w.dmClear(); check("CLEAR empties the paper-only boxes and their result", !$("dmLwWords").value && !$("dmLwBits").value && !$("dmLwOut").textContent);
+}
 // the creator line and picture (v2.14.0): top of the Damascus tab, ABOUT & HELP, and the two docs; the picture is docs/damascus/creator.webp
 { const pic = readFileSync(path.join(here, "..", "docs", "damascus", "creator.webp")), want = "data:image/webp;base64," + pic.toString("base64");
   const LINE = "The Damascus method, created by Random, 10 November 2026", REC = "Dated and signed origin record: tag damascus-origin-2026-11-10 on GitLab, timestamped in Bitcoin block 975,337 (OpenTimestamps)";
@@ -429,7 +598,7 @@ const guide = readFileSync(path.join(here, "..", "docs", "damascus-quick-guide.m
   check("creator lines: no first or never-done claim", ![...blocks.map((b) => b.textContent), ...docs.map((d) => d.split("\n").slice(0, 6).join(" "))].some((x) => /\bfirst\b|never (?:been )?done|novel/i.test(x))); }
 words(12);
 { const html = readHtml(), vis = html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<style[\s\S]*?<\/style>/g, "");
-  const box = vis.slice(vis.indexOf('<details id="dmBox"'), vis.indexOf("</details>", vis.indexOf('id="dmMineBox"') + 10) + 400);
+  const box = vis.slice(vis.indexOf('<details id="dmBox"'), vis.indexOf('id="dmOut"'));
   check("the Damascus box: no novelty claim, no “audit”, and it says Damascus, Hammer, Anvil, Forge, hallmark and assay", !/\bfirst (?:method|tool|BIP39)|never (?:been )?done|novel|\baudit/i.test(box) && /Damascus/.test(box) && /Hammer/.test(box) && /Anvil/.test(box) && /Forge sheet/.test(box) && /hallmark/.test(box) && /[Aa]ssay/.test(box)); }
 
 // ---------- 7. Chromium: page counts on Letter and A4, and SeedSigner (the practice signer)
@@ -475,9 +644,9 @@ if(browser){
   check("after printing, the sheet and its page style are gone", await page.evaluate(() => !document.getElementById("printOnly").textContent && !(document.getElementById("dmPrintCss") || {}).textContent && !document.body.classList.contains("print-seed")));
   // phone width: no sideways scroll on the Damascus tab with a result on screen
   await page.setViewportSize({ width: 360, height: 800 });
-  await page.evaluate(async (e) => { document.getElementById("wordSel").value = "12"; document.getElementById("wordSel").dispatchEvent(new Event("change")); const s = (id, v) => { const x = document.getElementById(id); x.value = v; x.dispatchEvent(new Event("input")); }; s("dmDice", e.dice); s("dmCards", e.cards.join("\n")); document.getElementById("dmMineBox").open = true; await dmCheck(); }, { dice: E1.e.dice, cards: E1.e.cards });
-  const sw = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
-  check("phone width (360 px): the Damascus tab with a check on screen has no sideways scroll", sw[0] <= sw[1], sw.join(" > "));
+  await page.evaluate(async (e) => { document.getElementById("wordSel").value = "12"; document.getElementById("wordSel").dispatchEvent(new Event("change")); const s = (id, v) => { const x = document.getElementById(id); x.value = v; x.dispatchEvent(new Event("input")); }; s("dmDice", e.dice); s("dmCards", e.cards.join("\n")); document.getElementById("dmLwBox").open = true; await dmCheck(); }, { dice: E1.e.dice, cards: E1.e.cards });
+  const sw = await page.evaluate(() => { const o = []; for(let n = 1; n <= 5; n++){ dmShowStep(n); o.push(document.documentElement.scrollWidth - document.documentElement.clientWidth); } return o; });
+  check("phone width (360 px): the Damascus tab with a check on screen has no sideways scroll, in each of the five steps", sw.every((x) => x <= 0), sw.join(", "));
   check("no page error in Chromium", problems.length === 0, problems.join(" | "));
   await ctx.close();
 }
@@ -533,7 +702,11 @@ async function onDevice(job){
   try {
     const pageRes = await page.evaluate(async (j) => {
       const decks = dmParseCards(j.cards.join("\n"), j.words).decks, r = await dmForge(j.words, j.dice, decks);
-      return { phrase: r.F.phrase, fp: await mnemonicFingerprint(r.F.phrase, ""), ad: await firstAddressOn("main", r.F.phrase, ""), last: r.F.handWords[r.F.handWords.length - 1].bits };
+      // the Damascus tab's CALCULATE LAST WORD from paper only: words 1 to 11 (or 23) and the last row's bits
+      setMethod("damascus"); const sel = document.getElementById("wordSel"); sel.value = String(j.words); sel.dispatchEvent(new Event("change"));
+      document.getElementById("dmLwWords").value = r.F.phrase.split(" ").slice(0, j.words - 1).join(" "); document.getElementById("dmLwBits").value = r.F.handWords[r.F.handWords.length - 1].bits; await dmLwCalc();
+      const lw = (document.getElementById("dmLwOut").textContent.match(/^Last word: (\w+)/) || [])[1];
+      return { phrase: r.F.phrase, fp: await mnemonicFingerprint(r.F.phrase, ""), ad: await firstAddressOn("main", r.F.phrase, ""), last: r.F.handWords[r.F.handWords.length - 1].bits, lw };
     }, job);
     await page.evaluate(() => { showTab("check"); const b = document.getElementById("ssBox"); b.open = true; b.scrollIntoView(); });
     let s = await d.waitView("SSMainMenuView"); seen.home = s.labels;
@@ -607,6 +780,7 @@ if(browser){
   for(const { j, r, err } of results){
     if(err){ check("SeedSigner, " + j.name + ": the run finished", false, err); continue; }
     const ref = refForge(j.words, j.dice, j.cards), m = ref.E.phrase.join(" "), last = m.split(" ")[j.words - 1];
+    check("SeedSigner, " + j.name + ": the Damascus tab's CALCULATE LAST WORD (paper only) gives the same last word as the device's Calc 12th/24th word", r.pageRes.lw === last && r.shown.word === last, r.pageRes.lw + " / " + r.shown.word);
     check("SeedSigner, " + j.name + " (" + j.words + " words): Final Word Calc gives " + last + ", as the page and the reference code", r.shown.word === last && r.done.word === last && r.pageRes.phrase === m && r.shown.bits === r.pageRes.last, r.shown.word + " / " + r.pageRes.phrase.split(" ").pop());
     check("SeedSigner, " + j.name + ": the fingerprint " + ref.wallet.fingerprint + " equals the page's", r.done.fp === r.pageRes.fp && r.done.fp === ref.wallet.fingerprint, r.done.fp + " / " + r.pageRes.fp);
     check("SeedSigner, " + j.name + ": Address explorer's first native segwit receive address equals the page's", r.addr === r.pageRes.ad && r.addr === ref.wallet.firstAddressBIP84, r.addr + " / " + r.pageRes.ad);

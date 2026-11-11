@@ -1053,6 +1053,10 @@ SCEN.practice_tx = async (t, d, ctx, page) => {   // Testnet, no lesson: the PRA
   t(!p.net && /Spends 2 made-up coins of seed 73c5da0a/.test(p.status) && /made-up transaction [0-9a-f]{16}\.\.\., marked "VOIDFORGE practice coins/.test(await page.textContent('#ssTxCoins')),
     tag + ': PRACTICE TRANSACTION spends made-up coins of the seed on the device, names the made-up transaction, and shows no Mainnet warning on Testnet');
   const origB = await practiceRun(t, d, page, tag, { net: 'T' });
+  // review L7: in a lesson, the practice transaction spends from the test seed the lesson names, even with another seed loaded after it
+  const l7 = await d.ev(async () => { const st = SSController._instance._storage, other = await SSSeed.create({ mnemonic: 'legal winner thank year wave sausage worth useful legal winner thank yellow' }); st.seeds.push(other);
+    try { ssLearn.lesson = SS_LEARN_LESSONS.find((l) => l.id === 'sign'); const a = await ssLearnBuild('single'); ssLearn.lesson = null; const b = await ssLearnBuild('single'); return [a.fp, b.fp]; } finally { ssLearn.lesson = null; st.seeds.pop(); } });
+  t(l7[0] === '73c5da0a' && l7[1] === 'b8688df1', 'review L7: with another seed loaded after the test seed, a lesson\'s practice transaction still spends the test seed 73c5da0a it names (outside a lesson: the last seed loaded) (' + l7.join(', ') + ')');
   // the device itself: its menus are SeedSigner's own, nothing of the lessons is on its screen or in its menus
   await toHomeAny(d); const s = await d.state();
   t(JSON.stringify(s.labels) === '["Scan","Seeds","Tools","Settings"]' && s.title === 'Home', 'the device keeps SeedSigner\'s own Home menu (Scan, Seeds, Tools, Settings): nothing is added to it');
@@ -1093,6 +1097,10 @@ SCEN.lessons_seed = async (t, d, ctx, page) => {   // xpub, then address and mes
   t((await d.state()).view === 'SSSeedExportXpubQRDisplayView', 'lesson "xpub": it ends on the xpub QR code');
   r = await runLesson(d, page, 'address', [null, null, null, toHomeAny, async (d) => { await waitCam(d, 'address'); await d.pick(/^Scan$/, { wait: 1500 }); }, P('PRESS', 2000)]);
   lessonOk(t, 'address', r, 6, [0, 1, 2]);
+  { // review L18: with the test seed loaded, the load steps are passed over, so BACK has nowhere to go and is off
+    await page.selectOption('#ssLearnPick', 'address'); await page.click('#ssLearnGo'); await sleep(600);
+    const b = await d.ev(() => ({ dis: document.getElementById('ssLearnBack').disabled, step: ssLearn.step }));
+    t(b.dis && b.step === 3, 'review L18: a lesson whose first steps are passed over starts after them with BACK off (the device is not on Home, so it waits at step 4) (' + JSON.stringify(b) + ')'); }
   const f = await screenFields(d, ['address', 'verified_index', 'verified_index_is_change']);
   t(f.address === addrOf(ABANDON, '', 'native', 0, 3) && f.verified_index === 3 && f.verified_index_is_change === false, 'lesson "address": the device verified receive address #3 of the test seed (' + String(f.address).slice(0, 14) + '..., the address @scure/btc-signer makes)');
   r = await runLesson(d, page, 'message', [null, null, null, toHomeAny, async (d) => d.pick(/^Settings$/, { wait: 900 }), async (d) => d.pick(/^Advanced$/, { wait: 900 }), async (d) => d.pick(/^Message signing$/, { wait: 900 }), async (d) => d.pick(/^Enabled$/, { wait: 1200 }),
@@ -1132,7 +1140,7 @@ SCEN.forge = async (t, d, ctx, page) => {
   const forge = async () => { await page.click('#ssForgeBtn'); await sleep(400); };
   const status = () => page.textContent('#ssForgeStatus');
   const result = async (want) => {
-    await page.waitForFunction((w) => madeMnemonic === w && /match/.test(document.getElementById('ssfCheck').textContent) && document.querySelectorAll('#addrList li').length === 10 && document.querySelectorAll('#chList li').length === 10 && document.getElementById('watchBox').style.display === '', want, { timeout: 60000 });
+    await page.waitForFunction((w) => madeMnemonic === w && /: the same\./.test(document.getElementById('ssfCheck').textContent) && document.querySelectorAll('#addrList li').length === 10 && document.querySelectorAll('#chList li').length === 10 && document.getElementById('watchBox').style.display === '' && (() => { const r = document.getElementById('genResult').getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; })(), want, { timeout: 60000 });   // the scroll to the words is smooth: wait for it
     return page.evaluate(() => ({ words: madeMnemonic, kind: seedKind, tab: document.getElementById('tab-make').getAttribute('aria-selected') === 'true',
       ban: document.getElementById('ssfBan').textContent, banShown: document.getElementById('ssfBan').style.display !== 'none', check: document.getElementById('ssfCheck').textContent, checkOk: document.getElementById('ssfCheck').classList.contains('ok'),
       fp: document.getElementById('fingerprint').textContent, fpPic: !!document.getElementById('fpIcon').innerHTML, r0: document.querySelector('#addrList li').textContent, c0: document.querySelector('#chList li').textContent,
@@ -1142,7 +1150,7 @@ SCEN.forge = async (t, d, ctx, page) => {
   const checkResult = async (tag, m, pass) => {
     const r = await result(m), fp = fpOf(rootOf(m, pass)), r0 = addrOf(m, pass, 'native', 0, 0), c0 = addrOf(m, pass, 'native', 1, 0);
     t(r.words === m && r.kind === 'ss' && r.tab && r.inView, tag + ': FORGE SEED shows the words in MAKE A SEED (the tab is switched and scrolled to them), as @scure/bip39 gives them');
-    t(r.fp === 'Master fingerprint: ' + fp + (pass ? ' (with passphrase)' : '') && r.fpPic && r.check === 'Practice signer fingerprint: ' + fp + '; VOIDFORGE fingerprint: ' + fp + ': match' && r.checkOk,
+    t(r.fp === 'Master fingerprint: ' + fp + (pass ? ' (with passphrase)' : '') && r.fpPic && r.check === 'Consistency check: the practice signer shows fingerprint ' + fp + ', and VOIDFORGE works out ' + fp + " for these words: the same. Both come from this page's own code, so this is not an independent check." && r.checkOk,
       tag + ': fingerprint ' + fp + ' (@scure/bip32) with its picture, and "' + r.check + '"');
     t(r.r0.includes(r0) && r.c0.includes(c0), tag + ': the first receive and change addresses equal @scure/btc-signer\'s (' + r0.slice(0, 14) + '..., ' + c0.slice(0, 14) + '...), 10 of each');
     t(r.sq && r.watch && r.pass === pass, tag + ': SeedQR, xpub and watch-only are offered, and the passphrase box holds the passphrase applied on the device' + (pass ? ' ("' + pass + '")' : ' (none)'));

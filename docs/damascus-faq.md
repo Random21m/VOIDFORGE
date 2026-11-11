@@ -25,14 +25,22 @@ Throw that pair again. Only write a pair you saw land flat. A die that is tilted
 2. The mistake is in the box where that row and that column cross.
 3. Check that box three times: on the Hammer sheet, on the Anvil sheet, and the fold on the Forge sheet (same bits gives 0, different bits gives 1).
 4. If a row is off but no column is, the row hallmark itself may be miscounted. The same goes for a column.
-5. Check my sheets in VOIDFORGE points to the box for you.
+5. CHECK MY SHEETS in VOIDFORGE points to the box for you.
 
 ## The two tools give different last words
 
 1. Check that both have the same 11 words (23 for 24 words), in the same order.
 2. Check the bits you typed for the last word: 7 bits for 12 words, 3 for 24. On the SeedSigner, Heads = 1 and Tails = 0.
-3. In VOIDFORGE Word draw, type the bits as the coin flips, in the same order.
+3. In VOIDFORGE, MAKE A SEED > Damascus, step 5 (Last word), type the same words and bits, in the same order.
 4. If they still differ, stop. Do not use the seed until you know why.
+
+## Are the last 7 bits coin flips?
+
+No.
+
+- Your Forge sheet's last row gives the last word's 7 bits (3 for 24 words). These are not new coin flips.
+- SeedSigner asks for them under 'Coin flip entropy'. That is just its way of typing in 0s and 1s: enter each bit as Heads = 1, Tails = 0.
+- The device then calculates the checksum (4 bits for 12 words, 8 for 24) and shows the final word. VOIDFORGE must show the same word.
 
 ## How do I make 24 words?
 
@@ -58,8 +66,8 @@ Yes, if it takes standard 12- or 24-word BIP39 seeds. A Damascus seed is a norma
 
 ## What do the hallmarks reveal?
 
-The row and column hallmarks are 23 bits of a 12-word seed (35 bits for 24 words). That is not enough to find the seed, but it makes guessing easier. Keep them only next to the words, never on their own. Anyone who has the words has the money anyway.
+The row and column hallmarks reveal 22 bits of a 12-word seed (34 bits for 24 words; the two share one bit, the count of all the 1s). That is not enough to find the seed, but it makes guessing easier. Keep them only next to the words, never on their own. Anyone who has the words has the money anyway.
 
 ## What is an assay?
 
-Someone else (an assayer) checks one sheet only: the Hammer sheet, or the Anvil sheet with its card record. If the other sheet was made well and kept apart, one sheet shows nothing about the seed. In VOIDFORGE, choose "An assayer" under Check my sheets: it shows that sheet's hallmarks and its own Seed XOR phrase, never the seed.
+Someone else (an assayer) checks one sheet only: the Hammer sheet, or the Anvil sheet with its card record. If the other sheet was made well and kept apart, one sheet shows nothing about the seed. In VOIDFORGE, choose "An assayer" under Who checks: it shows that sheet's hallmarks and its own Seed XOR phrase, never the seed.
