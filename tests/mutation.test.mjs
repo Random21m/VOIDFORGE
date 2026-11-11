@@ -7062,7 +7062,7 @@ const M = [
   ["damascus: a neighboring word not named", "if(Math.abs(got - want) === 1)", "if(Math.abs(got - want) === 2)"],
   ["damascus: recheck without K blames the last word (review M3)", "(gk ? \"- most likely", "(true ? \"- most likely"],
   ["damascus: recheck writes after CLEAR (review L4)", "function dmrWipe(){ dmrSeq++;", "function dmrWipe(){"],
-  ["damascus: sheets print before the self-test (review L6)", "if(!gateOk()) return;   // review L6", ""],
+  ["damascus: sheets print before the self-test (review L6)", "if(!gateOk()) return;   // review L6", "if(false) return;   // review L6"],
   ["damascus: the dice pad splits a pair", "(/^[1-6]$/.test(last) ? \"\" : t ? \" \" : \"\")", "(/^[1-6]$/.test(last) ? \" \" : t ? \" \" : \"\")"],
   ["damascus: the card picker deals a card twice", "if(D.decks[D.cur].includes(c)) return;", ""],
   ["damascus: the Hammer step marks every typed hallmark right", "else if(+t === m.R.charCodeAt(i) - 48) mark", "else if(true) mark"],
