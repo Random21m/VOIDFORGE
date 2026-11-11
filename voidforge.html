@@ -12,7 +12,7 @@
 // watchSigns() in the main script reads them. VF_OWN_DATA: every data- attribute name the page itself uses (tests/test.js checks that the
 // list is complete). Once the page has loaded (vfReady), any element added straight under <body> or <html> that is not one of the page's
 // own (vfOwnTop) is noted too: the page never adds one, and extensions often add one there to hold hidden content.
-var VF_OWN_DATA = ["1p-ignore", "a", "addr", "b", "bwignore", "c", "code", "form-type", "g", "gs", "i", "k", "lpignore", "m", "meta", "method", "n", "net", "practice-phrase", "r", "s", "seed", "sig", "tab", "text", "tip", "used", "v", "w"];
+var VF_OWN_DATA = ["1p-ignore", "a", "addr", "b", "bwignore", "c", "code", "ds", "form-type", "g", "gs", "i", "k", "lpignore", "m", "meta", "method", "n", "net", "parts", "pic", "practice-phrase", "r", "s", "seed", "sig", "tab", "text", "tip", "used", "v", "w"];
 window.vfWatchSeen = []; window.vfOwnEls = [document.currentScript];
 try {
   new MutationObserver(function(rs){ try {   // fixes release: never throw, also while the page is closing
@@ -850,6 +850,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .dm-fbar li { flex: 1 1 0; min-width: 0; }
   .dm-fbar button { width: 100%; min-width: 0; padding: 7px 2px; font-size: 13px; border-radius: 8px; background: var(--surface); color: var(--muted); border: 1px solid var(--border); box-shadow: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .dm-fbar button.done { color: var(--text); }
+  @media (max-width: 459px) { .dm-fbar { gap: 3px; } .dm-fbar button { font-size: 11px; padding: 7px 0; letter-spacing: -0.2px; } }
   .dm-fbar button.on { color: var(--text); border-color: var(--gold); font-weight: 700; }
   .dm-fnow { font-weight: 700; font-size: 14px; margin: 6px 0 0; color: var(--text); }
   .dm-st { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 4px; }
@@ -14012,7 +14013,7 @@ function dmPublicKind(st){
 // The words of an entropy in hex, without the checksum word's last bits (enough for knownPhrase, which reads only the entropy).
 function dmHexWords(h){
   const n = h.length * 4, wc = n * 3 / 32, bits = [...h].map(x => parseInt(x, 16).toString(2).padStart(4, "0")).join("") + "0".repeat(wc * 11 - n), out = [];
-  for(let i = 0; i < wc; i++) out.push(WORDLIST[parseInt(bits.slice(i * 11, i * 11 + 11), 2)]);
+  for(let i = 0; i < wc; i++) out.push(WORDLIST[parseInt(bits.substr(i * 11, 11), 2)]);
   return out.join(" ");
 }
 function dmPracticeKind(st){
@@ -14380,8 +14381,7 @@ function dmPadBuild(){
     b.onclick = () => dmThrow(v); pad.appendChild(b);
   }
   pad.addEventListener("keydown", (e) => {
-    if(e.ctrlKey || e.metaKey || e.altKey) return;
-    if(e.repeat){ e.preventDefault(); return; }
+    if(e.ctrlKey || e.metaKey || e.altKey || e.repeat){ if(e.repeat) e.preventDefault(); return; }   // a held key adds one throw
     if(/^[1-6]$/.test(e.key)){ e.preventDefault(); dmThrow(+e.key); } else if(e.key === "Backspace"){ e.preventDefault(); dmUndoThrow(); }
   });
 }
@@ -14411,6 +14411,7 @@ function dmDealCard(c){
   while(D.decks.length <= D.cur) D.decks.push([]);
   if(D.decks[D.cur].includes(c)) return;   // already dealt from this deck (its card shows the back)
   D.decks[D.cur].push(c);
+  while(D.decks.length > D.cur + 1 && !D.decks[D.decks.length - 1].length) D.decks.pop();   // the decks not dealt yet
   let t = D.decks.map(d => d.map(dmCardText).join(" ")).join("\n");
   if(D.decks[D.cur].length === D.sizes[D.cur] && D.cur < D.sizes.length - 1) t += "\n";   // the deck is used up: the next card starts the next deck
   document.getElementById("dmCards").value = t; dmUpdate();

@@ -434,7 +434,7 @@ w.clearAll();
 check("CLEAR ALL wipes the Damascus boxes, its result and the seed", !w.hasSeed() && !$("dmDice").value && !$("dmCards").value && !$("dmOut").textContent && $("dmOut").style.display === "none");
 set("dmFM", "0101"); check("one typed hallmark counts as a secret for auto-clear", w.eval("autoHasSecrets()"));
 set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards)); await w.dmCheck();
-check("auto-clear wipes the Damascus boxes and the result", w.autoWipe("test") === true && !$("dmDice").value && !$("dmCards").value && !$("dmFM").value && !$("dmOut").textContent);
+check("auto-clear wipes the Damascus boxes, the result and the five steps' views", w.autoWipe("test") === true && !$("dmDice").value && !$("dmCards").value && !$("dmFM").value && !$("dmOut").textContent && !$("dmPairBoxes").children.length && !$("dmLiveH").textContent && !$("dmLiveA").textContent && !/Last word:/.test($("dmLiveL").textContent) && !/[0-9JQKA][\u2660-\u2667]/.test($("dmDeal").textContent));
 set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards)); await w.dmCheck(); who("h");
 w.endSessionReload = () => {}; await w.endSession();
 check("END SESSION wipes the Damascus boxes and result and puts the choices back", !$("dmDice").value && !$("dmCards").value && !$("dmOut").textContent && $("dmWho").value === "both");
@@ -554,6 +554,7 @@ const guide = readFileSync(path.join(here, "..", "docs", "damascus-quick-guide.m
     set("dmWords", E.p.F.phrase); check("brief B3: all words right: step 4 is done", /✓/.test($("dmFBar").querySelector('[data-ds="4"]').textContent)); }
   w.dmShowStep(5); for(let t = 0; t < 100 && !/Master fingerprint/.test($("dmLiveL").textContent); t++) await new Promise((r) => setTimeout(r, 50));
   check("coordinator: the last-word step shows the last row's bits, the final word, fingerprint and first address, and says they must match the SeedSigner", $("dmLiveL").textContent.includes("Your Forge sheet's last row: " + E.p.F.handWords[11].bits + " (7 bits)") && $("dmLiveL").textContent.includes("Last word: sword (") && $("dmLiveL").textContent.includes("Master fingerprint 70b5da37") && $("dmLiveL").textContent.includes(E.ad) && /must match the SeedSigner/.test($("dmLiveL").textContent), $("dmLiveL").textContent);
+  check("the five steps leave no sign for the watch check (their data- attributes are the page's own)", w.watchSigns().length === 0, JSON.stringify(w.watchSigns()).slice(0, 200));
   who("h"); const only = [...w.document.querySelectorAll("#dmFBar li")].map((l) => l.hidden);
   check("brief B: an assay shows its own sheet's step only", JSON.stringify(only) === "[false,true,true,true,true]" && !w.document.getElementById("dmSt1").hidden, JSON.stringify(only));
   who("both"); w.dmClear();
