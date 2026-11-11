@@ -735,6 +735,16 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   #statusLine #netTag, #statusLine #selfTestBadge { text-align: left; }
   #guideNew { text-align: left; }
   button { background: var(--btn); color: var(--btntx); border: 1.5px solid transparent; border-radius: 6px; padding: 10px 16px; font-weight: 700; letter-spacing: .04em; box-shadow: none; transition: none; }
+  /* v2.14.0: the same hover and press feedback on every button. Gold (main) buttons brighten and lift; gray (secondary) buttons get a
+     gold outline. Hover only with a mouse (touch screens have none, so nothing stays lit); everyone gets the press look and the
+     keyboard focus ring above; "reduce motion" keeps the color change without the movement. */
+  button:not(.ss-k):not(.dict-link):not(.linklike) { transition: filter .12s ease, box-shadow .12s ease, transform .12s ease, border-color .12s ease, background-color .12s ease; }
+  @media (hover: hover) and (pointer: fine) {
+    button:not(:disabled):not(.secondary):not(.ss-k):not(.dict-link):not(.linklike):not(.ms-preset):not(.theme-toggle):not(.size-btn):not(.guide-btn):not(.tabs button):hover { filter: brightness(1.08); box-shadow: 0 3px 12px rgba(227,184,63,.30); transform: translateY(-1px); }
+    button.secondary:not(:disabled):hover { border-color: var(--gold); background: var(--surface); }
+  }
+  button:not(:disabled):not(.ss-k):not(.dict-link):not(.linklike):not(.tabs button):active { transform: translateY(0) scale(.98); filter: brightness(.95); box-shadow: none; }
+  @media (prefers-reduced-motion: reduce) { button, button:hover, button:active { transform: none !important; transition: none !important; } }
   body.light button { color: var(--btntx); }
   button.secondary, .theme-toggle, .print-btn, .guide-btn, .size-btn, body.light button.secondary, body.light .theme-toggle, body.light .print-btn, body.light .guide-btn, body.light .size-btn { background: transparent; color: var(--text); border: 1.5px solid var(--bd2); border-radius: 6px; padding: 8px 14px; font-size: 13px; }
   button.small, button.secondary.small { padding: 6px 12px; font-size: 12px; }
