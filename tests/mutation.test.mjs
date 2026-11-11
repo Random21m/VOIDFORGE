@@ -322,10 +322,14 @@ async function probe(w, mutated, fast, only, hooks) {
       const CT = E('SSController'), c2 = CT.get_instance(), s1 = await SSSeed.create({ mnemonic: AB }), s2 = await SSSeed.create({ mnemonic: M3[1] }), b1 = s1.seed_bytes, b2 = s2.seed_bytes, ws1 = s1._mnemonic;
       c2.storage.seeds.push(s1); c2.storage.pending_seed = s2; c2.storage._pending_mnemonic = ['abandon', 'zoo']; const pm = c2.storage._pending_mnemonic;
       const t3 = new btc.Transaction(); t3.addInput({ txid: '77'.repeat(32), index: 0, witnessUtxo: { script: btc.p2wpkh(kAt("m/84'/0'/0'/0/0").publicKey).script, amount: 1000n } }); t3.addOutput({ script: btc.p2wpkh(kAt("m/84'/0'/0'/0/1").publicKey).script, amount: 900n });
-      c2.psbt = E('SSPSBT').parse(P8(t3.toPSBT())); const spk3 = c2.psbt.inputs[0].witness_utxo.script_pubkey; E('SS_SIM_MICROSD').settings_json = '{"x":1}'; w.eval('ssPageOn = true');
+      c2.psbt = E('SSPSBT').parse(P8(t3.toPSBT())); const spk3 = c2.psbt.inputs[0].witness_utxo.script_pubkey; E('SS_SIM_MICROSD').settings_json = JSON.stringify({ [SC.SETTING__PERSISTENT_SETTINGS]: SC.OPTION__ENABLED });
+      // the file as save() writes it (only while Persistent settings is Enabled): a file without that setting is dropped by any
+      // reload of the settings during the wipe (update() sets it to Disabled, which removes the file), which hid ssPageWipe's own line
+      w.eval('ssPageOn = true');
       w.ssPageWipe();
       if ([b1, b2, spk3].some((b) => b.some((x) => x !== 0)) || ws1.some((x) => x) || pm.some((x) => x) || c2._storage !== null || E('SSController._instance') !== null) fails.push(T + 'wipe: the seeds (bytes and words), the pending words and the PSBT in the device are overwritten and dropped');
       if (E('SS_SIM_MICROSD').settings_json !== null || w.ssPageActive()) fails.push(T + 'wipe: the settings on its microSD are wiped and the device is off');
+      E('SSSettings._instance = null');   // a reload during the wipe may have made a settings object from that file: the next start makes its own
       if (!/ssPageWipe\(\)/.test(w.clearAll.toString()) || !/ssPageWipe\(\)/.test(w.autoWipe.toString()) || !/ssPageWipe\(\)/.test(w.endSession.toString()) || !/ssPsbtWipeController\(ctl\)/.test(w.ssPageStop.toString())) fails.push(T + 'wipe: CLEAR ALL, auto-clear and END SESSION wipe the practice signer'); }
     // 12. (review fixes) The wipe also drops the fonts' measuring caches (every text the device drew or measured is a key there),
     // the scratch canvases and the fields of a screen being built; auto-clear still sees the device while any font, or the settings
@@ -770,6 +774,11 @@ async function probe(w, mutated, fast, only, hooks) {
       if ($('dmCards').value !== '9D 3S') fails.push(T + 'the card picker deals a card once a deck');
       w.dmClear(); set('dmDice', d1); set('dmCards', c1); set('dmHR', V.forge(sheets[0]).D.marks.R.slice(0, 5));
       if (($('dmLiveH').textContent.match(/✓/g) || []).length !== 5 || /you wrote R/.test($('dmLiveH').textContent)) fails.push(T + 'the Hammer step checks each typed row hallmark');
+      { const RH = V.forge(sheets[0]).D.marks.R, bad5 = RH[4] === '1' ? '0' : '1'; set('dmHR', RH.slice(0, 4) + bad5);   // row 5's hallmark typed wrong
+        const g = $('dmLiveH').querySelector('pre.dm-grid'), rows = g ? g.textContent.split('\n') : [], at = (n) => rows.find((l) => l.startsWith(String(n).padStart(2) + '  ')) || '';
+        if (![1, 2, 3, 4].every((n) => at(n).endsWith('  ✓')) || !at(5).endsWith('  ✗') || at(5).includes('✓') || !$$('#dmLiveH .dm-bad').some((e) => e.textContent.startsWith('Row 5 of grid H: you wrote R ' + bad5 + ', but the row has ')))
+          fails.push(T + 'the Hammer step marks a wrong row hallmark wrong (✗, and says so) and the right ones right (✓)');
+        set('dmHR', ''); }
       const RF = V.forge(sheets[0]).E.marks.R; set('dmFR', RF.slice(0, 3) + (RF[3] === '1' ? '0' : '1'));
       if (!/Row 4: you wrote R/.test($('dmLiveF').textContent) || /Row [1-3]: you wrote/.test($('dmLiveF').textContent)) fails.push(T + 'the Forge step checks grid F row by row'); }
     // 7. the last word from paper only, as SeedSigner's Calc 12th/24th word; a public phrase is refused
@@ -780,7 +789,19 @@ async function probe(w, mutated, fast, only, hooks) {
       set('dmLwBits', bits.slice(1)); await w.dmLwCalc();
       if (!/^Type the 7 bits of your Forge sheet's last row: you typed 6\./.test($('dmLwOut').textContent)) fails.push(T + 'CALCULATE LAST WORD names a wrong bit count');
       const ph = V.forge(sheets[0]).E.phrase; set('dmLwWords', ph.slice(0, 11).join(' ')); set('dmLwBits', V.forge(sheets[0]).E.handWords[11].bits); await w.dmGenerate();
-      if (w.hasSeed() && w.eval('madeMnemonic') === ph.join(' ')) fails.push(T + 'FORGE SEED from paper refuses a public worked example'); }
+      if (w.hasSeed() && w.eval('madeMnemonic') === ph.join(' ')) fails.push(T + 'FORGE SEED from paper refuses a public worked example');
+      // review L1 with who checks as the only change: a seed forged from paper alone (no dice, no cards) keeps its paper boxes when an
+      // assay is chosen, so only who checks (part of the seed's inputs) lets the stale guard drop it
+      w.dmClear(); who('both');
+      let q, qm; do { q = entropyToMnemonic(nc.randomBytes(16), wordlist); qm = q.split(' '); } while (w.knownPhrase(q));
+      set('dmLwWords', qm.slice(0, 11).join(' ')); set('dmLwBits', wordlist.indexOf(qm[11]).toString(2).padStart(11, '0').slice(0, 7)); await w.dmLwCalc();
+      if (!$('dmLwOut').textContent.startsWith('Last word: ' + qm[11] + ' (')) fails.push(T + 'review L1: CALCULATE LAST WORD gives @scure/bip39\'s last word');
+      await w.dmGenerate();
+      if (!w.hasSeed() || w.eval('madeMnemonic') !== q || w.eval('seedKind') !== 'dm') fails.push(T + 'review L1: FORGE SEED from paper alone makes @scure/bip39\'s seed');
+      else { const cfS = w.confirm; let askedL1 = ''; w.confirm = (m) => { askedL1 = m; return true; }; who('h'); w.confirm = cfS;
+        if (!/any seed made here/.test(askedL1) || w.hasSeed()) fails.push(T + 'review L1: choosing an assay drops a seed forged from paper alone (who checks is part of its inputs)');
+        if ($('dmLwWords').value !== qm.slice(0, 11).join(' ')) fails.push(T + 'review L1: the paper boxes are kept, so who checks is the only change'); }
+      who('both'); w.dmClear(); }
     // 8. the backup recheck: a swap without K is never put down to the last word alone; a recheck still working writes nothing after CLEAR
     { const r0 = V.forge(sheets[0]), ws = r0.E.phrase.slice(), mk = r0.E.marks; let a = 0, b = 1; outer: for (a = 0; a < 11; a++) for (b = a + 1; b < 11; b++) if (mk.R[a] === mk.R[b] && ws[a] !== ws[b]) break outer;
       [ws[a], ws[b]] = [ws[b], ws[a]]; $('dmrWords').value = ws.join(' '); $('dmrM').value = mk.M; $('dmrR').value = mk.R; $('dmrK').value = ''; await w.dmRecheck();
