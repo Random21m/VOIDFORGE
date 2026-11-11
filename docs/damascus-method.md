@@ -69,7 +69,7 @@ The step labels are the ones printed on the sheets. **Time:** about 30 minutes o
    - the other source was good;
    - they never share their sheets;
    - neither sheet was seen before the other was finished. Fill each sheet in private, then fold it closed and hand it over.
-3. Each sheet, with its own last word added by a tool, is a valid BIP39 seed, and the two are a Coldcard **Seed XOR** pair for your seed. On the Damascus tab, choose "An assayer" under Check my sheets: it shows that sheet's hallmarks and its own Seed XOR phrase, never the seed.
+3. Each sheet, with its own last word added by a tool, is a valid BIP39 seed, and the two are a Coldcard **Seed XOR** pair for your seed. On the Damascus tab, choose "An assayer" under Who checks and press CHECK MY SHEETS: it shows that sheet's hallmarks and its own Seed XOR part, never the seed.
 
 **The order matters.** Worked example 2 shows what happens if the card person sees the dice first: they can choose any seed they want, and every check still passes.
 
