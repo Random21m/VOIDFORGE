@@ -63,7 +63,7 @@ function storageEncrypt(text, pw, magic = 'BIE1', squeeze = (t) => zlib.deflateS
 const w = loadPage(html); const errors = []; w.addEventListener('error', (e) => errors.push(e.message));
 await ready(w);
 const $ = (id) => w.document.getElementById(id), sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-ok(/^SELF-TEST PASSED \(152\/152\)$/.test($('selfTestBadge').textContent), 'the page self-test passes 152/152 (147, and 5 for part A): ' + $('selfTestBadge').textContent);
+ok(/^SELF-TEST PASSED \(155\/155\)$/.test($('selfTestBadge').textContent), 'the page self-test passes 155/155 (147, 5 for part A and 3 for wallet.dat files): ' + $('selfTestBadge').textContent);
 const open = async (text, pw = '') => { w.ewClear(); $('ewIn').value = text; $('ewPass').value = pw; await w.ewOpenUi(); const g = w.eval('ewGot'); return { st: $('ewStatus').textContent, cls: $('ewStatus').className, out: $('ewOut').textContent, secret: g ? g.secret : '', words: g ? g.words : null }; };
 const fx = (n) => fs.readFileSync(path.join(FX, n), 'utf8');
 
@@ -235,7 +235,7 @@ else {
     return { p, reqs, perr, ctx };
   };
   const { p, reqs, perr, ctx } = await page({ width: 1280, height: 900 });
-  ok(/^SELF-TEST PASSED \(152\/152\)$/.test(await p.textContent('#selfTestBadge')), 'Chromium: the self-test passes 152/152');
+  ok(/^SELF-TEST PASSED \(155\/155\)$/.test(await p.textContent('#selfTestBadge')), 'Chromium: the self-test passes 155/155');
   await p.setInputFiles('#ewFile', path.join(FX, 'el-segwit-encrypted')); await p.fill('#ewPass', 'test password'); await p.click('#ewBtn');
   await p.waitForFunction(() => /ok|bad/.test(document.getElementById('ewStatus').className), null, { timeout: 60000 });
   const out = await p.textContent('#ewOut');
