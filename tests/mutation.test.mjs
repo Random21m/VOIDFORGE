@@ -141,7 +141,13 @@ async function probe(w, mutated, fast, only, hooks) {
     { let m = ''; try { w.ewLoadText('{"a": {}},\n{"op": "add", "path": "/__proto__/x", "value": 1}'); } catch (e) { m = e.message; } if (!/not there/.test(m) || w.eval('({}).x') !== undefined) fails.push(T + 'a JSON patch into __proto__ is refused'); }
     r = await open(fx('el-standard-ext-pw.json'), 'test password');
     if (!w.eval('rhIds()').includes('ewSecret') || !w.eval('AUTO_FIELDS').includes('ewIn') || !w.eval('AUTO_FIELDS').includes('ewPass')) fails.push(T + 're-hide and auto-clear know the secret, the file text and the password');
-    $('ewIn').value = ''; $('ewPass').value = ''; if (!w.eval('autoHasSecrets()')) fails.push(T + 'auto-clear knows an opened wallet file holds secrets');
+    { // only the opened file may count here: the seed of section 0 and every other box are set aside for the check, then put back
+      const keep = w.eval('AUTO_FIELDS').map((id) => [id, $(id) ? $(id).value : null]), hs = w.hasSeed, ss = w.ssPageActive;
+      for (const [id] of keep) if ($(id)) $(id).value = ''; w.hasSeed = () => false; w.ssPageActive = () => false;
+      const sees = w.eval('autoHasSecrets()'); w.ewWipe(); const after = w.eval('autoHasSecrets()');
+      w.hasSeed = hs; w.ssPageActive = ss; for (const [id, v] of keep) if ($(id) && v !== null) $(id).value = v;
+      if (!sees || after) fails.push(T + 'auto-clear knows an opened wallet file holds secrets'); }
+    r = await open(fx('el-segwit-plain.json')); if (!w.eval('ewGot')) fails.push(T + 'a plain wallet file opens');
     w.wipeSeed(); if (w.eval('ewGot') || $('ewOut').textContent) fails.push(T + 'CLEAR ALL wipes the opened wallet file');
     w.setGate('fail', 'SELF-TEST FAILED', 'bad'); $('ewIn').value = fx('el-segwit-plain.json'); await w.ewOpenUi(); const gated = !w.eval('ewGot'); w.setGate('pass', 'SELF-TEST PASSED', 'ok'); if (!gated) fails.push(T + 'a failed self-test stops OPEN WALLET FILE');
     w.ewClear();
