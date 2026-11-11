@@ -108,6 +108,43 @@ async function probe(w, mutated, fast, only, hooks) {
   if (adOf() !== addr(expect.d50, '')) fails.push('first receive address');
   }
   if (hooks && hooks.afterBase) await hooks.afterBase();
+  // v2.15.0 "Stop costly mistakes": re-hide (tab, window, Print, idle, own PRINT sheets, passphrase boxes back to dots, SHOW), the
+  // passphrase check, passphrase practice (fingerprint from @scure/bip32) and Link as QR. It runs on the seed of section 0 and ends
+  // with CLEAR ALL and that seed made again, so the sections after it start as before.
+  if (SEC(75, "v2.15.0 re-hide, passphrase check, passphrase practice, Link as QR")) {
+    const T = 'mistakes: ', d = w.document, ev = (n, t = w) => t.dispatchEvent(new w.Event(n, { bubbles: false, cancelable: true }));
+    const cov = (id) => $(id).style.filter === 'blur(9px)' && $(id).inert === true, bar = () => $('rhBar').classList.contains('on');
+    const tabAway = () => { Object.defineProperty(d, 'hidden', { configurable: true, get: () => true }); ev('visibilitychange', d); delete d.hidden; };
+    const typeIn = (id, v) => { $(id).value = v; $(id).dispatchEvent(new w.Event('input', { bubbles: true })); };
+    w.rhShow(); $('rhIdle').value = '2'; $('rhBlur').checked = true; w.rhSet();
+    $('rolls').value = $('rolls').value || D50;
+    tabAway(); if (!bar() || !cov('wordGrid') || !cov('rolls')) fails.push(T + 'leaving the tab covers the words and the rolls');
+    w.rhShow(); if (bar() || $('wordGrid').style.filter || $('wordGrid').inert) fails.push(T + 'SHOW uncovers everything');
+    ev('blur'); if (!cov('wordGrid')) fails.push(T + 'a window blur covers the words'); w.rhShow();
+    w.togglePassphrase($('passphrase').nextElementSibling); tabAway();
+    if ($('passphrase').type !== 'password' || $('passphrase').nextElementSibling.textContent !== 'SHOW') fails.push(T + 'covering puts the passphrase back to dots'); w.rhShow();
+    ev('beforeprint'); if (!cov('wordGrid') || $('wordGrid').style.visibility !== 'hidden') fails.push(T + "the browser's Print covers the words and keeps them off the paper");
+    ev('afterprint'); w.rhShow();
+    d.body.classList.add('print-seed'); ev('beforeprint'); if (bar() || cov('wordGrid')) fails.push(T + 'printing VOIDFORGE\'s own sheet covers nothing'); ev('afterprint'); d.body.classList.remove('print-seed');
+    w.rhTouch(); const t0 = Date.now();
+    w.rhTick(t0 + 20000); if (bar()) fails.push(T + '20 seconds idle covers nothing');
+    w.rhTick(t0 + 121000); if (!bar()) fails.push(T + '2 minutes idle covers the words'); w.rhShow();
+    $('rhIdle').value = '0'; w.rhSet(); w.rhTick(Date.now() + 9e6); if (bar()) fails.push(T + 'idle "never" never covers'); $('rhIdle').value = '2'; w.rhSet();
+    // the passphrase check
+    typeIn('verifyPass', '\ufb01ne'); if (!/NFKD form/.test($('ppk-verifyPass').textContent)) fails.push(T + 'the passphrase check names an NFKD change');
+    typeIn('verifyPass', 'x'.repeat(100)); const c100 = /Coldcard accepts at most/.test($('ppk-verifyPass').textContent);
+    typeIn('verifyPass', 'x'.repeat(101)); if (c100 || !/Coldcard accepts at most 100/.test($('ppk-verifyPass').textContent)) fails.push(T + 'the Coldcard limit is 100 characters');
+    typeIn('verifyPass', '');
+    // passphrase practice: the fingerprint is the public test seed's with this passphrase (from @scure/bip32)
+    const pw = 'Probe ' + nc.randomBytes(4).toString('hex'), AB = 'abandon '.repeat(11) + 'about';
+    typeIn('ppA', pw); typeIn('ppB', pw); await w.ppCheck();
+    if (!/^MATCH/.test($('ppStatus').textContent) || ($('ppFp').querySelector('b') || {}).textContent !== fp(AB, pw)) fails.push(T + 'practice gives the test seed fingerprint with the passphrase');
+    // Link as QR: a refused secret is not left in the box
+    $('lqIn').value = AB; await w.lqMake(); if ($('lqIn').value !== '' || $('lqImg').innerHTML !== '') fails.push(T + 'Link as QR refuses seed words and empties the box');
+    // CLEAR ALL wipes the practice, then the seed of section 0 is made again
+    w.clearAll(); if ($('ppA').value || $('ppB').value || $('ppFp').textContent || $('ppStatus').textContent || $('ppk-ppA').textContent) fails.push(T + 'CLEAR ALL wipes passphrase practice');
+    w.rhShow(); await run('dice', 12, D50);
+  }
   // v2.13.0: the SeedSigner+ practice signer (CHECK A BACKUP > Practice signer; tools/simulator/). Its money-critical code is driven
   // directly (the device's own functions and views, no screen), and every expected value comes from @scure/bip39, @scure/bip32,
   // @scure/btc-signer, @noble/curves or node:crypto. It never uses CLEAR ALL: only the signer's own wipe, which leaves the page alone.
@@ -7482,6 +7519,33 @@ const M = [
   ['damascus quick path: no Ready line', 'r.textContent = !both ? "" : go && ready ?', 'r.textContent = !both ? "" : false ?'],
   ['damascus quick path: step 3 does not show grid F', '    partsF.push(["pre", dmGridLines(F, wc)]);\n', ''],
   ['damascus quick path: step 4 does not show the words', 'partsW.push(["pre", hw.slice(0, wc - 1).map(', 'partsW.push(["pre", hw.slice(0, 0).map('],
+  // v2.15.0 "Stop costly mistakes" (probe section 75 and the in-page self-test)
+  ["re-hide: a hidden tab covers nothing", "document.addEventListener(\"visibilitychange\", () => { if(document.hidden) rhHide(\"tab\"); });", ""],
+  ["re-hide: a window blur covers nothing", "if(document.getElementById(\"rhBlur\").checked) rhHide(", "if(false) rhHide("],
+  ["re-hide: the browser's Print covers nothing", "  rhPrinting = true;\n  if(rhHide(\"print\") || rhOn)", "  rhPrinting = true;\n  if(false)"],
+  ["re-hide: VOIDFORGE's own PRINT sheets get covered", "  if(rhOwnPrint()) return;   // one of VOIDFORGE", "  // one of VOIDFORGE"],
+  ["re-hide: idle time counted in tenths", "now - rhLast >= m * 60000", "now - rhLast >= m * 6000"],
+  ["re-hide: idle covers when set to never", "if(!rhOn && m && now - rhLast", "if(!rhOn && now - rhLast"],
+  ["re-hide: the words left off the list", "\"wordGrid\", \"genResult\", \"smudgeNote\"", "\"genResult\", \"smudgeNote\""],
+  ["re-hide: the AUTO_FIELDS boxes not covered", "...AUTO_FIELDS.filter(id => !RH_NOT.includes(id)), ", ""],
+  ["re-hide: passphrase boxes stay shown", "    e.type = \"password\"; rhMasked++;", "    rhMasked++;"],
+  ["re-hide: SHOW leaves the blur", "for(const [p, v, pr] of old){ if(v) e.style.setProperty(p, v, pr); else e.style.removeProperty(p); } e.inert = false;", "e.inert = false;"],
+  ["re-hide: covered boxes can still be typed in", "  e.inert = true;\n", ""],
+  ["re-hide: Print leaves the words on paper", "for(const e of rhCovered.keys()) e.style.setProperty(\"visibility\", \"hidden\");", "{}"],
+  ["passphrase check: NFKD changes not named", "if(r.changed.length) L.push(", "if(false) L.push("],
+  ["passphrase check: Coldcard limit off by one", "overCc: cps.length > PPK_MAX_CC", "overCc: cps.length >= PPK_MAX_CC"],
+  ["passphrase check: characters outside ASCII not found", "nonAscii: /[^\\x20-\\x7e]/.test(n)", "nonAscii: false"],
+  ["passphrase check: masked box shows the text", "else if(masked) { if(!/\\p{M}/u.test(c)) out.push([\"\\u2022\", \"\"]); }", ""],
+  ["passphrase check: leading space not found", "lead: /^\\s/.test(n)", "lead: false"],
+  ["passphrase practice: any two entries match", "if(x[i] !== y[i]) return {at: i + 1", "if(false) return {at: i + 1"],
+  ["passphrase practice: fingerprint without the passphrase", "const fp = await mnemonicFingerprint(PP_TEST, a);", "const fp = await mnemonicFingerprint(PP_TEST, \"\");"],
+  ["passphrase practice: CLEAR ALL keeps the result", "  mkWipe();   // v2.15.0", "  // v2.15.0"],
+  ["passphrase practice: CLEAR ALL keeps the boxes", "AUTO_FIELDS.push(\"ppA\", \"ppB\");", ""],
+  ["Link as QR: seed words accepted", "if(known >= 6 && known >= 0.8 * toks.length) return \"These look like SEED WORDS\";", ""],
+  ["Link as QR: WIF accepted", "(raw[0] === 0x80 || raw[0] === 0xef)) return \"This holds a PRIVATE KEY (WIF)\"", "(raw[0] === 0x81)) return \"This holds a PRIVATE KEY (WIF)\""],
+  ["Link as QR: xprv accepted", "EXT_PRIVATE.indexOf(hex(raw.subarray(0, 4))) >= 0) return", "EXT_PRIVATE.indexOf(\"x\") >= 0) return"],
+  ["Link as QR: SeedQR digits accepted", "if(/^\\d{48,96}$/.test(flat) && flat.length % 12 === 0) return \"These look like SeedQR", "if(false) return \"These look like SeedQR"],
+  ["Link as QR: a refused secret stays in the box", "if(why){ document.getElementById(\"lqIn\").value = \"\"; return", "if(why){ return"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

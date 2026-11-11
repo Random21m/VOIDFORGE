@@ -94,7 +94,7 @@ const panelOf = (b, box, want) => { for (let p = b.parentElement; p && p !== box
 
 // ---- tags: only the listed ones (docs/STYLE.md)
 {
-  const TAGS = ["SECRET", "RECOMMENDED", "PUBLIC KEYS ONLY", "PUBLIC ADDRESSES", "NO WORDS, KEEP PRIVATE", "NO REAL KEYS", "PRACTICE ONLY", "TEST ONLY", "READ ONLY", "NO KEYS NEEDED", "USES THE WORDS ABOVE", "PRIVATE", "PUBLIC", "ADVANCED", "NEW"];
+  const TAGS = ["SECRET", "RECOMMENDED", "PUBLIC KEYS ONLY", "PUBLIC ADDRESSES", "PUBLIC TEXT ONLY", "NO WORDS, KEEP PRIVATE", "NO REAL KEYS", "PRACTICE ONLY", "TEST ONLY", "READ ONLY", "NO KEYS NEEDED", "USES THE WORDS ABOVE", "PRIVATE", "PUBLIC", "ADVANCED", "NEW"];
   const tags = [...d.querySelectorAll(".tag")].map(label), bad = tags.filter((t) => !TAGS.includes(t));
   check("tags are the listed ones (" + tags.length + " tags)", tags.length > 30 && bad.length === 0, [...new Set(bad)].join(", "));
   const ss = d.querySelector("#ssBox > summary");

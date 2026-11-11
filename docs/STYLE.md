@@ -30,7 +30,7 @@ disclaimer box is a panel, not a notice.
 ## Tags
 
 Short, in capitals, one per box (two only for ADVANCED and NEW). The list: SECRET, RECOMMENDED, PUBLIC KEYS ONLY,
-PUBLIC ADDRESSES, NO WORDS, KEEP PRIVATE (one tag), NO REAL KEYS, PRACTICE ONLY, TEST ONLY, READ ONLY, NO KEYS NEEDED, USES THE WORDS ABOVE, and in the
+PUBLIC ADDRESSES, PUBLIC TEXT ONLY, NO WORDS, KEEP PRIVATE (one tag), NO REAL KEYS, PRACTICE ONLY, TEST ONLY, READ ONLY, NO KEYS NEEDED, USES THE WORDS ABOVE, and in the
 "What can someone do with this?" guide PRIVATE and PUBLIC; ADVANCED and NEW.
 A new tag is added to this list and to the test first. **(checked)**
 

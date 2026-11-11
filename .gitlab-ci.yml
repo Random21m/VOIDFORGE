@@ -41,7 +41,7 @@ test-print:
 
 test-browsers:
   <<: *test
-  script: [node tests/browsers.test.mjs, node tests/camera.test.mjs]
+  script: [node tests/browsers.test.mjs, node tests/camera.test.mjs, node tests/mistakes.test.mjs]
 
 pages:
   stage: deploy
