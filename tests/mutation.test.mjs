@@ -448,6 +448,238 @@ async function probe(w, mutated, fast, only, hooks) {
   } catch (e) { if (e instanceof ProbeStop) throw e; fails.push('practice signer: the probe crashed: ' + e.message); }
   finally { if (navOnline) Object.defineProperty(w.navigator, 'onLine', navOnline); else delete w.navigator.onLine; }
   }
+  // v2.14.0: Learn on the practice signer (tools/simulator/ss_learn.js): the practice transaction and the check of the signed PSBT read
+  // back, the lessons' step matching and BACK / NEXT / RESTART, the practice wallet (a stand-in camera), LOAD INTO THE PRACTICE SIGNER
+  // (vfSignerLoadSeed), FORGE SEED from the device, the card and MENU > PRACTICE SIGNER, and the wipes. Driven through the functions
+  // (the device's controller is a stand-in that only says which View and Screen it shows); every expected value comes from @scure/bip39,
+  // @scure/bip32, @scure/btc-signer, @noble/curves, @ngraveio/bc-ur or Node's SHA-256. It ends with the practice signer's own wipe and
+  // makes section 0's seed again (FORGE SEED replaces it).
+  if (SEC(73, "v2.14.0 learn on the practice signer: practice transaction, signature check, lessons, practice wallet, Damascus SeedQR, FORGE SEED, wipes")) {
+  const navOnline = Object.getOwnPropertyDescriptor(w.navigator, 'onLine'), CP = w.HTMLCanvasElement.prototype, gc0 = CP.getContext, siv0 = w.Element.prototype.scrollIntoView;
+  const E = (s) => w.eval(s), start0 = E('ssPageStart'), qd0 = E('qrDecodeRgba'), print0 = w.print;
+  try {
+    const T = 'learn: ', P8 = (b) => new (E('Uint8Array'))(b), H = (b) => Buffer.from(b).toString('hex'), sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
+    const SC = E('SSSettingsConstants'), SSSeed = E('SSSeed'), L = E('ssLearn'), CAM = E('ssLearnCam'), AB = 'abandon '.repeat(11) + 'about';
+    const PH = 'legal winner thank year wave sausage worth useful legal winner thank yellow', PH24 = 'legal winner thank year wave sausage worth useful '.repeat(3).trim().split(' ').slice(0, 23).join(' ') + ' title';
+    const MARK = 'VOIDFORGE practice coins: made up, not real, never on the blockchain', HP = 0x80000000, rAB = HDKey.fromMasterSeed(mnemonicToSeedSync(AB, ''));
+    const sqDigits = (m) => m.split(' ').map((x) => String(wordlist.indexOf(x)).padStart(4, '0')).join('');
+    const d256 = (b) => nsha(nsha(b)), rev = (b) => Uint8Array.from(b).reverse();
+    // a 2d canvas for jsdom (it has none): fillRect paints an RGBA buffer, so the practice wallet's camera picture can be read back
+    const ctxs = new WeakMap();
+    CP.getContext = function (t) { if (t !== '2d') return null; let g = ctxs.get(this); if (g) return g; const c = this, W = c.width, Hh = c.height, buf = new Uint8ClampedArray(W * Hh * 4).fill(255); let fs0 = '#000';
+      g = { canvas: c, buf, imageSmoothingEnabled: true, get fillStyle() { return fs0; }, set fillStyle(v) { fs0 = v; }, clearRect() {}, drawImage() {}, getImageData() { return { data: buf, width: W, height: Hh }; },
+        fillRect(x, y, ww, hh) { const v = fs0 === '#fff' ? 255 : fs0 === '#000' ? 0 : 43; for (let j = Math.max(0, y); j < Math.min(Hh, y + hh); j++) for (let i = Math.max(0, x); i < Math.min(W, x + ww); i++) { const o = (j * W + i) * 4; buf[o] = buf[o + 1] = buf[o + 2] = v; buf[o + 3] = 255; } } };
+      ctxs.set(this, g); return g; };
+    const scrolled = []; w.Element.prototype.scrollIntoView = function () { scrolled.push(this.id); };
+    // the device itself never starts here (jsdom draws nothing): starting it only switches it on
+    E('ssPageStart = function () { ssPageOn = true; window.__ssStarts = (window.__ssStarts || 0) + 1; }');
+    const off = async () => { w.ssPageWipe(); await sleep(30); };   // (the box's toggle event comes a moment later)
+    const ctl = { current_destination: null, back_stack: [], _storage: { seeds: [] } };
+    const on = async (seeds = []) => { await off(); ctl._storage = { seeds }; ctl.current_destination = null; ctl.back_stack = []; E('SSController')._instance = ctl; E('ssPageOn = true'); };
+    const at = (view, title = '', labels = [], screen = 'SSButtonListScreen', extra = {}) => { ctl.current_destination = { View_cls: { name: view }, view_args: extra.args || {}, view: { screen: Object.assign({ constructor: { name: screen }, title, button_data: labels }, extra.scr || {}) } }; };
+    const tick = (n = 4) => { for (let i = 0; i < n; i++) w.ssLearnTick(); };
+    const lesson = (id) => { $('ssLearnPick').value = id; $('ssLearnGo').click(); };
+    const settings = () => E('SSSettings').get_instance();
+
+    // 1. OPEN PRACTICE SIGNER (the card) and MENU > PRACTICE SIGNER: CHECK A BACKUP, the box opened (the device started), in view, focused
+    for (const id of ['ssPromoBtn', 'ssMenuBtn']) {
+      await off(); w.showTab('make'); w.__ssStarts = 0; scrolled.length = 0; if (w.__focus) w.__focus.length = 0; $('menuBox').open = id === 'ssMenuBtn';
+      $(id).click(); await sleep(30);
+      if (!$('ssBox').open || !w.__ssStarts || !E('ssPageOn') || $('menuBox').open || $('tp-check').classList.contains('tab-off') || !scrolled.includes('ssBox') || (w.__focus && !w.__focus.some(([f]) => f === 'ssDevice'))) fails.push(T + (id === 'ssPromoBtn' ? 'the card' : 'MENU > PRACTICE SIGNER') + ' opens the practice signer in CHECK A BACKUP, started, in view and focused');
+    }
+    await off(); if ($('ssBox').open || E('ssPageOn')) fails.push(T + 'the practice signer\'s wipe closes its box and stops it');
+
+    // 2. The practice transaction (single key): made-up coins of a made-up previous transaction whose one input is the null outpoint,
+    // with the practice marker as its script; checked with btc-signer, keys and addresses from @scure/bip32
+    await on([]); w.showTab('make');
+    const T1 = await w.ssLearnBuild('single'), b1 = btc.Transaction.fromPSBT(T1.psbt), kp = (p) => rAB.derive(p), pk = (p) => kp(p).publicKey, wpkh = (q) => btc.p2wpkh(q).script;
+    const pay0 = HDKey.fromMasterSeed(mnemonicToSeedSync('zoo '.repeat(11) + 'wrong', '')).derive("m/84'/0'/0'/0/0").publicKey;
+    { const prev = b1.getInput(0).nonWitnessUtxo, praw = btc.RawTx.encode(prev), pin = prev.inputs[0], ptx = H(rev(d256(praw))), ss = pin.finalScriptSig || new Uint8Array(0);
+      if (prev.inputs.length !== 1 || H(pin.txid) !== '00'.repeat(32) || pin.index !== 0xffffffff) fails.push(T + 'practice transaction: the made-up coins come from the null outpoint (no real coin)');
+      if (H(ss) !== H([MARK.length, ...Buffer.from(MARK)])) fails.push(T + 'practice transaction: the made-up previous transaction is marked as practice');
+      if (prev.outputs.length !== 2 || prev.outputs.some((o, i) => H(o.script) !== H(wpkh(pk(`m/84'/0'/0'/0/${i}`))) || o.amount !== [150000n, 70000n][i])) fails.push(T + 'practice transaction: the made-up coins pay the test seed (m/84\'/0\'/0\'/0/0 and /1)');
+      const ins = [0, 1].map((i) => b1.getInput(i));
+      if (b1.inputsLength !== 2 || ins.some((x, i) => H(x.txid) !== ptx || x.index !== i || x.sequence !== 0xfffffffd || H(btc.RawTx.encode(x.nonWitnessUtxo)) !== H(praw)) || T1.prevTxid !== ptx || b1.version !== 2 || b1.lockTime !== 0) fails.push(T + 'practice transaction: it spends the outputs of that made-up transaction (its txid, from Node\'s SHA-256)');
+      if (ins.some((x, i) => !x.witnessUtxo || x.witnessUtxo.amount !== prev.outputs[i].amount || H(x.witnessUtxo.script) !== H(prev.outputs[i].script))) fails.push(T + 'practice transaction: the coins\' amounts and scripts in the PSBT are those of the made-up transaction');
+      if (ins.some((x, i) => !x.bip32Derivation || x.bip32Derivation.length !== 1 || H(x.bip32Derivation[0][0]) !== H(pk(`m/84'/0'/0'/0/${i}`)) || x.bip32Derivation[0][1].fingerprint !== 0x73c5da0a || x.bip32Derivation[0][1].path.join() !== [84 + HP, HP, HP, 0, i].join())) fails.push(T + 'practice transaction: the inputs\' keys and paths (fingerprint 73c5da0a)');
+      const o0 = b1.getOutput(0), o1 = b1.getOutput(1), cd = o1.bip32Derivation || [];
+      if (b1.outputsLength !== 2 || H(o0.script) !== H(wpkh(pay0)) || o0.amount !== 120000n || H(o1.script) !== H(wpkh(pk("m/84'/0'/0'/1/0"))) || o1.amount !== 99000n || cd.length !== 1 || H(cd[0][0]) !== H(pk("m/84'/0'/0'/1/0")) || cd[0][1].path.join() !== [84 + HP, HP, HP, 1, 0].join() || cd[0][1].fingerprint !== 0x73c5da0a) fails.push(T + 'practice transaction: 120,000 sats to the test payee, 99,000 sats change to the test seed\'s m/84\'/0\'/0\'/1/0 (fee 1,000)');
+      if (T1.payAddr !== btc.Address(btc.NETWORK).encode(btc.OutScript.decode(wpkh(pay0))) || T1.fee !== 1000n || T1.nIn !== 2 || T1.fp !== '73c5da0a' || T1.own) fails.push(T + 'practice transaction: what the page says it spends and pays');
+      const dec = new (requireC('@ngraveio/bc-ur').URDecoder)(); for (let i = 0; i < 40 && !dec.isComplete(); i++) dec.receivePart(T1.frames[i % T1.frames.length]);
+      if (!dec.isSuccess() || dec.resultUR().type !== 'crypto-psbt' || H(dec.resultUR().decodeCBOR()) !== H(T1.psbt)) fails.push(T + 'practice transaction: its animated QR (crypto-psbt, read by @ngraveio/bc-ur) is the PSBT'); }
+    // the 2-of-3 multisig: P2WSH sortedmulti of the test seed and the two public cosigners, the change checked the same way, the global xpubs
+    const T2 = await w.ssLearnBuild('multi'), b2 = btc.Transaction.fromPSBT(T2.psbt), M3 = [AB, PH, 'letter advice cage absurd amount doctor acoustic avoid letter advice cage above'];
+    { const acc = M3.map((m) => HDKey.fromMasterSeed(mnemonicToSeedSync(m, '')).derive("m/48'/0'/0'/2'")), ms = (c, i) => btc.p2ms(2, acc.map((a) => a.deriveChild(c).deriveChild(i).publicKey).sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b))));
+      const x0 = b2.getInput(0), prev = x0.nonWitnessUtxo, oc = b2.getOutput(1), b58 = createBase58check(nsha);
+      if (b2.inputsLength !== 1 || H(prev.inputs[0].txid) !== '00'.repeat(32) || prev.inputs[0].index !== 0xffffffff || H(prev.inputs[0].finalScriptSig) !== H([MARK.length, ...Buffer.from(MARK)])) fails.push(T + 'practice multisig transaction: made-up coins from the null outpoint, marked as practice');
+      if (H(x0.witnessScript) !== H(ms(0, 0).script) || H(x0.witnessUtxo.script) !== H(btc.p2wsh(ms(0, 0)).script) || x0.witnessUtxo.amount !== 500000n || H(x0.txid) !== H(rev(d256(btc.RawTx.encode(prev)))) || (x0.bip32Derivation || []).length !== 3) fails.push(T + 'practice multisig transaction: the 2-of-3 coin (sortedmulti of the three test seeds, @scure/btc-signer)');
+      if (H(oc.script) !== H(btc.p2wsh(ms(1, 0)).script) || H(oc.witnessScript) !== H(ms(1, 0).script) || (oc.bip32Derivation || []).length !== 3 || oc.amount !== 298500n || b2.getOutput(0).amount !== 200000n) fails.push(T + 'practice multisig transaction: the change is the wallet\'s m/48\'/0\'/0\'/2\'/1/0 (fee 1,500)');
+      const gx = (T2.global || []).filter(([k]) => k[0] === 1).map(([k, v]) => H(k.slice(1)) + ':' + H(v)).sort(), want = acc.map((a, i) => H(b58.decode(a.publicExtendedKey)) + ':' + fp(M3[i], '') + H(Uint8Array.from([48 + HP, HP, HP, 2 + HP].flatMap((n) => [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, n >>> 24])))).sort();
+      if (gx.join() !== want.join()) fails.push(T + 'practice multisig transaction: the three cosigners\' xpubs and paths in the PSBT');
+      if (!/^wsh\(sortedmulti\(2,/.test(T2.descriptor) || acc.some((a, i) => !T2.descriptor.includes('[' + fp(M3[i], '') + '/48h/0h/0h/2h]' + a.publicExtendedKey + '/0/*'))) fails.push(T + 'practice multisig transaction: the wallet descriptor names the three cosigners'); }
+    // spending a seed loaded on the device (the last one), and testnet
+    { const sO = await SSSeed.create({ mnemonic: PH }); ctl._storage.seeds.push(await SSSeed.create({ mnemonic: AB }), sO); const t = await w.ssLearnBuild('single'), bt = btc.Transaction.fromPSBT(t.psbt), k = HDKey.fromMasterSeed(mnemonicToSeedSync(PH, '')).derive("m/84'/0'/0'/0/1").publicKey;
+      if (!t.own || t.fp !== fp(PH, '') || H(bt.getInput(1).witnessUtxo.script) !== H(wpkh(k))) fails.push(T + 'practice transaction: it spends the last seed loaded on the device');
+      ctl._storage.seeds.length = 0; settings().set_value(SC.SETTING__NETWORK, SC.TESTNET);
+      const [fa] = await E('ssLearnFeed')('address'); if (!fa || fa[0] !== 'bitcoin:' + segAtT(AB, '', 0, 0, 3)) fails.push(T + 'practice wallet: the address to check is receive address #3 of the test seed (testnet)');
+      settings().set_value(SC.SETTING__NETWORK, SC.MAINNET);
+      const [fm] = await E('ssLearnFeed')('address'), [fs] = await E('ssLearnFeed')('seedqr'), [fg] = await E('ssLearnFeed')('signmsg');
+      if (!fm || fm[0] !== 'bitcoin:' + segAt(AB, '', 0, 3) || !fs || fs[0] !== sqDigits(AB) || !fg || !/^signmessage m\/84h\/0h\/0h\/0\/0 ascii:./.test(fg[0])) fails.push(T + 'practice wallet: the address (#3), the SeedQR of abandon ... about and the message request it shows'); }
+
+    // 3. The signed PSBT read back is checked with the page's own signature code (inspectPsbt, psbtSigCheck): signatures made with
+    // @noble/curves over btc-signer's sighash, in a PSBT trimmed as SeedSigner returns it (the transaction and the signatures only)
+    const cs = (n) => n < 0xfd ? [n] : [0xfd, n & 255, n >> 8], kv = (k, v) => [...cs(k.length), ...k, ...cs(v.length), ...v];
+    const trimmed = (utx, perIn, nOut = 2) => P8([0x70, 0x73, 0x62, 0x74, 0xff, ...kv([0], utx), 0, ...perIn.flatMap((s) => [...s.flatMap(([q, g]) => kv([2, ...q], g)), 0]), ...Array(nOut).fill(0)]);
+    const sigOf = (j, priv, label, amount) => { const inp = b1.getInput(j), q = label || secp256k1.getPublicKey(priv, true), h = b1.preimageWitnessV0(j, btc.p2pkh(q).script, 1, amount === undefined ? inp.witnessUtxo.amount : amount);
+      return [q, Uint8Array.from([...secp256k1.sign(h, priv).toDERRawBytes(), 1])]; };
+    const k0 = kp("m/84'/0'/0'/0/0").privateKey, k1 = kp("m/84'/0'/0'/0/1").privateKey, s0 = sigOf(0, k0), s1 = sigOf(1, k1), utx1 = b1.unsignedTx, chk = (b) => w.ssLearnCheck(T1, b);
+    { const r = await chk(trimmed(utx1, [[s0], [s1]])); if (!r || !r.ok || r.sigs !== 2) fails.push(T + 'check: a correctly signed practice transaction checks out');
+      const k65 = secp256k1.getPublicKey(k1, false), r65 = await chk(trimmed(utx1, [[s0], [s1, [k65, s1[1]]]])); if (!r65 || !r65.ok) fails.push(T + 'check: only signatures with a 33-byte key are taken');
+      for (const [what, ins] of [['a signature over another amount', [[sigOf(0, k0, null, 150001n)], [s1]]], ['a signature by another key', [[sigOf(0, k1, pk("m/84'/0'/0'/0/0"))], [s1]]], ['a missing signature', [[s0], []]],
+        ['two signatures on one input and none on the other', [[s0, sigOf(0, k1)], []]], ['a signature by a key the coin does not name', [[s0, sigOf(0, k1)], [s1]]], ['an unreadable signature', [[s0], [[s1[0], Uint8Array.of(0x30, 1, 2, 1)]]]], ['a damaged signature', [[[s0[0], Uint8Array.from(s0[1].map((x, i) => i === 8 ? x ^ 1 : x))]], [s1]]]]) {
+        const r2 = await chk(trimmed(utx1, ins)); if (!r2 || r2.ok) { fails.push(T + 'check: ' + what + ' is NOT signed correctly'); break; } }
+      // 2-of-3: one signature (the practice signer's seed) checks out; two (another cosigner too) is not what the practice signer makes
+      const ws = b2.getInput(0).witnessScript, h2 = b2.preimageWitnessV0(0, ws, 1, 500000n), msig = (m) => { const k = HDKey.fromMasterSeed(mnemonicToSeedSync(m, '')).derive("m/48'/0'/0'/2'/0/0"); return [k.publicKey, Uint8Array.from([...secp256k1.sign(h2, k.privateKey).toDERRawBytes(), 1])]; };
+      const mA = msig(AB), m1 = await w.ssLearnCheck(T2, trimmed(b2.unsignedTx, [[mA]])), m2 = await w.ssLearnCheck(T2, trimmed(b2.unsignedTx, [[mA, msig(PH)]]));
+      if (!m1 || !m1.ok || m1.sigs !== 1 || !m2 || m2.ok) fails.push(T + 'check (2-of-3): the practice signer\'s one signature checks out, and two signatures are not what it was asked for');
+      if ((await chk(trimmed(b2.unsignedTx, [[], []]))) !== null || (await chk(trimmed(Uint8Array.from([...utx1.slice(0, -4), 1, 0, 0, 0]), [[s0], [s1]]))) !== null) fails.push(T + 'check: a signed PSBT of another transaction is not the practice transaction'); }
+    // signed by the practice signer itself (SeedSigner's Approve transaction), single key and 2-of-3
+    const devSign = async (Tx, seed) => { const ps = E('SSPSBT').parse(P8(Tx.psbt)), c = { psbt: ps, psbt_parser: await E('SSPSBTParser').create(ps, seed, SC.MAINNET) }, fv = Object.create(E('SSPSBTFinalizeView').prototype); fv.controller = c; fv.run_screen = async () => 0; await fv.run(); return P8(c.psbt.serialize()); };
+    const sAB = await SSSeed.create({ mnemonic: AB }), sig1 = await devSign(T1, sAB), sig2 = await devSign(T2, sAB);
+    { const r = await chk(sig1), r2 = await w.ssLearnCheck(T2, sig2); if (!r || !r.ok || r.sigs !== 2 || !r2 || !r2.ok || r2.sigs !== 1) fails.push(T + 'check: the practice signer\'s own signatures check out (single key, and one of 2-of-3)');
+      const bad = Buffer.from(sig1), at0 = bad.indexOf(Buffer.from(s0[0])); if (at0 > 0) { bad[at0 + 33 + 1 + 8] ^= 1; const r3 = await chk(P8(bad)); if (!r3 || r3.ok) fails.push(T + 'check: a damaged signature from the practice signer is NOT signed correctly'); } }
+
+    // 4. Reading the signed PSBT back from the device's screen (a stand-in for the QR reader gives the UR parts the screen shows)
+    const { cborEncode } = requireC('@ngraveio/bc-ur/dist/cbor'), partsOf = (b, type = 'crypto-psbt') => { const e = new UREncoder(new UR(cborEncode(Buffer.from(b)), type), 100, 0, 10); return Array.from({ length: 3 * e.fragmentsLength }, () => e.nextPart().toUpperCase()); };
+    await on([]);
+    const readBack = async (parts, view = 'SSPSBTSignedQRDisplayView') => { const Tx = Object.assign(E('({})'), T1, { result: null, status: '' }); L.tx = Tx; w.ssLearnShow(Tx.frames, 'tx', 'tx'); let n = 0, seen = 0;
+      E('(f) => { qrDecodeRgba = f; }')(() => { seen++; return { text: parts[n++ % parts.length] }; }); at(view); tick(1);
+      if (view === 'SSPSBTSignedQRDisplayView') await until(() => Tx.result || (!L.reading && seen), 8000); else await sleep(300); await until(() => !L.reading, 3000); return [Tx, seen]; };
+    { const [Tx] = await readBack(partsOf(sig1)); if (!Tx.result || !Tx.result.ok || CAM.frames) fails.push(T + 'read back: the signed practice PSBT on the screen is read, checked and the practice wallet put away');
+      const [Ty] = await readBack(partsOf(sig2)); if (Ty.result || !Ty.status) fails.push(T + 'read back: a signed PSBT of another transaction is refused');
+      const [Tz] = await readBack(partsOf(sig1, 'bytes')); if (Tz.result) fails.push(T + 'read back: only a crypto-psbt is taken');
+      const [, seenN] = await readBack(partsOf(sig1), 'SSPSBTOverviewView'); if (seenN) fails.push(T + 'read back: the screen is read only while it shows the signed PSBT'); }
+    E('(f) => { qrDecodeRgba = f; }')(qd0); L.tx = null;
+
+    // 5. The practice wallet: only a scan (480 x 480) sees it, never the camera tools; it paints the QR (read back here with the page's
+    // QR reader), the scanner gets its text, and the scan's end switches it off
+    await on([]);
+    { const cam = () => { const c = Object.create(E('SSCamera').prototype); c._video_stream = null; c._picamera = null; c._camera_rotation = 180; return c; }, DQ = E('SSDecodeQR');
+      w.ssLearnShow(['bitcoin:' + segAt(AB, '', 0, 3)], 'x', 'address'); const c1 = cam(); let threw = false;
+      try { await c1.start_video_stream_mode({ resolution: [512, 384] }); } catch (e) { threw = true; } if (!threw || CAM.on) fails.push(T + 'practice wallet: the camera tools never see it');
+      await c1.start_video_stream_mode({ resolution: [480, 480] }); const hd = c1._video_stream && c1._video_stream.handle;
+      if (!hd || !hd.ssLearn || !CAM.on || hd.video.videoWidth !== 640) fails.push(T + 'practice wallet: a scan sees it');
+      const g = hd && ctxs.get(hd.video), rd = g && w.qrDecodeRgba(g.buf, 640, 480); if (!rd || rd.text !== 'bitcoin:' + segAt(AB, '', 0, 3)) fails.push(T + 'practice wallet: its camera picture is the QR of what it holds');
+      const tx1 = DQ.extract_qr_data(null), tb = DQ.extract_qr_data(null, true); if (tx1 !== 'bitcoin:' + segAt(AB, '', 0, 3) || !tb || Buffer.from(tb).toString() !== tx1 || !CAM.read) fails.push(T + 'practice wallet: the scanner reads its text');
+      c1.stop_video_stream_mode(); if (CAM.on || CAM.shown !== null) fails.push(T + 'practice wallet: the scan\'s end switches it off');
+      w.ssLearnHide(); threw = false; try { await cam().start_video_stream_mode({ resolution: [480, 480] }); } catch (e) { threw = true; } if (!threw || CAM.on) fails.push(T + 'practice wallet: put away, a scan does not see it'); }
+    // the scan's decoder finished: the practice wallet is put away
+    { w.ssLearnShow(['X'], 'x', 'address'); at('SSScanView', '', [], 'SSScanScreen', { scr: { decoder: { is_complete: false } } }); tick(1); at('SSSeedSelectSeedView'); tick(1); const kept = !!CAM.frames;
+      at('SSScanView', '', [], 'SSScanScreen', { scr: { decoder: { is_complete: true } } }); tick(1); at('SSSeedSelectSeedView'); tick(1);
+      if (!kept || CAM.frames) fails.push(T + 'practice wallet: put away once a scan read it completely'); }
+
+    // 6. The lessons: each step moves on when the device shows what it asks for, at most two steps ahead, never past a step that holds
+    // something up to the camera; BACK and NEXT hold the step until the device shows something else; the test-seed steps are passed over
+    await on([]); E('ssPageStart = function () { ssPageOn = true; }');
+    { at('SSSettingsMenuView', 'Settings'); lesson('sign'); tick(); const st0 = L.step;
+      at('SSMainMenuView'); tick(); await until(() => CAM.key === 'seedqr' && !L.arming, 3000); const st1 = L.step, f1 = CAM.frames && CAM.frames[0], by1 = CAM.byLesson;
+      at('SSSeedFinalizeView'); tick(); const st2 = L.step, cam2 = !!CAM.frames;
+      if (st0 !== 0 || st1 !== 1 || f1 !== sqDigits(AB) || !by1) fails.push(T + 'lessons: Home, then the practice wallet holds up the SeedQR of abandon ... about (no step past it)');
+      if (st2 !== 2 || cam2) fails.push(T + 'lessons: the SeedQR is put away once the device has read it');
+      ctl._storage.seeds.push(await SSSeed.create({ mnemonic: AB })); at('SSSeedOptionsView'); tick(); at('SSMainMenuView'); tick(); const st4 = L.step;
+      L.tx = T2; T2.result = null; tick(); const st4m = L.step; L.tx = T1; T1.result = null; tick(); const st5 = L.step; await until(() => CAM.key === 'tx' && !L.arming, 3000); const f5 = CAM.frames;
+      if (st4 !== 4 || st4m !== 4 || st5 !== 5 || !f5 || f5.join() !== T1.frames.map((x) => x.toUpperCase()).join()) fails.push(T + 'lessons: after the seed, the practice transaction, then the practice wallet holds it up');
+      at('SSPSBTOverviewView'); tick(); const st5b = L.step; at('SSPSBTSelectSeedView'); tick(); const st6 = L.step; at('SSPSBTOverviewView'); tick(); const st7 = L.step;
+      if (st5b !== 5 || st6 !== 6 || st7 !== 7) fails.push(T + 'lessons: never past the step that holds the transaction up to the camera');
+      at('SSPSBTChangeDetailsView'); tick(); const st10 = L.step; $('ssLearnBack').click(); tick(); const sb = L.step; $('ssLearnBack').click(); tick(); const sb2 = L.step;
+      $('ssLearnNext').click(); tick(); const sn = L.step; $('ssLearnNext').click(); tick(); const sn2 = L.step;
+      if (st10 !== 10 || sb !== 9 || sb2 !== 8 || sn !== 9 || sn2 !== 10) fails.push(T + 'lessons: two steps ahead is followed; BACK and NEXT hold until the device shows something else');
+      T1.result = { ok: false }; at('SSPSBTFinalizeView'); tick(); at('SSPSBTSignedQRDisplayView'); tick(); const st12 = L.step, d12 = L.done; T1.result = { ok: true }; tick(); const d13 = L.done;
+      if (st12 !== 12 || d12 || !d13) fails.push(T + 'lessons: the last step is done only when the signature checks out');
+      $('ssLearnRestart').click(); const sr = L.step; $('ssLearnBack').click(); const sr2 = L.step;
+      if (sr !== 3 || sr2 !== 3 || L.done) fails.push(T + 'lessons: RESTART passes over the steps that load the test seed when it is loaded, and BACK does not go into them');
+      ctl._storage.seeds = [await SSSeed.create({ mnemonic: AB, passphrase: 'TREZOR' })]; $('ssLearnRestart').click(); if (L.step !== 0) fails.push(T + 'lessons: the test seed with a passphrase is not the test seed');
+      L.tx = null; T1.result = null; }
+    { lesson('multisig'); ctl._storage.seeds = [await SSSeed.create({ mnemonic: AB })]; L.tx = T2; T2.result = null; const go = E('ssLearnGoto'); go(9, false);
+      at('SSPSBTChangeDetailsView', 'Your Change', ['Next']); tick(); const a = L.step; at('SSPSBTChangeDetailsView', 'Your Change', ['Verify multisig change', 'Skip verification']); tick(); const b = L.step;
+      go(11, false); await until(() => CAM.key === 'descriptor' && !L.arming, 3000); const fd = CAM.frames && CAM.frames[0];
+      at('SSMultisigWalletDescriptorView'); tick(); at('SSPSBTChangeDetailsView', 'Your Change', ['Verify multisig change']); tick(); const c = L.step; at('SSPSBTChangeDetailsView', 'Your Change', ['Next']); tick(); const d = L.step;
+      if (a !== 9 || b !== 10 || fd !== T2.descriptor || c !== 12 || d !== 13) fails.push(T + 'lessons (multisig): the change steps by their buttons, the descriptor held up'); L.tx = null; }
+    { lesson('message'); settings().set_value(SC.SETTING__MESSAGE_SIGNING, SC.OPTION__DISABLED); E('ssLearnGoto')(5, false);
+      at('SSSettingsMenuView', 'Settings'); tick(); const a = L.step; at('SSSettingsMenuView', 'Advanced'); tick(); const b = L.step;
+      at('SSSettingsEntryUpdateSelectionView', 'Message signing', ['Mainnet', 'Testnet']); tick(); const c = L.step; at('SSSettingsEntryUpdateSelectionView', 'Message signing', ['Enabled', 'Disabled']); tick(); const d = L.step; tick(); const d2 = L.step;
+      settings().set_value(SC.SETTING__MESSAGE_SIGNING, SC.OPTION__ENABLED); tick(); const e = L.step;
+      if (a !== 5 || b !== 6 || c !== 6 || d !== 7 || d2 !== 7 || e !== 8) fails.push(T + 'lessons (message): the settings steps by title, by options and by the setting itself');
+      lesson('dice'); E('ssLearnGoto')(5, false); at('SSSeedWordsView', 'Seed Words'); tick(); const f = L.step; at('SSSeedWordsView', 'Seed Words: 1/3'); tick(); const g = L.step;
+      if (f !== 5 || g !== 6) fails.push(T + 'lessons (dice): the seed words pages by their titles'); }
+
+    // 7. LOAD INTO THE PRACTICE SIGNER: only the Damascus tab's practice phrase goes, as its Standard SeedQR held up to the camera;
+    // it is wiped once the scan read it, when it is put away, and by the wipe
+    await off(); E('ssPageStart = function () { ssPageOn = true; }');
+    { const o = $('dmOut'), d0 = o.dataset.practicePhrase, p0 = E('dmPractice'), setP = E('(v) => { dmPractice = v; }'), load = (p) => w.vfSignerLoadSeed(p);
+      o.dataset.practicePhrase = PH; setP('practice sheet 1');
+      for (const [what, ph, dm] of [['another phrase', AB, 'practice sheet 1'], ['no practice result', PH, ''], ['an empty phrase', '', 'practice sheet 1']]) {
+        setP(dm); if (load(ph) || CAM.frames || $('ssBox').open || E('ssPageOn')) { fails.push(T + 'load into the practice signer: refused for ' + what); break; } }
+      setP('practice sheet 1'); for (const bad of [PH.replace('yellow', 'yellowx'), PH + ' zoo']) { o.dataset.practicePhrase = bad; if (load(bad) || CAM.frames) { fails.push(T + 'load into the practice signer: only 12 or 24 BIP39 words'); break; } }
+      E('ssPageStart = function () {}'); o.dataset.practicePhrase = PH; if (load(PH) || CAM.frames) fails.push(T + 'load into the practice signer: nothing held up when the device did not start'); await off();
+      E('ssPageStart = function () { ssPageOn = true; }'); L.lesson = E('SS_LEARN_LESSONS')[1]; const ok = load(PH), fr = CAM.frames, mx = fr && CAM.cache.get(fr[0]);
+      if (!ok || !$('ssBox').open || !fr || fr.length !== 1 || fr[0] !== sqDigits(PH) || CAM.key !== 'dmseed' || L.lesson) fails.push(T + 'load into the practice signer: the box opens and the practice wallet holds up the phrase\'s Standard SeedQR');
+      await until(() => CAM.say.includes(fp(PH, '')), 3000); if (!CAM.say.includes(fp(PH, ''))) fails.push(T + 'load into the practice signer: the page says the fingerprint to expect');
+      const c = Object.create(E('SSCamera').prototype); c._video_stream = null; c._picamera = null; c._camera_rotation = 180; await c.start_video_stream_mode({ resolution: [480, 480] });
+      const hd = c._video_stream.handle, g = (void hd.video.videoWidth, ctxs.get(hd.video)), rd = g && w.qrDecodeRgba(g.buf, 640, 480);
+      if (!rd || rd.text !== sqDigits(PH)) fails.push(T + 'load into the practice signer: the camera picture is the SeedQR');
+      if (E('SSDecodeQR').extract_qr_data(null) !== sqDigits(PH)) fails.push(T + 'load into the practice signer: the scan reads the SeedQR');
+      c.stop_video_stream_mode(); await sleep(20);
+      if (CAM.frames || fr[0] !== '' || !mx || mx.some((r) => r.some((x) => x)) || CAM.cache.size) fails.push(T + 'load into the practice signer: the SeedQR is wiped once the scan read it');
+      o.dataset.practicePhrase = PH24; load(PH24); const f24 = CAM.frames, m24 = f24 && CAM.cache.get(f24[0]);
+      if (!f24 || f24[0] !== sqDigits(PH24)) fails.push(T + 'load into the practice signer: a 24-word phrase');
+      w.ssLearnShow(['X'], 'x', 'address'); if (!f24 || f24[0] !== '' || !m24 || m24.some((r) => r.some((x) => x))) fails.push(T + 'load into the practice signer: the SeedQR is wiped when another QR is held up');
+      load(PH24); const f3 = CAM.frames, m3 = f3 && CAM.cache.get(f3[0]); await off();
+      if (!f3 || f3[0] !== '' || !m3 || m3.some((r) => r.some((x) => x)) || CAM.frames || CAM.cache.size) fails.push(T + 'load into the practice signer: the SeedQR is wiped by the practice signer\'s wipe');
+      E('ssPageStart = function () { ssPageOn = true; }');
+      if (d0 === undefined) delete o.dataset.practicePhrase; else o.dataset.practicePhrase = d0; setP(p0); await off(); }
+
+    // 8. FORGE SEED: the seed loaded on the device (its passphrase too) becomes the page's result, marked PRACTICE (banner, file, printed
+    // sheet), with the device's fingerprint against the page's; with several seeds the one the device shows, else a pick
+    { const res = () => $('genResult').textContent.split('\n')[0], fpTxt = () => $('fingerprint').textContent, ban = () => $('ssfBan').style.display !== 'none' && /PRACTICE/.test($('ssfBan').textContent);
+      const fP = fp(AB, 'TREZOR'), sP = await SSSeed.create({ mnemonic: AB, passphrase: 'TREZOR' }), sQ = await SSSeed.create({ mnemonic: PH });
+      await on([]); await w.ssForgeGo(); if (res() !== expect.d50 || !/bad/.test($('ssForgeStatus').className) || ban()) fails.push(T + 'FORGE SEED: with no seed on the device, nothing is taken');
+      if (await w.forgeFromSigner('abandon zoo', '', fP) || await w.forgeFromSigner(AB.replace('about', 'aboutx'), '', fP) || res() !== expect.d50 || ban()) fails.push(T + 'FORGE SEED: only BIP39 words of a seed length are taken');
+      await on([sQ, sP]); if (E('ssForgeShownSeed')(ctl._storage.seeds) !== null) fails.push(T + 'FORGE SEED: (no seed shown on the device)');
+      at('SSSeedOptionsView', '', [], 'SSButtonListScreen', { args: { seed_num: 1 } }); const sh1 = E('ssForgeShownSeed')(ctl._storage.seeds); ctl.current_destination = null; ctl.back_stack = [{ view_args: { seed_num: 1 } }, { view_args: { seed_num: 0 } }, { view_args: {} }]; const sh0 = E('ssForgeShownSeed')(ctl._storage.seeds); ctl.back_stack = [];
+      if (sh1 !== sP || sh0 !== sQ) fails.push(T + 'FORGE SEED: with several seeds, the one the device shows now or showed last');
+      $('ssForgePick').hidden = true; await w.ssForgeGo(); const picked = !$('ssForgePick').hidden && $('ssForgePick').options.length === 2 && res() === expect.d50;
+      $('ssForgePick').value = '1'; await w.ssForgeGo(); await until(() => /ok|bad/.test($('ssfCheck').className), 3000);
+      if (!picked || res() !== AB || $('passphrase').value !== 'TREZOR' || $('passphrase2').value !== 'TREZOR' || !fpTxt().includes(fP) || E('seedKind') !== 'ss' || !E('hasSeed()')) fails.push(T + 'FORGE SEED: with two seeds the person picks one, and it is the result with its passphrase');
+      if (!ban()) fails.push(T + 'FORGE SEED: the PRACTICE banner');
+      if ($('ssfCheck').className !== 'status ok' || $('ssfCheck').textContent.split(fP).length !== 3) fails.push(T + 'FORGE SEED: the fingerprint consistency line (the same)');
+      { const x = E('ssfCtx'), d0 = x && x.deviceFp; if (x) { x.deviceFp = '00000000'; w.ssfRender(); } const bad = $('ssfCheck').className; if (x) { x.deviceFp = d0; w.ssfRender(); }
+        if (!x || bad !== 'status bad') fails.push(T + 'FORGE SEED: a different fingerprint on the device is flagged'); }
+      { let blob = null; const ou = w.URL.createObjectURL; if (!w.URL.revokeObjectURL) w.URL.revokeObjectURL = () => {}; w.URL.createObjectURL = (b) => { blob = b; return 'blob:x'; }; w.downloadSeed(); w.URL.createObjectURL = ou;
+        const txt = blob ? await new Promise((r2) => { const fr = new w.FileReader(); fr.onload = () => r2(fr.result); fr.readAsText(blob); }) : '';
+        if (!/^PRACTICE/.test(txt) || !txt.includes(AB) || !/Input: .*PRACTICE/.test(txt)) fails.push(T + 'FORGE SEED: the downloaded file is marked PRACTICE');
+        let pt = ''; w.print = () => { pt = $('printOnly').textContent; }; w.printSeed(); w.dispatchEvent(new w.Event('afterprint')); w.print = print0;
+        if (!/BACKUP SHEET: PRACTICE/.test(pt) || pt.split('PRACTICE').length < 3) fails.push(T + 'FORGE SEED: the printed sheet is marked PRACTICE'); }
+      // switched off: the seed it gave is cleared (and its passphrase); a seed made on the page is not, and it has no PRACTICE mark
+      await off(); if (E('hasSeed()') || ban() || $('passphrase').value !== '' || $('passphrase2').value !== '' || $('fingerprint').textContent) fails.push(T + 'FORGE SEED: switching the practice signer off clears the seed it gave');
+      r = await run('dice', 12, D50); const banAfter = ban(); await off();
+      if (banAfter || r !== expect.d50 || !E('hasSeed()') || res() !== expect.d50 || E('ssfCtx')) fails.push(T + 'FORGE SEED: a seed made on the page is not marked PRACTICE, and the practice signer\'s wipe keeps it'); }
+
+    // 9. The wipe (box closed, CLEAR ALL, auto-clear, END SESSION): the lesson, the practice transaction's bytes, the practice wallet
+    { await on([]); lesson('sign'); const Tw = T1; L.tx = Tw; w.ssLearnShow(Tw.frames, 'tx', 'tx'); const fr = CAM.frames, mx = CAM.cache.size; $('ssForgeStatus').textContent = 'x'; $('ssForgePick').hidden = false;
+      const kept = [Tw.psbt, Tw.utx, Tw.inMaps[0][0][1], Tw.inMaps[1][2][0], Tw.outMaps[1][0][1], Tw.global[0][1]];
+      await off();
+      if (kept.some((b) => b.some((x) => x))) fails.push(T + 'wipe: the practice PSBT, its transaction and its records are overwritten');
+      if (L.tx || L.lesson || L.timer || CAM.frames || CAM.cache.size || CAM.key || fr.some((x) => x)) fails.push(T + 'wipe: the lesson, the practice transaction and the practice wallet\'s QR codes are dropped');
+      if ($('ssForgeStatus').textContent || !$('ssForgePick').hidden) fails.push(T + 'wipe: FORGE SEED\'s pick and status are cleared'); }
+    E('(f) => { ssPageStart = f; }')(start0); await off();
+  } catch (e) { if (e instanceof ProbeStop) throw e; fails.push('learn: the probe crashed: ' + e.message); }
+  finally {
+    CP.getContext = gc0; if (siv0) w.Element.prototype.scrollIntoView = siv0; else delete w.Element.prototype.scrollIntoView; w.print = print0;
+    try { E('(a, b) => { ssPageStart = a; qrDecodeRgba = b; }')(start0, qd0); } catch (e) { /* page broken */ }
+    if (navOnline) Object.defineProperty(w.navigator, 'onLine', navOnline); else delete w.navigator.onLine;
+  }
+  }
   // v2.10.0: right after section 0 (and after the map's start mark), so a mutation of these tools fails within seconds; it ends with CLEAR ALL, then makes section 0's seed again.
   if (SEC(66, "v2.10.0 Coldcard seed mix and flawed-device questions")) {
   try {
@@ -3319,7 +3551,7 @@ async function probe(w, mutated, fast, only, hooks) {
       if (/#rollCount \{ display: none; \}/.test(css)) fails.push('calmer page: the roll count stays on every screen size');
       w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if (d.body.classList.contains('has-seed')) fails.push('calmer page: no seed, so seed buttons stay hidden');
       await run('dice', 12, D50); if (!d.body.classList.contains('has-seed')) fails.push('calmer page: a seed shows the seed buttons'); }
-    if ($('ownerLogo') || w.document.querySelector('img')) fails.push('redesign: no picture is built into the page'); }
+    if ($('ownerLogo') || [...w.document.querySelectorAll('img')].some((im) => !(im.matches('img.vf-creator-pic') && im.closest('.vf-creator')))) fails.push('redesign: no picture is built into the page'); }   // v2.14.0: only the Damascus creator picture (img.vf-creator-pic inside .vf-creator)
   }
   if (SEC(50, "v2.6.0 review fixes (expected addresses from @scure): CLEAR ALL, pract")) {
   try { // v2.6.0 review fixes (expected addresses from @scure): CLEAR ALL, practice-mode COPY ADDRESS and recorded address, Word draw download, P2WSH, password managers
@@ -6908,6 +7140,91 @@ const M = [
   ["practice signer: PSBT: sequence 0 signed as 0", "script_sig: new Uint8Array(0), sequence: this.sequence || 0xffffffff}; }", "script_sig: new Uint8Array(0), sequence: this.sequence === null ? 0xffffffff : this.sequence}; }"],
   ["practice signer: explorer: regtest shown with testnet prefixes", "get_single_sig_address(xpub, script_type, i, is_change, embit_network));", "get_single_sig_address(xpub, script_type, i, is_change, embit_network === \"regtest\" ? \"test\" : embit_network));"],
   ["practice signer: explorer: the account key carries the seed", "  if (typeof seed.get_xpub === \"function\") return seed.get_xpub(derivation_path, network);", "  if (typeof seed.get_xpub === \"function\") return Object.assign(await seed.get_xpub(derivation_path, network), {seed_bytes: seed.seed_bytes});"],
+  // v2.14.0: Learn on the practice signer (tools/simulator/ss_learn.js), LOAD INTO THE PRACTICE SIGNER and FORGE SEED from it, the
+  // card and MENU > PRACTICE SIGNER: caught by section 73.
+  ["learn: practice tx: made-up coins from a real-looking outpoint (txid)", "{ prev: new Uint8Array(32), vout: 0xffffffff, script: markScript", "{ prev: new Uint8Array(32).fill(7), vout: 0xffffffff, script: markScript"],
+  ["learn: practice tx: made-up coins from a real-looking outpoint (index)", "vout: 0xffffffff, script: markScript", "vout: 0, script: markScript"],
+  ["learn: practice tx: made-up transaction not marked as practice", "script: markScript, seq: 0xffffffff", "script: new Uint8Array(0), seq: 0xffffffff"],
+  ["learn: practice tx: practice marker pushed with a wrong length", "concatBytes(Uint8Array.of(SS_LEARN_MARK.length), new TextEncoder()", "concatBytes(Uint8Array.of(SS_LEARN_MARK.length - 1), new TextEncoder()"],
+  ["learn: practice tx: inputs spend the null outpoint, not the made-up coins", "ins: coins.map((c, i) => ({ prev: prevHash, vout: i,", "ins: coins.map((c, i) => ({ prev: new Uint8Array(32), vout: i,"],
+  ["learn: practice tx: every input spends output 0", "({ prev: prevHash, vout: i, script", "({ prev: prevHash, vout: 0, script"],
+  ["learn: practice tx: txid of the made-up transaction single SHA-256", "const prevHash = await dsha256(prev);", "const prevHash = await sha256bytes(prev);"],
+  ["learn: practice tx: fee not taken from the change", "chg = inSum - payAmt - fee;", "chg = inSum - payAmt;"],
+  ["learn: practice tx: change to a receive key", "const cpub = await ssLearnChild(A, 1, 0);", "const cpub = await ssLearnChild(A, 0, 0);"],
+  ["learn: practice tx: change path says receive", "ssLearnPath(A.fp, [...acct, 1, 0])]);", "ssLearnPath(A.fp, [...acct, 0, 0])]);"],
+  ["learn: practice tx: witness utxo amount differs from the coin", "[Uint8Array.of(0x01), concatBytes(svLe64(c.amount),", "[Uint8Array.of(0x01), concatBytes(svLe64(c.amount + 1n),"],
+  ["learn: practice tx: made-up transaction left out of the PSBT", "const m = [[Uint8Array.of(0x00), prev], [Uint8Array.of(0x01)", "const m = [[Uint8Array.of(0x01)"],
+  ["learn: practice tx: multisig witness script left out", "    if (c.ws) m.push([Uint8Array.of(0x05), c.ws]);\n", ""],
+  ["learn: practice tx: multisig change witness script left out", "change.map.push([Uint8Array.of(0x01), c0.ws]);", ""],
+  ["learn: practice tx: multisig 1-of-3", "(await multisigScript(2, cos.map", "(await multisigScript(1, cos.map"],
+  ["learn: practice tx: spends the first seed loaded, not the last", "const s = seeds[seeds.length - 1]; return { seed: s.seed_bytes, own: true };", "const s = seeds[0]; return { seed: s.seed_bytes, own: true };"],
+  ["learn: practice tx: animated QR of type bytes", "tx.frames = urEncode(\"crypto-psbt\", CB.bytes(Array.from(tx.psbt)), 100);", "tx.frames = urEncode(\"bytes\", CB.bytes(Array.from(tx.psbt)), 100);"],
+  ["learn: check: a signed PSBT of another transaction checked", "if (!u || hex(u.val) !== hex(T.utx)) return null;", "if (!u) return null;"],
+  ["learn: check: signatures with any key length taken", "const add = ins[i].filter((x) => x.type === 2 && x.key.length === 33);", "const add = ins[i].filter((x) => x.type === 2);"],
+  ["learn: check: an invalid signature counts as good", "x.sv && x.sv.state === \"valid\" && x.sv.n >= 1", "x.sv && x.sv.state !== \"none\""],
+  // equivalent: with as many signatures as inputs, an input without one ("none") means another input holds two, and psbtSigCheck marks
+  // a single-key coin with a second key's signature invalid; "unchecked" needs a coin the PSBT does not carry (the practice PSBT carries them)
+  ["learn: check: an unchecked input counts as signed (equivalent)", "x.sv && x.sv.state === \"valid\" && x.sv.n >= 1", "x.sv && x.sv.state !== \"invalid\" && x.sv.n >= 0", true],
+  ["learn: check: the signature check's verdict ignored", "const ok = good === T.nIn && sigs === T.nIn;", "const ok = sigs === T.nIn;"],
+  ["learn: check: the number of signatures ignored", "const ok = good === T.nIn && sigs === T.nIn;", "const ok = good === T.nIn;"],
+  ["learn: check: signatures checked without the coins they spend", "merged.inMaps.push([...m, ...add.map(", "merged.inMaps.push([...add.map("],
+  ["learn: check: signatures never checked", "  await psbtSigCheck(res);\n  const good", "  const good"],
+  ["learn: read back: any UR type taken", " || dec.result.type !== \"crypto-psbt\") {", ") {"],
+  ["learn: read back: another transaction not refused", "if (!res) { T.status =", "if (false) { T.status ="],
+  ["learn: lessons: any View matches", "const ssLearnIs = (v) => (s) => s.view === v;", "const ssLearnIs = (v) => (s) => s.view !== \"\";"],
+  ["learn: lessons: titles not compared", "const ssLearnTitle = (v, re) => (s) => s.view === v && re.test(s.title);", "const ssLearnTitle = (v, re) => (s) => s.view === v;"],
+  ["learn: lessons: a practice transaction of the other kind accepted", "!!(ssLearn.tx && ssLearn.tx.kind === kind && !ssLearn.tx.result)", "!!(ssLearn.tx && !ssLearn.tx.result)"],
+  ["learn: lessons: a signature that does not check out ends the lesson", "!!(ssLearn.tx && ssLearn.tx.result && ssLearn.tx.result.ok)", "!!(ssLearn.tx && ssLearn.tx.result)"],
+  ["learn: lessons: only one step ahead followed", "j < Math.min(les.steps.length, L.step + 3)", "j < Math.min(les.steps.length, L.step + 2)"],
+  ["learn: lessons: jumps past a step that holds something up", "      if (les.steps[j].feed) break;", "      if (false) break;"],
+  ["learn: lessons: last step never done", "if (j === les.steps.length - 1) { L.step = j; L.done = true;", "if (j === les.steps.length) { L.step = j; L.done = true;"],
+  ["learn: lessons: steps for the test seed never passed over", "  while (L.step < les.steps.length - 1 && les.steps[L.step].skip && les.steps[L.step].skip()) L.step++;\n", ""],
+  ["learn: lessons: the test seed with a passphrase counts as the test seed", "ssLearnSeeds().some((s) => s && s.mnemonic_str === SS_LEARN_ABANDON && !s.passphrase)", "ssLearnSeeds().some((s) => s && s.mnemonic_str === SS_LEARN_ABANDON)"],
+  ["learn: lessons: the practice wallet never held up again", "if (st.feed && !ssLearnCam.frames && !(st.feed === \"tx\" && (!L.tx || L.tx.result))) ssLearnArm(st.feed, true);", ""],
+  ["learn: lessons: multisig change step by any buttons", "s.labels[0] === \"Verify multisig change\" },", "s.labels.length > 0 },"],
+  ["learn: lessons: RESTART does nothing", "if (ssLearn.lesson) { ssLearnHide(); ssLearnGoto(0, false); }", "if (ssLearn.lesson) { ssLearnHide(); }"],
+  ["learn: practice wallet: the camera tools see it", "scanning = r[0] === 480 && r[1] === 480;", "scanning = true;"],
+  ["learn: practice wallet: a scan sees it while put away", "if (scanning && ssLearnCam.frames) return ssLearnCamHandle();", "if (scanning) return ssLearnCamHandle();"],
+  ["learn: practice wallet: the scanner does not read it", "if (ssLearnCam.on) { const t = ssLearnCam.shown;", "if (false) { const t = ssLearnCam.shown;"],
+  ["learn: practice wallet: the QR not painted", "  g.fillStyle = \"#000\";\n  for (let y = 0; y < n; y++)", "  g.fillStyle = \"#fff\";\n  for (let y = 0; y < n; y++)"],
+  ["learn: practice wallet: not put away after a complete scan", "if (d.is_complete && ssLearnCam.frames) ssLearnHide();", "if (false) ssLearnHide();"],
+  ["learn: wipe: QR texts not overwritten", "  if (ssLearnCam.frames) ssLearnCam.frames.fill(\"\");\n", ""],
+  ["learn: wipe: QR pictures not overwritten", "for (const m of ssLearnCam.cache.values()) for (const r of m) if (r && typeof r.fill === \"function\") r.fill(false);", ""],
+  ["learn: wipe: a practice seed's SeedQR kept when another QR is held up", "  if (ssLearnCam.key === \"dmseed\") ssLearnForget();", ""],
+  ["learn: wipe: a practice seed's SeedQR kept after the scan", "if (ssLearnCam.key === \"dmseed\" && ssLearnCam.read) setTimeout(", "if (false) setTimeout("],
+  ["learn: load: any phrase taken while a practice result is shown", " && !!o && o.dataset.practicePhrase === phrase;", " && !!o;"],
+  ["learn: load: taken without a practice result", "typeof dmPractice === \"string\" && dmPractice !== \"\" && !!o", "typeof dmPractice === \"string\" && !!o"],
+  ["learn: load: any number of words", "if ((words.length !== 12 && words.length !== 24) || idx.some((i) => i < 0)) return false;", "if (idx.some((i) => i < 0)) return false;"],
+  ["learn: load: words not in the word list", "if ((words.length !== 12 && words.length !== 24) || idx.some((i) => i < 0)) return false;", "if (words.length !== 12 && words.length !== 24) return false;"],
+  ["learn: load: held up while the device is off", "  if (!ssPageOn) return false;\n  ssLearn.lesson = null;", "  ssLearn.lesson = null;"],
+  ["learn: load: the practice signer not opened", "  const name = dmPractice;\n  ssPageOpen();\n", "  const name = dmPractice;\n"],
+  ["learn: load: the SeedQR not marked as a practice seed's", "\"dmseed\");\n  try { ssLearnCam.cache.set", "\"seedqr\");\n  try { ssLearnCam.cache.set"],
+  ["learn: open: the card does not open the practice signer", "id=\"ssPromoBtn\" onclick=\"ssPageOpen()\"", "id=\"ssPromoBtn\" onclick=\"\""],
+  ["learn: open: MENU > PRACTICE SIGNER does nothing", "id=\"ssMenuBtn\" onclick=\"ssPageOpen()\"", "id=\"ssMenuBtn\" onclick=\"\""],
+  ["learn: open: not on CHECK A BACKUP", "  if (typeof showTab === \"function\") showTab(\"check\");\n", ""],
+  ["learn: open: the box not opened", "  if (!b.open) b.open = true;\n", ""],
+  ["learn: forge: banner never shown", "b.textContent = x ? SSF_BAN : \"\"; b.style.display = x ? \"\" : \"none\";", "b.textContent = \"\"; b.style.display = \"none\";"],
+  ["learn: forge: a different fingerprint not flagged", "(x.deviceFp === x.vfFp ? \" ok\" : \" bad\") : \"\");", "(x.deviceFp === x.vfFp ? \" ok\" : \" ok\") : \"\");"],
+  ["learn: forge: the PRACTICE mark kept across results", "ssfCtx = words && ssfNext ? ssfNext : null; ssfNext = null;", "ssfCtx = words && ssfNext ? ssfNext : ssfCtx; ssfNext = null;"],
+  ["learn: forge: the PRACTICE mark goes to the next result", "ssfCtx = words && ssfNext ? ssfNext : null; ssfNext = null;", "ssfCtx = words && ssfNext ? ssfNext : null;"],
+  ["learn: forge: words not in the word list taken", "if(!SEED_LENS.includes(words.length) || words.some(w => !Object.prototype.hasOwnProperty.call(WORD_MAP, w))) return false;", "if(!SEED_LENS.includes(words.length)) return false;"],
+  ["learn: forge: any number of words taken", "if(!SEED_LENS.includes(words.length) || words.some(w => !Object.prototype.hasOwnProperty.call(WORD_MAP, w))) return false;", "if(words.some(w => !Object.prototype.hasOwnProperty.call(WORD_MAP, w))) return false;"],
+  ["learn: forge: the device's passphrase not applied", "  for(const id of [\"passphrase\", \"passphrase2\"]) document.getElementById(id).value = pass;   // the passphrase applied on the device\n", ""],
+  ["learn: forge: not marked PRACTICE", "  ssfNext = x;\n  await finishSeed(", "  await finishSeed("],
+  ["learn: forge: the passphrase dropped", "const ok = await forgeFromSigner(seed.mnemonic_str, seed.passphrase || \"\", fps[i]);", "const ok = await forgeFromSigner(seed.mnemonic_str, \"\", fps[i]);"],
+  ["learn: forge: the pick ignored", "else if (!pick.hidden && ssForge.key === key) i = +pick.value;", "else if (!pick.hidden && ssForge.key === key) i = 0;"],
+  ["learn: forge: the seed shown on the device ignored", "if (Number.isInteger(n) && seeds[n]) return seeds[n];", "if (Number.isInteger(n) && seeds[n]) return seeds[0];"],
+  ["learn: forge: the downloaded file's first line not PRACTICE", "const full = (seedKind === \"ss\" ? SSF_BAN + \"\\n\\n\" : \"\") + text", "const full = (\"\") + text"],
+  ["learn: forge: the printed sheet not PRACTICE", "check: false, practice: seedKind === \"ss\"};", "check: false, practice: false};"],
+  ["learn: forge: switching off wipes a seed made on the page", "if(!ssfCtx || !hasSeed() || seedKind !== \"ss\") return;", "if(!hasSeed()) return;"],
+  ["learn: forge: switching off keeps the passphrase", "  for(const id of [\"passphrase\", \"passphrase2\"]) document.getElementById(id).value = \"\";\n  updateAdvSummary();\n  setResult(\"The practice signer", "  updateAdvSummary();\n  setResult(\"The practice signer"],
+  ["learn: forge: switching off keeps the seed", "  setResult(\"The practice signer was switched off", "  (\"The practice signer was switched off"],
+  ["learn: wipe: the device's stop leaves the seed FORGE SEED took", "  try { if (typeof ssfDeviceOff === \"function\") ssfDeviceOff(); } catch (e) { /* page part missing */ }   // v2.14.0: a seed FORGE SEED took from it\n", ""],
+  ["learn: wipe: the device's stop leaves the lessons", "  try { if (typeof ssLearnWipe === \"function\") ssLearnWipe(); } catch (e) { /* lessons part missing */ }   // v2.14.0: lessons, practice wallet, practice PSBT\n", ""],
+  ["learn: wipe: practice PSBT bytes kept", "    for (const x of [T.psbt, T.utx]) if (x instanceof Uint8Array) x.fill(0);\n", ""],
+  ["learn: wipe: practice PSBT records kept", "    for (const m of [T.global, ...T.inMaps, ...T.outMaps]) for (const kv of m) for (const x of kv) if (x instanceof Uint8Array) x.fill(0);\n", ""],
+  ["learn: wipe: the practice wallet's QR codes not overwritten", "  ssLearnForget(); ssForgeReset();\n", "  ssForgeReset();\n"],
+  ["learn: wipe: the practice wallet still holds its QR codes", "  ssLearnCam.frames = null; ssLearnCam.byLesson = false; ssLearnCam.what = \"\";", "  ssLearnCam.byLesson = false; ssLearnCam.what = \"\";"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
