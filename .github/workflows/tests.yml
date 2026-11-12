@@ -1,5 +1,5 @@
 # Tests for VOIDFORGE on GitHub Actions (from v2.15.0; up to v2.14.0 these were the test-* jobs in GitLab CI).
-# The unit, oracle, fuzz, print and three-browser tests (Chromium, Firefox, WebKit), five jobs side by side, started by hand:
+# The unit, oracle, fuzz, print, three-browser (Chromium, Firefox, WebKit) and end-to-end tests, six jobs side by side, started by hand:
 # Actions > tests > Run workflow (or `gh workflow run tests.yml --ref <branch>`), on any branch. The mutation suite takes
 # hours, so the full suite, mutation tests included, runs before each release on the maintainer's machine (see RELEASING.md).
 # actions/checkout is pinned to the commit the project's GitHub workflows used up to v2.3.0.
@@ -29,6 +29,8 @@ jobs:
             run: node tests/print.test.mjs
           - name: browsers
             run: node tests/browsers.test.mjs && node tests/camera.test.mjs && node tests/mistakes.test.mjs
+          - name: e2e
+            run: node tests/e2e.test.mjs
     name: test-${{ matrix.name }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
