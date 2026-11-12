@@ -58,6 +58,6 @@ Mark the previous release "Superseded by vX", check that the README, REVIEW.md, 
 Then clean up GitHub: delete the release's leftover branches (`dev-X.Y.Z` and the frozen test branch `mutrun-…`) on the repository's **Branches** page (or with `git push origin --delete BRANCH`), each only after checking it is already in `main` (`git branch -r --merged origin/main`) or no longer needed. Never touch `main` or any tag.
 
 ## Current build
-`voidforge.html` v2.15.0, SHA256: `8ed0a82d160a06fdd3d19eeebca8d307800b08ca2d4e68cddadcb8aa500f6f3f`
-Content ID (CIDv1): `bafkreieo2cuc2fqka365hum6526kruyhqafqrsrnjzum3ww4xcvfad3ph4`
+`voidforge.html` v2.16.0, SHA256: `cd3bdbbdae9310c1ef0d6d8ffb5da5f83da932f97cb957934cd0582b29a7423d`
+Content ID (CIDv1): `bafkreignhpn33lutcda66dlnr75v3jpyhwutf6l4xflzgtgqlavstj2chu`
 (Recompute after any edit.)
