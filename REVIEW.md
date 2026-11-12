@@ -98,7 +98,7 @@ VOIDFORGE has **not been independently audited**. If you can read JavaScript or 
 
 ## Asking for a review (copy and adapt)
 
-> Hi, I wrote VOIDFORGE, a single-file offline dice/coin to BIP39 seed generator (gitlab.com/random21m/voidforge). It is meant to be read, not trusted. Could you spend about an hour on REVIEW.md's table? Priorities: (1) is the wordlist exactly the official one, (2) does anything besides SHA256 of the typed rolls influence the seed, (3) is there any way the seed or passphrase leaves the page. I would also welcome a second opinion on whether it is worth publishing at all. I will credit you in the changelog if you want, and I will not describe it as audited unless you say I may.
+> Hi, I wrote VOIDFORGE, a single-file offline dice/coin to BIP39 seed generator (github.com/Random21m/VOIDFORGE). It is meant to be read, not trusted. Could you spend about an hour on REVIEW.md's table? Priorities: (1) is the wordlist exactly the official one, (2) does anything besides SHA256 of the typed rolls influence the seed, (3) is there any way the seed or passphrase leaves the page. I would also welcome a second opinion on whether it is worth publishing at all. I will credit you in the changelog if you want, and I will not describe it as audited unless you say I may.
 
 ## Note on the fingerprint picture (LifeHash)
 

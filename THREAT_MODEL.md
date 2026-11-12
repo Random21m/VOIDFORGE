@@ -13,7 +13,7 @@ What VOIDFORGE protects, who it protects against, what it does about each threat
 - The downloaded `voidforge.html`, checked with a tool that is not the page (the signature and SHA-256, see SECURITY.md), copied to a USB stick and opened on a computer that is **offline** for the whole session, ideally one used for nothing else.
 - Randomness that **you** make with dice, a coin, cards or a word draw. VOIDFORGE never makes the randomness for a seed itself.
 - The words written on paper or stamped in metal, and checked with a second independent tool or device before real funds go to them.
-- Phones and the online copy at https://random21m.gitlab.io/voidforge/ are for learning and practice only, never for real funds.
+- Phones and the online copy at https://random21m.github.io/VOIDFORGE/ are for learning and practice only, never for real funds.
 
 ## Who might attack, and what VOIDFORGE does
 

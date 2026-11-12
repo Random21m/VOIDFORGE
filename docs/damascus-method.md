@@ -2,7 +2,7 @@
 
 <img src="damascus/creator.webp" width="44" height="44" alt="Random's profile picture: a bloodhound in a Bitcoin cap"> The Damascus method, created by Random, 10 November 2026
 
-Dated and signed origin record: tag [damascus-origin-2026-11-10](https://gitlab.com/random21m/voidforge/-/tags/damascus-origin-2026-11-10) on GitLab, timestamped in Bitcoin block 975,337 (OpenTimestamps) ([DAMASCUS-ORIGIN.md](../DAMASCUS-ORIGIN.md))
+Dated and signed origin record: tag [damascus-origin-2026-11-10](https://github.com/Random21m/VOIDFORGE/releases/tag/damascus-origin-2026-11-10), published on GitLab (the project's home until its GitLab account became unavailable on 11 November 2026; from v2.15.0 the home is GitHub), timestamped in Bitcoin block 975,337 (OpenTimestamps) ([DAMASCUS-ORIGIN.md](../DAMASCUS-ORIGIN.md))
 
 **Make a standard 12- or 24-word Bitcoin seed (BIP39) from dice and playing cards, checked by hand.**
 

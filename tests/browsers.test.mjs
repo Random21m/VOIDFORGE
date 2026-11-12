@@ -2,7 +2,7 @@
 // The same short check runs in each: the self-test passes, known rolls give the published words, fingerprint and address
 // (from @scure), VERIFY and Open this wallet agree, the Wallet Detective finds an address, a dice passphrase is made, the
 // watch check finds nothing but the test browser's own automation flag, and no page error happens on the way.
-// An engine that is not installed is reported as SKIPPED. The GitLab CI image (mcr.microsoft.com/playwright) has all three.
+// An engine that is not installed is reported as SKIPPED. The CI image (mcr.microsoft.com/playwright, in .github/workflows/tests.yml) has all three.
 //
 // Run: node tests/browsers.test.mjs           (BROWSERS=chromium,firefox,webkit to choose)
 import { createRequire } from 'module';
