@@ -90,6 +90,21 @@ const css = `
   #ssBox #ssK1 { left: calc(630 * var(--u)); top: calc(63 * var(--u)); }
   #ssBox #ssK2 { left: calc(630 * var(--u)); top: calc(119 * var(--u)); }
   #ssBox #ssK3 { left: calc(630 * var(--u)); top: calc(175 * var(--u)); }
+  /* v2.16.1 review: on a phone the pill case would leave the keys about 23 px and the screen about 140 px wide, so narrow screens
+     get an upright case (380 x 520 units): the screen on top at the full width, the joystick and KEY1 to KEY3 below it, keys 54 units. */
+  @media (max-width: 640px) {
+    #ssBox .ss-dev, #ssBox .ss-wrap .ss-dev { --u: min(1.25px, calc((100vw - 56px) / 380)); width: calc(380 * var(--u)); height: calc(520 * var(--u)); border-radius: calc(46 * var(--u)); background: linear-gradient(180deg, #41474D 0%, #363C42 4%, #2E3338 50%, #282C31 100%) border-box; }
+    @supports (width: 1cqw) { #ssBox .ss-wrap .ss-dev { --u: min(1.25px, calc(100cqw / 380)); } }
+    #ssBox .ss-bezel { left: calc(9 * var(--u)); top: calc(14 * var(--u)); }
+    #ssBox #ssKUp { left: calc(86 * var(--u)); top: calc(306 * var(--u)); }
+    #ssBox #ssKLeft { left: calc(26 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssKPress { left: calc(86 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssKRight { left: calc(146 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssKDown { left: calc(86 * var(--u)); top: calc(426 * var(--u)); }
+    #ssBox #ssK1 { left: calc(286 * var(--u)); top: calc(306 * var(--u)); }
+    #ssBox #ssK2 { left: calc(286 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssK3 { left: calc(286 * var(--u)); top: calc(426 * var(--u)); }
+  }
   /* v2.14.0 Learn on the practice signer: lessons and a practice transaction, as page text below the device (never on its screen) */
   #ssBox [hidden] { display: none !important; }
   #ssBox .ss-learn { margin: 14px auto 0; max-width: 750px; }
@@ -124,7 +139,7 @@ const box = `
           <button type="button" class="ss-k" id="ssK3" tabindex="-1" aria-label="KEY3"></button>
         </div>
       </div>
-      <p class="hint">It runs inside this page, so it is as safe as the page itself: use it on an offline computer and write any seed on paper. Re-hide covers it while it holds a seed, and CLEAR ALL, auto-clear and END SESSION wipe it.</p>
+      <p class="hint">It runs inside this page, so it is as safe as the page itself: use it on an offline computer and write any seed on paper. Re-hide covers it while it holds a seed that is not public, and CLEAR ALL, auto-clear and END SESSION wipe it.</p>
       <div class="ss-learn" id="ssLearn">
         <h3 class="sec">Use the seed in VOIDFORGE</h3>
         <p class="hint" style="margin:0 0 8px;">FORGE SEED takes the seed loaded on the device, with its passphrase if one is applied, and shows it in MAKE A SEED like the other methods do: the words, fingerprint, addresses, SeedQR and watch-only wallet. A public seed (such as a lesson&rsquo;s test seed) is marked PRACTICE; a seed made here from your own dice is not.</p>
@@ -143,6 +158,7 @@ const box = `
         </div>
         <div class="ss-l-cam" id="ssLearnCam" hidden><span>Held up to the device&rsquo;s camera: <b id="ssLearnCamWhat"></b>. <span id="ssLearnCamSay" aria-live="polite"></span></span><button type="button" class="secondary small" id="ssLearnCamOff">PUT IT AWAY</button></div>
         <p class="status" id="ssLoadStatus" aria-live="polite"></p>
+        <p class="status" id="ssCamNote" aria-live="polite"></p>
         <h3 class="sec">Practice transaction</h3>
         <p class="hint" style="margin:0 0 8px;">Makes a PSBT that spends made-up coins of the seed on the device and holds it up to the device&rsquo;s camera. After you sign it, this page reads the signed PSBT from the device&rsquo;s screen and checks every signature with its own code.</p>
         <div class="btn-row"><select id="ssTxKind" aria-label="Kind of practice transaction"><option value="single">Single key: 2 inputs</option><option value="multi">2-of-3 multisig: 1 input</option></select><button type="button" id="ssTxGo" class="secondary small">PRACTICE TRANSACTION</button></div>

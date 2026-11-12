@@ -37,18 +37,41 @@ async function ssPageStart() {
 
 // v2.16.1: does the device hold a secret now (a reason for re-hide to cover it: RH_HOLD in the main script)? Any seed in its
 // memory, loaded or being made or typed in (the pending seed and words), unless it is a public seed with no passphrase (the
-// lessons' test seeds, a Damascus practice seed: knownPhrase). When it cannot tell, it says yes.
+// lessons' test seeds, a Damascus practice seed: knownPhrase). A seed being loaded (the pending seed: a passphrase may be typed for
+// it) and the passphrase screens always count, as does the SeedQR of a seed that is not public held up to its camera (LOAD INTO
+// THE PRACTICE SIGNER). When it cannot tell, it says yes.
+const SS_PASS_VIEWS = ["SSSeedAddPassphraseView", "SSSeedAddPassphraseExitDialogView", "SSSeedReviewPassphraseView"];
+function ssSeedQrPhrase(t) {   // the words of a Standard SeedQR (4 digits per word), or ""
+  if (!/^(\d{48}|\d{96})$/.test(String(t || ""))) return "";
+  const w = String(t).match(/\d{4}/g).map((d) => WORDLIST[+d]);
+  return w.every(Boolean) ? w.join(" ") : "";
+}
 function vfSignerHoldsSecret() {
   if (!ssPageOn) return false;
   try {
+    const known = (m) => typeof knownPhrase === "function" && !!knownPhrase(m);
+    const pub = (s) => !s.passphrase && known(s.mnemonic_str);
+    if (ssLearnCam.key === "seedload" && ssLearnCam.frames) for (const f of ssLearnCam.frames) if (f && !known(ssSeedQrPhrase(f))) return true;
     const st = SSController._instance && SSController._instance._storage; if (!st) return false;
-    const pub = (s) => !s.passphrase && typeof knownPhrase === "function" && !!knownPhrase(s.mnemonic_str);
     for (const s of st.seeds || []) if (s && !pub(s)) return true;
-    if (st.pending_seed && !pub(st.pending_seed)) return true;
+    if (st.pending_seed) return true;
     const pm = Array.isArray(st._pending_mnemonic) ? st._pending_mnemonic.filter(Boolean) : [];
     if (pm.length && !pub({ mnemonic_str: pm.join(" "), passphrase: "" })) return true;
+    const v = ssLearnState(); if (v && SS_PASS_VIEWS.includes(v.view)) return true;
     return false;
   } catch (e) { return true; }
+}
+// v2.16.1: the page's seed was wiped (wipeSeed: ADD THIS KEY & WIPE THE SEED in the multisig box, CLEAR ALL): no copy of it may be
+// left in the practice signer. A one-click load stops and its SeedQR is put away (and overwritten); a device that still holds a
+// seed that is not public is switched off, as when its box is closed (its seeds are wiped; settings saved to its microSD stay).
+function vfSignerDropSeed() {
+  if (!ssPageOn) return false;
+  try { if (ssAuto.on) ssAutoEnd("Not loaded: the seed was wiped from the page.", "bad"); if (ssLearnCam.key === "seedload") ssLearnHide(); } catch (e) { /* lessons part missing */ }
+  if (!vfSignerHoldsSecret()) return false;
+  const b = document.getElementById("ssBox");
+  ssPageStop();
+  if (b && b.open) b.open = false;
+  return true;
 }
 
 // Overwrites what can be overwritten in a seed (byte arrays, word lists) before the references are dropped.

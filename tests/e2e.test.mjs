@@ -660,7 +660,9 @@ G['new:load-practice-seed'] = async (t, h) => {
 async function ownSeed(h) {
   const { p } = h, R = rolls(50);
   await toMethod(h, 'mt-dice'); await typeAtEnd(p.locator('#rolls'), R); await forge(h, '#forgeBtn');
-  const s = await waitSeed(p); return s ? s.words : hashWords(R, 12);
+  // wait for the seed itself (on a busy machine FORGE SEED can take longer than 90 s; going on before it is shown let the page jump
+  // to YOUR SEED in the middle of the next typing, so words typed into CHECK A BACKUP were lost)
+  const s = await waitSeed(p, 12, 600000); return s ? s.words : hashWords(R, 12);
 }
 async function chooseOwn(h, box) {   // a visible control in the box that says it uses my own words / my seed, if there is one
   const { p } = h;
@@ -710,9 +712,14 @@ G['new:practice-wallet-own-words'] = async (t, h) => {
   const { p } = h, m = await ownSeed(h);
   await press(h, p.locator('#tab-check'));
   await p.locator('#phrase').pressSequentially(m);   // my own words in Check your words
+  t((await p.inputValue('#phrase')).trim() === m, 'my own words are in the CHECK A BACKUP box, as typed');
   await p.locator('#practiceBox > summary').scrollIntoViewIfNeeded(); await press(h, p.locator('#practiceBox > summary'));
   await chooseOwn(h, 'practiceBox');
   await press(h, p.locator('#prWalletBtn'));   // OPEN A PRACTICE WALLET
+  // v2.16.1 review (tester T3): it says where it opened and that practice mode is on for the whole page, and scrolls to the wallet
+  const said = await until(() => p.evaluate(() => { const s = document.getElementById('prWalletStatus').textContent, wv = document.getElementById('walletView'), r = wv.getBoundingClientRect(), n = document.getElementById('prWalletPr');
+    const x = { s, inView: wv.style.display !== 'none' && r.top < innerHeight && r.bottom > 0, note: getComputedStyle(n).display !== 'none' && /Turn practice mode off/.test(n.textContent) }; window.__prw = x; return s && x.inView ? x : null; }), 120000) || await p.evaluate(() => window.__prw);   // the scroll is smooth: wait for it
+  t(said && /^Opened on the test network in CHECK A BACKUP, Open this wallet/.test(said.s) && /Practice mode is now on for the whole page/.test(said.s) && said.inView && said.note, 'OPEN A PRACTICE WALLET says where it opened and that practice mode is on for the whole page (with a link to turn it off), and shows the wallet (' + JSON.stringify(said) + ')');
   await until(() => p.locator('#walletView > summary').isVisible(), 30000);
   const open = await p.evaluate(() => document.getElementById('walletView').open);
   if (!open) await press(h, p.locator('#walletView > summary'));

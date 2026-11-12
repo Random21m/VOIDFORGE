@@ -31,6 +31,7 @@ function ssLearnState() {
     return { view: x && x.View_cls ? x.View_cls.name : "", screen: s ? s.constructor.name : "", title: (s && s.title) || "", labels, scr: s || null, ctl: c };
   } catch (e) { return null; }
 }
+const ssLearnArg = (s, k) => { try { const a = s.ctl.current_destination.view_args; return a ? a[k] : undefined; } catch (e) { return undefined; } };   // an argument of the View shown
 const ssLearnKey = (s) => s ? s.view + "|" + s.screen + "|" + s.title : "";
 function ssLearnSeeds() { try { const st = SSController._instance && SSController._instance._storage; return (st && st.seeds) || []; } catch (e) { return []; } }
 function ssLearnHasTestSeed() { return ssLearnSeeds().some((s) => s && s.mnemonic_str === SS_LEARN_ABANDON && !s.passphrase); }
@@ -92,9 +93,22 @@ function ssLearnCamHandle() {
   };
   const x0 = SSDecodeQR.extract_qr_data;
   SSDecodeQR.extract_qr_data = function (image, is_binary = false) {
-    if (ssLearnCam.on) { const t = ssLearnCam.shown; if (t === null || t === undefined) return null; ssLearnCam.read = true; return is_binary ? new TextEncoder().encode(t) : t; }
+    if (ssLearnCam.on) {
+      const t = ssLearnCam.shown; if (t === null || t === undefined) return null;
+      ssLearnCam.read = true; if (ssLearnCam.key === "seedload" && ssAuto.on) ssAuto.read = true;   // the one-click load's SeedQR was read
+      return is_binary ? new TextEncoder().encode(t) : t;
+    }
     return x0.call(this, image, is_binary);
   };
+  // v2.16.1 review: the device's own "Hardware Error: Cannot access camera" (a scan with nothing held up, and no camera this browser
+  // lets it use) stays as SeedSigner shows it; a line below the device says why while it shows
+  if (typeof SSCameraConnectionErrorView === "function") {
+    const run0 = SSCameraConnectionErrorView.prototype.run;
+    SSCameraConnectionErrorView.prototype.run = async function () {
+      ssLearnSetText("ssCamNote", "Nothing is held up to the device’s camera. The practice wallet holds a QR code up to it for PRACTICE TRANSACTION, a lesson or LOAD INTO THE PRACTICE SIGNER; otherwise the device tries this computer’s camera.");
+      try { return await run0.call(this); } finally { ssLearnSetText("ssCamNote", ""); }
+    };
+  }
   // v2.16.1: which keys the device waits for right now (null while it is busy), for LOAD INTO THE PRACTICE SIGNER's own key presses
   const P = SSHardwareButtons.prototype, wf = P.wait_for;
   P.wait_for = async function (keys) {
@@ -104,7 +118,7 @@ function ssLearnCamHandle() {
 })();
 function ssLearnShow(frames, what, key) {
   // LOAD INTO THE PRACTICE SIGNER stops when its SeedQR is put away before the device read it, or another QR is held up
-  if (ssAuto.on && (frames ? key !== "seedload" : !ssLearnCam.read)) ssAutoEnd("");
+  if (ssAuto.on && (frames ? key !== "seedload" : !ssLearnCam.read)) ssAutoEnd(frames ? "Not loaded: another QR code is held up to the device." : "Not loaded: the SeedQR was put away before the device read it.", "bad");
   if (ssLearnCam.key === "seedload") ssLearnForget();   // a seed's SeedQR is wiped as soon as it is put away
   ssLearnCam.say = ""; ssLearnCam.read = false;
   // a scan seen earlier says nothing about these QR codes: without this, a decoder kept from an earlier scan (the timer stops when
@@ -367,7 +381,8 @@ const SS_LEARN_LESSONS = [
     steps: [...SS_LEARN_LOAD, SS_LEARN_HOME,
       { do: "Press the joystick down, then right, to select Settings, and press it in.", see: "Settings: Language, Persistent settings, Denomination display, Advanced...", at: ssLearnTitle("SSSettingsMenuView", /^Settings$/) },
       { do: "Move down to Advanced and press in.", see: "Advanced: Bitcoin network, QR code density, Sig types...", at: ssLearnTitle("SSSettingsMenuView", /^Advanced$/) },
-      { do: "Move down to Message signing (near the end of the list) and press in.", see: "Enabled and Disabled.", at: (s) => s.view === "SSSettingsEntryUpdateSelectionView" && s.labels.join("|") === "Enabled|Disabled" },
+      // v2.16.1 review: the Message signing setting itself (Electrum seeds and other settings have Enabled and Disabled too)
+      { do: "Move down to Message signing (near the end of the list) and press in.", see: "Message signing: Enabled and Disabled.", at: (s) => s.view === "SSSettingsEntryUpdateSelectionView" && ssLearnArg(s, "attr_name") === SSSettingsConstants.SETTING__MESSAGE_SIGNING },
       { do: "Move up to Enabled and press in.", see: "Advanced again. Message signing is on.", at: () => ssLearnSetting(SSSettingsConstants.SETTING__MESSAGE_SIGNING) === SSSettingsConstants.OPTION__ENABLED },
       SS_LEARN_HOME,
       { feed: "signmsg", do: "Scan is selected: press the joystick in. The practice wallet holds up a request to sign a message.", see: "Sign Message: Select seed to sign with, with " + SS_LEARN_FP + " first.", at: ssLearnTitle("SSSeedSelectSeedView", /Sign Message/) },
@@ -476,7 +491,7 @@ function ssLearnWipe() {
     for (const m of [T.global, ...T.inMaps, ...T.outMaps]) for (const kv of m) for (const x of kv) if (x instanceof Uint8Array) x.fill(0);
   }
   L.lesson = null; L.step = 0; L.done = false; L.hold = null; L.tx = null; L.building = false; L.scanDec = null; L.msg = ""; L.gen++;
-  ssAutoEnd(""); ssLearnSetText("ssLoadStatus", "");
+  ssAutoEnd(""); ssLearnSetText("ssLoadStatus", ""); ssLearnSetText("ssCamNote", "");
   ssLearnForget(); ssForgeReset();
   ssLearnCam.frames = null; ssLearnCam.byLesson = false; ssLearnCam.what = ""; ssLearnCam.key = ""; ssLearnCam.shown = null; ssLearnCam.cache.clear();
   ssLearnRender();
@@ -502,10 +517,14 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 // person would, this opens the practice signer, holds the seed's Standard SeedQR up to its camera with the practice wallet, and
 // then presses the device's own keys for them (ssAutoTick): Home > Scan, the camera reads the SeedQR, then Done on the Finalize
 // screen. So the device ends exactly as after a person's scan, the seed loaded and its fingerprint shown. With a passphrase on the
-// page, it stops on the Finalize screen, where the passphrase is added on the device (Passphrase), as on a real SeedSigner. On any
-// other screen the page says to go back to Home, and the scan goes on from there by itself. The SeedQR is wiped when the
+// page, it stops on the Finalize screen, where the passphrase is added on the device (BIP-39 Passphrase), as on a real SeedSigner.
+// On any other screen the page says to go back to Home, and the scan goes on from there by itself. The SeedQR is wiped when the
 // practice wallet puts it away (after the scan, PUT IT AWAY, another QR) and by every wipe (ssLearnWipe).
-const ssAuto = { on: false, gen: 0, fp: "", pass: false, stage: "", t0: 0, tapAt: 0, timer: null, told: false };
+// v2.16.1 review: a SeedQR is read only while offline, so nothing starts while the computer is online, and the load stops if it goes
+// online. Scan is pressed only while the SeedQR is held up (so a scan never opens the computer's camera), Done only on the Finalize
+// screen of the seed this scan read (read), and "Loaded" is said only after the device's fingerprint was compared with the page's.
+const SS_AUTO_OFFLINE = "Not loaded: a SeedQR is read only while offline. Take this computer offline, then press LOAD INTO THE PRACTICE SIGNER again.";
+const ssAuto = { on: false, gen: 0, fp: "", fpErr: false, pass: false, stage: "", read: false, t0: 0, tapAt: 0, timer: null, told: false };
 let ssAutoWait = null;   // set while the device waits for a key (the wait_for patch above)
 function ssAutoSay(text, cls) { ssLearnSetText("ssLoadStatus", text); const e = ssLearnEl("ssLoadStatus"); if (e) e.className = "status" + (cls ? " " + cls : ""); }
 function ssAutoEnd(text, cls) {
@@ -515,9 +534,9 @@ function ssAutoEnd(text, cls) {
 }
 function ssAutoStart(phrase, pass) {
   const A = ssAuto; ssAutoEnd("");
-  const gen = A.gen; A.on = true; A.fp = ""; A.pass = !!pass; A.stage = "scan"; A.t0 = Date.now(); A.tapAt = 0; A.told = false;
+  const gen = A.gen; A.on = true; A.fp = ""; A.fpErr = false; A.pass = !!pass; A.stage = "scan"; A.read = false; A.t0 = Date.now(); A.tapAt = 0; A.told = false;
   ssAutoSay("Loading: the device goes to Home > Scan by itself and reads the SeedQR.");
-  mnemonicFingerprint(phrase, "").then((fp) => { if (A.gen === gen) A.fp = fp; }).catch(() => { /* compared without it */ });
+  mnemonicFingerprint(phrase, "").then((fp) => { if (A.gen === gen) A.fp = fp; }).catch(() => { if (A.gen === gen) A.fpErr = true; });
   A.timer = setInterval(ssAutoTick, 150);
 }
 // One press of a device key, as the case's own key does (down, and up 110 ms later: SSHardwareButtons.tap).
@@ -525,33 +544,50 @@ function ssAutoTap(hb, key) { ssAuto.tapAt = Date.now(); hb.tap(key); }
 function ssAutoTick() {
   const A = ssAuto; if (!A.on) return;
   if (!ssPageOn) return ssAutoEnd("");
-  if (Date.now() - A.t0 > 180000) return ssAutoEnd("Not loaded: the device did not get to its scan in 3 minutes. Choose Scan on Home to scan the SeedQR, or press LOAD INTO THE PRACTICE SIGNER again.", "bad");
+  if (navigator.onLine === true) { if (ssLearnCam.key === "seedload") ssLearnHide(); return ssAutoEnd(SS_AUTO_OFFLINE, "bad"); }
+  if (Date.now() - A.t0 > 180000) return ssAutoEnd(A.read ? "Not loaded: the device did not finish loading the seed in 3 minutes. Press LOAD INTO THE PRACTICE SIGNER again." : "Not loaded: the device did not get to its scan in 3 minutes. Choose Scan on Home to scan the SeedQR, or press LOAD INTO THE PRACTICE SIGNER again.", "bad");
   const s = ssLearnState(), hb = SSHardwareButtons._instance, now = Date.now();
   if (!s || !hb || !ssAutoWait || now - A.tapAt < 400) return;   // the device is busy, or still taking the last key
   for (const k of SSHardwareButtonsConstants.ALL_KEYS) if (hb._held[k] || (hb._pending[k] && now - hb._pend_at[k] < SS_KEY_LATCH_MS)) return;
   if (s.ctl && s.ctl.is_screensaver_running) return ssAutoTap(hb, "KEY_LEFT");   // wakes it (the device drops the waking press)
-  const sel = s.scr ? s.scr.selected_button : null;
-  if (s.view === "SSMainMenuView" && A.stage === "scan") {   // Home, a 2 x 2 grid: Scan is button 0
-    if (!ssAutoWait.keys.includes("KEY_PRESS")) return;
-    return ssAutoTap(hb, sel === 0 ? "KEY_PRESS" : sel === 1 ? "KEY_LEFT" : sel === 2 || sel === 3 ? "KEY_UP" : "KEY_DOWN");
+  const sel = s.scr ? s.scr.selected_button : null, held = !!ssLearnCam.frames && ssLearnCam.key === "seedload";
+  const cmp = (fp) => A.fp === fp ? ", the same as VOIDFORGE works out." : ". VOIDFORGE works out " + A.fp + ": DIFFERENT.";
+  if (!A.read) {   // before the scan read this SeedQR: get to Home > Scan, and nothing else
+    if (!held) return ssAutoEnd("Not loaded: the SeedQR was put away before the device read it. Press LOAD INTO THE PRACTICE SIGNER again.", "bad");
+    if (s.view === "SSMainMenuView") {   // Home, a 2 x 2 grid: Scan is button 0
+      if (!ssAutoWait.keys.includes("KEY_PRESS")) return;
+      return ssAutoTap(hb, sel === 0 ? "KEY_PRESS" : sel === 1 ? "KEY_LEFT" : sel === 2 || sel === 3 ? "KEY_UP" : "KEY_DOWN");
+    }
+    if (!/Scan/.test(s.view) && !A.told) { A.told = true; ssAutoSay("Go back to Home on the device: the scan goes on from there by itself."); }
+    return;
   }
+  if (!A.fp && !A.fpErr) return;   // the page's fingerprint is still being worked out: compare before saying anything
   if (s.view === "SSSeedFinalizeView") {
     A.stage = "fin";
     const fp = (s.scr && s.scr.fingerprint) || "";
-    if (A.pass) return ssAutoEnd("Scanned: the device shows fingerprint " + fp + " (without the passphrase). Choose Passphrase on the device to add the passphrase, or Done.", "ok");
+    if (A.fp && fp && fp !== A.fp) return ssAutoEnd("Not loaded: the device shows fingerprint " + fp + cmp(fp), "bad");
+    if (A.pass) {
+      const pl = s.labels.find((l) => l && !/^Done$/.test(l));
+      return ssAutoEnd("Scanned: the device shows fingerprint " + fp + " without the passphrase" + (A.fp ? cmp(fp) : ".") + " " + (pl ? "Choose " + pl + " on the device to add the passphrase, then Done." : "To add the passphrase, turn on BIP-39 passphrase in the device’s Settings (Advanced) first."), A.fp ? "ok" : "");
+    }
     const i = s.labels.findIndex((l) => /^Done$/.test(l)); if (i < 0) return;
     return ssAutoTap(hb, sel === i ? "KEY_PRESS" : sel !== null && sel !== 1000 && sel > i ? "KEY_UP" : "KEY_DOWN");
   }
-  if (s.view === "SSSeedOptionsView" && A.stage === "fin") {
-    const same = A.fp && s.title === A.fp;
-    return ssAutoEnd("Loaded: the device shows the seed with fingerprint " + s.title + (A.fp ? (same ? ", the same as VOIDFORGE works out." : ". VOIDFORGE works out " + A.fp + ": DIFFERENT.") : "."), A.fp && !same ? "bad" : "ok");
+  if (s.view === "SSSeedAddPassphraseView") {   // the device's BIP-39 passphrase setting is Required: it asks for one first
+    A.stage = "pass";
+    return ssAutoEnd("Scanned: the device asks for a passphrase (its BIP-39 passphrase setting is Required). " + (A.pass ? "Type the passphrase on the device, then Done." : "Type one on the device, or press its back arrow and choose Skip passphrase, then Done."));
   }
-  if (A.stage === "scan" && !/Scan/.test(s.view) && !A.told) { A.told = true; ssAutoSay("Go back to Home on the device: the scan goes on from there by itself."); }
+  if (s.view === "SSSeedOptionsView" && A.stage === "fin") {
+    if (!A.fp) return ssAutoEnd("Loaded: the device shows the seed with fingerprint " + s.title + ". VOIDFORGE could not work out its own to compare: check it by hand.");
+    return ssAutoEnd("Loaded: the device shows the seed with fingerprint " + s.title + cmp(s.title), A.fp === s.title ? "ok" : "bad");
+  }
+  if (s.view === "SSMainMenuView" || s.view === "SSErrorView") return ssAutoEnd("Not loaded: the device did not load the seed from its SeedQR. Press LOAD INTO THE PRACTICE SIGNER again.", "bad");   // never Scan again: the SeedQR is put away
 }
 function vfSignerLoadSeed(phrase, opts) {
   if (typeof phrase !== "string") return false;
   const words = phrase.split(" "), idx = words.map((w) => WORDLIST.indexOf(w));
   if ((words.length !== 12 && words.length !== 24) || idx.some((i) => i < 0)) return false;
+  if (navigator.onLine === true) return false;   // v2.16.1 review: a SeedQR is read only while offline (the caller says so)
   let kind = ""; try { kind = typeof pubKind === "function" ? pubKind(phrase) : ""; } catch (e) { kind = ""; }
   ssPageOpen();
   if (!ssPageOn) ssPageStart();
@@ -560,7 +596,7 @@ function vfSignerLoadSeed(phrase, opts) {
   const qr = idx.map((i) => String(i).padStart(4, "0")).join("");   // Standard SeedQR: 4 digits per word
   ssLearnShow([qr], "the Standard SeedQR of " + (kind ? pracName(kind) : "the seed from MAKE A SEED") + " (" + words.length + " words)", "seedload");
   try { ssLearnCam.cache.set(qr, seedQrMatrix(words, "standard").rows); } catch (e) { /* drawn as a plain QR */ }
-  ssLearnCam.say = navigator.onLine === true ? "This computer looks online: the device reads a SeedQR only while it is offline." : ""; ssLearnRender();
+  ssLearnRender();
   ssAutoStart(phrase, !!(opts && opts.pass));
   return true;
 }

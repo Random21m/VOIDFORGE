@@ -1061,6 +1061,13 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .pr-net { display:none; }
   body.practice .pr-net { display:block; color:var(--text); border:1px solid var(--warn-text); border-left-width:4px; border-radius:8px; padding:6px 10px; margin:6px 0; font-size:13px; }
   .pr-net .linklike { margin:0 0 0 6px; padding:0; background:none; border:none; color:var(--accent); font-weight:700; font-size:13px; letter-spacing:0; text-decoration:underline; text-underline-offset:3px; box-shadow:none; min-height:0; }
+  /* v2.16.1 review (phone): the step bar's labels keep apart (Passphrase and Check nearly touched), and the small text links get a
+     tap area at least 24 px tall (padding; the text stays where it was) */
+  @media (max-width: 640px) {
+    .stepbar { gap: 10px; }
+    .stepbar li, body.light .stepbar li { flex: 1 1 auto; }
+    #watchWarn .linklike, #practiceBan .linklike, .strip .linklike, #iHave .linklike, .pr-net .linklike { min-height: 24px; padding-top: 4px; padding-bottom: 4px; margin-top: -4px; margin-bottom: -4px; }
+  }
   /* v2.16.1: Practice making a backup: which words, a public test seed or your own */
   .pr-src { display:flex; flex-direction:column; gap:6px; margin:8px 0 0; }
   .pr-src label { display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-weight:600; }
@@ -1104,6 +1111,21 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   #ssBox #ssK1 { left: calc(630 * var(--u)); top: calc(63 * var(--u)); }
   #ssBox #ssK2 { left: calc(630 * var(--u)); top: calc(119 * var(--u)); }
   #ssBox #ssK3 { left: calc(630 * var(--u)); top: calc(175 * var(--u)); }
+  /* v2.16.1 review: on a phone the pill case would leave the keys about 23 px and the screen about 140 px wide, so narrow screens
+     get an upright case (380 x 520 units): the screen on top at the full width, the joystick and KEY1 to KEY3 below it, keys 54 units. */
+  @media (max-width: 640px) {
+    #ssBox .ss-dev, #ssBox .ss-wrap .ss-dev { --u: min(1.25px, calc((100vw - 56px) / 380)); width: calc(380 * var(--u)); height: calc(520 * var(--u)); border-radius: calc(46 * var(--u)); background: linear-gradient(180deg, #41474D 0%, #363C42 4%, #2E3338 50%, #282C31 100%) border-box; }
+    @supports (width: 1cqw) { #ssBox .ss-wrap .ss-dev { --u: min(1.25px, calc(100cqw / 380)); } }
+    #ssBox .ss-bezel { left: calc(9 * var(--u)); top: calc(14 * var(--u)); }
+    #ssBox #ssKUp { left: calc(86 * var(--u)); top: calc(306 * var(--u)); }
+    #ssBox #ssKLeft { left: calc(26 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssKPress { left: calc(86 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssKRight { left: calc(146 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssKDown { left: calc(86 * var(--u)); top: calc(426 * var(--u)); }
+    #ssBox #ssK1 { left: calc(286 * var(--u)); top: calc(306 * var(--u)); }
+    #ssBox #ssK2 { left: calc(286 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssK3 { left: calc(286 * var(--u)); top: calc(426 * var(--u)); }
+  }
   /* v2.14.0 Learn on the practice signer: lessons and a practice transaction, as page text below the device (never on its screen) */
   #ssBox [hidden] { display: none !important; }
   #ssBox .ss-learn { margin: 14px auto 0; max-width: 750px; }
@@ -1552,7 +1574,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <!-- v2.15.0: Re-hide (the notice is #rhBar at the end of the page; the list of covered places is RH_PLACES in the script) -->
     <details id="rhBox" style="margin-top:8px;">
       <summary>Re-hide: cover secrets when you look away<small>On. Nothing is wiped: tap SHOW to see them again.</small></summary>
-      <p class="hint" style="margin:8px 0 0;">While words, rolls, a passphrase or another secret are on the page, VOIDFORGE covers them again when you switch to another tab or app, when you click another window, when you print the page with the browser&rsquo;s own Print, and after a while with no activity. Text is blurred; QR codes and other pictures are taken off the screen. Passphrase boxes go back to dots. VOIDFORGE&rsquo;s own PRINT buttons still print what they say. The practice signer is not covered: it holds practice seeds only. Nothing about this setting is saved; it is back to 5 minutes when the page reloads.</p>
+      <p class="hint" style="margin:8px 0 0;">While words, rolls, a passphrase or another secret are on the page, VOIDFORGE covers them again when you switch to another tab or app, when you click another window, when you print the page with the browser&rsquo;s own Print, and after a while with no activity. Text is blurred; QR codes and other pictures are taken off the screen. Passphrase boxes go back to dots. VOIDFORGE&rsquo;s own PRINT buttons still print what they say. The practice signer is covered while it holds a seed that is not public, a seed is being loaded or a passphrase is typed on it. Nothing about this setting is saved; it is back to 5 minutes when the page reloads.</p>
       <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;"><label for="rhIdle" style="font-weight:600;">Also cover after no activity for</label><select id="rhIdle" autocomplete="off" aria-label="Also cover after no activity for" onchange="rhSet()"><option value="0">never</option><option value="1">1 minute</option><option value="2">2 minutes</option><option value="5" selected>5 minutes</option></select></div>
       <label style="display:flex; gap:8px; align-items:center; margin-top:8px;"><input type="checkbox" id="rhBlur" autocomplete="off" checked onchange="rhSet()"> Also cover when I click another window</label>
       <div id="rhNote" class="hint" aria-live="polite" style="margin:8px 0 0;"></div>
@@ -1871,6 +1893,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <input type="text" id="detAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="An address this wallet received to" placeholder="An address this wallet received to (bc1q, bc1p, 3 or 1)" oninput="detClear(true)">
       <div class="net-pick"><label for="detNet">Network</label><select id="detNet" autocomplete="off" onchange="detClear(true)"><option value="" selected>As guessed from the address</option><option value="main">Mainnet</option><option value="test">Testnet</option><option value="regtest">Regtest</option></select></div>
       <div class="btn-row top"><button type="button" id="detBtn" onclick="detFind()" disabled>FIND MY WALLET</button><button type="button" class="secondary small" id="detListBtn" onclick="detList()" disabled>LIST FIRST ADDRESSES</button><button type="button" class="secondary small" id="detStop" onclick="detStop()" disabled>STOP</button><button type="button" class="secondary small" onclick="detClear()">CLEAR</button></div>
+      <div class="status warn" id="detNetNote" role="status" style="display:none; word-break:break-word;"></div>
       <div class="status bad" id="detPub" role="status" style="word-break:break-word;"></div>
       <div class="status" id="detStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <pre id="detOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
@@ -1974,6 +1997,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <p class="hint" style="margin:6px 0;">Rehearse the whole job with worthless test coins. While it is on, every address on the page is on the test network (tb1..., 2..., m... or n...), the network menus stay on Testnet, and printed sheets with addresses or keys say TESTNET. A seed made while it is on is an ordinary seed: the test network only changes which addresses are shown, and seed backups print as usual. Turn it on or off when no multisig wallet is being made. While it is on, a PRACTICE MODE note sits under every network menu. OPEN A PRACTICE WALLET opens the words chosen above in CHECK A BACKUP, on the test network: the public test seed, to try receiving test coins with nothing at stake, or your own words, to see your own wallet&rsquo;s test-network addresses (they are not your real addresses).</p>
       <label class="pr-mode"><input type="checkbox" id="practiceMode" autocomplete="off" onchange="practiceMode(this.checked)"> Practice mode: test network everywhere</label>
       <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" id="prWalletBtn" onclick="practiceWallet()">OPEN A PRACTICE WALLET</button></div>
+      <p class="status" id="prWalletStatus" aria-live="polite"></p>
     </details>
     <details id="ssBox">
       <summary>Practice signer: works like SeedSigner<span class="tag tag-secret">SECRET</span><small>The same screens and buttons as a real SeedSigner, with step-by-step lessons and a practice transaction.</small></summary>
@@ -1991,7 +2015,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
           <button type="button" class="ss-k" id="ssK3" tabindex="-1" aria-label="KEY3"></button>
         </div>
       </div>
-      <p class="hint">It runs inside this page, so it is as safe as the page itself: use it on an offline computer and write any seed on paper. Re-hide covers it while it holds a seed, and CLEAR ALL, auto-clear and END SESSION wipe it.</p>
+      <p class="hint">It runs inside this page, so it is as safe as the page itself: use it on an offline computer and write any seed on paper. Re-hide covers it while it holds a seed that is not public, and CLEAR ALL, auto-clear and END SESSION wipe it.</p>
       <div class="ss-learn" id="ssLearn">
         <h3 class="sec">Use the seed in VOIDFORGE</h3>
         <p class="hint" style="margin:0 0 8px;">FORGE SEED takes the seed loaded on the device, with its passphrase if one is applied, and shows it in MAKE A SEED like the other methods do: the words, fingerprint, addresses, SeedQR and watch-only wallet. A public seed (such as a lesson&rsquo;s test seed) is marked PRACTICE; a seed made here from your own dice is not.</p>
@@ -2010,6 +2034,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         </div>
         <div class="ss-l-cam" id="ssLearnCam" hidden><span>Held up to the device&rsquo;s camera: <b id="ssLearnCamWhat"></b>. <span id="ssLearnCamSay" aria-live="polite"></span></span><button type="button" class="secondary small" id="ssLearnCamOff">PUT IT AWAY</button></div>
         <p class="status" id="ssLoadStatus" aria-live="polite"></p>
+        <p class="status" id="ssCamNote" aria-live="polite"></p>
         <h3 class="sec">Practice transaction</h3>
         <p class="hint" style="margin:0 0 8px;">Makes a PSBT that spends made-up coins of the seed on the device and holds it up to the device&rsquo;s camera. After you sign it, this page reads the signed PSBT from the device&rsquo;s screen and checks every signature with its own code.</p>
         <div class="btn-row"><select id="ssTxKind" aria-label="Kind of practice transaction"><option value="single">Single key: 2 inputs</option><option value="multi">2-of-3 multisig: 1 input</option></select><button type="button" id="ssTxGo" class="secondary small">PRACTICE TRANSACTION</button></div>
@@ -2674,12 +2699,12 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details>
       <summary>Changelog</summary>
       <ul>
-        <li><b>2.16.1</b> &mdash; <b>A fix.</b> After FORGE SEED (every method: Dice, Coin, Word draw, Cards, Hex, Damascus and the practice signer) the page now lands on <b>YOUR SEED</b> with the words in view. Before, it scrolled to the line under the words, so the words sat hidden above the screen. If your system is set to reduce motion, the page now jumps instead of scrolling smoothly. <b>Practice works like everything else:</b> FORGE SEED now also works for Damascus practice (a practice sheet, the guided practice, a worked example), with the same steps and buttons as a real seed; the seed is marked by a red PRACTICE banner, and every sheet printed and file saved from it says PRACTICE. The practice signer does what a real SeedSigner does and takes any seed: LOAD INTO THE PRACTICE SIGNER (under YOUR SEED, and on the Damascus tab) loads it in one click, a seed from it is marked PRACTICE only when it is public, and re-hide covers it while it holds a seed that is not public.
+        <li><b>2.16.1</b> &mdash; <b>A fix.</b> After FORGE SEED (every method: Dice, Coin, Word draw, Cards, Hex, Damascus and the practice signer) the page now lands on <b>YOUR SEED</b> with the words in view. Before, it scrolled to the line under the words, so the words sat hidden above the screen. If your system is set to reduce motion, the page now jumps instead of scrolling smoothly. <b>Practice works like everything else:</b> FORGE SEED now also works for Damascus practice (a practice sheet, the guided practice, a worked example), with the same steps and buttons as a real seed; the seed is marked by a red PRACTICE banner, and every sheet printed and file saved from it says PRACTICE. Every way to make a seed marks a public seed (a published test phrase, or one made from a pattern such as counting numbers) the same way, and a multisig key from one is taken after a warning and marked PRACTICE. The practice signer does what a real SeedSigner does and takes any seed: LOAD INTO THE PRACTICE SIGNER (under YOUR SEED, and on the Damascus tab) loads it in one click while the computer is offline (a SeedQR is read only while offline), a seed from it is marked PRACTICE only when it is public, and re-hide covers it while it holds a seed that is not public or a passphrase is typed on it. Wiping the seed (CLEAR ALL, or ADD THIS KEY &amp; WIPE THE SEED in the multisig box) wipes the practice signer&rsquo;s copy too. Sheets printed from a public seed in CHECK A BACKUP, Seed XOR and BIP85 say PRACTICE as well. On a phone the practice signer stands upright, with bigger keys.
           <b>Tools that work as in real life.</b>
-          (1) <b>Practice making a backup</b> also takes your own words (My own words, marked SECRET; do it on an offline computer): write them on paper, hide them, type them back, and the page checks every word. Re-hide covers them; CLEAR ALL, auto-clear and END SESSION wipe them. The six public test seeds stay.
+          (1) <b>Practice making a backup</b> also takes your own words (My own words, marked SECRET; do it on an offline computer): write them on paper, hide them, type them back, and the page checks every word. Re-hide covers them; CLEAR, CLEAR ALL, auto-clear and END SESSION wipe them. The six public test seeds stay.
           (2) <b>OPEN A PRACTICE WALLET</b> opens your own words on the test network when you choose them (typed in its box, or the words in CHECK A BACKUP; the public test seed stays the default), and while practice mode is on a PRACTICE MODE note sits under every network menu, with a link to turn it off.
           (3) <b>Practice your passphrase</b> can use your own seed (typed there, or the seed made on the page) instead of the public test seed: the fingerprint is then your passphrase wallet&rsquo;s real one, to compare with your device.
-          (4) <b>Regtest</b> is its own network in every network menu (Watch-only wallet, Open this wallet, the transaction checkers and multisig): bcrt1 addresses, keys written as on testnet. Explain an address knows bcrt1, and the Coldcard backup reader opens regtest (chain XRT) backups. Checked against Bitcoin Core&rsquo;s chainparams.cpp, Coldcard&rsquo;s chains.py and Electrum&rsquo;s constants.py.
+          (4) <b>Regtest</b> is its own network in every network menu (Watch-only wallet, Open this wallet, the transaction checkers and multisig): bcrt1 addresses, keys written as on testnet. Explain an address and the address checks of CHECK A BACKUP know bcrt1, and the Coldcard backup reader opens regtest (chain XRT) backups. Checked against Bitcoin Core&rsquo;s chainparams.cpp, Coldcard&rsquo;s chains.py and Electrum&rsquo;s constants.py.
           (5) A <b>Network</b> menu in Open an Electrum wallet file, Read a Bitcoin Core wallet file and the Wallet Detective: as guessed, or Mainnet, Testnet or Regtest; the addresses (and keys) are worked out again for it.
           (6) The <b>multisig</b> setup takes a key from the seed open in CHECK A BACKUP (USE THE SEED IN CHECK A BACKUP), not only one just made: only its public key is kept, and its words are wiped there.</li>
         <li><b>2.16.0</b> &mdash; <b>Recover old wallets.</b> (1) <b>Open this wallet</b> (CHECK A BACKUP) now takes any derivation path, written with &prime; or h, and a path below an xpub or xprv. It shows receive and change addresses together by default (10 of each), starts at any address number you type, and SHOW 20 MORE adds more, up to 200 in each list. Descriptor endings /0/*, /1/* and /&lt;0;1&gt;/* are understood. (2) <b>Open an Electrum wallet file</b> reads files from Electrum 1.x to 4.8: plain, with password-encrypted keys, or encrypted as a whole; standard, BIP39 and old seeds, imported keys and addresses, watch-only, hardware, multisig and 2FA wallets. It shows the wallet type, its xpub and the first 10 receive and 10 change addresses, checked against the file. The seed is behind SHOW THE SECRET. Files encrypted by a hardware device (BIE2) are refused. (3) <b>Read a Bitcoin Core wallet file (wallet.dat)</b> reads legacy (Berkeley DB) and descriptor (SQLite) wallets, with the passphrase if the wallet is encrypted: its descriptors, labels and the first 10 receive and 10 change addresses. Private keys are behind SHOW THE PRIVATE KEYS. Both file readers only read: they change nothing and send nothing. A wallet file holds private keys, so open a copy of it on an offline computer. (4) The self-test now runs 155 checks. New dictionary entries: wallet.dat, Berkeley DB, Descriptor wallet, Legacy wallet (Bitcoin Core), Wallet encryption (Bitcoin Core), Keypool, Electrum wallet file, Seed extension (Electrum), Two-factor wallet (Electrum 2FA), AES and ECIES.</li>
@@ -5788,7 +5813,7 @@ async function checkPhrase(phrase){
   if(pc) phrase = pc.words;
   const oe = pc ? null : oldElSeed(phrase);   // v2.10.0: old Electrum words (Electrum checks for them first, as calc_seed_type does)
   const words = phrase.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if(![12,15,18,21,24].includes(words.length)) return {ok:false, msg:"Invalid length" + await electrumNote(phrase)};
+  if(![12,15,18,21,24].includes(words.length)) return {ok:false, msg:(words.length === 1 && /^[0-9a-f]{20,}$/i.test(words[0]) ? "These " + words[0].length + " characters are not the digits of a SeedQR (48 or 96 digits) or the hex of a CompactSeedQR (32 or 64 hex digits)." : words.length ? "A seed phrase has 12, 15, 18, 21 or 24 words; this has " + words.length + "." : "No words are typed.") + await electrumNote(phrase)};   // v2.16.1 review: plain words, not "Invalid length"
   const bad = [], readAs = []; let read = 0;
   words.forEach((w, i) => { if(Object.prototype.hasOwnProperty.call(WORD_MAP, w)) return; const f = wordFromPrefix(w); if(f){ readAs.push("word " + (i + 1) + " '" + w + "' as '" + f + "'"); words[i] = f; read++; } else bad.push(i); });
   if(bad.length) return oe ? oldElResult(oe) : {ok:false, msg:unknownWordsMsg(words, bad)};
@@ -5904,7 +5929,7 @@ async function knownPhraseCheck(){
 }
 document.getElementById("phrase").addEventListener("input", knownPhraseCheck);
 // Practice mode on or off changes the wording of both warnings.
-function knownRefresh(){ knownShow("forgePub", hasSeed() ? madeMnemonic : ""); knownShow("wvPub", wvCtx && wvCtx.mnemonic ? wvCtx.mnemonic : ""); knownPhraseCheck(); }
+function knownRefresh(){ forgePubShow(hasSeed() ? madeMnemonic : ""); knownShow("wvPub", wvCtx && wvCtx.mnemonic ? wvCtx.mnemonic : ""); knownPhraseCheck(); }
 
 // Look-alike letters (smudge check): which seed words could be misread as another BIP39 word when handwritten. Every BIP39 word
 // is known by its first 4 letters, so only a misread letter inside the first 4 matters, and only if the result starts another
@@ -5934,7 +5959,14 @@ function smudgeShow(id, words){
   el.appendChild(s); el.appendChild(document.createTextNode(" " + t));
 }
 // Under the words after FORGE: the public phrase warning and the look-alike letters (cleared whenever the words go).
-function seedNotes(words){ knownShow("forgePub", words ? words.join(" ") : ""); smudgeShow("smudgeNote", words); }
+function seedNotes(words){ forgePubShow(words ? words.join(" ") : ""); smudgeShow("smudgeNote", words); }
+// v2.16.1 review: a public seed under YOUR SEED carries the red PRACTICE banner (seedPr), which already says where it comes from,
+// so the line under the words adds only what the banner does not say: that practice mode may use it on TESTNET.
+function forgePubShow(m){
+  const el = document.getElementById("forgePub");
+  if(!m || !ssfCtx || !ssfCtx.ban) return knownShow("forgePub", m);
+  el.textContent = practiceOn ? "Practice mode is on, so this public seed is fine for TESTNET (practice coins only), never for real funds." : ""; el.className = "status warn";
+}
 
 // Rolls typed twice: a long block of results that appears twice, as a copy-paste or retyping mistake leaves. It only warns and never
 // changes the rolls. A block is 12 dice rolls (31 bits) or 32 coin flips (32 bits), about the same amount of chance. For fair rolls,
@@ -6881,6 +6913,13 @@ for(const id of PRACTICE_NETS){
   n.append(b, " this menu stays on Testnet, so every address here is a test-network address (worthless coins).", off);
   (sel.closest(".ms-row, .wv-ctl, .net-pick") || sel.parentElement).after(n);
 }
+// v2.16.1 review: the same note under OPEN A PRACTICE WALLET, which turns practice mode on for the whole page (as since v2.5.0: the
+// practice wallet is on the test network, and so is every other address while it is open).
+{ const n = document.createElement("div"), b = document.createElement("b"), off = document.createElement("button");
+  n.className = "pr-net"; n.id = "prWalletPr"; b.textContent = "PRACTICE MODE:";
+  off.type = "button"; off.className = "linklike"; off.textContent = "Turn practice mode off"; off.addEventListener("click", () => practiceMode(false));
+  n.append(b, " it is on for the whole page (OPEN A PRACTICE WALLET turns it on), so every address on the page, also of a seed made on MAKE A SEED, is a test-network address (worthless coins) until you turn it off.", off);
+  document.getElementById("prWalletBtn").closest(".btn-row").after(n); }
 let practiceOn = false, practiceSaved = {};
 function practiceMode(on){
   on = !!on;
@@ -6889,6 +6928,7 @@ function practiceMode(on){
   if(ms){ box.checked = practiceOn; alert("A multisig wallet is being made or shown. Finish it and press START OVER in the multisig box first, then turn practice mode " + (on ? "on" : "off") + "."); return; }
   practiceOn = on; box.checked = on;
   document.body.classList.toggle("practice", on);
+  if(!on) prWalletSay("", "");   // v2.16.1 review: its line under OPEN A PRACTICE WALLET goes with it
   for(const id of PRACTICE_NETS){
     const e = document.getElementById(id);
     if(on){ practiceSaved[id] = e.value; e.value = "test"; e.disabled = true; }
@@ -6939,18 +6979,24 @@ async function practiceWallet(){
     if(document.getElementById("prOwn").value.trim()) r = await practiceOwnWords();
     else if(practice && practice.own) r = {words: practice.words};
     else { const c = await checkPhrase(document.getElementById("phrase").value); r = c.ok ? {words: c.mnemonic.split(" ")} : {msg: "Type or paste your own seed words in the box first (or in CHECK A BACKUP), or choose the public test seed."}; }
-    if(r.msg) return practiceStatus("bad", r.msg);
+    if(r.msg){ practiceStatus("bad", r.msg); return prWalletSay("bad", r.msg); }
     words = r.words;
   }
+  const was = practiceOn;
   if(!practiceOn) practiceMode(true);
-  if(!practiceOn) return;
+  if(!practiceOn) return prWalletSay("bad", "Not opened: practice mode could not be turned on (see the message).");
   if(!words){ const hex = PRACTICE_ENTROPY[0], e = new Uint8Array(16); for(let i = 0; i < 16; i++) e[i] = parseInt(hex.substr(i * 2, 2), 16); words = await practiceMake(e); }
   showTab("check");
   const box = document.getElementById("phrase"), vp = document.getElementById("verifyPass");
   box.value = words.join(" "); vp.value = "";
   box.dispatchEvent(new Event("input")); vp.dispatchEvent(new Event("input"));
   await verify();
+  // v2.16.1 review: say where it opened, and that practice mode is on for the whole page, then show it (it opens far above)
+  const wv = document.getElementById("walletView"), open = wv.style.display !== "none";
+  prWalletSay(open ? "ok" : "bad", open ? "Opened on the test network in CHECK A BACKUP, Open this wallet (above)." + (was ? "" : " Practice mode is now on for the whole page: see the note above.") : "Not opened: see the message under VERIFY.");
+  reveal(open ? wv : document.getElementById("verifyStatus"));
 }
+function prWalletSay(cls, t){ const e = document.getElementById("prWalletStatus"); e.className = "status" + (cls ? " " + cls : ""); e.textContent = t; }
 // v2.16.1: which words: a public test seed (built in), or your own (the box under "My own words").
 function practiceOwnOn(){ return document.getElementById("prSrcOwn").checked; }
 function practiceOwnEdit(){ practiceStatus("",""); }
@@ -6963,7 +7009,7 @@ async function practiceOwnWords(){
   return r.ok ? {words:r.mnemonic.split(" ")} : {msg:"These are not a valid seed (" + r.msg.replace(/\.$/, "") + "). Check them before you write them down."};
 }
 // CLEAR ALL, auto-clear and the other wipes (wipeSeed): your own words go (a public test seed may stay).
-function practiceOwnWipe(){ if(practice && practice.own) practiceClear(); const o=document.getElementById("prOwn"); if(o) o.value=""; }
+function practiceOwnWipe(){ if(practice && practice.own) practiceClear(); document.getElementById("prOwn").value=""; }
 async function practiceStart(){
   if(!gateOk()) return;
   if(practiceOwnOn()){
@@ -6994,7 +7040,8 @@ function practiceClear(){
   practice=null;
   document.getElementById("prWords").textContent=""; document.getElementById("prInput").value="";
   document.getElementById("prShow").style.display="none"; document.getElementById("prCheck").style.display="none"; practiceStatus("","");
-  document.getElementById("prOwnRow").style.display=practiceOwnOn()?"":"none";   // v2.16.1: CLEAR keeps the words in the box; CLEAR ALL wipes them
+  document.getElementById("prOwn").value="";   // v2.16.1 review: CLEAR wipes your own words in the box too (and so does changing the choice)
+  document.getElementById("prOwnRow").style.display=practiceOwnOn()?"":"none";
 }
 function jumpTo(id){ reveal(document.getElementById(id)); }
 // v2.16.1: after a seed is made the page lands on YOUR SEED, so the words themselves are in view (jumping to the result line
@@ -7282,6 +7329,7 @@ let passKey = null, passWork = Promise.resolve();
 async function finishSeed(mnemonic, ctx, sig0, kind, info){
   const p1 = document.getElementById("passphrase").value, p2 = document.getElementById("passphrase2").value, run = ++forgeRun;
   seedSig = null; passKey = JSON.stringify([p1, p2]);
+  if(!ssfNext){ const pk = pubKind(mnemonic); if(pk) ssfNext = pracMark(pk); }   // v2.16.1 review: every method marks a public seed PRACTICE, by its words
   setResult(mnemonic + "\n\n" + passPhraseLine(p1, p2), mnemonic.split(" "));
   exCtx = ctx; seedKind = kind || (ctx ? "rolls" : "wd"); seedSig = sig0 !== undefined ? sig0 : inputSig(seedKind);
   sumCtx = ctx ? {count: ctx.rolls.length, coin: ctx.coin, keystone: ctx.keystone, words: ctx.words.length} : kind === "cd" ? {cd: info.cards, bits: info.bits, raw: info.raw || null, words: mnemonic.split(" ").length} : kind === "hex" ? {hex: true, words: mnemonic.split(" ").length} : kind === "dm" ? {dm: true, dmFailed: !!(info && info.biasFailed), words: mnemonic.split(" ").length} : kind === "ss" ? {ss: true, words: mnemonic.split(" ").length} : {wd: true, words: mnemonic.split(" ").length};
@@ -7497,14 +7545,19 @@ async function planSecret(text){
   }
   return "";
 }
+// v2.16.1 review: a plan or heir sheet for the PRACTICE seed under YOUR SEED (its fingerprint, as planFill puts it in) says PRACTICE
+// in its title and carries the PRACTICE line under it, like every sheet printed from that seed. prAdd wraps a sheet's add().
+function planPr(st){ const pr = seedPr(), S = pr ? seedSummary() : null; return S && S.fp && st.fp === S.fp ? pr : ""; }
+function prAdd(add, pr){ return (cls, text, parent) => { if(cls !== "ps-title" || !pr) return add(cls, text, parent); const e = add(cls, text + ": PRACTICE", parent); add("ps-warn", pr); return e; }; }
 async function printPlan(){
   const st = planState(), say = (c, t) => { const e = document.getElementById("plStatus"); e.className = "status " + c; e.textContent = t; };
   if(st.fp && !/^[0-9a-f]{8}$/.test(st.fp)) return say("bad", "The master fingerprint is 8 letters and digits (0-9 and a-f), such as 73c5da0a. Fix it, or leave the box empty.");
   const k = await planSecret([st.app, st.help, st.note, ...st.copies.map(c => c.where)].join("\n"));
   if(k) return say("bad", "Not printed: the boxes hold what looks like " + k + ". This plan must never hold secrets. Remove it, then print again.");
   if(!st.copies.length) return say("bad", "List at least one copy of the words first.");
-  const R = planStress(st);
-  printSheet(add => {
+  const R = planStress(st), pr = planPr(st);
+  printSheet(add0 => {
+    const add = prAdd(add0, pr);
     add("ps-title", "VOIDFORGE BACKUP PLAN");
     add("ps-sub", "No seed words and no passphrase are on this sheet. It says where the copies are and what to do if something goes wrong. It is a map to your backup: keep it private and give it only to someone you trust.");
     add("ps-info", "Master fingerprint:    " + (st.fp || "____________") + "\nWallet made on:        " + (st.born || "____________") + "\nWallet app or device:  " + (st.app || "____________") + "\nPassphrase:            " + PLAN_PASS[st.pass]);
@@ -8017,6 +8070,9 @@ function matchRecorded(raw, fp0, a0, fp1, a1, hasPass, ids0, ids1){
 // Each press searches `range` more indices on each chain (default 50); the next press continues where the last one stopped.
 let addrScanFrom = 0;
 function resetAddrScan(){ addrScanFrom = 0; }
+// v2.16.1 review: both searches take regtest addresses (bcrt1...) too, and name the network of a test address.
+const ADDR_KINDS_MSG = "Enter a bc1q... (SegWit), bc1p... (Taproot), 3... (nested SegWit) or 1... (legacy) address, or a testnet address (tb1q..., tb1p..., 2..., m... or n...) or regtest address (bcrt1q..., bcrt1p...).";
+function addrNetLabel(addr){ const n = addressNetOf(addr); return n === "regtest" ? "Regtest " : n === "test" ? "Testnet " : ""; }
 async function checkAddress(range){
   if(!gateOk()) return;
   const size = range || 50, st = document.getElementById("addrCheckStatus");
@@ -8024,11 +8080,11 @@ async function checkAddress(range){
   const r = await checkPhrase(document.getElementById("phrase").value);
   if(!r.ok) return say("bad", "Type a valid seed phrase in the box above first. " + r.msg);
   let addr = document.getElementById("checkAddr").value.replace(/\s+/g, "");
-  if(/^(bc1|tb1)/i.test(addr)) addr = addr.toLowerCase();
+  if(/^(bc1|tb1|bcrt1)/i.test(addr)) addr = addr.toLowerCase();
   { const sn = scriptAddrNote(addr); if(sn) return say("bad", sn); }
-  const kind0 = /^(bc1|tb1)q[0-9a-z]{38}$/.test(addr) ? "SegWit" : /^(bc1|tb1)p[0-9a-z]{58}$/.test(addr) ? "Taproot" : /^[32][1-9A-HJ-NP-Za-km-z]{25,34}$/.test(addr) ? "Nested SegWit" : /^[1mn][1-9A-HJ-NP-Za-km-z]{25,34}$/.test(addr) ? "Legacy" : null;
-  const kind = kind0 && addressNetOf(addr) === "test" ? "Testnet " + kind0 : kind0;
-  if(!kind) return say("bad", "Enter a bc1q... (SegWit), bc1p... (Taproot), 3... (nested SegWit) or 1... (legacy) address, or a testnet address (tb1q..., tb1p..., 2..., m... or n...).");
+  const kind0 = /^(bc1|tb1|bcrt1)q[0-9a-z]{38}$/.test(addr) ? "SegWit" : /^(bc1|tb1|bcrt1)p[0-9a-z]{58}$/.test(addr) ? "Taproot" : /^[32][1-9A-HJ-NP-Za-km-z]{25,34}$/.test(addr) ? "Nested SegWit" : /^[1mn][1-9A-HJ-NP-Za-km-z]{25,34}$/.test(addr) ? "Legacy" : null;
+  const kind = kind0 ? addrNetLabel(addr) + kind0 : null;
+  if(!kind) return say("bad", ADDR_KINDS_MSG);
   const acctRaw = document.getElementById("checkAcct").value.trim();
   if(!/^[0-9]{1,10}$/.test(acctRaw) || parseInt(acctRaw, 10) > 2147483647) return say("bad", "The account must be a whole number from 0 to 2147483647 (almost always 0).");
   const account = parseInt(acctRaw, 10);
@@ -8062,11 +8118,11 @@ async function checkAllAccounts(maxAcct, depth){
   const r = await checkPhrase(document.getElementById("phrase").value);
   if(!r.ok) return say("bad", "First type a valid seed phrase in the box above. " + r.msg);
   let addr = document.getElementById("checkAddr").value.replace(/\s+/g, "");
-  if(/^(bc1|tb1)/i.test(addr)) addr = addr.toLowerCase();
+  if(/^(bc1|tb1|bcrt1)/i.test(addr)) addr = addr.toLowerCase();
   { const sn = scriptAddrNote(addr); if(sn) return say("bad", sn); }
   const type = addressTypeOf(addr);
-  if(!type) return say("bad", "Enter a bc1q... (SegWit), bc1p... (Taproot), 3... (nested SegWit) or 1... (legacy) address, or a testnet address (tb1q..., tb1p..., 2..., m... or n...).");
-  const kind = (addressNetOf(addr) === "test" ? "Testnet " : "") + {wpkh: "SegWit", tr: "Taproot", "sh-wpkh": "Nested SegWit", pkh: "Legacy"}[type];
+  if(!type) return say("bad", ADDR_KINDS_MSG);
+  const kind = addrNetLabel(addr) + {wpkh: "SegWit", tr: "Taproot", "sh-wpkh": "Nested SegWit", pkh: "Legacy"}[type];
   const vp = document.getElementById("verifyPass").value;
   const variants = vp ? [["without passphrase", ""], ["with passphrase", vp]] : [["without passphrase", ""]];
   const btns = ["checkAddrBtn", "checkAcctsBtn"].map(id => document.getElementById(id)), stop = document.getElementById("checkAcctsStop");
@@ -8128,6 +8184,22 @@ const DET_PATHS = [
   {id:"el-segwit", seed:"electrum-segwit", steps:() => [[0, true]], types:["wpkh"], accts:false, name:"Electrum seed, SegWit"},
   {id:"el-old", seed:"electrum-old", steps:() => [], types:["pkh"], accts:false, name:"Old Electrum seed"}   // v2.10.0: not BIP32 (see oldElAddr)
 ];
+// v2.16.1 review: an address type's example prefix as the network writes it: (bc1q...) is (tb1q...) on testnet and (bcrt1q...) on
+// regtest, (3...) is (2...), (1...) is (m... or n...).
+function netEx(text, net){
+  if(!netIsTest(net)) return text;
+  const h = net === "regtest" ? "bcrt1" : "tb1";
+  return text.replace(/\(bc1([qp])\.\.\.\)/g, "(" + h + "$1...)").replace(/\(3\.\.\.\)/g, "(2...)").replace(/\(1\.\.\.\)/g, "(m... or n...)");
+}
+// v2.16.1 review: an extended public key shown for the other network family (a Network menu changed it): the same key with the
+// version bytes of that network, as the page writes keys elsewhere (SLIP-0132: zpub and vpub, ypub and upub, xpub and tpub).
+async function keyForNet(str, net){
+  try {
+    const raw = await base58decode(str), v = EXT_VERSIONS[hex(raw.slice(0, 4))];
+    if(!v || raw.length !== 78 || netIsTest(v.net) === netIsTest(net)) return str;
+    return await base58check(Uint8Array.from([...NETS[netIsTest(net) ? "test" : "main"].ver[v.type], ...raw.slice(4)]));
+  } catch(e) { return str; }
+}
 const DET_ACCTS = 9, DET_TYPE_NAME = {wpkh:"native SegWit (bc1q...)", tr:"Taproot (bc1p...)", "sh-wpkh":"nested SegWit (3...)", pkh:"legacy (1...)"};
 function detPathStr(steps){ return "m" + steps.map(([i, h]) => "/" + i + (h ? "'" : "")).join(""); }
 // The words and passphrase from the CHECK A BACKUP boxes: a BIP39 phrase, an Electrum seed, or both (rare). passes: with the typed
@@ -8148,7 +8220,7 @@ async function detSource(text, vp){
 // The address the person knows was used. Throws with a plain reason when it cannot be searched for.
 async function detTarget(raw){
   let s = String(raw || "").replace(/\s+/g, "");
-  if(/^(bc1|tb1)/i.test(s)) s = s.toLowerCase();
+  if(/^(bc1|tb1|bcrt1)/i.test(s)) s = s.toLowerCase();
   if(!s) return null;
   const sn = scriptAddrNote(s); if(sn) throw new Error(sn);
   let T = null; try { T = await reforgeTarget(s); } catch(e) { throw new Error(/typo/.test(e.message) ? e.message : "That is not a Bitcoin address. Type one address the wallet received to: bc1q..., bc1p..., 3... or 1... (tb1..., 2..., m... or n... on testnet)."); }
@@ -8254,10 +8326,10 @@ function detReport(f, T){
   lines.push("FOUND: " + T.addr + " is " + (f.chain ? "change" : "receive") + " address #" + f.index + " (" + f.path + ") of these words, " + f.pass + ".");
   if(T.pathNet && T.pathNet !== T.net && NETS[T.pathNet].coin !== NETS[T.net].coin) lines.push("The paths used coin type " + NETS[T.pathNet].coin + " (" + netName(T.pathNet) + ", set in the Network menu), not the usual " + NETS[T.net].coin + " for this " + netName(T.net).toLowerCase() + " address: set the same path in the wallet app.");   // v2.16.1
   lines.push("");
-  lines.push("Settings: " + (f.P.seed === "bip39" ? "BIP39 seed words" : f.P.seed === "electrum-old" ? "an old Electrum seed (made before Electrum 2.0, not BIP39)" : "an Electrum seed (not BIP39)") + (withPass ? " with the passphrase" : "") + ", address type " + DET_TYPE_NAME[f.type] + (f.P.seed === "electrum-old" ? " with uncompressed keys" : "") + ", " + (f.P.seed === "bip39" ? "derivation path " + f.account : f.P.seed === "electrum-old" ? "the old Electrum derivation (from the master public key, not BIP32)" : "Electrum's own derivation") + ".");
+  lines.push("Settings: " + (f.P.seed === "bip39" ? "BIP39 seed words" : f.P.seed === "electrum-old" ? "an old Electrum seed (made before Electrum 2.0, not BIP39)" : "an Electrum seed (not BIP39)") + (withPass ? " with the passphrase" : "") + ", address type " + netEx(DET_TYPE_NAME[f.type], T.net) + (f.P.seed === "electrum-old" ? " with uncompressed keys" : "") + ", " + (f.P.seed === "bip39" ? "derivation path " + f.account : f.P.seed === "electrum-old" ? "the old Electrum derivation (from the master public key, not BIP32)" : "Electrum's own derivation") + ".");
   const apps = detApps(f.P, f.type);
   if(f.usual && apps) lines.push("Apps that use these settings: " + apps);
-  if(!f.usual) lines.push("This is an unusual mix: a " + DET_TYPE_NAME[f.type] + " address on the " + f.P.name + " path. Few apps do this, so most apps will not find it unless you set the path yourself.");
+  if(!f.usual) lines.push("This is an unusual mix: a " + netEx(DET_TYPE_NAME[f.type], T.net) + " address on the " + f.P.name + " path. Few apps do this, so most apps will not find it unless you set the path yourself.");
   if(f.asTyped) lines.push("It matched with the passphrase used exactly as typed, as some apps that import Electrum seeds use it. Electrum itself ignores capital letters and accents in the passphrase, so it would open a different wallet: open this one in the app that made it.");
   if(f.acct > 0) lines.push("It is in account " + f.acct + ", not account 0. Many apps show only account 0 unless you add the account.");
   if(f.index >= 20) lines.push("It is address #" + f.index + ". Many apps stop looking after 20 unused addresses in a row, so raise the app's gap limit (in Sparrow: the Settings tab, Advanced..., Gap limit) to see it.");
@@ -8445,8 +8517,19 @@ function printLabels(){
     add("ps-warn", "Anyone who reads this sheet can link these addresses and transactions to you. Keep it with the backup plan, not in public.");
   });
 }
+// v2.16.1 review: the Network menu sets the paths' coin type (Mainnet 0, Testnet and Regtest 1), so a test-network address can be
+// searched on Mainnet paths (a few apps do that) and the reverse. When the address and the menu disagree, say so before the search
+// and offer the address's own network. Returns true when they disagree.
+function detNetNote(T){
+  const e = document.getElementById("detNetNote"); e.textContent = ""; e.style.display = "none";
+  if(!T || netIsTest(T.net) === netIsTest(T.pathNet)) return false;
+  const b = document.createElement("button"); b.type = "button"; b.className = "secondary small"; b.textContent = "SEARCH ON " + netName(T.net).toUpperCase();
+  b.addEventListener("click", () => { document.getElementById("detNet").value = ""; detFind(); });
+  e.append("This is a " + netName(T.net) + " address, but the Network menu says " + netName(T.pathNet) + ", so the search uses " + netName(T.pathNet) + " paths (coin type " + NETS[T.pathNet].coin + "), as only a few apps do. If a " + netName(T.net) + " wallet made it, search on " + netName(T.net) + ". ", b);
+  e.style.display = ""; return true;
+}
 function detClear(keepAddr){
-  detSeq++; if(detBusy) detStopFlag = true;
+  detSeq++; if(detBusy) detStopFlag = true; detNetNote(null);
   detSay("", ""); detShow(""); knownShow("detPub", "");   // v2.10.0
   if(!keepAddr) document.getElementById("detAddr").value = "";
 }
@@ -8468,6 +8551,7 @@ async function detFind(){
   if(!T) return detSay("bad", "Type one address this wallet received to, or press LIST FIRST ADDRESSES to see the first address of each common setting.");
   if(practiceOn && !netIsTest(T.net)) return detSay("bad", "Practice mode is on, so the Detective searches only test-network addresses (tb1..., bcrt1..., 2..., m... or n...). Turn practice mode off to search a real address.");
   T.pathNet = document.getElementById("detNet").value || T.net;   // v2.16.1: as guessed from the address, or set by hand
+  const mis = detNetNote(T);   // v2.16.1 review: a test-network address with the menu on Mainnet (or the reverse) is said before the search
   detStopFlag = false; detBusyUi(true);
   try {
     const r = await detSearch(src, T, {progress:(d, t, l) => { const pc = Math.floor(100 * d / t), msg = "Searching " + l + ": " + pc + "% done..."; if(my === detSeq && document.getElementById("detStatus").textContent !== msg) detSay("", msg); }, stop:() => detStopFlag || my !== detSeq});
@@ -8475,7 +8559,7 @@ async function detFind(){
     if(r.stopped) return detSay("", "Stopped. Nothing was found before you stopped it.");
     if(r.found){ detPub(src); detSay("ok", "FOUND: the app and settings are below."); detShow(detReport(r.found, T)); return; }
     const what = (src.mnemonic ? ["BIP39 paths: accounts 0 to " + DET_ACCTS + " and the first 100 addresses of account 0 where apps use this address type, the first 20 elsewhere"] : []).concat(src.electrum === "old" ? ["the old Electrum wallet: the first 100 receive and change addresses"] : src.electrum ? ["Electrum's own path: the first 100 addresses"] : []);
-    detPub(src); detSay("bad", "NOT FOUND in the settings of the well-known wallet apps (" + what.join("; ") + "; " + src.passes.map(p => p[0]).join(" and ") + "). Things to check: the address (one wrong character changes everything; is it from this wallet, not an exchange or another wallet?), the words and their order, the passphrase (case, spaces and spelling count), and whether this wallet was a multisig wallet (then no one seed opens it) or came from an app this page does not know. A 3... address can also be a multisig address. Some wallets cannot be opened from their words with standard settings at all: Muun, Bitkey, Blockstream Green's two-factor (multisig) accounts, and Lightning wallets such as Phoenix, Zeus and Breez (only an on-chain part follows these settings). Use that app's own recovery.");
+    detPub(src); detSay("bad", (mis ? "The address is a " + netName(T.net) + " address, but the Network menu says " + netName(T.pathNet) + ": see the note above. " : "") + "NOT FOUND in the settings of the well-known wallet apps (" + what.join("; ") + "; " + src.passes.map(p => p[0]).join(" and ") + "). Things to check: the address (one wrong character changes everything; is it from this wallet, not an exchange or another wallet?), the words and their order, the passphrase (case, spaces and spelling count), and whether this wallet was a multisig wallet (then no one seed opens it) or came from an app this page does not know. A 3... address can also be a multisig address. Some wallets cannot be opened from their words with standard settings at all: Muun, Bitkey, Blockstream Green's two-factor (multisig) accounts, and Lightning wallets such as Phoenix, Zeus and Breez (only an on-chain part follows these settings). Use that app's own recovery.");
   } catch(e) { if(my === detSeq) detSay("bad", "Could not search: " + e.message); }
   finally { detStopFlag = false; detBusyUi(false); }
 }
@@ -8497,7 +8581,7 @@ async function detList(){
       if(!roots[P.seed]) continue;
       const steps = P.steps(coin, 0), a = roots[P.seed][0].old ? {path: "m/0/0", address: await oldElAddr(roots[P.seed][0].old, 0, 0, net)} : (await walletAddressesFrom(roots[P.seed][0].root, steps, type, net, 0, 0, 1))[0];
       if(my !== detSeq) return;
-      lines.push(P.name + ", " + DET_TYPE_NAME[type] + ", " + a.path + (roots[P.seed][0].old ? " (uncompressed keys; old Electrum seeds have no passphrase)" : "") + "\n  " + a.address + "\n  Used by: " + detApps(P, type));
+      lines.push(P.name + ", " + netEx(DET_TYPE_NAME[type], net) + ", " + a.path + (roots[P.seed][0].old ? " (uncompressed keys; old Electrum seeds have no passphrase)" : "") + "\n  " + a.address + "\n  Used by: " + detApps(P, type));
     }
     detSay("ok", "The first receive address of each common setting, " + pass[0] + (document.getElementById("detNet").value && !practiceOn ? ", on " + netName(net) + " (set in the Network menu)" : net === "test" ? ", on the test network (practice mode)" : "") + ". Look them up on another device, for example in a block explorer. The one that shows a history is your wallet's setting; then type it above and press FIND MY WALLET for the steps to open it.");
     detPub(src); detShow(lines.join("\n\n") + "\n\nLooking an address up on a website tells that website you are interested in it. A watch-only wallet in Sparrow connected to your own node is more private.");
@@ -8854,7 +8938,7 @@ async function deriveChildApp(mnemonic, vp, app, index, say, my){
     else if(app === "dice"){ head = "DICE ROLLS (BIP85, a " + n + "-sided die numbered 0 to " + (n - 1) + ", " + rolls + " rolls, index " + index + ")"; extra = "\n\nThe values start at 0, as BIP85 says (not 1)."; }
     else head = "PASSWORD (BIP85 " + (app === "pwd64" ? "Base64" : "Base85") + ", " + n + " characters, index " + index + ")";
     o.textContent = head + "\n\n" + out + extra; o.style.display = "";
-    childShow({app, head, text: out, extra: extra.trim(), index, pass: !!vp, parent});
+    childShow({app, head, text: out, extra: extra.trim(), index, pass: !!vp, parent, pr: vp ? "" : pubPr(mnemonic, "this child comes from a public parent seed: ")});
     say("ok", A.name + ", index " + index + ", derived from the parent words" + (vp ? " and passphrase" : "") + ". Write down the parent, the type, the settings shown and the index; that recreates it. Anyone who has the parent can recreate it.");
   } catch(e) { clearChild(); say("bad", "Could not derive: " + e.message); }
 }
@@ -8931,7 +9015,7 @@ async function seedXorUi(mode){
       const parts = await seedXorSplit(r.mnemonic, k, same ? null : document.getElementById("xorRolls").value.replace(/\s+/g, "")); if(mine !== xorSeq) return;
       const fps = []; for(const p of parts) fps.push(await fingerprintFromSeed(await mnemonicToSeed(p, "")));
       if(mine !== xorSeq) return;
-      xorCtx = {parts, result: r.mnemonic, fp: await fingerprintFromSeed(await mnemonicToSeed(r.mnemonic, ""))};
+      xorCtx = {parts, result: r.mnemonic, fp: await fingerprintFromSeed(await mnemonicToSeed(r.mnemonic, "")), pr: pubPr(r.mnemonic, "these parts make a public seed: ")};   // v2.16.1 review
       out.textContent = parts.map((p, i) => "PART " + String.fromCharCode(65 + i) + " of " + k + " (on its own it opens an empty wallet, fingerprint " + fps[i] + ")\n" + xorShowWords(p)).join("\n\n") + "\n\nCHECK BY HAND\n" + xorWorksheet(parts, r.mnemonic);
       out.style.display = ""; document.getElementById("xorPrintRow").style.display = "";
       say("ok", k + " parts made" + (same ? " (the same parts a Coldcard makes for this seed)" : " (from your dice rolls)") + ". Write each part on its own paper and keep the parts in different places. You need ALL " + k + " to get the seed back: lose one and the money is lost. Check: combining them gives fingerprint " + xorCtx.fp + ".");
@@ -8955,7 +9039,8 @@ function printXorParts(){
     c.parts.forEach((p, i) => {
       const box = add("ps-part", "");
       const a = (cls, t) => { const d = document.createElement("div"); d.className = cls; d.textContent = t; box.appendChild(d); return d; };
-      a("ps-title", "VOIDFORGE SEED XOR PART " + String.fromCharCode(65 + i) + " OF " + c.parts.length);
+      a("ps-title", "VOIDFORGE SEED XOR PART " + String.fromCharCode(65 + i) + " OF " + c.parts.length + (c.pr ? ": PRACTICE" : ""));
+      if(c.pr) a("ps-warn", c.pr);
       a("ps-sub", "One part of a seed split with Seed XOR (Coldcard-compatible). ALL " + c.parts.length + " parts are needed to get the seed back; this part alone opens an empty wallet. Keep it apart from the other parts.");
       const g = a("ps-grid ps-" + p.split(" ").length, "");
       p.split(" ").forEach((w, j) => { const x = document.createElement("div"); x.className = "ps-cell"; const nn = document.createElement("div"); nn.className = "ps-n"; nn.textContent = String(j + 1).padStart(2, "0"); const ww = document.createElement("div"); ww.className = "ps-w"; ww.textContent = w; x.appendChild(nn); x.appendChild(ww); g.appendChild(x); });
@@ -8999,7 +9084,7 @@ async function deriveChild(){
     const o = document.getElementById("childOut");
     o.textContent = "CHILD SEED (BIP85, English, " + words + " words, index " + index + ")\n\n" + rows.join("\n") + "\n\nChild master fingerprint: " + fp + "\nChild first receive address (BIP84" + (practiceOn ? ", test network" : "") + "): " + a0;
     o.style.display = "";
-    childShow({app: "words", words: ws, fp, a0, index, pass: !!vp, parent});
+    childShow({app: "words", words: ws, fp, a0, index, pass: !!vp, parent, pr: vp ? "" : pubPr(r.mnemonic, "this child comes from a public parent seed: ")});
     say("ok", "Child seed " + index + " derived from the parent words" + (vp ? " and passphrase" : "") + ". It is a normal seed with no passphrase. Write down the parent, the word count and the index; that recreates it. Anyone who has the parent can recreate every child.");
   } catch(e) { clearChild(); say("bad", "Could not derive the child seed: " + e.message); }
 }
@@ -9069,7 +9154,7 @@ function setResult(text, words){
     grid.classList.remove("slots"); grid.style.display = "grid"; updateAbbrNote();
     document.getElementById("passNote").textContent = text.split("\n").slice(-1)[0];
     if(guideOn) guideRender();
-    document.getElementById("nextStep").textContent = "Write these " + words.length + " words down in order, then try the Restore drill below to test your paper. PRINT SEED prints them.";
+    document.getElementById("nextStep").textContent = "Write these " + words.length + " words down in order, then try the Restore drill below to test your paper. MENU > PRINT SEED prints them.";
   } else {
     delete g.dataset.seed; g.classList.remove("sr"); grid.style.display = ""; grid.classList.remove("slots"); renderSlots(); updateAbbrNote(); previewRefresh();
     document.getElementById("passNote").textContent = ""; document.getElementById("nextStep").textContent = "";
@@ -9495,7 +9580,7 @@ function printSrc(from){
   if(from === "check"){
     if(!wvCtx || wvCtx.kind === "pub" || !wvCtx.mnemonic){ alert("Check a seed phrase first (VERIFY), then open the wallet."); return null; }
     return {words: wvCtx.mnemonic.split(" "), fp: document.getElementById("wvFp").textContent, addr: "", check: true,
-      pass: "Passphrase used: " + (wvCtx.pass ? "YES (keep it separate; it is not printed here)" : "NO")};
+      pass: "Passphrase used: " + (wvCtx.pass ? "YES (keep it separate; it is not printed here)" : "NO"), practice: pubPr(wvCtx.mnemonic)};   // v2.16.1 review
   }
   if(!hasSeed()){ alert("Generate a seed first"); return null; }
   if(passMismatch()) return null;
@@ -10729,7 +10814,8 @@ function qrSnapshot(id, text){
   const foot = id === "spAddr" ? "PUBLIC: a Silent Payment address is made to be shared and reused. It cannot spend, and it does not show your balance.\nCheck it against your Silent Payment wallet before you give it out."
     : cos ? "PUBLIC: one cosigner key of a multisig wallet. It cannot spend, and on its own it shows no addresses.\nAdd it to the multisig setup in your wallet app and check its fingerprint there."
     : "PUBLIC: no seed words and no private keys, so it cannot spend. Anyone who scans it can see this wallet's addresses and balance: keep it private.\nScan it into a watch-only wallet app and check that the first address matches.";
-  return {id, text, foot, title: "VOIDFORGE " + (cos ? (id === "wZpub" ? "COSIGNER PUBLIC KEY" : "COSIGNER KEY WITH ORIGIN") : QR_PRINT_NAMES[id] || "PUBLIC KEY") + netTitle(net),
+  const pr = seedPr();   // v2.16.1 review: a key or descriptor of a practice seed says so
+  return {id, text, foot, pr, title: "VOIDFORGE " + (cos ? (id === "wZpub" ? "COSIGNER PUBLIC KEY" : "COSIGNER KEY WITH ORIGIN") : QR_PRINT_NAMES[id] || "PUBLIC KEY") + netTitle(net) + (pr ? ": PRACTICE" : ""),
     info: [document.getElementById("fingerprint").textContent, id === "spAddr" ? "Address type: Silent Payment (BIP352)" : "Address type: " + sel.options[sel.selectedIndex].text,
       "Network: " + (netNote(net) || "Mainnet"), "Account number: " + document.getElementById("wAcct").value.trim()]};
 }
@@ -10740,7 +10826,7 @@ function printShownQr(){
   const t = qrShown.text;
   let q; try { q = qrMatrix(t); } catch(e) { return alert("QR code unavailable: " + e.message); }
   printSqSheet(qrShown.title, qrSvg(q.rows), qrPrintSize(q),
-    qrShown.info.join("\n") + "\n\n" + t + "\n\n" + qrShown.foot + "\n", "");
+    (qrShown.pr ? qrShown.pr + "\n\n" : "") + qrShown.info.join("\n") + "\n\n" + t + "\n\n" + qrShown.foot + "\n", "");
 }
 // Print an address QR code, or the payment request (BIP21) made from it (v2.4.0).
 function printAddrQr(pfx){
@@ -10749,7 +10835,7 @@ function printAddrQr(pfx){
   let q; try { q = qrMatrix(t); } catch(e) { return alert("QR code unavailable: " + e.message); }
   const req = t !== addr, fpT = document.getElementById(pfx === "wvq" ? "wvFp" : "fingerprint").textContent, fp = /^Master fingerprint[^:]*: [0-9a-f]{8}/.test(fpT) ? fpT : "";
   let meta = {}; try { meta = JSON.parse(box.dataset.meta || "{}"); } catch(e) {}
-  const pr = pfx === "wvq" ? "" : seedPr();   // v2.16.1: an address of a practice seed says so
+  const pr = pfx === "wvq" ? (wvCtx && wvCtx.mnemonic ? pubPr(wvCtx.mnemonic) : "") : seedPr();   // v2.16.1: an address of a practice seed says so
   printSqSheet("VOIDFORGE " + (req ? "PAYMENT REQUEST" : meta.change ? "CHANGE ADDRESS" : "RECEIVE ADDRESS") + netTitle(meta.net) + (pr ? ": PRACTICE" : ""), qrSvg(q.rows), qrPrintSize(q),
     (pr ? pr + "\n\n" : "") + (fp ? fp + "\n" : "") + (meta.path ? "Path: " + meta.path + "\n" : "") + (netIsTest(meta.net) ? "Network: " + netNote(meta.net) + "\n" : "") + "Address: " + addr + (req ? "\nPayment link: " + t : "") + "\n\nPUBLIC: an address can only receive. Scanning this QR code cannot spend anything.\nBefore anyone pays, check the address against your wallet app or hardware wallet.\n", "");
 }
@@ -10764,7 +10850,8 @@ function printChild(){
   const c = childCtx; if(!c) return alert("Press DERIVE first.");
   const what = {words: "seed", pwd64: "password", pwd85: "password", hex: "hex", dice: "dice rolls", wif: "key", xprv: "key"}[c.app] || "key";
   if(!confirm("Printing sends " + (what === "dice rolls" ? "these" : "this") + " child " + what + " to a printer and its spooler. Only print on a trusted offline computer with a directly connected printer. Continue?")) return;
-  printSheet(add => {
+  printSheet(add0 => {
+    const add = prAdd(add0, c.pr);   // v2.16.1 review: a child of a public parent (no passphrase) is public too
     const from = "Made with BIP85 from the parent wallet " + c.parent + (c.pass ? " (parent words with a passphrase)" : "") + ", index " + c.index + ". The parent words" + (c.pass ? ", the passphrase" : "") + ", the type and the index make it again.";
     if(c.app === "words"){
       add("ps-title", "VOIDFORGE CHILD SEED (BIP85)");
@@ -10926,6 +11013,7 @@ function wipeSeed(){
   document.getElementById("diceVisual").textContent="";
   safeCopy("").catch(()=>{});
   updateCount();
+  if(typeof vfSignerDropSeed === "function") vfSignerDropSeed();   // v2.16.1: no copy of the seed is left in the practice signer
   rhSettle();   // v2.15.0: nothing secret left, so the re-hide notice goes and the boxes open again
 }
 
@@ -11513,7 +11601,8 @@ function printPlate(){
   const S = printSrc("check"); if(!S) return;
   const f = document.getElementById("pnFmt").value, nums = S.words.map(pnNum);
   if(!confirm("Printing sends your seed (as a punch plate layout) to a printer and its spooler. Only print on a trusted offline computer with a directly connected printer. The passphrase is never printed. Continue?")) return;
-  printSheet(add => {
+  printSheet(add0 => {
+    const add = prAdd(add0, S.practice);   // v2.16.1 review: a public seed's plate says PRACTICE
     add("ps-title", "VOIDFORGE " + PN_TITLES[f]);
     add("ps-sub", S.words.length + " words, in order. Each word is its number in the BIP39 word list, counted from 1 (abandon) to 2048 (zoo). " + pnNote(f, S.words.length));
     add("", "").appendChild(pnTable(f, nums));
@@ -11621,7 +11710,9 @@ async function printInherit(kind){
   const who = st.owner || IH_BLANK, P = PLAN_PASS[st.pass], hasPass = st.pass !== "none", today = todayISO(), next = plusYearISO(today);
   let K = null;
   if(kind === "keys"){ K = await ihKeyDetails(st); if(!K) return; }
-  printSheet(add => {
+  const pr = planPr(st);
+  printSheet(add0 => {
+    const add = prAdd(add0, pr);
     if(kind === "letter"){
       add("ps-title", "VOIDFORGE LETTER FOR THE EXECUTOR");
       add("ps-sub", "No seed words and no passphrase are on this sheet. Keep it with the will.");
@@ -11788,16 +11879,23 @@ function msHasKey(fp, key){
   const pk = hex(key.pub);
   return ms.keys.findIndex(k => k.fp === fp || hex(k.key.pub) === pk);
 }
+// v2.16.1 review: a PRACTICE (public) seed may be a key, after a warning: anyone can make it again, so it is one key fewer that
+// protects the wallet. Its slot and the wallet's sheet say PRACTICE. Returns "" (not public), the kind (go on) or null (cancelled).
+function msPracticeOk(m, n){
+  const k = pubKind(m); if(!k) return "";
+  return confirm("PRACTICE: this seed is " + pracName(k) + ". Anyone can make it again, so as key " + n + " it protects nothing: the wallet is weaker than it looks. Use it only to practice, never for real money.\n\nUse it as key " + n + " anyway?") ? k : null;
+}
 async function msAddMade(){
   if(!ms || ms.busy || ms.mode !== "make" || ms.keys.length >= ms.n) return;
   const eb = msEl("msBanErr"); eb.textContent = "";
   if(!hasSeed() || !watchCtx){ eb.textContent = "Make the seed first (enter your rolls and press FORGE SEED)."; return; }
+  const pk = msPracticeOk(watchCtx.mnemonic, ms.keys.length + 1); if(pk === null) return;
   ms.busy = true; msEl("msAddBtn").disabled = true;
   try {
     const w = await watchOnlyFromSeed(await mnemonicToSeed(watchCtx.mnemonic, watchCtx.pass), ms.type, ms.account, ms.net);
     const key = await parseExtendedKey(w.key), dup = msHasKey(w.fp, key);
     if(dup >= 0){ eb.textContent = "This is the same key as key " + (dup + 1) + " (fingerprint " + w.fp + "). Using one key twice would make the wallet weaker than it looks. Make a new seed with new rolls instead."; return; }
-    ms.keys.push({fp: w.fp, path: msPathOf(), key, xpub: w.xpub, src: "made"});
+    ms.keys.push({fp: w.fp, path: msPathOf(), key, xpub: w.xpub, src: "made", pr: !!pk});
     ms.mode = "make";
     wipeSeed();
   } catch(e) { eb.textContent = "Could not add this key: " + e.message; }
@@ -11813,12 +11911,14 @@ async function msAddChecked(){
   const r = await checkPhrase(raw);
   if(!r.ok){ eb.textContent = raw.trim() ? "The words in CHECK A BACKUP are not a valid BIP39 seed (" + r.msg.replace(/\.$/, "") + "). Check them there with VERIFY first." : "No seed is open in CHECK A BACKUP. Type its words there (and its passphrase, if it has one), press VERIFY to check them, then press this button again."; return; }
   if(!ms || ms.busy || ms.keys.length >= ms.n) return;
+  const pk = msPracticeOk(r.mnemonic, ms.keys.length + 1); if(pk === null) return;
+  if(!ms || ms.busy || ms.keys.length >= ms.n) return;
   ms.busy = true; msEl("msAddBtn").disabled = true; msEl("msAddCheckBtn").disabled = true;
   try {
     const w = await watchOnlyFromSeed(await mnemonicToSeed(r.mnemonic, document.getElementById("verifyPass").value), ms.type, ms.account, ms.net);
     const key = await parseExtendedKey(w.key), dup = msHasKey(w.fp, key);
     if(dup >= 0){ eb.textContent = "This is the same key as key " + (dup + 1) + " (fingerprint " + w.fp + "). Using one key twice would make the wallet weaker than it looks. Every key needs its own seed."; return; }
-    ms.keys.push({fp: w.fp, path: msPathOf(), key, xpub: w.xpub, src: "checked"});
+    ms.keys.push({fp: w.fp, path: msPathOf(), key, xpub: w.xpub, src: "checked", pr: !!pk});
     ms.mode = "make";
     msWipeChecked();
   } catch(e) { eb.textContent = "Could not add this key: " + e.message; }
@@ -11876,7 +11976,7 @@ async function msRender(){
     const chip = document.createElement("span"); chip.className = "ms-chip"; chip.textContent = k ? "SAVED" : cur ? "UP NEXT" : "WAITING"; tx.appendChild(chip);
     const st = document.createElement("div");
     if(k){
-      st.textContent = k.src === "made" ? "Made here. Fingerprint " + k.fp + ". The seed was wiped; only the public key is kept." : k.src === "checked" ? "From the seed in CHECK A BACKUP. Fingerprint " + k.fp + ". Its words were wiped from CHECK A BACKUP; only the public key is kept." : "Pasted from elsewhere. Fingerprint " + k.fp + ".";
+      st.textContent = (k.pr ? "PRACTICE (public seed): anyone can make this key again. " : "") + (k.src === "made" ? "Made here. Fingerprint " + k.fp + ". The seed was wiped; only the public key is kept." : k.src === "checked" ? "From the seed in CHECK A BACKUP. Fingerprint " + k.fp + ". Its words were wiped from CHECK A BACKUP; only the public key is kept." : "Pasted from elsewhere. Fingerprint " + k.fp + ".");
       const mono = document.createElement("div"); mono.className = "ms-mono"; mono.textContent = msCosigner(k); tx.appendChild(st); tx.appendChild(mono);
       const cb = document.createElement("button"); cb.type = "button"; cb.className = "secondary small"; cb.textContent = "COPY";
       cb.onclick = () => safeCopy(msCosigner(k)).then(() => showCopied(cb)).catch(() => alert("Copy failed. Select the text and copy it manually."));
@@ -11942,9 +12042,11 @@ function msShowQr(){
   scrollQrIntoView("msQrBox");
 }
 function msHideQr(){ msEl("msQrImg").textContent = ""; msEl("msQrCaption").textContent = ""; msEl("msQrBox").style.display = "none"; }
+// v2.16.1 review: the PRACTICE line of a wallet with a key from a public seed, or "".
+function msPr(){ const n = ms ? ms.keys.map((k, i) => k.pr ? i + 1 : 0).filter(Boolean) : []; return n.length ? "PRACTICE: key " + n.join(" and key ") + " come" + (n.length > 1 ? "" : "s") + " from a public seed that anyone can make again, so this wallet is weaker than it looks. Never put money on it." : ""; }
 function msSheetText(withAddrs = true){
-  const lines = [ms.m + "-of-" + ms.n + " multisig, " + msTypeName(ms.type) + ", account " + ms.account + (netIsTest(ms.net) ? ", " + netNote(ms.net) : ", mainnet"), "", "KEYS (any " + ms.m + " of these " + ms.n + " seeds can spend):"];
-  ms.keys.forEach((k, i) => lines.push((i + 1) + ". fingerprint " + k.fp + "   path m/" + k.path.replace(/h/g, "'")));
+  const pr = msPr(), lines = [...(pr ? [pr, ""] : []), ms.m + "-of-" + ms.n + " multisig, " + msTypeName(ms.type) + ", account " + ms.account + (netIsTest(ms.net) ? ", " + netNote(ms.net) : ", mainnet"), "", "KEYS (any " + ms.m + " of these " + ms.n + " seeds can spend):"];
+  ms.keys.forEach((k, i) => lines.push((i + 1) + ". fingerprint " + k.fp + "   path m/" + k.path.replace(/h/g, "'") + (k.pr ? "   PRACTICE (public seed)" : "")));
   lines.push("", "DESCRIPTOR (public keys only):", ms.descR, "", ...(withAddrs ? ["FIRST 10 RECEIVE ADDRESSES:", ...ms.addrs, "", "FIRST 10 CHANGE ADDRESSES:", ...ms.change, ""] : []),
     "This sheet holds NO seed words. It cannot spend. Keep it with your seed backups: without the descriptor (or all public keys), the seeds alone are not enough to find a multisig wallet's funds.",
     "Each seed backup should be kept in a different place.");
@@ -11952,7 +12054,7 @@ function msSheetText(withAddrs = true){
 }
 function msPrint(){
   if(!ms || !ms.done) return;
-  const title = "VOIDFORGE MULTISIG RECOVERY SHEET" + netTitle(ms.net);
+  const title = "VOIDFORGE MULTISIG RECOVERY SHEET" + netTitle(ms.net) + (msPr() ? ": PRACTICE" : "");
   const addrs = "FIRST 10 RECEIVE AND FIRST 10 CHANGE ADDRESSES (your app must show exactly these):\n" + addrSheetLines(ms.addrs, ms.change, 70);
   let q; try { q = qrMatrix(ms.descR); } catch(e) { return printSqSheet(title, "", "pq-ms", "The descriptor is too long for one QR code: copy it from the text below.\n\n" + msSheetText(false), "", addrs); }
   const nq = ms.n + (ms.type === "ms-tr" ? 1 : 0);   // v2.11.0: a Taproot descriptor holds one more xpub (the unspendable internal key)
@@ -12083,7 +12185,9 @@ function printRecoverySheet(){
   if(hasSeed() && wvCtx.mnemonic === madeMnemonic && wvCtx.pass === document.getElementById("passphrase").value && !passMismatchQuiet()) bkTick("bk4");
   const po = document.getElementById("printOnly"); po.textContent = "";
   const add = (cls, text) => { const d = document.createElement("div"); if(cls) d.className = cls; d.textContent = text; po.appendChild(d); return d; };
-  add("ps-title", "VOIDFORGE RECOVERY SHEET");
+  const pr = pubPr(wvCtx.mnemonic);   // v2.16.1 review: the recovery sheet of a public seed says PRACTICE
+  add("ps-title", "VOIDFORGE RECOVERY SHEET" + (pr ? ": PRACTICE" : ""));
+  if(pr) add("ps-warn", pr);
   add("ps-sub", "No seed words and no passphrase are on this sheet. It says which wallet your " + n + " words open, so the right one can be rebuilt. Keep it with the paper backup, not in the same place as the passphrase.");
   add("ps-info", document.getElementById("wvFp").textContent + "\nPassphrase used: " + (wvCtx.pass ? "YES (kept separately; it is not written here)" : "NO") + "\nWallet made on: " + (document.getElementById("wvBorn").value || "____________") + "\nSeed phrase length: " + n + " words\nNetwork: " + (netNote(sh.net) || "Mainnet") + "\nAddress type: " + T.label + (sh.custom ? "\nDerivation path: " + sh.custom + "/0/index (receive) and " + sh.custom + "/1/index (change), a custom path" : "\nDerivation path: m/" + T.purpose + "'/" + NETS[sh.net].coin + "'/" + sh.acct + "'/0/index (receive) and .../1/index (change)\nAccount number: " + sh.acct));
   add("ps-rule", "");
@@ -13348,7 +13452,10 @@ function pracName(kind){
 }
 function pracBan(kind, signer){ return "PRACTICE: This seed " + (signer ? "came from the practice signer. It is " : "is ") + pracName(kind) + ". Anyone can make it again: never put money on it."; }
 function pracMark(kind, x){ return Object.assign(x || {}, {ban: kind ? pracBan(kind, !!(x && x.signer)) : "", name: kind ? pracName(kind) : ""}); }
-function seedPr(){ return hasSeed() && ssfCtx && ssfCtx.ban ? ssfCtx.ban : ""; }   // the PRACTICE line of the seed under YOUR SEED, or ""
+function seedPr(){ return hasSeed() && ssfCtx && ssfCtx.ban ? ssfCtx.ban : ""; }
+// v2.16.1 review: the PRACTICE line of any other seed, by its words (the seed in CHECK A BACKUP, the seed Seed XOR splits, the parent
+// of a BIP85 child), or "". `what` starts the sentence ("This seed is " by default).
+function pubPr(m, what){ const k = m ? pubKind(m) : ""; return k ? "PRACTICE: " + (what || "This seed is ") + pracName(k) + ". Anyone can make it again: never put money on it." : ""; }   // the PRACTICE line of the seed under YOUR SEED, or ""
 function ssfRender(){
   const b = document.getElementById("ssfBan"), c = document.getElementById("ssfCheck"); if(!b || !c) return;
   const x = ssfCtx, sig = !!(x && x.signer);
@@ -13380,14 +13487,17 @@ async function forgeFromSigner(mnemonic, pass, deviceFp){
 // v2.16.1 LOAD INTO THE PRACTICE SIGNER under YOUR SEED, for any seed shown there: window.vfSignerLoadSeed (tools/simulator/
 // ss_learn.js) opens the practice signer, holds the seed's Standard SeedQR up to its camera and goes Home > Scan on the device
 // itself, as a person would, so the device loads it and shows its fingerprint. A passphrase is not carried over: the device stops
-// on its Finalize screen so it can be added there (Passphrase), as on a real SeedSigner.
+// on its Finalize screen so it can be added there (BIP-39 Passphrase), as on a real SeedSigner. A SeedQR is read only while
+// offline, so while the computer is online it is not held up at all (signerLoadNote says why).
+const SIGNER_ONLINE = "Not loaded: this computer looks online, and a SeedQR is read only while offline. Take this computer offline, then press LOAD INTO THE PRACTICE SIGNER again.";
+function signerLoadNote(ok, what){ return ok ? "The practice signer is open in CHECK A BACKUP and loads " + what + " by itself from its SeedQR." : navigator.onLine === true ? SIGNER_ONLINE : "Not loaded: the practice signer could not start."; }
 function seedToSigner(){
   const note = document.getElementById("seedSignerNote");
   if(!hasSeed()) return alert("Generate a seed first");
   if(typeof window.vfSignerLoadSeed !== "function"){ note.textContent = "Open CHECK A BACKUP, then the practice signer, and choose Seeds > Load a seed > Enter " + madeMnemonic.split(" ").length + "-word seed. Type the words with its keys."; return; }
   const words = madeMnemonic.split(" ");
   if(![12, 24].includes(words.length)){ note.textContent = "SeedSigner takes 12- and 24-word seeds only; this one has " + words.length + " words."; return; }
-  note.textContent = window.vfSignerLoadSeed(madeMnemonic, {pass: !!document.getElementById("passphrase").value}) ? "The practice signer is open in CHECK A BACKUP and loads this seed by itself from its SeedQR." : "Not loaded: the practice signer could not start.";
+  note.textContent = signerLoadNote(window.vfSignerLoadSeed(madeMnemonic, {pass: !!document.getElementById("passphrase").value}), "this seed");
 }
 // The practice signer was switched off (its box closed, CLEAR ALL, auto-clear, END SESSION): a seed it gave is cleared here too.
 function ssfDeviceOff(){
@@ -14917,8 +15027,8 @@ async function ewReport(W){
     : ks.xprv ? (ks.seed ? "standard wallet from an Electrum seed" : ks.key.depth === 3 && /^m\/(44|49|84)/.test((ks.derivation || "").replace(/h/g, "'")) ? "standard wallet from a BIP39 seed or a master key (Electrum keeps only the account key)" : "standard wallet from a master private key")
     : "watch-only wallet (public key only)";
   L.push("Electrum wallet file: " + kindText + "." + net);
-  if(W.netSet) L.push("Network: set by hand to " + netName(W.net) + " (the file says " + netName(W.netFile) + "). The addresses below are worked out for " + netName(W.net) + ", so they are not compared with the ones the file saved.");
-  L.push("Address type: " + (W.kind === "imported" ? "per address (below)" : EW_TYPE_NAME[W.script]) + ". Storage version " + W.version + (W.legacy ? " (from before Electrum 2.7)" : "") + ".");
+  if(W.netSet) L.push("Network: set " + (practiceOn ? "by practice mode" : "by hand") + " to " + netName(W.net) + " (the file says " + netName(W.netFile) + "). The addresses below are worked out for " + netName(W.net) + ", so they are not compared with the ones the file saved.");
+  L.push("Address type: " + (W.kind === "imported" ? "per address (below)" : netEx(EW_TYPE_NAME[W.script], W.net)) + ". Storage version " + W.version + (W.legacy ? " (from before Electrum 2.7)" : "") + ".");
   L.push("Password: " + (W.how.encFile ? "the whole file is encrypted with it (opened with the password typed)" : W.encKeys ? (W.locked ? "the keys are encrypted with it; type it to see them" : "the keys are encrypted with it (opened with the password typed)") : "none (anyone who has the file can spend)") + ".");
   if(W.how.patches) L.push("The file has " + W.how.patches + " change" + (W.how.patches === 1 ? "" : "s") + " saved at its end (Electrum’s partial writes); they are applied, as Electrum does.");
   if(W.how.junk) L.push("The end of the file is damaged: " + W.how.dropped.toLocaleString("en-US") + " bytes after the complete wallet were left out, and the complete part is read. Electrum itself does not open the file like this (Cannot read wallet file).");
@@ -14928,7 +15038,8 @@ async function ewReport(W){
     const tag = W.keystores.length > 1 ? "Key " + k.name.slice(1) + (W.walletType === "2fa" && k.name === "x3" ? " (TrustedCoin’s)" : "") + ": " : "";
     if(k.old){ L.push(tag + "Master public key (old Electrum mpk): " + hex(k.old.mpk)); L.push(tag + "Fingerprint Electrum shows for it: " + k.fp + " (HASH160 of the master public key; an old wallet has no BIP32 fingerprint)."); continue; }
     L.push(tag + "Master fingerprint: " + (k.fp || "not in the file") + (k.rootFp && k.fp && k.rootFp !== k.fp ? " (the seed in the file gives " + k.rootFp + ")" : ""));
-    L.push(tag + "Derivation: " + (k.derivation ? k.derivation.replace(/h/g, "'") : "not in the file") + ". Extended public key (" + k.xpub.slice(0, 4) + "): " + k.xpub);
+    const xk = await keyForNet(k.xpub, W.net);   // v2.16.1 review: written for the network shown
+    L.push(tag + "Derivation: " + (k.derivation ? k.derivation.replace(/h/g, "'") : "not in the file") + ". Extended public key (" + xk.slice(0, 4) + "): " + xk + (xk !== k.xpub ? " (the file has it as " + k.xpub.slice(0, 4) + ": " + k.xpub + ")" : ""));
     if(k.seedOk) L.push(tag + "Checked: the seed in the file makes this key.");
   }
   if(W.kind === "imported"){
@@ -15667,7 +15778,7 @@ function wdatTypeName(D){ const a = D.activeAs; return a ? (WDAT_TYPES[a.type] |
 async function wdatSummary(w){
   const L = [], c = (t) => w.counts[t] || 0, ck = c("ckey"), pk = c("key") + c("wkey");
   L.push("Wallet file: " + (w.fmt === "bdb" ? "Berkeley DB (btree, " + (w.db.big ? "big" : "little") + "-endian, " + wdatN(w.db.ps) + "-byte pages)" : "SQLite (" + wdatN(w.db.ps) + "-byte pages)") + ", a " + (w.descriptor ? "descriptor" : "legacy") + " wallet.");
-  if(w.netSet) L.push("Network: set by hand to " + netName(w.net) + " (" + (w.netFile.guess ? "the file does not store it; VOIDFORGE guessed " + netName(w.netFile.net) : "the file says " + w.netFile.name) + "). The addresses and keys below are written for " + netName(w.net) + ".");   // v2.16.1
+  if(w.netSet) L.push("Network: set " + (practiceOn ? "by practice mode" : "by hand") + " to " + netName(w.net) + " (" + (w.netFile.guess ? "the file does not store it; VOIDFORGE guessed " + netName(w.netFile.net) : "the file says " + w.netFile.name) + "). The addresses and keys below are written for " + netName(w.net) + ".");   // v2.16.1
   else L.push("Network: " + (w.netGuess ? (netIsTest(w.net) ? "a test network (its address book holds test addresses); the addresses are shown for " + (w.net === "regtest" ? "regtest" : "testnet") : "not stored in this file; the addresses are shown for mainnet") : w.netName + " (application ID " + w.db.app + ")") + ".");
   if(w.version !== undefined) L.push("Last opened by: Bitcoin Core " + wdatClient(w.version) + " (version " + w.version + ").");
   if(w.minversion !== undefined){ const f = WDAT_FEATURES.find(([v]) => w.minversion >= v); L.push("Wallet features: " + w.minversion + (f ? " (" + f[1] + ")" : "") + "."); }
@@ -16703,7 +16814,7 @@ function dmTourBoxes(T, i){
   const b = {dmDice: i >= 2 ? T.sh.dice : i >= 1 ? toks.slice(0, firstGood + 1).join(" ") : "", dmCards: i >= 5 ? T.sh.cards : i >= 4 ? deck1.slice(0, 8).join(" ") : ""};
   b.dmHR = i >= 3 ? T.mH.R : ""; b.dmHM = i >= 3 ? T.mH.M : ""; b.dmAR = i >= 6 ? T.mA.R : ""; b.dmAM = i >= 6 ? T.mA.M : "";
   b.dmFR = i >= 8 ? T.mF.R : ""; b.dmFM = i >= 8 ? T.mF.M : ""; b.dmFK = "";
-  b.dmWords = i >= 9 ? T.phrase.split(" ").slice(0, T.wc - 1).join(" ") : "";
+  b.dmWords = i >= 10 ? T.phrase : i >= 9 ? T.phrase.split(" ").slice(0, T.wc - 1).join(" ") : "";   // v2.16.1 review: the last word too, so FORGE SEED finds every word written
   return b;
 }
 function dmTourShow(){
@@ -16818,7 +16929,8 @@ function dmTourText(T, i){
       ["", "Row " + P.rows + " of grid F has only " + P.fin + " bits: " + last.bits + ". These are not new coin flips: they are your Forge sheet\u2019s bits. The last word also holds a checksum that needs a computer."],
       ["", "On the SeedSigner: Tools > Calc 12th/24th word > " + wc + " words > type words 1 to " + (wc - 1) + " > Build Final Word > Coin flip entropy > enter the " + P.fin + " bits as Heads = 1, Tails = 0: " + flips + "."],
       ["", "The device adds the checksum: the first " + T.cs.length + " bits of SHA-256 of all " + P.bits + " bits of grid F: " + T.cs + ". " + last.bits + " and " + T.cs + " make 11 bits, " + dmG3(last.bits + T.cs) + " → number " + (idx + 1) + ": “" + WORDLIST[idx] + "”."],
-      ["", "It must lie between " + last.firstWord + " (" + last.firstNumber + ") and " + last.lastWord + " (" + last.lastNumber + "), the part of the word table that the " + P.fin + " bits point to. VOIDFORGE shows the same last word below, with the fingerprint and the first address: on the SeedSigner, press Next and compare the fingerprint, then the first address (Load seed > Done > Address explorer > Native Segwit > Receive addresses, address 0)."]], ["dmLiveL"]];
+      ["", "It must lie between " + last.firstWord + " (" + last.firstNumber + ") and " + last.lastWord + " (" + last.lastNumber + "), the part of the word table that the " + P.fin + " bits point to. VOIDFORGE shows the same last word below, with the fingerprint and the first address: on the SeedSigner, press Next and compare the fingerprint, then the first address (Load seed > Done > Address explorer > Native Segwit > Receive addresses, address 0)."],
+      ["", "Write “" + WORDLIST[idx] + "” as word " + wc + " next to the last row. On this page it goes into the Words step as word " + wc + "."]], ["dmWords", "dmLiveL"]];
   }
   return ["done", [["", "Practice sheet " + T.n + " is filled in, every value from the sheet: " + T.phrase + "."],
     ["", "These words are public (a practice seed): never put money on them. FORGE SEED shows them under YOUR SEED, marked PRACTICE, with every step a real seed has. CHECK MY SHEETS checks the whole sheet as it would your own. To practice again, press GUIDED PRACTICE for the next sheet; STOP closes the guide and keeps the boxes."]], []];
@@ -16841,7 +16953,7 @@ function dmToSigner(){
   const o = document.getElementById("dmOut"), ph = o.dataset.practicePhrase || "", note = document.getElementById("dmSignerNote");
   if(!dmPractice || !ph) return;
   if(typeof window.vfSignerLoadSeed === "function"){
-    note.textContent = window.vfSignerLoadSeed(ph) ? "The practice signer is open in CHECK A BACKUP and loads the practice seed by itself from its SeedQR." : "Not loaded: the practice signer could not start.";
+    note.textContent = signerLoadNote(window.vfSignerLoadSeed(ph), "the practice seed");
     return;
   }
   note.textContent = "Open CHECK A BACKUP, then the practice signer, and choose Seeds > Load a seed > Enter " + ph.split(" ").length + "-word seed. Type the practice words with its keys.";
@@ -36364,18 +36476,41 @@ async function ssPageStart() {
 
 // v2.16.1: does the device hold a secret now (a reason for re-hide to cover it: RH_HOLD in the main script)? Any seed in its
 // memory, loaded or being made or typed in (the pending seed and words), unless it is a public seed with no passphrase (the
-// lessons' test seeds, a Damascus practice seed: knownPhrase). When it cannot tell, it says yes.
+// lessons' test seeds, a Damascus practice seed: knownPhrase). A seed being loaded (the pending seed: a passphrase may be typed for
+// it) and the passphrase screens always count, as does the SeedQR of a seed that is not public held up to its camera (LOAD INTO
+// THE PRACTICE SIGNER). When it cannot tell, it says yes.
+const SS_PASS_VIEWS = ["SSSeedAddPassphraseView", "SSSeedAddPassphraseExitDialogView", "SSSeedReviewPassphraseView"];
+function ssSeedQrPhrase(t) {   // the words of a Standard SeedQR (4 digits per word), or ""
+  if (!/^(\d{48}|\d{96})$/.test(String(t || ""))) return "";
+  const w = String(t).match(/\d{4}/g).map((d) => WORDLIST[+d]);
+  return w.every(Boolean) ? w.join(" ") : "";
+}
 function vfSignerHoldsSecret() {
   if (!ssPageOn) return false;
   try {
+    const known = (m) => typeof knownPhrase === "function" && !!knownPhrase(m);
+    const pub = (s) => !s.passphrase && known(s.mnemonic_str);
+    if (ssLearnCam.key === "seedload" && ssLearnCam.frames) for (const f of ssLearnCam.frames) if (f && !known(ssSeedQrPhrase(f))) return true;
     const st = SSController._instance && SSController._instance._storage; if (!st) return false;
-    const pub = (s) => !s.passphrase && typeof knownPhrase === "function" && !!knownPhrase(s.mnemonic_str);
     for (const s of st.seeds || []) if (s && !pub(s)) return true;
-    if (st.pending_seed && !pub(st.pending_seed)) return true;
+    if (st.pending_seed) return true;
     const pm = Array.isArray(st._pending_mnemonic) ? st._pending_mnemonic.filter(Boolean) : [];
     if (pm.length && !pub({ mnemonic_str: pm.join(" "), passphrase: "" })) return true;
+    const v = ssLearnState(); if (v && SS_PASS_VIEWS.includes(v.view)) return true;
     return false;
   } catch (e) { return true; }
+}
+// v2.16.1: the page's seed was wiped (wipeSeed: ADD THIS KEY & WIPE THE SEED in the multisig box, CLEAR ALL): no copy of it may be
+// left in the practice signer. A one-click load stops and its SeedQR is put away (and overwritten); a device that still holds a
+// seed that is not public is switched off, as when its box is closed (its seeds are wiped; settings saved to its microSD stay).
+function vfSignerDropSeed() {
+  if (!ssPageOn) return false;
+  try { if (ssAuto.on) ssAutoEnd("Not loaded: the seed was wiped from the page.", "bad"); if (ssLearnCam.key === "seedload") ssLearnHide(); } catch (e) { /* lessons part missing */ }
+  if (!vfSignerHoldsSecret()) return false;
+  const b = document.getElementById("ssBox");
+  ssPageStop();
+  if (b && b.open) b.open = false;
+  return true;
 }
 
 // Overwrites what can be overwritten in a seed (byte arrays, word lists) before the references are dropped.
@@ -36529,6 +36664,7 @@ function ssLearnState() {
     return { view: x && x.View_cls ? x.View_cls.name : "", screen: s ? s.constructor.name : "", title: (s && s.title) || "", labels, scr: s || null, ctl: c };
   } catch (e) { return null; }
 }
+const ssLearnArg = (s, k) => { try { const a = s.ctl.current_destination.view_args; return a ? a[k] : undefined; } catch (e) { return undefined; } };   // an argument of the View shown
 const ssLearnKey = (s) => s ? s.view + "|" + s.screen + "|" + s.title : "";
 function ssLearnSeeds() { try { const st = SSController._instance && SSController._instance._storage; return (st && st.seeds) || []; } catch (e) { return []; } }
 function ssLearnHasTestSeed() { return ssLearnSeeds().some((s) => s && s.mnemonic_str === SS_LEARN_ABANDON && !s.passphrase); }
@@ -36590,9 +36726,22 @@ function ssLearnCamHandle() {
   };
   const x0 = SSDecodeQR.extract_qr_data;
   SSDecodeQR.extract_qr_data = function (image, is_binary = false) {
-    if (ssLearnCam.on) { const t = ssLearnCam.shown; if (t === null || t === undefined) return null; ssLearnCam.read = true; return is_binary ? new TextEncoder().encode(t) : t; }
+    if (ssLearnCam.on) {
+      const t = ssLearnCam.shown; if (t === null || t === undefined) return null;
+      ssLearnCam.read = true; if (ssLearnCam.key === "seedload" && ssAuto.on) ssAuto.read = true;   // the one-click load's SeedQR was read
+      return is_binary ? new TextEncoder().encode(t) : t;
+    }
     return x0.call(this, image, is_binary);
   };
+  // v2.16.1 review: the device's own "Hardware Error: Cannot access camera" (a scan with nothing held up, and no camera this browser
+  // lets it use) stays as SeedSigner shows it; a line below the device says why while it shows
+  if (typeof SSCameraConnectionErrorView === "function") {
+    const run0 = SSCameraConnectionErrorView.prototype.run;
+    SSCameraConnectionErrorView.prototype.run = async function () {
+      ssLearnSetText("ssCamNote", "Nothing is held up to the device’s camera. The practice wallet holds a QR code up to it for PRACTICE TRANSACTION, a lesson or LOAD INTO THE PRACTICE SIGNER; otherwise the device tries this computer’s camera.");
+      try { return await run0.call(this); } finally { ssLearnSetText("ssCamNote", ""); }
+    };
+  }
   // v2.16.1: which keys the device waits for right now (null while it is busy), for LOAD INTO THE PRACTICE SIGNER's own key presses
   const P = SSHardwareButtons.prototype, wf = P.wait_for;
   P.wait_for = async function (keys) {
@@ -36602,7 +36751,7 @@ function ssLearnCamHandle() {
 })();
 function ssLearnShow(frames, what, key) {
   // LOAD INTO THE PRACTICE SIGNER stops when its SeedQR is put away before the device read it, or another QR is held up
-  if (ssAuto.on && (frames ? key !== "seedload" : !ssLearnCam.read)) ssAutoEnd("");
+  if (ssAuto.on && (frames ? key !== "seedload" : !ssLearnCam.read)) ssAutoEnd(frames ? "Not loaded: another QR code is held up to the device." : "Not loaded: the SeedQR was put away before the device read it.", "bad");
   if (ssLearnCam.key === "seedload") ssLearnForget();   // a seed's SeedQR is wiped as soon as it is put away
   ssLearnCam.say = ""; ssLearnCam.read = false;
   // a scan seen earlier says nothing about these QR codes: without this, a decoder kept from an earlier scan (the timer stops when
@@ -36865,7 +37014,8 @@ const SS_LEARN_LESSONS = [
     steps: [...SS_LEARN_LOAD, SS_LEARN_HOME,
       { do: "Press the joystick down, then right, to select Settings, and press it in.", see: "Settings: Language, Persistent settings, Denomination display, Advanced...", at: ssLearnTitle("SSSettingsMenuView", /^Settings$/) },
       { do: "Move down to Advanced and press in.", see: "Advanced: Bitcoin network, QR code density, Sig types...", at: ssLearnTitle("SSSettingsMenuView", /^Advanced$/) },
-      { do: "Move down to Message signing (near the end of the list) and press in.", see: "Enabled and Disabled.", at: (s) => s.view === "SSSettingsEntryUpdateSelectionView" && s.labels.join("|") === "Enabled|Disabled" },
+      // v2.16.1 review: the Message signing setting itself (Electrum seeds and other settings have Enabled and Disabled too)
+      { do: "Move down to Message signing (near the end of the list) and press in.", see: "Message signing: Enabled and Disabled.", at: (s) => s.view === "SSSettingsEntryUpdateSelectionView" && ssLearnArg(s, "attr_name") === SSSettingsConstants.SETTING__MESSAGE_SIGNING },
       { do: "Move up to Enabled and press in.", see: "Advanced again. Message signing is on.", at: () => ssLearnSetting(SSSettingsConstants.SETTING__MESSAGE_SIGNING) === SSSettingsConstants.OPTION__ENABLED },
       SS_LEARN_HOME,
       { feed: "signmsg", do: "Scan is selected: press the joystick in. The practice wallet holds up a request to sign a message.", see: "Sign Message: Select seed to sign with, with " + SS_LEARN_FP + " first.", at: ssLearnTitle("SSSeedSelectSeedView", /Sign Message/) },
@@ -36974,7 +37124,7 @@ function ssLearnWipe() {
     for (const m of [T.global, ...T.inMaps, ...T.outMaps]) for (const kv of m) for (const x of kv) if (x instanceof Uint8Array) x.fill(0);
   }
   L.lesson = null; L.step = 0; L.done = false; L.hold = null; L.tx = null; L.building = false; L.scanDec = null; L.msg = ""; L.gen++;
-  ssAutoEnd(""); ssLearnSetText("ssLoadStatus", "");
+  ssAutoEnd(""); ssLearnSetText("ssLoadStatus", ""); ssLearnSetText("ssCamNote", "");
   ssLearnForget(); ssForgeReset();
   ssLearnCam.frames = null; ssLearnCam.byLesson = false; ssLearnCam.what = ""; ssLearnCam.key = ""; ssLearnCam.shown = null; ssLearnCam.cache.clear();
   ssLearnRender();
@@ -37000,10 +37150,14 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 // person would, this opens the practice signer, holds the seed's Standard SeedQR up to its camera with the practice wallet, and
 // then presses the device's own keys for them (ssAutoTick): Home > Scan, the camera reads the SeedQR, then Done on the Finalize
 // screen. So the device ends exactly as after a person's scan, the seed loaded and its fingerprint shown. With a passphrase on the
-// page, it stops on the Finalize screen, where the passphrase is added on the device (Passphrase), as on a real SeedSigner. On any
-// other screen the page says to go back to Home, and the scan goes on from there by itself. The SeedQR is wiped when the
+// page, it stops on the Finalize screen, where the passphrase is added on the device (BIP-39 Passphrase), as on a real SeedSigner.
+// On any other screen the page says to go back to Home, and the scan goes on from there by itself. The SeedQR is wiped when the
 // practice wallet puts it away (after the scan, PUT IT AWAY, another QR) and by every wipe (ssLearnWipe).
-const ssAuto = { on: false, gen: 0, fp: "", pass: false, stage: "", t0: 0, tapAt: 0, timer: null, told: false };
+// v2.16.1 review: a SeedQR is read only while offline, so nothing starts while the computer is online, and the load stops if it goes
+// online. Scan is pressed only while the SeedQR is held up (so a scan never opens the computer's camera), Done only on the Finalize
+// screen of the seed this scan read (read), and "Loaded" is said only after the device's fingerprint was compared with the page's.
+const SS_AUTO_OFFLINE = "Not loaded: a SeedQR is read only while offline. Take this computer offline, then press LOAD INTO THE PRACTICE SIGNER again.";
+const ssAuto = { on: false, gen: 0, fp: "", fpErr: false, pass: false, stage: "", read: false, t0: 0, tapAt: 0, timer: null, told: false };
 let ssAutoWait = null;   // set while the device waits for a key (the wait_for patch above)
 function ssAutoSay(text, cls) { ssLearnSetText("ssLoadStatus", text); const e = ssLearnEl("ssLoadStatus"); if (e) e.className = "status" + (cls ? " " + cls : ""); }
 function ssAutoEnd(text, cls) {
@@ -37013,9 +37167,9 @@ function ssAutoEnd(text, cls) {
 }
 function ssAutoStart(phrase, pass) {
   const A = ssAuto; ssAutoEnd("");
-  const gen = A.gen; A.on = true; A.fp = ""; A.pass = !!pass; A.stage = "scan"; A.t0 = Date.now(); A.tapAt = 0; A.told = false;
+  const gen = A.gen; A.on = true; A.fp = ""; A.fpErr = false; A.pass = !!pass; A.stage = "scan"; A.read = false; A.t0 = Date.now(); A.tapAt = 0; A.told = false;
   ssAutoSay("Loading: the device goes to Home > Scan by itself and reads the SeedQR.");
-  mnemonicFingerprint(phrase, "").then((fp) => { if (A.gen === gen) A.fp = fp; }).catch(() => { /* compared without it */ });
+  mnemonicFingerprint(phrase, "").then((fp) => { if (A.gen === gen) A.fp = fp; }).catch(() => { if (A.gen === gen) A.fpErr = true; });
   A.timer = setInterval(ssAutoTick, 150);
 }
 // One press of a device key, as the case's own key does (down, and up 110 ms later: SSHardwareButtons.tap).
@@ -37023,33 +37177,50 @@ function ssAutoTap(hb, key) { ssAuto.tapAt = Date.now(); hb.tap(key); }
 function ssAutoTick() {
   const A = ssAuto; if (!A.on) return;
   if (!ssPageOn) return ssAutoEnd("");
-  if (Date.now() - A.t0 > 180000) return ssAutoEnd("Not loaded: the device did not get to its scan in 3 minutes. Choose Scan on Home to scan the SeedQR, or press LOAD INTO THE PRACTICE SIGNER again.", "bad");
+  if (navigator.onLine === true) { if (ssLearnCam.key === "seedload") ssLearnHide(); return ssAutoEnd(SS_AUTO_OFFLINE, "bad"); }
+  if (Date.now() - A.t0 > 180000) return ssAutoEnd(A.read ? "Not loaded: the device did not finish loading the seed in 3 minutes. Press LOAD INTO THE PRACTICE SIGNER again." : "Not loaded: the device did not get to its scan in 3 minutes. Choose Scan on Home to scan the SeedQR, or press LOAD INTO THE PRACTICE SIGNER again.", "bad");
   const s = ssLearnState(), hb = SSHardwareButtons._instance, now = Date.now();
   if (!s || !hb || !ssAutoWait || now - A.tapAt < 400) return;   // the device is busy, or still taking the last key
   for (const k of SSHardwareButtonsConstants.ALL_KEYS) if (hb._held[k] || (hb._pending[k] && now - hb._pend_at[k] < SS_KEY_LATCH_MS)) return;
   if (s.ctl && s.ctl.is_screensaver_running) return ssAutoTap(hb, "KEY_LEFT");   // wakes it (the device drops the waking press)
-  const sel = s.scr ? s.scr.selected_button : null;
-  if (s.view === "SSMainMenuView" && A.stage === "scan") {   // Home, a 2 x 2 grid: Scan is button 0
-    if (!ssAutoWait.keys.includes("KEY_PRESS")) return;
-    return ssAutoTap(hb, sel === 0 ? "KEY_PRESS" : sel === 1 ? "KEY_LEFT" : sel === 2 || sel === 3 ? "KEY_UP" : "KEY_DOWN");
+  const sel = s.scr ? s.scr.selected_button : null, held = !!ssLearnCam.frames && ssLearnCam.key === "seedload";
+  const cmp = (fp) => A.fp === fp ? ", the same as VOIDFORGE works out." : ". VOIDFORGE works out " + A.fp + ": DIFFERENT.";
+  if (!A.read) {   // before the scan read this SeedQR: get to Home > Scan, and nothing else
+    if (!held) return ssAutoEnd("Not loaded: the SeedQR was put away before the device read it. Press LOAD INTO THE PRACTICE SIGNER again.", "bad");
+    if (s.view === "SSMainMenuView") {   // Home, a 2 x 2 grid: Scan is button 0
+      if (!ssAutoWait.keys.includes("KEY_PRESS")) return;
+      return ssAutoTap(hb, sel === 0 ? "KEY_PRESS" : sel === 1 ? "KEY_LEFT" : sel === 2 || sel === 3 ? "KEY_UP" : "KEY_DOWN");
+    }
+    if (!/Scan/.test(s.view) && !A.told) { A.told = true; ssAutoSay("Go back to Home on the device: the scan goes on from there by itself."); }
+    return;
   }
+  if (!A.fp && !A.fpErr) return;   // the page's fingerprint is still being worked out: compare before saying anything
   if (s.view === "SSSeedFinalizeView") {
     A.stage = "fin";
     const fp = (s.scr && s.scr.fingerprint) || "";
-    if (A.pass) return ssAutoEnd("Scanned: the device shows fingerprint " + fp + " (without the passphrase). Choose Passphrase on the device to add the passphrase, or Done.", "ok");
+    if (A.fp && fp && fp !== A.fp) return ssAutoEnd("Not loaded: the device shows fingerprint " + fp + cmp(fp), "bad");
+    if (A.pass) {
+      const pl = s.labels.find((l) => l && !/^Done$/.test(l));
+      return ssAutoEnd("Scanned: the device shows fingerprint " + fp + " without the passphrase" + (A.fp ? cmp(fp) : ".") + " " + (pl ? "Choose " + pl + " on the device to add the passphrase, then Done." : "To add the passphrase, turn on BIP-39 passphrase in the device’s Settings (Advanced) first."), A.fp ? "ok" : "");
+    }
     const i = s.labels.findIndex((l) => /^Done$/.test(l)); if (i < 0) return;
     return ssAutoTap(hb, sel === i ? "KEY_PRESS" : sel !== null && sel !== 1000 && sel > i ? "KEY_UP" : "KEY_DOWN");
   }
-  if (s.view === "SSSeedOptionsView" && A.stage === "fin") {
-    const same = A.fp && s.title === A.fp;
-    return ssAutoEnd("Loaded: the device shows the seed with fingerprint " + s.title + (A.fp ? (same ? ", the same as VOIDFORGE works out." : ". VOIDFORGE works out " + A.fp + ": DIFFERENT.") : "."), A.fp && !same ? "bad" : "ok");
+  if (s.view === "SSSeedAddPassphraseView") {   // the device's BIP-39 passphrase setting is Required: it asks for one first
+    A.stage = "pass";
+    return ssAutoEnd("Scanned: the device asks for a passphrase (its BIP-39 passphrase setting is Required). " + (A.pass ? "Type the passphrase on the device, then Done." : "Type one on the device, or press its back arrow and choose Skip passphrase, then Done."));
   }
-  if (A.stage === "scan" && !/Scan/.test(s.view) && !A.told) { A.told = true; ssAutoSay("Go back to Home on the device: the scan goes on from there by itself."); }
+  if (s.view === "SSSeedOptionsView" && A.stage === "fin") {
+    if (!A.fp) return ssAutoEnd("Loaded: the device shows the seed with fingerprint " + s.title + ". VOIDFORGE could not work out its own to compare: check it by hand.");
+    return ssAutoEnd("Loaded: the device shows the seed with fingerprint " + s.title + cmp(s.title), A.fp === s.title ? "ok" : "bad");
+  }
+  if (s.view === "SSMainMenuView" || s.view === "SSErrorView") return ssAutoEnd("Not loaded: the device did not load the seed from its SeedQR. Press LOAD INTO THE PRACTICE SIGNER again.", "bad");   // never Scan again: the SeedQR is put away
 }
 function vfSignerLoadSeed(phrase, opts) {
   if (typeof phrase !== "string") return false;
   const words = phrase.split(" "), idx = words.map((w) => WORDLIST.indexOf(w));
   if ((words.length !== 12 && words.length !== 24) || idx.some((i) => i < 0)) return false;
+  if (navigator.onLine === true) return false;   // v2.16.1 review: a SeedQR is read only while offline (the caller says so)
   let kind = ""; try { kind = typeof pubKind === "function" ? pubKind(phrase) : ""; } catch (e) { kind = ""; }
   ssPageOpen();
   if (!ssPageOn) ssPageStart();
@@ -37058,7 +37229,7 @@ function vfSignerLoadSeed(phrase, opts) {
   const qr = idx.map((i) => String(i).padStart(4, "0")).join("");   // Standard SeedQR: 4 digits per word
   ssLearnShow([qr], "the Standard SeedQR of " + (kind ? pracName(kind) : "the seed from MAKE A SEED") + " (" + words.length + " words)", "seedload");
   try { ssLearnCam.cache.set(qr, seedQrMatrix(words, "standard").rows); } catch (e) { /* drawn as a plain QR */ }
-  ssLearnCam.say = navigator.onLine === true ? "This computer looks online: the device reads a SeedQR only while it is offline." : ""; ssLearnRender();
+  ssLearnRender();
   ssAutoStart(phrase, !!(opts && opts.pass));
   return true;
 }

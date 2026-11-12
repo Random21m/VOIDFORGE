@@ -357,8 +357,11 @@ words(12); set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards));
   check("practice: without the practice signer, LOAD INTO THE PRACTICE SIGNER says how to type the words in", /practice signer, and choose Seeds > Load a seed > Enter 12-word seed/.test($("dmSignerNote").textContent), $("dmSignerNote").textContent);
   let got = null; w.vfSignerLoadSeed = (m) => { got = m; return true; }; $("dmSignerBtn").click();
   check("practice: the practice words go to the hook, and the note says the practice signer loads it by itself (v2.16.1: one click)", got && got === ph1 && got.split(" ").length === 12 && /loads the practice seed by itself from its SeedQR\./.test($("dmSignerNote").textContent), $("dmSignerNote").textContent);
-  w.vfSignerLoadSeed = () => false; $("dmSignerBtn").click();
+  w.vfSignerLoadSeed = () => false; Object.defineProperty(w.navigator, "onLine", { configurable: true, get: () => false }); $("dmSignerBtn").click();
   check("practice: a failure of the hook is said plainly", /^Not loaded: the practice signer could not start/.test($("dmSignerNote").textContent));
+  Object.defineProperty(w.navigator, "onLine", { configurable: true, get: () => true }); w.vfSignerLoadSeed = hook; $("dmSignerBtn").click();
+  check("v2.16.1 review: online, LOAD INTO THE PRACTICE SIGNER holds nothing up and says a SeedQR is read only while offline", /^Not loaded: this computer looks online, and a SeedQR is read only while offline\./.test($("dmSignerNote").textContent) && !$("ssBox").open, $("dmSignerNote").textContent);
+  delete w.navigator.onLine;
   w.vfSignerLoadSeed = hook;
   set("dmDice", $("dmDice").value + " 12");
   check("practice: an edit that keeps the same seed (a pair after the grid is full) still says PRACTICE, by content", !$("dmBtn").disabled && $("dmPracticeBan").style.display !== "none" && /practice 1 comes from a published rule/.test($("dmPracticeBan").textContent), $("dmPracticeBan").textContent);
@@ -687,7 +690,7 @@ const guide = readFileSync(path.join(here, "..", "docs", "damascus-quick-guide.m
     [3, () => T().includes("the same → 0, different → 1") && T().includes("Forge   " + ref.E.bits.slice(0, 3) + " " + ref.E.bits.slice(3, 7) + " " + ref.E.bits.slice(7, 11)) && !$("dmFR").value],
     [3, () => $("dmFR").value === ref.E.marks.R && $("dmFM").value === ref.E.marks.M && T().includes("fold   " + ref.E.marks.R) && /The seal holds/.test($("dmLiveF").textContent)],
     [4, () => $("dmWords").value === phrase.split(" ").slice(0, 11).join(" ") && T().includes("→ “" + phrase.split(" ")[0] + "”") && /11 of 11 words checked/.test($("dmFNow").textContent)],
-    [5, () => T().includes("Coin flip entropy") && T().includes(ref.E.handWords[11].bits) && T().includes("“" + phrase.split(" ")[11] + "”") && T().includes("Calc 12th/24th word")],
+    [5, () => T().includes("Coin flip entropy") && T().includes(ref.E.handWords[11].bits) && T().includes("“" + phrase.split(" ")[11] + "”") && T().includes("Calc 12th/24th word") && $("dmWords").value === phrase],
     [5, () => T().includes(phrase) && nextB.disabled && /^The practice sheet is complete/.test($("dmReady").textContent)],
   ];
   for(const [i, [step, ok]] of want.entries()){
@@ -698,7 +701,10 @@ const guide = readFileSync(path.join(here, "..", "docs", "damascus-quick-guide.m
   }
   check("guided practice: each NEXT fills one part from the sheet, says where each value comes from, and shows the right step; PRACTICE stays all the way, and FORGE SEED is on once the dice and the cards are complete (v2.16.1)", bad.length === 0, bad.slice(0, 3).join(" | "));
   check("guided practice (v2.16.1): the last part says FORGE SEED shows the words under YOUR SEED, marked PRACTICE", /FORGE SEED shows them under YOUR SEED, marked PRACTICE, with every step a real seed has\./.test(T()) && !/FORGE SEED stays off/.test(T()), T().slice(-300));
-  await w.dmGenerate();
+  { const cf = w.confirm; let asked = ""; w.confirm = (m) => { asked = m; return false; };
+    await w.dmGenerate(); w.confirm = cf;
+    const b5 = w.document.querySelector('#dmFBar button[data-ds="5"]');
+    check("v2.16.1 review (tester T1): guided practice puts the last word in the Words step too, so FORGE SEED asks nothing and step 5 Last word gets its ✓", asked === "" && w.hasSeed() && b5 && b5.classList.contains("done") && /✓/.test(b5.textContent), asked.slice(0, 120) + " | " + (b5 && b5.textContent)); }
   check("guided practice (v2.16.1): FORGE SEED at the end gives practice sheet 42's words under YOUR SEED, the banner naming the sheet", w.hasSeed() && w.eval("madeMnemonic") === phrase && $("ssfBan").textContent === "PRACTICE: This seed is Damascus practice sheet 42, a public practice seed. Anyone can make it again: never put money on it." && $("ssfBan").style.display !== "none", $("ssfBan").textContent);
   check("guided practice: at the end the boxes hold exactly what FILL IN A PRACTICE SHEET puts in (dice and cards), and the words are practice sheet 42's published words", $("dmDice").value === sheet.dice && $("dmCards").value === sheet.cards && /Damascus practice sheet/.test(w.knownPhrase(phrase) || "") && w.eval("dmPublicKind(dmState())") === "practice 42");
   nextB.click(); check("guided practice: NEXT stops at the end", /12 of 12/.test($("dmTourTitle").textContent));
@@ -712,7 +718,7 @@ const guide = readFileSync(path.join(here, "..", "docs", "damascus-quick-guide.m
   // 24 words: the whole walk-through, and the last word with its 8 checksum bits
   words(24); w.eval("dmPracticeNext = 5"); await w.dmTourStart(); for(let i = 0; i < 11; i++) nextB.click();
   const s24 = await w.dmPracticeSheet(5, 24), r24 = refForge(24, pairsOf(s24.dice), s24.cards.split("\n").map((l) => l.trim().split(/\s+/).map((c) => c.replace(/^10/, "T")))), p24 = r24.E.phrase.join(" ");
-  check("guided practice, 24 words: ends on practice sheet 5's published words, every box as the sheet, FORGE SEED on (v2.16.1)", T().includes(p24) && $("dmCards").value === s24.cards && $("dmFR").value === r24.E.marks.R && $("dmWords").value === p24.split(" ").slice(0, 23).join(" ") && !$("dmBtn").disabled, T().slice(0, 120));
+  check("guided practice, 24 words: ends on practice sheet 5's published words, every box as the sheet (all 24 words: v2.16.1 review), FORGE SEED on (v2.16.1)", T().includes(p24) && $("dmCards").value === s24.cards && $("dmFR").value === r24.E.marks.R && $("dmWords").value === p24 && !$("dmBtn").disabled, T().slice(0, 120));
   w.dmClear(); words(12);
 }
 // the creator line and picture (v2.14.0): top of the Damascus tab, ABOUT & HELP, and the two docs; the picture is docs/damascus/creator.webp
@@ -822,15 +828,21 @@ function device(page){
       }
       throw new Error("keyboard stuck at " + ch);
     },
+    // v2.16.1 review: a busy machine can drop a key press (the device takes keys only while it waits for one), so every press is
+    // checked: after a move the selection must change, after PRESS the screen must change; a press that left no trace is made again
+    // (before, a dropped PRESS on Mnemonic Length left the run waiting for the next screen).
     async pick(re, wait = 400){
-      for(let n = 0; n < 30; n++){
+      const same = (a, b) => !!a && !!b && a.view === b.view && a.title === b.title && a.sel === b.sel && JSON.stringify(a.labels) === JSON.stringify(b.labels);
+      const moved = async (s, ms) => { for(const t0 = Date.now(); Date.now() - t0 < ms;){ const s2 = await d.state(); if(!same(s, s2)) return true; await sleep(80); } return false; };
+      for(let n = 0; n < 40; n++){
         const s = await d.state(), i = (s.labels || []).findIndex((l) => re.test(l || ""));
         if(i < 0) throw new Error("no button " + re + " in " + JSON.stringify(s));
-        if(s.sel === i){ await d.press("PRESS", wait); return s; }
+        if(s.sel === i){ await d.press("PRESS", 60); if(await moved(s, 20000)){ await sleep(wait); return s; } continue; }
         if(s.screen === "SSMainMenuScreen" || s.screen === "SSLargeButtonScreen"){
           const [cx, cy] = [s.sel % 2, Math.floor(s.sel / 2)], [tx, ty] = [i % 2, Math.floor(i / 2)];
-          if(s.sel === 1000 || s.sel === null) await d.press("DOWN", 260); else if(cy < ty) await d.press("DOWN", 260); else if(cy > ty) await d.press("UP", 260); else if(cx < tx) await d.press("RIGHT", 260); else await d.press("LEFT", 260);
-        } else await d.press(s.sel > i ? "UP" : "DOWN", 260);
+          if(s.sel === 1000 || s.sel === null) await d.press("DOWN", 60); else if(cy < ty) await d.press("DOWN", 60); else if(cy > ty) await d.press("UP", 60); else if(cx < tx) await d.press("RIGHT", 60); else await d.press("LEFT", 60);
+        } else await d.press(s.sel > i ? "UP" : "DOWN", 60);
+        await moved(s, 5000);
       }
       throw new Error("stuck at " + re);
     },

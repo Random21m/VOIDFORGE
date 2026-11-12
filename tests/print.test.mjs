@@ -410,6 +410,23 @@ await p.click('#tab-make');
     ok(t.includes(ban) && /: PRACTICE/.test(t), 'practice seed: the ' + label + ' is made (not blocked), says PRACTICE in its title and carries the PRACTICE line');
     await sheet('practice seed: ' + label, fn);
   }
+  // v2.16.1 review: PRINT THIS QR (the account key and the receive descriptor) and the backup plan and heir sheets filled from MAKE A
+  // SEED (its fingerprint) carry the PRACTICE line too, and each still prints on one page
+  const textArg = async (fn, arg) => { await p.evaluate(fn, arg); const t = await p.evaluate(() => document.getElementById('printOnly').textContent + document.getElementById('printQr').textContent); await p.evaluate(() => window.dispatchEvent(new Event('afterprint'))); return t; };
+  for (const id of ['wZpub', 'wDescR']) {
+    await p.evaluate((id) => showQr(id, 'x'), id);
+    const t = await textArg(() => printShownQr());
+    ok(t.includes(ban) && /: PRACTICE/.test(t), 'practice seed: PRINT THIS QR (' + id + ') says PRACTICE in its title and carries the PRACTICE line (v2.16.1 review)');
+    await sheet('practice seed: PRINT THIS QR ' + id, () => printShownQr());
+  }
+  await p.evaluate(() => { hideQr(); planClear(); planOpen(); document.getElementById('plM1').value = 'paper'; document.getElementById('plW1').value = 'a locked drawer at home'; document.getElementById('plL1').value = 'home'; document.getElementById('plOwner').value = 'Alex'; document.getElementById('plHeir').value = 'Sam'; planRender(); });
+  for (const k of ['plan', 'letter', 'heir', 'keys', 'contacts', 'bags']) {
+    const fn = k === 'plan' ? () => printPlan() : (k) => printInherit(k);
+    const t = await textArg(fn, k);
+    ok(t.includes(ban) && /: PRACTICE/.test(t), 'practice seed: the ' + (k === 'plan' ? 'backup plan' : k + ' sheet') + ' filled from MAKE A SEED says PRACTICE and carries the PRACTICE line (v2.16.1 review)');
+    await sheet('practice seed: ' + (k === 'plan' ? 'backup plan' : 'inheritance ' + k), fn, k);
+  }
+  await p.evaluate(() => { planClear(); showTab('make'); });
   await p.evaluate(() => { dmClear(); setMethod('dice'); }); }
 
 ok(errors.length === 0, 'no page errors (' + errors.join(' | ') + ')');

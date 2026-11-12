@@ -206,6 +206,152 @@ async function probe(w, mutated, fast, only, hooks) {
       w.wdatClear(); }
     w.clearAll(); for (const id of ['wNet', 'wvNet', 'psbtNet', 'cmpNet', 'msNet']) $(id).value = 'main'; for (const id of ['detNet', 'ewNet', 'wdatNet']) $(id).value = '';
   }
+  // v2.16.1 review (a fresh review of the v2.16.1 changes): LOAD INTO THE PRACTICE SIGNER refuses while online and stops when the
+  // computer goes online, presses Scan only while the SeedQR is held up and Done only on the Finalize screen of the seed its scan
+  // read, compares the fingerprints before it says "Loaded", and stops at the passphrase entry (setting Required); re-hide counts a
+  // held SeedQR, a seed being loaded and the passphrase screens; wipeSeed leaves no copy in the practice signer; a public seed is
+  // marked PRACTICE by every method, and its prints and multisig keys say so; CLEAR in Practice making a backup; regtest in the
+  // address checks; practice mode named in the wallet file readers. The device is a stand-in (jsdom draws nothing: only the View it
+  // shows); expected fingerprints and addresses from @scure/bip32, @scure/bip39 and @scure/btc-signer. It ends with the page wiped
+  // and the seed of section 0 made again.
+  if (SEC(81, "v2.16.1 review: one-click load, re-hide, wipe, PRACTICE marks, multisig, regtest")) {
+    const navOnline = Object.getOwnPropertyDescriptor(w.navigator, 'onLine'), E = (s) => w.eval(s), start0 = E('ssPageStart'), hb0 = E('SSHardwareButtons')._instance, conf0 = w.confirm, print0 = w.print;
+    const online = (on) => Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => on });
+    const T = 'review: ', sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), AB = 'abandon '.repeat(11) + 'about', PH = 'legal winner thank year wave sausage worth useful legal winner thank yellow';
+    const RT = { ...btc.TEST_NETWORK, bech32: 'bcrt' }, rootOf = (m, pw = '') => HDKey.fromMasterSeed(mnemonicToSeedSync(m, pw)), siv0 = w.Element.prototype.scrollIntoView;
+    try {
+      w.Element.prototype.scrollIntoView = function () {};   // jsdom has no layout
+      const CAM = E('ssLearnCam'), A = E('ssAuto'), RD = expect.d50, fR = fp(RD, ''), fA = fp(AB, '');
+      const ctl = { current_destination: null, back_stack: [], _storage: { seeds: [], pending_seed: null, _pending_mnemonic: [] } };
+      const at = (view, title = '', labels = [], extra = {}) => { ctl.current_destination = { View_cls: { name: view }, view_args: {}, view: { screen: Object.assign({ constructor: { name: 'SSButtonListScreen' }, title, button_data: labels }, extra) } }; };
+      const taps = [], hb = { _held: {}, _pending: {}, _pend_at: {}, tap: (k) => taps.push(k) };
+      const off = async () => { w.ssPageWipe(); await sleep(30); E('ssPageStart = function () { ssPageOn = true; }'); };
+      const plug = () => { E('SSController')._instance = ctl; E('SSHardwareButtons')._instance = hb; E('ssAutoWait = { keys: SSHardwareButtonsConstants.ALL_KEYS.slice() }'); };
+      const begin = async (m, x) => { await off(); ctl._storage = { seeds: [], pending_seed: null, _pending_mnemonic: [] }; ctl.current_destination = null; const r2 = w.vfSignerLoadSeed(m, x); plug(); await until(() => A.fp !== '' || !A.on, 5000); return r2; };
+      const step = (view, title, labels, sel, extra) => { at(view, title, labels, Object.assign({ selected_button: sel }, extra || {})); A.tapAt = 0; taps.length = 0; w.ssAutoTick(); return taps.join(); };
+      const HOME = ['Scan', 'Seeds', 'Tools', 'Settings'], FIN = ['Done', 'BIP-39 Passphrase'], st = () => $('ssLoadStatus').textContent;
+      const read = () => { CAM.on = true; CAM.shown = CAM.frames[0]; E('SSDecodeQR').extract_qr_data(null); CAM.on = false; CAM.shown = null; };   // the device's scan reads the SeedQR
+      await off();
+      // online: nothing is held up, nothing pressed, and the note says why; going online during a load stops it
+      online(true);
+      if (w.vfSignerLoadSeed(RD) !== false || CAM.frames || $('ssBox').open || E('ssPageOn')) fails.push(T + 'online: LOAD INTO THE PRACTICE SIGNER refuses up front, nothing held up');
+      if (!/^Not loaded: this computer looks online, and a SeedQR is read only while offline\./.test(w.signerLoadNote(false, 'x'))) fails.push(T + 'online: the note under YOUR SEED says a SeedQR is read only while offline');
+      online(false);
+      if (!(await begin(RD)) || step('SSMainMenuView', 'Home', HOME, 0) !== 'KEY_PRESS') fails.push(T + 'offline: the load starts and presses Scan on Home');
+      at('SSSettingsMenuView'); online(true); A.tapAt = 0; taps.length = 0; w.ssAutoTick();
+      if (A.on || CAM.frames || taps.length || !/^Not loaded: a SeedQR is read only while offline\./.test(st())) fails.push(T + 'online during a load: it stops, puts the SeedQR away and says so (' + st() + ')');
+      online(false);
+      // before the scan read this SeedQR: Done is never pressed on another seed's Finalize screen, and Scan never without the SeedQR
+      await begin(RD);
+      if (step('SSSeedFinalizeView', '', FIN, 0, { fingerprint: fA }) !== '' || !A.on || !/^Go back to Home/.test(st())) fails.push(T + 'another seed on Finalize: Done is not pressed; it says to go back to Home');
+      CAM.frames = null; if (step('SSMainMenuView', 'Home', HOME, 0) !== '' || A.on) fails.push(T + 'no SeedQR held up: Scan is never pressed, and the load stops');
+      // after the read: Done on Finalize once the fingerprints are compared, "Loaded" only with the comparison
+      await begin(RD); step('SSMainMenuView', 'Home', HOME, 0); read();
+      if (!A.read) fails.push(T + 'the scan reading the SeedQR is noted');
+      { const f0 = A.fp; A.fp = ''; const t0 = step('SSSeedFinalizeView', '', FIN, 0, { fingerprint: fR }); A.fp = f0;
+        if (t0 !== '' || !A.on) fails.push(T + 'nothing is pressed or said before the page has its own fingerprint to compare'); }
+      if (step('SSSeedFinalizeView', '', FIN, 0, { fingerprint: fR }) !== 'KEY_PRESS') fails.push(T + 'the seed it read: Done on Finalize');
+      step('SSSeedOptionsView', fR, [], 0);
+      if (A.on || st() !== 'Loaded: the device shows the seed with fingerprint ' + fR + ', the same as VOIDFORGE works out.') fails.push(T + 'loaded: the device\'s fingerprint compared with the page\'s (' + st() + ')');
+      await begin(RD); step('SSMainMenuView', 'Home', HOME, 0); read();
+      if (step('SSSeedFinalizeView', '', FIN, 0, { fingerprint: fA }) !== '' || A.on || st() !== 'Not loaded: the device shows fingerprint ' + fA + '. VOIDFORGE works out ' + fR + ': DIFFERENT.') fails.push(T + 'a different fingerprint on Finalize: not loaded, DIFFERENT (' + st() + ')');
+      await begin(RD, { pass: true }); step('SSMainMenuView', 'Home', HOME, 0); read();
+      if (step('SSSeedFinalizeView', '', FIN, 0, { fingerprint: fR }) !== '' || A.on || st() !== 'Scanned: the device shows fingerprint ' + fR + ' without the passphrase, the same as VOIDFORGE works out. Choose BIP-39 Passphrase on the device to add the passphrase, then Done.') fails.push(T + 'a passphrase: it stops on Finalize, names the device\'s button and compares (' + st() + ')');
+      await begin(RD); step('SSMainMenuView', 'Home', HOME, 0); read(); step('SSSeedAddPassphraseView', 'BIP-39 Passphrase', [], null);
+      if (A.on || !/^Scanned: the device asks for a passphrase \(its BIP-39 passphrase setting is Required\)\./.test(st())) fails.push(T + 'passphrase setting Required: it stops at the passphrase entry and says so (' + st() + ')');
+      await begin(RD); step('SSMainMenuView', 'Home', HOME, 0); read(); CAM.frames = null;
+      if (step('SSMainMenuView', 'Home', HOME, 0) !== '' || A.on || !/^Not loaded: the device did not load the seed/.test(st())) fails.push(T + 'back on Home after the scan: Scan is not pressed again, and it says not loaded');
+      // re-hide: a held SeedQR of a seed that is not public, a seed being loaded, the passphrase screens (even over a public seed)
+      await begin(RD); at('SSSettingsMenuView'); if (!w.vfSignerHoldsSecret()) fails.push(T + 're-hide: a held SeedQR of a seed that is not public counts');
+      await begin(AB); at('SSSettingsMenuView'); if (w.vfSignerHoldsSecret()) fails.push(T + 're-hide: a held SeedQR of a public seed does not count');
+      ctl._storage = { seeds: [{ mnemonic_str: AB, passphrase: '' }], pending_seed: { mnemonic_str: AB, passphrase: '' }, _pending_mnemonic: [] }; if (!w.vfSignerHoldsSecret()) fails.push(T + 're-hide: a seed being loaded counts, even a public one');
+      ctl._storage.pending_seed = null;
+      for (const v of ['SSSeedAddPassphraseView', 'SSSeedAddPassphraseExitDialogView', 'SSSeedReviewPassphraseView']) { at(v); if (!w.vfSignerHoldsSecret()) fails.push(T + 're-hide: ' + v + ' counts, even over a public seed'); }
+      at('SSSeedOptionsView'); if (w.vfSignerHoldsSecret()) fails.push(T + 're-hide: a public seed alone does not count');
+      // wipeSeed: the held SeedQR is put away; a device holding a seed that is not public is switched off and its box closed
+      await begin(RD); at('SSSettingsMenuView'); w.wipeSeed();
+      if (CAM.frames || A.on) fails.push(T + 'wipeSeed: the held SeedQR is put away and the load stops');
+      await begin(AB); at('SSSettingsMenuView'); w.wipeSeed();
+      if (CAM.frames || A.on || !E('ssPageOn')) fails.push(T + 'wipeSeed: a held SeedQR of a public seed is put away too, and the device (holding no secret) stays on');
+      await begin(AB); at('SSSeedOptionsView'); ctl._storage.seeds = [{ mnemonic_str: RD, passphrase: '' }]; w.wipeSeed(); await sleep(30);
+      if (E('ssPageOn') || $('ssBox').open) fails.push(T + 'wipeSeed: the practice signer holding the seed is switched off, its box closed');
+      await off(); E('SSHardwareButtons')._instance = hb0; E('ssAutoWait = null');
+      // PRACTICE by the words, for every method (hex 000102...0f: counting numbers); the line under the words does not repeat it
+      w.showTab('make'); w.setMethod('cards'); $('cdHex').value = '000102030405060708090a0b0c0d0e0f'; w.cdUpdate(); await w.cdHexGenerate();
+      const ban = 'PRACTICE: This seed is a public or predictable seed (it is made from counting numbers, not from real randomness). Anyone can make it again: never put money on it.';
+      if (w.eval('seedPr()') !== ban || $('ssfBan').textContent !== ban) fails.push(T + 'a public seed from Hex is marked PRACTICE');
+      if ($('forgePub').textContent !== '') fails.push(T + 'the PRACTICE banner says it once: no second line under the words');
+      w.practiceMode(true); await sleep(20); if (!/^Practice mode is on, so this public seed is fine for TESTNET/.test($('forgePub').textContent)) fails.push(T + 'practice mode: the line under the words adds the TESTNET note'); w.practiceMode(false); await until(() => /^wpkh\(\[/.test($('wDescR').textContent) && $('watchBox').style.display === '', 8000);
+      // prints: PRINT THIS QR, the backup plan and the heir sheets of the plan filled from MAKE A SEED
+      let pt = ''; w.print = () => { pt = $('printOnly').textContent + $('printQr').textContent; };
+      w.showQr('wDescR', 'x'); w.printShownQr(); w.dispatchEvent(new w.Event('afterprint')); if (!pt.includes('RECEIVE DESCRIPTOR: PRACTICE') || !pt.includes(ban)) fails.push(T + 'PRINT THIS QR of a PRACTICE seed says PRACTICE (' + pt.slice(0, 60) + ')');
+      w.hideQr(); w.planOpen(); $('plM1').value = 'paper'; $('plW1').value = 'desk'; $('plL1').value = 'home';
+      pt = ''; await w.printPlan(); w.dispatchEvent(new w.Event('afterprint')); if (!pt.includes('BACKUP PLAN: PRACTICE') || !pt.includes(ban)) fails.push(T + 'the backup plan of a PRACTICE seed says PRACTICE (' + pt.slice(0, 60) + $('plStatus').textContent + ')');
+      pt = ''; await w.printInherit('heir'); w.dispatchEvent(new w.Event('afterprint')); if (!pt.includes('FOR THE HEIR: PRACTICE') || !pt.includes(ban)) fails.push(T + 'the heir sheet of a PRACTICE seed says PRACTICE');
+      w.planClear(); w.print = print0;
+      // multisig: a PRACTICE seed is a key only after a warning; the slot and the sheet say PRACTICE (public seed)
+      w.msReset(); w.msStart(); let asked = ''; w.confirm = (m) => { asked = m; return false; }; await w.msAddMade();
+      if (!/^PRACTICE: this seed is/.test(asked) || w.eval('ms.keys.length') !== 0) fails.push(T + 'multisig: a PRACTICE seed asks first, Cancel adds nothing');
+      w.confirm = () => true; await w.msAddMade();
+      if (w.eval('ms.keys.length') !== 1 || !/^PRACTICE \(public seed\)/.test($('msSlots').querySelector('.ms-slot .ms-txt div').textContent)) fails.push(T + 'multisig: OK adds it, its slot tagged PRACTICE (public seed)');
+      asked = ''; w.confirm = (m) => { asked = m; return true; }; $('phrase').value = AB; $('verifyPass').value = ''; await w.msAddChecked();
+      if (!/as key 2/.test(asked) || w.eval('ms.keys.length') !== 2) fails.push(T + 'multisig: a public seed from CHECK A BACKUP asks first too');
+      if (!/^PRACTICE: key 1 and key 2 come from a public seed/.test(w.msSheetText(false)) || !/   PRACTICE \(public seed\)\n2\./.test(w.msSheetText(false))) fails.push(T + 'multisig: the sheet names the PRACTICE keys');
+      w.confirm = conf0; w.msReset(); w.clearAll();
+      // Practice making a backup: CLEAR wipes your own words in the box
+      $('prSrcOwn').checked = true; $('prSrcOwn').dispatchEvent(new w.Event('change')); $('prOwn').value = PH; await w.practiceStart(); w.practiceClear();
+      if ($('prOwn').value !== '') fails.push(T + 'backup practice: CLEAR wipes your own words');
+      $('prSrcTest').checked = true; $('prSrcTest').dispatchEvent(new w.Event('change'));
+      // regtest in CHECK ADDRESS and TRY ACCOUNTS, typed in capitals
+      const r1 = btc.p2wpkh(rootOf(AB).derive("m/84'/1'/0'/0/1").publicKey, RT).address;
+      $('phrase').value = AB; $('verifyPass').value = ''; $('checkAcct').value = '0'; $('checkAddr').value = r1.toUpperCase(); await w.checkAddress(4);
+      if (!/^FOUND: this Regtest SegWit address is receive address #1 \(m\/84'\/1'\/0'\/0\/1\)/.test($('addrCheckStatus').textContent)) fails.push(T + 'CHECK ADDRESS: a regtest address, named Regtest (' + $('addrCheckStatus').textContent.slice(0, 60) + ')');
+      await w.checkAllAccounts(1, 2); if (!/^FOUND: this Regtest SegWit address/.test($('addrCheckStatus').textContent)) fails.push(T + 'TRY ACCOUNTS: a regtest address, named Regtest');
+      $('phrase').value = ''; $('checkAddr').value = ''; w.clearAll();
+      // practice mode sets the Network menu of the wallet file readers: their report says so
+      { const j = fs.readFileSync(new URL('./fixtures/electrum/zpub-watch.json', import.meta.url), 'utf8'); w.practiceMode(true); $('ewIn').value = j; await w.ewOpenUi();
+        if (!/Network: set by practice mode to Testnet/.test($('ewOut').textContent)) fails.push(T + 'Electrum file: the report says practice mode set the network');
+        w.ewClear(); await w.wdatShow(new Uint8Array(fs.readFileSync(new URL('./fixtures/walletdat/descriptor.sqlite', import.meta.url))), '');
+        if (!/Network: set by practice mode to Testnet/.test($('wdatOut').textContent)) fails.push(T + 'wallet.dat: the report says practice mode set the network');
+        w.wdatClear(); w.practiceMode(false); }
+      // the hands-on tester's findings. T2: every print from a public seed in CHECK A BACKUP, Seed XOR and BIP85 says PRACTICE
+      { let pt = ''; w.print = () => { pt = $('printOnly').textContent + $('printQr').textContent; };
+        const pr = async (f) => { pt = ''; await f(); w.dispatchEvent(new w.Event('afterprint')); return pt; };
+        w.showTab('check'); $('phrase').value = AB; $('verifyPass').value = ''; await w.verify(); await until(() => w.eval('wvCtx && wvCtx.shown && wvCtx.shown.sheet'), 8000);
+        if (!/BACKUP SHEET: PRACTICE/.test(await pr(() => w.printSeed('check')))) fails.push(T + 'tester T2: PRINT WORDS of a public seed in CHECK A BACKUP says PRACTICE');
+        if (!/RECOVERY SHEET: PRACTICE/.test(await pr(() => w.printRecoverySheet()))) fails.push(T + 'tester T2: PRINT RECOVERY SHEET of a public seed says PRACTICE');
+        if (!/: PRACTICE/.test(await pr(() => w.printPlate()))) fails.push(T + 'tester T2: PRINT PLATE of a public seed says PRACTICE');
+        $('childApp').value = 'words'; $('childIndex').value = '0'; await w.deriveChild();
+        if (!/CHILD SEED \(BIP85\): PRACTICE/.test(await pr(() => w.printChild()))) fails.push(T + 'tester T2: PRINT CHILD SEED of a public parent says PRACTICE');
+        w.document.querySelector('input[name=xorMode][value=split]').checked = true; w.xorModeChange(); $('phrase').value = PH; $('xorFrom').value = 'coldcard'; await w.seedXorUi('split');
+        { const x = await pr(() => w.printXorParts()); if (!/SEED XOR PART A OF 3: PRACTICE/.test(x) || !/PRACTICE: these parts make a public seed: .+\. Anyone can make it again/.test(x)) fails.push(T + 'tester T2: Seed XOR parts of a public seed say PRACTICE, with the PRACTICE line'); }
+        w.print = print0; w.clearAll(); }
+      // T5: the Detective names a testnet address with the Network menu on Mainnet before it searches
+      { const TT = await w.detTarget('tb1q6rz28mcfaxtmd6v789l9rrlrusdprr9pqcpvkl'); TT.pathNet = 'main';
+        if (!w.detNetNote(TT) || !/^This is a Testnet address, but the Network menu says Mainnet/.test($('detNetNote').textContent)) fails.push(T + 'tester T5: a testnet address with the menu on Mainnet is named');
+        TT.pathNet = 'regtest'; if (w.detNetNote(TT) || $('detNetNote').style.display !== 'none') fails.push(T + 'tester T5: testnet and regtest paths agree (coin type 1)'); }
+      // labels and keys follow the network (Electrum on Testnet: tb1q and a vpub)
+      { const j = fs.readFileSync(new URL('./fixtures/electrum/zpub-watch.json', import.meta.url), 'utf8'), zp = JSON.parse(j).keystore.xpub; $('ewNet').value = 'test'; $('ewIn').value = j; await w.ewOpenUi();
+        const o = $('ewOut').textContent, k = HDKey.fromExtendedKey(zp, { private: 0x04b2430c, public: 0x04b24746 });
+        const vpub = new HDKey({ versions: { private: 0x045f18bc, public: 0x045f1cf6 }, depth: k.depth, index: k.index, parentFingerprint: k.parentFingerprint, chainCode: k.chainCode, publicKey: k.publicKey }).publicExtendedKey;
+        if (!/Address type: native SegWit \(tb1q\.\.\.\)/.test(o)) fails.push(T + 'tester: the Electrum report on Testnet says (tb1q...)');
+        if (!o.includes('Extended public key (vpub): ' + vpub)) fails.push(T + 'tester: the Electrum report on Testnet shows the key as a vpub');
+        w.ewClear(); $('ewNet').value = ''; }
+      // T3: OPEN A PRACTICE WALLET says where it opened and that practice mode is on for the whole page
+      { $('prSrcTest').checked = true; await w.practiceWallet();
+        if (!/^Opened on the test network in CHECK A BACKUP, Open this wallet \(above\)\. Practice mode is now on for the whole page/.test($('prWalletStatus').textContent)) fails.push(T + 'tester T3: OPEN A PRACTICE WALLET says where it opened and that practice mode is on');
+        w.practiceMode(false); if ($('prWalletStatus').textContent) fails.push(T + 'tester T3: practice mode off clears that line'); w.clearAll(); }
+      // a wrong word count in plain words
+      if ((await w.checkPhrase('abandon abandon')).msg !== 'A seed phrase has 12, 15, 18, 21 or 24 words; this has 2.') fails.push(T + 'tester: a wrong word count is said in plain words');
+    } catch (e) { if (e instanceof ProbeStop) throw e; fails.push('review: the probe crashed: ' + e.message); }
+    finally {
+      w.confirm = conf0; w.print = print0; if (siv0) w.Element.prototype.scrollIntoView = siv0; else delete w.Element.prototype.scrollIntoView;
+      try { w.ssPageWipe(); E('(f) => { ssPageStart = f; }')(start0); E('SSHardwareButtons')._instance = hb0; E('ssAutoWait = null'); w.msReset(); w.practiceMode(false); w.clearAll(); } catch (e) { /* page broken */ }
+      if (navOnline) Object.defineProperty(w.navigator, 'onLine', navOnline); else delete w.navigator.onLine;
+      for (const id of ['wNet', 'wvNet', 'psbtNet', 'cmpNet', 'msNet']) $(id).value = 'main'; for (const id of ['detNet', 'ewNet', 'wdatNet']) $(id).value = '';
+    }
+    w.showTab('make'); w.setMethod('dice'); await run('dice', 12, D50);
+  }
   // v2.16.0 "Recover old wallets", part A: Open an Electrum wallet file (files made by Electrum 4.8.4 itself and what Electrum said
   // about them, tests/fixtures/electrum/), and any path with more addresses in Open this wallet (addresses from @scure/bip32). It
   // ends with the reader and the wallet view cleared, so the sections after it start as before.
@@ -1006,7 +1152,10 @@ async function probe(w, mutated, fast, only, hooks) {
       if (a !== 9 || b !== 10 || fd !== T2.descriptor || c !== 12 || d !== 13) fails.push(T + 'lessons (multisig): the change steps by their buttons, the descriptor held up'); L.tx = null; }
     { lesson('message'); settings().set_value(SC.SETTING__MESSAGE_SIGNING, SC.OPTION__DISABLED); E('ssLearnGoto')(5, false);
       at('SSSettingsMenuView', 'Settings'); tick(); const a = L.step; at('SSSettingsMenuView', 'Advanced'); tick(); const b = L.step;
-      at('SSSettingsEntryUpdateSelectionView', 'Message signing', ['Mainnet', 'Testnet']); tick(); const c = L.step; at('SSSettingsEntryUpdateSelectionView', 'Message signing', ['Enabled', 'Disabled']); tick(); const d = L.step; tick(); const d2 = L.step;
+      at('SSSettingsEntryUpdateSelectionView', 'Bitcoin network', ['Mainnet', 'Testnet'], 'SSButtonListScreen', { args: { attr_name: SC.SETTING__NETWORK } }); tick(); const c = L.step;
+      at('SSSettingsEntryUpdateSelectionView', 'Electrum seeds', ['Enabled', 'Disabled'], 'SSButtonListScreen', { args: { attr_name: SC.SETTING__ELECTRUM_SEEDS } }); tick(); const c2 = L.step;   // v2.16.1 review (tester T4): another Enabled/Disabled setting does not count
+      if (c2 !== 6) fails.push(T + 'lessons (message): Electrum seeds (Enabled and Disabled too) is not Message signing (' + c2 + ')');
+      at('SSSettingsEntryUpdateSelectionView', 'Message signing', ['Enabled', 'Disabled'], 'SSButtonListScreen', { args: { attr_name: SC.SETTING__MESSAGE_SIGNING } }); tick(); const d = L.step; tick(); const d2 = L.step;
       settings().set_value(SC.SETTING__MESSAGE_SIGNING, SC.OPTION__ENABLED); tick(); const e = L.step;
       if (a !== 5 || b !== 6 || c !== 6 || d !== 7 || d2 !== 7 || e !== 8) fails.push(T + 'lessons (message): the settings steps by title, by options and by the setting itself');
       lesson('dice'); E('ssLearnGoto')(5, false); at('SSSeedWordsView', 'Seed Words'); tick(); const f = L.step; at('SSSeedWordsView', 'Seed Words: 1/3'); tick(); const g = L.step;
@@ -1016,6 +1165,7 @@ async function probe(w, mutated, fast, only, hooks) {
     // up to the camera, then the device's own keys pressed (Home > Scan > Done); the SeedQR is wiped once the scan read it, when it
     // is put away, and by the wipe
     await off(); E('ssPageStart = function () { ssPageOn = true; }');
+    Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => false });   // v2.16.1 review: a SeedQR is read only while offline (section 81)
     { const o = $('dmOut'), d0 = o.dataset.practicePhrase, p0 = E('dmPractice'), setP = E('(v) => { dmPractice = v; }'), load = (p, x) => w.vfSignerLoadSeed(p, x);
       o.dataset.practicePhrase = PH; setP('practice sheet 1');
       if (load('') || load(null) || CAM.frames || $('ssBox').open || E('ssPageOn')) fails.push(T + 'load into the practice signer: refused for no phrase');
@@ -1031,11 +1181,12 @@ async function probe(w, mutated, fast, only, hooks) {
         const step = (view, title, labels, screen, sel, extra) => { at(view, title, labels, screen, { scr: Object.assign({ selected_button: sel }, extra || {}) }); A.tapAt = 0; taps.length = 0; w.ssAutoTick(); return taps.slice(); };
         const t1 = step('SSMainMenuView', 'Home', ['Scan', 'Seeds', 'Tools', 'Settings'], 'SSMainMenuScreen', 0), t2 = step('SSMainMenuView', 'Home', ['Scan', 'Seeds', 'Tools', 'Settings'], 'SSMainMenuScreen', 3);
         if (t1.join() !== 'KEY_PRESS' || t2.join() !== 'KEY_UP') fails.push(T + 'load into the practice signer: on Home it goes to Scan and presses it (' + t1 + ' / ' + t2 + ')');
+        A.read = true;   // the scan read the SeedQR (v2.16.1 review: Done is pressed only then; section 81 reads it through the camera hook)
         const t3 = step('SSSeedFinalizeView', '', ['Done', 'Passphrase'], 'SSButtonListScreen', 0, { fingerprint: fp(PH, '') }), t4 = step('SSSeedFinalizeView', '', ['Done', 'Passphrase'], 'SSButtonListScreen', 1, { fingerprint: fp(PH, '') });
         if (t3.join() !== 'KEY_PRESS' || t4.join() !== 'KEY_UP') fails.push(T + 'load into the practice signer: on Finalize it chooses Done (' + t3 + ' / ' + t4 + ')');
         step('SSSeedOptionsView', fp(PH, ''), [], 'SSButtonListScreen', 0);
         if (A.on || $('ssLoadStatus').textContent !== 'Loaded: the device shows the seed with fingerprint ' + fp(PH, '') + ', the same as VOIDFORGE works out.' || !/ok/.test($('ssLoadStatus').className)) fails.push(T + 'load into the practice signer: it ends on the seed, the device\'s fingerprint the same as the page\'s');
-        load(PH, { pass: true }); await until(() => A.fp === fp(PH, ''), 3000); step('SSMainMenuView', 'Home', ['Scan', 'Seeds', 'Tools', 'Settings'], 'SSMainMenuScreen', 0); const t5 = step('SSSeedFinalizeView', '', ['Done', 'Passphrase'], 'SSButtonListScreen', 0, { fingerprint: fp(PH, '') });
+        load(PH, { pass: true }); await until(() => A.fp === fp(PH, ''), 3000); step('SSMainMenuView', 'Home', ['Scan', 'Seeds', 'Tools', 'Settings'], 'SSMainMenuScreen', 0); A.read = true; const t5 = step('SSSeedFinalizeView', '', ['Done', 'Passphrase'], 'SSButtonListScreen', 0, { fingerprint: fp(PH, '') });
         if (t5.length || A.on || !/Choose Passphrase on the device/.test($('ssLoadStatus').textContent)) fails.push(T + 'load into the practice signer: with a passphrase on the page it stops on Finalize, for the passphrase');
         E('ssAutoWait = null'); E('SSHardwareButtons')._instance = hb0; ctl.current_destination = null; await off(); E('ssPageStart = function () { ssPageOn = true; }'); }
       E('ssPageStart = function () {}'); o.dataset.practicePhrase = PH; if (load(PH) || CAM.frames) fails.push(T + 'load into the practice signer: nothing held up when the device did not start'); await off();
@@ -1395,9 +1546,10 @@ async function probe(w, mutated, fast, only, hooks) {
     if (!/#smudgeNote, #vSmudge \{ -webkit-user-select: none; user-select: none; \}/.test(mutated) || !/body\.drill-on #smudgeNote \{ visibility: hidden; \}/.test(mutated)) fails.push('look-alike: the list cannot be selected and the restore drill hides it');
     w.showTab('make'); w.setMethod('dice');
     const R50 = '65515223131652132161133154444123616466443112153441', got = await run('dice', 12, R50);
-    if (!/published by SeedSigner/.test($('forgePub').textContent)) fails.push('public phrase: FORGE names SeedSigner\'s example rolls');
+    if (!/published by SeedSigner/.test($('ssfBan').textContent) || $('forgePub').textContent !== '') fails.push('public phrase: FORGE names SeedSigner\'s example rolls, once (the PRACTICE banner; v2.16.1 review)');
     if ($('smudgeNote').textContent !== 'SECRET ' + w.smudgeText(got.split(' '))) fails.push('look-alike: FORGE lists the words under the grid');
-    w.practiceMode(true); await sl(30); if ($('forgePub').className !== 'status warn') fails.push('public phrase: FORGE follows practice mode'); w.practiceMode(false); await sl(20);
+    w.practiceMode(true); await sl(30); if ($('forgePub').className !== 'status warn' || !/TESTNET/.test($('forgePub').textContent)) fails.push('public phrase: FORGE follows practice mode');
+    await run('dice', 12, R50); if (!/^Practice mode is on, so this public seed is fine for TESTNET/.test($('forgePub').textContent)) fails.push('public phrase: FORGE in practice mode says the public seed is fine for TESTNET'); w.practiceMode(false); await sl(20);
     // rolls typed twice: expected positions worked out by hand
     const B = '123456654321', T = (s, coin) => { mode(coin ? 'coin' : 'dice'); $('rolls').value = s; $('rolls').oninput(); return $('twiceNote').textContent; };
     if (!/^The same 12 rolls appear twice: rolls 1 to 12 and rolls 16 to 27\./.test(T(B + '555' + B))) fails.push('twice: 12 repeated rolls are found');
@@ -1726,7 +1878,7 @@ async function probe(w, mutated, fast, only, hooks) {
       [3, () => TX().includes(box1) && TX().includes('Forge   ' + g3(ref.E.bits.slice(0, 11)))],
       [3, () => $('dmFR').value === ref.E.marks.R && TX().includes('fold   ' + ref.E.marks.R + '\nR(F)')],
       [4, () => $('dmWords').value === ref.E.phrase.slice(0, 11).join(' ')],
-      [5, () => TX().includes('“' + ref.E.phrase[11] + '”') && TX().includes(ref.E.handWords[11].bits)],
+      [5, () => TX().includes('“' + ref.E.phrase[11] + '”') && TX().includes(ref.E.handWords[11].bits) && $('dmWords').value === phrase],
       [5, () => TX().includes(phrase) && $('dmTourNext').disabled],
     ];
     for (const [i, [step, ok]] of want.entries()) {
@@ -1735,7 +1887,8 @@ async function probe(w, mutated, fast, only, hooks) {
       if (w.eval('dmPractice') !== 'practice 9' || $('dmBtn').disabled !== ($('dmCards').value !== sh.cards)) fails.push(T + 'phase ' + (i + 1) + ' stays PRACTICE, FORGE SEED on once the dice and the cards are complete (v2.16.1)');
     }
     if ($('dmCards').value !== sh.cards || $('dmDice').value !== sh.dice || !/Damascus practice sheet/.test(w.knownPhrase(phrase) || '')) fails.push(T + 'it ends on exactly the practice sheet, a published practice phrase');
-    await w.dmGenerate(); const BAN9 = 'PRACTICE: This seed is Damascus practice sheet 9, a public practice seed. Anyone can make it again: never put money on it.';
+    { const cf = w.confirm; let asked = ''; w.confirm = (m) => { asked = m; return true; }; await w.dmGenerate(); w.confirm = cf; if (asked) fails.push(T + 'FORGE SEED at the end of the guided practice asks nothing: every word was filled in (tester T1)'); }
+    const BAN9 = 'PRACTICE: This seed is Damascus practice sheet 9, a public practice seed. Anyone can make it again: never put money on it.';
     if (!w.hasSeed() || w.eval('madeMnemonic') !== phrase || $('ssfBan').textContent !== BAN9 || $('ssfBan').style.display === 'none') fails.push(T + 'FORGE SEED at the end makes the practice sheet\'s words, the PRACTICE banner naming the sheet (v2.16.1)');
     { const p0 = w.print; let pt = ''; w.print = () => { pt = $('printOnly').textContent + $('printQr').textContent; $('printOnly').textContent = ''; $('printQr').textContent = ''; };
       const sheet = (f) => { pt = ''; f(); return pt; };
@@ -3290,7 +3443,7 @@ async function probe(w, mutated, fast, only, hooks) {
       [m1, b1, c1] = await V('2047'.repeat(12)); if (/above 2047/.test(m1)) fails.push('seedqr: 2047 is a valid word number'); 
       [m1, b1, c1] = await V('2048' + '0000'.repeat(11)); if (!/above 2047/.test(m1) || !/bad/.test(c1)) fails.push('seedqr: number above 2047 rejected');
       [m1, b1, c1] = await V('0000'.repeat(12)); if (!/Checksum failed/.test(m1) || !/bad/.test(c1)) fails.push('seedqr: bad checksum rejected');
-      [m1, b1] = await V('0000'.repeat(11)); if (!/Invalid length/.test(m1)) fails.push('seedqr: wrong digit count rejected');
+      [m1, b1] = await V('0000'.repeat(11)); if (!/^These 44 characters are not the digits of a SeedQR \(48 or 96 digits\)/.test(m1)) fails.push('seedqr: wrong digit count rejected');
       [m1, b1] = await V('7f'.repeat(15)); if (/^Valid/.test(m1)) fails.push('seedqr: wrong hex length rejected');
       [m1, b1] = await V(ABOUT); if (m1 !== 'Valid 12-word BIP39 phrase') fails.push('seedqr: plain words unchanged');
       // BIP85
@@ -5178,7 +5331,7 @@ const M = [
   ['try accounts: STOP ignored', 'if(acctScanStop) return say("", "Stopped.', 'if(false) return say("", "Stopped.'],
   ['try accounts: buttons stay off after a run', 'btns.forEach(b => b.disabled = !on);', 'btns.forEach(b => b.disabled = true);'],
   ['try accounts: second press while busy runs', 'if(!gateOk() || acctScanBusy) return;', 'if(!gateOk()) return;'],
-  ['try accounts: testnet not named', '(addressNetOf(addr) === "test" ? "Testnet " : "")', '""'],
+  ['try accounts: testnet not named', 'n === "test" ? "Testnet " : "";', '"";'],
   ['try accounts: button not wired', 'onclick="checkAllAccounts()"', 'onclick=""'],
   ['try accounts: always searches account 0', 'findAddress(seed, addr, 0, DEPTH, acct)', 'findAddress(seed, addr, 0, DEPTH, 0)'],
   ['try accounts: STOP never turned on', 'btns.forEach(b => b.disabled = true); stop.disabled = false;', 'btns.forEach(b => b.disabled = true);'],
@@ -5186,7 +5339,7 @@ const M = [
   ['try accounts: no advice about the passphrase', '" (type it in the box above and search again)"', '""'],
   ['try accounts: typed-passphrase advice dropped', '" (you typed one; try another spelling)"', '""'],
   ['try accounts: found message hides the variant', '" of these words, " + label + ". Put "', '" of these words. Put "'],
-  ['try accounts: not an address accepted', 'if(!type) return say("bad", "Enter a bc1q', 'if(false) return say("bad", "Enter a bc1q'],
+  ['try accounts: not an address accepted', 'if(!type) return say("bad", ADDR_KINDS_MSG);', 'if(false) return say("bad", ADDR_KINDS_MSG);'],
   ['try accounts: invalid phrase accepted', 'if(!r.ok) return say("bad", "First type a valid seed phrase in the box above. " + r.msg);', ''],
   ['translation: html opt-out dropped', '<html lang="en" translate="no">', '<html lang="en">'],
   ['translation: notranslate meta dropped', '<meta name="google" content="notranslate">', '<meta name="x" content="notranslate">'],
@@ -5343,7 +5496,7 @@ const M = [
   ['find: NOT FOUND shown as success', 'say("bad", "NOT FOUND in indices', 'say("ok", "NOT FOUND in indices'],
   ['find: FOUND shown as failure', 'addrScanFrom = 0; return say("ok", "FOUND: this "', 'addrScanFrom = 0; return say("bad", "FOUND: this "'],
   ['find: invalid phrase not rejected', 'if(!r.ok) return say("bad", "Type a valid seed phrase in the box above first. " + r.msg);', ''],
-  ['find: address format not validated', '  if(!kind) return say("bad", "Enter a bc1q', '  if(false) return say("bad", "Enter a bc1q'],
+  ['find: address format not validated', '  if(!kind) return say("bad", ADDR_KINDS_MSG);', '  if(false) return say("bad", ADDR_KINDS_MSG);'],
   ["find: scan position not reset when the address changes", "() => { resetAddrScan(); const st = document.getElementById(\"addrCheckStatus\");", "() => { const st = document.getElementById(\"addrCheckStatus\");"],
   ['bip85: wrong application number', '[39, 0, words, index]', '[38, 0, words, index]'],
   ['bip85: wrong language', '[39, 0, words, index]', '[39, 1, words, index]'],
@@ -6416,7 +6569,7 @@ const M = [
   ["public QR print: kept after HIDE", "function hideQr(){\n  qrShown = null;\n", "function hideQr(){\n"],
   ["public QR print: no name", ": QR_PRINT_NAMES[id] || \"PUBLIC KEY\")", ": \"PUBLIC KEY\")"],
   ["public QR print: text missing", "\"\\n\\n\" + t + \"\\n\\n\" + qrShown.foot + \"\\n\", \"\");", "\"\\n\\n\" + qrShown.foot + \"\\n\", \"\");"],
-  ["public QR print: testnet not named", "|| \"PUBLIC KEY\") + netTitle(net),", "|| \"PUBLIC KEY\"),"],
+  ["public QR print: testnet not named", "|| \"PUBLIC KEY\") + netTitle(net) + (pr", "|| \"PUBLIC KEY\") + (pr"],
   ["public QR print: Silent Payment type", "id === \"spAddr\" ? \"Address type: Silent Payment (BIP352)\"", "false ? \"Address type: Silent Payment (BIP352)\""],
   ["address QR print: request called an address", "const req = t !== addr, fp", "const req = false, fp"],
   ["address QR print: link missing", "(req ? \"\\nPayment link: \" + t : \"\")", "\"\""],
@@ -6430,8 +6583,8 @@ const M = [
   ["child print: index missing", "\", index \" + c.index + \". The parent words\"", "\". The parent words\""],
   ["child print: no question", "if(!confirm(\"Printing sends \" + (what === \"dice rolls\" ? \"these\" : \"this\") + \" child \" + what", "if(false && !confirm(\"Printing sends \" + (what === \"dice rolls\" ? \"these\" : \"this\") + \" child \" + what"],
   ["child print: short secret shrunk", "c.text.length > 600 ? \" ps-s\" : \"\"", "c.text.length > 6 ? \" ps-s\" : \"\""],
-  ["child print: other types not printable", "    childShow({app, head, text: out, extra: extra.trim(), index, pass: !!vp, parent});\n", ""],
-  ["child print: words not printable", "    childShow({app: \"words\", words: ws, fp, a0, index, pass: !!vp, parent});\n", ""],
+  ["child print: other types not printable", "    childShow({app, head, text: out, extra: extra.trim(), index, pass: !!vp, parent, pr:", "    if(false) childShow({app, head, text: out, extra: extra.trim(), index, pass: !!vp, parent, pr:"],
+  ["child print: words not printable", "    childShow({app: \"words\", words: ws, fp, a0, index, pass: !!vp, parent, pr:", "    if(false) childShow({app: \"words\", words: ws, fp, a0, index, pass: !!vp, parent, pr:"],
   ["child print: passphrase noted wrongly", "(c.pass ? \" (parent words with a passphrase)\" : \"\")", "(!c.pass ? \" (parent words with a passphrase)\" : \"\")"],
   ["word sheet: 24 words printed as 12", "  const wc = SEED_LENS.includes(+document.getElementById(\"wdLen\").value) ? +document.getElementById(\"wdLen\").value : 12, need = wdNeeds(wc);", "  const wc = SEED_LENS.includes(+document.getElementById(\"wdLen\").value) ? 12 : 12, need = wdNeeds(wc);"],
   ["word sheet: flips missing", "    for(let i = 1; i <= need.flips; i++){ const c = add(\"ps-cell\", \"\", f); add(\"ps-n\", \"Flip \" + i, c); }\n", ""],
@@ -6602,7 +6755,7 @@ const M = [
   ["practice: VERIFY lines not marked", "a0 + (practiceOn ? \" (test network)\" : \"\")", "a0"],
   ["practice: VERIFY does not name practice phrases", "    if(await isPracticePhrase(r.mnemonic)) lines.push(", "    if(false) lines.push("],
   ["practice: no banner", "  body.practice #practiceBan { display: block;", "  body.x #practiceBan { display: block;"],
-  ["practice: practice wallet on mainnet", "  if(!practiceOn) practiceMode(true);\n  if(!practiceOn) return;\n", "  if(!practiceOn) return;\n"],
+  ["practice: practice wallet on mainnet", "  if(!practiceOn) practiceMode(true);\n  if(!practiceOn) return prWalletSay(", "  if(!practiceOn) return prWalletSay("],
   ["practice: multisig menu left on mainnet", "\"cmpNet\", \"msNet\", \"detNet\",", "\"cmpNet\", \"detNet\","],
   ["watch file: written from an unfinished refresh", "  watchCtx.file = null;   // v2.5.0", "  // v2.5.0"],
   ["watch file: no multipath descriptor", "descriptorChecksum(body.replace(\"/0/*)\", \"/<0;1>/*)\"))", "descriptorChecksum(body)"],
@@ -7263,7 +7416,7 @@ const M = [
   ["v2.10 public: words box not checked", "document.getElementById(\"phrase\").addEventListener(\"input\", knownPhraseCheck);", ""],
   ["v2.10 public: practice mode not said", "+ \".\" + (practiceOn ? \" Practice mode is on", "+ \".\" + (false ? \" Practice mode is on"],
   ["v2.10 public: VERIFY line missing", "    else if(knownPhrase(r.mnemonic)) lines.push(knownPhraseText(r.mnemonic));", ""],
-  ["v2.10 public: FORGE not warned", "function seedNotes(words){ knownShow(\"forgePub\", words ? words.join(\" \") : \"\");", "function seedNotes(words){ knownShow(\"forgePub\", \"\");"],
+  ["v2.10 public: FORGE not warned", "function seedNotes(words){ forgePubShow(words ? words.join(\" \") : \"\");", "function seedNotes(words){ forgePubShow(\"\");"],
   ["v2.10 public: CLEAR ALL keeps the warning and list", "  smudgeShow(\"vSmudge\", null); knownSeq++; knownShow(\"phrasePub\", \"\");   // v2.10.0\n", ""],
   ["v2.10 public: Detective not warned", "function detPub(src){ knownShow(\"detPub\", src && src.mnemonic ? src.mnemonic : \"\"); }", "function detPub(src){ }"],
   ["v2.10 public: Open this wallet not warned", "knownShow(\"wvPub\", mnemonic);", "knownShow(\"wvPub\", \"\");"],
@@ -7828,7 +7981,7 @@ const M = [
   ["learn: lessons: RESTART does nothing", "if (ssLearn.lesson) { ssLearnHide(); ssLearnGoto(0, false); }", "if (ssLearn.lesson) { ssLearnHide(); }"],
   ["learn: practice wallet: the camera tools see it", "scanning = r[0] === 480 && r[1] === 480;", "scanning = true;"],
   ["learn: practice wallet: a scan sees it while put away", "if (scanning && ssLearnCam.frames) return ssLearnCamHandle();", "if (scanning) return ssLearnCamHandle();"],
-  ["learn: practice wallet: the scanner does not read it", "if (ssLearnCam.on) { const t = ssLearnCam.shown;", "if (false) { const t = ssLearnCam.shown;"],
+  ["learn: practice wallet: the scanner does not read it", "if (ssLearnCam.on) {\n      const t = ssLearnCam.shown;", "if (false) {\n      const t = ssLearnCam.shown;"],
   ["learn: practice wallet: the QR not painted", "  g.fillStyle = \"#000\";\n  for (let y = 0; y < n; y++)", "  g.fillStyle = \"#fff\";\n  for (let y = 0; y < n; y++)"],
   ["learn: practice wallet: not put away after a complete scan", "if (d.is_complete && ssLearnCam.frames) ssLearnHide();", "if (false) ssLearnHide();"],
   ["learn: wipe: QR texts not overwritten", "  if (ssLearnCam.frames) ssLearnCam.frames.fill(\"\");\n", ""],
@@ -7839,9 +7992,9 @@ const M = [
   ["learn: load: the one-click load not started (v2.16.1)", "  ssAutoStart(phrase, !!(opts && opts.pass));\n", ""],
   ["learn: load: Scan not pressed on Home (v2.16.1)", "sel === 0 ? \"KEY_PRESS\" : sel === 1", "sel === 0 ? \"KEY_LEFT\" : sel === 1"],
   ["learn: load: Done not chosen on Finalize (v2.16.1)", "return ssAutoTap(hb, sel === i ? \"KEY_PRESS\"", "return ssAutoTap(hb, sel === i ? \"KEY_DOWN\""],
-  ["learn: load: a passphrase on the page ignored (v2.16.1)", "if (A.pass) return ssAutoEnd(", "if (false) return ssAutoEnd("],
+  ["learn: load: a passphrase on the page ignored (v2.16.1)", "    if (A.pass) {\n      const pl", "    if (false) {\n      const pl"],
   ["learn: load: never says it is loaded (v2.16.1)", "if (s.view === \"SSSeedOptionsView\" && A.stage === \"fin\") {", "if (false) {"],
-  ["learn: wipe: the one-click load keeps running after the wipe (v2.16.1)", "  ssAutoEnd(\"\"); ssLearnSetText(\"ssLoadStatus\", \"\");\n", ""],
+  ["learn: wipe: the one-click load keeps running after the wipe (v2.16.1)", "  ssAutoEnd(\"\"); ssLearnSetText(\"ssLoadStatus\", \"\"); ssLearnSetText(\"ssCamNote\", \"\");\n", ""],
   ["learn: load: any number of words", "if ((words.length !== 12 && words.length !== 24) || idx.some((i) => i < 0)) return false;", "if (idx.some((i) => i < 0)) return false;"],
   ["learn: load: words not in the word list", "if ((words.length !== 12 && words.length !== 24) || idx.some((i) => i < 0)) return false;", "if (words.length !== 12 && words.length !== 24) return false;"],
   ["learn: load: held up while the device is off", "  if (!ssPageOn) return false;\n  ssLearn.lesson = null;", "  ssLearn.lesson = null;"],
@@ -7934,9 +8087,9 @@ const M = [
   ["re-hide: the practice signer not on the list (v2.16.1)", "\"c32Status\",\n  // the practice signer: its screen and keys (v2.16.1)\n  \"ssDevice\"];", "\"c32Status\"];"],
   ["re-hide: a seed in the practice signer no reason to cover (v2.16.1)", "const RH_HOLD = {ssDevice: () => typeof vfSignerHoldsSecret === \"function\" && vfSignerHoldsSecret()};", "const RH_HOLD = {ssDevice: () => false};"],
   ["re-hide: the practice signer's own rule ignored (v2.16.1)", "  if(RH_HOLD[e.id]) return !!RH_HOLD[e.id]();\n", ""],
-  ["re-hide: a public test seed in the practice signer counts as a secret (v2.16.1)", "const pub = (s) => !s.passphrase && typeof knownPhrase === \"function\" && !!knownPhrase(s.mnemonic_str);", "const pub = (s) => false;"],
+  ["re-hide: a public test seed in the practice signer counts as a secret (v2.16.1)", "const pub = (s) => !s.passphrase && known(s.mnemonic_str);", "const pub = (s) => false;"],
   ["re-hide: a passphrase on a public seed in the practice signer not a secret (v2.16.1)", "const pub = (s) => !s.passphrase && ", "const pub = (s) => "],
-  ["re-hide: a seed being made on the practice signer not a secret (v2.16.1)", "    if (st.pending_seed && !pub(st.pending_seed)) return true;\n", ""],
+  ["re-hide: a seed being made on the practice signer not a secret (v2.16.1)", "    if (st.pending_seed) return true;\n", ""],
   ["re-hide: words being typed into the practice signer not a secret (v2.16.1)", "    if (pm.length && !pub({ mnemonic_str: pm.join(\" \"), passphrase: \"\" })) return true;\n", ""],
   // v2.15.0: the quick path and the guided practice (section 76)
   ['damascus guided: the practice mark is lost while it fills in', 'dmLoaded = {dice: b.dmDice, cards: b.dmCards, kind: "practice " + T.n};', 'dmLoaded = null;'],
@@ -7951,7 +8104,7 @@ const M = [
   ['damascus guided: NEXT is not stopped at the end', 'document.getElementById("dmTourNext").disabled = T.i === DM_TOUR_STEP.length - 1;', 'document.getElementById("dmTourNext").disabled = false;'],
   ['damascus guided: the step is not shown', 'dmStep = DM_TOUR_STEP[T.i]; dmUpdate();', 'dmUpdate();'],
   ['damascus guided: the same practice sheet every time', 'dmPracticeNext = n % 100 + 1;   // practice sheets 1 to 100, as published, in turn with FILL IN A PRACTICE SHEET', ''],
-  ['damascus guided: the words are not filled in', 'b.dmWords = i >= 9 ? T.phrase.split(" ").slice(0, T.wc - 1).join(" ") : "";', 'b.dmWords = "";'],
+  ['damascus guided: the words are not filled in', 'b.dmWords = i >= 10 ? T.phrase : i >= 9 ? T.phrase.split(" ").slice(0, T.wc - 1).join(" ") : "";', 'b.dmWords = "";'],
   ['damascus quick path: the step bar does not show steps 3 to 5 done by the page', 'done = L.done[n - 1] || (byPage && n >= 3 && n < 5);', 'done = L.done[n - 1];'],
   ['damascus quick path: step 5 ticked before the seed is forged', 'done = L.done[n - 1] || (byPage && n >= 3 && n < 5);', 'done = L.done[n - 1] || (byPage && n >= 3);'],
   ['damascus quick path: the Ready line says press FORGE SEED after forging', 'r.textContent = !both ? "" : go && forged ?', 'r.textContent = !both ? "" : false ?'],
@@ -8150,6 +8303,56 @@ const M = [
   ["multisig: the seed in CHECK A BACKUP not wiped", "    msWipeChecked();\n", ""],
   ["multisig: the passphrase in CHECK A BACKUP ignored", "await mnemonicToSeed(r.mnemonic, document.getElementById(\"verifyPass\").value), ms.type", "await mnemonicToSeed(r.mnemonic, \"\"), ms.type"],
   ["multisig: the same seed from CHECK A BACKUP twice", "if(dup >= 0){ eb.textContent = \"This is the same key as key \" + (dup + 1) + \" (fingerprint \" + w.fp + \"). Using one key twice would make the wallet weaker than it looks. Every", "if(false){ eb.textContent = \"This is the same key as key \" + (dup + 1) + \" (fingerprint \" + w.fp + \"). Using one key twice would make the wallet weaker than it looks. Every"],
+  // v2.16.1 review (a fresh review of the v2.16.1 changes): probe section 81
+  ["review: one-click load while online", "if (navigator.onLine === true) return false;   // v2.16.1 review", "if (false) return false;   // v2.16.1 review"],
+  ["review: the online note under YOUR SEED", "navigator.onLine === true ? SIGNER_ONLINE : ", ""],
+  ["review: the load goes on when the computer goes online", "if (navigator.onLine === true) { if (ssLearnCam.key === \"seedload\") ssLearnHide(); return ssAutoEnd(SS_AUTO_OFFLINE, \"bad\"); }", ""],
+  ["review: Scan pressed with no SeedQR held up", "if (!held) return ssAutoEnd(\"Not loaded: the SeedQR was put away", "if (false) return ssAutoEnd(\"Not loaded: the SeedQR was put away"],
+  ["review: the scan's read of the SeedQR not noted", "if (ssLearnCam.key === \"seedload\" && ssAuto.on) ssAuto.read = true;", ""],
+  ["review: Done pressed on another seed's Finalize screen", "if (!A.read) {   // before the scan read this SeedQR", "if (false) {   // before the scan read this SeedQR"],
+  ["review: Done or Loaded before the fingerprint is known", "  if (!A.fp && !A.fpErr) return;   // the page", "  // the page"],
+  ["review: a different fingerprint on Finalize goes on", "if (A.fp && fp && fp !== A.fp) return ssAutoEnd(", "if (false) return ssAutoEnd("],
+  ["review: the passphrase button named Passphrase", "const pl = s.labels.find((l) => l && !/^Done$/.test(l));", "const pl = \"Passphrase\";"],
+  ["review: passphrase setting Required not handled", "if (s.view === \"SSSeedAddPassphraseView\") {   // the device", "if (false) {   // the device"],
+  ["review: back on Home after the scan, the load waits on", "if (s.view === \"SSMainMenuView\" || s.view === \"SSErrorView\") return ssAutoEnd(\"Not loaded: the device did not load", "if (false) return ssAutoEnd(\"Not loaded: the device did not load"],
+  ["review: re-hide: a held SeedQR not a secret", "if (ssLearnCam.key === \"seedload\" && ssLearnCam.frames) for (const f of ssLearnCam.frames) if (f && !known(ssSeedQrPhrase(f))) return true;", ""],
+  ["review: re-hide: a held SeedQR of a public seed a secret", "if (f && !known(ssSeedQrPhrase(f))) return true;", "if (f) return true;"],
+  ["review: re-hide: the passphrase screens not a secret", "const v = ssLearnState(); if (v && SS_PASS_VIEWS.includes(v.view)) return true;", ""],
+  ["review: wipeSeed leaves the practice signer's copy", "  if(typeof vfSignerDropSeed === \"function\") vfSignerDropSeed();   // v2.16.1", "  // v2.16.1"],
+  ["review: wipeSeed leaves the held SeedQR", "if (ssLearnCam.key === \"seedload\") ssLearnHide(); } catch (e) { /* lessons part missing */ }", "} catch (e) { /* lessons part missing */ }"],
+  ["review: wipeSeed leaves a device holding the seed on", "  if (!vfSignerHoldsSecret()) return false;\n  const b = document.getElementById(\"ssBox\");", "  return false;\n  const b = document.getElementById(\"ssBox\");"],
+  ["review: a public seed from hex, dice or cards not marked PRACTICE", "  if(!ssfNext){ const pk = pubKind(mnemonic); if(pk) ssfNext = pracMark(pk); }", ""],
+  ["review: the public seed named twice under YOUR SEED", "  if(!m || !ssfCtx || !ssfCtx.ban) return knownShow(\"forgePub\", m);", "  return knownShow(\"forgePub\", m);"],
+  ["review: PRINT THIS QR of a PRACTICE seed without the line", "(qrShown.pr ? qrShown.pr + \"\\n\\n\" : \"\") + ", ""],
+  ["review: PRINT THIS QR of a PRACTICE seed without PRACTICE in the title", "netTitle(net) + (pr ? \": PRACTICE\" : \"\"),", "netTitle(net),"],
+  ["review: the backup plan of a PRACTICE seed", "    const add = prAdd(add0, pr);\n    add(\"ps-title\", \"VOIDFORGE BACKUP PLAN\");", "    const add = add0;\n    add(\"ps-title\", \"VOIDFORGE BACKUP PLAN\");"],
+  ["review: the heir sheets of a PRACTICE seed", "    const add = prAdd(add0, pr);\n    if(kind === \"letter\"){", "    const add = add0;\n    if(kind === \"letter\"){"],
+  ["review: multisig: a PRACTICE seed made here added without a warning", "const pk = msPracticeOk(watchCtx.mnemonic, ms.keys.length + 1); if(pk === null) return;", "const pk = \"\";"],
+  ["review: multisig: a public seed from CHECK A BACKUP added without a warning", "const pk = msPracticeOk(r.mnemonic, ms.keys.length + 1); if(pk === null) return;", "const pk = \"\";"],
+  ["review: multisig: the slot not tagged PRACTICE", "(k.pr ? \"PRACTICE (public seed): anyone can make this key again. \" : \"\") + ", ""],
+  ["review: multisig: the sheet does not name the PRACTICE keys", "(k.pr ? \"   PRACTICE (public seed)\" : \"\")", "\"\""],
+  ["review: backup practice: CLEAR leaves your own words", "  document.getElementById(\"prOwn\").value=\"\";   // v2.16.1 review", "  // v2.16.1 review"],
+  ["review: CHECK ADDRESS refuses bcrt1", "/^(bc1|tb1|bcrt1)q[0-9a-z]{38}$/.test(addr) ? \"SegWit\"", "/^(bc1|tb1)q[0-9a-z]{38}$/.test(addr) ? \"SegWit\""],
+  ["review: CHECK ADDRESS keeps BCRT1 in capitals", "  if(/^(bc1|tb1|bcrt1)/i.test(addr)) addr = addr.toLowerCase();\n  { const sn = scriptAddrNote(addr); if(sn) return say(\"bad\", sn); }\n  const kind0", "  if(/^(bc1|tb1)/i.test(addr)) addr = addr.toLowerCase();\n  { const sn = scriptAddrNote(addr); if(sn) return say(\"bad\", sn); }\n  const kind0"],
+  ["review: TRY ACCOUNTS keeps BCRT1 in capitals", "  if(/^(bc1|tb1|bcrt1)/i.test(addr)) addr = addr.toLowerCase();\n  { const sn = scriptAddrNote(addr); if(sn) return say(\"bad\", sn); }\n  const type = addressTypeOf(addr);", "  if(/^(bc1|tb1)/i.test(addr)) addr = addr.toLowerCase();\n  { const sn = scriptAddrNote(addr); if(sn) return say(\"bad\", sn); }\n  const type = addressTypeOf(addr);"],
+  ["review: a regtest address not named Regtest", "return n === \"regtest\" ? \"Regtest \" : n === \"test\"", "return n === \"test\""],
+  ["review: Electrum file: practice mode said as set by hand", "L.push(\"Network: set \" + (practiceOn ? \"by practice mode\" : \"by hand\") + \" to \" + netName(W.net)", "L.push(\"Network: set by hand to \" + netName(W.net)"],
+  ["review: wallet.dat: practice mode said as set by hand", "L.push(\"Network: set \" + (practiceOn ? \"by practice mode\" : \"by hand\") + \" to \" + netName(w.net)", "L.push(\"Network: set by hand to \" + netName(w.net)"],
+  // the hands-on tester's findings on v2.16.1 (probe sections 81, 73 and 76)
+  ["tester T1: guided practice leaves out the last word", "  b.dmWords = i >= 10 ? T.phrase : i >= 9 ?", "  b.dmWords = false ? T.phrase : i >= 9 ?"],
+  ["tester T2: PRINT WORDS of a public seed in CHECK A BACKUP", ", practice: pubPr(wvCtx.mnemonic)};   // v2.16.1 review", "};   // v2.16.1 review"],
+  ["tester T2: the recovery sheet of a public seed", "  const pr = pubPr(wvCtx.mnemonic);   // v2.16.1 review: the recovery sheet", "  const pr = \"\";   // v2.16.1 review: the recovery sheet"],
+  ["tester T2: the punch plate of a public seed", "    const add = prAdd(add0, S.practice);   // v2.16.1 review", "    const add = add0;   // v2.16.1 review"],
+  ["tester T2: the child of a public parent", "    const add = prAdd(add0, c.pr);   // v2.16.1 review", "    const add = add0;   // v2.16.1 review"],
+  ["tester T2: Seed XOR parts of a public seed", "      if(c.pr) a(\"ps-warn\", c.pr);", ""],
+  ["tester T2: Seed XOR parts title", " + c.parts.length + (c.pr ? \": PRACTICE\" : \"\"));", " + c.parts.length);"],
+  ["tester T3: OPEN A PRACTICE WALLET says nothing", "  prWalletSay(open ? \"ok\" : \"bad\", open ?", "  if(false) prWalletSay(open ? \"ok\" : \"bad\", open ?"],
+  ["tester T3: practice mode off leaves the line", "  if(!on) prWalletSay(\"\", \"\");", ""],
+  ["tester T4: Electrum seeds taken for Message signing", " && ssLearnArg(s, \"attr_name\") === SSSettingsConstants.SETTING__MESSAGE_SIGNING },", " },"],
+  ["tester T5: the Network menu and the address disagree silently", "  if(!T || netIsTest(T.net) === netIsTest(T.pathNet)) return false;", "  return false;"],
+  ["tester: Electrum report says bc1q on Testnet", "\"per address (below)\" : netEx(EW_TYPE_NAME[W.script], W.net))", "\"per address (below)\" : EW_TYPE_NAME[W.script])"],
+  ["tester: Electrum report shows a zpub on Testnet", "    const xk = await keyForNet(k.xpub, W.net);", "    const xk = k.xpub;"],
+  ["tester: a wrong word count said as Invalid length", "words.length ? \"A seed phrase has 12, 15, 18, 21 or 24 words; this has \" + words.length + \".\" : \"No words are typed.\")", "\"Invalid length\")"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

@@ -525,6 +525,12 @@ SCEN.offline = async (t, d, ctx, page) => {
   await d.pick(/^Scan$/); s = await until(async () => { const x = await d.state(); return x && x.view !== 'SSMainMenuView' && x.view !== 'SSScanView' && await d.idle(0) ? x : null; }, 60000) || await d.state();
   const seeds = await d.ev(() => SSController._instance.storage.seeds.length), pend = await d.ev(() => !!SSController._instance.storage.pending_seed);
   t(s.view === 'SSErrorView' && /Offline only/.test(s.headline) && seeds === 0 && !pend, 'online: the Scan on Home refuses the SeedQR too, and no seed is loaded');
+  // v2.16.1 review: LOAD INTO THE PRACTICE SIGNER refuses up front while online: nothing is held up, no key is pressed, and the note
+  // under YOUR SEED says why (before, the page pressed Scan with nothing held up, and the scan opened the computer's camera)
+  const ol = await d.ev((m) => { const r = vfSignerLoadSeed(m); return { r, held: !!ssLearnCam.frames, auto: ssAuto.on }; }, ABANDON);
+  t(ol.r === false && !ol.held && !ol.auto, 'online: vfSignerLoadSeed refuses: no SeedQR held up, no key pressed (' + JSON.stringify(ol) + ')');
+  const note = await page.evaluate(async () => { showTab('make'); setMethod('cards'); document.getElementById('cdHex').value = '00'.repeat(16); await cdHexGenerate(); seedToSigner(); return { note: document.getElementById('seedSignerNote').textContent, held: !!ssLearnCam.frames, auto: ssAuto.on }; });
+  t(/^Not loaded: this computer looks online, and a SeedQR is read only while offline\./.test(note.note) && !note.held && !note.auto, 'online: LOAD INTO THE PRACTICE SIGNER under YOUR SEED says it is not loaded because the computer is online (' + note.note + ')');
 };
 
 // ---- wipe: CLEAR ALL, closing the section, the auto-clear, END SESSION; the keyboard only with focus
@@ -1325,7 +1331,7 @@ SCEN.forge = async (t, d, ctx, page) => {
   t(s.view === 'SSSeedOptionsView' && s.title === fpOf(rootOf(ABANDON, 'Ab1')), 'passphrase "Ab1" applied on the device (fingerprint ' + s.title + ')');
   await forge();
   const r2 = await checkResult('SeedQR seed with passphrase', ABANDON, 'Ab1');
-  t(/PUBLIC EXAMPLE PHRASE/.test(r2.pub), 'the usual checks run: abandon ... about gets the public example phrase warning');
+  t(/one of the official BIP39 test phrases/.test(r2.ban) && r2.pub === '', 'the usual checks run: abandon ... about is named as a public seed by the PRACTICE banner, once (v2.16.1 review: the line under the words does not repeat it)');
   // 3. two seeds on the device: the one it shows, or a pick by fingerprint
   await page.evaluate(() => { showTab('check'); document.getElementById('ssBox').scrollIntoView(); });
   await d.back('SSMainMenuView');
@@ -1430,14 +1436,114 @@ SCEN.loadreal = async (t, d, ctx, page) => {
   const s = await d.state();
   t(!!L && s.view === 'SSSeedOptionsView' && s.title === pageFp, 'LOAD INTO THE PRACTICE SIGNER under YOUR SEED: one click loads the real seed; the device shows fingerprint ' + (s && s.title) + ', the page\'s ' + pageFp + ' (' + (L && L.st) + ')');
   t(/is open in CHECK A BACKUP and loads this seed by itself/.test(await page.textContent('#seedSignerNote')), 'the note under YOUR SEED says the practice signer loads it by itself');
-  // re-hide: the device holds a seed that is not public, so it is a reason to cover on its own (the words on MAKE A SEED wiped first)
+  // v2.16.1 review: wiping the page's seed (wipeSeed: ADD THIS KEY & WIPE THE SEED, CLEAR ALL) leaves no copy in the practice
+  // signer: the device holding it is switched off and its box closed
   await page.evaluate(() => wipeSeed());
+  const wp = await until(() => d.ev(() => !SSController._instance && !document.getElementById('ssBox').open && !vfSignerHoldsSecret() ? { off: true, rh: rhAny() } : null), 30000);
+  t(wp && wp.off && !wp.rh, 'wipeSeed: the practice signer holding the real seed is switched off with it (its box closed); nothing is left for re-hide (' + JSON.stringify(wp) + ')');
+  // re-hide: the device holds a seed that is not public, so it is a reason to cover on its own (the page's words are gone)
+  await d.ev((x) => vfSignerLoadSeed(x), m);
+  await until(async () => { const x = await d.ev((w) => ({ st: document.getElementById('ssLoadStatus').textContent, has: ssLearnSeeds().some((s) => s && s.mnemonic_str === w), auto: ssAuto.on }), m); return /^Loaded: /.test(x.st) && x.has && !x.auto ? x : null; });
   const cov = await page.evaluate(() => { const had = rhAny(), hid = rhHide('tab'), e = document.getElementById('ssDevice'), c = document.getElementById('ssScreen'); const r = { had, hid, cov: e.classList.contains('rh-cov') && e.inert, screen: getComputedStyle(c).visibility }; rhShow(); return r; });
   t(cov.had && cov.hid && cov.cov && cov.screen === 'hidden', 're-hide: the practice signer holding a real seed is a reason to cover, and its screen is taken off and its keys do nothing (' + JSON.stringify(cov) + ')');
   // CLEAR ALL wipes it
   await page.evaluate(() => clearAll()); await until(() => d.ev(() => !SSController._instance && !document.getElementById('ssBox').open && !hasSeed()), 30000);
   t(await page.evaluate(() => !rhAny() && !vfSignerHoldsSecret() && !document.getElementById('ssLoadStatus').textContent), 'CLEAR ALL wipes the practice signer with the real seed: nothing left for re-hide, the load status gone');
 };
+
+// ---- v2.16.1 review: the one-click load's edge cases. Another seed waiting on its Finalize screen is never finalized by the page;
+// with the device's passphrase setting on Required it stops at the passphrase entry and says so; with a passphrase on the page the
+// Finalize screen's own label is named and the fingerprints compared; a seed being loaded, and the passphrase screens, count for
+// re-hide even for a public seed; wipeSeed puts a held SeedQR away; going online stops the load and puts the SeedQR away, and the
+// computer's camera is never opened. Fingerprints from @scure/bip32.
+SCEN.loadedge = async (t, d, ctx, page) => {
+  const REAL = diceWords('31415263546152433', 12), fpR = fpOf(rootOf(REAL)), fpA = fpOf(rootOf(ABANDON));
+  const st = () => d.ev(() => { const v = ssLearnState(), c = SSController._instance; return { st: document.getElementById('ssLoadStatus').textContent, cls: document.getElementById('ssLoadStatus').className, auto: ssAuto.on, held: !!ssLearnCam.frames && ssLearnCam.key === 'seedload',
+    seeds: ssLearnSeeds().map((x) => x.mnemonic_str.split(' ')[0]), pend: !!(c && c._storage && c._storage.pending_seed), holds: vfSignerHoldsSecret(), view: v && v.view, on: !!c, open: document.getElementById('ssBox').open, gum: window.__gum }; });
+  const ended = async () => (await until(async () => { const x = await st(); return !x.auto ? x : null; }, 120000)) || st();
+  const say = async (re) => (await until(async () => { const x = await st(); return re.test(x.st) ? x : null; }, 60000)) || st();
+  const setPass = (v) => d.ev((v) => SSSettings.get_instance().set_value(SSSettingsConstants.SETTING__PASSPHRASE, SSSettingsConstants[v]), v);
+  await page.evaluate(() => { window.__gum = 0; const md = navigator.mediaDevices; if (md && md.getUserMedia) { const g = md.getUserMedia.bind(md); md.getUserMedia = (c) => { window.__gum++; return g(c); }; } });
+  await d.waitView('SSMainMenuView');
+  // 1. abandon ... about scanned by the person waits on Finalize: a pending seed counts for re-hide (a passphrase may be typed for it)
+  await d.ev(() => ssLearnArm('seedqr')); await waitCam(d, 'seedqr');
+  await d.pick(/^Scan$/); await d.waitView('SSSeedFinalizeView');
+  t((await st()).holds, 're-hide: a seed being loaded (the pending seed, even a public one) counts as a secret');
+  await d.ev((m) => vfSignerLoadSeed(m), REAL);
+  let x = await say(/^Go back to Home/);
+  t(x.view === 'SSSeedFinalizeView' && x.seeds.length === 0 && x.pend && x.auto && x.held, 'another seed on its Finalize screen: the page does not press Done on it, and says to go back to Home (' + JSON.stringify(x) + ')');
+  await d.ev(() => { ssLearnHide(); });
+  x = await st(); t(!x.auto && !x.held && x.st === 'Not loaded: the SeedQR was put away before the device read it.' && /bad/.test(x.cls), 'PUT IT AWAY: the load stops, the SeedQR is dropped, and the page says so (' + x.st + ')');
+  await d.pick(/^Done$/); await d.waitView('SSSeedOptionsView'); await d.back('SSMainMenuView');
+  // 2. the device's BIP-39 passphrase setting on Required: the scan goes to the passphrase entry; the page stops there and says so
+  await setPass('OPTION__REQUIRED');
+  await d.ev((m) => vfSignerLoadSeed(m), ABANDON);
+  x = await ended();
+  t(x.view === 'SSSeedAddPassphraseView' && /^Scanned: the device asks for a passphrase \(its BIP-39 passphrase setting is Required\)\. Type one on the device, or press its back arrow and choose Skip passphrase, then Done\.$/.test(x.st) && !x.held,
+    'passphrase setting Required: the load stops at the passphrase entry and says what to do, no timeout (' + x.st + ')');
+  t(x.holds, 're-hide: the passphrase entry counts as a secret, even over a public seed');
+  await d.press('K3'); await d.waitView('SSSeedAddPassphraseExitDialogView'); t((await st()).holds, 're-hide: the passphrase exit dialog counts too');
+  await d.pick(/Skip passphrase/); await d.waitView('SSSeedFinalizeView'); await d.pick(/^Done$/); await d.waitView('SSSeedOptionsView'); await d.back('SSMainMenuView');
+  await setPass('OPTION__ENABLED');
+  // 3. a passphrase on the page: it stops on Finalize, names the device's own label and compares the fingerprint without the passphrase
+  await d.ev((m) => vfSignerLoadSeed(m, { pass: true }), REAL);
+  x = await ended();
+  t(x.view === 'SSSeedFinalizeView' && x.st === 'Scanned: the device shows fingerprint ' + fpR + ' without the passphrase, the same as VOIDFORGE works out. Choose BIP-39 Passphrase on the device to add the passphrase, then Done.' && /ok/.test(x.cls),
+    'a passphrase on the page: it stops on Finalize, compares ' + fpR + ' (@scure) and names the device\'s BIP-39 Passphrase button (' + x.st + ')');
+  await d.pick(/^Done$/); await d.waitView('SSSeedOptionsView'); await d.back('SSMainMenuView');
+  // 4. the SeedQR held up while the device is elsewhere (Settings), then wipeSeed (ADD THIS KEY & WIPE THE SEED): it is put away
+  await d.pick(/^Settings$/); await sleep(300);
+  await d.ev((m) => vfSignerLoadSeed(m), REAL); x = await say(/^Go back to Home/);
+  t(x.held && x.holds, 're-hide: the SeedQR of a seed that is not public, held up to the device, counts as a secret');
+  await page.evaluate(() => wipeSeed());
+  x = await st();
+  t(!x.auto && !x.held && !x.on && !x.open, 'wipeSeed: the held SeedQR is put away, the load stops, and the device holding a seed that is not public is switched off (' + JSON.stringify(x) + ')');
+  // 5. online while the SeedQR is held up: the load stops, the SeedQR is put away, and Scan is never pressed
+  await page.evaluate(() => { const b = document.getElementById('ssBox'); b.open = true; }); await d.waitView('SSMainMenuView');
+  await d.pick(/^Settings$/); await sleep(300);
+  await d.ev((m) => vfSignerLoadSeed(m), ABANDON); await say(/^Go back to Home/);
+  await ctx.setOffline(false);
+  x = await say(/^Not loaded: a SeedQR is read only while offline/);
+  t(!x.auto && !x.held && /bad/.test(x.cls), 'online during the load: it stops with "Not loaded: a SeedQR is read only while offline", the SeedQR put away (' + x.st + ')');
+  await d.back('SSMainMenuView'); await sleep(1500); x = await st();
+  t(x.view === 'SSMainMenuView' && x.gum === 0, 'online: back on Home nothing presses Scan, and the computer\'s camera is never opened (' + JSON.stringify(x) + ')');
+  await ctx.setOffline(true);
+  t(fpA === '73c5da0a', 'abandon ... about is ' + fpA);
+  // tester: Scan with nothing held up and no camera the browser allows: the device shows SeedSigner's own Hardware Error, and a
+  // line below the device says why; it goes when the error is left
+  await page.evaluate(() => { navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('denied', 'NotAllowedError')); });
+  await d.pick(/^Scan$/); const he = await d.waitView('SSCameraConnectionErrorView');
+  const cn = await page.textContent('#ssCamNote');
+  t(he.title === 'Hardware Error' && /Cannot access camera/.test(he.headline) && /^Nothing is held up to the device’s camera\. The practice wallet holds a QR code up to it for PRACTICE TRANSACTION, a lesson or LOAD INTO THE PRACTICE SIGNER/.test(cn), 'Scan with nothing held up: SeedSigner\'s Hardware Error on the device, and the page says nothing is held up to its camera (' + cn.slice(0, 60) + ')');
+  await d.press('PRESS'); await d.waitView('SSMainMenuView');
+  t(await page.textContent('#ssCamNote') === '', 'the line goes when the device leaves the error');
+};
+
+// ---- v2.16.1 review (tester, phone 390 x 844): the practice signer stands upright on a narrow screen, so its keys are at least 40 px
+// and its screen uses the width; the small text links have 24 px tap areas and the step bar's labels keep apart; nothing scrolls sideways
+SCEN.phone = async (t, d, ctx, page) => {
+  const c2 = await page.context().browser().newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); await c2.setOffline(true);
+  const p = await c2.newPage(); await p.goto(FILE);
+  await p.waitForFunction(() => window.selfTestDone !== undefined, null, { timeout: 90000 }); await p.evaluate(() => window.selfTestDone);
+  const go = await p.$('#sgGo'); if (go && await go.isVisible()) await go.click();
+  await p.evaluate(() => ssPageOpen()); await p.waitForFunction(() => !!SSController._instance, null, { timeout: 60000 });
+  const r = await p.evaluate(() => { const box = (id) => document.getElementById(id).getBoundingClientRect();
+    const keys = ['ssKUp', 'ssKLeft', 'ssKPress', 'ssKRight', 'ssKDown', 'ssK1', 'ssK2', 'ssK3'].map((id) => box(id)), dev = box('ssDevice'), scr = box('ssScreen');
+    showTab('check'); const links = [...document.querySelectorAll('.strip .linklike, #iHave .linklike')].map((e) => e.getBoundingClientRect().height);
+    showTab('make'); const li = [...document.querySelectorAll('#stepBar li')].map((e) => e.getBoundingClientRect());
+    const overlap = keys.some((a, i) => keys.some((b, j) => i < j && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom));
+    return { minKey: Math.min(...keys.map((k) => Math.min(k.width, k.height))), screen: Math.round(scr.width), dev: [Math.round(dev.left), Math.round(dev.right)], overlap, inDev: keys.every((k) => k.left >= dev.left && k.right <= dev.right && k.bottom <= dev.bottom), minLink: Math.min(...links), gaps: li.slice(1).map((x, i) => Math.round(x.left - li[i].right)), sw: document.documentElement.scrollWidth, iw: innerWidth }; });
+  t(r.minKey >= 40 && !r.overlap && r.inDev && r.screen >= 250 && r.dev[0] >= 0 && r.dev[1] <= r.iw && r.sw <= r.iw, 'phone: the practice signer stands upright: every key at least 40 px (' + Math.round(r.minKey) + '), none overlapping, the screen ' + r.screen + ' px wide, nothing scrolls sideways (' + JSON.stringify(r.dev) + ', page ' + r.sw + ' of ' + r.iw + ')');
+  t(r.minLink >= 24 && r.gaps.every((g) => g >= 8), 'phone: the small text links have tap areas at least 24 px tall (' + r.minLink + '), and the step bar\'s labels keep apart (' + r.gaps.join(', ') + ' px)');
+  // the keys work by touch in the upright case
+  await p.waitForFunction(() => { const c = SSController._instance; return c && c.current_destination && c.current_destination.View_cls && c.current_destination.View_cls.name === 'SSMainMenuView'; }, null, { timeout: 60000 });
+  await p.evaluate(() => { showTab('check'); document.getElementById('ssDevice').scrollIntoView(); }); await p.tap('#ssKRight');
+  const sel = await p.waitForFunction(() => { const s = SSController._instance.current_destination.view.screen; return s && s.selected_button === 1 ? 1 : null; }, null, { timeout: 30000 }).then(() => 1).catch(() => 0);
+  t(sel === 1, 'phone: a tap on the joystick key moves the selection on the device');
+  await c2.close();
+};
+
+// ---- v2.14.0: easy to find.
 
 // ---- v2.14.0: easy to find. The card right under the header is on screen when the page opens (desktop and phone, after the
 // start notice), and OPEN PRACTICE SIGNER and MENU > PRACTICE SIGNER both open CHECK A BACKUP, the box and the device, with focus.
@@ -1475,7 +1581,7 @@ SCEN.find = async (t, d, ctx, page) => {
 
 // ================================================================ run
 SCEN.tools.clock = true; SCEN.offline.online = true;
-const order = ['lessons_dice', 'lessons_tx', 'lessons_seed', 'practice_tx', 'damascus', 'forge', 'loadreal', 'find', 'review', 'psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'settings_wipe', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
+const order = ['lessons_dice', 'lessons_tx', 'lessons_seed', 'practice_tx', 'damascus', 'forge', 'loadreal', 'loadedge', 'phone', 'find', 'review', 'psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'settings_wipe', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
 const want = process.env.SCEN ? process.env.SCEN.split(',') : order;
 const results = [];
 async function runScenario(browser, name) {
