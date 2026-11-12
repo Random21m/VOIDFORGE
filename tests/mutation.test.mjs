@@ -275,6 +275,34 @@ async function probe(w, mutated, fast, only, hooks) {
       if (CAM.frames || A.on || !E('ssPageOn')) fails.push(T + 'wipeSeed: a held SeedQR of a public seed is put away too, and the device (holding no secret) stays on');
       await begin(AB); at('SSSeedOptionsView'); ctl._storage.seeds = [{ mnemonic_str: RD, passphrase: '' }]; w.wipeSeed(); await sleep(30);
       if (E('ssPageOn') || $('ssBox').open) fails.push(T + 'wipeSeed: the practice signer holding the seed is switched off, its box closed');
+      // second review 1: the decision comes before the SeedQR is put away (a held SeedQR of a real seed switches the device off), and a
+      // load whose scan read the SeedQR (the seed on its way into the device, not yet pending) switches it off too
+      await begin(RD); at('SSSettingsMenuView'); w.wipeSeed(); await sleep(30);
+      if (E('ssPageOn')) fails.push(T + 'second review: wipeSeed with a real seed\'s SeedQR held up switches the device off');
+      await begin(RD); step('SSMainMenuView', 'Home', HOME, 0); read(); w.ssLearnHide(); at('SSScanView'); w.wipeSeed(); await sleep(30);
+      if (E('ssPageOn')) fails.push(T + 'second review: wipeSeed after the scan read the SeedQR (nothing pending yet) switches the device off');
+      // second review 3: the scan's own put-away resets the camera's read flag; the load's own read still counts
+      await begin(RD); step('SSMainMenuView', 'Home', HOME, 0); read(); w.ssLearnHide(); w.ssLearnHide();
+      if (!A.on || /put away before the device read it/.test(st())) fails.push(T + 'second review: a SeedQR the scan read is never said to be put away before it was read (' + st() + ')');
+      // second review 2: Scan pressed by the page, the SeedQR put away in that instant: the scan does not open the computer's camera
+      { let gum = 0; const md0 = Object.getOwnPropertyDescriptor(w.navigator, 'mediaDevices');
+        Object.defineProperty(w.navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: () => { gum++; return Promise.reject(new Error('no camera here')); } } });
+        try {
+          await begin(RD); step('SSMainMenuView', 'Home', HOME, 0); w.ssLearnHide();   // (this ends the load: the SeedQR was not read)
+          const c = Object.create(E('SSCamera').prototype); c._video_stream = null; c._picamera = null; c._camera_rotation = 180; let err = '';
+          try { await c.start_video_stream_mode({ resolution: [480, 480] }); } catch (e) { err = e && e.constructor && e.constructor.name; }
+          if (gum !== 0 || err !== 'SSCameraConnectionError') fails.push(T + 'second review: a Scan the page pressed never opens the computer\'s camera, even with the SeedQR put away at once (' + gum + ', ' + err + ')');
+          await begin(RD); A.on = true; CAM.frames = null; err = '';
+          try { await c.start_video_stream_mode({ resolution: [480, 480] }); } catch (e) { err = e && e.constructor && e.constructor.name; }
+          if (gum !== 0 || err !== 'SSCameraConnectionError') fails.push(T + 'second review: during a load a scan with nothing held up never opens the computer\'s camera');
+          E('ssAutoEnd("")'); A.scanAt = 0; err = '';
+          try { await c.start_video_stream_mode({ resolution: [480, 480] }); } catch (e) { err = e && e.constructor && e.constructor.name; }
+          if (gum !== 1) fails.push(T + 'second review: with no load, a scan uses the computer\'s camera as SeedSigner would (' + gum + ')');
+        } finally { if (md0) Object.defineProperty(w.navigator, 'mediaDevices', md0); else delete w.navigator.mediaDevices; } }
+      // second review 4: on a narrow screen the keys are 64 units (at least 40 px down to 320 px)
+      { const rules = [...w.document.styleSheets].flatMap((sh) => [...sh.cssRules]).filter((r) => r.media && /max-width: 640px/.test(r.media.mediaText)).flatMap((r) => [...r.cssRules]);
+        const k = rules.find((r) => r.selectorText === '#ssBox .ss-k');
+        if (!k || !/64/.test(k.style.width) || !/64/.test(k.style.height)) fails.push(T + 'second review: the practice signer\'s keys are 64 units on a narrow screen'); }
       await off(); E('SSHardwareButtons')._instance = hb0; E('ssAutoWait = null');
       // PRACTICE by the words, for every method (hex 000102...0f: counting numbers); the line under the words does not repeat it
       w.showTab('make'); w.setMethod('cards'); $('cdHex').value = '000102030405060708090a0b0c0d0e0f'; w.cdUpdate(); await w.cdHexGenerate();
@@ -7986,7 +8014,7 @@ const M = [
   ["learn: lessons: multisig change step by any buttons", "s.labels[0] === \"Verify multisig change\" },", "s.labels.length > 0 },"],
   ["learn: lessons: RESTART does nothing", "if (ssLearn.lesson) { ssLearnHide(); ssLearnGoto(0, false); }", "if (ssLearn.lesson) { ssLearnHide(); }"],
   ["learn: practice wallet: the camera tools see it", "scanning = r[0] === 480 && r[1] === 480;", "scanning = true;"],
-  ["learn: practice wallet: a scan sees it while put away", "if (scanning && ssLearnCam.frames) return ssLearnCamHandle();", "if (scanning) return ssLearnCamHandle();"],
+  ["learn: practice wallet: a scan sees it while put away", "if (scanning && ssLearnCam.frames) { ssAuto.scanAt = 0; return ssLearnCamHandle(); }", "if (scanning) { ssAuto.scanAt = 0; return ssLearnCamHandle(); }"],
   ["learn: practice wallet: the scanner does not read it", "if (ssLearnCam.on) {\n      const t = ssLearnCam.shown;", "if (false) {\n      const t = ssLearnCam.shown;"],
   ["learn: practice wallet: the QR not painted", "  g.fillStyle = \"#000\";\n  for (let y = 0; y < n; y++)", "  g.fillStyle = \"#fff\";\n  for (let y = 0; y < n; y++)"],
   ["learn: practice wallet: not put away after a complete scan", "if (d.is_complete && ssLearnCam.frames) ssLearnHide();", "if (false) ssLearnHide();"],
@@ -8326,7 +8354,7 @@ const M = [
   ["review: re-hide: the passphrase screens not a secret", "const v = ssLearnState(); if (v && SS_PASS_VIEWS.includes(v.view)) return true;", ""],
   ["review: wipeSeed leaves the practice signer's copy", "  if(typeof vfSignerDropSeed === \"function\") vfSignerDropSeed();   // v2.16.1", "  // v2.16.1"],
   ["review: wipeSeed leaves the held SeedQR", "if (ssLearnCam.key === \"seedload\") ssLearnHide(); } catch (e) { /* lessons part missing */ }", "} catch (e) { /* lessons part missing */ }"],
-  ["review: wipeSeed leaves a device holding the seed on", "  if (!vfSignerHoldsSecret()) return false;\n  const b = document.getElementById(\"ssBox\");", "  return false;\n  const b = document.getElementById(\"ssBox\");"],
+  ["review: wipeSeed leaves a device holding the seed on", "  if (!off) return false;\n  const b = document.getElementById(\"ssBox\");", "  return false;\n  const b = document.getElementById(\"ssBox\");"],
   ["review: a public seed from hex, dice or cards not marked PRACTICE", "  if(!ssfNext){ const pk = pubKind(mnemonic); if(pk) ssfNext = pracMark(pk); }", ""],
   ["review: the public seed named twice under YOUR SEED", "  if(!m || !ssfCtx || !ssfCtx.ban) return knownShow(\"forgePub\", m);", "  return knownShow(\"forgePub\", m);"],
   ["review: PRINT THIS QR of a PRACTICE seed without the line", "(qrShown.pr ? qrShown.pr + \"\\n\\n\" : \"\") + ", ""],
@@ -8359,6 +8387,13 @@ const M = [
   ["tester: Electrum report says bc1q on Testnet", "\"per address (below)\" : netEx(EW_TYPE_NAME[W.script], W.net))", "\"per address (below)\" : EW_TYPE_NAME[W.script])"],
   ["tester: Electrum report shows a zpub on Testnet", "    const xk = await keyForNet(k.xpub, W.net);", "    const xk = k.xpub;"],
   ["tester: a wrong word count said as Invalid length", "words.length ? \"A seed phrase has 12, 15, 18, 21 or 24 words; this has \" + words.length + \".\" : \"No words are typed.\")", "\"Invalid length\")"],
+  // the second review of the v2.16.1 fixes (probe section 81)
+  ["second review: wipeSeed after the scan read the SeedQR leaves the device on", "off = vfSignerHoldsSecret() || (ssAuto.on && ssAuto.read);", "off = vfSignerHoldsSecret();"],
+  ["second review: wipeSeed decides after the SeedQR is put away", "  if (!off) return false;\n  const b = document.getElementById(\"ssBox\");", "  if (!vfSignerHoldsSecret()) return false;\n  const b = document.getElementById(\"ssBox\");"],
+  ["second review: a load's scan with nothing held up opens the camera", "    if (scanning && auto) throw new SSCameraConnectionError();\n", ""],
+  ["second review: the page's Scan press not remembered", "      if (sel === 0) A.scanAt = Date.now();", ""],
+  ["second review: a read SeedQR said to be put away before the read", "(frames ? key !== \"seedload\" : !ssAuto.read)) ssAutoEnd(", "(frames ? key !== \"seedload\" : !ssLearnCam.read)) ssAutoEnd("],
+  ["second review: small keys on a narrow screen", "    #ssBox .ss-k { width: calc(64 * var(--u)); height: calc(64 * var(--u)); }\n", ""],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

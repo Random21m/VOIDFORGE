@@ -1114,19 +1114,21 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   #ssBox #ssK2 { left: calc(630 * var(--u)); top: calc(119 * var(--u)); }
   #ssBox #ssK3 { left: calc(630 * var(--u)); top: calc(175 * var(--u)); }
   /* v2.16.1 review: on a phone the pill case would leave the keys about 23 px and the screen about 140 px wide, so narrow screens
-     get an upright case (380 x 520 units): the screen on top at the full width, the joystick and KEY1 to KEY3 below it, keys 54 units. */
+     get an upright case (380 x 520 units): the screen on top at the full width, the joystick and KEY1 to KEY3 below it. The keys are
+     64 units there (at least 40 px down to a 320 px wide phone); their gold caps keep their size. */
   @media (max-width: 640px) {
     #ssBox .ss-dev, #ssBox .ss-wrap .ss-dev { --u: min(1.25px, calc((100vw - 56px) / 380)); width: calc(380 * var(--u)); height: calc(520 * var(--u)); border-radius: calc(46 * var(--u)); background: linear-gradient(180deg, #41474D 0%, #363C42 4%, #2E3338 50%, #282C31 100%) border-box; }
     @supports (width: 1cqw) { #ssBox .ss-wrap .ss-dev { --u: min(1.25px, calc(100cqw / 380)); } }
     #ssBox .ss-bezel { left: calc(9 * var(--u)); top: calc(14 * var(--u)); }
-    #ssBox #ssKUp { left: calc(86 * var(--u)); top: calc(306 * var(--u)); }
-    #ssBox #ssKLeft { left: calc(26 * var(--u)); top: calc(366 * var(--u)); }
-    #ssBox #ssKPress { left: calc(86 * var(--u)); top: calc(366 * var(--u)); }
-    #ssBox #ssKRight { left: calc(146 * var(--u)); top: calc(366 * var(--u)); }
-    #ssBox #ssKDown { left: calc(86 * var(--u)); top: calc(426 * var(--u)); }
-    #ssBox #ssK1 { left: calc(286 * var(--u)); top: calc(306 * var(--u)); }
-    #ssBox #ssK2 { left: calc(286 * var(--u)); top: calc(366 * var(--u)); }
-    #ssBox #ssK3 { left: calc(286 * var(--u)); top: calc(426 * var(--u)); }
+    #ssBox .ss-k { width: calc(64 * var(--u)); height: calc(64 * var(--u)); }
+    #ssBox #ssKUp { left: calc(82 * var(--u)); top: calc(300 * var(--u)); }
+    #ssBox #ssKLeft { left: calc(14 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssKPress { left: calc(82 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssKRight { left: calc(150 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssKDown { left: calc(82 * var(--u)); top: calc(432 * var(--u)); }
+    #ssBox #ssK1 { left: calc(290 * var(--u)); top: calc(300 * var(--u)); }
+    #ssBox #ssK2 { left: calc(290 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssK3 { left: calc(290 * var(--u)); top: calc(432 * var(--u)); }
   }
   /* v2.14.0 Learn on the practice signer: lessons and a practice transaction, as page text below the device (never on its screen) */
   #ssBox [hidden] { display: none !important; }
@@ -36511,10 +36513,14 @@ function vfSignerHoldsSecret() {
 // v2.16.1: the page's seed was wiped (wipeSeed: ADD THIS KEY & WIPE THE SEED in the multisig box, CLEAR ALL): no copy of it may be
 // left in the practice signer. A one-click load stops and its SeedQR is put away (and overwritten); a device that still holds a
 // seed that is not public is switched off, as when its box is closed (its seeds are wiped; settings saved to its microSD stay).
+// v2.16.1 second review: it decides before the SeedQR is put away (a held SeedQR counts as a secret), and a load whose scan already
+// read the SeedQR switches the device off too: the seed may be on its way into the device's memory (not yet the pending seed).
 function vfSignerDropSeed() {
   if (!ssPageOn) return false;
+  let off = true;
+  try { off = vfSignerHoldsSecret() || (ssAuto.on && ssAuto.read); } catch (e) { off = true; }
   try { if (ssAuto.on) ssAutoEnd("Not loaded: the seed was wiped from the page.", "bad"); if (ssLearnCam.key === "seedload") ssLearnHide(); } catch (e) { /* lessons part missing */ }
-  if (!vfSignerHoldsSecret()) return false;
+  if (!off) return false;
   const b = document.getElementById("ssBox");
   ssPageStop();
   if (b && b.open) b.open = false;
@@ -36722,7 +36728,15 @@ function ssLearnCamHandle() {
     const r = o.resolution || [512, 384]; scanning = r[0] === 480 && r[1] === 480;
     try { return await start0.call(this, o); } finally { scanning = false; }
   };
-  SSCamera.prototype._open = async function () { if (scanning && ssLearnCam.frames) return ssLearnCamHandle(); return open0.call(this); };
+  // v2.16.1 second review: during LOAD INTO THE PRACTICE SIGNER a scan never opens the computer's camera, even if the SeedQR was put
+  // away in the instant the page pressed Scan (which also ends the load): checked here, when the camera would open, for a load that
+  // is on or a Scan the page pressed in the last 10 s (the device then shows its camera error)
+  SSCamera.prototype._open = async function () {
+    if (scanning && ssLearnCam.frames) { ssAuto.scanAt = 0; return ssLearnCamHandle(); }
+    const auto = ssAuto.on || Date.now() - ssAuto.scanAt < 10000; ssAuto.scanAt = 0;
+    if (scanning && auto) throw new SSCameraConnectionError();
+    return open0.call(this);
+  };
   SSCamera.prototype._close = function (h) {
     if (h && h.ssLearn) {
       ssLearnCam.on = false; ssLearnCam.shown = null; try { h.video.width = h.video.height = 0; } catch (e) { /* gone */ }
@@ -36759,7 +36773,8 @@ function ssLearnCamHandle() {
 })();
 function ssLearnShow(frames, what, key) {
   // LOAD INTO THE PRACTICE SIGNER stops when its SeedQR is put away before the device read it, or another QR is held up
-  if (ssAuto.on && (frames ? key !== "seedload" : !ssLearnCam.read)) ssAutoEnd(frames ? "Not loaded: another QR code is held up to the device." : "Not loaded: the SeedQR was put away before the device read it.", "bad");
+  // (v2.16.1 second review: "read" is the load's own ssAuto.read; the scan's put-away has already reset ssLearnCam.read)
+  if (ssAuto.on && (frames ? key !== "seedload" : !ssAuto.read)) ssAutoEnd(frames ? "Not loaded: another QR code is held up to the device." : "Not loaded: the SeedQR was put away before the device read it.", "bad");
   if (ssLearnCam.key === "seedload") ssLearnForget();   // a seed's SeedQR is wiped as soon as it is put away
   ssLearnCam.say = ""; ssLearnCam.read = false;
   // a scan seen earlier says nothing about these QR codes: without this, a decoder kept from an earlier scan (the timer stops when
@@ -37165,7 +37180,7 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 // online. Scan is pressed only while the SeedQR is held up (so a scan never opens the computer's camera), Done only on the Finalize
 // screen of the seed this scan read (read), and "Loaded" is said only after the device's fingerprint was compared with the page's.
 const SS_AUTO_OFFLINE = "Not loaded: a SeedQR is read only while offline. Take this computer offline, then press LOAD INTO THE PRACTICE SIGNER again.";
-const ssAuto = { on: false, gen: 0, fp: "", fpErr: false, pass: false, stage: "", read: false, t0: 0, tapAt: 0, timer: null, told: false };
+const ssAuto = { on: false, gen: 0, fp: "", fpErr: false, pass: false, stage: "", read: false, t0: 0, tapAt: 0, scanAt: 0, timer: null, told: false };
 let ssAutoWait = null;   // set while the device waits for a key (the wait_for patch above)
 function ssAutoSay(text, cls) { ssLearnSetText("ssLoadStatus", text); const e = ssLearnEl("ssLoadStatus"); if (e) e.className = "status" + (cls ? " " + cls : ""); }
 function ssAutoEnd(text, cls) {
@@ -37197,6 +37212,7 @@ function ssAutoTick() {
     if (!held) return ssAutoEnd("Not loaded: the SeedQR was put away before the device read it. Press LOAD INTO THE PRACTICE SIGNER again.", "bad");
     if (s.view === "SSMainMenuView") {   // Home, a 2 x 2 grid: Scan is button 0
       if (!ssAutoWait.keys.includes("KEY_PRESS")) return;
+      if (sel === 0) A.scanAt = Date.now();   // the page presses Scan: the next scan reads only the SeedQR (the _open patch)
       return ssAutoTap(hb, sel === 0 ? "KEY_PRESS" : sel === 1 ? "KEY_LEFT" : sel === 2 || sel === 3 ? "KEY_UP" : "KEY_DOWN");
     }
     if (!/Scan/.test(s.view) && !A.told) { A.told = true; ssAutoSay("Go back to Home on the device: the scan goes on from there by itself."); }

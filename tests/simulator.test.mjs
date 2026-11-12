@@ -1498,6 +1498,24 @@ SCEN.loadedge = async (t, d, ctx, page) => {
   await page.evaluate(() => wipeSeed());
   x = await st();
   t(!x.auto && !x.held && !x.on && !x.open, 'wipeSeed: the held SeedQR is put away, the load stops, and the device holding a seed that is not public is switched off (' + JSON.stringify(x) + ')');
+  // second review: wipeSeed in the instant after the scan read the SeedQR, before the device made it its pending seed: the device
+  // is switched off, so no real seed is left waiting on Finalize
+  await page.evaluate(() => { const b = document.getElementById('ssBox'); b.open = true; }); await d.waitView('SSMainMenuView');
+  const wr = await d.ev(async (m) => { const o = ssToolsNewSeed; let hit = null;
+    window.ssToolsNewSeed = async function (...a) { if (!hit) { hit = { holds: vfSignerHoldsSecret() }; wipeSeed(); hit.on = ssPageOn; } return o.apply(this, a); };
+    try { vfSignerLoadSeed(m); for (let i = 0; i < 400 && !hit; i++) await new Promise((r) => setTimeout(r, 50)); await new Promise((r) => setTimeout(r, 1500)); }
+    finally { window.ssToolsNewSeed = o; }
+    const c = SSController._instance, st = c && c._storage; return { hit, on: ssPageOn, open: document.getElementById('ssBox').open, pending: !!(st && st.pending_seed) }; }, REAL);
+  t(wr.hit && !wr.hit.on && !wr.on && !wr.open && !wr.pending, 'second review: wipeSeed right after the scan read the SeedQR switches the device off; no real seed is left pending (' + JSON.stringify(wr) + ')');
+  // second review: the SeedQR put away in the same instant the page presses Scan: the computer's camera is still never opened
+  await page.evaluate(() => { const b = document.getElementById('ssBox'); b.open = true; }); await d.waitView('SSMainMenuView');
+  const cr = await d.ev(async (m) => { window.__gum = 0; const tap0 = ssAutoTap; let fired = false;
+    window.ssAutoTap = function (hb, key) { const v = (ssLearnState() || {}).view; tap0(hb, key); if (!fired && key === 'KEY_PRESS' && v === 'SSMainMenuView') { fired = true; ssLearnHide(); } };
+    try { vfSignerLoadSeed(m); for (let i = 0; i < 200 && (ssLearnState() || {}).view !== 'SSCameraConnectionErrorView'; i++) await new Promise((r) => setTimeout(r, 50)); }
+    finally { window.ssAutoTap = tap0; }
+    return { fired, gum: window.__gum, view: (ssLearnState() || {}).view, st: document.getElementById('ssLoadStatus').textContent }; }, ABANDON);
+  t(cr.fired && cr.gum === 0 && cr.view === 'SSCameraConnectionErrorView' && /^Not loaded: the SeedQR was put away before the device read it\./.test(cr.st), 'second review: the SeedQR put away as the page presses Scan: the scan does not open the computer\'s camera; the device shows its camera error and the page says not loaded (' + JSON.stringify(cr) + ')');
+  await d.press('PRESS'); await d.waitView('SSMainMenuView');
   // 5. online while the SeedQR is held up: the load stops, the SeedQR is put away, and Scan is never pressed
   await page.evaluate(() => { const b = document.getElementById('ssBox'); b.open = true; }); await d.waitView('SSMainMenuView');
   await d.pick(/^Settings$/); await sleep(300);
@@ -1541,6 +1559,18 @@ SCEN.phone = async (t, d, ctx, page) => {
   const sel = await p.waitForFunction(() => { const s = SSController._instance.current_destination.view.screen; return s && s.selected_button === 1 ? 1 : null; }, null, { timeout: 30000 }).then(() => 1).catch(() => 0);
   t(sel === 1, 'phone: a tap on the joystick key moves the selection on the device');
   await c2.close();
+  // second review: the keys stay at least 40 px down to a 320 px wide phone, with no overlap and no sideways scroll
+  for (const [w, h] of [[320, 640], [340, 700]]) {
+    const c3 = await page.context().browser().newContext({ viewport: { width: w, height: h }, isMobile: true, hasTouch: true }); await c3.setOffline(true);
+    const q = await c3.newPage(); await q.goto(FILE);
+    await q.waitForFunction(() => window.selfTestDone !== undefined, null, { timeout: 90000 }); await q.evaluate(() => window.selfTestDone);
+    const g2 = await q.$('#sgGo'); if (g2 && await g2.isVisible()) await g2.click();
+    await q.evaluate(() => ssPageOpen()); await q.waitForFunction(() => !!SSController._instance, null, { timeout: 60000 });
+    const k = await q.evaluate(() => { const ks = ['ssKUp', 'ssKLeft', 'ssKPress', 'ssKRight', 'ssKDown', 'ssK1', 'ssK2', 'ssK3'].map((id) => document.getElementById(id).getBoundingClientRect()), dev = document.getElementById('ssDevice').getBoundingClientRect();
+      return { min: Math.min(...ks.map((b) => Math.min(b.width, b.height))), overlap: ks.some((a, i) => ks.some((b, j) => i < j && a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5)), inDev: ks.every((b) => b.left >= dev.left - 0.5 && b.right <= dev.right + 0.5 && b.bottom <= dev.bottom + 0.5), sw: document.documentElement.scrollWidth, iw: innerWidth }; });
+    t(k.min >= 40 && !k.overlap && k.inDev && k.sw <= k.iw, 'phone ' + w + ' px: every practice signer key at least 40 px (' + k.min.toFixed(1) + '), none overlapping, inside the case, nothing scrolls sideways');
+    await c3.close();
+  }
 };
 
 // ---- v2.14.0: easy to find.

@@ -64,10 +64,14 @@ function vfSignerHoldsSecret() {
 // v2.16.1: the page's seed was wiped (wipeSeed: ADD THIS KEY & WIPE THE SEED in the multisig box, CLEAR ALL): no copy of it may be
 // left in the practice signer. A one-click load stops and its SeedQR is put away (and overwritten); a device that still holds a
 // seed that is not public is switched off, as when its box is closed (its seeds are wiped; settings saved to its microSD stay).
+// v2.16.1 second review: it decides before the SeedQR is put away (a held SeedQR counts as a secret), and a load whose scan already
+// read the SeedQR switches the device off too: the seed may be on its way into the device's memory (not yet the pending seed).
 function vfSignerDropSeed() {
   if (!ssPageOn) return false;
+  let off = true;
+  try { off = vfSignerHoldsSecret() || (ssAuto.on && ssAuto.read); } catch (e) { off = true; }
   try { if (ssAuto.on) ssAutoEnd("Not loaded: the seed was wiped from the page.", "bad"); if (ssLearnCam.key === "seedload") ssLearnHide(); } catch (e) { /* lessons part missing */ }
-  if (!vfSignerHoldsSecret()) return false;
+  if (!off) return false;
   const b = document.getElementById("ssBox");
   ssPageStop();
   if (b && b.open) b.open = false;

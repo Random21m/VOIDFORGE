@@ -91,19 +91,21 @@ const css = `
   #ssBox #ssK2 { left: calc(630 * var(--u)); top: calc(119 * var(--u)); }
   #ssBox #ssK3 { left: calc(630 * var(--u)); top: calc(175 * var(--u)); }
   /* v2.16.1 review: on a phone the pill case would leave the keys about 23 px and the screen about 140 px wide, so narrow screens
-     get an upright case (380 x 520 units): the screen on top at the full width, the joystick and KEY1 to KEY3 below it, keys 54 units. */
+     get an upright case (380 x 520 units): the screen on top at the full width, the joystick and KEY1 to KEY3 below it. The keys are
+     64 units there (at least 40 px down to a 320 px wide phone); their gold caps keep their size. */
   @media (max-width: 640px) {
     #ssBox .ss-dev, #ssBox .ss-wrap .ss-dev { --u: min(1.25px, calc((100vw - 56px) / 380)); width: calc(380 * var(--u)); height: calc(520 * var(--u)); border-radius: calc(46 * var(--u)); background: linear-gradient(180deg, #41474D 0%, #363C42 4%, #2E3338 50%, #282C31 100%) border-box; }
     @supports (width: 1cqw) { #ssBox .ss-wrap .ss-dev { --u: min(1.25px, calc(100cqw / 380)); } }
     #ssBox .ss-bezel { left: calc(9 * var(--u)); top: calc(14 * var(--u)); }
-    #ssBox #ssKUp { left: calc(86 * var(--u)); top: calc(306 * var(--u)); }
-    #ssBox #ssKLeft { left: calc(26 * var(--u)); top: calc(366 * var(--u)); }
-    #ssBox #ssKPress { left: calc(86 * var(--u)); top: calc(366 * var(--u)); }
-    #ssBox #ssKRight { left: calc(146 * var(--u)); top: calc(366 * var(--u)); }
-    #ssBox #ssKDown { left: calc(86 * var(--u)); top: calc(426 * var(--u)); }
-    #ssBox #ssK1 { left: calc(286 * var(--u)); top: calc(306 * var(--u)); }
-    #ssBox #ssK2 { left: calc(286 * var(--u)); top: calc(366 * var(--u)); }
-    #ssBox #ssK3 { left: calc(286 * var(--u)); top: calc(426 * var(--u)); }
+    #ssBox .ss-k { width: calc(64 * var(--u)); height: calc(64 * var(--u)); }
+    #ssBox #ssKUp { left: calc(82 * var(--u)); top: calc(300 * var(--u)); }
+    #ssBox #ssKLeft { left: calc(14 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssKPress { left: calc(82 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssKRight { left: calc(150 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssKDown { left: calc(82 * var(--u)); top: calc(432 * var(--u)); }
+    #ssBox #ssK1 { left: calc(290 * var(--u)); top: calc(300 * var(--u)); }
+    #ssBox #ssK2 { left: calc(290 * var(--u)); top: calc(366 * var(--u)); }
+    #ssBox #ssK3 { left: calc(290 * var(--u)); top: calc(432 * var(--u)); }
   }
   /* v2.14.0 Learn on the practice signer: lessons and a practice transaction, as page text below the device (never on its screen) */
   #ssBox [hidden] { display: none !important; }

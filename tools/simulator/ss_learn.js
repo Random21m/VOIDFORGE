@@ -81,7 +81,15 @@ function ssLearnCamHandle() {
     const r = o.resolution || [512, 384]; scanning = r[0] === 480 && r[1] === 480;
     try { return await start0.call(this, o); } finally { scanning = false; }
   };
-  SSCamera.prototype._open = async function () { if (scanning && ssLearnCam.frames) return ssLearnCamHandle(); return open0.call(this); };
+  // v2.16.1 second review: during LOAD INTO THE PRACTICE SIGNER a scan never opens the computer's camera, even if the SeedQR was put
+  // away in the instant the page pressed Scan (which also ends the load): checked here, when the camera would open, for a load that
+  // is on or a Scan the page pressed in the last 10 s (the device then shows its camera error)
+  SSCamera.prototype._open = async function () {
+    if (scanning && ssLearnCam.frames) { ssAuto.scanAt = 0; return ssLearnCamHandle(); }
+    const auto = ssAuto.on || Date.now() - ssAuto.scanAt < 10000; ssAuto.scanAt = 0;
+    if (scanning && auto) throw new SSCameraConnectionError();
+    return open0.call(this);
+  };
   SSCamera.prototype._close = function (h) {
     if (h && h.ssLearn) {
       ssLearnCam.on = false; ssLearnCam.shown = null; try { h.video.width = h.video.height = 0; } catch (e) { /* gone */ }
@@ -118,7 +126,8 @@ function ssLearnCamHandle() {
 })();
 function ssLearnShow(frames, what, key) {
   // LOAD INTO THE PRACTICE SIGNER stops when its SeedQR is put away before the device read it, or another QR is held up
-  if (ssAuto.on && (frames ? key !== "seedload" : !ssLearnCam.read)) ssAutoEnd(frames ? "Not loaded: another QR code is held up to the device." : "Not loaded: the SeedQR was put away before the device read it.", "bad");
+  // (v2.16.1 second review: "read" is the load's own ssAuto.read; the scan's put-away has already reset ssLearnCam.read)
+  if (ssAuto.on && (frames ? key !== "seedload" : !ssAuto.read)) ssAutoEnd(frames ? "Not loaded: another QR code is held up to the device." : "Not loaded: the SeedQR was put away before the device read it.", "bad");
   if (ssLearnCam.key === "seedload") ssLearnForget();   // a seed's SeedQR is wiped as soon as it is put away
   ssLearnCam.say = ""; ssLearnCam.read = false;
   // a scan seen earlier says nothing about these QR codes: without this, a decoder kept from an earlier scan (the timer stops when
@@ -524,7 +533,7 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 // online. Scan is pressed only while the SeedQR is held up (so a scan never opens the computer's camera), Done only on the Finalize
 // screen of the seed this scan read (read), and "Loaded" is said only after the device's fingerprint was compared with the page's.
 const SS_AUTO_OFFLINE = "Not loaded: a SeedQR is read only while offline. Take this computer offline, then press LOAD INTO THE PRACTICE SIGNER again.";
-const ssAuto = { on: false, gen: 0, fp: "", fpErr: false, pass: false, stage: "", read: false, t0: 0, tapAt: 0, timer: null, told: false };
+const ssAuto = { on: false, gen: 0, fp: "", fpErr: false, pass: false, stage: "", read: false, t0: 0, tapAt: 0, scanAt: 0, timer: null, told: false };
 let ssAutoWait = null;   // set while the device waits for a key (the wait_for patch above)
 function ssAutoSay(text, cls) { ssLearnSetText("ssLoadStatus", text); const e = ssLearnEl("ssLoadStatus"); if (e) e.className = "status" + (cls ? " " + cls : ""); }
 function ssAutoEnd(text, cls) {
@@ -556,6 +565,7 @@ function ssAutoTick() {
     if (!held) return ssAutoEnd("Not loaded: the SeedQR was put away before the device read it. Press LOAD INTO THE PRACTICE SIGNER again.", "bad");
     if (s.view === "SSMainMenuView") {   // Home, a 2 x 2 grid: Scan is button 0
       if (!ssAutoWait.keys.includes("KEY_PRESS")) return;
+      if (sel === 0) A.scanAt = Date.now();   // the page presses Scan: the next scan reads only the SeedQR (the _open patch)
       return ssAutoTap(hb, sel === 0 ? "KEY_PRESS" : sel === 1 ? "KEY_LEFT" : sel === 2 || sel === 3 ? "KEY_UP" : "KEY_DOWN");
     }
     if (!/Scan/.test(s.view) && !A.told) { A.told = true; ssAutoSay("Go back to Home on the device: the scan goes on from there by itself."); }

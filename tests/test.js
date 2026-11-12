@@ -13,15 +13,18 @@ const eq=(a,b,m)=>ok(a===b, m+(a===b?'':` (got ${JSON.stringify(a)}, want ${JSON
 // later part can use them. Each part runs as its own async function (await (async()=>{ ... })()): a variable of a block in one long
 // async function stays in that function's suspended frame after the block ends, and so kept every window of every part alive.
 // Work a page started and was still finishing (an await on hashing) can run on after its window is closed and then fails, with no
-// document: that rejection is the closed window's, recognized by the error types of that window (kept in a WeakSet, so they do not
-// keep it in memory), and ignored. Any other unhandled rejection still stops the run, as before.
+// document: that rejection is ignored only when it is exactly that failure (reading a property of the missing document or of
+// what it held) and of an error type of a closed window (kept in a WeakSet, so they do not keep it in memory). Any other unhandled
+// rejection still stops the run, and the main function has a .catch at the end: a check that fails by throwing stops the run with
+// exit code 1 (v2.16.1 second review: a live window's own failure, or the main flow's, is never taken for a closed window's).
 const OPEN=new Set(), CLOSED=new WeakSet();
 // A closed window is freed only by V8's last-resort collection (the one it makes just before running out of heap; an ordinary major
 // GC keeps the window's context), so sweep asks for one after closing windows (the gc function, made available here without a
 // command-line flag). Without it the heap climbs to the 4 GB limit before anything is freed.
 const fullGc=(()=>{ try{ require('v8').setFlagsFromString('--expose-gc'); const g=require('vm').runInNewContext('gc'); return ()=>{ try{ g({type:'major',flavor:'last-resort'}); }catch(e){ g(); } }; }catch(e){ return ()=>{}; } })();
 function sweep(...keep){ const k=new Set(keep.filter(Boolean).map(x=>x.w)); let n0=0; for(const w of OPEN) if(!k.has(w)){ for(const n of ['Error','TypeError','RangeError','ReferenceError','SyntaxError']) if(w[n]) CLOSED.add(w[n]); try{ w.close(); }catch(e){} OPEN.delete(w); n0++; } if(n0) fullGc(); }
-process.on('unhandledRejection',(e)=>{ if(e&&e.constructor&&CLOSED.has(e.constructor)) return; throw e; });
+const NO_DOC=/^Cannot read properties of (null|undefined) \(reading '(getElementById|querySelector|querySelectorAll|body|head|documentElement|createElement|activeElement|defaultView|dataset|classList|style|value|textContent)'\)$/;
+process.on('unhandledRejection',(e)=>{ if(e&&e.constructor&&CLOSED.has(e.constructor)&&e.constructor.name==='TypeError'&&NO_DOC.test(e.message)) return; throw e; });
 function load(opts={}){ 
   const errors=[]; const st={blob:null,printed:0,clip:[],confirms:0,alerts:[]};
   const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,url:'https://example.org/',
@@ -3010,4 +3013,4 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   const urls=[...src.matchAll(/https?:\/\/[^\s"'<>)]+/g)].map(m=>m[0]); ok(urls.every(u=>u.startsWith('https://github.com/Random21m/VOIDFORGE')||u==='https://random21m.github.io/VOIDFORGE/'||u==='https://random21m.github.io'||u==='http://www.w3.org/2000/svg'),'the only URLs are the project\'s own GitHub addresses (and the SVG namespace name the card pictures use, which is never visited): '+urls.join(', '));
   ok(t.errors.length===0,'no uncaught page errors '+JSON.stringify(t.errors));
   console.log(failed?`\n${failed} CHECK(S) FAILED`:'\nALL CHECKS PASSED'); process.exit(failed?1:0);
-})();
+})().catch(e=>{ console.log('FAIL the run stopped: '+(e&&e.stack||e)); console.log('\nTHE RUN STOPPED'); process.exit(1); });
