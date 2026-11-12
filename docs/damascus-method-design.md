@@ -337,7 +337,7 @@ The heir needs the backup words and their marks, a blank grid F and the binary w
 
 1. Look up each word alphabetically and write its 11 bits into the grid. For the last word, only its first 7 bits (or 3) go in.
 2. Compute M and R (and K) and compare them with the marks on the backup.
-3. A single wrong bit can be located exactly: the bad row is the one whose R differs, and the bad column is the one whose M differs. A wrong word shows up as one bad row.
+3. A single wrong bit can be located exactly: the bad row is the one whose R differs, and the bad column is the one whose M differs. A wrong word shows up as one bad row when an odd number of its bits changed; with an even number, R stays the same and the wrong word shows only in M (and K, if used). With K, words that are 11 rows apart (words 1 and 12 for 12 words) share their skew letters, so a few such cases fit two words and the recheck lists both.
 
 ---
 
