@@ -148,6 +148,6 @@ A recommendation is not a guarantee: verify the SeedSigner software you install 
 
 VOIDFORGE is free and open source, and it stays that way. Supporting it is optional and changes nothing about how the tool works. If it helped you, you can send a few sats over Lightning:
 
-<p align="center"><img src="docs/support-qr.png" alt="QR code for the Lightning address dev@breez.tips" width="200"><br><b>dev@breez.tips</b></p>
+<p align="center"><img src="docs/support-qr.png" alt="QR code for the Lightning address keywest@strike.me" width="200"><br><b>keywest@strike.me</b></p>
 
-The page itself never goes online, so scan the code (or type the address) in a Lightning wallet on your phone. The same address and code are in the page's ABOUT & HELP tab. Be wary of any other "VOIDFORGE donation" address, and never send seed words or a passphrase to anyone, for any reason.
+The page itself never goes online, so scan the code (or type the address) in a Lightning wallet on your phone. The same address and code are in the page: tap DONATE at the bottom of any tab (it opens Support this project in ABOUT & HELP). This address replaced dev@breez.tips in v2.16.1. Be wary of any other "VOIDFORGE donation" address, and never send seed words or a passphrase to anyone, for any reason.

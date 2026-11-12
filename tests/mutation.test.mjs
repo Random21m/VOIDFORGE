@@ -2867,11 +2867,14 @@ async function probe(w, mutated, fast, only, hooks) {
     { // Support this project (v1.27.3)
       const box = $('supportBox'), code = $('supportLnurl').textContent.trim();
       if (!box || box.open || !/Optional/.test(box.querySelector('summary').textContent)) fails.push('support: closed optional box');
-      if ($('supportAddr').textContent !== 'dev@breez.tips' || code !== 'LNURL1DP68GURN8GHJ7CNJV4JH5TN5D9C8XTMVDE6HYMRS9AJX2ASZ5RD0C') fails.push('support: exact address and payment code');
+      if ($('supportAddr').textContent !== 'keywest@strike.me' || code !== 'LNURL1DP68GURN8GHJ7UM5WF5KKEFWD4JJ7TNHV4KXCTTTDEHHWM30D3H82UNVWQHKKETEWAJHXAQ6MZ0AF') fails.push('support: exact address and payment code');
       if (!$('supportQr').querySelector('svg path') || $('supportQr').innerHTML !== (() => { const d = w.document.createElement('div'); d.innerHTML = w.qrSvg(w.qrMatrix(code).rows); return d.innerHTML; })()) fails.push('support: QR drawn from the payment code');
       if (box.querySelectorAll('a, [href], img, iframe, script').length || !/never goes online/.test(box.textContent) || !/never send seed words/i.test(box.textContent)) fails.push('support: no link, and the honest notes');
       const clip = []; Object.defineProperty(w.navigator, 'clipboard', { value: { writeText: async (x) => { clip.push(x); } }, configurable: true }); const bs = box.querySelectorAll('button'); bs[0].click(); await new Promise((r) => setTimeout(r, 20)); bs[1].click(); await new Promise((r) => setTimeout(r, 20));
-      if (bs.length !== 2 || clip[0] !== 'dev@breez.tips' || clip[1] !== code) fails.push('support: COPY copies the address and the code');
+      if (bs.length !== 2 || clip[0] !== 'keywest@strike.me' || clip[1] !== code) fails.push('support: COPY copies the address and the code');
+      { const db = $('supportBtn'); w.showTab('make'); box.open = false; if (db) db.click();
+        if (!db || !db.closest('footer') || $('tp-about').classList.contains('tab-off') || !box.open) fails.push('support: DONATE opens the box in ABOUT & HELP (v2.16.1)');
+        box.open = false; w.showTab('make'); }
     }
     { // Check your download (v1.27.3)
       const bytes = Buffer.from('VOIDFORGE test file é\n' + 'x'.repeat(5000)), U = new Uint8Array(bytes), sha = nc.createHash('sha256').update(bytes).digest('hex');
@@ -5408,8 +5411,11 @@ const M = [
   ['download: file box not wired', 'aria-label="Choose the VOIDFORGE file you downloaded" onchange="dlPick()"', 'aria-label="Choose the VOIDFORGE file you downloaded"'],
   ['download: paste box not wired', 'oninput="dlPick()" style="margin-top:6px;"', 'style="margin-top:6px;"'],
   ['download: honest limit note removed', '<b>Know the limit:</b> a page cannot vouch for itself.', '<b>Note:</b> this page is trustworthy.'],
-  ['support: address changed', '<code id="supportAddr" style="user-select:all;">dev@breez.tips</code>', '<code id="supportAddr" style="user-select:all;">dev@breez.tip</code>'],
-  ['support: payment code changed', 'LNURL1DP68GURN8GHJ7CNJV4JH5TN5D9C8XTMVDE6HYMRS9AJX2ASZ5RD0C</code>', 'LNURL1DP68GURN8GHJ7CNJV4JH5TN5D9C8XTMVDE6HYMRS9AJX2ASZ5RD0D</code>'],
+  ['support: address changed', '<code id="supportAddr" style="user-select:all;">keywest@strike.me</code>', '<code id="supportAddr" style="user-select:all;">keywest@strike.m</code>'],
+  ['support: payment code changed', 'LNURL1DP68GURN8GHJ7UM5WF5KKEFWD4JJ7TNHV4KXCTTTDEHHWM30D3H82UNVWQHKKETEWAJHXAQ6MZ0AF</code>', 'LNURL1DP68GURN8GHJ7UM5WF5KKEFWD4JJ7TNHV4KXCTTTDEHHWM30D3H82UNVWQHKKETEWAJHXAQ6MZ0AG</code>'],
+  ['support: DONATE button not wired (v2.16.1)', 'id="supportBtn" onclick="openSupport()"', 'id="supportBtn"'],
+  ['support: DONATE does not open the box (v2.16.1)', '  box.open = true; reveal(box);\n}', '  reveal(box);\n}'],
+  ['support: DONATE does not go to the box (v2.16.1)', '  box.open = true; reveal(box);\n}', '  box.open = true;\n}'],
   ['support: QR never drawn', 'drawSupportQr();\nbuildDict();', 'buildDict();'],
   ['support: QR drawn from the address not the code', 'const code = document.getElementById("supportLnurl").textContent.trim();', 'const code = document.getElementById("supportAddr").textContent.trim();'],
   ['support: address COPY copies the wrong text', "onclick=\"copySupport(this, 'supportAddr')\"", "onclick=\"copySupport(this, 'supportLnurl')\""],
