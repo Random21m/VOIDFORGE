@@ -3765,7 +3765,7 @@ async function probe(w, mutated, fast, only, hooks) {
     if ($('addrLblR').textContent !== "Receive addresses (native SegWit, TESTNET (practice coins only), m/84'/1'/0'/0/0 to 0/9)" || !/m\/86'\/1'\/0'\/1\/0 to 1\/9, addresses start with tb1p/.test($('addrLblT').textContent)) fails.push('practice: the address list labels show the test-network paths');
     { const op = w.print; w.print = () => {}; w.printSummary(); const t = $('printOnly').textContent; w.dispatchEvent(new w.Event('afterprint')); w.print = op; if (!/^VOIDFORGE SEED SUMMARY \(TESTNET\)/.test(t)) fails.push('practice: the summary sheet title says TESTNET'); }
     if (($('addrList').firstChild || {}).textContent !== tbExp || ($('trList').firstChild || {}).textContent !== tbOf(expect.d50, '', 86, 0) || ($('addrList').children[4] || {}).textContent !== tbOf(expect.d50, '', 84, 4)) fails.push('practice: address lists on the test network');
-    { const m = w.addrMeta('addrList', $('addrList').children[2].querySelector('button')); if (!m.test || m.path !== "m/84'/1'/0'/0/2") fails.push('practice: address QR sheets say TESTNET with the test path'); }
+    { const m = w.addrMeta('addrList', $('addrList').children[2].querySelector('button')); if (m.net !== 'test' || m.path !== "m/84'/1'/0'/0/2") fails.push('practice: address QR sheets say TESTNET with the test path'); }
     if ($('wFirst').textContent.split('\n')[0] !== tbExp || !/^vpub/.test($('wZpub').textContent)) fails.push('practice: the watch box follows');
     if (!/body\.practice #practiceBan \{ display: block;/.test(css)) fails.push('practice: banner');
     await run('dice', 12, D50); await until(() => $('address').textContent.endsWith(tbExp) && $('wFirst').textContent.split('\n')[0] === tbExp);
