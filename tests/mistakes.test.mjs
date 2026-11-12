@@ -78,8 +78,15 @@ const html = readHtml();
   // a result arriving while covered is covered too; a new passphrase check box too
   hideTab(); $('reforgeOut').style.filter = ''; $('reforgeOut').inert = false; E('rhCovered.delete(document.getElementById("reforgeOut"))'); w.rhTick(Date.now()); ok(covered('reforgeOut'), 're-hide: the 5-second check covers a place again if it was uncovered while hidden');
   w.rhShow();
-  // the practice signer, the practice phrase and public data are not on the list
-  ok(!E('rhIds()').some((id) => /^ss|^pr(Words|Input)$|^fingerprint$|^address$|^addrList$|^wvList$/.test(id)), 're-hide: the practice signer, the practice phrase and public data are not on the list');
+  // the practice phrase and public data are not on the list; v2.16.1: the practice signer is (its device: screen and keys)
+  ok(!E('rhIds()').some((id) => /^pr(Words|Input)$|^fingerprint$|^address$|^addrList$|^wvList$/.test(id)), 're-hide: the practice phrase and public data are not on the list');
+  ok(E('rhIds()').filter((id) => /^ss/.test(id)).join() === 'ssDevice', 're-hide (v2.16.1): the practice signer\u2019s device (screen and keys) is on the list');
+  { const keep = w.vfSignerHoldsSecret; w.clearAll(); await sleep(20);
+    w.vfSignerHoldsSecret = () => false; ok(E('rhAny()') === false && !w.rhHide('tab') && !covered('ssDevice'), 're-hide (v2.16.1): a practice signer with no seed, or only public ones, is no reason to cover');
+    w.vfSignerHoldsSecret = () => true; ok(E('rhAny()') === true, 're-hide (v2.16.1): a practice signer holding a seed that is not public is a reason to cover on its own');
+    hideTab(); ok(bar() && covered('ssDevice') && $('ssDevice').inert, 're-hide (v2.16.1): then the practice signer is covered and its keys do nothing until SHOW'); w.rhShow();
+    ok(!covered('ssDevice') && !$('ssDevice').inert, 're-hide (v2.16.1): SHOW uncovers the practice signer');
+    w.vfSignerHoldsSecret = keep; }
   // a secret in each kind of place triggers it: a box from AUTO_FIELDS, a box only on the re-hide list, an output, a QR picture
   w.clearAll(); await sleep(20);
   ok(E('rhAny()') === false, 'after CLEAR ALL the page holds no secret');
@@ -380,7 +387,8 @@ try {
   await p.bringToFront(); await sleep(300);
   ok((await st()).bar, 'browser: coming back does not uncover them by itself');
   // pixels: covered words are unreadable (the grid has no sharp edges left), uncovered they are sharp
-  const sharp = async () => { const b = await p.locator('#wordGrid').screenshot(); const { PNG } = require('pngjs'); const img = PNG.sync.read(b); let e = 0;
+  // (the grid is centered first, so the re-hide notice fixed at the bottom of the window never lies over it)
+  const sharp = async () => { await p.evaluate(() => document.getElementById('wordGrid').scrollIntoView({ block: 'center', behavior: 'instant' })); await sleep(100); const b = await p.locator('#wordGrid').screenshot(); const { PNG } = require('pngjs'); const img = PNG.sync.read(b); let e = 0;
     for (let y = 0; y < img.height; y++) for (let x = 1; x < img.width; x++) { const i = (y * img.width + x) * 4, j = i - 4; if (Math.abs(img.data[i] - img.data[j]) + Math.abs(img.data[i + 1] - img.data[j + 1]) + Math.abs(img.data[i + 2] - img.data[j + 2]) > 120) e++; } return e; };
   const blurredEdges = await sharp();
   await p.click('#rhShowBtn'); await sleep(200);

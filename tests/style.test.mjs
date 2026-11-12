@@ -142,7 +142,7 @@ const CARD_GOLD = {
   const many = boxes.filter((b) => { const t = [...b.querySelector(":scope > summary").querySelectorAll(".tag")].map(label); return t.filter((x) => x !== "ADVANCED" && x !== "NEW").length > 1 || new Set(t).size !== t.length; });
   check("one tag per tool box (and ADVANCED or NEW besides it)", many.length === 0, many.map(where).join(", "));
   const ss = d.querySelector("#ssBox > summary");
-  check("the practice signer box is tagged PRACTICE ONLY and has its hint", !!ss && label(ss.querySelector(".tag")) === "PRACTICE ONLY" && !!ss.querySelector("small"));
+  check("the practice signer box is tagged SECRET (v2.16.1: it takes any seed, real ones too) and has its hint", !!ss && label(ss.querySelector(".tag")) === "SECRET" && ss.querySelector(".tag").classList.contains("tag-secret") && !!ss.querySelector("small"));
 }
 
 // ---- visible text: curly apostrophes, "review" not "audit"

@@ -152,7 +152,7 @@ const RS = randomSheet(12, seeded("FORGE SEED sheet")), RSref = refForge(12, RS.
 set("dmDice", RSdice); set("dmCards", RScards);
 check("both sheets typed (a sheet of our own): CHECK MY SHEETS and FORGE SEED turn on, no PRACTICE", !$("dmCheckBtn").disabled && !$("dmBtn").disabled && $("dmPracticeBan").style.display === "none", $("dmCount").textContent + " / " + $("dmMsg").textContent);
 set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards));
-check("review M2: worked example 1 typed by hand is recognized by its content: PRACTICE shows and FORGE SEED stays off", !$("dmCheckBtn").disabled && $("dmBtn").disabled && /PRACTICE: worked example 1 is public/.test($("dmPracticeBan").textContent), $("dmPracticeBan").textContent);
+check("review M2: worked example 1 typed by hand is recognized by its content: PRACTICE shows, and FORGE SEED is on and says it marks the seed PRACTICE (v2.16.1)", !$("dmCheckBtn").disabled && !$("dmBtn").disabled && /PRACTICE: worked example 1 is public\. Never put money on it\. FORGE SEED marks the seed PRACTICE under YOUR SEED\./.test($("dmPracticeBan").textContent), $("dmPracticeBan").textContent);
 { const d = E1.e.dice.replace("26 53", "2 53"); set("dmDice", d);
   check("review M1: a pair typed with one throw stops the check (Pair 3 is missing a throw); nothing is paired up again", $("dmCheckBtn").disabled && $("dmBtn").disabled && /^Pair 3 is missing a throw\. Write each pair as two numbers/.test($("dmMsg").textContent), $("dmMsg").textContent);
   set("dmDice", "14 15 2"); check("review M1: the last pair with one throw: Pair 3 is missing a throw, tap or type the second", $("dmCheckBtn").disabled && $("dmMsg").textContent === "Pair 3 is missing a throw. Tap or type its second throw.", $("dmMsg").textContent);
@@ -319,34 +319,57 @@ words(12); set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards));
   check("practice: PRACTICE fills in practice sheet 1, exactly as its published rule makes it (rebuilt here with node:crypto)", $("dmDice").value === want1.dice && $("dmCards").value === want1.cards);
   const pairs = w.dmParseDice($("dmDice").value).pairs, decks = w.dmParseCards($("dmCards").value, 12).decks;
   check("practice: 26 good pairs and 3 decks of 52 different cards", w.dmDiceBits(pairs, 128).good === 26 && decks.length === 3 && decks.every((d) => new Set(d).size === d.length && d.length === 52));
-  check("practice: a PRACTICE banner shows and FORGE SEED is off", $("dmPracticeBan").style.display !== "none" && /PRACTICE: practice 1 comes from a published rule/.test($("dmPracticeBan").textContent) && $("dmBtn").disabled && !$("dmCheckBtn").disabled, $("dmPracticeBan").textContent);
+  check("practice: a PRACTICE banner shows, and FORGE SEED is on and says it marks the seed PRACTICE (v2.16.1)", $("dmPracticeBan").style.display !== "none" && /PRACTICE: practice 1 comes from a published rule.*FORGE SEED marks the seed PRACTICE under YOUR SEED\.$/.test($("dmPracticeBan").textContent) && !$("dmBtn").disabled && !$("dmCheckBtn").disabled, $("dmPracticeBan").textContent);
   await w.dmCheck(); out = $("dmOut").textContent;
   check("practice: every part of the result says PRACTICE", /^PRACTICE: practice 1 comes from/.test(out) && /PRACTICE: Hammer sheet/.test(out) && /PRACTICE: Anvil sheet/.test(out) && /PRACTICE: Forge sheet/.test(out) && /PRACTICE: Last word/.test(out));
+  // v2.16.1 (owner's report): FORGE SEED works for practice exactly as for the other methods, the result marked PRACTICE everywhere
+  const ref1 = refForge(12, pairsOf(want1.dice), want1.cards.split("\n").map((d) => d.split(" ").map((c) => c.replace(/^10/, "T")))).E.phrase.join(" ");
   const had = w.hasSeed(); await w.dmGenerate();
-  check("practice: FORGE SEED never makes a seed from practice dice and cards", !had && !w.hasSeed());
+  const BAN1 = "PRACTICE: This seed is Damascus practice sheet 1, a public practice seed. Anyone can make it again: never put money on it.";
+  check("practice (v2.16.1): FORGE SEED gives practice sheet 1's published phrase under YOUR SEED, through the usual result (words, fingerprint, first address)", !had && w.hasSeed() && w.eval("madeMnemonic") === ref1 && w.eval("seedKind") === "dm" && $("fingerprint").textContent.includes(fpOf(ref1)) && $("address").textContent.includes(addrOf(ref1)), w.eval("madeMnemonic"));
+  check("practice (v2.16.1): the red PRACTICE banner under YOUR SEED names practice sheet 1 and says never to put money on it", $("ssfBan").style.display !== "none" && $("ssfBan").textContent === BAN1 && $("ssfBan").classList.contains("ms-test") && $("ssfCheck").style.display === "none", $("ssfBan").textContent);
+  check("practice (v2.16.1): the seed summary says PRACTICE and names the sheet", /the Damascus method .*\(PRACTICE: Damascus practice sheet 1, a public practice seed; never put money on it\)/.test($("sumLine").textContent), $("sumLine").textContent);
+  check("practice (v2.16.1): the Ready line says the practice seed is forged and marked PRACTICE", /^Practice seed forged from these boxes: the words are shown below, marked PRACTICE\./.test($("dmReady").textContent), $("dmReady").textContent);
+  { // the same workflow as a real seed: every keep-it action is there and works; each sheet and file says PRACTICE on it
+    const keep = { print: w.print, confirm: w.confirm, alert: w.alert, click: w.HTMLAnchorElement.prototype.click, cou: w.URL.createObjectURL, Blob: w.Blob };
+    const got = {}, blobs = []; let alerted = "";
+    w.confirm = () => true; w.alert = (m) => { alerted = m; }; w.URL.createObjectURL = () => "blob:x"; w.HTMLAnchorElement.prototype.click = function(){ got.dl = this.download; };
+    w.Blob = function(parts, o){ blobs.push(parts.join("")); return new keep.Blob(parts, o); };
+    if(typeof w.URL.revokeObjectURL !== "function") w.URL.revokeObjectURL = () => {};   // jsdom has none (the page revokes the link a second later)
+    w.print = () => { got.text = $("printOnly").textContent + $("printQr").textContent; $("printOnly").textContent = ""; $("printQr").textContent = ""; };
+    const sheet = (f) => { got.text = ""; f(); return got.text; };
+    const ps = sheet(() => w.printSeed()), st = sheet(() => w.printStamp()), sm = sheet(() => w.printSummary());
+    await w.showSeedQr("seedqr"); const sq = sheet(() => w.printSeedQr());
+    check("practice (v2.16.1): PRINT SEED is not blocked: the backup sheet has the words, says PRACTICE in its title and carries the banner line", /^VOIDFORGE BACKUP SHEET: PRACTICE/.test(ps) && ps.includes(BAN1) && ref1.split(" ").every((x) => ps.includes(x)) && !alerted, ps.slice(0, 160));
+    check("practice (v2.16.1): the stamp sheet and the seed summary sheet say PRACTICE with the banner line", /^VOIDFORGE STAMP SHEET: PRACTICE/.test(st) && st.includes(BAN1) && /^VOIDFORGE SEED SUMMARY: PRACTICE/.test(sm) && sm.includes(BAN1), st.slice(0, 80) + " | " + sm.slice(0, 80));
+    check("practice (v2.16.1): the SeedQR sheet says PRACTICE with the banner line", /^VOIDFORGE (STANDARD )?SEEDQR.*: PRACTICE/i.test(sq) && sq.includes(BAN1), sq.slice(0, 160));
+    blobs.length = 0; w.downloadSeed(); const file = blobs.length ? blobs[0] : "";
+    check("practice (v2.16.1): DOWNLOAD saves the seed file, its first line the PRACTICE line", file.startsWith(BAN1 + "\n\n") && file.includes(ref1), file.slice(0, 120));
+    Object.assign(w, { print: keep.print, confirm: keep.confirm, alert: keep.alert, Blob: keep.Blob }); w.HTMLAnchorElement.prototype.click = keep.click; w.URL.createObjectURL = keep.cou;
+    check("practice (v2.16.1): LOAD INTO THE PRACTICE SIGNER is under YOUR SEED too, with the other seed buttons", !!$("seedSignerBtn") && $("seedSignerBtn").closest(".seed-actions") && $("seedSignerBtn").textContent === "LOAD INTO THE PRACTICE SIGNER");
+  }
   // LOAD INTO THE PRACTICE SIGNER: the practice signer's hook (tools/simulator/ss_learn.js) is in the page; its whole path, Scan on
   // the device included, is driven in Chromium by tests/simulator.test.mjs (scenario damascus). Here: what it takes and refuses.
   const hook = w.vfSignerLoadSeed, ph1 = $("dmOut").dataset.practicePhrase;
   check("practice: the practice signer's hook vfSignerLoadSeed is in the page", typeof hook === "function");
-  check("practice: vfSignerLoadSeed refuses anything but the practice result on the tab (another phrase, a changed one, no phrase)", ["abandon ".repeat(11) + "about", ph1 + " ", ph1.split(" ").slice(1).join(" "), null, ""].every((m) => hook(m) === false) && !$("ssBox").open);
+  check("v2.16.1: vfSignerLoadSeed takes any seed, as a real SeedSigner does, and refuses only what is not a 12- or 24-word seed (a changed one, 11 words, no phrase)", [ph1 + " ", ph1.split(" ").slice(1).join(" "), null, ""].every((m) => hook(m) === false) && !$("ssBox").open);
   w.vfSignerLoadSeed = undefined; $("dmSignerBtn").click();
   check("practice: without the practice signer, LOAD INTO THE PRACTICE SIGNER says how to type the words in", /practice signer, and choose Seeds > Load a seed > Enter 12-word seed/.test($("dmSignerNote").textContent), $("dmSignerNote").textContent);
   let got = null; w.vfSignerLoadSeed = (m) => { got = m; return true; }; $("dmSignerBtn").click();
-  check("practice: the practice words go to the hook, and the note says to choose Scan on the device", got && got === ph1 && got.split(" ").length === 12 && /Choose Scan on the device\./.test($("dmSignerNote").textContent), $("dmSignerNote").textContent);
+  check("practice: the practice words go to the hook, and the note says the practice signer loads it by itself (v2.16.1: one click)", got && got === ph1 && got.split(" ").length === 12 && /loads the practice seed by itself from its SeedQR\./.test($("dmSignerNote").textContent), $("dmSignerNote").textContent);
   w.vfSignerLoadSeed = () => false; $("dmSignerBtn").click();
-  check("practice: a refusal by the hook is said plainly", /^Not loaded: only a practice seed/.test($("dmSignerNote").textContent));
+  check("practice: a failure of the hook is said plainly", /^Not loaded: the practice signer could not start/.test($("dmSignerNote").textContent));
   w.vfSignerLoadSeed = hook;
   set("dmDice", $("dmDice").value + " 12");
-  check("practice: an edit that keeps the same seed (a pair after the grid is full) still says PRACTICE, by content", $("dmBtn").disabled && $("dmPracticeBan").style.display !== "none" && /practice 1 comes from a published rule/.test($("dmPracticeBan").textContent), $("dmPracticeBan").textContent);
+  check("practice: an edit that keeps the same seed (a pair after the grid is full) still says PRACTICE, by content", !$("dmBtn").disabled && $("dmPracticeBan").style.display !== "none" && /practice 1 comes from a published rule/.test($("dmPracticeBan").textContent), $("dmPracticeBan").textContent);
   { const keepC = $("dmCards").value, keepD = $("dmDice").value; set("dmDice", RSdice);
     check("review M4: real dice in place of the practice dice: PRACTICE ends at once", $("dmPracticeBan").style.display === "none" && w.eval("dmPractice") === "");
     set("dmCards", RScards); await w.dmCheck();
-    check("review M4: then real cards: no PRACTICE anywhere, no practice phrase kept, FORGE SEED on, and the practice signer hook refuses", !/PRACTICE/.test($("dmOut").textContent) && !$("dmOut").dataset.practicePhrase && !$("dmBtn").disabled && w.vfSignerLoadSeed(RSref.E.phrase.join(" ")) === false && !$("dmSignerBtn"));
+    check("review M4: then real cards: no PRACTICE anywhere, no practice phrase kept, FORGE SEED on, no practice signer button on the tab", !/PRACTICE/.test($("dmOut").textContent) && !$("dmOut").dataset.practicePhrase && !$("dmBtn").disabled && !$("dmSignerBtn"));
     set("dmDice", keepD); set("dmCards", keepC);
-    check("review M2: the practice sheet's dice and cards typed back: PRACTICE again, by content", $("dmBtn").disabled && /practice 1 comes from a published rule/.test($("dmPracticeBan").textContent)); }
+    check("review M2: the practice sheet's dice and cards typed back: PRACTICE again, by content", !$("dmBtn").disabled && /practice 1 comes from a published rule/.test($("dmPracticeBan").textContent)); }
   set("dmDice", ""); set("dmCards", "");
   check("practice: emptying both boxes ends PRACTICE", $("dmPracticeBan").style.display === "none" && w.eval("dmPractice") === "");
-  check("practice: after PRACTICE ends, vfSignerLoadSeed refuses the practice words too", w.vfSignerLoadSeed(ph1) === false);
   { let asked = ""; set("dmDice", RSdice); w.confirm = (m) => { asked = m; return false; }; await w.dmPracticeFill(); w.confirm = () => true;
     check("review L14: PRACTICE asks before it replaces dice you typed, and No keeps them", /This replaces what you typed in the Damascus boxes/.test(asked) && $("dmDice").value === RSdice, asked); set("dmDice", ""); set("dmCards", ""); }
   // review M2 and L9: practice sheets 1 to 100 of both lengths, made again here from the published rule and folded with the
@@ -363,7 +386,7 @@ words(12); set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards));
 }
 for(const n of [1, 2, 3]){
   $("dmEx" + n).click(); await w.dmCheck(); out = $("dmOut").textContent; const x = exRes[n - 1];
-  check("worked example " + n + " on the page: LOAD fills the boxes, sets " + x.e.words + " words, says PRACTICE and public, and gives its words and fingerprint", w.dmWc() === x.e.words && /PRACTICE: worked example \d is public\. Never put money on it\./.test(out) && out.includes("Master fingerprint " + x.fp) && $("dmBtn").disabled && $("dmExBox").textContent.includes(x.p.F.phrase) && $("dmExBox").textContent.includes(x.fp), out.slice(0, 200));
+  check("worked example " + n + " on the page: LOAD fills the boxes, sets " + x.e.words + " words, says PRACTICE and public, and gives its words and fingerprint", w.dmWc() === x.e.words && /PRACTICE: worked example \d is public\. Never put money on it\./.test(out) && out.includes("Master fingerprint " + x.fp) && !$("dmBtn").disabled && $("dmExBox").textContent.includes(x.p.F.phrase) && $("dmExBox").textContent.includes(x.fp), out.slice(0, 200));
 }
 check("the worked examples box says they are public and never to put money on them", /public: never put money on these/.test($("dmExBox").querySelector("summary").textContent));
 w.dmClear(); words(12);
@@ -439,7 +462,9 @@ w.dmClear(); words(12);
 
 // ---------- 5. FORGE SEED, the stale guard and the wipes
 set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards)); await w.dmGenerate();
-check("review M2: FORGE SEED makes no seed from worked example 1 typed by hand", !w.hasSeed());
+check("review M2 (v2.16.1): FORGE SEED makes worked example 1 typed by hand (kick confirm ... sword) under YOUR SEED", w.hasSeed() && w.eval("madeMnemonic") === WANT[1][0] && w.eval("seedKind") === "dm", w.eval("madeMnemonic"));
+check("review M2 (v2.16.1): worked example 1 typed by hand: the banner under YOUR SEED names worked example 1", $("ssfBan").style.display !== "none" && $("ssfBan").textContent === "PRACTICE: This seed is Damascus worked example 1, a public worked example. Anyone can make it again: never put money on it.", $("ssfBan").textContent);
+w.wipeSeed();
 set("dmDice", RSdice); set("dmCards", RScards);
 { // review M6: FORGE SEED checks What I wrote first
   const ws = RSref.E.phrase.slice(); ws[3] = ws[3] === "zoo" ? "abandon" : "zoo"; set("dmWords", ws.join(" ")); set("dmFR", RSref.E.marks.R.replace(/^./, (x) => x === "1" ? "0" : "1"));
@@ -612,7 +637,8 @@ const guide = readFileSync(path.join(here, "..", "docs", "damascus-quick-guide.m
   check("coordinator: every bad input to CALCULATE LAST WORD gets its own plain message (word count, a word that is not BIP39, a bit that is not 0 or 1, the bit count, 15 words)", got.length === 0 && /makes 12 or 24 words/.test(o15), got.concat(o15).join(" | "));
   const o1 = await lw(ws, exRes[0].p.F.handWords[11].bits);
   check("coordinator: worked example 1 from paper: sword, its fingerprint, and the public-phrase warning", /^Last word: sword \(/.test(o1) && o1.includes("70b5da37") && /PUBLIC EXAMPLE PHRASE/.test(o1), o1);
-  await w.dmGenerate(); check("FORGE SEED from paper only refuses a public worked example", !w.hasSeed() && /PRACTICE: these words are a public worked example/.test($("dmLwOut").textContent));
+  await w.dmGenerate(); check("FORGE SEED from paper only (v2.16.1): a public worked example is forged too, marked PRACTICE with its name", w.hasSeed() && w.eval("madeMnemonic") === exRes[0].p.F.phrase && /^PRACTICE: This seed is Damascus worked example 1, a public worked example\./.test($("ssfBan").textContent) && $("ssfBan").style.display !== "none", $("ssfBan").textContent);
+  w.wipeSeed();
   const m = RSref.E.phrase; await lw(m.slice(0, 11).join(" "), RSref.E.handWords[11].bits);
   check("FORGE SEED is on for words and bits from paper only (no dice or cards on the page)", !$("dmBtn").disabled);
   await w.dmGenerate();
@@ -668,22 +694,25 @@ const guide = readFileSync(path.join(here, "..", "docs", "damascus-quick-guide.m
     nextB.click();
     const st = { i: i + 1, step: w.eval("dmStep"), pr: w.eval("dmPractice"), off: $("dmBtn").disabled, ban: $("dmPracticeBan").style.display !== "none" };
     if(st.step !== step || !ok()) bad.push("phase " + (i + 1) + ": " + T().slice(0, 140));
-    if(st.pr !== "practice 42" || !st.off || !st.ban) bad.push("phase " + (i + 1) + " is not PRACTICE, or FORGE SEED is on");
+    if(st.pr !== "practice 42" || st.off !== ($("dmCards").value !== sheet.cards) || !st.ban) bad.push("phase " + (i + 1) + " is not PRACTICE, or FORGE SEED is not on exactly when the dice and the cards are complete");
   }
-  check("guided practice: each NEXT fills one part from the sheet, says where each value comes from, and shows the right step; PRACTICE stays and FORGE SEED stays off all the way", bad.length === 0, bad.slice(0, 3).join(" | "));
+  check("guided practice: each NEXT fills one part from the sheet, says where each value comes from, and shows the right step; PRACTICE stays all the way, and FORGE SEED is on once the dice and the cards are complete (v2.16.1)", bad.length === 0, bad.slice(0, 3).join(" | "));
+  check("guided practice (v2.16.1): the last part says FORGE SEED shows the words under YOUR SEED, marked PRACTICE", /FORGE SEED shows them under YOUR SEED, marked PRACTICE, with every step a real seed has\./.test(T()) && !/FORGE SEED stays off/.test(T()), T().slice(-300));
+  await w.dmGenerate();
+  check("guided practice (v2.16.1): FORGE SEED at the end gives practice sheet 42's words under YOUR SEED, the banner naming the sheet", w.hasSeed() && w.eval("madeMnemonic") === phrase && $("ssfBan").textContent === "PRACTICE: This seed is Damascus practice sheet 42, a public practice seed. Anyone can make it again: never put money on it." && $("ssfBan").style.display !== "none", $("ssfBan").textContent);
   check("guided practice: at the end the boxes hold exactly what FILL IN A PRACTICE SHEET puts in (dice and cards), and the words are practice sheet 42's published words", $("dmDice").value === sheet.dice && $("dmCards").value === sheet.cards && /Damascus practice sheet/.test(w.knownPhrase(phrase) || "") && w.eval("dmPublicKind(dmState())") === "practice 42");
   nextB.click(); check("guided practice: NEXT stops at the end", /12 of 12/.test($("dmTourTitle").textContent));
   $("dmTourBack").click(); $("dmTourBack").click(); $("dmTourBack").click(); $("dmTourBack").click();
   check("guided practice: BACK goes to the phase before and its boxes (four back: the Forge hallmarks are empty again)", /8 of 12/.test($("dmTourTitle").textContent) && !$("dmFR").value && !$("dmWords").value && $("dmAR").value === ref.C.marks.R && w.eval("dmStep") === 3);
   $("dmTourStop").click();
-  check("guided practice: STOP closes the panel and keeps the boxes, still PRACTICE", $("dmTour").hidden && $("dmCards").value === sheet.cards && w.eval("dmPractice") === "practice 42" && $("dmBtn").disabled && !w.document.querySelector("#dmBox .dm-tour-hl"));
+  check("guided practice: STOP closes the panel and keeps the boxes, still PRACTICE", $("dmTour").hidden && $("dmCards").value === sheet.cards && w.eval("dmPractice") === "practice 42" && !$("dmBtn").disabled && !w.document.querySelector("#dmBox .dm-tour-hl"));
   await w.dmTourStart(); check("guided practice: the next GUIDED PRACTICE takes the next sheet (43), as FILL IN A PRACTICE SHEET does", /practice sheet 43/.test($("dmTourTitle").textContent));
   nextB.click(); w.dmClear(); check("guided practice: CLEAR closes the guide and empties the boxes", $("dmTour").hidden && !$("dmDice").value && w.eval("dmTour") === null);
   await w.dmTourStart(); words(24); check("guided practice: another seed length closes the guide", $("dmTour").hidden && w.eval("dmTour") === null); words(12);
   // 24 words: the whole walk-through, and the last word with its 8 checksum bits
   words(24); w.eval("dmPracticeNext = 5"); await w.dmTourStart(); for(let i = 0; i < 11; i++) nextB.click();
   const s24 = await w.dmPracticeSheet(5, 24), r24 = refForge(24, pairsOf(s24.dice), s24.cards.split("\n").map((l) => l.trim().split(/\s+/).map((c) => c.replace(/^10/, "T")))), p24 = r24.E.phrase.join(" ");
-  check("guided practice, 24 words: ends on practice sheet 5's published words, every box as the sheet, FORGE SEED off", T().includes(p24) && $("dmCards").value === s24.cards && $("dmFR").value === r24.E.marks.R && $("dmWords").value === p24.split(" ").slice(0, 23).join(" ") && $("dmBtn").disabled, T().slice(0, 120));
+  check("guided practice, 24 words: ends on practice sheet 5's published words, every box as the sheet, FORGE SEED on (v2.16.1)", T().includes(p24) && $("dmCards").value === s24.cards && $("dmFR").value === r24.E.marks.R && $("dmWords").value === p24.split(" ").slice(0, 23).join(" ") && !$("dmBtn").disabled, T().slice(0, 120));
   w.dmClear(); words(12);
 }
 // the creator line and picture (v2.14.0): top of the Damascus tab, ABOUT & HELP, and the two docs; the picture is docs/damascus/creator.webp
@@ -752,6 +781,15 @@ if(browser){
   await page.click("#dmBtn"); await page.waitForFunction(() => hasSeed(), null, { timeout: 60000 });
   let pos = null; for(let i = 0; i < 40; i++){ await sleep(100); const p2 = await page.evaluate(() => { const g = document.getElementById("wordGrid").getBoundingClientRect(), t = document.getElementById("tabs").getBoundingClientRect(); return [Math.round(g.top), Math.round(g.bottom), Math.round(t.bottom), innerHeight, scrollY]; }); if(pos && pos[4] === p2[4]) { pos = p2; break; } pos = p2; }
   check("v2.16.1: after FORGE SEED (Damascus) the 12 words are in view, below the tab bar", pos && pos[0] >= pos[2] && pos[1] <= pos[3], JSON.stringify(pos));
+  check("v2.16.1: a real Damascus seed has no PRACTICE banner and no PRACTICE on its summary", await page.evaluate(() => document.getElementById("ssfBan").style.display === "none" && !document.getElementById("ssfBan").textContent && !/PRACTICE/.test(document.getElementById("sumLine").textContent)));
+  // v2.16.1 (owner's report): FILL IN A PRACTICE SHEET, then FORGE SEED: the same path as the other methods (the words under YOUR SEED,
+  // the page jumps there), with the red PRACTICE banner above the words, naming the sheet
+  await page.evaluate(() => { dmClear(); scrollTo(0, 0); }); await page.evaluate(() => dmPracticeFill());
+  await page.waitForFunction(() => !document.getElementById("dmBtn").disabled, null, { timeout: 60000 });
+  await page.click("#dmBtn"); await page.waitForFunction(() => hasSeed() && /Master fingerprint: [0-9a-f]{8}/.test(document.getElementById("fingerprint").textContent) && document.getElementById("watchBox").style.display === "", null, { timeout: 60000 });   // FORGE SEED has finished (the jump comes last)
+  pos = null; for(let i = 0; i < 40; i++){ await sleep(100); const p2 = await page.evaluate(() => { const g = document.getElementById("wordGrid").getBoundingClientRect(), t = document.getElementById("tabs").getBoundingClientRect(); return [Math.round(g.top), Math.round(g.bottom), Math.round(t.bottom), innerHeight, scrollY]; }); if(pos && pos[4] === p2[4]) { pos = p2; break; } pos = p2; }
+  const pb = await page.evaluate(() => { const b = document.getElementById("ssfBan"), r = b.getBoundingClientRect(), t = document.getElementById("tabs").getBoundingClientRect(); return { text: b.textContent, shown: b.style.display !== "none" && r.height > 0, inView: r.top >= t.bottom - 1 && r.bottom <= innerHeight, red: getComputedStyle(b).color, cls: b.className, words: document.querySelectorAll("#wordGrid .wcell").length }; });
+  check("v2.16.1: FORGE SEED on a practice sheet: the 12 words under YOUR SEED, in view after the jump, with the red PRACTICE banner (ms-test) naming the sheet in view above them", pos && pos[0] >= pos[2] && pos[1] <= pos[3] && pb.shown && pb.inView && pb.cls === "ms-test" && pb.words === 12 && /^PRACTICE: This seed is Damascus practice sheet \d+, a public practice seed\. Anyone can make it again: never put money on it\.$/.test(pb.text), JSON.stringify([pos, pb]));
   check("no page error in Chromium", problems.length === 0, problems.join(" | "));
   await ctx.close();
 }

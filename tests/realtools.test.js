@@ -40,7 +40,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // and @scure/btc-signer (independent code); regtest is testnet with bech32 "bcrt" (Bitcoin Core chainparams.cpp, CRegTestParams).
   { const r=load(); await r.ready(); const $=r.$, w=r.w, d=r.d, {HDKey}=require('@scure/bip32'), {mnemonicToSeedSync}=require('@scure/bip39'), btc=require('@scure/btc-signer');
     const sleep=ms=>new Promise(x=>setTimeout(x,ms)), until=async(f,n=400)=>{ for(let k=0;k<n&&!f();k++) await sleep(25); return f(); };
-    const RT={...btc.TEST_NETWORK, bech32:'bcrt'}, AB='abandon '.repeat(11)+'about', M24='zoo '.repeat(23)+'vote', M12='screen truck market purse stumble turn across conduct exact armor neither guitar';
+    const RT={...btc.TEST_NETWORK, bech32:'bcrt'}, AB='abandon '.repeat(11)+'about', M24='fantasy clerk chunk shoot twenty anxiety power subway culture hurry remain warfare trade web payment need prevent group bird peanut liberty comfort dice nut', M12='screen truck market purse stumble turn across conduct exact armor neither guitar';
     const root=(m,pw='')=>HDKey.fromMasterSeed(mnemonicToSeedSync(m,pw)), fp=(m,pw='')=>root(m,pw).fingerprint.toString(16).padStart(8,'0');
     const wpkh=(m,path,net)=>btc.p2wpkh(root(m).derive(path).publicKey,net).address;
     const radio=(id)=>{ $(id).checked=true; $(id).dispatchEvent(new w.Event('change')); };
@@ -56,13 +56,14 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(w.eval('rhAny()')===true,'v2.16.1 backup practice: re-hide sees your own words on screen as a secret');
     w.rhHide('tab'); ok($('prShow').classList.contains('rh-cov')&&$('prOwn').classList.contains('rh-cov'),'v2.16.1 backup practice: re-hide covers your words on screen and the box'); w.rhShow();
     w.practiceHide(); $('prInput').value=M24; w.practiceCheck(); ok(/ok/.test($('prStatus').className)&&/matches your words, word for word/.test($('prStatus').textContent),'v2.16.1 backup practice: a right paper copy of your own words is confirmed');
-    $('prInput').value=M24.replace(/zoo$|zoo (?=vote)/,'zero '); w.practiceCheck(); ok(/bad/.test($('prStatus').className)&&/Word 23 does not match\. Fix your paper/.test($('prStatus').textContent),'v2.16.1 backup practice: a wrong word of your own is named by its place');
-    $('prInput').value='zoo zoo'; w.practiceCheck(); ok(/your seed has 24/.test($('prStatus').textContent),'v2.16.1 backup practice: a missing word is counted against your seed');
+    $('prInput').value=M24.replace('dice nut','zero nut'); w.practiceCheck(); ok(/bad/.test($('prStatus').className)&&/Word 23 does not match\. Fix your paper/.test($('prStatus').textContent),'v2.16.1 backup practice: a wrong word of your own is named by its place');
+    $('prInput').value='fantasy clerk'; w.practiceCheck(); ok(/your seed has 24/.test($('prStatus').textContent),'v2.16.1 backup practice: a missing word is counted against your seed');
     w.rhHide('tab'); ok($('prCheck').classList.contains('rh-cov'),'v2.16.1 backup practice: re-hide covers the copy typed back while it is your own words'); w.rhShow();
     ok(w.eval('AUTO_FIELDS').includes('prOwn')&&w.eval('autoHasSecrets()'),'v2.16.1 backup practice: auto-clear knows your own words are there');
     w.autoWipe('test'); ok(w.eval('practice')===null&&$('prOwn').value===''&&$('prWords').textContent===''&&$('prInput').value==='','v2.16.1 backup practice: auto-clear wipes your own words, the list and the copy');
     $('prOwn').value=M12; await w.practiceStart(); w.clearAll(); ok(w.eval('practice')===null&&$('prOwn').value==='','v2.16.1 backup practice: CLEAR ALL wipes your own words');
-    radio('prSrcTest'); w.eval('practiceNext=0'); await w.practiceStart(); ok(w.eval('practice.own')===undefined&&$('prBan').style.display===''&&w.eval('rhAny()')===false,'v2.16.1 backup practice: the public test seeds work as before (PRACTICE notice, not a secret)');
+    $('prOwn').value='zoo '.repeat(23)+'vote'; await w.practiceStart(); ok($('prBan').style.display===''&&/^PRACTICE: This seed is a public or predictable seed/.test($('prBan').textContent)&&w.eval('rhAny()'),'v2.16.1 backup practice: own words that are public anyway (a BIP39 test vector) get the page\'s PRACTICE mark (pracBan) and are still covered'); w.clearAll();
+    radio('prSrcTest'); w.eval('practiceNext=0'); await w.practiceStart(); ok(w.eval('practice.own')===undefined&&$('prBan').style.display===''&&/^PRACTICE ONLY\./.test($('prBan').textContent)&&w.eval('rhAny()')===false,'v2.16.1 backup practice: the public test seeds work as before (PRACTICE notice, not a secret)');
     w.practiceClear();
     // ---- A2: OPEN A PRACTICE WALLET with your own words; the practice note under every network menu
     radio('prSrcOwn'); $('prOwn').value=M12; await w.practiceWallet(); await until(()=>/tb1q/.test($('wvList').textContent));

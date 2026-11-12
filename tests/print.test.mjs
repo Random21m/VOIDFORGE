@@ -396,6 +396,22 @@ await p.click('#tab-make');
   ok(nor.nojs === 'none' && nor.page === 'visible' && nor.gate === 'flex', 'first paint: after a normal load the page and the start notice show, the notice does not (' + JSON.stringify(nor) + ')');
 }
 
+// v2.16.1: a Damascus practice seed goes through the same prints as a real seed (nothing blocked), each on one page, and each
+// carries the PRACTICE line, so a practice paper cannot be taken for a real backup later
+{ await p.evaluate(() => { showTab('make'); setMethod('damascus'); dmClear(); }); await p.selectOption('#wordSel', '12');
+  await p.evaluate(() => dmPracticeFill()); await p.waitForFunction(() => !document.getElementById('dmBtn').disabled, null, { timeout: 60000 });
+  await p.click('#dmBtn'); await p.waitForFunction(() => hasSeed() && /practice sheet \d+/.test(document.getElementById('ssfBan').textContent), null, { timeout: 60000 });
+  const ban = await p.textContent('#ssfBan');
+  ok(/^PRACTICE: This seed is Damascus practice sheet \d+, a public practice seed\. Anyone can make it again: never put money on it\.$/.test(ban), 'practice seed: the PRACTICE banner under YOUR SEED (' + ban + ')');
+  const textOf = async (fn) => { await p.evaluate(fn); const t = await p.evaluate(() => document.getElementById('printOnly').textContent + document.getElementById('printQr').textContent); await p.evaluate(() => window.dispatchEvent(new Event('afterprint'))); return t; };
+  await p.evaluate(() => showSeedQr('seedqr'));
+  for (const [label, fn] of [['backup sheet', () => printSeed()], ['stamp sheet', () => printStamp()], ['summary sheet', () => printSummary()], ['SeedQR sheet', () => printSeedQr()], ['SeedQR hand-copy guide', () => printSqGuide()]]) {
+    const t = await textOf(fn);
+    ok(t.includes(ban) && /: PRACTICE/.test(t), 'practice seed: the ' + label + ' is made (not blocked), says PRACTICE in its title and carries the PRACTICE line');
+    await sheet('practice seed: ' + label, fn);
+  }
+  await p.evaluate(() => { dmClear(); setMethod('dice'); }); }
+
 ok(errors.length === 0, 'no page errors (' + errors.join(' | ') + ')');
 await browser.close();
 console.log('PRINT: ' + pass + ' pass, ' + fails.length + ' fail');
