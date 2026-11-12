@@ -2056,8 +2056,8 @@ async function probe(w, mutated, fast, only, hooks) {
     if ((svgText.match(/<circle/g) || []).length !== 5 || !/^<svg[^>]*viewBox="0 0 64 64"/.test(svgText)) fails.push('page icon: the SVG is the five-pip die');
     if (pb.subarray(1, 4).toString() !== 'PNG' || pb.readUInt32BE(16) !== 32 || pb.readUInt32BE(20) !== 32) fails.push('page icon: the PNG is 32 by 32');
     if (w.document.querySelector('link[rel~="apple-touch-icon"], link[rel="manifest"]')) fails.push('page icon: no other linked files');
-    { const as = [...w.document.querySelectorAll('a')]; if (as.length !== 1 || as[0].getAttribute('href') !== 'https://random21m.gitlab.io/voidforge/' || as[0].getAttribute('target') !== '_blank' || as[0].getAttribute('rel') !== 'noopener noreferrer') fails.push('page icon: the one link goes to the online copy, in a new tab, with noopener noreferrer'); }
-    if (!/never from a website\. Check the file.s SHA256 first \(see the README\)\. The online copy on the project page is for practice only\. Its address is random21m\.gitlab\.io\/voidforge, the only link on this page/.test(w.document.body.textContent)) fails.push('page icon: About page says the online copy is practice-only'); }
+    { const as = [...w.document.querySelectorAll('a')]; if (as.length !== 1 || as[0].getAttribute('href') !== 'https://random21m.github.io/VOIDFORGE/' || as[0].getAttribute('target') !== '_blank' || as[0].getAttribute('rel') !== 'noopener noreferrer') fails.push('page icon: the one link goes to the online copy, in a new tab, with noopener noreferrer'); }
+    if (!/never from a website\. Check the file.s SHA256 first \(see the README\)\. The online copy on the project page is for practice only\. Its address is random21m\.github\.io\/VOIDFORGE, the only link on this page/.test(w.document.body.textContent)) fails.push('page icon: About page says the online copy is practice-only'); }
   }
   if (SEC(11, "Reforge (v1.28.0): kept to a few seconds, because it runs for every mu")) {
   { // Reforge (v1.28.0): kept to a few seconds, because it runs for every mutation
@@ -4164,9 +4164,9 @@ async function probe(w, mutated, fast, only, hooks) {
     w.heirClose(); if ($('heirCard').style.display !== 'none') fails.push('heir mode: CLOSE');
     // Is anything watching this page? (last: it adds things to the page)
     if (w.watchSigns().length || $('watchWarn').style.display === 'block') fails.push('watch check: the page itself leaves no sign [' + w.watchSigns().join(' | ') + ']');
-    { const D = 'https://random21m.gitlab.io', F = w.officialDemoFrame;   // v2.8.1: only the official online demo may show the page in a frame
-      if (!F(D, D, '/voidforge/') || !F(D, D, '/voidforge/index.html')) fails.push('demo frame: the official demo page is accepted');
-      if (F(D, D, '/other/') || F(D, D, '/voidforge/x.html') || F(D, D, '/') || F('https://example.org', 'https://example.org', '/voidforge/') || F(D, 'https://evil.example', '/voidforge/') || F('https://evil.example', D, '/voidforge/')) fails.push('demo frame: any other page or site is not accepted'); }
+    { const D = 'https://random21m.github.io', F = w.officialDemoFrame;   // v2.8.1: only the official online demo may show the page in a frame (v2.15.0: GitHub Pages)
+      if (!F(D, D, '/VOIDFORGE/') || !F(D, D, '/VOIDFORGE/index.html')) fails.push('demo frame: the official demo page is accepted');
+      if (F(D, D, '/other/') || F(D, D, '/VOIDFORGE/x.html') || F(D, D, '/') || F('https://example.org', 'https://example.org', '/VOIDFORGE/') || F(D, 'https://evil.example', '/VOIDFORGE/') || F('https://evil.example', D, '/VOIDFORGE/')) fails.push('demo frame: any other page or site is not accepted'); }
     { const L = w.addrSheetLines(['bc1p' + 'a'.repeat(58), 'bc1p' + 'c'.repeat(58)], ['bc1p' + 'b'.repeat(58), 'bc1p' + 'd'.repeat(58)]);
       if (L !== 'Receive\n  0:  bc1p' + 'a'.repeat(58) + '\n  1:  bc1p' + 'c'.repeat(58) + '\nChange\n  0:  bc1p' + 'b'.repeat(58) + '\n  1:  bc1p' + 'd'.repeat(58)) fails.push('sheets: long addresses are listed one list under the other');
       const S = w.addrSheetLines(['bc1q' + 'a'.repeat(38)], ['bc1q' + 'b'.repeat(38)]);
@@ -5037,10 +5037,10 @@ const M = [
   ['passphrase: hardware wallet limit note dropped', ' Some hardware wallets limit how long a passphrase can be or which characters it can use, so test a small amount on your device before you rely on it.</div>', '</div>'],
   ['page icon: SVG link removed', '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,', '<link rel="x" type="image/svg+xml" href="data:image/svg+xml,'],
   ['page icon: PNG link removed', '<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,', '<link rel="x" type="image/png" sizes="32x32" href="data:image/png;base64,'],
-  ['page icon: About page loses the online address', 'Its address is <a href="https://random21m.gitlab.io/voidforge/" target="_blank" rel="noopener noreferrer">random21m.gitlab.io/voidforge</a>, the only link', 'Its address is on the project page, the only link'],
-  ['page icon: the link loses noopener noreferrer', 'target="_blank" rel="noopener noreferrer">random21m.gitlab.io/voidforge</a>', 'target="_blank">random21m.gitlab.io/voidforge</a>'],
-  ['page icon: the link opens in the same tab', 'target="_blank" rel="noopener noreferrer">random21m.gitlab.io/voidforge</a>', 'rel="noopener noreferrer">random21m.gitlab.io/voidforge</a>'],
-  ['page icon: the link goes elsewhere', '<a href="https://random21m.gitlab.io/voidforge/" target="_blank"', '<a href="https://random21m.gitlab.io/v0idforge/" target="_blank"'],
+  ['page icon: About page loses the online address', 'Its address is <a href="https://random21m.github.io/VOIDFORGE/" target="_blank" rel="noopener noreferrer">random21m.github.io/VOIDFORGE</a>, the only link', 'Its address is on the project page, the only link'],
+  ['page icon: the link loses noopener noreferrer', 'target="_blank" rel="noopener noreferrer">random21m.github.io/VOIDFORGE</a>', 'target="_blank">random21m.github.io/VOIDFORGE</a>'],
+  ['page icon: the link opens in the same tab', 'target="_blank" rel="noopener noreferrer">random21m.github.io/VOIDFORGE</a>', 'rel="noopener noreferrer">random21m.github.io/VOIDFORGE</a>'],
+  ['page icon: the link goes elsewhere', '<a href="https://random21m.github.io/VOIDFORGE/" target="_blank"', '<a href="https://random21m.github.io/V0IDFORGE/" target="_blank"'],
   ['page icon: About page no longer says practice-only', 'The online copy on the project page is for practice only.', 'The online copy on the project page is fine for real keys.'],
   ['reforge: object property names read as words', 'if(reforgeHas(t)){ idx.push(WORD_MAP[t]); return; }', 'if(t in WORD_MAP){ idx.push(WORD_MAP[t]); return; }'],
   ['reforge: 4-letter words not read', 'if(m.length === 1){ idx.push(WORD_MAP[m[0]]);', 'if(m.length === 0){ idx.push(WORD_MAP[m[0]]);'],
@@ -6708,9 +6708,9 @@ const M = [
   ["sheets: receive and change swapped", "out.push(String(i).padStart(3) + \":  \" + (recv[i] || \"\").padEnd(w + 3) + (chg[i] || \"\"));", "out.push(String(i).padStart(3) + \":  \" + (chg[i] || \"\").padEnd(w + 3) + (recv[i] || \"\"));"],
   ["sheets: long addresses lose the change heading", "out.push(\"Change\"); chg.forEach(", "chg.forEach("],
   ["sheets: long addresses side by side", "if(w <= (side || 44)){", "if(w <= (side || 99)){"],
-  ["demo frame: any site accepted", "return selfOrigin === \"https://random21m.gitlab.io\" && topOrigin === selfOrigin && ", "return topOrigin === selfOrigin && "],
+  ["demo frame: any site accepted", "return selfOrigin === \"https://random21m.github.io\" && topOrigin === selfOrigin && ", "return topOrigin === selfOrigin && "],
   ["demo frame: another site framing it accepted", "&& topOrigin === selfOrigin && /^", "&& /^"],
-  ["demo frame: any path accepted", "/^\\/voidforge\\/(index\\.html)?$/.test(topPath)", "true"],
+  ["demo frame: any path accepted", "/^\\/VOIDFORGE\\/(index\\.html)?$/.test(topPath)", "true"],
   ["demo frame: every page counted as shown in a frame", "framed = window.top !== window.self && !officialDemoFrame(", "framed = true && !officialDemoFrame("],
   ["multisig: change addresses made from the receive chain", "change.push(await multisigAddress(ms.type, ms.m, cos, 1, i, ms.net))", "change.push(await multisigAddress(ms.type, ms.m, cos, 0, i, ms.net))"],
   ["multisig: recovery sheet leaves out the change addresses", "\"FIRST 10 CHANGE ADDRESSES:\", ...ms.change, \"\"]", "\"FIRST 10 CHANGE ADDRESSES:\", \"\"]"],

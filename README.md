@@ -4,21 +4,21 @@
 
 An offline, educational tool that turns dice rolls or coin flips into a BIP39 seed phrase (12, 15, 18, 21 or 24 words), then helps you back it up and set up a wallet, including multisig (a simple slider picks 2 to 15 keys). One HTML file, no dependencies, no network.
 
-<p align="center"><a href="https://gitlab.com/random21m/voidforge/-/releases"><b>&#11015; Download the latest release</b></a><br>
+<p align="center"><a href="https://github.com/Random21m/VOIDFORGE/releases/latest"><b>&#11015; Download the latest release</b></a><br>
 Get <code>voidforge.html</code>, <code>SHA256SUMS</code> and <code>SHA256SUMS.asc</code> from the release page, check the signature and the hash (step 1 of the Quick start), then copy the file to a USB stick for your offline computer. This is the only place to download it. For real funds, use that downloaded file on an offline computer.</p>
 
-<p align="center"><a href="https://random21m.gitlab.io/voidforge/"><b>&#9654; Try it in your browser</b></a> (an online copy for learning and practice, works on a phone; <a href="#try-it-online-practice-only">read this first</a>)</p>
+<p align="center"><a href="https://random21m.github.io/VOIDFORGE/"><b>&#9654; Try it in your browser</b></a> (an online copy for learning and practice, works on a phone; <a href="#try-it-online-practice-only">read this first</a>)</p>
 
 > **Not independently audited.** For serious amounts, generate on dedicated hardware (SeedSigner, Coldcard) and use VOIDFORGE to cross-check the words and fingerprint.
 
 ## Try it online (practice only)
 
-You can try VOIDFORGE without downloading anything, on a computer or a phone: **[random21m.gitlab.io/voidforge](https://random21m.gitlab.io/voidforge/)**. It is meant for seeing whether you like it, learning how dice become words, and practicing with a seed you will never use.
+You can try VOIDFORGE without downloading anything, on a computer or a phone: **[random21m.github.io/VOIDFORGE](https://random21m.github.io/VOIDFORGE/)**. It is meant for seeing whether you like it, learning how dice become words, and practicing with a seed you will never use.
 
 - **It is the same file as the release.** The online copy serves the latest released `voidforge.html` byte for byte, inside a thin page that adds the amber banner. No server code, no account, no analytics and nothing stored. The file's own rule (a Content-Security-Policy) still blocks all network access, so the page cannot send what you type anywhere.
 - **It still warns you.** Besides the banner, the app shows its red *NETWORK: ONLINE* warning, because a connected device is the wrong place for real keys. The banner has an *Online or downloaded?* note that sets out the difference.
-- **Never for real money.** A connected phone or computer runs other apps, browser extensions and sync services that can see or keep what you type. For real funds download the file from the [latest release](https://gitlab.com/random21m/voidforge/-/releases), check its SHA-256 (the *Check your download* tool in the app does this) and open it on an offline computer.
-- **Only trust this address.** A copy of the page on any other site could be altered. GitLab can see that you loaded the page, though the page itself sends nothing.
+- **Never for real money.** A connected phone or computer runs other apps, browser extensions and sync services that can see or keep what you type. For real funds download the file from the [latest release](https://github.com/Random21m/VOIDFORGE/releases/latest), check its SHA-256 (the *Check your download* tool in the app does this) and open it on an offline computer.
+- **Only trust this address.** A copy of the page on any other site could be altered. GitHub can see that you loaded the page, though the page itself sends nothing.
 - **Add it to your Home Screen** from your browser's share or menu button, if you want a shortcut to the practice copy.
 
 ## Disclaimer: please read
@@ -37,8 +37,8 @@ VOIDFORGE is free software provided **"as is", without warranty of any kind** (s
 
 ## Quick start
 
-1. Download `voidforge.html`, `SHA256SUMS` and `SHA256SUMS.asc` from the [latest release](https://gitlab.com/random21m/voidforge/-/releases) and check them with tools that are not the page: `gpg --verify SHA256SUMS.asc SHA256SUMS` (import the release key first; its fingerprint and steps are in [SECURITY.md](SECURITY.md)), then `sha256sum -c SHA256SUMS`. Releases up to v2.8.0 are not signed; check those with `sha256sum -c SHA256SUMS` only.
-2. Copy it to a USB stick and open it in a desktop browser (Safari 14+, Chrome or Firefox) on an **offline computer**. Phones: for learning and practice only, never for real funds (the page works in a phone browser once you open it from a real file, not a preview, or from the [online practice copy](https://random21m.gitlab.io/voidforge/)); for real funds use an offline computer.
+1. Download `voidforge.html`, `SHA256SUMS` and `SHA256SUMS.asc` from the [latest release](https://github.com/Random21m/VOIDFORGE/releases/latest) and check them with tools that are not the page: `gpg --verify SHA256SUMS.asc SHA256SUMS` (import the release key first; its fingerprint and steps are in [SECURITY.md](SECURITY.md)), then `sha256sum -c SHA256SUMS`. Releases up to v2.8.0 are not signed; check those with `sha256sum -c SHA256SUMS` only.
+2. Copy it to a USB stick and open it in a desktop browser (Safari 14+, Chrome or Firefox) on an **offline computer**. Phones: for learning and practice only, never for real funds (the page works in a phone browser once you open it from a real file, not a preview, or from the [online practice copy](https://random21m.github.io/VOIDFORGE/)); for real funds use an offline computer.
 3. Confirm the green **SELF-TEST PASSED (155/155)** badge and the **NETWORK: OFFLINE** tag. A red notice saying the script is not running means the page did not start; do not use it.
 4. Pick Dice, Coin, Word draw, Cards & hex or Damascus (dice and cards folded together by hand), choose 12, 15, 18, 21 or 24 words (12 or 24 if a SeedSigner, Coldcard or Keystone must make the same words from your dice), enter your physical rolls, flips or cards (type, paste, or tap the buttons; the minimum or more, and every one counts) and watch the gray preview words change with every roll, then press FORGE SEED. The words appear as a numbered grid. A passphrase, if you want one, goes in the box right under the words ("Passphrase and note"); changing it does not clear your words, it only works out the fingerprint and addresses again.
 5. Write the words down, then compare the words and the master fingerprint with a second independent offline tool before trusting real funds.
@@ -112,14 +112,15 @@ VOIDFORGE is free software provided **"as is", without warranty of any kind** (s
 - Method: `SHA256(rolls or flips as text)` → BIP39. Matches SeedSigner's published dice examples; coin mode uses SeedSigner's method (1/0 string). Exactly 50 or 99 rolls give the same words as SeedSigner and Coldcard; more rolls (every one is hashed) give the same words as Coldcard's dice seeds (New Seed Words, Advanced). With the Keystone dice rules each 6 is written as 0 first, as Keystone does.
 - Tests: `npm ci && npm test` (unit tests, the house style test `tests/style.test.mjs` (docs/STYLE.md: one gold main action per tool, hints, one warning style, curly apostrophes), the Damascus method test `tests/vfmethod.test.mjs` (the three worked examples and 2,000 random sheets against the method's reference code, `@scure/bip39`, `@scure/bip32` and `@scure/btc-signer`, plus SeedSigner's own final-word steps driven in the practice signer), the practice signer test `tests/simulator.test.mjs` (now with the six lessons, the practice transaction and the cards under the header and in the MENU), differential tests against `@scure/bip39` and `@scure/bip32` plus descriptor fixtures from `embit`, QR fixtures from `qrcode` and the `lifehash` package for the fingerprint picture, a print test that prints every sheet to PDF in a real browser and checks each is exactly one page on Letter and A4, and mutation tests that break the code on purpose to prove the safety net catches it)
 - Want to review it? See [REVIEW.md](REVIEW.md).
-- The only online copy is the practice demo at [random21m.gitlab.io/voidforge](https://random21m.gitlab.io/voidforge/), published from `main` by GitLab Pages (`.gitlab-ci.yml`). For real funds, use the downloaded release file.
+- The only online copy is the practice demo at [random21m.github.io/VOIDFORGE](https://random21m.github.io/VOIDFORGE/), published from `main` by GitHub Pages (`.github/workflows/pages.yml`). For real funds, use the downloaded release file.
+- Home: [github.com/Random21m/VOIDFORGE](https://github.com/Random21m/VOIDFORGE), from v2.15.0. Releases v2.4.0 to v2.14.0 were published on GitLab (gitlab.com/random21m/voidforge, with the demo at random21m.gitlab.io/voidforge); that GitLab account became unavailable on 11 November 2026, so those addresses no longer work.
 - License: MIT (third-party notices for the Practice signer's fonts and code: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md))
 
 ## The Damascus method
 
 Damascus steel is made by folding two different steels into one blade. The **Damascus method** (MAKE A SEED, the Damascus tab) folds **dice** and **playing cards** into one standard 12- or 24-word seed (BIP39), by hand, with checks on every step. On screen it goes in five steps: Hammer, Anvil, Forge, Words, Last word.
 
-*The Damascus method, created by Random, 10 November 2026.* Dated and signed origin record: tag [damascus-origin-2026-11-10](https://gitlab.com/random21m/voidforge/-/tags/damascus-origin-2026-11-10) on GitLab, timestamped in Bitcoin block 975,337 (OpenTimestamps) ([DAMASCUS-ORIGIN.md](DAMASCUS-ORIGIN.md)).
+*The Damascus method, created by Random, 10 November 2026.* Dated and signed origin record: tag [damascus-origin-2026-11-10](https://github.com/Random21m/VOIDFORGE/releases/tag/damascus-origin-2026-11-10), published on GitLab (the project's home until its GitLab account became unavailable on 11 November 2026; from v2.15.0 the home is GitHub), timestamped in Bitcoin block 975,337 (OpenTimestamps) ([DAMASCUS-ORIGIN.md](DAMASCUS-ORIGIN.md)).
 
 - The dice fill the **Hammer sheet**, the cards fill the **Anvil sheet**, and folding the two (same bits give 0, different bits give 1) gives the **Forge sheet**. Its rows are looked up in a printed word table. If either the dice or the shuffle is good, the seed is random.
 - **Hallmarks** (1 if a row or column has an odd number of 1s) catch copying mistakes, not cheating. They reveal part of the seed (22 bits for 12 words, 34 for 24), so keep them only next to the words.

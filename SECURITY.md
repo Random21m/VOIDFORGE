@@ -36,7 +36,7 @@ THREAT_MODEL.md says what VOIDFORGE protects, against whom, and what it cannot d
 
 Please report privately, not in a public issue:
 
-1. On GitLab, open a **confidential issue**: [new issue](https://gitlab.com/random21m/voidforge/-/issues/new?issuable_template=Security), choose the *Security* template and make sure **This issue is confidential** is ticked, so only the maintainer can read it, or
+1. On GitHub, open the repository's **Security** tab and choose **Report a vulnerability** ([private advisory form](https://github.com/Random21m/VOIDFORGE/security/advisories/new)), so only the maintainer can read it, or
 2. If that is unavailable, open an issue that says only "security report, please contact me" and **no details**; the maintainer will arrange a private channel.
 
 Please include the version (shown at the bottom of the page), the browser, and steps to reproduce. Reports of anything that could leak a seed, passphrase or rolls, produce a wrong seed or address, or weaken the offline guarantees are the most important.

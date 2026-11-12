@@ -1,0 +1,39 @@
+# Tests for VOIDFORGE on GitHub Actions (from v2.15.0; up to v2.14.0 these were the test-* jobs in GitLab CI).
+# The unit, oracle, fuzz, print and three-browser tests (Chromium, Firefox, WebKit), five jobs side by side, started by hand:
+# Actions > tests > Run workflow (or `gh workflow run tests.yml --ref <branch>`), on any branch. The mutation suite takes
+# hours, so the full suite, mutation tests included, runs before each release on the maintainer's machine (see RELEASING.md).
+# actions/checkout is pinned to the commit the project's GitHub workflows used up to v2.3.0.
+name: tests
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble   # the image GitLab CI used: Node and all three browsers
+      options: --user 1001   # as Playwright's docs advise, so Firefox starts (it refuses a HOME owned by another user)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: unit
+            run: node --max-old-space-size=4096 tests/test.js && node tests/signed.test.mjs && node tests/slip39.test.mjs && node tests/codex32.test.mjs && node tests/qrdecode.test.mjs
+          - name: oracle
+            run: node tests/oracle.test.mjs && node tests/sigcheck.test.mjs
+          - name: fuzz
+            run: node tests/fuzz.test.mjs
+          - name: print
+            run: node tests/print.test.mjs
+          - name: browsers
+            run: node tests/browsers.test.mjs && node tests/camera.test.mjs && node tests/mistakes.test.mjs
+    name: test-${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - run: npm ci --ignore-scripts
+      - name: ${{ matrix.name }}
+        run: ${{ matrix.run }}
