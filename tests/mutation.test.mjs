@@ -115,6 +115,12 @@ async function probe(w, mutated, fast, only, hooks) {
     P.scrollIntoView = function () { to = this.id; };
     try {
       w.jumpToSeed(); if (to !== 'seedHead') fails.push('jump to the seed: lands on YOUR SEED (' + to + ')');
+      // reduced motion (the person's system setting): the jump is instant; otherwise it is smooth
+      { const hadMM = w.matchMedia; let how = null; P.scrollIntoView = function (o) { to = this.id; how = o && o.behavior; };
+        try {
+          w.matchMedia = (q) => ({ matches: /reduce/.test(q) }); w.jumpToSeed(); if (how !== 'auto') fails.push('jump to the seed: instant with reduced motion (' + how + ')');
+          w.matchMedia = () => ({ matches: false }); w.jumpToSeed(); if (how !== 'smooth') fails.push('jump to the seed: smooth without reduced motion (' + how + ')');
+        } finally { if (hadMM) w.matchMedia = hadMM; else delete w.matchMedia; P.scrollIntoView = function () { to = this.id; }; } }
       // every FORGE SEED lands there: hex and cards (Cards & hex tab), then dice again, which also puts back the seed of section 0
       to = null; $('cdHex').value = '0f1e2d3c4b5a69788796a5b4c3d2e1f0'; await w.cdHexGenerate(); await until(() => to !== null);
       if (to !== 'seedHead') fails.push('jump to the seed: hex FORGE SEED lands on YOUR SEED (' + to + ')');
@@ -5581,6 +5587,8 @@ const M = [
   ['jump to the seed: dice FORGE SEED does not scroll (v2.16.1)', '  if(hasSeed()) jumpToSeed();   // v2.16.1: the words in view under YOUR SEED', '  // removed'],
   ['jump to the seed: cards FORGE SEED does not scroll (v2.16.1)', 'if(hasSeed()){ document.getElementById("explainBox").style.display = "none"; jumpToSeed(); }   // the dice explainer does not apply; v2.16.1: the words in view\n}\nasync function cdHexGenerate', 'if(hasSeed()){ document.getElementById("explainBox").style.display = "none"; }\n}\nasync function cdHexGenerate'],
   ['jump to the seed: hex FORGE SEED does not scroll (v2.16.1)', '  await finishSeed(mnemonic, null, sig0, "hex", {});\n  if(hasSeed()){ document.getElementById("explainBox").style.display = "none"; jumpToSeed(); }', '  await finishSeed(mnemonic, null, sig0, "hex", {});\n  if(hasSeed()){ document.getElementById("explainBox").style.display = "none"; }'],
+  ['scroll: ignores reduced motion (v2.16.1)', '.matches ? "auto" : "smooth"; } catch(e)', '.matches ? "smooth" : "smooth"; } catch(e)'],
+  ['scroll: never smooth (v2.16.1)', '.matches ? "auto" : "smooth"; } catch(e)', '.matches ? "auto" : "auto"; } catch(e)'],
   ['jump to the seed: lands on the result line under the words (v2.16.1)', 'function jumpToSeed(){ jumpTo("seedHead"); }', 'function jumpToSeed(){ jumpTo("genResult"); }'],
   ['word draw: no scroll to the result (display only)', '  if(guideOn){ guideN = 3; guideRender(); }\n  jumpToSeed();', '  if(guideOn){ guideN = 3; guideRender(); }', true],
   ["address list not cleared after an error", "for(const id of Object.keys(ADDR_LISTS)) document.getElementById(id).textContent = \"\";", ""],
@@ -5948,10 +5956,10 @@ const M = [
   ['showTab: tab stop wrong', 'btn.tabIndex = on ? 0 : -1;', 'btn.tabIndex = 0;'],
   ['showTab: focus always', 'if(focusTab) document.getElementById("tab-" + name).focus();', 'document.getElementById("tab-" + name).focus();'],
   ['showTab: focus never', 'if(focusTab) document.getElementById("tab-" + name).focus();', ''],
-  ['showTab: never scrolls to target', 'if(e) e.scrollIntoView({behavior: "smooth", block: "start"});', ''],
+  ['showTab: never scrolls to target', 'if(e) e.scrollIntoView({behavior: scrollFx(), block: "start"});', ''],
   ['tabOfEl: wrong name', 'p.id.slice(3) : null', 'p.id.slice(2) : null'],
   ['reveal: tab never opened', 'if(t && document.getElementById("tp-" + t).classList.contains("tab-off")) showTab(t);', ''],
-  ['reveal: no scroll', 'try { el.scrollIntoView(opts || {behavior: "smooth", block: "start"}); } catch(e) {}', ''],
+  ['reveal: no scroll', 'try { el.scrollIntoView(opts || {behavior: scrollFx(), block: "start"}); } catch(e) {}', ''],
   ['tabs click: ignored', 'showTab(b.getAttribute("data-tab"));\n  const bar', 'const bar'],
   ['tabs keys: Right goes back', 'ArrowRight: 1, ArrowLeft: -1', 'ArrowRight: -1, ArrowLeft: -1'],
   ['tabs keys: Left goes forward', 'ArrowRight: 1, ArrowLeft: -1', 'ArrowRight: 1, ArrowLeft: 1'],
@@ -6026,7 +6034,7 @@ const M = [
   ["qr: watch-only QR not scrolled", "  qrShown = qrSnapshot(id, t);\n  scrollQrIntoView(\"qrBox\");", "  qrShown = qrSnapshot(id, t);"],
   ['qr: SeedQR not scrolled', '  document.getElementById("sqBox").style.display = "";\n  scrollQrIntoView("sqBox");', '  document.getElementById("sqBox").style.display = "";'],
   ['qr: multisig QR not scrolled', '  msEl("msQrBox").style.display = "";\n  scrollQrIntoView("msQrBox");', '  msEl("msQrBox").style.display = "";'],
-  ['qr: scrolls to the top edge', 'el.scrollIntoView({behavior: "smooth", block: "nearest"})', 'el.scrollIntoView({behavior: "smooth", block: "start"})'],
+  ['qr: scrolls to the top edge', 'el.scrollIntoView({behavior: scrollFx(), block: "nearest"})', 'el.scrollIntoView({behavior: scrollFx(), block: "start"})'],
   ['verify: wipes the master fingerprint picture', '  const st = document.getElementById("verifyStatus");\n  clearVerifyIcons();', '  const st = document.getElementById("verifyStatus");\n  clearFpIcons();'],
   ['verify: old pictures stay', '  const st = document.getElementById("verifyStatus");\n  clearVerifyIcons();', '  const st = document.getElementById("verifyStatus");'],
   ['icons: clear-all leaves the master picture', 'function clearFpIcons(){\n  document.getElementById("fpIcon").textContent = "";', 'function clearFpIcons(){\n  '],

@@ -2642,7 +2642,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details>
       <summary>Changelog</summary>
       <ul>
-        <li><b>2.16.1</b> &mdash; <b>A fix.</b> After FORGE SEED (every method: Dice, Coin, Word draw, Cards, Hex, Damascus and the practice signer) the page now lands on <b>YOUR SEED</b> with the words in view. Before, it scrolled to the line under the words, so the words sat hidden above the screen. <b>Practice works like everything else:</b> FORGE SEED now also works for Damascus practice (a practice sheet, the guided practice, a worked example), with the same steps and buttons as a real seed; the seed is marked by a red PRACTICE banner, and every sheet printed and file saved from it says PRACTICE. The practice signer does what a real SeedSigner does and takes any seed: LOAD INTO THE PRACTICE SIGNER (under YOUR SEED, and on the Damascus tab) loads it in one click, a seed from it is marked PRACTICE only when it is public, and re-hide covers it while it holds a seed that is not public.</li>
+        <li><b>2.16.1</b> &mdash; <b>A fix.</b> After FORGE SEED (every method: Dice, Coin, Word draw, Cards, Hex, Damascus and the practice signer) the page now lands on <b>YOUR SEED</b> with the words in view. Before, it scrolled to the line under the words, so the words sat hidden above the screen. If your system is set to reduce motion, the page now jumps instead of scrolling smoothly. <b>Practice works like everything else:</b> FORGE SEED now also works for Damascus practice (a practice sheet, the guided practice, a worked example), with the same steps and buttons as a real seed; the seed is marked by a red PRACTICE banner, and every sheet printed and file saved from it says PRACTICE. The practice signer does what a real SeedSigner does and takes any seed: LOAD INTO THE PRACTICE SIGNER (under YOUR SEED, and on the Damascus tab) loads it in one click, a seed from it is marked PRACTICE only when it is public, and re-hide covers it while it holds a seed that is not public.</li>
         <li><b>2.16.0</b> &mdash; <b>Recover old wallets.</b> (1) <b>Open this wallet</b> (CHECK A BACKUP) now takes any derivation path, written with &prime; or h, and a path below an xpub or xprv. It shows receive and change addresses together by default (10 of each), starts at any address number you type, and SHOW 20 MORE adds more, up to 200 in each list. Descriptor endings /0/*, /1/* and /&lt;0;1&gt;/* are understood. (2) <b>Open an Electrum wallet file</b> reads files from Electrum 1.x to 4.8: plain, with password-encrypted keys, or encrypted as a whole; standard, BIP39 and old seeds, imported keys and addresses, watch-only, hardware, multisig and 2FA wallets. It shows the wallet type, its xpub and the first 10 receive and 10 change addresses, checked against the file. The seed is behind SHOW THE SECRET. Files encrypted by a hardware device (BIE2) are refused. (3) <b>Read a Bitcoin Core wallet file (wallet.dat)</b> reads legacy (Berkeley DB) and descriptor (SQLite) wallets, with the passphrase if the wallet is encrypted: its descriptors, labels and the first 10 receive and 10 change addresses. Private keys are behind SHOW THE PRIVATE KEYS. Both file readers only read: they change nothing and send nothing. A wallet file holds private keys, so open a copy of it on an offline computer. (4) The self-test now runs 155 checks. New dictionary entries: wallet.dat, Berkeley DB, Descriptor wallet, Legacy wallet (Bitcoin Core), Wallet encryption (Bitcoin Core), Keypool, Electrum wallet file, Seed extension (Electrum), Two-factor wallet (Electrum 2FA), AES and ECIES.</li>
         <li><b>2.15.0</b> &mdash; <b>Stop costly mistakes, and one house style.</b> (1) <b>Re-hide:</b> words, rolls, passphrases and other secrets are covered again when you switch to another tab or app, click another window, print the page with the browser&rsquo;s own Print, or leave the page idle (5 minutes; you can choose off, 1, 2 or 5). Nothing is wiped: SHOW uncovers them. VOIDFORGE&rsquo;s own PRINT buttons still print what they say, and the practice signer is not covered. This hides the screen only: it does not protect against malware, a screen recorder already running, or someone watching. (2) <b>Passphrase check</b> under every passphrase box: it shows spaces as &#9251;, warns if the text changes under NFKD (the rewrite BIP39 applies) or is not plain ASCII, and warns above 60 and above 100 characters (a Coldcard accepts at most 100 characters, ASCII 32 to 126 only; SeedSigner 0.8.7&rsquo;s keyboard has printable ASCII only). (3) EXTRA TOOLS has <b>Practice your passphrase</b>: type it twice and see whether the two match, with the fingerprint, on a public test seed only. (4) EXTRA TOOLS has <b>Link as QR</b>: a link or short public text as a QR code, refusing common secret formats (seed words, SeedQR digits, codex32, hex keys, WIF, mini keys, xprv) as a safety net, not a guarantee. (5) <b>Damascus quick path:</b> on the page you enter only the dice (step 1) and the cards (step 2); the page does the Forge, the words and the last word, and shows a Ready line, then FORGE SEED sits under the steps. Steps 3 to 5 stay as the full paper path and optional checks. Trusting the page&rsquo;s math is your choice; checking on paper is still there. <b>GUIDED PRACTICE</b> (NEXT, BACK, STOP) walks through a published practice sheet in 12 parts, and each value says where it comes from and which sheet and box it goes in. (6) <b>Polish:</b> a written house style (docs/STYLE.md) that a test enforces; one &ldquo;start here&rdquo; row on the front page, with one gold button (I FOUND A BITCOIN BACKUP) and a gray OPEN PRACTICE SIGNER that mentions lessons; one warning style; the same status colors everywhere; &ldquo;practice seed&rdquo; and &ldquo;public test seed&rdquo; are now used in one way each; the button is now FILL IN A PRACTICE SHEET; the practice signer is tagged PRACTICE ONLY with a hint. Fixed: the practice signer&rsquo;s settings now really reset after a wipe. New dictionary entries: NFKD normalization, Printable ASCII, Re-hide, Unicode, Malware, Keylogger, Practice seed and Public test seed. (7) VOIDFORGE&rsquo;s home is now GitHub (github.com/Random21m/VOIDFORGE).</li>
         <li><b>2.14.0</b> &mdash; <b>The Damascus method, and lessons on the practice signer.</b> MAKE A SEED has a new <b>Damascus</b> tab: a 12- or 24-word seed made by hand from <b>dice and playing cards</b>, folded together and checked as you go. The dice fill the <b>Hammer sheet</b>, the cards fill the <b>Anvil sheet</b>, and folding them (same bits give 0, different bits give 1) gives the <b>Forge sheet</b>, whose rows you look up in a printed word table. If either the dice or the shuffle is good, the seed is random. <b>Hallmarks</b> (an odd-ones check on every row and column) catch copying mistakes, not cheating, and they reveal part of the seed (22 bits for 12 words, 34 for 24), so keep them only next to the words. The last word needs a computer: the tab says how to get it from a SeedSigner (or the practice signer) and from VOIDFORGE, and both must agree. Its 7 bits (3 for 24 words) come from the Forge sheet; they are not new coin flips. On screen it goes in <b>five steps</b> (Hammer, Anvil, Forge, Words, Last word) with a progress bar: tap the dice on the Dice tab&rsquo;s faces (two taps a pair) and the cards on the Cards &amp; hex tab&rsquo;s card picker, and each row, deck and word is checked as you finish it, with a mistake shown where it is. The last step shows the last word, fingerprint and first address, or works the last word out from the Forge sheet alone (<b>CALCULATE LAST WORD</b>, as SeedSigner&rsquo;s Calc 12th/24th word does). The tab has a quick guide and questions, three public worked examples, a <b>practice run</b> (a practice sheet made from a published rule, never from the page&rsquo;s random numbers, so anyone can make the same one), <b>CHECK MY SHEETS</b> (it works out every grid, hallmark and word and points to the row and column of a mistake), an <b>assay</b> (a second person checks one sheet only and sees that sheet&rsquo;s hallmarks and its own Seed XOR phrase, never the seed), and a printable kit: PRINT DAMASCUS KIT, the three sheets, the word table, a backup card and a trial checklist, on Letter or A4. CHECK A BACKUP has <b>Recheck a Damascus backup</b>: type the words and the hallmarks written next to them. It takes about 30 minutes once you know the steps, and was field-tested on a real SeedSigner and in Sparrow on 10 November 2026. The method is credited on the tab and in ABOUT &amp; HELP: &ldquo;The Damascus method, created by Random, 10 November 2026&rdquo;, with its origin record (tag damascus-origin-2026-11-10, Bitcoin block 975,337). The self-test now has 141 checks, one of them the first worked example. The <b>practice signer</b> has <b>six lessons</b> beside the device: make a seed from dice, load a seed and export the xpub, check a receive address, sign a transaction, set up and check a 2-of-3 multisig, and sign a message. Each step says what to press and what you should see, and moves on by itself when the device shows the right screen. Nothing is drawn on the device&rsquo;s screen. A <b>practice transaction</b> button makes a PSBT that spends made-up coins, holds it up to the device&rsquo;s camera, and after you sign it checks every signature on the page. Its coins do not exist, so it can never be broadcast. The lessons use public test seeds only (such as abandon ... about): never put coins on them. A card under the header and MENU &gt; PRACTICE SIGNER open it. CLEAR ALL, auto-clear, END SESSION and closing the box wipe the lessons and the practice transaction. Below the device, <b>FORGE SEED</b> takes a seed loaded on the practice signer into MAKE A SEED&rsquo;s usual result, marked PRACTICE (the device&rsquo;s fingerprint next to this page&rsquo;s is a consistency check only, not an independent one), and a practice Damascus seed goes onto the practice signer with <b>LOAD INTO THE PRACTICE SIGNER</b>, which takes practice seeds only (its SeedQR is held up to the device&rsquo;s camera). New dictionary entries: Damascus method, Hammer sheet, Anvil sheet, Forge sheet, Hallmark, Skew hallmark, Assay, Bias box, Binary word table, Practice sheet and Practice transaction.</li>
@@ -5215,7 +5215,7 @@ function dictGo(name){
   const it = [...document.querySelectorAll("#dictList .dict-item")].find(e => e.querySelector("dt").textContent === name);
   if(!it) return;
   document.querySelectorAll("#dictList .dict-item.dict-hit").forEach(e => e.classList.remove("dict-hit"));
-  it.classList.add("dict-hit"); it.scrollIntoView({behavior: "smooth", block: "center"});
+  it.classList.add("dict-hit"); it.scrollIntoView({behavior: scrollFx(), block: "center"});
 }
 // Buttons (not links: the page keeps a single <a>) that open dictionary entries.
 function dictLinks(el, names){
@@ -7424,7 +7424,7 @@ function planFill(fromMake){
 function planOpen(){
   showTab("check");
   const b = document.getElementById("planBox"); b.open = true; planFill(true);
-  try { b.scrollIntoView({block: "start", behavior: "smooth"}); } catch(e) {}
+  try { b.scrollIntoView({block: "start", behavior: scrollFx()}); } catch(e) {}
 }
 function planClear(){
   for(const id of PLAN_IDS){ const e = document.getElementById(id); if(e.tagName === "SELECT") { for(const o of e.options) o.selected = o.defaultSelected; } else e.value = ""; }
@@ -7456,7 +7456,7 @@ function passMismatch(){
   return true;
 }
 // After a QR code opens, make sure all of it is on screen (clear of the sticky tab bar), not cut off at the bottom.
-function scrollQrIntoView(id){ const el = document.getElementById(id); if(!el) return; try { el.scrollIntoView({behavior: "smooth", block: "nearest"}); } catch(e) {} }
+function scrollQrIntoView(id){ const el = document.getElementById(id); if(!el) return; try { el.scrollIntoView({behavior: scrollFx(), block: "nearest"}); } catch(e) {} }
 let qrShown = null;
 function showQr(id, label){
   const t = document.getElementById(id).textContent;
@@ -7799,7 +7799,7 @@ async function sendToVerify(){
   box.value = words; clearChild(); resetAddrScan();   // v2.4.0: as typing does: a child seed belongs to the old parent words
   detClear(true); kcClear(true); lbClear(true);   // v2.8.0 / v2.9.0: a Detective or wallet file result belongs to the old words
   await verify();
-  reveal(box, {behavior:"smooth", block:"center"});
+  reveal(box, {behavior: scrollFx(), block:"center"});
 }
 function copyFingerprint(btn){
   const m = document.getElementById("fingerprint").textContent.match(/: ([0-9a-f]{8})/);
@@ -8480,7 +8480,7 @@ function watchCheck(go){
 function heirOpen(){
   const c = document.getElementById("heirCard");
   c.style.display = ""; document.getElementById("heirBtn").setAttribute("aria-expanded", "true");
-  try { c.scrollIntoView({behavior: "smooth", block: "start"}); } catch(e) {}
+  try { c.scrollIntoView({behavior: scrollFx(), block: "start"}); } catch(e) {}
 }
 function heirClose(){
   document.getElementById("heirCard").style.display = "none"; document.getElementById("heirBtn").setAttribute("aria-expanded", "false");
@@ -8983,15 +8983,18 @@ function showTab(name, targetId, focusTab){
   });
   if(focusTab) document.getElementById("tab-" + name).focus();
   const e = targetId ? document.getElementById(targetId) : null;
-  if(e) e.scrollIntoView({behavior: "smooth", block: "start"});
+  if(e) e.scrollIntoView({behavior: scrollFx(), block: "start"});
 }
 function tabOfEl(el){ const p = el && el.closest ? el.closest(".tabpanel") : null; return p ? p.id.slice(3) : null; }
 // Scrolls to an element, first opening the tab it lives in.
+// v2.16.1: page scrolls are smooth, except when the person has asked their system for reduced motion: then they jump at once.
+// (The style rule for reduced motion cannot do this: a scroll that asks for "smooth" in code overrides it.)
+function scrollFx(){ try { return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"; } catch(e) { return "smooth"; } }
 function reveal(el, opts){
   if(!el) return;
   const t = tabOfEl(el);
   if(t && document.getElementById("tp-" + t).classList.contains("tab-off")) showTab(t);
-  try { el.scrollIntoView(opts || {behavior: "smooth", block: "start"}); } catch(e) {}
+  try { el.scrollIntoView(opts || {behavior: scrollFx(), block: "start"}); } catch(e) {}
 }
 document.getElementById("tabs").addEventListener("click", (e) => {
   const b = e.target.closest ? e.target.closest("button[data-tab]") : null; if(!b) return;
