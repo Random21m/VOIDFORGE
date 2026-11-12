@@ -210,7 +210,7 @@ for (const [name, c] of Object.entries(E.cases)) {
   await open(fx('el-segwit-plain.json')); $('ewPass').value = 'a'; $('ewPass').dispatchEvent(new w.Event('input'));
   ok(!w.eval('ewGot') && $('ewOut').textContent === '', 'changing the password (or the text, or the file) wipes the old result');
   w.setGate('fail', 'SELF-TEST FAILED', 'bad'); ok($('ewBtn').disabled, 'gate: a failed self-test disables OPEN WALLET FILE'); w.setGate('pass', 'SELF-TEST PASSED', 'ok'); ok(!$('ewBtn').disabled, 'gate: a passed self-test enables it');
-  const box = $('ewBox'), gold = [...box.querySelectorAll('button')].filter((b) => !b.classList.contains('secondary'));
+  const box = $('ewBox'), gold = [...box.querySelectorAll('button')].filter((b) => !b.classList.contains('secondary') && !b.classList.contains('linklike'));   // linklike: the practice mode note's link (v2.16.1)
   ok(gold.length === 1 && gold[0].id === 'ewBtn' && box.querySelector('summary > small') && box.querySelector('summary .tag').textContent === 'SECRET', 'house style: one gold main action, the hint in the summary, one tag');
   const names = w.eval('DICT').map((e) => e[0]); ok(['Electrum wallet file', 'Seed extension (Electrum)', 'Two-factor wallet (Electrum 2FA)', 'AES', 'ECIES', 'Custom derivation path'].every((n) => names.includes(n)), 'dictionary: Electrum wallet file, Seed extension, Two-factor wallet, AES, ECIES');
   w.ewClear();

@@ -49,7 +49,7 @@ const fail = async (b) => { try { await w.wdatRead(b); return null; } catch (e) 
 
 // ===== the box, as the house style asks
 {
-  const box = $('wdatBox'), s = box.querySelector(':scope > summary'), btns = [...box.querySelectorAll('button')], gold = btns.filter((b) => !b.classList.contains('secondary'));
+  const box = $('wdatBox'), s = box.querySelector(':scope > summary'), btns = [...box.querySelectorAll('button')], gold = btns.filter((b) => !b.classList.contains('secondary') && !b.classList.contains('linklike'));   // linklike: the practice mode note's link (v2.16.1)
   ok(!!box.closest('#tp-check') && s.querySelector('.tag').textContent === 'SECRET' && s.querySelectorAll('small').length === 1 && /wallet\.dat/.test(s.textContent), 'the box: in CHECK A BACKUP, a title, the SECRET tag (it shows private keys) and a one-line hint');
   ok(gold.length === 1 && gold[0].id === 'wdatBtn' && gold[0].textContent === 'READ WALLET FILE', 'the box: one gold main action, READ WALLET FILE');
   ok(btns.filter((b) => /^(PRINT|CLEAR)/.test(b.textContent)).every((b) => b.classList.contains('secondary')) && $('wdatPrintBtn').disabled, 'the box: PRINT SUMMARY and CLEAR are gray (PRINT off until a file is read)');

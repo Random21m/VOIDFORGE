@@ -116,6 +116,82 @@ async function probe(w, mutated, fast, only, hooks) {
     try { w.jumpToSeed(); } finally { if (had) P.scrollIntoView = had; else delete P.scrollIntoView; }
     if (to !== 'seedHead') fails.push('jump to the seed: lands on YOUR SEED (' + to + ')');
   }
+  // v2.16.1 "Tools that work as in real life": your own words in the practice tools, regtest as its own network, the Network
+  // menus of the wallet finders, a multisig key from CHECK A BACKUP. Expected values from @scure/bip32, @scure/bip39 and
+  // @scure/btc-signer (regtest: testnet with bech32 "bcrt", Bitcoin Core chainparams.cpp CRegTestParams). It ends with the page
+  // wiped and every menu as it was, so the sections after it start as before.
+  if (SEC(80, "v2.16.1 real tools: own words in practice, regtest, Network menus, multisig key from CHECK A BACKUP")) {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms)), T = 'real tools: ', RT = { ...btc.TEST_NETWORK, bech32: 'bcrt' }, AB = 'abandon '.repeat(11) + 'about', MW = 'screen truck market purse stumble turn across conduct exact armor neither guitar';
+    const rootOf = (m, pw = '') => HDKey.fromMasterSeed(mnemonicToSeedSync(m, pw)), fpOf = (m, pw = '') => rootOf(m, pw).fingerprint.toString(16).padStart(8, '0');
+    const pick = (id) => { $(id).checked = true; $(id).dispatchEvent(new w.Event('change')); };
+    const rt0 = btc.p2wpkh(rootOf(AB).derive("m/84'/1'/0'/0/0").publicKey, RT).address;
+    // regtest addresses, the bar, no Silent Payment address
+    if ((await w.walletAddresses(await w.mnemonicToSeed(AB, ''), 'wpkh', 'regtest', 0, 0, 0, 1))[0].address !== rt0) fails.push(T + 'regtest addresses are bcrt1 (' + rt0 + ')');
+    await run('dice', 12, D50); $('wNet').value = 'regtest'; await w.refreshWatch();
+    if (!/^REGTEST/.test($('wTestBan').textContent) || $('wTestBan').style.display !== '') fails.push(T + 'the watch-only box says REGTEST');
+    if ($('spBox').style.display !== 'none') fails.push(T + 'no Silent Payment address on regtest');
+    $('wNet').value = 'main'; await w.refreshWatch();
+    // passphrase practice: the seed made on this page, your own seed
+    const made = w.eval('madeMnemonic'), pp = async (id, pass) => { pick(id); $('ppA').value = pass; $('ppB').value = pass; await w.ppCheck(); return $('ppFp').textContent; };
+    if (!(await pp('ppSrcMade', 'pw 1')).includes(fpOf(made, 'pw 1'))) fails.push(T + 'passphrase practice: the seed made on this page');
+    $('ppSeed').value = MW; if (!(await pp('ppSrcOwn', 'pw 2')).includes(fpOf(MW, 'pw 2'))) fails.push(T + 'passphrase practice: your own seed');
+    w.ppClear(); if ($('ppSeed').value !== '') fails.push(T + 'passphrase practice: CLEAR wipes your seed words'); pick('ppSrcTest');
+    w.clearAll();
+    // practice making a backup with your own words: shown, covered by re-hide, wiped by auto-clear and CLEAR ALL
+    pick('prSrcOwn'); $('prOwn').value = MW; await w.practiceStart();
+    if ([...$('prWords').children].map((li) => li.textContent).join(' ') !== MW || !w.eval('practice.own')) fails.push(T + 'backup practice: your own words are the ones to write down');
+    w.rhHide('tab'); const cov = $('prShow').classList.contains('rh-cov'); w.rhShow(); if (!cov) fails.push(T + 'backup practice: re-hide covers your words on screen');
+    w.clearAll(); if (w.eval('practice') !== null || $('prWords').textContent !== '') fails.push(T + 'backup practice: CLEAR ALL wipes your words');
+    $('prOwn').value = MW; if (!w.autoWipe('probe') || $('prOwn').value !== '') fails.push(T + 'backup practice: auto-clear sees and wipes your words in the box');
+    // the practice wallet with your own words, and the note under every network menu
+    $('prOwn').value = MW; await w.practiceWallet(); await until(() => /tb1q/.test($('wvList').textContent), 15000);
+    if ($('phrase').value !== MW || !w.eval('practiceOn')) fails.push(T + 'practice wallet: your own words open on the test network');
+    if (!$('psbtNetPr') || !$('psbtNetPr').previousElementSibling.contains($('psbtNet')) || !$('detNetPr')) fails.push(T + 'practice mode: a note under each network menu');
+    w.practiceMode(false); if ($('detNet').value !== '' || $('wNet').value !== 'main') fails.push(T + 'practice mode off: the menus go back (as guessed, Mainnet)');
+    w.clearAll(); pick('prSrcTest');
+    // a tpub can be shown on regtest; turning practice off right after the public practice wallet does not close a wallet opened since
+    await w.practiceWallet(); await until(() => /tb1q/.test($('wvList').textContent), 15000); w.practiceMode(false); w.clearAll();
+    $('wvNet').value = 'main'; $('wpIn').value = HDKey.fromMasterSeed(mnemonicToSeedSync(AB), { private: 0x04358394, public: 0x043587cf }).derive("m/84'/1'/0'").publicExtendedKey; await w.openWatchOnly();
+    if ($('wvNet').disabled || $('wvNet').value !== 'test') fails.push(T + 'a tpub may be shown on testnet or regtest');
+    await sleep(1500); if (w.eval('wvCtx && wvCtx.kind') !== 'pub') fails.push(T + 'a late practice-wallet close leaves the wallet opened since');
+    w.clearWalletView(); if ([...$('wvNet').options].some((o) => o.disabled)) fails.push(T + 'closing the wallet gives the menu back all three networks');
+    $('wvNet').value = 'main';   // as the sections after this one expect
+    // Coldcard regtest (XRT)
+    if ((await w.ccRead('# Coldcard backup file! DO NOT CHANGE.\nchain = "XRT"\nraw_secret = "80' + '00'.repeat(16) + '"\n')).net !== 'regtest') fails.push(T + 'Coldcard: chain XRT is regtest');
+    // multisig on regtest with keys from CHECK A BACKUP (one with a passphrase) and a pasted testnet Vpub
+    w.msReset(); $('msNet').value = 'regtest'; $('msN').value = '3'; $('msM').value = '2'; w.msUpdateM(); w.msStart();
+    $('phrase').value = AB; $('verifyPass').value = 'x'; await w.msAddChecked();
+    if (w.eval('ms.keys.length') !== 1 || w.eval('ms.keys[0].fp') !== fpOf(AB, 'x')) fails.push(T + 'multisig: the seed in CHECK A BACKUP, with its passphrase, is a key');
+    if ($('phrase').value !== '' || $('verifyPass').value !== '') fails.push(T + 'multisig: the words and passphrase are wiped from CHECK A BACKUP');
+    $('phrase').value = AB; $('verifyPass').value = 'x'; await w.msAddChecked(); if (w.eval('ms.keys.length') !== 1) fails.push(T + 'multisig: the same seed twice is refused');
+    $('phrase').value = ''; $('verifyPass').value = '';
+    const vk = HDKey.fromMasterSeed(mnemonicToSeedSync(MW), { private: 0x02575048, public: 0x02575483 }).derive("m/48'/1'/0'/2'");
+    $('msPaste').value = '[' + fpOf(MW) + "/48h/1h/0h/2h]" + vk.publicExtendedKey; await w.msAddPasted();
+    if (w.eval('ms.keys.length') !== 2) fails.push(T + 'multisig: a testnet Vpub fits a regtest wallet (' + $('msRunErr').textContent.slice(0, 60) + ')');
+    w.msReset(); $('msNet').value = 'main'; w.clearAll();
+    // the wallet finders: Detective (a bcrt1 address, LIST on regtest, paths on another coin type), Electrum file, wallet.dat
+    $('phrase').value = AB; $('detNet').value = ''; $('detAddr').value = btc.p2wpkh(rootOf(AB).derive("m/84'/1'/0'/0/1").publicKey, RT).address; await w.detFind(); await until(() => /FOUND/.test($('detStatus').textContent), 30000);
+    if (!/^FOUND/.test($('detStatus').textContent)) fails.push(T + 'Detective: a bcrt1 address is found (' + $('detStatus').textContent.slice(0, 60) + ')');
+    $('detNet').value = 'main'; $('detAddr').value = btc.p2wpkh(rootOf(AB).derive("m/84'/0'/0'/0/1").publicKey, btc.TEST_NETWORK).address; await w.detFind(); await until(() => /FOUND/.test($('detStatus').textContent), 30000);
+    if (!/^FOUND/.test($('detStatus').textContent)) fails.push(T + 'Detective: the Network menu sets the paths\' coin type');
+    $('detNet').value = 'regtest'; await w.detList(); await until(() => /bcrt1/.test($('detOut').textContent), 15000); if (!$('detOut').textContent.includes(rt0)) fails.push(T + 'Detective: LIST on regtest');
+    $('detNet').value = ''; $('detAddr').value = ''; w.clearAll();
+    { const FX = new URL('./fixtures/electrum/', import.meta.url), j = JSON.parse(fs.readFileSync(new URL('zpub-watch.json', FX), 'utf8'));
+      $('ewNet').value = 'regtest'; $('ewIn').value = JSON.stringify(j); await w.ewOpenUi();
+      if (!$('ewOut').textContent.includes('0/0  ' + btc.p2wpkh(rootOf(AB).derive("m/84'/0'/0'/0/0").publicKey, RT).address)) fails.push(T + 'Electrum file: the Network menu works the addresses out again');
+      w.ewClear();
+      const vp = HDKey.fromMasterSeed(mnemonicToSeedSync(AB), { private: 0x045f18bc, public: 0x045f1cf6 }).derive("m/84'/1'/0'"), a = (c, i) => btc.p2wpkh(rootOf(AB).derive("m/84'/1'/0'/" + c + '/' + i).publicKey, RT).address;
+      j.keystore.xpub = vp.publicExtendedKey; j.addresses = { receiving: [0, 1, 2].map((i) => a(0, i)), change: [0, 1].map((i) => a(1, i)) };
+      $('ewIn').value = JSON.stringify(j); await w.ewOpenUi();
+      if (!/REGTEST/.test($('ewOut').textContent) || !/Checked: these are the first addresses Electrum saved/.test($('ewOut').textContent)) fails.push(T + 'Electrum file: a regtest wallet is known by the bcrt1 addresses it saved');
+      w.ewClear(); }
+    { const b = new Uint8Array(fs.readFileSync(new URL('./fixtures/walletdat/descriptor.sqlite', import.meta.url))), p0 = btc.p2pkh(rootOf(AB).derive("m/44'/0'/0'/0/0").publicKey, RT).address;
+      $('wdatNet').value = 'regtest'; await w.wdatShow(b, ''); if (!$('wdatList').textContent.includes(p0)) fails.push(T + 'wallet.dat: the Network menu');
+      $('wdatNet').value = ''; await w.wdatNetSet(); if ($('wdatList').textContent.includes(p0)) fails.push(T + 'wallet.dat: changing the menu writes the addresses again');
+      const b2 = b.slice(); b2.set([0xfa, 0xbf, 0xb5, 0xda], 68); await w.wdatShow(b2, ''); if (!$('wdatList').textContent.includes(p0) || w.eval('wdat.net') !== 'regtest') fails.push(T + 'wallet.dat: application ID fabfb5da is regtest');
+      w.wdatClear(); }
+    w.clearAll(); for (const id of ['wNet', 'wvNet', 'psbtNet', 'cmpNet', 'msNet']) $(id).value = 'main'; for (const id of ['detNet', 'ewNet', 'wdatNet']) $(id).value = '';
+  }
   // v2.16.0 "Recover old wallets", part A: Open an Electrum wallet file (files made by Electrum 4.8.4 itself and what Electrum said
   // about them, tests/fixtures/electrum/), and any path with more addresses in Open this wallet (addresses from @scure/bip32). It
   // ends with the reader and the wallet view cleared, so the sections after it start as before.
@@ -1763,7 +1839,7 @@ async function probe(w, mutated, fast, only, hooks) {
     // review fixes: the file's own xprv, the chain, the seed record's length mark, empty lists, passwords as typed and the Coldcard's encoding
     if (!/disagree, so a Coldcard would refuse/.test(await ccErr(sevenZ(ccTxt([['raw_secret', rs('80', E16)], ['xprv', root.privateExtendedKey]]), CW), CW))) fails.push('coldcard: an xprv line that is not the seed\'s is refused, as the Coldcard does');
     { const r16 = HDKey.fromMasterSeed(mnemonicToSeedSync(W16, '')); if ((await w.ccOpen(sevenZ(ccTxt([['raw_secret', rs('80', E16)], ['xprv', r16.privateExtendedKey]]), CW), CW, 'x.7z')).mnemonic !== W16) fails.push('coldcard: a matching xprv line opens'); }
-    if (!/regtest/.test(await ccErr(sevenZ(ccTxt([['raw_secret', rs('80', E16)], ['chain', 'XRT']]), CW), CW)) || !/chain this page does not know/.test(await ccErr(sevenZ(ccTxt([['raw_secret', rs('80', E16)], ['chain', 'LTC']]), CW), CW))) fails.push('coldcard: regtest and unknown chains are refused');
+    if (!/chain this page does not know/.test(await ccErr(sevenZ(ccTxt([['raw_secret', rs('80', E16)], ['chain', 'LTC']]), CW), CW))) fails.push('coldcard: unknown chains are refused');   // v2.16.1: regtest (XRT) opens (section 80)
     if (!/of a kind this page does not know \(131\)/.test(await ccErr(sevenZ(ccTxt([['raw_secret', rs('83', sh('x'))]]), CW), CW))) fails.push('coldcard: a seed record marked for 40 bytes is refused');
     if ((await w.ccOpen(sevenZ(ccTxt([['raw_secret', rs('80', E16)], ['setting.multisig', []], ['setting.notes', []], ['setting.seeds', {}], ['duress_1_words', '']]), CW), CW, 'x.7z')).also.length !== 0) fails.push('coldcard: empty multisig, notes, vault and duress entries are not named');
     { const pw = 'Zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong'; if ((await w.ccOpen(sevenZ(ccTxt([['raw_secret', rs('80', E16)]]), pw), pw, 'x.7z')).mnemonic !== W16) fails.push('coldcard: a custom password that looks like words is also tried as typed'); }
@@ -4933,7 +5009,7 @@ const M = [
   ['net: testnet Upub version wrong', '"ms-sh-wsh":[0x02,0x42,0x89,0xef]', '"ms-sh-wsh":[0x02,0x95,0xb4,0x3f]'],
   ['net: mainnet Zpub version wrong', '"ms-wsh":[0x02,0xaa,0x7e,0xd3]', '"ms-wsh":[0x02,0x57,0x54,0x83]'],
   ['net: mainnet Ypub version wrong', '"ms-sh-wsh":[0x02,0x95,0xb4,0x3f]', '"ms-sh-wsh":[0x02,0x42,0x89,0xef]'],
-  ['net: address not recognized as testnet', 'return /^(tb1|[2mn])/.test(addr) ? "test" : "main";', 'return "main";'],
+  ['net: address not recognized as testnet', ': /^(tb1|[2mn])/.test(addr) ? "test" : "main"; }', ': "main"; }'],
   ['net: testnet nested not recognized', '  if(/^2/.test(addr)) return "sh-wpkh";\n', ''],
   ['net: testnet legacy not recognized', '  if(/^[mn]/.test(addr)) return "pkh";\n', ''],
   ['net: testnet taproot not recognized', '  if(/^tb1p/.test(addr)) return "tr";\n', ''],
@@ -5401,7 +5477,7 @@ const M = [
   ["wallet view: CLEAR ALL leaves it", "document.getElementById(\"verifyStatus\").textContent=\"\"; verifySeq++; clearWalletView(); clearChild();", "document.getElementById(\"verifyStatus\").textContent=\"\"; verifySeq++; clearChild();"],
   ["address QR: no button under the seed", "(arr || []).forEach((a, i) => ol.appendChild(addrLi(a, label + \" \" + (i + 1))));", "(arr || []).forEach((a, i) => { const li = document.createElement(\"li\"); li.textContent = a; ol.appendChild(li); });"],
   ["wallet view: PREVIOUS never off", "p.disabled = wvFrom === 0;", "p.disabled = false;"],
-  ["wallet view: testnet note dropped", "(net === \"test\" ? \"TESTNET (practice coins only). \" : \"\") + (star ? \"Addresses\"", "(star ? \"Addresses\""],
+  ["wallet view: testnet note dropped", "(netIsTest(net) ? netNote(net) + \". \" : \"\") + (star ? \"Addresses\"", "(star ? \"Addresses\""],
   ["recovery sheet: nothing printed", "if(!wvCtx || !wvCtx.shown || !wvCtx.mnemonic) return alert(\"Check a seed phrase first, then open the wallet.\");", "if(true) return;"],
   ["watch-only: change ending ignored", "    chain = m[5] === \"/1/*\" ? 1 : m[5] === \"/0/*\" ? 0 : null;", "    chain = m[5] === \"/0/*\" ? 0 : null;"],
   ["watch-only: a descriptor without /0/* or /1/* opens receive only", "m[5] === \"/0/*\" ? 0 : null;", "m[5] === \"/0/*\" ? 0 : 0;"],
@@ -5409,7 +5485,7 @@ const M = [
   ["watch-only: a plain xpub opens receive only", "  cSel.value = w.chain === null ? \"both\" : String(w.chain);", "  cSel.value = String(w.chain || 0);"],
   ["wallet view: a new wallet keeps the last chain picked", "  document.getElementById(\"wvChain\").value = \"both\";   // v2.16.0", "  // v2.16.0"],
   ["watch-only: type not locked", "if(w.type){ tSel.value = w.type; } tSel.disabled = w.fixedType;", "if(w.type){ tSel.value = w.type; } tSel.disabled = false;"],
-  ["watch-only: network not locked", "nSel.value = w.net; nSel.disabled = true;", "nSel.value = w.net; nSel.disabled = false;"],
+  ["watch-only: network not locked", "  wvNetKey(w.net);", "  document.getElementById(\"wvNet\").value = w.net;"],
   ["watch-only: checksum not checked", "if(!ok) throw new Error(\"The descriptor checksum (after #) does not match. Check for a typo.\");", "if(false) throw new Error(\"The descriptor checksum (after #) does not match. Check for a typo.\");"],
   ["watch-only: key and descriptor type may differ", "if(type && keyType && type !== keyType) throw", "if(false) throw"],
   ["watch-only: SeedQR offered", "document.getElementById(\"wvSqBlock\").style.display = \"none\"; document.getElementById(\"wvSheetBtn\")", "document.getElementById(\"wvSqBlock\").style.display = \"\"; document.getElementById(\"wvSheetBtn\")"],
@@ -5726,7 +5802,7 @@ const M = [
   ['multisig slider: preset', 'function msPreset(m, n){ msEl("msN").value = String(n); msEl("msM").value = String(m); msMNote(); }', 'function msPreset(m, n){ msEl("msN").value = String(n); msMNote(); }'],
   ['multisig: network not used', 'net: msEl("msNet").value,', 'net: "main",'],
   ['multisig: type not used', 'type: msEl("msType").value,', 'type: "ms-wsh",'],
-  ['multisig: duplicate (first key) allowed', 'if(dup >= 0){ eb.textContent = "This is the same key as key "', 'if(dup > 0){ eb.textContent = "This is the same key as key "'],
+  ['multisig: duplicate (first key) allowed', 'if(dup >= 0){ eb.textContent = "This is the same key as key " + (dup + 1) + " (fingerprint " + w.fp + "). Using one key twice would make the wallet weaker than it looks. Make', 'if(dup > 0){ eb.textContent = "This is the same key as key " + (dup + 1) + " (fingerprint " + w.fp + "). Using one key twice would make the wallet weaker than it looks. Make'],
   ['multisig: duplicate only by fingerprint', 'k.fp === fp || hex(k.key.pub) === pk', 'k.fp === fp'],
   ['multisig: duplicate only by key', 'k.fp === fp || hex(k.key.pub) === pk', 'hex(k.key.pub) === pk'],
   ['multisig: pasted duplicate allowed', 'if(dup >= 0) throw new Error("This is the same key as key "', 'if(false) throw new Error("This is the same key as key "'],
@@ -5738,7 +5814,7 @@ const M = [
   ['multisig: private key / seed words not refused', 'if(/^\\s*[a-z]+(\\s+[a-z]+){11,}\\s*$/i.test(t)) throw', 'if(false) throw'],
   ['multisig: seed-word guard needs 13 words', '{11,}\\s*$/i.test(t)', '{12,}\\s*$/i.test(t)'],
   ['multisig: fingerprint not checked', 'if(!/^[0-9a-f]{8}$/.test(fp)) throw', 'if(false) throw'],
-  ['multisig: wrong network accepted', 'if(key.net !== ms.net) throw', 'if(false) throw'],
+  ['multisig: wrong network accepted', 'if(!netFits(key.net, ms.net)) throw', 'if(false) throw'],
   ['multisig: single-signature key accepted', 'if(key.type !== "other" && key.type !== ms.type) throw', 'if(false) throw'],
   ['multisig: other script type accepted', 'key.type !== "other" && key.type !== ms.type', 'key.type !== "other" && !MULTISIG[key.type]'],
   ['multisig: depth not checked', 'if(key.depth !== 4 || key.childNum', 'if(key.childNum'],
@@ -5751,18 +5827,18 @@ const M = [
   ["multisig: three addresses -> two", "for(let i = 0; i < ADDR_SHOWN; i++){ addrs.push(", "for(let i = 0; i < ADDR_SHOWN - 1; i++){ addrs.push("],
   ['multisig: addresses from the change branch', 'multisigAddress(ms.type, ms.m, cos, 0, i, ms.net)', 'multisigAddress(ms.type, ms.m, cos, 1, i, ms.net)'],
   ['multisig: change descriptor is the receive one', 'dc = await multisigDescriptor(ms.type, ms.m, cos, 1)', 'dc = await multisigDescriptor(ms.type, ms.m, cos, 0)'],
-  ['multisig: one-device warning for mixed sources', 'ms.keys.every(k => k.src === "made")', 'ms.keys.some(k => k.src === "made")'],
-  ['multisig: one-device warning never shown', 'msEl("msOneDev").style.display = ms.keys.every(k => k.src === "made") ? "" : "none";', 'msEl("msOneDev").style.display = "none";'],
+  ['multisig: one-device warning for mixed sources', 'ms.keys.every(k => k.src !== "pasted")', 'ms.keys.some(k => k.src !== "pasted")'],
+  ['multisig: one-device warning never shown', 'msEl("msOneDev").style.display = ms.keys.every(k => k.src !== "pasted") ? "" : "none";', 'msEl("msOneDev").style.display = "none";'],
   ['multisig: banner stays when finished', 'if(!ms || ms.done || ms.mode !== "make" || ms.keys.length >= ms.n){', 'if(!ms || ms.mode !== "make" || ms.keys.length >= ms.n + 1){'],
   ['multisig: ADD button always on', 'msEl("msAddBtn").disabled = !(hasSeed() && watchCtx && !ms.busy);', 'msEl("msAddBtn").disabled = false;'],
   ['multisig: banner counts from 0', 'const k = ms.keys.length + 1;\n  msEl("msBanTitle")', 'const k = ms.keys.length;\n  msEl("msBanTitle")'],
-  ['multisig: testnet not shown in the banner', '(ms.net === "test" ? "  (TESTNET)" : "")', '""'],
-  ['multisig: testnet banner never shown', 'msEl("msTestBan").style.display = ms.net === "test" ? "" : "none";', 'msEl("msTestBan").style.display = "none";'],
+  ['multisig: testnet not shown in the banner', '(netIsTest(ms.net) ? "  (" + netName(ms.net).toUpperCase() + ")" : "")', '""'],
+  ['multisig: testnet banner never shown', '  netBan("msTestBan", ms.net);', '  msEl("msTestBan").style.display = "none";'],
   ['multisig: QR of the change descriptor', 'qrMatrix(ms.descR); } catch(e) { msEl("msRunErr")', 'qrMatrix(ms.descC); } catch(e) { msEl("msRunErr")'],
   ['multisig: recovery sheet leaves out the descriptor', 'lines.push("", "DESCRIPTOR (public keys only):", ms.descR, "",', 'lines.push("", "DESCRIPTOR (public keys only):", "", "",'],
   ["multisig: recovery sheet leaves out the addresses", "\"FIRST 10 RECEIVE ADDRESSES:\", ...ms.addrs, \"\",", "\"FIRST 10 RECEIVE ADDRESSES:\", \"\","],
-  ['multisig: recovery sheet testnet label missing', '(ms.net === "test" ? ", TESTNET (practice coins only)" : ", mainnet")', '", mainnet"'],
-  ['multisig: sheet title testnet label missing', '"VOIDFORGE MULTISIG RECOVERY SHEET" + (ms.net === "test" ? " (TESTNET)" : "")', '"VOIDFORGE MULTISIG RECOVERY SHEET"'],
+  ['multisig: recovery sheet testnet label missing', '(netIsTest(ms.net) ? ", " + netNote(ms.net) : ", mainnet")', '", mainnet"'],
+  ['multisig: sheet title testnet label missing', '"VOIDFORGE MULTISIG RECOVERY SHEET" + netTitle(ms.net)', '"VOIDFORGE MULTISIG RECOVERY SHEET"'],
   ['multisig: sheet QR size switch (layout only)', 'nq >= 5 ? "pq-ms pq-ms-l" : "pq-ms"', 'nq >= 6 ? "pq-ms pq-ms-l" : "pq-ms"', true],   // v2.11.0: nq is the number of xpubs in the descriptor
   ['multisig: CLEAR ALL keeps the setup', 'msReset(); dbClear(); wipeSeed(); planClear(); camStop();\n  if(typeof ssPageWipe', 'dbClear(); wipeSeed(); planClear(); camStop();\n  if(typeof ssPageWipe'],
   ['CLEAR ALL: backup plan kept', 'msReset(); dbClear(); wipeSeed(); planClear(); camStop();\n  if(typeof ssPageWipe', 'msReset(); dbClear(); wipeSeed(); camStop();\n  if(typeof ssPageWipe'],
@@ -5778,11 +5854,11 @@ const M = [
   ['core guide: not active', 'active: true, internal', 'active: false, internal'],
   ['core guide: wrong rpc wallet name', '-rpcwallet=voidforge-watch importdescriptors', '-rpcwallet=voidforge importdescriptors'],
   ['core guide: shown for multisig cosigner key', '&& document.getElementById("wDescGroupC").style.display !== "none"; // a multisig', '; // a multisig', true],  // equivalent: a cosigner key has no change descriptor, so the box already stays hidden
-  ['core guide: not refreshed on key change', 'document.getElementById("wTestBan").style.display = net === "test" ? "" : "none";\n  watchCtx.file = M ? null : {type, net, acct: acct};\n  updateCore();', 'document.getElementById("wTestBan").style.display = net === "test" ? "" : "none";\n  watchCtx.file = M ? null : {type, net, acct: acct};'],
+  ['core guide: not refreshed on key change', 'netBan("wTestBan", net);\n  watchCtx.file = M ? null : {type, net, acct: acct};\n  updateCore();', 'netBan("wTestBan", net);\n  watchCtx.file = M ? null : {type, net, acct: acct};'],
   ['core guide: birthday change ignored', 'document.getElementById("coreWhen").addEventListener("change", updateCore);', ''],
   ['core guide: left after clearing', 'document.getElementById("wTestBan").style.display = "none"; updateCore();\n  const b', 'const b'],
-  ['testnet banner never shown', 'style.display = net === "test" ? "" : "none";', 'style.display = "none";'],
-  ['testnet banner always shown', 'style.display = net === "test" ? "" : "none";', 'style.display = "";'],
+  ['testnet banner never shown', 'b.style.display = netIsTest(net) ? "" : "none"; if(netIsTest(net)) b.textContent', 'b.style.display = "none"; if(netIsTest(net)) b.textContent'],
+  ['testnet banner always shown', 'b.style.display = netIsTest(net) ? "" : "none"; if(netIsTest(net)) b.textContent', 'b.style.display = ""; if(netIsTest(net)) b.textContent'],
   ['testnet banner left after clearing', 'document.getElementById("wTestBan").style.display = "none"; updateCore();', 'updateCore();'],
   ['multisig: card not moved above the seed maker', 'gen.parentNode.insertBefore(card, gen); }', '}'],
   ['multisig: card not put back after reset', '  msDock(false);\n}', '}'],
@@ -5798,7 +5874,7 @@ const M = [
   ['sp: scan and spend branches swapped', 'const scan=await keyAt(1), spend=await keyAt(0);', 'const scan=await keyAt(0), spend=await keyAt(1);'],
   ['sp: branch not hardened', 'ckdPriv(k,c,branch,true)', 'ckdPriv(k,c,branch,false)'],
   ['sp: key index hardened', 'ckdPriv(bk,bc,0,false)', 'ckdPriv(bk,bc,0,true)'],
-  ['sp: box shown for a multisig cosigner key', 'document.getElementById("spBox").style.display = M ? "none" : "";', 'document.getElementById("spBox").style.display = "";'],
+  ['sp: box shown for a multisig cosigner key', 'document.getElementById("spBox").style.display = M || !spA ? "none" : "";', 'document.getElementById("spBox").style.display = !spA ? "none" : "";'],
   ["sp: address left after clearing", "[\"wZpub\",\"wDescR\",\"wDescC\",\"wFirst\",\"wChange\",\"spAddr\"]", "[\"wZpub\",\"wDescR\",\"wDescC\",\"wFirst\",\"wChange\"]"],
   ['sp: not refreshed for account or network', 'document.getElementById("spAddr").textContent = spA;', 'document.getElementById("spAddr").textContent = document.getElementById("spAddr").textContent || spA;'],
   ['sig: DER marker', 'b[0]!==0x30 ||', 'b[0]!==0x31 ||'],
@@ -6270,7 +6346,7 @@ const M = [
   ["public QR print: kept after HIDE", "function hideQr(){\n  qrShown = null;\n", "function hideQr(){\n"],
   ["public QR print: no name", ": QR_PRINT_NAMES[id] || \"PUBLIC KEY\")", ": \"PUBLIC KEY\")"],
   ["public QR print: text missing", "\"\\n\\n\" + t + \"\\n\\n\" + qrShown.foot + \"\\n\", \"\");", "\"\\n\\n\" + qrShown.foot + \"\\n\", \"\");"],
-  ["public QR print: testnet not named", "|| \"PUBLIC KEY\") + (net === \"test\" ? \" (TESTNET)\" : \"\"),", "|| \"PUBLIC KEY\"),"],
+  ["public QR print: testnet not named", "|| \"PUBLIC KEY\") + netTitle(net),", "|| \"PUBLIC KEY\"),"],
   ["public QR print: Silent Payment type", "id === \"spAddr\" ? \"Address type: Silent Payment (BIP352)\"", "false ? \"Address type: Silent Payment (BIP352)\""],
   ["address QR print: request called an address", "const req = t !== addr, fp", "const req = false, fp"],
   ["address QR print: link missing", "(req ? \"\\nPayment link: \" + t : \"\")", "\"\""],
@@ -6333,7 +6409,7 @@ const M = [
   ["explain: mixed case not said", "t !== low && t !== t.toUpperCase() ? \"it mixes capital", "false ? \"it mixes capital"],
   ["explain: networks mixed up", "const net = EXPLAIN_NET[hrp], d = segwitDecode(t);", "const net = EXPLAIN_NET.bc, d = segwitDecode(t);"],
   ["explain: testnet legacy unknown", "(v === 0 || v === 0x6f)", "(v === 0)"],
-  ["explain: testnet legacy called mainnet", "\"Legacy address (P2PKH) on \" + (v ? EXPLAIN_NET.tb : EXPLAIN_NET.bc)", "\"Legacy address (P2PKH) on \" + EXPLAIN_NET.bc"],
+  ["explain: testnet legacy called mainnet", "\"Legacy address (P2PKH) on \" + (v ? EXPLAIN_B58T : EXPLAIN_NET.bc)", "\"Legacy address (P2PKH) on \" + EXPLAIN_NET.bc"],
   ["explain: P2SH unknown", "(v === 5 || v === 0xc4)", "(v === 0xc4)"],
   ["explain: private key not flagged", "(v === 0x80 || v === 0xef)", "(v === 0xef)"],
   ["explain: compressed private key not flagged", "    if((raw.length === 33 || (raw.length === 34 && raw[33] === 1)) && (v === 0x80 || v === 0xef)) return", "    if((raw.length === 33) && (v === 0x80 || v === 0xef)) return"],
@@ -6437,8 +6513,8 @@ const M = [
   ["birthday: not on the recovery sheet", "\"\\nWallet made on: \" + (document.getElementById(\"wvBorn\").value || \"____________\") + ", ""],
   ["practice: menus not locked", "if(on){ practiceSaved[id] = e.value; e.value = \"test\"; e.disabled = true; }", "if(on){ practiceSaved[id] = e.value; e.value = \"test\"; }"],
   ["practice: menus not switched", "if(on){ practiceSaved[id] = e.value; e.value = \"test\"; e.disabled = true; }", "if(on){ practiceSaved[id] = e.value; e.disabled = true; }"],
-  ["practice: off does not put back the earlier network", "else { e.value = practiceSaved[id] || \"main\"; e.disabled = false; }", "else { e.value = \"main\"; e.disabled = false; }"],
-  ["practice: off leaves the menus locked", "else { e.value = practiceSaved[id] || \"main\"; e.disabled = false; }", "else { e.value = practiceSaved[id] || \"main\"; }"],
+  ["practice: off does not put back the earlier network", "else { e.value = practiceSaved[id] !== undefined ? practiceSaved[id] : \"main\"; e.disabled = false; }", "else { e.value = \"main\"; e.disabled = false; }"],
+  ["practice: off leaves the menus locked", "else { e.value = practiceSaved[id] !== undefined ? practiceSaved[id] : \"main\"; e.disabled = false; }", "else { e.value = practiceSaved[id] !== undefined ? practiceSaved[id] : \"main\"; }"],
   ["practice: page not marked", "  document.body.classList.toggle(\"practice\", on);\n", ""],
   ["practice: changes while a multisig wallet is made", "  if(ms){ box.checked = practiceOn; alert(", "  if(false){ box.checked = practiceOn; alert("],
   ["practice: a mainnet watch-only view stays open", "if(wvCtx.kind === \"pub\" && wvCtx.net !== (on ? \"test\" : \"main\") && on){ clearWalletView();", "if(false){ clearWalletView();"],
@@ -6457,12 +6533,12 @@ const M = [
   ["practice: VERIFY does not name practice phrases", "    if(await isPracticePhrase(r.mnemonic)) lines.push(", "    if(false) lines.push("],
   ["practice: no banner", "  body.practice #practiceBan { display: block;", "  body.x #practiceBan { display: block;"],
   ["practice: practice wallet on mainnet", "  if(!practiceOn) practiceMode(true);\n  if(!practiceOn) return;\n", "  if(!practiceOn) return;\n"],
-  ["practice: multisig menu left on mainnet", "const PRACTICE_NETS = [\"wNet\", \"wvNet\", \"psbtNet\", \"cmpNet\", \"msNet\"];", "const PRACTICE_NETS = [\"wNet\", \"wvNet\", \"psbtNet\", \"cmpNet\"];"],
+  ["practice: multisig menu left on mainnet", "\"cmpNet\", \"msNet\", \"detNet\",", "\"cmpNet\", \"detNet\","],
   ["watch file: written from an unfinished refresh", "  watchCtx.file = null;   // v2.5.0", "  // v2.5.0"],
   ["watch file: no multipath descriptor", "descriptorChecksum(body.replace(\"/0/*)\", \"/<0;1>/*)\"))", "descriptorChecksum(body)"],
   ["watch file: Electrum line for Taproot", "type === \"tr\" ? \"# Electrum cannot", "false ? \"# Electrum cannot"],
   ["watch file: button shown for a multisig key", "  document.getElementById(\"wSaveRow\").style.display = M ? \"none\" : \"\";\n", ""],
-  ["watch file: testnet name", "(/Network: TESTNET/.test(t) ? \"-testnet\" : \"\")", "\"\""],
+  ["watch file: testnet name", "(/Network: TESTNET/.test(t) ? \"-testnet\" : /Network: REGTEST/.test(t) ? \"-regtest\" : \"\")", "\"\""],
   ["watch file: no birthday", "(born ? \"   Made on: \" + born : \"\")", "\"\""],
   ["watch file: no first addresses", "    ...first.map((a, i) => \"#   \" + i + \": \" + a),\n", ""],
   ["first paint: page not marked as able to run scripts", "document.documentElement.classList.add(\"js\");\n", ""],
@@ -6497,11 +6573,11 @@ const M = [
   ["QR prints: cosigner footer", "    : cos ? \"PUBLIC: one cosigner key of a multisig wallet.", "    : false ? \"PUBLIC: one cosigner key of a multisig wallet."],
   ["QR prints: account missing", "\"Account number: \" + document.getElementById(\"wAcct\").value.trim()]};", "\"Account number: 0\"]};"],
   ["address QR: change called receive", ": meta.change ? \"CHANGE ADDRESS\" : \"RECEIVE ADDRESS\")", ": \"RECEIVE ADDRESS\")"],
-  ["address QR: testnet not named", "\"RECEIVE ADDRESS\") + (meta.test ? \" (TESTNET)\" : \"\"),", "\"RECEIVE ADDRESS\"),"],
+  ["address QR: testnet not named", "\"RECEIVE ADDRESS\") + netTitle(meta.net),", "\"RECEIVE ADDRESS\"),"],
   ["address QR: no path", "(meta.path ? \"Path: \" + meta.path + \"\\n\" : \"\")", "\"\""],
   ["address QR: unknown fingerprint printed", "fp = /^Master fingerprint[^:]*: [0-9a-f]{8}/.test(fpT) ? fpT : \"\";", "fp = fpT;"],
   ["address QR: Taproot path", "return {path: \"m/\" + pu + \"'/\"", "return {path: \"m/\" + 84 + \"'/\""],
-  ["address QR: wallet-view chain", "change: row.chain === 1 || (row.chain === undefined && sh.chain === 1), test:", "change: false, test:"],
+  ["address QR: wallet-view chain", "change: row.chain === 1 || (row.chain === undefined && sh.chain === 1), net:", "change: false, net:"],
   ["dice test: seed cleared without saying so", "(seed ? \"\\n\\nThe seed words on screen, made from these rolls, are cleared too. Write them down first if you still need them.\" : \"\")", "\"\""],
   ["dice test: old result message kept", "  if(seed){ seedSig = null; forgeRun++; setResult(\"\\u2014\");", "  if(false){ seedSig = null; forgeRun++; setResult(\"\\u2014\");"],
   ["dice test: step bar frozen", "    document.querySelectorAll(\"#stepBar li\").forEach(li => { const k = +li.getAttribute(\"data-s\"); li.className = k < 2 ? \"done\" : k === 2 ? \"cur\" : \"\";", "    document.querySelectorAll(\"#stepBar li\").forEach(li => { const k = +li.getAttribute(\"data-s\"); li.className = k < 4 ? \"done\" : k === 4 ? \"cur\" : \"\";"],
@@ -6573,7 +6649,7 @@ const M = [
   ["private key: practice change keeps it open", "    if(wvCtx.secret){ clearWalletView();", "    if(false){ clearWalletView();"],
   ["private key: no SECRET banner", "\"SECRET, read only: a private key is open.", "\"Read only: a private key is open."],
   ["private key: recovery sheet offered", "for(const id of [\"wvSqBlock\", \"wvSheetBtn\", \"wvSheetHint\"]) document.getElementById(id).style.display = \"none\";\n", ""],
-  ["private key: network menu not locked", "nSel.value = p.net; nSel.disabled = true;", "nSel.value = p.net;"],
+  ["private key: network menu not locked", "  wvNetKey(p.net);", "  nSel.value = p.net;"],
   ["UR: CRC polynomial", "c & 1 ? 0xEDB88320 ^ (c >>> 1)", "c & 1 ? 0xEDB88321 ^ (c >>> 1)"],
   ["UR: Bytewords minimal letters", "BYTEWORDS[i * 4] + BYTEWORDS[i * 4 + 3]", "BYTEWORDS[i * 4] + BYTEWORDS[i * 4 + 1]"],
   ["UR: part checksum not checked", "if(c.some((x, i) => x !== out[out.length - 4 + i])) throw", "if(false) throw"],
@@ -6602,7 +6678,7 @@ const M = [
   ["PSBT paste: other BBQr types accepted", "    throw new Error(\"This BBQr holds file type \"+q.type", "    return q.bytes; throw new Error(\"This BBQr holds file type \"+q.type"],
   ["crypto-output: sh(wsh()) not wrapped", "  if(type === \"ms-sh-wsh\") out = CB.tag(400, out);\n", ""],
   ["crypto-output: parent fingerprint", "[CB.uint(8), CB.uint(parseInt(c.key.parentFp, 16))]", "[CB.uint(8), CB.uint(0)]"],
-  ["crypto-output: testnet coin", "CB.uint(net === \"test\" ? 1 : 0)", "CB.uint(0)"],
+  ["crypto-output: testnet coin", "CB.uint(net === \"main\" ? 0 : 1)", "CB.uint(0)"],
   ["Coldcard file: policy", "\"Policy: \" + m + \" of \" + cos.length", "\"Policy: \" + m + \" of \" + m"],
   ["Coldcard file: format", "(type === \"ms-sh-wsh\" ? \"P2SH-P2WSH\" : \"P2WSH\")", "\"P2WSH\""],
   ["animated QR: wrong UR type", "urEncode(\"crypto-output\", cryptoOutputMultisig(", "urEncode(\"crypto-account\", cryptoOutputMultisig("],
@@ -6619,7 +6695,7 @@ const M = [
   ["recorded: tb1q not read", "if(/^(bc1q|tb1q)[0-9a-z]{38}$/i.test(q)) return \"addr\";", "if(/^bc1q[0-9a-z]{38}$/i.test(q)) return \"addr\";"],
   ["recorded: shown network always used", "if(net !== (practiceOn ? \"test\" : \"main\")){ try { c0 =", "if(false){ try { c0 ="],
   ["recorded: network read wrongly", "const net = /^tb1/i.test(rawRec.replace(/\\s+/g, \"\")) ? \"test\" : \"main\";", "const net = \"main\";"],
-  ["recorded: firstAddressOn networks swapped", "async function firstAddressOn(net, mnemonic, passphrase){ return net === \"test\" ?", "async function firstAddressOn(net, mnemonic, passphrase){ return net !== \"test\" ?"],
+  ["recorded: firstAddressOn networks swapped", "async function firstAddressOn(net, mnemonic, passphrase){ return net !== \"main\" ?", "async function firstAddressOn(net, mnemonic, passphrase){ return net === \"main\" ?"],
   ["download: Word draw gets the rolls box", ": seedKind === \"dm\" ? dmInputText() : seedKind === \"wd\" ?", ": seedKind === \"dm\" ? dmInputText() : false ?"],
   ["download: Word draw flips left out", "(wdFl ? \"; coin flips for the last word: \" + wdFl : \"\")", "\"\""],
   ["P2WSH: CHECK ADDRESS searches it", "{ const sn = scriptAddrNote(addr); if(sn) return say(\"bad\", sn); }\n  const kind0 =", "const kind0 ="],
@@ -6658,8 +6734,8 @@ const M = [
   ["wallet detective: no try without the passphrase", "passes:vp ? [[\"with the passphrase\", vp], [\"without a passphrase\", \"\"]]", "passes:vp ? [[\"with the passphrase\", vp]]"],
   ["wallet detective: accounts 1 to 9 skipped", "for(let a = 1; a <= DET_ACCTS; a++) jobs.push", "for(let a = 1; a < 1; a++) jobs.push"],
   ["wallet detective: only 20 addresses", "  for(const P of mine.filter(fits)) jobs.push({P, acct:0, from:20, n:80});\n", ""],
-  ["wallet detective: practice mode searches real addresses", "if(practiceOn && T.net !== \"test\") return detSay", "if(false && T.net !== \"test\") return detSay"],
-  ["wallet detective: LIST ignores practice mode", "const net = practiceOn ? \"test\" : \"main\", coin = NETS[net].coin, pass = src.passes[0], lines = [];", "const net = \"main\", coin = NETS[net].coin, pass = src.passes[0], lines = [];"],
+  ["wallet detective: practice mode searches real addresses", "if(practiceOn && !netIsTest(T.net)) return detSay", "if(false && !netIsTest(T.net)) return detSay"],
+  ["wallet detective: LIST ignores practice mode", "\"msNet\", \"detNet\", \"ewNet\",", "\"msNet\", \"ewNet\","],
   ["wallet detective: two-factor seeds not sent to Electrum", "if(el && el !== \"standard\" && el !== \"SegWit\") return {error:", "if(false) return {error:"],
   ["wallet detective: Electrum passphrase as typed not tried", "    if(detRawDiffers(pw)) list.push(", "    if(false) list.push("],
   ["wipe: Wallet Detective kept", "  detClear();   // v2.8.0: the Wallet Detective\n", ""],
@@ -6710,7 +6786,7 @@ const M = [
   ["addresses: Taproot change made from the receive chain", "taprootCh = await ten(\"tr\", 1)", "taprootCh = await ten(\"tr\", 0)"],
   ["addresses: change list never filled", "fill(\"chList\", chList, \"change address\");", "fill(\"chList\", [], \"change address\");"],
   ["addresses: Taproot change list never filled", "fill(\"trChList\", trChList, \"Taproot change address\");", "fill(\"trChList\", [], \"Taproot change address\");"],
-  ["addresses: a change QR sheet says receive", "change: ch === 1, test: t}", "change: false, test: t}"],
+  ["addresses: a change QR sheet says receive", "change: ch === 1, net: t ? \"test\" : \"main\"}", "change: false, net: t ? \"test\" : \"main\"}"],
   ["addresses: a change QR sheet has the receive path", "\"'/0'/\" + ch + \"/\" + i", "\"'/0'/0/\" + i"],
   ["watch box: change addresses from the receive chain", "chg = await walletAddresses(sd, type, net, acct, 1, 0, ADDR_SHOWN)", "chg = await walletAddresses(sd, type, net, acct, 0, 0, ADDR_SHOWN)"],
   ["watch box: change addresses not shown", "document.getElementById(\"wChange\").textContent = chg.map(r => r.address).join(\"\\n\");", "document.getElementById(\"wChange\").textContent = \"\";"],
@@ -7390,7 +7466,7 @@ const M = [
   ["device backups: CLEAR leaves the key shown", "document.getElementById(\"dbKey\").type = \"password\"; document.getElementById(\"dbShowKey\").textContent = \"SHOW\";", ""],
   ["device backups: CLEAR leaves the words put above", "if(dbPut && ph.value === dbPut){ ph.value = \"\";", "if(false){ ph.value = \"\";"],
   ["coldcard: xprv line never compared", "if(typeof v.xprv === \"string\" && v.xprv !== await xprvText(root, net)) throw", "if(false) throw"],
-  ["coldcard: regtest read as mainnet", "if(v.chain !== undefined && v.chain !== \"BTC\" && v.chain !== \"XTN\") throw", "if(false) throw"],
+  ["coldcard: an unknown chain read as mainnet", "if(v.chain !== undefined && v.chain !== \"BTC\" && v.chain !== \"XTN\" && v.chain !== \"XRT\") throw", "if(false) throw"],
   ["coldcard: a 30-word record accepted", "if((m & 0xfc) === 0x80 && (m & 3) < 3){", "if(m & 0x80){"],
   ["coldcard: empty lists named", "const has = (x) => Array.isArray(x) ? x.length > 0 : x && typeof x === \"object\" ? Object.keys(x).length > 0 : !!x;", "const has = (x) => !!x;"],
   ["coldcard: password not tried as typed", "const tries = [[ccPassword(password), false], [password, false]]", "const tries = [[ccPassword(password), false]]"],
@@ -7414,7 +7490,7 @@ const M = [
   ["coldcard: plaintext CRC not checked", "if(crc32(q) === z.crc){ p = q; break; }", "{ p = q; break; }"],
   ["coldcard: clone file not named", "if(/^[0-9a-f]{66}-ccbk\\.7z$/i.test(name || \"\"))", "if(/^[0-9a-f]{67}-ccbk\\.7z$/i.test(name || \"\"))"],
   ["coldcard: plain-text backup not read", "if(bytes.length > 22 && dbUtf8Safe(bytes.slice(0, 22)) === \"# Coldcard backup file\") plain = dbUtf8(bytes);", "if(false) plain = dbUtf8(bytes);"],
-  ["coldcard: XTN read as mainnet", "const net = v.chain === \"XTN\" ? \"test\" : \"main\"", "const net = \"main\""],
+  ["coldcard: XTN read as mainnet", "const net = v.chain === \"XTN\" ? \"test\" : v.chain === \"XRT\"", "const net = v.chain === \"XTN\" ? \"main\" : v.chain === \"XRT\""],
   ["coldcard: 24-word record read as 12", "const n = ((m & 3) + 2) * 8, words", "const n = 16, words"],
   ["coldcard: words and record never compared", "if(typeof v.mnemonic === \"string\" && v.mnemonic.trim().toLowerCase().split(/\\s+/).join(\" \") !== words) throw", "if(false) throw"],
   ["coldcard: xprv record key and chain swapped", "return Object.assign(base, {root: [k, r.slice(1, 33)], xprvOnly: true});", "return Object.assign(base, {root: [BigInt(\"0x\" + hex(r.slice(1, 33))), r.slice(33, 65)], xprvOnly: true});"],
@@ -7808,7 +7884,7 @@ const M = [
   ["passphrase check: masked box shows the text", "else if(masked) { if(!/\\p{M}/u.test(c)) out.push([\"\\u2022\", \"\"]); }", ""],
   ["passphrase check: leading space not found", "lead: /^\\s/.test(n)", "lead: false"],
   ["passphrase practice: any two entries match", "if(x[i] !== y[i]) return {at: i + 1", "if(false) return {at: i + 1"],
-  ["passphrase practice: fingerprint without the passphrase", "const fp = await mnemonicFingerprint(PP_TEST, a);", "const fp = await mnemonicFingerprint(PP_TEST, \"\");"],
+  ["passphrase practice: fingerprint without the passphrase", "const fp = await mnemonicFingerprint(seed.words, a);", "const fp = await mnemonicFingerprint(seed.words, \"\");"],
   ["passphrase practice: CLEAR ALL keeps the result", "  mkWipe();   // v2.15.0", "  // v2.15.0"],
   ["passphrase practice: CLEAR ALL keeps the boxes", "AUTO_FIELDS.push(\"ppA\", \"ppB\");", ""],
   ["Link as QR: seed words accepted", "if(lqSeedWords(s)) return \"These look like SEED WORDS\";", ""],
@@ -7912,8 +7988,8 @@ const M = [
   ["wallet.dat: hdchain change counter read for version 1", "int: ver >= 2 ? v.u32() : null", "int: v.u32()"],
   ["wallet.dat: wkey read without its version", "if(type === \"wkey\") v.i32();", ""],
   ["wallet.dat: WIF without the compressed flag", "compressed ? Uint8Array.of(1) : new Uint8Array(0)", "new Uint8Array(0)"],
-  ["wallet.dat: testnet WIF prefix", "Uint8Array.of(net === \"test\" ? 0xef : 0x80), k,", "Uint8Array.of(net === \"test\" ? 0x80 : 0x80), k,"],
-  ["wallet.dat: tprv written as xprv", "Uint8Array.from(net === \"test\" ? [0x04, 0x35, 0x83, 0x94] : [0x04, 0x88, 0xad, 0xe4])", "Uint8Array.from(net === \"test\" ? [0x04, 0x88, 0xad, 0xe4] : [0x04, 0x88, 0xad, 0xe4])"],
+  ["wallet.dat: testnet WIF prefix", "Uint8Array.of(netIsTest(net) ? 0xef : 0x80), k,", "Uint8Array.of(netIsTest(net) ? 0x80 : 0x80), k,"],
+  ["wallet.dat: tprv written as xprv", "Uint8Array.from(netIsTest(net) ? [0x04, 0x35, 0x83, 0x94] : [0x04, 0x88, 0xad, 0xe4]), x74", "Uint8Array.from(netIsTest(net) ? [0x04, 0x88, 0xad, 0xe4] : [0x04, 0x88, 0xad, 0xe4]), x74"],
   ["wallet.dat: uncompressed public keys compared as compressed", "if(n.length === 33) return pubFromPoint(P);", "return pubFromPoint(P);"],
   ["wallet.dat: P2SH-P2WPKH left out for legacy keys", "(pub.length === 33 ? [\"pkh\", \"sh-wpkh\", \"wpkh\"] : [\"pkh\"])", "(pub.length === 33 ? [\"pkh\", \"wpkh\"] : [\"pkh\"])"],
   ["wallet.dat: parent xpub cache ignored", "if(par && wild !== \"h\") return hex(", "if(false) return hex("],
@@ -7949,6 +8025,38 @@ const M = [
   ["wallet.dat: SQLite row header not capped (H2)", "if(hs > P || hs < a || hs > WDAT_HDR) throw", "if(hs > P || hs < a) throw"],
   ["wallet.dat: no file chosen is not said as an error (L3)", "if(!f){ wdatWipe(); st.className = \"status bad\";", "if(!f){ wdatWipe();"],
   ["wallet.dat: auto-clear does not see a chosen file (L4)", "return wdatHasSecret() || !!(f && f.files && f.files.length); }", "return wdatHasSecret(); }"],
+  // v2.16.1 "Tools that work as in real life": probe section 80
+  ["regtest: bech32 prefix tb", "NETS.regtest = {...NETS.test, hrp:\"bcrt\"};", "NETS.regtest = {...NETS.test, hrp:\"tb\"};"],
+  ["regtest: a bcrt1 address read as mainnet", "return /^bcrt1/.test(addr) ? \"regtest\" :", "return false ? \"regtest\" :"],
+  ["regtest: a bcrt1q address has no type", "  if(/^bcrt1q/.test(addr)) return \"wpkh\";   // v2.16.1: regtest\n", ""],
+  ["regtest: Reforge and the Detective refuse bcrt1", "if(/^(bc1|tb1|bcrt1)q[0-9a-z]{38}$/.test(a) ||", "if(/^(bc1|tb1)q[0-9a-z]{38}$/.test(a) ||"],
+  ["regtest: the bar says TESTNET", "regtest:\"REGTEST (a private test network, no real coins)\"", "regtest:\"TESTNET (practice coins only)\""],
+  ["regtest: a Silent Payment address shown", "const spA = net === \"regtest\" ? \"\" :", "const spA = false ? \"\" :"],
+  ["regtest: a testnet key refused in a regtest wallet", "(keyNet === \"test\" && net === \"regtest\")", "false"],
+  ["regtest: a test-network key locked on one network", "  n.disabled = keyNet === \"main\" || practiceOn;", "  n.disabled = true;"],
+  ["regtest: closing a key leaves Mainnet off", "  for(const o of document.getElementById(\"wvNet\").options) o.disabled = false;", ""],
+  ["coldcard: XRT read as mainnet", "v.chain === \"XRT\" ? \"regtest\" : \"main\"", "v.chain === \"XRT\" ? \"main\" : \"main\""],
+  ["wallet.dat: regtest read as testnet", "fabfb5da: [\"regtest\", \"regtest\"]", "fabfb5da: [\"test\", \"regtest\"]"],
+  ["wallet.dat: the Network menu ignored", "  wdatNetPick(w);   // v2.16.1: the Network menu\n", ""],
+  ["wallet.dat: changing the Network menu rewrites nothing", "  wdatNetPick(w); w.addrRows = w.descs.size ? await wdatActiveRows(w) : [];\n  if(wdat !== w) return;", "  w.addrRows = w.descs.size ? await wdatActiveRows(w) : [];\n  if(wdat !== w) return;"],
+  ["electrum file: the Network menu ignored", "const W = await ewRead(L.data, pw, how); await ewNetPick(W);", "const W = await ewRead(L.data, pw, how);"],
+  ["electrum file: a regtest wallet read as testnet", "if(W.net === \"test\" && W.fileAddrs && W.fileAddrs.recv.some(a => /^bcrt1/.test(String(a)))) W.net = \"regtest\";", ""],
+  ["detective: the Network menu ignored for the paths", "T.pathNet = document.getElementById(\"detNet\").value || T.net;", "T.pathNet = T.net;"],
+  ["detective: LIST ignores the Network menu", "const net = document.getElementById(\"detNet\").value || \"main\", coin", "const net = \"main\", coin"],
+  ["practice: a late close shuts the wallet opened since", "if(!(await isPracticePhrase(was)) || box.value !== was) return;", "if(!(await isPracticePhrase(was))) return;"],
+  ["practice: an empty menu put back as Mainnet", "e.value = practiceSaved[id] !== undefined ? practiceSaved[id] : \"main\"; e.disabled = false; }", "e.value = practiceSaved[id] || \"main\"; e.disabled = false; }"],
+  ["practice: no note under the network menus", "  (sel.closest(\".ms-row, .wv-ctl, .net-pick\") || sel.parentElement).after(n);\n", ""],
+  ["backup practice: your own words ignored", "  if(practiceOwnOn()){\n    const r=await practiceOwnWords();", "  if(false){\n    const r=await practiceOwnWords();"],
+  ["backup practice: your words on screen not covered", "RH_PLACES.push(\"prShow\", \"prCheck\");", "RH_PLACES.push(\"prCheck\");"],
+  ["backup practice: auto-clear does not see your words", "AUTO_FIELDS.push(\"ppSeed\", \"prOwn\");", "AUTO_FIELDS.push(\"ppSeed\");"],
+  ["backup practice: CLEAR ALL leaves your words on screen", "  practiceOwnWipe();   // v2.16.1: your own words in Practice making a backup (secret)\n", ""],
+  ["practice wallet: your own words ignored", "  if(practiceOwnOn()){\n    const r = practice", "  if(false){\n    const r = practice"],
+  ["passphrase practice: your own seed ignored", "  if(src === \"own\"){", "  if(false){"],
+  ["passphrase practice: the seed made here ignored", "  if(src === \"made\") return hasSeed()", "  if(false) return hasSeed()"],
+  ["passphrase practice: CLEAR leaves your seed words", "document.getElementById(\"ppSeed\").value = \"\";", ""],
+  ["multisig: the seed in CHECK A BACKUP not wiped", "    msWipeChecked();\n", ""],
+  ["multisig: the passphrase in CHECK A BACKUP ignored", "await mnemonicToSeed(r.mnemonic, document.getElementById(\"verifyPass\").value), ms.type", "await mnemonicToSeed(r.mnemonic, \"\"), ms.type"],
+  ["multisig: the same seed from CHECK A BACKUP twice", "if(dup >= 0){ eb.textContent = \"This is the same key as key \" + (dup + 1) + \" (fingerprint \" + w.fp + \"). Using one key twice would make the wallet weaker than it looks. Every", "if(false){ eb.textContent = \"This is the same key as key \" + (dup + 1) + \" (fingerprint \" + w.fp + \"). Using one key twice would make the wallet weaker than it looks. Every"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page
