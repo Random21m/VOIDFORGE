@@ -2003,7 +2003,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </div>
     <!-- v2.16.0: Read a Bitcoin Core wallet file (wallet.dat). The code is the block "v2.16.0 Read a Bitcoin Core wallet file" in the script. -->
     <details id="wdatBox" style="margin-top:12px;">
-      <summary>Read a Bitcoin Core wallet file (wallet.dat)<span class="tag tag-ro">READ ONLY</span><small>Choose an old wallet.dat: see what it holds and, with its passphrase, its private keys.</small></summary>
+      <summary>Read a Bitcoin Core wallet file (wallet.dat)<span class="tag tag-secret">SECRET</span><small>Choose an old wallet.dat: see what it holds and, with its passphrase, its private keys.</small></summary>
       <p class="hint" style="margin:8px 0;">For a <b>wallet.dat</b> from Bitcoin Core (Bitcoin-Qt): an older <b>legacy wallet</b> (a Berkeley DB file) or a newer <b>descriptor wallet</b> (an SQLite file). VOIDFORGE reads it here, offline, and never changes it. It shows how the wallet was made, its keys, descriptors, address book labels and first addresses. If the wallet is encrypted, type its passphrase: VOIDFORGE checks it the way Bitcoin Core does and can then show the private keys. The file holds the private keys (encrypted or not): open it only on your offline computer, and use a copy, never your only one.</p>
       <input type="file" id="wdatFile" accept=".dat,.sqlite,.bak,application/octet-stream" aria-label="Choose the wallet.dat file" onchange="wdatPicked()" style="width:100%;">
       <p class="hint" id="wdatPicked" style="margin:4px 0 0;">Or drop the file on this box.</p>
@@ -2016,7 +2016,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <h4 class="sec">What it holds</h4>
         <select id="wdatView" aria-label="What to list" onchange="wdatViewSet()" style="width:100%;"></select>
         <div class="btn-row top"><button type="button" class="secondary small" id="wdatPrev" onclick="wdatPage(-1)">PREVIOUS</button><button type="button" class="secondary small" id="wdatNext" onclick="wdatPage(1)">NEXT</button></div>
-        <div class="status" id="wdatPageNote"></div>
+        <div class="status" id="wdatPageNote" aria-live="polite"></div>
         <pre id="wdatList" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
       </div>
       <div class="btn-row top" id="wdatSecretRow" style="display:none;"><button type="button" class="secondary small" id="wdatShowBtn" onclick="wdatReveal()">SHOW THE PRIVATE KEYS</button><button type="button" class="secondary small" id="wdatSPrev" onclick="wdatSPage(-1)">PREVIOUS KEYS</button><button type="button" class="secondary small" id="wdatSNext" onclick="wdatSPage(1)">NEXT KEYS</button></div>
@@ -4574,10 +4574,15 @@ function bbqrDecodeFrames(frames){
   if(encC === "Z") bytes = inflateRaw(Uint8Array.from(bytes));
   return {fileType: head[3], bytes: Uint8Array.from(bytes)};
 }
-// Raw DEFLATE decoder (RFC 1951) for BBQr "Z" parts: stored, fixed and dynamic Huffman blocks. Output limited to 4 MB.
-function inflateRaw(src){
-  let pos = 0, bit = 0;
-  const out = [];
+// Raw DEFLATE decoder (RFC 1951) for BBQr "Z" parts (and Krux, and Electrum's zlib): stored, fixed and dynamic Huffman blocks.
+// The output may be at most max bytes (4 MB unless asked: BBQr and Krux; an Electrum wallet file asks for EW_MAX). It is
+// collected in a Uint8Array that doubles as it fills.
+function inflateRaw(src, max = 4194304){
+  let pos = 0, bit = 0, n = 0, out = new Uint8Array(Math.min(max, Math.max(65536, src.length * 4)));
+  const room = (k) => {
+    if(n + k > max) throw new Error("the compressed data unpacks to more than " + (max >= 1048576 ? max / 1048576 + " MB" : max + " bytes"));
+    if(n + k > out.length){ const o = new Uint8Array(Math.min(max, Math.max(n + k, out.length * 2))); o.set(out.subarray(0, n)); out = o; }
+  };
   const bits = (n) => { let v = 0; for(let i = 0; i < n; i++){ if(pos >= src.length) throw new Error("the compressed data ends early"); v |= ((src[pos] >> bit) & 1) << i; if(++bit === 8){ bit = 0; pos++; } } return v; };
   const build = (lengths) => { const count = new Array(16).fill(0), offs = new Array(16).fill(0), sym = []; for(const l of lengths) count[l]++; count[0] = 0; for(let l = 1; l < 15; l++) offs[l + 1] = offs[l] + count[l]; lengths.forEach((l, s) => { if(l) sym[offs[l]++] = s; }); return {count, sym}; };
   const decode = (h) => { let code = 0, first = 0, index = 0; for(let len = 1; len < 16; len++){ code |= bits(1); const c = h.count[len]; if(code - c < first) return h.sym[index + (code - first)]; index += c; first += c; first <<= 1; code <<= 1; } throw new Error("the compressed data is damaged"); };
@@ -4591,7 +4596,7 @@ function inflateRaw(src){
       if(pos + 4 > src.length) throw new Error("the compressed data ends early");
       const len = src[pos] | (src[pos + 1] << 8), nlen = src[pos + 2] | (src[pos + 3] << 8); pos += 4;
       if(len !== (~nlen & 0xffff) || pos + len > src.length) throw new Error("the compressed data is damaged");
-      for(let i = 0; i < len; i++) out.push(src[pos++]);
+      room(len); out.set(src.subarray(pos, pos + len), n); n += len; pos += len;
     } else if(type === 1 || type === 2){
       let lit, dist;
       if(type === 1){ const l = []; for(let i = 0; i < 288; i++) l.push(i < 144 ? 8 : i < 256 ? 9 : i < 280 ? 7 : 8); lit = build(l); dist = build(new Array(30).fill(5)); }
@@ -4610,19 +4615,18 @@ function inflateRaw(src){
       }
       for(;;){
         const sy = decode(lit);
-        if(sy < 256) out.push(sy);
+        if(sy < 256){ room(1); out[n++] = sy; }
         else if(sy === 256) break;
         else {
           const li = sy - 257; if(li >= 29) throw new Error("the compressed data is damaged");
           const len = LB[li] + bits(LE[li]), di = decode(dist); if(di >= 30) throw new Error("the compressed data is damaged");
-          const d = DB[di] + bits(DE[di]); if(d > out.length) throw new Error("the compressed data is damaged");
-          for(let i = 0; i < len; i++) out.push(out[out.length - d]);
+          const d = DB[di] + bits(DE[di]); if(d > n) throw new Error("the compressed data is damaged");
+          room(len); for(let i = 0; i < len; i++, n++) out[n] = out[n - d];
         }
-        if(out.length > 4194304) throw new Error("the compressed data is too large");
       }
     } else throw new Error("the compressed data is damaged");
   } while(!last);
-  return Uint8Array.from(out);
+  return out.slice(0, n);
 }
 // Pasted QR text (one frame per line, or separated by spaces): UR parts, BBQr parts, or null when it is neither.
 function qrTextDecode(text){
@@ -10796,7 +10800,7 @@ let autoLast = Date.now(), autoTimer = null;
 function autoTouch(){ autoLast = Date.now(); }
 ["keydown", "pointerdown", "input", "touchstart", "wheel"].forEach(e => document.addEventListener(e, autoTouch, {capture: true, passive: true}));
 function autoMinutes(){ return parseInt(document.getElementById("autoIdle").value, 10) || 0; }
-function autoHasSecrets(){ return hasSeed() || !!dbGot || ewHolds() || wdatHasSecret() || (typeof ssPageActive === "function" && ssPageActive()) || AUTO_FIELDS.some(id => { const e = document.getElementById(id); return !!(e && e.value); }); }
+function autoHasSecrets(){ return hasSeed() || !!dbGot || ewHolds() || wdatHolds() || (typeof ssPageActive === "function" && ssPageActive()) || AUTO_FIELDS.some(id => { const e = document.getElementById(id); return !!(e && e.value); }); }
 function autoWipe(why){
   if(!autoHasSecrets()) return false;
   reforgeStop(); msReset(); dbClear(); wipeSeed(); planClear(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
@@ -11872,9 +11876,7 @@ async function wvRefresh(){
   const tail = (r) => r.path.replace(/\/[0-9]+$/, "/") + "index";
   document.getElementById("wvPath").textContent = (net === "test" ? "TESTNET (practice coins only). " : "") + (star ? "Addresses" : both ? "Receive and change addresses" : R.chains[0] ? "Change addresses" : "Receive addresses") + " " + each[0].index + " to " + each[each.length - 1].index + ", " + SCRIPT_TYPES[type].label + ": " + tail(rows[0]) + (both ? " and " + tail(rows[each.length]) : "");
   wvCtx.shown = {type, net, chain: both ? "both" : R.chains[0], acct, rows, sheet, custom: P ? custom.replace(/\s+/g, "").replace(/[hH]/g, "'") : "", star};
-  document.getElementById("wvPrev").disabled = wvFrom === 0;
-  document.getElementById("wvNext").disabled = wvFrom + WV_PAGE > 2147483647;
-  document.getElementById("wvMore").disabled = apCount >= AP_MAX;
+  apPager();
 }
 function printRecoverySheet(){
   if(!wvCtx || !wvCtx.shown || !wvCtx.mnemonic) return alert("Check a seed phrase first, then open the wallet.");
@@ -11900,9 +11902,9 @@ function printRecoverySheet(){
   setTimeout(cleanup, 120000);
   window.print();
 }
-function wvPage(d){
+function wvPage(d){   // v2.16.0: steps by the number of addresses shown in each list (10, or more after SHOW 20 MORE), and keeps it
   if(!wvCtx) return;
-  wvFrom = Math.max(0, Math.min(2147483647 - WV_PAGE + 1, wvFrom + d * WV_PAGE)); apReset(); wvRefresh();
+  wvFrom = Math.max(0, Math.min(2147483647 - apCount + 1, wvFrom + d * apCount)); document.getElementById("wvStart").value = String(wvFrom); wvRefresh();
 }
 function wvReset(){ if(!wvCtx) return; wvFrom = 0; apReset(); wvRefresh(); }
 // Watch-only input (v2.2.0): an account extended public key or a single-key descriptor wpkh / sh(wpkh) / pkh / tr, with an optional
@@ -14192,7 +14194,14 @@ async function apSource(ctx){
 }
 // The start box: a whole number from 0 to 2147483647, or null.
 function apStartOf(){ const v = document.getElementById("wvStart").value.trim(); return /^[0-9]{1,10}$/.test(v) && parseInt(v, 10) <= 2147483647 ? parseInt(v, 10) : null; }
-function apReset(){ apCount = WV_PAGE; document.getElementById("wvStart").value = String(wvFrom); }
+function apReset(){ apCount = WV_PAGE; document.getElementById("wvStart").value = String(wvFrom); apPager(); }
+// The pager says what it does: PREVIOUS and NEXT step by the number shown in each list; SHOW 20 MORE stops at AP_MAX in each
+// list and at the last address number (2147483647).
+function apPager(){
+  const p = document.getElementById("wvPrev"), x = document.getElementById("wvNext"), m = document.getElementById("wvMore");
+  p.textContent = "PREVIOUS " + apCount; x.textContent = "NEXT " + apCount;
+  p.disabled = wvFrom === 0; x.disabled = wvFrom + apCount > 2147483647; m.disabled = apCount >= AP_MAX || wvFrom + apCount > 2147483647;
+}
 function apRender(rows, both){
   const ol = document.getElementById("wvList"); ol.textContent = "";
   let firstChange = true;
@@ -14213,14 +14222,14 @@ async function apRows(ctx, P, chainSel, type, net, acct){
   return {rows, steps, chains, base, src};
 }
 function apMore(){
-  if(!wvCtx || apCount >= AP_MAX) return;
+  if(!wvCtx || apCount >= AP_MAX || wvFrom + apCount > 2147483647) return;
   apCount = Math.min(AP_MAX, apCount + AP_MORE); wvRefresh();
 }
 function apStartInput(){
   if(!wvCtx) return;
   const v = apStartOf();
   if(v === null){ wvSeq++; document.getElementById("wvErr").textContent = "The start must be a whole number from 0 to 2147483647."; apListClear(); return; }
-  wvFrom = v; apCount = WV_PAGE; wvRefresh();
+  wvFrom = v; apCount = WV_PAGE; apPager(); wvRefresh();
 }
 document.getElementById("wvStart").addEventListener("input", apStartInput);
 
@@ -14273,12 +14282,15 @@ function ewPyLiteral(s){
     const q = s[i]; if(q !== "'" && q !== "\"") fail("a string was expected");
     if(s.startsWith(q + q + q, i)) fail("a triple-quoted string");
     i++; let out = "";
+    const stop = q === "'" ? /['\\\n]/g : /["\\\n]/g;   // the plain text up to the next quote, backslash or line break is copied in one go
     for(;;){
-      if(i >= n) fail("a string does not end");
-      const c = s[i++];
+      stop.lastIndex = i; const m = stop.exec(s);
+      if(!m) fail("a string does not end");
+      out += s.slice(i, m.index); i = m.index + 1;
+      const c = m[0];
       if(c === q) return out;
       if(c === "\n") fail("a line break inside a string");
-      if(c !== "\\" || pre.includes("r")){ if(c === "\\" && i < n) out += c + s[i++]; else out += c; continue; }
+      if(pre.includes("r")){ if(i < n) out += c + s[i++]; else out += c; continue; }
       const e = s[i++];
       if(ewOwn(ESC, e)) out += ESC[e];
       else if(e === "x" && /^[0-9a-fA-F]{2}$/.test(s.slice(i, i + 2))){ out += String.fromCharCode(parseInt(s.slice(i, i + 2), 16)); i += 2; }
@@ -14327,21 +14339,63 @@ function ewPatch(doc, p){
   }
   return doc;
 }
-// The text of a wallet file -> {data, patches, dropped, python}. Electrum’s order: JSON (with patches), then a Python literal, then
-// a file cut off during a partial write (the complete part is kept).
-function ewLoadText(s){
-  const done = (arr, extra) => { let d = arr[0]; for(const p of arr.slice(1)) d = ewPatch(d, p); if(!ewObj(d)) throw new Error("This file holds JSON, but not a wallet (Electrum: Malformed wallet file, not dict)."); return Object.assign({data: d, patches: arr.length - 1, dropped: 0, python: false}, extra || {}); };
-  let arr = null; try { arr = JSON.parse("[" + s + "]"); } catch(e) { arr = null; }
-  if(arr) return done(arr);
-  try { const d = ewPyLiteral(s); if(ewObj(d)) return {data: JSON.parse(JSON.stringify(d)), patches: 0, dropped: 0, python: true}; } catch(e) { /* not a Python literal either */ }
-  const t = s.replace(/,\s*$/, "");
-  let tries = 0;
-  for(let at = t.length; at > 0 && tries < 4000; at = t.lastIndexOf(",\n", at - 1), tries++){
-    if(at < 2) break;
-    try { arr = JSON.parse("[" + t.slice(0, at) + "]"); } catch(e) { arr = null; }
-    if(arr && at < s.length) return done(arr, {dropped: s.length - at});
+// Where one JSON object or list that starts at i ends (the index just after it), or -1 when the text ends first or it does not
+// start with { or [. One pass: brackets are counted and strings skipped with their escapes; JSON.parse then checks the value
+// itself. pace: {next, stop}: the page gets a moment every EW_PACE characters (so CLEAR works on a big file), and stop() ends it.
+const EW_PACE = 4 * 1048576;
+async function ewJsonEnd(s, i, pace){
+  const c0 = s.charCodeAt(i); if(c0 !== 123 && c0 !== 91) return -1;
+  const tok = /["{}[\]]/g, str = /["\\]/g;
+  let depth = 0, at = i;
+  for(;;){
+    if(at >= pace.next){ await ewPause(); pace.next = at + EW_PACE; if(pace.stop && pace.stop()) throw new Error("STOPPED"); }
+    tok.lastIndex = at; const m = tok.exec(s); if(!m) return -1;
+    at = tok.lastIndex;
+    if(m[0] === "\""){
+      for(;;){   // inside a string: to its closing quote, past each backslash and the character after it
+        if(at >= pace.next){ await ewPause(); pace.next = at + EW_PACE; if(pace.stop && pace.stop()) throw new Error("STOPPED"); }
+        str.lastIndex = at; const q = str.exec(s); if(!q) return -1;
+        at = str.lastIndex; if(q[0] === "\"") break; at++;
+      }
+    } else if(m[0] === "{" || m[0] === "[") depth++;
+    else if(--depth === 0) return at;
   }
-  throw new Error("This is not an Electrum wallet file: it is not JSON, not an Electrum 1.x file and not a file Electrum encrypted.");
+}
+function ewPause(){ return new Promise(r => setTimeout(r, 0)); }
+const ewBytes = (t) => new TextEncoder().encode(t).length;
+// The text of a wallet file -> {data, patches, dropped, junk, python}. Electrum’s order (json_db.py load_data): JSON with the
+// changes saved at its end, then a Python literal, then a file cut off during a partial write (maybe_load_incomplete_data: the
+// main object, then one change after each ",\n", each parsed once; the first that does not parse ends the read, and the
+// complete part is kept). dropped: the bytes left out. extra: bytes after the text that are not UTF-8 (a damaged end, see
+// ewDecode). junk: a damaged end after a complete part, not a ",\n" Electrum was writing: Electrum itself refuses such a file;
+// this page reads the complete part and says so.
+async function ewLoadText(s, pace, extra){
+  pace = pace || {next: EW_PACE}; extra = extra || 0;
+  const done = (arr, end) => { let d = arr[0]; for(const p of arr.slice(1)) d = ewPatch(d, p); if(!ewObj(d)) throw new Error("This file holds JSON, but not a wallet (Electrum: Malformed wallet file, not dict)."); return {data: d, patches: arr.length - 1, dropped: (end < s.length ? ewBytes(s.slice(end)) : 0) + extra, junk: false, python: false}; };
+  let arr = null; try { arr = JSON.parse("[" + s + "]"); } catch(e) { arr = null; }
+  if(arr) return Object.assign(done(arr, s.length), {junk: extra > 0});
+  if(/^\s*\{/.test(s)) try { const d = ewPyLiteral(s); if(ewObj(d)) return {data: JSON.parse(JSON.stringify(d)), patches: 0, dropped: extra, junk: extra > 0, python: true}; } catch(e) { /* not a Python literal either */ }
+  const one = async (at) => { if(s.charCodeAt(at) !== 123) return null; const e = await ewJsonEnd(s, at, pace); if(e < 0) return null; try { return [JSON.parse(s.slice(at, e)), e]; } catch(x) { return null; } };
+  const first = await one(0);
+  if(!first) throw new Error("This is not an Electrum wallet file: it is not JSON, not an Electrum 1.x file and not a file Electrum encrypted.");
+  const got = [first[0]]; let end = first[1], junk = false;
+  while(end < s.length){
+    if(s.startsWith(",\n", end)){ const p = await one(end + 2); if(!p) break; got.push(p[0]); end = p[1]; }
+    else { junk = s.slice(end) !== ","; break; }
+  }
+  return Object.assign(done(got, end), {junk: junk || extra > 0});
+}
+// The bytes of a file as text. A file that is not all UTF-8 but starts as JSON ({) is cut where the bytes stop being UTF-8 (a
+// damaged end, such as random bytes from a failing disk): {text, extra} with extra the bytes cut off; null when it is not text.
+function ewDecode(b){
+  try { return {text: new TextDecoder("utf-8", {fatal: true}).decode(b), extra: 0}; } catch(e) { /* not all UTF-8 */ }
+  if(b[0] !== 0x7b) return null;
+  const t = new TextDecoder("utf-8").decode(b);
+  for(let at = t.indexOf("\uFFFD"), n = 0, from = 0; at >= 0; at = t.indexOf("\uFFFD", at + 1)){   // n: the bytes of t.slice(0, at)
+    n += ewBytes(t.slice(from, at)); from = at;
+    if(!(b[n] === 0xef && b[n + 1] === 0xbf && b[n + 2] === 0xbd)) return {text: t.slice(0, at), extra: b.length - n};
+  }
+  return null;
 }
 // AES-CBC with PKCS7 padding (WebCrypto): a wrong key almost always fails the padding.
 async function ewAesCbc(key, iv, ct){
@@ -14374,7 +14428,8 @@ async function ewOpenStorage(b, password){
 function ewAdler32(b){ let a = 1, c = 0; for(let i = 0; i < b.length; i++){ a = (a + b[i]) % 65521; c = (c + a) % 65521; } return ((c << 16) | a) >>> 0; }
 function ewInflateZlib(z){
   if(z.length < 6 || (z[0] & 15) !== 8 || (z[0] >> 4) > 7 || ((z[0] << 8) | z[1]) % 31 || (z[1] & 32)) throw new Error("The file opened, but its contents are not compressed as Electrum compresses them (zlib).");
-  const out = inflateRaw(z.slice(2)), t = z.length - 4, want = ((z[t] << 24) | (z[t + 1] << 16) | (z[t + 2] << 8) | z[t + 3]) >>> 0;
+  let out; try { out = inflateRaw(z.slice(2, z.length - 4), EW_MAX); } catch(e) { throw new Error(/unpacks to more/.test(e.message) ? "The file opened, but its compressed contents unpack to more than " + EW_MAX / 1048576 + " MB, more than this page reads. Open it in Electrum itself." : "The file opened, but its compressed contents are damaged (" + e.message + ")."); }
+  const t = z.length - 4, want = ((z[t] << 24) | (z[t + 1] << 16) | (z[t + 2] << 8) | z[t + 3]) >>> 0;
   if(ewAdler32(out) !== want) throw new Error("The file opened, but its compressed contents are damaged (the Adler-32 check fails).");
   return out;
 }
@@ -14615,7 +14670,8 @@ async function ewReport(W){
   L.push("Address type: " + (W.kind === "imported" ? "per address (below)" : EW_TYPE_NAME[W.script]) + ". Storage version " + W.version + (W.legacy ? " (from before Electrum 2.7)" : "") + ".");
   L.push("Password: " + (W.how.encFile ? "the whole file is encrypted with it (opened with the password typed)" : W.encKeys ? (W.locked ? "the keys are encrypted with it; type it to see them" : "the keys are encrypted with it (opened with the password typed)") : "none (anyone who has the file can spend)") + ".");
   if(W.how.patches) L.push("The file has " + W.how.patches + " change" + (W.how.patches === 1 ? "" : "s") + " saved at its end (Electrum’s partial writes); they are applied, as Electrum does.");
-  if(W.how.dropped) L.push("The end of the file is cut off (" + W.how.dropped + " characters); the complete part is read, as Electrum does.");
+  if(W.how.junk) L.push("The end of the file is damaged: " + W.how.dropped.toLocaleString("en-US") + " bytes after the complete wallet were left out, and the complete part is read. Electrum itself does not open the file like this (Cannot read wallet file).");
+  else if(W.how.dropped) L.push("The end of the file is cut off: " + W.how.dropped.toLocaleString("en-US") + " bytes of a change Electrum was writing were left out, and the complete part is read, as Electrum does.");
   if(W.how.python) L.push("This is an Electrum 1.x file (written as a Python literal).");
   for(const k of W.keystores.filter(x => x.key || x.old)){
     const tag = W.keystores.length > 1 ? "Key " + k.name.slice(1) + (W.walletType === "2fa" && k.name === "x3" ? " (TrustedCoin’s)" : "") + ": " : "";
@@ -14690,8 +14746,8 @@ async function ewOpenUi(){
   if(f && f.size > EW_MAX) return ewSay("bad", "This file is too big to be an Electrum wallet file this page reads (over 64 MB).");
   ewSay("", "Reading...");
   try {
-    let text;
-    if(f){ const b = await dbReadFile(f); try { text = new TextDecoder("utf-8", {fatal: true}).decode(b); } catch(e) { throw new Error("This file is not text, so it is not an Electrum wallet file (Electrum: Cannot read wallet file, not an Electrum wallet file?). A Bitcoin Core wallet.dat is a different kind of file."); } }
+    let text, extra = 0;
+    if(f){ const b = await dbReadFile(f), t = ewDecode(b); if(!t) throw new Error("This file is not text, so it is not an Electrum wallet file (Electrum: Cannot read wallet file, not an Electrum wallet file?). A Bitcoin Core wallet.dat is a different kind of file."); text = t.text; extra = t.extra; }
     else text = typed;
     const how = {encFile: false};
     const raw = b64bytes(text.trim()), magic = raw && raw.length >= 4 ? String.fromCharCode(...raw.slice(0, 4)) : "";
@@ -14702,12 +14758,13 @@ async function ewOpenUi(){
       let plain; try { plain = new TextDecoder("utf-8", {fatal: true}).decode(await ewOpenStorage(raw, pw)); } catch(e) { if(/^WRONG|damaged|compressed/.test(e.message)) throw e; throw new Error("The file could not be decrypted: " + e.message); }
       text = plain; how.encFile = true;
     }
-    const L = ewLoadText(text); Object.assign(how, {patches: L.patches, dropped: L.dropped, python: L.python});
+    if(run !== ewRun) return;
+    const L = await ewLoadText(text, {next: EW_PACE, stop: () => run !== ewRun}, extra); Object.assign(how, {patches: L.patches, dropped: L.dropped, junk: L.junk, python: L.python});
     if(run !== ewRun) return;
     const W = await ewRead(L.data, pw, how), out = await ewReport(W);
     if(run !== ewRun) return;
     ewGot = {W, out, secret: W.secrets.join("\n\n"), words: W.words};
-    ewSay(W.fileMatch === false ? "bad" : "ok", W.fileMatch === false ? "Opened, but the addresses do not match the ones in the file (see below)." : "Opened read only: " + out.split("\n")[0].replace(/^Electrum wallet file: /, "") + (W.secrets.length ? " The seed or keys are behind SHOW THE SECRET." : W.secretsLocked ? " Type the password to see the seed or keys." : ""));
+    ewSay(W.fileMatch === false ? "bad" : "ok", W.fileMatch === false ? "Opened, but the addresses do not match the ones in the file (see below)." : "Opened read only: " + out.split("\n")[0].replace(/^Electrum wallet file: /, "") + (how.junk ? " The end of the file is damaged: " + how.dropped.toLocaleString("en-US") + " bytes were left out (see below)." : "") + (W.secrets.length ? " The seed or keys are behind SHOW THE SECRET." : W.secretsLocked ? " Type the password to see the seed or keys." : ""));
     const o = document.getElementById("ewOut"); o.textContent = out; o.style.display = "";
     document.getElementById("ewSecretRow").style.display = W.secrets.length ? "" : "none"; document.getElementById("ewUseBtn").style.display = W.words ? "" : "none";
     document.getElementById("ewPrintBtn").disabled = false;
@@ -14749,8 +14806,8 @@ const EW_KAT_OLD = "{\"seed_version\": 4, \"use_encryption\": False, u\"master_p
 function ewSelfTests(eq){
   eq("Electrum wallet file: a whole file encrypted with its password (BIE1: PBKDF2-HMAC-SHA512, ECIES, zlib) opens (made with Electrum’s storage.py)", async () => new TextDecoder().decode(await ewOpenStorage(b64bytes(EW_KAT_BIE1), "test password")), "{\"seed_version\": 74, \"wallet_type\": \"standard\"}");
   eq("Electrum wallet file: a seed encrypted with the wallet password (AES-256-CBC, key SHA-256 twice) opens (made with Electrum’s crypto.py pw_encode)", () => ewPwDecode(EW_KAT_PW, "test password"), "bitter grass shiver impose acquire brush forget axis eager alone wine silver");
-  eq("Electrum 1.x wallet file (a Python literal): its master public key gives the first receive and change address (Electrum’s test wallet)", async () => { const W = await ewRead(ewLoadText(EW_KAT_OLD).data, "", {}); return W.labels + " " + (await ewAddrs(W, 0, 1))[0] + " " + (await ewAddrs(W, 1, 1))[0]; }, "1 1FJEEB8ihPMbzs2SkLmr37dHyRFzakqUmo 1KRW8pH6HFHZh889VDq6fEKvmrsmApwNfe");
-  eq("Electrum wallet file: changes saved at its end (JSON patches) are applied, and a cut-off end is left out", () => { const L = ewLoadText("{\"labels\": {\"a\": \"x\"}, \"n\": [1]},\n{\"op\": \"add\", \"path\": \"/labels/b~1c\", \"value\": \"y\"},\n{\"op\": \"remove\", \"path\": \"/labels/a\"},\n{\"op\": \"add\", \"path\": \"/n/-\", \"value\": 2},\n{\"op\": \"repl"); return JSON.stringify(L.data) + " " + L.patches + " " + L.dropped; }, "{\"labels\":{\"b/c\":\"y\"},\"n\":[1,2]} 3 14");
+  eq("Electrum 1.x wallet file (a Python literal): its master public key gives the first receive and change address (Electrum’s test wallet)", async () => { const W = await ewRead((await ewLoadText(EW_KAT_OLD)).data, "", {}); return W.labels + " " + (await ewAddrs(W, 0, 1))[0] + " " + (await ewAddrs(W, 1, 1))[0]; }, "1 1FJEEB8ihPMbzs2SkLmr37dHyRFzakqUmo 1KRW8pH6HFHZh889VDq6fEKvmrsmApwNfe");
+  eq("Electrum wallet file: changes saved at its end (JSON patches) are applied, and a cut-off end is left out", async () => { const L = await ewLoadText("{\"labels\": {\"a\": \"x\"}, \"n\": [1]},\n{\"op\": \"add\", \"path\": \"/labels/b~1c\", \"value\": \"y\"},\n{\"op\": \"remove\", \"path\": \"/labels/a\"},\n{\"op\": \"add\", \"path\": \"/n/-\", \"value\": 2},\n{\"op\": \"repl"); return JSON.stringify(L.data) + " " + L.patches + " " + L.dropped; }, "{\"labels\":{\"b/c\":\"y\"},\"n\":[1,2]} 3 14");
   eq("Any path: m/44h/0h/0h/0/* gives the first BIP44 address of abandon ... about, and 0/* below its account key the same (from @scure/bip32)", async () => { const sd = await mnemonicToSeed("abandon ".repeat(11) + "about", ""), [k, c] = await masterFromSeed(sd), P = apParse("m/44h/0h/0h/0/*", false), a = (await apAddrs({k, chain: c}, P.steps, null, "pkh", "main", 0, 1, "m"))[0];
     let [ak, ac] = [k, c]; for(const [i, h] of [[44, true], [0, true], [0, true]]) [ak, ac] = await ckdPriv(ak, ac, i, h); const b = (await apAddrs({pub: pubkeyBytes(ak), chain: ac}, apParse("0/*", true).steps, null, "pkh", "main", 0, 1, "key"))[0];
     return a.path + " " + a.address + " " + b.path + " " + b.address; }, "m/44'/0'/0'/0/0 1LqBGSKuX5yYUonjxT5qGfpUsXKYYWeabA key/0/0 1LqBGSKuX5yYUonjxT5qGfpUsXKYYWeabA");
@@ -14831,6 +14888,9 @@ function wdatRd(b){
 function wdatKeyType(k){ try { return wdatRd(k).str(); } catch(e) { return null; } }
 
 // --- Berkeley DB btree, as src/wallet/migrate.cpp reads it. keep(key) false: the value is only counted (not put together).
+// A damaged or hostile file cannot make the reader do more than the file holds: each page is read once in the whole file (a
+// btree page or an overflow page used twice is an error), a record may sit at an offset only once on its page, and all the
+// records together may not put together more bytes than the file has (WDAT_BUDGET).
 async function wdatBdb(b, tick, keep){
   const bad = (why) => new Error("This Berkeley DB file cannot be read: " + why + ".");
   if(b.length < 512) throw bad("it is shorter than one page");
@@ -14852,6 +14912,9 @@ async function wdatBdb(b, tick, keep){
   if(outer.encrypt) throw bad("it uses Berkeley DB’s own encryption, which Bitcoin Core never uses");
   let lsn = 0; for(let p = 0; p < outer.last; p++) if(u32(p * ps) !== 0 || u32(p * ps + 4) !== 1) lsn++;
   if(lsn) notes.push("Bitcoin Core’s own reader would refuse this file: it was not completely written out when it was last closed (" + wdatS(lsn, "page") + " with log sequence numbers that were not reset). Changes made just before then may be only in Bitcoin Core’s database log files. This page read what is in this file.");
+  const used = new Uint8Array(outer.last + 1), use = (pg, what) => { if(used[pg]) throw bad("page " + pg + " is used twice (" + what + "; the file is damaged)"); used[pg] = 1; };
+  let budget = b.length, work = 0;
+  const spend = (n) => { budget -= n; if(budget < 0) throw bad("its records hold more data than the file itself (the file is damaged)"); };
   const hdr = (pg) => {   // PageHeader
     if(pg > outer.last || (pg + 1) * ps > b.length) throw bad("page " + pg + " is past the end of the file");
     const o = pg * ps, h = {o, pg, next: u32(o + 16), entries: u16(o + 20), hf: u16(o + 22), level: b[o + 24], type: b[o + 25]};
@@ -14860,11 +14923,12 @@ async function wdatBdb(b, tick, keep){
     return h;
   };
   const items = (h, internal) => {   // RecordsPage and InternalPage: the record at each index; DELETE (0x80) is a flag on the type
-    const out = [];
+    const out = [], at0 = new Set();
     if(26 + 2 * h.entries > ps) throw bad("page " + h.pg + " lists more records than fit in it");
     for(let i = 0; i < h.entries; i++){
       const at = u16(h.o + 26 + 2 * i), o = h.o + at;
       if(at < 26 + 2 * (i + 1) || at + 3 > ps) throw bad("a record on page " + h.pg + " is not inside the page");
+      if(at0.has(at)) throw bad("page " + h.pg + " lists one record twice"); at0.add(at);
       const len = u16(o), t = b[o + 2] & 0x7f, del = (b[o + 2] & 0x80) !== 0;
       if(internal){ if(t !== 1 || at + 12 + len > ps) throw bad("internal page " + h.pg + " has a record of the wrong kind"); out.push({del, page: u32(o + 4)}); }
       else if(t === 1){ if(at + 3 + len > ps) throw bad("a record on page " + h.pg + " runs past the page"); out.push({del, data: b.subarray(o + 3, o + 3 + len)}); }
@@ -14879,11 +14943,13 @@ async function wdatBdb(b, tick, keep){
       if(seen.has(pg)) throw bad("an overflow chain goes round in a loop"); seen.add(pg);
       const h = hdr(pg); if(h.type !== 7) throw bad("an overflow record points to a page that is not an overflow page");
       if(26 + h.hf > ps) throw bad("overflow page " + pg + " says it holds more than fits");
+      use(pg, "by two overflow records"); spend(h.hf);
       parts.push(b.subarray(h.o + 26, h.o + 26 + h.hf)); got += h.hf; pg = h.next;
       if(got > 64 * 1048576) throw bad("a record is over 64 MB");
     }
     return concatBytes(...parts);
   };
+  const data = (r) => { if(r.data){ spend(r.data.length + 3); return r.data; } spend(12); return overflow(r.ovf); };
   const root = hdr(outer.root);
   if(root.type !== 5 || root.entries !== 2) throw bad("its list of subdatabases is not laid out as Bitcoin Core’s");
   const sub = items(root, false);
@@ -14895,10 +14961,12 @@ async function wdatBdb(b, tick, keep){
   if(inner.ps !== ps) throw bad("its subdatabase has another page size");
   if(inner.last > outer.last) throw bad("its subdatabase ends past the end of the file");
   if(inner.encrypt) throw bad("it uses Berkeley DB’s own encryption, which Bitcoin Core never uses");
-  const recs = [], seen = new Set(), stack = [inner.root]; let n = 0;
+  const recs = [], stack = [inner.root]; let n = 0;
+  use(0, "the meta page"); use(outer.root, "the list of subdatabases"); use(mainPg, "the subdatabase’s meta page");
   while(stack.length){   // depth first, from the root, as BerkeleyRODatabase::Open
     const pg = stack.pop();
-    if(seen.has(pg)) throw bad("page " + pg + " is linked twice (the file is damaged)"); seen.add(pg);
+    if(pg > outer.last) throw bad("page " + pg + " is past the end of the file");
+    if(used[pg]) throw bad("page " + pg + " is linked twice (the file is damaged)"); use(pg, "linked twice");
     if(++n % 400 === 0) await tick(n / (outer.last + 1));
     const h = hdr(pg);
     if(h.type === 3){ for(const r of items(h, true)) if(!r.del) stack.push(r.page); }
@@ -14908,8 +14976,9 @@ async function wdatBdb(b, tick, keep){
       let key = null;
       for(const r of rs){
         if(r.del) continue;   // a deleted record is skipped, and the next one keeps its role (key or value)
-        if(key === null){ key = r.data || overflow(r.ovf); continue; }
-        recs.push([key, keep(key) ? (r.data || overflow(r.ovf)) : null]); key = null;
+        if((work += 1) % 2000 === 0) await tick();   // a page of 64 KB can hold thousands of records
+        if(key === null){ key = data(r); continue; }
+        recs.push([key, keep(key) ? data(r) : null]); key = null;   // the key first; the value only when it is one this page reads
       }
     }
     else throw bad("page " + pg + " is of a type Bitcoin Core does not read (" + h.type + ")");
@@ -14928,22 +14997,36 @@ function wdatVarint(p, o, end){   // 1 to 9 bytes, big-endian, 7 bits a byte (al
     if(!(c & 0x80)) return [v, k + 1];
   }
 }
-function wdatSqlRecord(p, dec){   // the record format: a header of serial types, then the values
-  const [hs, a] = wdatVarint(p, 0, p.length); if(hs > p.length || hs < a) throw new Error("a row header is not valid");
-  const types = []; for(let o = a; o < hs;){ const [t, n] = wdatVarint(p, o, hs); types.push(t); o += n; }
-  let d = hs; const vals = [];
-  for(const t of types){
+// The record format: a header of serial types (at most WDAT_HDR bytes; Bitcoin Core's rows have 2 columns, the schema's 5), then
+// the values. get(n): the first n bytes of the payload (P bytes in all), read from its overflow pages only as far as asked, so a
+// value is put together only when it is used. -> {n, blob(i), val(i)}: val(i) is {text}, {blob}, {int} or {}.
+const WDAT_HDR = 512;
+function wdatSqlRecord(get, P, dec){
+  const h0 = get(Math.min(P, 9)), [hs, a] = wdatVarint(h0, 0, Math.min(P, 9));
+  if(hs > P || hs < a || hs > WDAT_HDR) throw new Error("a row header is not valid");
+  const h = get(hs), cols = [];
+  let d = hs;
+  for(let o = a; o < hs;){
+    const [t, k] = wdatVarint(h, o, hs); o += k;
     if(t === 10 || t === 11) throw new Error("a row uses a reserved type");
-    const n = t >= 12 ? Math.floor((t - 12) / 2) : [0, 1, 2, 3, 4, 6, 8, 8, 0, 0][t];
-    if(d + n > p.length) throw new Error("a row is shorter than its header says");
-    const v = p.subarray(d, d + n); d += n;
-    if(t >= 12) vals.push(t % 2 ? {text: dec.decode(v)} : {blob: v});
-    else if(t === 8 || t === 9) vals.push({int: t - 8});
-    else if(t >= 1 && t <= 6){ let x = 0; for(const c of v) x = x * 256 + c; if(v[0] & 0x80) x -= 2 ** (8 * n); vals.push({int: x}); }
-    else vals.push({});
+    const len = t >= 12 ? Math.floor((t - 12) / 2) : [0, 1, 2, 3, 4, 6, 8, 8, 0, 0][t];
+    if(d + len > P) throw new Error("a row is shorter than its header says");
+    cols.push({t, d, len}); d += len;
   }
-  return vals;
+  const val = (i) => {
+    const c = cols[i]; if(!c) return {};
+    const v = get(c.d + c.len).subarray(c.d, c.d + c.len), t = c.t;
+    if(t >= 12) return t % 2 ? {text: dec.decode(v)} : {blob: v};
+    if(t === 8 || t === 9) return {int: t - 8};
+    if(t >= 1 && t <= 6){ let x = 0; for(const q of v) x = x * 256 + q; if(v[0] & 0x80) x -= 2 ** (8 * c.len); return {int: x}; }
+    return {};
+  };
+  return {n: cols.length, blob: (i) => !!cols[i] && cols[i].t >= 12 && cols[i].t % 2 === 0, val};
 }
+// A damaged or hostile file cannot make the reader do more than the file holds: each page is read once in the whole file (a
+// b-tree page or an overflow page used twice is an error), a cell may sit at an offset only once on its page, a row's header and
+// key are read before its value, which is put together only when it is kept, and all the rows together may not read more bytes
+// than the file has.
 async function wdatSqlite(b, tick, keep){
   const bad = (why) => new Error("This SQLite file cannot be read: " + why + ".");
   const be16 = (o) => b[o] << 8 | b[o + 1], be32 = (o) => (b[o] << 24 | b[o + 1] << 16 | b[o + 2] << 8 | b[o + 3]) >>> 0;
@@ -14956,30 +15039,39 @@ async function wdatSqlite(b, tick, keep){
   const inHdr = be32(28), pages = inHdr && be32(24) === be32(92) ? inHdr : Math.floor(b.length / ps);   // the header’s page count is valid only with a matching change counter
   if(!pages || pages * ps > b.length) throw bad("it is shorter than its header says, so the file is cut short");
   const enc = be32(56), dec = new TextDecoder(enc === 2 ? "utf-16le" : enc === 3 ? "utf-16be" : "utf-8");
-  // A table leaf cell’s payload: what fits on the page, then a chain of overflow pages (each: the next page’s number, then U - 4 bytes).
+  const used = new Uint8Array(pages + 1); let budget = b.length, work = 0;
+  const spend = (n) => { budget -= n; if(budget < 0) throw bad("its rows hold more data than the file itself (the file is damaged)"); };
+  // A table leaf cell’s payload: what fits on the page, then a chain of overflow pages (each: the next page’s number, then U - 4
+  // bytes), followed only as far as get(n) asks. get(n) returns a buffer whose first n bytes are the payload’s.
   const payload = (o, P, end) => {
     if(P > 64 * 1048576) throw bad("a row is over 64 MB");
     const X = U - 35; let local = P;
     if(P > X){ const M = Math.floor((U - 12) * 32 / 255) - 23, K = M + ((P - M) % (U - 4)); local = K <= X ? K : M; }
     if(o + local + (local < P ? 4 : 0) > end) throw bad("a row runs past its page");
-    if(local === P) return b.subarray(o, o + P);
-    const out = new Uint8Array(P); out.set(b.subarray(o, o + local));
-    let got = local, pg = be32(o + local); const seen = new Set();
-    while(got < P){
-      if(pg < 1 || pg > pages || seen.has(pg)) throw bad("an overflow chain is broken"); seen.add(pg);
-      const po = (pg - 1) * ps, n = Math.min(U - 4, P - got); out.set(b.subarray(po + 4, po + 4 + n), got); got += n; pg = be32(po);
-    }
-    return out;
+    let buf = b.subarray(o, o + local), got = local, pg = local < P ? be32(o + local) : 0;
+    spend(local + 4);
+    const grow = (n) => { const nb = new Uint8Array(Math.min(P, Math.max(n, 2 * buf.length))); nb.set(buf.subarray(0, got)); buf = nb; };
+    return (n) => {
+      if(n > got && n > buf.length) grow(n);
+      while(got < n){
+        if(pg < 1 || pg > pages) throw bad("an overflow chain is broken");
+        if(used[pg]) throw bad("page " + pg + " is used twice (the file is damaged)"); used[pg] = 1;
+        const po = (pg - 1) * ps, k = Math.min(U - 4, P - got); spend(k);
+        if(got + k > buf.length) grow(got + k);
+        buf.set(b.subarray(po + 4, po + 4 + k), got); got += k; pg = be32(po);
+      }
+      return buf;
+    };
   };
   let n = 0;
   const walk = async (root, onRow) => {   // a table b-tree: interior pages (0x05) point to children, leaf pages (0x0d) hold the rows
-    const stack = [root], seen = new Set();
+    const stack = [root];
     while(stack.length){
       const pg = stack.pop();
       if(!(pg >= 1 && pg <= pages)) throw bad("a page number is out of range");
-      if(seen.has(pg)) throw bad("page " + pg + " is linked twice (the file is damaged)"); seen.add(pg);
+      if(used[pg]) throw bad("page " + pg + " is linked twice (the file is damaged)"); used[pg] = 1;
       if(++n % 400 === 0) await tick(Math.min(1, n / pages));
-      const po = (pg - 1) * ps, h = po + (pg === 1 ? 100 : 0), t = b[h], cells = be16(h + 3), end = po + U;
+      const po = (pg - 1) * ps, h = po + (pg === 1 ? 100 : 0), t = b[h], cells = be16(h + 3), end = po + U, at = new Set();
       if(t === 0x05){
         if(h + 12 + 2 * cells > end) throw bad("page " + pg + " lists more cells than fit in it");
         for(let i = 0; i < cells; i++){ const c = po + be16(h + 12 + 2 * i); if(c + 4 > end) throw bad("a cell on page " + pg + " is not inside the page"); stack.push(be32(c)); }
@@ -14987,18 +15079,20 @@ async function wdatSqlite(b, tick, keep){
       } else if(t === 0x0d){
         if(h + 8 + 2 * cells > end) throw bad("page " + pg + " lists more cells than fit in it");
         for(let i = 0; i < cells; i++){
-          const c = po + be16(h + 8 + 2 * i); if(c >= end) throw bad("a cell on page " + pg + " is not inside the page");
-          const [P, a] = wdatVarint(b, c, end), [, r] = wdatVarint(b, c + a, end);
-          onRow(wdatSqlRecord(payload(c + a + r, P, end), dec));
+          const off = be16(h + 8 + 2 * i), c = po + off; if(c >= end) throw bad("a cell on page " + pg + " is not inside the page");
+          if(at.has(off)) throw bad("page " + pg + " lists one cell twice"); at.add(off);
+          if(++work % 2000 === 0) await tick();   // a page of 64 KB can hold thousands of cells
+          try { const [P, a] = wdatVarint(b, c, end), [, r] = wdatVarint(b, c + a, end); onRow(wdatSqlRecord(payload(c + a + r, P, end), P, dec)); }
+          catch(e) { throw /^This SQLite/.test(e.message) ? e : bad(e.message + " (page " + pg + ")"); }
         }
       } else throw bad("page " + pg + " is not a table page (type " + t + ")");
     }
   };
   let mainRoot = 0;
-  await walk(1, (v) => { if(v.length >= 4 && v[0].text === "table" && v[1].text === "main" && v[3].int > 0) mainRoot = v[3].int; });
+  await walk(1, (r) => { if(r.n >= 4 && r.val(0).text === "table" && r.val(1).text === "main" && r.val(3).int > 0) mainRoot = r.val(3).int; });
   if(!mainRoot) throw bad("it has no table named main, so it is not a Bitcoin Core wallet");
   const recs = []; let odd = 0;
-  await walk(mainRoot, (v) => { if(v.length < 2 || !v[0].blob || !v[1].blob){ odd++; return; } recs.push([v[0].blob, keep(v[0].blob) ? v[1].blob : null]); });
+  await walk(mainRoot, (r) => { if(r.n < 2 || !r.blob(0) || !r.blob(1)){ odd++; return; } const key = r.val(0).blob; recs.push([key, keep(key) ? r.val(1).blob : null]); });   // the key first; the value only when it is one this page reads
   if(odd) notes.push(wdatS(odd, "row") + " of the table main " + (odd === 1 ? "is" : "are") + " not a key and a value, and " + (odd === 1 ? "was" : "were") + " skipped.");
   return {records: recs, ps, app: hex(b.subarray(68, 72)), userVersion: be32(60), notes};
 }
@@ -15145,15 +15239,25 @@ async function wdatAesKey(raw){ return crypto.subtle.importKey("raw", raw, {name
 async function wdatAesDec(key, iv, ct){ try { return new Uint8Array(await crypto.subtle.decrypt({name: "AES-CBC", iv}, key, ct)); } catch(e) { return null; } }   // PKCS#7 padding checked, as AES256CBCDecrypt
 // DecryptKey: IV = the first 16 bytes of the public key’s double SHA-256 (CPubKey::GetHash); the key must be 32 bytes
 async function wdatDecryptKey(mk, c){ const s = await wdatAesDec(mk, (await dsha256(c.pub)).slice(0, 16), c.crypted); return s && s.length === 32 ? s : null; }
+// k times G with a table of d * 16^j * G (64 rows of 16 points, made once): 64 additions instead of about 384, so checking every
+// key of a large wallet (M3) takes seconds, not a minute. The same affine formulas as emul (eadd); the table is public.
+let wdatGT = null;
+function wdatGmul(k){
+  if(!wdatGT){ wdatGT = []; let B = SG; for(let j = 0; j < 64; j++){ const row = [null]; for(let d = 1; d < 16; d++) row.push(eadd(row[d - 1], B)); wdatGT.push(row); B = eadd(row[15], B); } }
+  let R = null; for(let j = 0; j < 64; j++){ const d = Number((k >> BigInt(4 * j)) & 15n); if(d) R = eadd(R, wdatGT[j][d]); }
+  return R;
+}
 function wdatPubOf(k, n){   // the public key of private key k in the form of public key n (compressed, or uncompressed)
-  const P = emul(BigInt("0x" + hex(k)), SG); if(n.length === 33) return pubFromPoint(P);
+  const P = wdatGmul(BigInt("0x" + hex(k))); if(n.length === 33) return pubFromPoint(P);
   return concatBytes(Uint8Array.of(n[0]), fromHex(P[0].toString(16).padStart(64, "0")), fromHex(P[1].toString(16).padStart(64, "0")));
 }
 function wdatMatches(k, pub){ return wdatEq(wdatPubOf(k, pub), pub); }
 // Every encrypted key of the wallet (legacy ckey records and descriptor keys), in a fixed order.
 function wdatCrypted(w){ const out = [...w.keys.values()].filter(x => x.crypted); for(const D of w.descs.values()) for(const x of D.keys.values()) if(x.crypted) out.push(x); return out; }
 // CWallet::Unlock: try each master key; a wrong passphrase fails the padding, or gives a master key that is not 32 bytes, or one
-// that does not decrypt a key to its own public key. Returns {ok, bad} (bad: keys that would not decrypt), {wrong}, {error} or null (stopped).
+// that does not decrypt a key to its own public key. Then every key is decrypted and checked against its own public key, as
+// Bitcoin Core does on the first unlock (CheckDecryptionKey); a key that fails is not kept (it is marked damaged). Returns {ok,
+// bad, total} (bad: keys that would not decrypt or do not match), {wrong}, {error} or null (stopped).
 async function wdatUnlock(w, pass, prog, stop){
   const pw = new TextEncoder().encode(pass), all = wdatCrypted(w);
   for(const m of [...w.mkeys].sort((a, b) => a.id - b.id)){
@@ -15167,11 +15271,12 @@ async function wdatUnlock(w, pass, prog, stop){
     if(all.length){ const s = await wdatDecryptKey(mk, all[0]); if(!s || !wdatMatches(s, all[0].pub)){ if(s) s.fill(0); continue; } }
     let bad = 0;
     for(const [i, c] of all.entries()){
-      const s = await wdatDecryptKey(mk, c); if(s) c.secret = s; else bad++;
-      if(i % 250 === 249){ if(stop()) return null; await prog("Decrypting the keys: " + wdatN(i + 1) + " of " + wdatN(all.length)); }
+      const s = await wdatDecryptKey(mk, c);
+      if(s && wdatMatches(s, c.pub)){ c.secret = s; c.damaged = false; } else { if(s) s.fill(0); c.damaged = true; bad++; }
+      if(i % 50 === 49){ if(stop()) return null; await prog("Decrypting and checking the keys: " + wdatN(i + 1) + " of " + wdatN(all.length)); }
     }
     w.opened = true;
-    return {ok: true, bad, checked: all.length > 0};
+    return {ok: true, bad, total: all.length, checked: all.length > 0};
   }
   return {wrong: true};
 }
@@ -15183,7 +15288,8 @@ function wdatStep(s){ const h = /[hH']$/.test(s), n = parseInt(s, 10); if(!(n >=
 async function wdatWif(k, compressed, net){ return base58check(concatBytes(Uint8Array.of(net === "test" ? 0xef : 0x80), k, compressed ? Uint8Array.of(1) : new Uint8Array(0))); }
 function wdatXpub(x74, net){ return base58check(concatBytes(Uint8Array.from(net === "test" ? [0x04, 0x35, 0x87, 0xcf] : XPUB_VER), x74)); }
 function wdatXprv(x74, k, net){ return base58check(concatBytes(Uint8Array.from(net === "test" ? [0x04, 0x35, 0x83, 0x94] : [0x04, 0x88, 0xad, 0xe4]), x74.subarray(0, 41), Uint8Array.of(0), k)); }
-function wdatSecretOf(D, pub){ const h = hex(pub); for(const x of D.keys.values()) if(x.secret && (hex(x.pub) === h || (pub.length === 32 && hex(x.pub.subarray(1)) === h))) return x.secret; return null; }
+function wdatKeyOf(D, pub){ const h = hex(pub); for(const x of D.keys.values()) if(hex(x.pub) === h || (pub.length === 32 && hex(x.pub.subarray(1)) === h)) return x; return null; }
+function wdatSecretOf(D, pub){ const x = wdatKeyOf(D, pub); return x && x.secret ? x.secret : null; }
 function wdatNet(w){ return w.net || "main"; }
 // The public key (hex) of key expression j of descriptor D at index i: Bitcoin Core’s own cache first (descriptor.cpp GetPubKey:
 // a derived entry for this index, or the parent xpub before the wildcard), then the private key when the file has it (or it was
@@ -15238,17 +15344,19 @@ async function wdatWatchForm(w, D){
   return used ? descriptorChecksum(out + body.slice(at)) : null;
 }
 // ToPrivateString: each key with its private key in place (xprv for an extended key, WIF for a plain one). missing: keys the file
-// does not hold, which stay public (Bitcoin Core’s listdescriptors would refuse such a descriptor).
+// does not hold, which stay public (Bitcoin Core’s listdescriptors would refuse such a descriptor); damaged: keys that did not
+// decrypt to their own public key, which stay public too.
 async function wdatPrivDesc(w, D){
-  const body = D.str.replace(/#[^#()]*$/, ""), net = wdatNet(w); let out = "", at = 0, missing = 0;
+  const body = D.str.replace(/#[^#()]*$/, ""), net = wdatNet(w); let out = "", at = 0, missing = 0, damaged = 0;
+  const gone = (pub) => { const x = wdatKeyOf(D, pub); if(x && x.damaged) damaged++; else missing++; };
   for(const t of b138KeyTokens(body)){
     const p = body.indexOf(t.t, at), m = B138_KEY.exec(t.t); out += body.slice(at, p); at = p + t.t.length;
     let rep = t.t;
-    if(m && /^[0-9a-fA-F]+$/.test(m[3])){ const pub = fromHex(m[3]), s = wdatSecretOf(D, pub); if(s) rep = t.t.replace(m[3], await wdatWif(s, pub.length !== 65, net)); else missing++; }
-    else if(m){ const raw = await base58decode(m[3]), s = raw.length === 78 && wdatSecretOf(D, raw.subarray(45, 78)); if(s) rep = t.t.replace(m[3], await wdatXprv(raw.subarray(4), s, net)); else missing++; }
+    if(m && /^[0-9a-fA-F]+$/.test(m[3])){ const pub = fromHex(m[3]), s = wdatSecretOf(D, pub); if(s) rep = t.t.replace(m[3], await wdatWif(s, pub.length !== 65, net)); else gone(pub); }
+    else if(m){ const raw = await base58decode(m[3]), s = raw.length === 78 && wdatSecretOf(D, raw.subarray(45, 78)); if(s) rep = t.t.replace(m[3], await wdatXprv(raw.subarray(4), s, net)); else if(raw.length === 78) gone(raw.subarray(45, 78)); else missing++; }
     out += rep;
   }
-  return {text: descriptorChecksum(out + body.slice(at)), missing};
+  return {text: descriptorChecksum(out + body.slice(at)), missing, damaged};
 }
 // DescriptorID: SHA-256 of the descriptor in its compatible form (apostrophes) with that form’s checksum.
 async function wdatDescIdOk(D){
@@ -15367,7 +15475,7 @@ async function wdatSecretHead(w){
     for(const D of [...w.descs.values()].sort((a, b) => rank(a) - rank(b))){
       if(!D.keys.size) continue;
       const p = await wdatPrivDesc(w, D);
-      L.push((wdatTypeName(D) || "Not active") + (p.missing ? " (" + wdatS(p.missing, "key is", "keys are") + " not in this file)" : "") + ":", p.text);
+      L.push((wdatTypeName(D) || "Not active") + (p.missing ? " (" + wdatS(p.missing, "key is", "keys are") + " not in this file)" : "") + (p.damaged ? " (DAMAGED: " + wdatS(p.damaged, "key does", "keys do") + " not decrypt to " + (p.damaged === 1 ? "its" : "their") + " own public key, and " + (p.damaged === 1 ? "stays" : "stay") + " public)" : "") + ":", p.text);
     }
   }
   const sk = wdatSeedKey(w);
@@ -15380,7 +15488,7 @@ async function wdatSecretHead(w){
 }
 async function wdatSecretItem(w, i){
   const {x, m} = w.lines[i];
-  if(!x.secret) return String(i + 1).padStart(5) + "  " + (m.path || "no HD path") + "  (not decrypted)";
+  if(!x.secret) return String(i + 1).padStart(5) + "  " + (m.path || "no HD path") + (x.damaged ? "  DAMAGED: this key does not decrypt to its own public key, so it is not shown" : "  (not decrypted)");
   const ok = wdatMatches(x.secret, x.pub);
   return String(i + 1).padStart(5) + "  " + (m.path === "s" || m.path === "m" ? "HD seed" : m.path || "no HD path") + "  " + await wdatWif(x.secret, x.pub.length === 33, wdatNet(w)) + (ok ? "" : "  DOES NOT MATCH ITS PUBLIC KEY (damaged)");
 }
@@ -15390,6 +15498,8 @@ function wdatNext(w){ return "Next steps: move the coins to a new wallet you mad
 let wdatRun = 0, wdat = null, wdatV = null, wdatPg = 0, wdatSPg = 0;
 function wdatHeld(w){ return !!(w && ([...w.keys.values()].some(x => x.secret) || [...w.descs.values()].some(D => [...D.keys.values()].some(x => x.secret)))); }
 function wdatHasSecret(){ return wdatHeld(wdat); }
+// For auto-clear: the keys read from a file, or a file chosen and not read yet (it may hold keys that are not encrypted).
+function wdatHolds(){ const f = document.getElementById("wdatFile"); return wdatHasSecret() || !!(f && f.files && f.files.length); }
 function wdatWipe(){
   if(wdat){ for(const x of wdat.keys.values()) if(x.secret) x.secret.fill(0); for(const D of wdat.descs.values()) for(const x of D.keys.values()) if(x.secret) x.secret.fill(0); }
   wdat = null; wdatV = null; wdatPg = 0; wdatSPg = 0;
@@ -15407,7 +15517,7 @@ function wdatPicked(){ wdatRun++; wdatWipe(); const f = document.getElementById(
 async function wdatOpenUi(){
   if(!gateOk()) return;
   const f = document.getElementById("wdatFile").files[0], st = document.getElementById("wdatStatus");
-  if(!f){ wdatWipe(); st.textContent = "Choose the wallet.dat file first (or drop it on this box)."; return; }
+  if(!f){ wdatWipe(); st.className = "status bad"; st.textContent = "Choose the wallet.dat file first (or drop it on this box)."; return; }
   if(f.size > WDAT_MAX){ wdatWipe(); st.className = "status bad"; st.textContent = "This file is over " + wdatN(WDAT_MAX / 1048576) + " MB, more than this page reads at once. A wallet.dat is usually far smaller: check that it is the right file."; return; }
   const run = ++wdatRun; wdatWipe(); st.textContent = "Reading the file...";
   let bytes; try { bytes = await dbReadFile(f); } catch(e) { if(run === wdatRun){ st.className = "status bad"; st.textContent = e.message; } return; }
@@ -15437,7 +15547,7 @@ async function wdatShow(bytes, pass, run){
   else if(!pass) head = "Read: a " + kind + ", encrypted. To check the passphrase and see the private keys, type it above and press READ WALLET FILE again. Everything below is read without it.";
   else if(u.error){ cls = "status bad"; head = u.error + " The public details below are read without it."; }
   else if(u.wrong){ cls = "status bad"; head = "Wrong passphrase: it does not open this wallet. Check capitals, spaces, accents and the keyboard layout; Bitcoin Core uses the passphrase exactly as it was typed. The public details below are read without it."; }
-  else head = "Passphrase right: it opens this " + kind + "." + (u.bad ? " But " + wdatS(u.bad, "key", "keys") + " would not decrypt: the file is damaged (Bitcoin Core would refuse to unlock it)." : u.checked ? " Every key decrypted." : " (The wallet holds no encrypted keys to check it with.)") + " SHOW THE PRIVATE KEYS shows them.";
+  else head = "Passphrase right: it opens this " + kind + ". " + (u.checked ? wdatN(u.total - u.bad) + " of " + wdatN(u.total) + " keys decrypted and checked against their public keys." : "(The wallet holds no encrypted keys to check it with.)") + (u.bad ? " " + wdatS(u.bad, "key does", "keys do") + " not decrypt to " + (u.bad === 1 ? "its" : "their") + " own public key: the file is damaged (Bitcoin Core would refuse to unlock it). " + (u.bad === 1 ? "It is" : "They are") + " marked DAMAGED in the list of private keys and left out of the private descriptors." : "") + (wdatHeld(w) ? " SHOW THE PRIVATE KEYS shows them." : "");
   if(u && u.bad) cls = "status bad";
   wdat = w; st.className = cls; st.textContent = head;
   const o = document.getElementById("wdatOut"); o.textContent = await wdatSummary(w) + (wdatHasSecret() ? "\n\n" + wdatNext(w) : ""); o.style.display = "";

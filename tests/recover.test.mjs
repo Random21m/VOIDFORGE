@@ -100,7 +100,7 @@ for (const [name, c] of Object.entries(E.cases)) {
 { const r = await open(fx('el-segwit-patched.json'));
   ok(/The file has 2 changes saved at its end/.test(r.out) && /Labels: 2/.test(r.out), 'partial writes: the 2 label changes Electrum appended are applied');
   const t = fx('el-segwit-patched.json'), cut = t.slice(0, t.length - 30), r2 = await open(cut);
-  ok(r2.cls === 'status ok' && /The end of the file is cut off \(\d+ characters\)/.test(r2.out) && /Labels: 1\b/.test(r2.out), 'a file cut off in its last change: the complete part is read, as Electrum does');
+  ok(r2.cls === 'status ok' && /The end of the file is cut off: \d+ bytes of a change Electrum was writing were left out/.test(r2.out) && !/damaged/.test(r2.st) && /Labels: 1\b/.test(r2.out), 'a file cut off in its last change: the complete part is read, as Electrum does');
   const r3 = await open(fx('el-2fa-pw.json'), 'test password');
   ok(/Key 3 \(TrustedCoin’s\)/.test(r3.out) && /only Electrum restores a two-factor wallet/.test(r3.out) && /This file holds the first key only/.test(r3.out), '2FA: TrustedCoin’s key named, and how to restore it');
   const r4 = await open(fx('zpub-watch.json'));
@@ -139,9 +139,9 @@ for (const [name, c] of Object.entries(E.cases)) {
   ok(threw === 5, 'Python literal: broken text and anything but a literal is refused');
 }
 {
-  let msg = ''; try { w.ewLoadText('{"a": {}},\n{"op": "add", "path": "/__proto__/x", "value": 1}'); } catch (e) { msg = e.message; }
+  let msg = ''; try { await w.ewLoadText('{"a": {}},\n{"op": "add", "path": "/__proto__/x", "value": 1}'); } catch (e) { msg = e.message; }
   ok(/points to a place that is not there/.test(msg) && w.eval('({}).x') === undefined, 'JSON patch into __proto__: refused, the prototype is untouched');
-  try { w.ewLoadText('{"a": 1},\n{"op": "move", "from": "/a", "path": "/b"}'); msg = ''; } catch (e) { msg = e.message; }
+  try { await w.ewLoadText('{"a": 1},\n{"op": "move", "from": "/a", "path": "/b"}'); msg = ''; } catch (e) { msg = e.message; }
   ok(/is not one Electrum writes/.test(msg), 'JSON patch with an op Electrum never writes: refused');
   const old = fx('electrum-1x-default_wallet');
   ok((await open(old.replace("'use_encryption': True", "'use_encryption': False"), '')).cls === 'status bad', '1.x file that says it has no password but holds encrypted keys: not shown as if it were plain');
@@ -152,6 +152,45 @@ for (const [name, c] of Object.entries(E.cases)) {
   ok(/not text, so it is not an Electrum wallet file/.test($('ewStatus').textContent) && /Bitcoin Core wallet\.dat is a different kind of file/.test($('ewStatus').textContent), 'a binary file: refused, and a wallet.dat is named as a different kind');
   w.ewClear(); $('ewIn').value = '{}'; w.eval('ewDropped = new File(["{}"], "x")'); await w.ewOpenUi();
   ok(/use one of them/.test($('ewStatus').textContent), 'a file and pasted text at once: asks to use one');
+}
+
+// ===== damaged and large files (v2.16.0 review H1, M1): a big wallet file cut off, with a damaged end or with its last change
+// cut is read in one pass (Electrum's json_db.py maybe_load_incomplete_data), quickly, and CLEAR can stop it
+{
+  const c = E.cases['el-segwit-plain.json'], doc = JSON.parse(fx('el-segwit-plain.json'));
+  doc.transactions = {}; for (let i = 0; i < 9000; i++) doc.transactions[nc.createHash('sha256').update('t' + i).digest('hex')] = nc.createHash('sha512').update('r' + i).digest('hex').repeat(4) + '"{[\\';
+  const text = JSON.stringify(doc, null, 4); ok(text.length > 5 * 1048576, 'damaged files: the test wallet is ' + (text.length / 1048576).toFixed(1) + ' MB, with brackets, quotes and backslashes inside its strings');
+  const openFile = async (bytes, pw = '') => { w.ewClear(); w.eval('ewDropped = null'); w.__ewf = new w.File([bytes], 'default_wallet'); w.eval('ewDropped = window.__ewf'); $('ewPass').value = pw; const t0 = Date.now(); await w.ewOpenUi(); return { ms: Date.now() - t0, st: $('ewStatus').textContent, cls: $('ewStatus').className, out: $('ewOut').textContent }; };
+  const LIMIT = 8000;
+  let r = await openFile(Buffer.from(text.slice(0, Math.floor(text.length * 0.6))));
+  ok(r.cls === 'status bad' && /not an Electrum wallet file/.test(r.st) && r.ms < LIMIT, 'damaged files: cut in the middle of the wallet: refused with the reason, in ' + r.ms + ' ms (under ' + LIMIT + ')');
+  r = await openFile(Buffer.concat([Buffer.from(text), Buffer.alloc(4096)]));
+  ok(r.cls === 'status ok' && /The end of the file is damaged: 4,096 bytes were left out/.test(r.st) && /The end of the file is damaged: 4,096 bytes after the complete wallet were left out/.test(r.out) && r.out.includes(c.recv[9]) && r.ms < LIMIT, 'damaged files: a whole wallet followed by 4 KB of zero bytes opens, and says 4,096 bytes were left out (' + r.ms + ' ms)');
+  r = await openFile(Buffer.concat([Buffer.from(text), Buffer.from([0x0a, 0xff, 0xfe, 0x80, 0x41, 0x00, 0x9c])]));
+  ok(r.cls === 'status ok' && /6 bytes were left out/.test(r.st) && /6 bytes after the complete wallet/.test(r.out) && r.out.includes(c.change[9]), 'damaged files: a whole wallet, a line break and 6 bytes that are not text (a failing disk): it opens, and says the 6 bytes were left out');
+  r = await openFile(Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text)]));
+  ok(r.cls === 'status bad' && /not text/.test(r.st), 'damaged files: a file that does not start as text is still refused as not text');
+  let p = text; for (let i = 0; i < 6000; i++) p += ',\n{"op": "add", "path": "/labels/x' + i + '", "value": "y{\\"}"}';
+  r = await openFile(Buffer.from(p.slice(0, p.length - 9)));
+  ok(r.cls === 'status ok' && /The file has 5999 changes saved at its end/.test(r.out) && /cut off: 49 bytes of a change Electrum was writing/.test(r.out) && !/damaged/.test(r.st) && r.ms < LIMIT, 'damaged files: 6,000 changes saved at the end, the last one cut: 5,999 applied and the cut one left out, as Electrum does (' + r.ms + ' ms)');
+  r = await openFile(Buffer.from(p + ',\n'));
+  ok(r.cls === 'status ok' && /6000 changes/.test(r.out) && /cut off: 2 bytes/.test(r.out), 'damaged files: a file that ends right after a ",\\n" keeps every change');
+  const L = await w.ewLoadText('{"a": "x\\"},\\n{"},\n{"op": "add", "path": "/b", "value": "}{"},\n{"op": "add", "path": "/c", "value": [1, {"d": "\\\\"}]},\n{"op": "add", "path": "/e"');
+  ok(JSON.stringify(L.data) === JSON.stringify({ a: 'x"},\n{', b: '}{', c: [1, { d: '\\' }] }) && L.patches === 2 && !L.junk, 'damaged files: brackets, quotes, ",\\n" and backslashes inside strings do not fool the scanner');
+  let stopped = ''; try { await w.ewLoadText(text.slice(0, text.length - 100), { next: 0, stop: () => true }); } catch (e) { stopped = e.message; }
+  { let st2 = ''; try { await w.ewLoadText('{},\n{' + '['.repeat(500), { next: 0, stop: () => true }); } catch (e) { st2 = e.message; } stopped += st2; }
+  ok(stopped === 'STOPPEDSTOPPED', 'damaged files: the scanner gives the page a moment as it goes (inside strings and outside), and CLEAR stops it there');
+  { w.ewClear(); w.__ewf = new w.File([Buffer.from(text.slice(0, text.length - 50))], 'default_wallet'); w.eval('ewDropped = window.__ewf'); const run = w.ewOpenUi(); await sleep(0); w.ewClear(); await run;
+    ok($('ewStatus').textContent === '' && $('ewOut').textContent === '' && !w.eval('ewGot'), 'damaged files: CLEAR while a big file is read: nothing is shown afterwards'); }
+  // M1: whole-file encryption of a wallet over 4 MB of JSON (zlib up to EW_MAX, 64 MB), and a zlib bomb past it
+  const big = JSON.parse(fx('el-segwit-plain.json')); big.transactions = Object.fromEntries(Array.from({ length: 30000 }, (_, i) => [nc.createHash('sha256').update('b' + i).digest('hex'), 'ab'.repeat(200)]));
+  const bt = JSON.stringify(big); ok(bt.length > 12 * 1048576, 'large encrypted file: the test wallet is ' + (bt.length / 1048576).toFixed(1) + ' MB of JSON');
+  let t0 = Date.now(); r = await open(storageEncrypt(bt, 'pw'), 'pw');
+  ok(r.cls === 'status ok' && r.out.includes(c.recv[0]) && /whole file is encrypted/.test(r.out), 'large encrypted file: a whole-file-encrypted wallet of ' + (bt.length / 1048576).toFixed(1) + ' MB of JSON opens (' + (Date.now() - t0) + ' ms)');
+  t0 = Date.now(); r = await open(storageEncrypt('{"a": "' + 'x'.repeat(65 * 1048576) + '"}', 'pw'), 'pw');
+  ok(r.cls === 'status bad' && /unpack to more than 64 MB, more than this page reads\. Open it in Electrum itself\./.test(r.st) && Date.now() - t0 < 60000, 'large encrypted file: one that unpacks to more than 64 MB is refused with the limit and what to do (' + (Date.now() - t0) + ' ms)');
+  { let m = ''; try { w.inflateRaw(new Uint8Array(zlib.deflateRawSync(Buffer.alloc(4194305)))); } catch (e) { m = e.message; } ok(/unpacks to more than 4 MB/.test(m) && w.inflateRaw(new Uint8Array(zlib.deflateRawSync(Buffer.alloc(4194304)))).length === 4194304, 'BBQr and Krux keep their 4 MB limit (4,194,304 bytes unpack, one more does not)'); }
+  w.ewClear();
 }
 
 // ===== secrets: SHOW, re-hide, auto-clear, CLEAR ALL, the words box, PRINT SUMMARY, the gate, the house style
@@ -188,7 +227,12 @@ for (const [name, c] of Object.entries(E.cases)) {
   ok(w.addrMeta('wvList', $('wvList').children[12].querySelector('button')).change === true && w.addrMeta('wvList', $('wvList').children[2].querySelector('button')).change === false, 'Receive and change: a change row’s QR is printed as a change address');
   await set('wvStart', '5'); ok(rows()[0] === ref(AB, "m/84'/0'/0'/0/5") && rows()[10] === ref(AB, "m/84'/0'/0'/1/5") && /addresses 5 to 14/.test($('wvPath').textContent), 'START AT 5: addresses 5 to 14 of each');
   w.apMore(); await sleep(10); await w.wvRefresh(); ok(rows().length === 60 && rows()[29] === ref(AB, "m/84'/0'/0'/0/34") && rows()[59] === ref(AB, "m/84'/0'/0'/1/34"), 'SHOW 20 MORE: 30 of each, 5 to 34');
-  w.wvPage(1); await sleep(10); await w.wvRefresh(); ok($('wvStart').value === '15' && rows().length === 20 && rows()[0] === ref(AB, "m/84'/0'/0'/0/15"), 'NEXT 10 moves the start by 10 and goes back to 10 of each');
+  ok($('wvNext').textContent === 'NEXT 30' && $('wvPrev').textContent === 'PREVIOUS 30' && $('wvCopy').textContent === 'COPY THESE 60', 'after SHOW 20 MORE the pager says what it does: PREVIOUS 30, NEXT 30, COPY THESE 60');
+  w.wvPage(1); await sleep(10); await w.wvRefresh(); ok($('wvStart').value === '35' && rows().length === 60 && rows()[0] === ref(AB, "m/84'/0'/0'/0/35") && rows()[29] === ref(AB, "m/84'/0'/0'/0/64") && rows()[30] === ref(AB, "m/84'/0'/0'/1/35"), 'NEXT 30 moves the start by the 30 shown (35 to 64 of each), with no address shown twice, and keeps 30 of each');
+  w.wvPage(-1); await sleep(10); await w.wvRefresh(); ok($('wvStart').value === '5' && rows().length === 60 && rows()[0] === ref(AB, "m/84'/0'/0'/0/5") && !$('wvPrev').disabled, 'PREVIOUS 30 goes back to 5 to 34');
+  w.wvPage(-1); await sleep(10); await w.wvRefresh(); ok($('wvStart').value === '0' && $('wvPrev').disabled, 'PREVIOUS stops at address 0');
+  await set('wvStart', '2147483640'); ok(rows().length === 16 && $('wvNext').disabled && $('wvMore').disabled && $('wvNext').textContent === 'NEXT 10' && /2147483640 to 2147483647/.test($('wvPath').textContent), 'START AT 2147483640: the last 8 of each list; NEXT 10 and SHOW 20 MORE are off at the last address number');
+  await set('wvStart', '2147483620'); ok(!$('wvMore').disabled, 'START AT 2147483620: SHOW 20 MORE is on'); w.apMore(); await sleep(10); await w.wvRefresh(); ok(rows().length === 56 && $('wvMore').disabled, 'and after it, at the last address number, it is off');
   await set('wvStart', 'x'); ok(/The start must be a whole number/.test($('wvErr').textContent) && rows().length === 0, 'a bad start is refused, no old addresses stay');
   await set('wvStart', '0'); await set('wvChain', '0');
   for (let i = 0; i < 10; i++) w.apMore(); await sleep(10); await w.wvRefresh();

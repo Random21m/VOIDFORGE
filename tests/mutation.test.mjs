@@ -138,7 +138,21 @@ async function probe(w, mutated, fast, only, hooks) {
     { const d = JSON.parse(fx('el-segwit-plain.json')); d.keystore.seed = EX['el-standard-ext-pw.json'].seed; if (!/do not make this wallet’s key/.test((await open(JSON.stringify(d))).out)) fails.push(T + 'seed words that do not make the key are named'); }
     { const d = JSON.parse(fx('el-segwit-plain.json')); d.addresses.receiving[3] = EX['bip39-84-pw.json'].recv[3]; r = await open(JSON.stringify(d)); if (!/^WARNING: these are NOT the addresses Electrum saved/m.test(r.out) || !/do not match/.test(r.st)) fails.push(T + 'addresses that differ from the ones in the file are flagged'); }
     if (w.ewPyLiteral("{'a': 'it\\'s\\n', u'b': [True, None]}").a !== "it's\n") fails.push(T + 'Python literal: string escapes');
-    { let m = ''; try { w.ewLoadText('{"a": {}},\n{"op": "add", "path": "/__proto__/x", "value": 1}'); } catch (e) { m = e.message; } if (!/not there/.test(m) || w.eval('({}).x') !== undefined) fails.push(T + 'a JSON patch into __proto__ is refused'); }
+    { let m = ''; try { await w.ewLoadText('{"a": {}},\n{"op": "add", "path": "/__proto__/x", "value": 1}'); } catch (e) { m = e.message; } if (!/not there/.test(m) || w.eval('({}).x') !== undefined) fails.push(T + 'a JSON patch into __proto__ is refused'); }
+    { // v2.16.0 review H1 and M1: a damaged end after a whole wallet, the one-pass scanner (strings, escapes), CLEAR stops it,
+      // Electrum's own zlib limit (EW_MAX) and BBQr's 4 MB
+      const openF = async (bytes) => { w.ewClear(); w.__ewf = new w.File([bytes], 'default_wallet'); w.eval('ewDropped = window.__ewf'); await w.ewOpenUi(); return { st: $('ewStatus').textContent, cls: $('ewStatus').className, out: $('ewOut').textContent }; };
+      r = await openF(Buffer.concat([Buffer.from(fx('el-segwit-plain.json')), Buffer.alloc(300)]));
+      if (r.cls !== 'status ok' || !/The end of the file is damaged: 300 bytes after the complete wallet were left out/.test(r.out) || !/300 bytes were left out/.test(r.st) || !same(r, 'el-segwit-plain.json')) fails.push(T + 'a whole wallet with 300 zero bytes after it opens, and says 300 bytes were left out');
+      r = await openF(Buffer.concat([Buffer.from(fx('el-segwit-plain.json')), Buffer.from([0xff, 0x80, 0x41])]));
+      if (r.cls !== 'status ok' || !/3 bytes after the complete wallet/.test(r.out)) fails.push(T + 'a whole wallet with bytes that are not text after it opens');
+      const L = await w.ewLoadText('{"a": "}{\\"[,\\n"},\n{"op": "add", "path": "/b", "value": "]\\\\"},\n{"op": "add", "path": "/c"');
+      if (JSON.stringify(L.data) !== JSON.stringify({ a: '}{"[,\n', b: ']\\' }) || L.patches !== 1 || L.junk || L.dropped !== 28) fails.push(T + 'the scanner skips brackets, quotes and backslashes inside strings (' + JSON.stringify(L) + ')');
+      let m = ''; try { await w.ewLoadText('{"a": [' + '1, '.repeat(500) + '2]},\n{"op"', { next: 0, stop: () => true }); } catch (e) { m = e.message; } if (m !== 'STOPPED') fails.push(T + 'the scanner gives the page a moment and CLEAR stops it there');
+      m = ''; try { await w.ewLoadText('{},\n{' + '['.repeat(500), { next: 0, stop: () => true }); } catch (e) { m = e.message; } if (m !== 'STOPPED') fails.push(T + 'the scanner gives the page a moment outside strings too');
+      try { m = String(w.ewInflateZlib(new Uint8Array(zlib.deflateSync(Buffer.alloc(5 * 1048576 + 7, 120)))).length); } catch (e) { m = e.message; } if (m !== String(5 * 1048576 + 7)) fails.push(T + 'a file encrypted as a whole that unpacks to over 4 MB opens (EW_MAX for Electrum): ' + m);
+      try { w.inflateRaw(new Uint8Array(zlib.deflateRawSync(Buffer.alloc(4194305)))); m = ''; } catch (e) { m = e.message; } if (!/unpacks to more than 4 MB/.test(m)) fails.push(T + 'BBQr and Krux keep the 4 MB limit');
+      w.ewClear(); }
     r = await open(fx('el-standard-ext-pw.json'), 'test password');
     if (!w.eval('rhIds()').includes('ewSecret') || !w.eval('AUTO_FIELDS').includes('ewIn') || !w.eval('AUTO_FIELDS').includes('ewPass')) fails.push(T + 're-hide and auto-clear know the secret, the file text and the password');
     { // only the opened file may count here: the seed of section 0 and every other box are set aside for the check, then put back
@@ -160,6 +174,9 @@ async function probe(w, mutated, fast, only, hooks) {
     if ($('wvChain').value !== 'both' || rows().length !== 20 || rows()[0] !== seg("m/84'/0'/0'/0/0") || rows()[19] !== seg("m/84'/0'/0'/1/9")) fails.push(T + 'receive and change by default: 10 of each');
     await set('wvStart', '5'); if (rows()[0] !== seg("m/84'/0'/0'/0/5") || rows()[10] !== seg("m/84'/0'/0'/1/5")) fails.push(T + 'START AT 5');
     w.apMore(); await w.wvRefresh(); if (rows().length !== 60 || rows()[59] !== seg("m/84'/0'/0'/1/34")) fails.push(T + 'SHOW 20 MORE adds 20 of each');
+    if ($('wvNext').textContent !== 'NEXT 30' || $('wvPrev').textContent !== 'PREVIOUS 30') fails.push(T + 'after SHOW 20 MORE the pager says PREVIOUS 30 and NEXT 30');
+    w.wvPage(1); await w.wvRefresh(); if ($('wvStart').value !== '35' || rows().length !== 60 || rows()[0] !== seg("m/84'/0'/0'/0/35") || rows()[30] !== seg("m/84'/0'/0'/1/35")) fails.push(T + 'NEXT steps by the 30 shown and keeps 30 of each');
+    await set('wvStart', '2147483640'); if (!$('wvMore').disabled || !$('wvNext').disabled) fails.push(T + 'SHOW 20 MORE and NEXT are off at the last address number');
     await set('wvStart', '0'); await set('wvChain', '0'); await set('wvType', 'pkh'); await set('wvPathIn', 'm/44h/0h/0h/0/*');
     if (rows()[2] !== leg("m/44'/0'/0'/0/2") || rows().length !== 10) fails.push(T + 'a path ending in /*: the addresses right under it');
     await set('wvPathIn', ''); await set('wvType', 'wpkh'); $('wpIn').value = root.derive("m/84'/0'/0'").publicExtendedKey; await w.openWatchOnly(); await set('wvType', 'wpkh'); await set('wvPathIn', '1/*');
@@ -235,6 +252,9 @@ async function probe(w, mutated, fast, only, hooks) {
       const KL = fileW(MFW.katLegacy.file);
       { const x = await w.wdatRead(KL), c = w.wdatCrypted(x); c[0].pub = c[1].pub; if (!(await unl(x, 'voidforge')).wrong) fails.push(T + 'a master key that does not decrypt a key to its own public key is a wrong passphrase'); }
       { const x = await w.wdatRead(KL), c = w.wdatCrypted(x); c[c.length - 1].crypted = c[c.length - 1].crypted.map((v) => v ^ 1); const u = await unl(x, 'voidforge'); if (!u.ok || u.bad !== 1) fails.push(T + 'a key that will not decrypt is counted (a damaged file)'); }
+      { const x = await w.wdatRead(KL), c = w.wdatCrypted(x), last = c[c.length - 1], cc = last.crypted.slice(); cc[3] ^= 0x40; last.crypted = cc; const u = await unl(x, 'voidforge');
+        if (!u.ok || u.bad !== 1 || u.total !== c.length || !last.damaged || last.secret) fails.push(T + 'a key that decrypts to a wrong key (good padding) is caught by its public key and not kept');
+        x.lines = await w.wdatLegacyItems(x); const items = []; for (let i = 0; i < x.lines.length; i++) items.push(await w.wdatSecretItem(x, i)); if (!items.some((t) => /DAMAGED/.test(t))) fails.push(T + 'a damaged key is marked DAMAGED'); }
       { const x = await w.wdatRead(KL), m = x.mkeys[0]; let buf = nc.createHash('sha512').update(Buffer.concat([Buffer.from('voidforge'), Buffer.from(m.salt)])).digest(); for (let i = 1; i < m.rounds; i++) buf = nc.createHash('sha512').update(buf).digest();
         const ci = nc.createCipheriv('aes-256-cbc', buf.subarray(0, 32), buf.subarray(32, 48)); m.crypted = new Uint8Array(Buffer.concat([ci.update(Buffer.alloc(16, 9)), ci.final()])); x.keys.clear();
         if (!(await unl(x, 'voidforge')).wrong) fails.push(T + 'a master key that is not 32 bytes is refused'); }
@@ -259,6 +279,43 @@ async function probe(w, mutated, fast, only, hooks) {
       w.rhHide('tab'); if ($('wdatSecret').style.filter !== 'blur(9px)') fails.push(T + 're-hide covers the private keys'); w.rhShow();
       $('wdatPass').value = 'x'; w.clearAll();
       if (w.eval('wdatHasSecret()') || $('wdatSecret').textContent || $('wdatOut').textContent || $('wdatPass').value) fails.push(T + 'CLEAR ALL wipes the wallet file reader');
+      // v2.16.0 review L3, L4: no file chosen is said as an error; auto-clear counts a chosen file that is not read yet
+      await w.wdatOpenUi(); if ($('wdatStatus').className !== 'status bad' || !/Choose the wallet\.dat file first/.test($('wdatStatus').textContent)) fails.push(T + 'READ WALLET FILE with no file: status bad');
+      { const before = w.eval('autoHasSecrets()'); Object.defineProperty($('wdatFile'), 'files', { value: [new w.File([fileW(B0.file)], 'wallet.dat')], configurable: true });
+        const sees = w.eval('autoHasSecrets()') && w.eval('wdatHolds()'); delete $('wdatFile').files; if (before || !sees || w.eval('autoHasSecrets()')) fails.push(T + 'auto-clear counts a chosen wallet.dat that is not read yet'); }
+      // v2.16.0 review H2: hostile files refused: a page used twice, a cell or record listed twice, more bytes than the file, a huge row header
+      const OURSW = /^This (Berkeley DB file|SQLite file) cannot be read: /, refused = async (b) => { const e = await w.wdatRead(b).then(() => null, (x) => x); return e && OURSW.test(e.message) ? e.message : 'read: ' + (e ? e.message : 'no error'); };
+      const vsW = (x) => Buffer.concat([Buffer.from([x.length]), Buffer.from(x)]), nameK = (i) => Buffer.concat([vsW('name'), vsW('bc1q' + String(i).padStart(38, '0'))]);
+      const bdbW = (ps, chain, leafItems) => {
+        const pages = 4 + chain, b = new Uint8Array(pages * ps), le32 = (o, v) => { b[o] = v & 255; b[o + 1] = (v >>> 8) & 255; b[o + 2] = (v >>> 16) & 255; b[o + 3] = v >>> 24; }, le16 = (o, v) => { b[o] = v & 255; b[o + 1] = v >> 8; };
+        const head = (pg, type, level, entries, next, hf) => { const o = pg * ps; le32(o, 0); le32(o + 4, 1); le32(o + 8, pg); le32(o + 16, next || 0); le16(o + 20, entries || 0); le16(o + 22, hf || 0); b[o + 24] = level; b[o + 25] = type; };
+        const meta = (pg, root) => { head(pg, 9, 0); const o = pg * ps; le32(o + 12, 0x00053162); le32(o + 16, 9); le32(o + 20, ps); b[o + 25] = 9; le32(o + 32, pages - 1); le32(o + 48, 0x20); le32(o + 88, root); };
+        const leaf = (pg, items) => { head(pg, 5, 1, items.length); let end = ps; const o = pg * ps, offs = new Map();
+          items.forEach((it, i) => { if (it.raw !== undefined) { le16(o + 26 + 2 * i, it.raw); le16(o + it.raw, it.len); b[o + it.raw + 2] = 1; return; } if (it.same !== undefined) { le16(o + 26 + 2 * i, offs.get(it.same)); return; }
+            const body = it.ovf !== undefined ? 12 : 3 + it.data.length; end -= body; end &= ~3; le16(o + 26 + 2 * i, end); offs.set(i, end);
+            if (it.ovf !== undefined) { b[o + end + 2] = 3; le32(o + end + 4, it.ovf); le32(o + end + 8, it.tlen); } else { le16(o + end, it.data.length); b[o + end + 2] = 1; b.set(it.data, o + end + 3); } }); };
+        meta(0, 1); leaf(1, [{ data: Buffer.from('main') }, { data: Buffer.from([0, 0, 0, 2]) }]); meta(2, 3); leaf(3, leafItems);
+        for (let i = 0; i < chain; i++) { head(4 + i, 7, 0, 0, i + 1 < chain ? 5 + i : 0, ps - 26); b.fill(9, (4 + i) * ps + 26, (5 + i) * ps); }
+        return b; };
+      { const r0 = await w.wdatRead(bdbW(4096, 2, [{ data: nameK(1) }, { ovf: 4, tlen: 2 * 4070 }])).then((x) => x.counts.name, (e) => e.message); if (r0 !== 1) fails.push(T + 'control: a Berkeley DB file built here is read: ' + r0); }
+      { const m = await refused(bdbW(4096, 3, [{ data: nameK(1) }, { ovf: 4, tlen: 3 * 4070 }, { data: nameK(2) }, { ovf: 4, tlen: 3 * 4070 }, { data: nameK(3) }, { ovf: 4, tlen: 3 * 4070 }])); if (!/page 4 is used twice/.test(m)) fails.push(T + 'Berkeley DB: records that share one overflow chain are refused (' + m + ')'); }
+      { const m = await refused(bdbW(4096, 1, [{ data: nameK(1) }, { data: Buffer.from('x') }, { same: 0 }, { same: 1 }])); if (!/lists one record twice/.test(m)) fails.push(T + 'Berkeley DB: a record listed twice on its page is refused (' + m + ')'); }
+      { const items = []; for (let i = 0; i < 60; i++) items.push({ raw: 400 + 4 * i, len: 3000 }); const m = await refused(bdbW(4096, 1, items)); if (!/hold more data than the file itself/.test(m)) fails.push(T + 'Berkeley DB: records that overlap, more bytes than the file, are refused (' + m + ')'); }
+      { let DS = null; try { ({ DatabaseSync: DS } = await import('node:sqlite')); } catch (e) { DS = null; }
+        if (DS) {
+          const mkS = (cols, rows) => { const p = new URL('./.probe-' + process.pid + '-' + Math.random().toString(36).slice(2) + '.sqlite', FXW); const db = new DS(p.pathname); db.exec('PRAGMA page_size = 4096'); db.exec('CREATE TABLE main(' + cols + ')');
+            const ins = db.prepare('INSERT INTO main VALUES (' + rows[0].map(() => '?').join(', ') + ')'); for (const r2 of rows) ins.run(...r2); const root = db.prepare("SELECT rootpage FROM sqlite_schema WHERE name = 'main'").get().rootpage; db.close();
+            const b = new Uint8Array(fs.readFileSync(p)); fs.unlinkSync(p); return { b, leaf: (root - 1) * 4096 }; };
+          const be16 = (b, o) => b[o] << 8 | b[o + 1];
+          { const { b, leaf } = mkS('key BLOB PRIMARY KEY NOT NULL, value BLOB NOT NULL', [[nameK(1), Buffer.from('a')], [nameK(2), Buffer.from('b')]]); b[leaf + 10] = b[leaf + 8]; b[leaf + 11] = b[leaf + 9];
+            const m = await refused(b); if (!/lists one cell twice/.test(m)) fails.push(T + 'SQLite: a cell listed twice on its page is refused (' + m + ')'); }
+          { const { b, leaf } = mkS('key BLOB PRIMARY KEY NOT NULL, value BLOB NOT NULL', [[nameK(1), Buffer.alloc(300000, 1)], [nameK(2), Buffer.alloc(300000, 2)]]);   // both cells on the root, a leaf (each keeps 1,335 bytes on it)
+            if (b[leaf] !== 0x0d || be16(b, leaf + 3) !== 2) fails.push(T + 'SQLite probe file: the two rows are not on one leaf');
+            const cell = (i) => { let o = leaf + be16(b, leaf + 8 + 2 * i), P = 0; for (;;) { const x = b[o++]; P = P * 128 + (x & 127); if (!(x & 128)) break; } while (b[o++] & 128); const M = Math.floor((4096 - 12) * 32 / 255) - 23, K = M + ((P - M) % 4092); return o + (K <= 4096 - 35 ? K : M); };
+            const a1 = cell(0), a2 = cell(1); b.set(b.subarray(a1, a1 + 4), a2); const m = await refused(b); if (!/page \d+ is used twice/.test(m)) fails.push(T + 'SQLite: two rows that share one overflow chain are refused (' + m + ')'); }
+          { const cols = ['key BLOB', 'value BLOB'].concat(Array.from({ length: 600 }, (_, i) => 'c' + i + ' BLOB')).join(', '), row = [nameK(1), Buffer.from('v')].concat(Array.from({ length: 600 }, () => Buffer.from('x')));
+            const m = await refused(mkS(cols, [row]).b); if (!/a row header is not valid/.test(m)) fails.push(T + 'SQLite: a row header over 512 bytes is refused (' + m + ')'); }
+        } }
     } catch (e) { fails.push(T + 'the probe crashed: ' + e.message); }
     w.rhShow(); await run('dice', 12, D50);
   }
@@ -5316,7 +5373,7 @@ const M = [
   ["wallet view: coin type ignored", "[[SCRIPT_TYPES[type].purpose, true], [NETS[net].coin, true], [acct, true]];\n  const chains", "[[SCRIPT_TYPES[type].purpose, true], [0, true], [acct, true]];\n  const chains"],
   ["wallet view: account ignored", "[[SCRIPT_TYPES[type].purpose, true], [NETS[net].coin, true], [acct, true]];\n  const chains", "[[SCRIPT_TYPES[type].purpose, true], [NETS[net].coin, true], [0, true]];\n  const chains"],
   ["wallet view: chain ignored", "for(const [i,h] of steps.concat([[chain, false]]))", "for(const [i,h] of steps.concat([[0, false]]))"],
-  ["wallet view: second page shows the first", "  wvFrom = Math.max(0, Math.min(2147483647 - WV_PAGE + 1, wvFrom + d * WV_PAGE)); apReset();", "  wvFrom = 0; apReset();"],
+  ["wallet view: second page shows the first", "  wvFrom = Math.max(0, Math.min(2147483647 - apCount + 1, wvFrom + d * apCount));", "  wvFrom = 0;"],
   ["wallet view: no QR button on a row", "  li.appendChild(b); return li;", "  return li;"],
   ["wallet view: QR shows another address", "let q; try { q = qrMatrix(text); } catch(e) {\n", "let q; try { q = qrMatrix(text + \"x\"); } catch(e) {\n"],
   ["wallet view: not called imported", "textContent = \"Imported: these words were typed or scanned here, not made by this page.", "textContent = \"These words were typed or scanned here."],
@@ -5328,7 +5385,7 @@ const M = [
   ["wallet view: SeedQR not marked secret", "SECRET: anyone who scans it controls the funds. It holds the words only", "Anyone who scans it controls the funds. It holds the words only"],
   ["wallet view: CLEAR ALL leaves it", "document.getElementById(\"verifyStatus\").textContent=\"\"; verifySeq++; clearWalletView(); clearChild();", "document.getElementById(\"verifyStatus\").textContent=\"\"; verifySeq++; clearChild();"],
   ["address QR: no button under the seed", "(arr || []).forEach((a, i) => ol.appendChild(addrLi(a, label + \" \" + (i + 1))));", "(arr || []).forEach((a, i) => { const li = document.createElement(\"li\"); li.textContent = a; ol.appendChild(li); });"],
-  ["wallet view: PREVIOUS never off", "document.getElementById(\"wvPrev\").disabled = wvFrom === 0;", "document.getElementById(\"wvPrev\").disabled = false;"],
+  ["wallet view: PREVIOUS never off", "p.disabled = wvFrom === 0;", "p.disabled = false;"],
   ["wallet view: testnet note dropped", "(net === \"test\" ? \"TESTNET (practice coins only). \" : \"\") + (star ? \"Addresses\"", "(star ? \"Addresses\""],
   ["recovery sheet: nothing printed", "if(!wvCtx || !wvCtx.shown || !wvCtx.mnemonic) return alert(\"Check a seed phrase first, then open the wallet.\");", "if(true) return;"],
   ["watch-only: change ending ignored", "    chain = m[5] === \"/1/*\" ? 1 : m[5] === \"/0/*\" ? 0 : null;", "    chain = m[5] === \"/0/*\" ? 0 : null;"],
@@ -7778,7 +7835,7 @@ const M = [
   ['electrum file: keystore key is SHA-256 once', 'const key = await sha256bytes(await sha256bytes(new TextEncoder().encode(password)));', 'const key = await sha256bytes(new TextEncoder().encode(password));'],
   ['electrum file: an xprv that does not match the xpub accepted', 'if(!raw || raw.length !== 78 || raw[45] !== 0 || !dbEq(raw.slice(13, 45), ks.key.chain) || !dbEq(pubkeyBytes(BigInt("0x" + hex(raw.slice(46)))), ks.key.pub))', 'if(!raw || raw.length !== 78)'],
   ['electrum file: JSON patches ignored', 'let d = arr[0]; for(const p of arr.slice(1)) d = ewPatch(d, p);', 'let d = arr[0];'],
-  ['electrum file: a cut-off file refused', 'if(arr && at < s.length) return done(arr, {dropped: s.length - at});', 'if(false) return done(arr, {dropped: s.length - at});'],
+  ['electrum file: a cut-off file refused', 'const p = await one(end + 2); if(!p) break;', 'const p = await one(end + 2); if(!p) throw new Error("This is not an Electrum wallet file.");'],
   ['electrum file: native SegWit multisig script hashed wrong', 'if(W.script === "p2wsh") return bech32Encode(N.hrp, 0, await sha256bytes(script));', 'if(W.script === "p2wsh") return bech32Encode(N.hrp, 0, await sha256bytes(script.slice(1)));'],
   ['electrum file: 2FA read as 2 of 2', 'W.m = mm ? +mm[1] : 2; W.n = mm ? +mm[2] : 3;', 'W.m = mm ? +mm[1] : 2; W.n = mm ? +mm[2] : 2;'],
   ['electrum file: old seed words in the wrong order', 'out.push(OLD_EL_WORDS[w1], OLD_EL_WORDS[w2], OLD_EL_WORDS[w3]);', 'out.push(OLD_EL_WORDS[w1], OLD_EL_WORDS[w3], OLD_EL_WORDS[w2]);'],
@@ -7811,11 +7868,11 @@ const M = [
   ["wallet.dat: Berkeley DB own encryption accepted", "if(outer.encrypt) throw", "if(false) throw"],
   ["wallet.dat: Berkeley DB record data offset", "out.push({del, data: b.subarray(o + 3, o + 3 + len)});", "out.push({del, data: b.subarray(o + 2, o + 2 + len)});"],
   ["wallet.dat: SQLite overflow local size formula", "const M = Math.floor((U - 12) * 32 / 255) - 23,", "const M = Math.floor((U - 12) * 32 / 255) - 22,"],
-  ["wallet.dat: SQLite overflow chain read from the wrong place", "got += n; pg = be32(po);", "got += n; pg = be32(po + 4);"],
+  ["wallet.dat: SQLite overflow chain read from the wrong place", "got += k; pg = be32(po);", "got += k; pg = be32(po + 4);"],
   ["wallet.dat: SQLite interior pages lose their right-most child", "stack.push(be32(h + 8));   // the right-most child", "// the right-most child"],
   ["wallet.dat: SQLite varint continuation bit ignored", "if(!(c & 0x80)) return [v, k + 1];", "return [v, k + 1];"],
   ["wallet.dat: SQLite page 1 header offset", "h = po + (pg === 1 ? 100 : 0)", "h = po + (pg === 1 ? 0 : 0)"],
-  ["wallet.dat: SQLite text read as blobs", "vals.push(t % 2 ? {text: dec.decode(v)} : {blob: v});", "vals.push({blob: v});"],
+  ["wallet.dat: SQLite text read as blobs", "if(t >= 12) return t % 2 ? {text: dec.decode(v)} : {blob: v};", "if(t >= 12) return {blob: v};"],
   ["wallet.dat: SQLite application ID read from the wrong place", "app: hex(b.subarray(68, 72))", "app: hex(b.subarray(64, 68))"],
   ["wallet.dat: SQLite cut-short file read", "if(!pages || pages * ps > b.length) throw", "if(!pages) throw"],
   ["wallet.dat: compact size 253 form read as 4 bytes", "if(x === 253){ n = r.u16();", "if(x === 253){ n = r.u32();"],
@@ -7828,7 +7885,7 @@ const M = [
   ["wallet.dat: SHA-512 constants from square roots instead of cube roots", "const v = root(BigInt(p) << 192n, 3) & M;", "const v = root(BigInt(p) << 128n, 2) & M;"],
   ["wallet.dat: a key that does not give its own public key accepted", "if(!s || !wdatMatches(s, all[0].pub)){ if(s) s.fill(0); continue; }", "if(!s){ continue; }"],
   ["wallet.dat: master key length not checked", "if(!mkRaw || mkRaw.length !== 32){", "if(!mkRaw){"],
-  ["wallet.dat: keys that will not decrypt not counted", "if(s) c.secret = s; else bad++;", "if(s) c.secret = s;"],
+  ["wallet.dat: keys that will not decrypt not counted", "c.damaged = true; bad++; }", "c.damaged = true; }"],
   ["wallet.dat: derivation method not checked", "if(m.method !== 0) return {error:", "if(false) return {error:"],
   ["wallet.dat: the passphrase normalized", "const pw = new TextEncoder().encode(pass), all", "const pw = new TextEncoder().encode(pass.normalize(\"NFKD\")), all"],
   ["wallet.dat: DER private key read one byte late", "k.set(d.subarray(i, i + os), 32 - os);", "k.set(d.subarray(i + 1, i + 1 + os), 32 - os);"],
@@ -7851,11 +7908,30 @@ const M = [
   ["wallet.dat: HD seed key not found", "if(x.h160 === w.hdchain.seed) return x;", "if(x.h160 === w.hdchain.seed.slice(1)) return x;"],
   ["wallet.dat: combo() for the HD change chain left out", "(w.hdchain.int !== null ? \"\\n\" + descriptorChecksum(\"combo(\" + xprv + \"/0h/1h/*h)\") : \"\")", "\"\""],
   ["wallet.dat: CLEAR ALL leaves the wallet file reader", "  wdatClear();   // v2.16.0: the wallet.dat reader", "  // v2.16.0: the wallet.dat reader"],
-  ["wallet.dat: auto-clear does not see the keys", "ewHolds() || wdatHasSecret() || (typeof ssPageActive", "ewHolds() || (typeof ssPageActive"],
+  ["wallet.dat: auto-clear does not see the keys", "ewHolds() || wdatHolds() || (typeof ssPageActive", "ewHolds() || (typeof ssPageActive"],
   ["wallet.dat: re-hide leaves the private keys", "RH_PLACES.push(\"wdatSecret\");", ""],
   ["wallet.dat: no self-test gate", "async function wdatOpenUi(){\n  if(!gateOk()) return;\n", "async function wdatOpenUi(){\n"],
   ["wallet.dat: the button ignores the self-test", "document.getElementById(\"wdatBtn\").disabled = !on;", "document.getElementById(\"wdatBtn\").disabled = false;"],
   ["wallet.dat: the self-test left out", "  wdatSelfTests(eq);   // v2.16.0", "  // v2.16.0"],
+  ["electrum file: a damaged end after a whole wallet refused (v2.16.0 review H1)", "else { junk = s.slice(end) !== \",\"; break; }", "else throw new Error(\"This is not an Electrum wallet file.\");"],
+  ["electrum file: the scanner does not skip strings (H1)", "if(m[0] === \"\\\"\"){\n      for(;;){", "if(false){\n      for(;;){"],
+  ["electrum file: the scanner does not skip escaped characters (H1)", "at = str.lastIndex; if(q[0] === \"\\\"\") break; at++;", "at = str.lastIndex; if(q[0] === \"\\\"\") break;"],
+  ["electrum file: the scanner never stops for CLEAR (H1)", "if(at >= pace.next){ await ewPause(); pace.next = at + EW_PACE; if(pace.stop && pace.stop()) throw new Error(\"STOPPED\"); }\n    tok.lastIndex = at;", "tok.lastIndex = at;"],
+  ["electrum file: bytes that are not text after a whole wallet refused (H1)", "if(!(b[n] === 0xef && b[n + 1] === 0xbf && b[n + 2] === 0xbd)) return {text: t.slice(0, at), extra: b.length - n};", "if(!(b[n] === 0xef && b[n + 1] === 0xbf && b[n + 2] === 0xbd)) return null;"],
+  ["electrum file: zlib held to 4 MB (M1)", "out = inflateRaw(z.slice(2, z.length - 4), EW_MAX);", "out = inflateRaw(z.slice(2, z.length - 4));"],
+  ["BBQr: the 4 MB limit of inflateRaw lifted (M1)", "function inflateRaw(src, max = 4194304){", "function inflateRaw(src, max = 1e9){"],
+  ["wallet view: NEXT and PREVIOUS step by 10 after SHOW 20 MORE (M2)", "wvFrom + d * apCount));", "wvFrom + d * WV_PAGE));"],
+  ["wallet view: the pager labels do not follow the count shown (L5)", "p.textContent = \"PREVIOUS \" + apCount; x.textContent = \"NEXT \" + apCount;", ""],
+  ["wallet view: SHOW 20 MORE on at the last address number (L1)", "m.disabled = apCount >= AP_MAX || wvFrom + apCount > 2147483647;", "m.disabled = apCount >= AP_MAX;"],
+  ["wallet.dat: decrypted keys not checked against their public keys (M3)", "if(s && wdatMatches(s, c.pub)){ c.secret = s; c.damaged = false; }", "if(s){ c.secret = s; c.damaged = false; }"],
+  ["wallet.dat: Berkeley DB overflow pages may be used twice (H2)", "use(pg, \"by two overflow records\"); spend(h.hf);", "spend(h.hf);"],
+  ["wallet.dat: Berkeley DB record listed twice on a page (H2)", "if(at0.has(at)) throw bad(\"page \" + h.pg + \" lists one record twice\"); at0.add(at);", ""],
+  ["wallet.dat: Berkeley DB records may hold more than the file (H2)", "budget -= n; if(budget < 0) throw bad(\"its records hold more data than the file itself (the file is damaged)\"); };", "budget -= n; };"],
+  ["wallet.dat: SQLite overflow pages may be used twice (H2)", "if(used[pg]) throw bad(\"page \" + pg + \" is used twice (the file is damaged)\"); used[pg] = 1;\n        const po", "used[pg] = 1;\n        const po"],
+  ["wallet.dat: SQLite cell listed twice on a page (H2)", "if(at.has(off)) throw bad(\"page \" + pg + \" lists one cell twice\"); at.add(off);", ""],
+  ["wallet.dat: SQLite row header not capped (H2)", "if(hs > P || hs < a || hs > WDAT_HDR) throw", "if(hs > P || hs < a) throw"],
+  ["wallet.dat: no file chosen is not said as an error (L3)", "if(!f){ wdatWipe(); st.className = \"status bad\";", "if(!f){ wdatWipe();"],
+  ["wallet.dat: auto-clear does not see a chosen file (L4)", "return wdatHasSecret() || !!(f && f.files && f.files.length); }", "return wdatHasSecret(); }"],
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

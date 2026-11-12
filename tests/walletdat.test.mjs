@@ -50,7 +50,7 @@ const fail = async (b) => { try { await w.wdatRead(b); return null; } catch (e) 
 // ===== the box, as the house style asks
 {
   const box = $('wdatBox'), s = box.querySelector(':scope > summary'), btns = [...box.querySelectorAll('button')], gold = btns.filter((b) => !b.classList.contains('secondary'));
-  ok(!!box.closest('#tp-check') && s.querySelector('.tag').textContent === 'READ ONLY' && s.querySelectorAll('small').length === 1 && /wallet\.dat/.test(s.textContent), 'the box: in CHECK A BACKUP, a title, the READ ONLY tag and a one-line hint');
+  ok(!!box.closest('#tp-check') && s.querySelector('.tag').textContent === 'SECRET' && s.querySelectorAll('small').length === 1 && /wallet\.dat/.test(s.textContent), 'the box: in CHECK A BACKUP, a title, the SECRET tag (it shows private keys) and a one-line hint');
   ok(gold.length === 1 && gold[0].id === 'wdatBtn' && gold[0].textContent === 'READ WALLET FILE', 'the box: one gold main action, READ WALLET FILE');
   ok(btns.filter((b) => /^(PRINT|CLEAR)/.test(b.textContent)).every((b) => b.classList.contains('secondary')) && $('wdatPrintBtn').disabled, 'the box: PRINT SUMMARY and CLEAR are gray (PRINT off until a file is read)');
   ok($('wdatPass').type === 'password' && /user-select:\s*none/.test($('wdatSecret').getAttribute('style')), 'the box: the passphrase box shows dots, and the private keys cannot be selected');
@@ -246,6 +246,89 @@ const OURS = /^This (Berkeley DB file|SQLite file) cannot be read: |^This is not
   const at2 = Buffer.from(KL).indexOf(Buffer.from([0x30])); void at2;
 }
 
+// ===== every decrypted key is checked against its public key (v2.16.0 review M3)
+{
+  const A = MF.legacyHd, raw = file(A.file), wl0 = await w.wdatRead(raw), all = w.wdatCrypted(wl0), victims = [all[5], all[200]];
+  const b = raw.slice(); let found = 0;
+  for (const x of victims) { const B = Buffer.from(b), c = Buffer.from(x.crypted); let n = 0; for (let at = B.indexOf(c); at >= 0; at = B.indexOf(c, at + 1)) { b[at + 3] ^= 0x40; b.set(sha(sha(b.subarray(at, at + 48))), at + 48); n++; } if (n) found++; }   // every copy (Berkeley DB keeps old copies in free space); the first cipher block: the padding still checks, the key comes out wrong; the record's checksum is made again, as a damaged block in an older wallet without one
+  const wl = await w.wdatRead(b), u = await unlock(wl, A.pass);
+  ok(found === 2 && u.ok && u.bad === 2 && u.total === 301, 'damaged keys: two keys damaged in their first cipher block decrypt with good padding, and are caught by the public key check (2 of 301)');
+  const bad = w.wdatCrypted(wl).filter((x) => x.damaged);
+  ok(bad.length === 2 && bad.every((x) => !x.secret) && w.wdatCrypted(wl).filter((x) => x.secret).length === 299, 'damaged keys: their wrong private keys are not kept; the other 299 are');
+  const items = []; for (let i = 0; i < wl.lines.length; i++) items.push(await w.wdatSecretItem(wl, i));
+  ok(items.filter((t) => /DAMAGED: this key does not decrypt to its own public key, so it is not shown/.test(t)).length === 2, 'damaged keys: marked DAMAGED in the list of private keys, with no key shown');
+  await w.wdatShow(b, A.pass);
+  ok($('wdatStatus').className === 'status bad' && /Passphrase right: .* 299 of 301 keys decrypted and checked against their public keys\. 2 keys do not decrypt to their own public key: the file is damaged/.test($('wdatStatus').textContent) && /marked DAMAGED/.test($('wdatStatus').textContent), 'damaged keys: the status says 299 of 301 decrypted and checked, and that the file is damaged (status bad)');
+  await w.wdatShow(raw, A.pass); ok($('wdatStatus').className === 'status ok' && /301 of 301 keys decrypted and checked against their public keys\./.test($('wdatStatus').textContent), 'every key decrypted: 301 of 301 decrypted and checked');
+  w.wdatClear();
+  // the faster k times G (a table of multiples of G) gives the same public keys as @noble/curves
+  let diff = 0; for (let i = 0; i < 40; i++) { const k = i < 3 ? Buffer.from((['01', 'fe'.repeat(16) + 'ff'.repeat(16), 'fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140'])[i].padStart(64, '0'), 'hex') : T('gmul ' + i); for (const c of [true, false]) if (hx(w.wdatPubOf(k, new Uint8Array(c ? 33 : 65).fill(4, 0, 1))) !== hx(secp256k1.getPublicKey(k, c))) diff++; }
+  ok(diff === 0, 'the public key check: 40 keys (1, n - 1 and random ones), compressed and uncompressed, as @noble/curves');
+}
+
+// ===== hostile files that would make the reader do far more than the file holds (v2.16.0 review H2): refused quickly, with
+// little memory. Each page may be used once in the whole file, a cell or record once on its page, and all the rows together
+// may not put together more bytes than the file has.
+{
+  const vs = (x) => Buffer.concat([Buffer.from([x.length]), Buffer.from(x)]), nameKey = (i) => Buffer.concat([vs('name'), vs('bc1q' + String(i).padStart(38, '0'))]);
+  const hostile = async (what, b, re) => {
+    if (global.gc) global.gc(); const m0 = process.memoryUsage().rss, t0 = Date.now(); let peak = m0;
+    const iv = setInterval(() => { peak = Math.max(peak, process.memoryUsage().rss); }, 5);
+    const e = await fail(b); clearInterval(iv); peak = Math.max(peak, process.memoryUsage().rss);
+    const ms = Date.now() - t0, mb = Math.round((peak - m0) / 1048576);
+    ok(!!e && OURS.test(e.message) && re.test(e.message) && ms < 3000 && mb < 200, 'hostile: ' + what + ': refused in ' + ms + ' ms, ' + mb + ' MB more memory (' + (e ? e.message : 'it was read') + ')');
+  };
+  let DatabaseSync = null; try { ({ DatabaseSync } = await import('node:sqlite')); } catch (e) { DatabaseSync = null; }
+  if (!DatabaseSync) ok(true, 'hostile SQLite files: SKIPPED (this Node has no node:sqlite)');
+  else {
+    const mk = (ps, rows) => {
+      const p = path.join(FX, '.hostile-test.sqlite'); try { fs.unlinkSync(p); } catch (e) { /* none */ }
+      const db = new DatabaseSync(p); db.exec('PRAGMA page_size = ' + ps); db.exec('PRAGMA auto_vacuum = 0'); db.exec('CREATE TABLE main(key BLOB PRIMARY KEY NOT NULL, value BLOB NOT NULL)'); db.exec('PRAGMA application_id = ' + (0xf9beb4d9 | 0));
+      const ins = db.prepare('INSERT INTO main VALUES (?, ?)'); for (const [k, v] of rows) ins.run(k, v);
+      const root = db.prepare("SELECT rootpage FROM sqlite_schema WHERE name = 'main'").get().rootpage; db.close();
+      const b = new Uint8Array(fs.readFileSync(p)); fs.unlinkSync(p); return { b, root, leaf: (root - 1) * ps };
+    };
+    const be16 = (b, o) => b[o] << 8 | b[o + 1], put16 = (b, o, v) => { b[o] = v >> 8; b[o + 1] = v & 255; };
+    // 1. the reviewer's file: 65,536-byte pages, one row with a 2 MB value, its cell pointer repeated as often as fits
+    { const { b, leaf } = mk(65536, [[nameKey(1), Buffer.alloc(2 * 1048576, 7)]]);
+      const cp = be16(b, leaf + 8), n = (cp - 8) >> 1; put16(b, leaf + 3, n); for (let i = 0; i < n; i++) put16(b, leaf + 8 + 2 * i, cp);
+      ok(b.length < 2.3 * 1048576 && n > 15000, 'hostile SQLite: a ' + (b.length / 1048576).toFixed(1) + ' MB file with 65,536-byte pages and one cell pointer repeated ' + n + ' times');
+      await hostile('a cell pointer repeated ' + n + ' times', b, /lists one cell twice/); }
+    // 2. two cells at different places that share one overflow chain
+    { const { b, leaf } = mk(4096, [[nameKey(1), Buffer.alloc(300000, 1)], [nameKey(2), Buffer.alloc(300000, 2)]]);
+      const U = 4096, cell = (i) => { const c = leaf + be16(b, leaf + 8 + 2 * i); let o = c, P = 0; for (;;) { const x = b[o++]; P = P * 128 + (x & 127); if (!(x & 128)) break; } while (b[o++] & 128); const M = Math.floor((U - 12) * 32 / 255) - 23, K = M + ((P - M) % (U - 4)); return o + (K <= U - 35 ? K : M); };
+      const a1 = cell(0), a2 = cell(1); b.set(b.subarray(a1, a1 + 4), a2);
+      await hostile('two rows that share one overflow chain', b, /page \d+ is used twice/); }
+    // control: a file of the same kind, not changed
+    { const { b } = mk(4096, Array.from({ length: 40 }, (_, i) => [nameKey(i), Buffer.alloc(100, i)]));
+      const r = await w.wdatRead(b); ok(r.book.size === 40, 'control: the same kind of file, not changed, is read (40 labels)'); }
+  }
+  // Berkeley DB, built here byte by byte (little-endian, as src/wallet/migrate.cpp reads it): a meta page, the list of
+  // subdatabases (main), the subdatabase's meta page, one leaf page and one long overflow chain.
+  const bdb = (ps, chain, leafItems) => {
+    const pages = 4 + chain, b = new Uint8Array(pages * ps), le32 = (o, v) => { b[o] = v & 255; b[o + 1] = (v >>> 8) & 255; b[o + 2] = (v >>> 16) & 255; b[o + 3] = v >>> 24; }, le16 = (o, v) => { b[o] = v & 255; b[o + 1] = v >> 8; };
+    const head = (pg, type, level, entries, next, hf) => { const o = pg * ps; le32(o, 0); le32(o + 4, 1); le32(o + 8, pg); le32(o + 16, next || 0); le16(o + 20, entries || 0); le16(o + 22, hf || 0); b[o + 24] = level; b[o + 25] = type; };
+    const meta = (pg, root) => { head(pg, 9, 0); const o = pg * ps; le32(o + 12, 0x00053162); le32(o + 16, 9); le32(o + 20, ps); b[o + 24] = 0; b[o + 25] = 9; le32(o + 32, pages - 1); le32(o + 48, 0x20); le32(o + 88, root); };
+    const leaf = (pg, items) => { head(pg, 5, 1, items.length); let end = ps; const o = pg * ps, offs = new Map();
+      items.forEach((it, i) => { if (it.raw !== undefined) { le16(o + 26 + 2 * i, it.raw); le16(o + it.raw, it.len); b[o + it.raw + 2] = 1; return; } if (it.same !== undefined) { le16(o + 26 + 2 * i, offs.get(it.same)); return; } const body = it.ovf !== undefined ? 12 : 3 + it.data.length; end -= body; end &= ~3; le16(o + 26 + 2 * i, end); offs.set(i, end);
+        if (it.ovf !== undefined) { le16(o + end, 0); b[o + end + 2] = 3; le32(o + end + 4, it.ovf); le32(o + end + 8, it.tlen); } else { le16(o + end, it.data.length); b[o + end + 2] = 1; b.set(it.data, o + end + 3); } }); };
+    meta(0, 1); leaf(1, [{ data: Buffer.from('main') }, { data: Buffer.from([0, 0, 0, 2]) }]); meta(2, 3); leaf(3, leafItems);
+    for (let i = 0; i < chain; i++) { head(4 + i, 7, 0, 0, i + 1 < chain ? 5 + i : 0, ps - 26); b.fill(9, (4 + i) * ps + 26, (5 + i) * ps); }
+    return b;
+  };
+  { const ok1 = bdb(4096, 3, [{ data: nameKey(1) }, { ovf: 4, tlen: 3 * 4070 }]); const r = await w.wdatRead(ok1);
+    ok(r.fmt === 'bdb' && r.counts.name === 1, 'control: the Berkeley DB file built here is read (one record whose value is a 3-page overflow chain)'); }
+  { const ps = 65536, chain = 32, pairs = [], n = 900; for (let i = 0; i < n; i++) pairs.push({ data: nameKey(i) }, { ovf: 4, tlen: chain * (ps - 26) });
+    const b = bdb(ps, chain, pairs); ok(b.length > 2 * 1048576 && b.length < 2.5 * 1048576, 'hostile Berkeley DB: a ' + (b.length / 1048576).toFixed(1) + ' MB file with ' + n + ' records whose values all point to one 2 MB overflow chain');
+    await hostile(n + ' records sharing one long overflow chain', b, /page 4 is used twice/); }
+  { const ps = 65536, chain = 32, items = []; for (let i = 0; i < 1000; i++) items.push({ ovf: 4, tlen: chain * (ps - 26) }, { data: Buffer.from([1]) });
+    await hostile('1,000 keys sharing one long overflow chain (keys are read before the page knows whether it wants the value)', bdb(ps, chain, items), /page 4 is used twice/); }
+  { const items = [{ data: nameKey(1) }, { data: Buffer.from('x') }]; for (let i = 0; i < 2000; i++) items.push({ same: 0 }, { same: 1 });
+    await hostile('one record listed 2,000 times on its page', bdb(65536, 1, items), /lists one record twice/); }
+  { const items = []; for (let i = 0; i < 2000; i++) items.push({ raw: 8100 + 4 * i, len: 40000 });   // each a different place, all overlapping: 80 MB of records in a 0.3 MB file
+    await hostile('2,000 records that overlap on one page (80 MB of records in a 0.3 MB file)', bdb(65536, 1, items), /hold more data than the file itself/); }
+}
+
 // ===== a large wallet, made here with node:sqlite: read in slices (the page stays responsive), shown a page at a time
 {
   let DatabaseSync = null; try { ({ DatabaseSync } = await import('node:sqlite')); } catch (e) { DatabaseSync = null; }
@@ -294,6 +377,11 @@ const OURS = /^This (Berkeley DB file|SQLite file) cannot be read: |^This is not
   ok(!w.wdatHasSecret() && $('wdatStatus').textContent === '' && $('wdatOut').textContent === '', 'CLEAR during a read stops it: nothing is shown afterwards');
   w.eval('selfTestState = "fail"'); let alerted = 0; const oa = w.alert; w.alert = () => { alerted++; }; await w.wdatOpenUi(); w.alert = oa; w.eval('selfTestState = "pass"');
   ok(alerted === 1 && $('wdatStatus').textContent === '', 'gate: with a failed self-test, READ WALLET FILE refuses');
-  await w.wdatOpenUi(); ok(/Choose the wallet\.dat file first/.test($('wdatStatus').textContent), 'box: READ WALLET FILE with no file asks for one');
+  await w.wdatOpenUi(); ok(/Choose the wallet\.dat file first/.test($('wdatStatus').textContent) && $('wdatStatus').className === 'status bad', 'box: READ WALLET FILE with no file asks for one (status bad, as the Electrum box)');
+  // auto-clear counts a chosen wallet.dat that is not read yet (it may hold keys that are not encrypted)
+  w.clearAll(); ok(!w.autoHasSecrets(), 'auto-clear: control: nothing held after CLEAR ALL');
+  Object.defineProperty($('wdatFile'), 'files', { value: [new w.File([file(MF.legacyOld.file)], 'wallet.dat')], configurable: true });
+  ok(w.wdatHolds() && w.autoHasSecrets(), 'auto-clear: a chosen wallet.dat that is not read yet counts as a secret');
+  delete $('wdatFile').files; ok(!w.autoHasSecrets(), 'auto-clear: and no longer once the file box is empty');
 }
 R.done('walletdat');
