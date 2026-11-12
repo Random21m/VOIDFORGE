@@ -387,7 +387,8 @@ try {
   await p.bringToFront(); await sleep(300);
   ok((await st()).bar, 'browser: coming back does not uncover them by itself');
   // pixels: covered words are unreadable (the grid has no sharp edges left), uncovered they are sharp
-  const sharp = async () => { const b = await p.locator('#wordGrid').screenshot(); const { PNG } = require('pngjs'); const img = PNG.sync.read(b); let e = 0;
+  // (the grid is centered first, so the re-hide notice fixed at the bottom of the window never lies over it)
+  const sharp = async () => { await p.evaluate(() => document.getElementById('wordGrid').scrollIntoView({ block: 'center', behavior: 'instant' })); await sleep(100); const b = await p.locator('#wordGrid').screenshot(); const { PNG } = require('pngjs'); const img = PNG.sync.read(b); let e = 0;
     for (let y = 0; y < img.height; y++) for (let x = 1; x < img.width; x++) { const i = (y * img.width + x) * 4, j = i - 4; if (Math.abs(img.data[i] - img.data[j]) + Math.abs(img.data[i + 1] - img.data[j + 1]) + Math.abs(img.data[i + 2] - img.data[j + 2]) > 120) e++; } return e; };
   const blurredEdges = await sharp();
   await p.click('#rhShowBtn'); await sleep(200);

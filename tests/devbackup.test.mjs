@@ -44,7 +44,8 @@ async function throws(promise, re, name) {
 }
 
 // ---------------------------------------------------------------- expected values, from the independent libraries
-const NETS = { main: btc.NETWORK, test: btc.TEST_NETWORK };
+// v2.16.1: regtest is testnet with the bech32 prefix bcrt (Bitcoin Core chainparams.cpp, CRegTestParams; Coldcard chains.py BitcoinRegtest)
+const NETS = { main: btc.NETWORK, test: btc.TEST_NETWORK, regtest: { ...btc.TEST_NETWORK, bech32: 'bcrt' } };
 function addrOf(pub, type, net) {
   const n = NETS[net];
   if (type === 'wpkh') return btc.p2wpkh(pub, n).address;
@@ -68,8 +69,8 @@ function shows(text, root, steps, net, label) {
   R.ok(rows.size === 20 && bad.length === 0, label + ': the 10 receive and 10 change addresses (' + exp[0][1] + ' first)' + (bad.length ? ' MISMATCH ' + bad[0] + ' got ' + rows.get(bad[0][0]) : ''));
 }
 const wordsOf = (secret) => secret.split('\n').slice(1).join(' ').replace(/\s+/g, ' ').replace(/\d+\. /g, '').trim();   // the numbered words under the heading line
-const rootOfWords = (m, net = 'main') => HDKey.fromMasterSeed(mnemonicToSeedSync(m), net === 'test' ? { private: 0x04358394, public: 0x043587cf } : undefined);
-const rndRoot = (net = 'main') => HDKey.fromMasterSeed(rb(32), net === 'test' ? { private: 0x04358394, public: 0x043587cf } : undefined);
+const rootOfWords = (m, net = 'main') => HDKey.fromMasterSeed(mnemonicToSeedSync(m), net !== 'main' ? { private: 0x04358394, public: 0x043587cf } : undefined);
+const rndRoot = (net = 'main') => HDKey.fromMasterSeed(rb(32), net !== 'main' ? { private: 0x04358394, public: 0x043587cf } : undefined);
 const fileOf = (name, bytes) => { const f = new w.File([bytes], name); Object.defineProperty(f, 'arrayBuffer', { value: async () => u8(bytes).buffer.slice(0) }); return f; };   // jsdom's File has no arrayBuffer(); a browser's has
 
 // ================================================================ 0. The fixtures
@@ -342,10 +343,11 @@ const CCCASES = [
   { name: '24 words, a raw_secret padded to 72 bytes', mk: () => { const e = rb(32), mn = entropyToMnemonic(e, wordlist); return { mn, raw: ('82' + hex(e)).padEnd(144, '0'), root: rootOfWords(mn), words: mn }; } },
   { name: '18 words', mk: () => { const e = rb(24), mn = entropyToMnemonic(e, wordlist); return { mn, raw: '81' + hex(e), root: rootOfWords(mn), words: mn }; } },
   { name: '12 words on testnet (chain XTN)', chain: 'XTN', net: 'test', mk: () => { const e = rb(16), mn = entropyToMnemonic(e, wordlist); return { mn, raw: '80' + hex(e), root: rootOfWords(mn, 'test'), words: mn }; } },
+  { name: '12 words on regtest (chain XRT, v2.16.1)', chain: 'XRT', net: 'regtest', mk: () => { const e = rb(16), mn = entropyToMnemonic(e, wordlist); return { mn, raw: '80' + hex(e), root: rootOfWords(mn, 'regtest'), words: mn }; } },
   { name: 'a seed vault and duress wallets (also holds)', extra: ['setting.seeds = [1]', 'duress_xprv_1 = "x"', 'setting.multisig = [1]', 'setting.notes = "n"'], mk: () => { const e = rb(16), mn = entropyToMnemonic(e, wordlist); return { mn, raw: '80' + hex(e), root: rootOfWords(mn), words: mn }; } },
 ];
 for (const cs of CCCASES) {
-  const s = cs.mk(), net = cs.net || 'main', pw = ccPw(), coin = net === 'test' ? 1 : 0, text = ccText({ mnemonic: s.mn, raw: s.raw, chain: cs.chain || 'BTC', xprv: s.root.privateExtendedKey, extra: cs.extra }), file = cc7z(text, pw);
+  const s = cs.mk(), net = cs.net || 'main', pw = ccPw(), coin = net === 'main' ? 0 : 1, text = ccText({ mnemonic: s.mn, raw: s.raw, chain: cs.chain || 'BTC', xprv: s.root.privateExtendedKey, extra: cs.extra }), file = cc7z(text, pw);
   const label = 'Coldcard ' + cs.name;
   try {
     const x = await w.ccOpen(u8(file), pw, 'backup-2026.7z');
@@ -354,7 +356,7 @@ for (const cs of CCCASES) {
     const r = await ccUi(u8(file), 'backup-2026.7z', pw);
     R.ok(r.cls === 'status ok', label + ' in the page: ' + r.st);
     shows(r.out, s.root, "m/84'/" + coin + "'/0'", net, label + ' in the page');
-    R.ok(net === 'test' ? /TESTNET/.test(r.out) && /tb1q/.test(r.out) : /bc1q/.test(r.out) && !/TESTNET/.test(r.out), label + ': the page says which network');
+    R.ok(net === 'test' ? /TESTNET/.test(r.out) && /tb1q/.test(r.out) : net === 'regtest' ? /REGTEST/.test(r.out) && /bcrt1q/.test(r.out) && !/TESTNET/.test(r.out) : /bc1q/.test(r.out) && !/TESTNET|REGTEST/.test(r.out), label + ': the page says which network');
     R.ok(r.secret.includes('SEED WORDS') && wordsOf(r.secret) === s.words, label + ': SHOW THE SECRET gives the words');
     if (cs.extra) R.ok(/It also holds .*seed vault.*duress.*notes|It also holds/.test(r.out), label + ': the page lists what else it holds');
   } catch (e) { fail(label, e); }
@@ -370,6 +372,9 @@ for (const cs of CCCASES) {
   const rootT = rndRoot('test'), fileT = cc7z(ccText({ raw: '01' + hex(rootT.chainCode) + hex(rootT.privateKey), chain: 'XTN' }), pw), rt = await ccUi(u8(fileT), 't.7z', pw);
   shows(rt.out, rootT, "m/84'/1'/0'", 'test', 'Coldcard xprv-only on testnet in the page');
   R.ok(rt.secret.includes(rootT.privateExtendedKey) && rootT.privateExtendedKey.startsWith('tprv'), 'Coldcard xprv-only on testnet: the secret is the tprv');
+  const rootR = rndRoot('regtest'), fileR = cc7z(ccText({ raw: '01' + hex(rootR.chainCode) + hex(rootR.privateKey), chain: 'XRT' }), pw), rr0 = await ccUi(u8(fileR), 'r.7z', pw);   // v2.16.1
+  shows(rr0.out, rootR, "m/84'/1'/0'", 'regtest', 'Coldcard xprv-only on regtest (XRT) in the page');
+  R.ok(rr0.secret.includes(rootR.privateExtendedKey) && /REGTEST/.test(rr0.out), 'Coldcard xprv-only on regtest: the secret is the tprv (regtest writes keys as testnet) and the page says REGTEST');
   for (const n of [16, 32, 64]) {
     const seed = rb(n), rs = hex(Buffer.of(n)) + hex(seed), f2 = cc7z(ccText({ raw: rs, chain: 'BTC' }), pw), ro = HDKey.fromMasterSeed(seed), rr = await ccUi(u8(f2), 'seed.7z', pw);
     shows(rr.out, ro, "m/84'/0'/0'", 'main', 'Coldcard raw ' + n * 8 + '-bit seed in the page');

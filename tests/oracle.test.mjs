@@ -998,16 +998,17 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
 // are named and placed on the right network; a one-character change is always caught; 4-letter forms and the closest-word
 // helper are checked against the BIP39 English list from @scure/bip39.
 {
-  const nets = { main: btc.NETWORK, test: btc.TEST_NETWORK }, B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz', B32 = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+  // v2.16.1: regtest too (Bitcoin Core chainparams.cpp CRegTestParams: bech32 "bcrt", base58 as testnet)
+  const nets = { main: btc.NETWORK, test: btc.TEST_NETWORK, regtest: { ...btc.TEST_NETWORK, bech32: 'bcrt' } }, B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz', B32 = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
   let n = 0, bad = 0;
   for (let t = 0; t < 40; t++) {
-    const net = t % 2 ? 'test' : 'main', N = nets[net], pub = secp256k1.getPublicKey(secp256k1.utils.randomPrivateKey(), true), pub2 = secp256k1.getPublicKey(secp256k1.utils.randomPrivateKey(), true);
+    const net = ['main', 'test', 'regtest'][t % 3], N = nets[net], pub = secp256k1.getPublicKey(secp256k1.utils.randomPrivateKey(), true), pub2 = secp256k1.getPublicKey(secp256k1.utils.randomPrivateKey(), true);
     const cases = [['P2WPKH', btc.p2wpkh(pub, N).address], ['P2WSH', btc.p2wsh(btc.p2ms(1, [pub, pub2]), N).address], ['P2TR', btc.p2tr(pub.slice(1), undefined, N).address],
       ['P2PKH', btc.p2pkh(pub, N).address], ['P2SH', btc.p2sh(btc.p2wpkh(pub, N), N).address]];
     for (const [kind, a] of cases) {
-      n++; const r = await w.explainAddress(a), netOk = net === 'main' ? /on Bitcoin mainnet/.test(r.text) : /on testnet or signet/.test(r.text);
+      n++; const r = await w.explainAddress(a), netOk = net === 'main' ? /on Bitcoin mainnet/.test(r.text) : /^(P2PKH|P2SH)$/.test(kind) ? /on testnet, signet or regtest/.test(r.text) : net === 'test' ? /on testnet or signet/.test(r.text) : /on regtest/.test(r.text);
       if (r.level !== 'ok' || !r.text.includes('(' + kind + ')') || !netOk) { bad++; console.log('EXPLAIN WRONG', kind, net, a, r.text.slice(0, 90)); }
-      const i = 4 + nc.randomInt(a.length - 4), alpha = /^(bc|tb)1/.test(a) ? B32 : B58; let c; do { c = alpha[nc.randomInt(alpha.length)]; } while (c === a[i]);
+      const i = 4 + nc.randomInt(a.length - 4), alpha = /^(bc|tb|bcrt)1/.test(a) ? B32 : B58; let c; do { c = alpha[nc.randomInt(alpha.length)]; } while (c === a[i]);
       const typo = a.slice(0, i) + c + a.slice(i + 1); n++; const r2 = await w.explainAddress(typo);
       if (r2.level !== 'bad') { bad++; console.log('EXPLAIN TYPO NOT CAUGHT', kind, a, typo, r2.text.slice(0, 80)); }
     }

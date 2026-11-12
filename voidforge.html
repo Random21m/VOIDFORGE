@@ -1053,6 +1053,17 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .wv-ctl #wvChain { flex:1.5 1 230px; }   /* v2.16.0: room for "Receive and change" (the whole width on a phone) */
   @media (max-width: 560px) { .wv-ctl #wvChain { flex-basis: 100%; } }
   .wv-ctl input { width:64px; flex:none; }
+  /* v2.16.1: the Network menu of a wallet finder (Electrum file, wallet.dat, Wallet Detective) */
+  .net-pick { display:flex; gap:8px; align-items:center; margin-top:6px; }
+  .net-pick label { font-size:13px; font-weight:600; flex:none; }
+  .net-pick select { flex:1; min-width:0; }
+  /* v2.16.1: under every network menu while practice mode is on (the banner at the top is out of sight there) */
+  .pr-net { display:none; }
+  body.practice .pr-net { display:block; color:var(--text); border:1px solid var(--warn-text); border-left-width:4px; border-radius:8px; padding:6px 10px; margin:6px 0; font-size:13px; }
+  .pr-net .linklike { margin:0 0 0 6px; padding:0; background:none; border:none; color:var(--accent); font-weight:700; font-size:13px; letter-spacing:0; text-decoration:underline; text-underline-offset:3px; box-shadow:none; min-height:0; }
+  /* v2.16.1: Practice making a backup: which words, a public test seed or your own */
+  .pr-src { display:flex; flex-direction:column; gap:6px; margin:8px 0 0; }
+  .pr-src label { display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-weight:600; }
   #wvBanner { border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:8px; padding:8px 12px; margin:8px 0; font-size:13px; color:var(--muted); }
   #wvFpRow { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:8px 0 0; }
   /* v2.7.0: the wallet without and with the passphrase, side by side (one column on a phone) */
@@ -1208,7 +1219,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div class="ms-t" id="msBanTitle"></div>
       <div class="ms-dots" id="msBanDots"></div>
       <p id="msBanText"></p>
-      <div class="btn-row"><button type="button" id="msAddBtn" onclick="msAddMade()" disabled>ADD THIS KEY &amp; WIPE THE SEED</button><button type="button" class="secondary small" onclick="msUsePaste()">USE A KEY FROM ELSEWHERE</button></div>
+      <div class="btn-row"><button type="button" id="msAddBtn" onclick="msAddMade()" disabled>ADD THIS KEY &amp; WIPE THE SEED</button><button type="button" class="secondary small" id="msAddCheckBtn" onclick="msAddChecked()">USE THE SEED IN CHECK A BACKUP</button><button type="button" class="secondary small" onclick="msUsePaste()">USE A KEY FROM ELSEWHERE</button></div>
       <div class="ms-bad" id="msBanErr"></div>
     </div>
     <div id="guidePanel" aria-live="polite">
@@ -1634,7 +1645,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <p class="hint" style="margin:8px 0;">A <span class="term" tabindex="0" data-tip="A wallet that holds only public keys: it can show addresses and balances but cannot spend. Safe to keep on a phone.">watch-only</span> wallet shows this wallet&rsquo;s addresses and balance on a phone or online computer <b>without the seed words</b>. It cannot spend. Anyone who gets it can see every address and balance of this wallet, so share it only with your own wallet app. If you used a passphrase, it belongs to this passphrase only.</p>
       <div style="display:flex; gap:6px; align-items:center; margin:6px 0;">
         <select id="wType" aria-label="Address type" style="flex:1; min-width:0;"><option value="wpkh">Native SegWit (bc1q...), most wallets</option><option value="tr">Taproot (bc1p...)</option><option value="sh-wpkh">Nested SegWit (3...)</option><option value="pkh">Legacy (1...)</option><option value="ms-wsh">Multisig cosigner key, native SegWit (BIP48)</option><option value="ms-sh-wsh">Multisig cosigner key, nested SegWit (BIP48)</option><option value="ms-tr">Multisig cosigner key, Taproot (m/48'/.../3', not in BIP48)</option></select>
-        <select id="wNet" aria-label="Network" style="width:104px; flex:none;"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
+        <select id="wNet" aria-label="Network" style="width:104px; flex:none;"><option value="main">Mainnet</option><option value="test">Testnet</option><option value="regtest">Regtest</option></select>
         <input type="text" id="wAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number" style="width:64px; flex:none;">
       </div>
       <div class="ms-test" id="wTestBan" style="display:none">TESTNET (practice coins only). These keys and addresses are not for real money.</div>
@@ -1780,7 +1791,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div class="wv-ctl">
         <select id="wvType" aria-label="Address type"><option value="wpkh">Native SegWit (bc1q...)</option><option value="tr">Taproot (bc1p...)</option><option value="sh-wpkh">Nested SegWit (3...)</option><option value="pkh">Legacy (1...)</option></select>
         <select id="wvChain" aria-label="Receive or change"><option value="0">Receive</option><option value="1">Change</option><option value="both" selected>Receive and change</option></select>
-        <select id="wvNet" aria-label="Network"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
+        <select id="wvNet" aria-label="Network"><option value="main">Mainnet</option><option value="test">Testnet</option><option value="regtest">Regtest</option></select>
         <input type="text" id="wvAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number">
       </div>
       <input type="text" id="wvPathIn" class="wv-path" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Custom path (optional)" placeholder="Custom path (optional), such as m/0' or m/44'/0'/1', or m/44'/0'/0'/0/*">
@@ -1858,6 +1869,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <h3 class="sec">My wallet shows zero: Wallet Detective<span class="tag tag-secret">USES THE WORDS ABOVE</span></h3>
       <p class="hint" style="margin:0 0 6px;">When the right words open an empty wallet, the app is often looking in a different place: another address type, account or path, a passphrase, or an Electrum seed. Type the words (and the passphrase, if any) in the boxes at the top of this tab, then one address you know this wallet received to (from an old message, invoice or exchange withdrawal). FIND MY WALLET tries the settings of well-known wallet apps until that address matches, then names the apps that use them and how to open it. It never looks up a balance. A search can take a minute or two (longer with a passphrase); STOP ends it. No address? LIST FIRST ADDRESSES shows the first address of each common setting, to look up on another device.</p>
       <input type="text" id="detAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="An address this wallet received to" placeholder="An address this wallet received to (bc1q, bc1p, 3 or 1)" oninput="detClear(true)">
+      <div class="net-pick"><label for="detNet">Network</label><select id="detNet" autocomplete="off" onchange="detClear(true)"><option value="" selected>As guessed from the address</option><option value="main">Mainnet</option><option value="test">Testnet</option><option value="regtest">Regtest</option></select></div>
       <div class="btn-row top"><button type="button" id="detBtn" onclick="detFind()" disabled>FIND MY WALLET</button><button type="button" class="secondary small" id="detListBtn" onclick="detList()" disabled>LIST FIRST ADDRESSES</button><button type="button" class="secondary small" id="detStop" onclick="detStop()" disabled>STOP</button><button type="button" class="secondary small" onclick="detClear()">CLEAR</button></div>
       <div class="status bad" id="detPub" role="status" style="word-break:break-word;"></div>
       <div class="status" id="detStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
@@ -1905,6 +1917,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <div class="hint" id="ewDrop" aria-live="polite"></div>
       <textarea id="ewIn" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Or the wallet file as text" placeholder="Or paste the file&rsquo;s text: it starts with { (or with QklFMQ when the whole file is encrypted)" style="margin-top:6px;"></textarea>
       <div style="display:flex; gap:6px; margin-top:6px; align-items:center;"><input type="password" id="ewPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="Wallet password" placeholder="Wallet password (if it has one)" style="flex:1; min-width:0;"><button type="button" class="secondary small" id="ewPassBtn" onclick="ewTogglePass(this)">SHOW</button></div>
+      <div class="net-pick"><label for="ewNet">Network</label><select id="ewNet" autocomplete="off" onchange="ewNetSet()"><option value="" selected>As guessed from the file</option><option value="main">Mainnet</option><option value="test">Testnet</option><option value="regtest">Regtest</option></select></div>
       <div class="btn-row top"><button type="button" id="ewBtn" onclick="ewOpenUi()" disabled>OPEN WALLET FILE</button><button type="button" class="secondary small" id="ewPrintBtn" onclick="ewPrint()" disabled>PRINT SUMMARY</button><button type="button" class="secondary small" onclick="ewClear()">CLEAR</button></div>
       <div class="status" id="ewStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
       <pre id="ewOut" style="display:none; white-space:pre-wrap; overflow-wrap:anywhere; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
@@ -1918,6 +1931,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <input type="file" id="wdatFile" accept=".dat,.sqlite,.bak,application/octet-stream" aria-label="Choose the wallet.dat file" onchange="wdatPicked()" style="width:100%;">
       <p class="hint" id="wdatPicked" style="margin:4px 0 0;">Or drop the file on this box.</p>
       <div style="display:flex; gap:6px; margin-top:6px; align-items:center;"><input type="password" id="wdatPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="The wallet's passphrase, if it is encrypted" placeholder="Passphrase, if it is encrypted" style="flex:1; min-width:0;"><button type="button" class="secondary small" id="wdatShowPass" onclick="pwShowToggle(this)">SHOW</button></div>
+      <div class="net-pick"><label for="wdatNet">Network</label><select id="wdatNet" autocomplete="off" onchange="wdatNetSet()"><option value="" selected>As the file says, or as guessed</option><option value="main">Mainnet</option><option value="test">Testnet</option><option value="regtest">Regtest</option></select></div>
       <div class="btn-row top"><button type="button" id="wdatBtn" onclick="wdatOpenUi()" disabled>READ WALLET FILE</button><button type="button" class="secondary small" id="wdatPrintBtn" onclick="wdatPrint()" disabled>PRINT SUMMARY</button><button type="button" class="secondary small" onclick="wdatClear()">CLEAR</button></div>
       <div class="status" id="wdatStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
       <pre id="wdatOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
@@ -1933,22 +1947,31 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <h3 class="sec grp">Practice and plan</h3>
     <details id="practiceBox">
-      <summary>Practice making a backup<span class="tag tag-ro">NO REAL KEYS</span><small>Rehearse writing words on paper and checking them, with a public test seed.</small></summary>
-      <p class="hint" style="margin:8px 0;">Copying words by hand is where real backups go wrong. This gives you a <b>public test seed</b> to write on paper, hides it, then checks the copy you type back in. Do it once before the real thing. <b>These are published test seeds from the BIP39 standard, for practice only: never put money on them.</b></p>
+      <summary>Practice making a backup<span class="tag tag-secret">SECRET</span><small>Rehearse writing words on paper and checking them, with a public test seed or with your own words.</small></summary>
+      <p class="hint" style="margin:8px 0;">Copying words by hand is where real backups go wrong. Write the words on paper, press HIDE, then type them back from the paper: the page checks the copy word by word. Rehearse with a <b>public test seed</b> (published test seeds from the BIP39 standard, for practice only: never put money on them), or check a real paper backup with <b>your own words</b>.</p>
+      <div class="pr-src" role="radiogroup" aria-label="Words to practice with">
+        <label><input type="radio" name="prSrc" id="prSrcTest" value="test" checked autocomplete="off" onchange="practiceSrc()"> A public test seed, built in <span class="tag tag-ro">NO REAL KEYS</span></label>
+        <label><input type="radio" name="prSrc" id="prSrcOwn" value="own" autocomplete="off" onchange="practiceSrc()"> My own words <span class="tag tag-secret">SECRET</span></label>
+      </div>
+      <div id="prOwnRow" style="display:none; margin-top:6px;">
+        <p class="hint" style="margin:0 0 6px;"><b>Your own words open your wallet: do this only on your offline computer.</b> Nothing is saved. Re-hide covers them; CLEAR, CLEAR ALL, auto-clear and END SESSION wipe them.</p>
+        <textarea id="prOwn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Your own seed words" placeholder="Type or paste your seed words (12 to 24 words)" oninput="practiceOwnEdit()"></textarea>
+      </div>
       <div class="btn-row" style="margin-top:6px;"><button type="button" id="prStart" onclick="practiceStart()">START PRACTICE</button><button type="button" class="secondary small" onclick="practiceClear()">CLEAR</button></div>
       <div id="prShow" style="display:none; margin-top:10px;">
-        <div class="ms-test">PRACTICE ONLY. Never put money on this public test seed. Write the 12 words on paper, in order, with a pen. Then press HIDE.</div>
+        <div class="ms-test" id="prBan">PRACTICE ONLY. Never put money on this public test seed. Write the 12 words on paper, in order, with a pen. Then press HIDE.</div>
+        <p class="hint" id="prOwnTip" style="display:none; margin:0 0 6px;"></p>
         <ol id="prWords" style="columns:2; margin:0 0 8px 36px; padding:0; font-family:'Courier New',monospace; font-size:15px;"></ol>
         <button type="button" class="small" id="prHide" onclick="practiceHide()">I HAVE WRITTEN THEM DOWN: HIDE</button>
       </div>
       <div id="prCheck" style="display:none; margin-top:10px;">
-        <p class="hint" style="margin:0 0 6px;">The words are hidden. Read your paper and type the 12 words back, in order.</p>
-        <textarea id="prInput" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Practice words typed from paper" placeholder="Type the 12 practice words from your paper"></textarea>
+        <p class="hint" style="margin:0 0 6px;">The words are hidden. Read your paper and type the words back, in order.</p>
+        <textarea id="prInput" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Practice words typed from paper" placeholder="Type the words from your paper"></textarea>
         <div class="btn-row" style="margin-top:6px;"><button type="button" id="prCheckBtn" onclick="practiceCheck()">CHECK MY PAPER</button><button type="button" class="secondary small" onclick="practicePeek()">SHOW THE WORDS AGAIN</button></div>
       </div>
       <div class="status" id="prStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
       <h3 class="sec">Practice mode for the whole page</h3>
-      <p class="hint" style="margin:6px 0;">Rehearse the whole job with worthless test coins. While it is on, every address on the page is on the test network (tb1..., 2..., m... or n...), the network menus stay on Testnet, and printed sheets with addresses or keys say TESTNET. A seed made while it is on is an ordinary seed: the test network only changes which addresses are shown, and seed backups print as usual. Turn it on or off when no multisig wallet is being made. OPEN A PRACTICE WALLET opens a public test seed in CHECK A BACKUP, so you can try receiving test coins with nothing at stake.</p>
+      <p class="hint" style="margin:6px 0;">Rehearse the whole job with worthless test coins. While it is on, every address on the page is on the test network (tb1..., 2..., m... or n...), the network menus stay on Testnet, and printed sheets with addresses or keys say TESTNET. A seed made while it is on is an ordinary seed: the test network only changes which addresses are shown, and seed backups print as usual. Turn it on or off when no multisig wallet is being made. While it is on, a PRACTICE MODE note sits under every network menu. OPEN A PRACTICE WALLET opens the words chosen above in CHECK A BACKUP, on the test network: the public test seed, to try receiving test coins with nothing at stake, or your own words, to see your own wallet&rsquo;s test-network addresses (they are not your real addresses).</p>
       <label class="pr-mode"><input type="checkbox" id="practiceMode" autocomplete="off" onchange="practiceMode(this.checked)"> Practice mode: test network everywhere</label>
       <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" id="prWalletBtn" onclick="practiceWallet()">OPEN A PRACTICE WALLET</button></div>
     </details>
@@ -2094,9 +2117,18 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     </details>
     <!-- v2.15.0: Practice your passphrase (public test seed only; covered by re-hide, wiped by CLEAR, CLEAR ALL, auto-clear and END SESSION) -->
     <details id="ppBox">
-      <summary>Practice your passphrase<span class="tag tag-secret">SECRET</span><small>Type it, then type it again from memory: see whether they match, with a public test seed.</small></summary>
-      <p class="hint" style="margin:8px 0;">A passphrase is used exactly as typed, and a wrong one opens an empty wallet without any warning. Rehearse it here: type it in the first box, then type it again from memory in the second (pasting is turned off there). Nothing is stored. This never uses your seed words: the fingerprint below comes from the public test seed <b>abandon ... about</b> with your passphrase. To rehearse on a hardware wallet, load that test seed there, type the passphrase on the device, and compare the fingerprint it shows. <b>Keep that fingerprint private:</b> with the public test seed, anyone who sees it can check guesses of your passphrase.</p>
-      <div style="display:flex; gap:6px; align-items:center;">
+      <summary>Practice your passphrase<span class="tag tag-secret">SECRET</span><small>Type it, then type it again from memory: see whether they match, and the fingerprint it gives.</small></summary>
+      <p class="hint" style="margin:8px 0;">A passphrase is used exactly as typed, and a wrong one opens an empty wallet without any warning. Rehearse it here: type it in the first box, then type it again from memory in the second (pasting is turned off there). Nothing is stored. The fingerprint below comes from the seed you choose with your passphrase. With the public test seed <b>abandon ... about</b>, load that test seed on a hardware wallet, type the passphrase on the device, and compare the fingerprint it shows. <b>Keep that fingerprint private:</b> with the public test seed, anyone who sees it can check guesses of your passphrase. With your own seed (typed here, or the one made on this page) it is your passphrase wallet&rsquo;s real fingerprint, to compare with your device.</p>
+      <div class="pr-src" role="radiogroup" aria-label="Seed for the fingerprint">
+        <label><input type="radio" name="ppSrc" id="ppSrcTest" value="test" checked autocomplete="off" onchange="ppSrcSet()"> The public test seed abandon ... about</label>
+        <label><input type="radio" name="ppSrc" id="ppSrcMade" value="made" autocomplete="off" onchange="ppSrcSet()"> The seed made on this page (MAKE A SEED)</label>
+        <label><input type="radio" name="ppSrc" id="ppSrcOwn" value="own" autocomplete="off" onchange="ppSrcSet()"> My own seed words</label>
+      </div>
+      <div id="ppOwnRow" style="display:none; margin-top:6px;">
+        <p class="hint" style="margin:0 0 6px;"><b>Your seed words and passphrase together open your wallet: do this only on your offline computer.</b> Re-hide covers them; CLEAR, CLEAR ALL, auto-clear and END SESSION wipe them.</p>
+        <textarea id="ppSeed" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Your own seed words" placeholder="Type or paste your seed words (12 to 24 words)" oninput="ppWipe()"></textarea>
+      </div>
+      <div style="display:flex; gap:6px; align-items:center; margin-top:8px;">
         <input type="password" id="ppA" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="Your passphrase" placeholder="Your passphrase" style="flex:1; min-width:0;" oninput="ppWipe()">
         <button type="button" class="secondary small" onclick="ppToggle(this)">SHOW</button>
       </div>
@@ -2149,7 +2181,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <textarea id="psbtInput" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="PSBT (base64 or hex, or animated QR text)" placeholder="Paste the PSBT here (starts with cHNidP8 or 70736274ff), or the text of an animated QR: UR or BBQr parts, one per line"></textarea>
       <div style="display:flex; gap:6px; align-items:center; margin-top:6px; flex-wrap:wrap;">
         <input type="file" id="psbtFile" accept=".psbt,application/octet-stream" aria-label="Choose a PSBT file" style="flex:1; min-width:0;">
-        <select id="psbtNet" aria-label="Network" style="width:auto; flex:none;"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
+        <select id="psbtNet" aria-label="Network" style="width:auto; flex:none;"><option value="main">Mainnet</option><option value="test">Testnet</option><option value="regtest">Regtest</option></select>
       </div>
       <div style="display:flex; gap:6px; margin-top:6px;">
         <button type="button" id="psbtBtn" onclick="runPsbt()">INSPECT</button>
@@ -2166,7 +2198,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <label style="display:block; font-size:13px; color:var(--muted); margin-top:6px;">Second (the replacement, or what came back)</label>
       <textarea id="cmpB" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Second transaction (PSBT or raw hex)" placeholder="PSBT (base64 or hex) or raw transaction hex"></textarea>
       <div style="display:flex; gap:6px; align-items:center; margin-top:6px; flex-wrap:wrap;">
-        <select id="cmpNet" aria-label="Network" style="width:auto; flex:none;"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
+        <select id="cmpNet" aria-label="Network" style="width:auto; flex:none;"><option value="main">Mainnet</option><option value="test">Testnet</option><option value="regtest">Regtest</option></select>
         <button type="button" id="cmpBtn" onclick="runCompare()">COMPARE</button>
         <button type="button" class="secondary small" onclick="clearCompare(true)">CLEAR</button>
       </div>
@@ -2366,7 +2398,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <div class="hint" id="msMNote" style="margin:8px 0 6px;"></div>
         <div class="ms-row">
           <label>Address type<select id="msType" aria-label="Multisig address type"><option value="ms-wsh" class="opt-rec">Native SegWit (bc1q...), recommended</option><option value="ms-sh-wsh">Nested SegWit (3...), older wallets</option><option value="ms-tr">Taproot (bc1p...), script path, sortedmulti_a</option></select></label>
-          <label>Network<select id="msNet" aria-label="Network"><option value="main">Mainnet</option><option value="test">Testnet</option></select></label>
+          <label>Network<select id="msNet" aria-label="Network"><option value="main">Mainnet</option><option value="test">Testnet</option><option value="regtest">Regtest</option></select></label>
           <label>Account<input type="text" id="msAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" style="width:64px;"></label>
         </div>
         <div class="ms-sub" id="msTrNote" style="display:none; font-size:13px; line-height:1.55;">
@@ -2642,7 +2674,14 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details>
       <summary>Changelog</summary>
       <ul>
-        <li><b>2.16.1</b> &mdash; <b>A fix.</b> After FORGE SEED (every method: Dice, Coin, Word draw, Cards, Hex, Damascus and the practice signer) the page now lands on <b>YOUR SEED</b> with the words in view. Before, it scrolled to the line under the words, so the words sat hidden above the screen. If your system is set to reduce motion, the page now jumps instead of scrolling smoothly. <b>Practice works like everything else:</b> FORGE SEED now also works for Damascus practice (a practice sheet, the guided practice, a worked example), with the same steps and buttons as a real seed; the seed is marked by a red PRACTICE banner, and every sheet printed and file saved from it says PRACTICE. The practice signer does what a real SeedSigner does and takes any seed: LOAD INTO THE PRACTICE SIGNER (under YOUR SEED, and on the Damascus tab) loads it in one click, a seed from it is marked PRACTICE only when it is public, and re-hide covers it while it holds a seed that is not public.</li>
+        <li><b>2.16.1</b> &mdash; <b>A fix.</b> After FORGE SEED (every method: Dice, Coin, Word draw, Cards, Hex, Damascus and the practice signer) the page now lands on <b>YOUR SEED</b> with the words in view. Before, it scrolled to the line under the words, so the words sat hidden above the screen. If your system is set to reduce motion, the page now jumps instead of scrolling smoothly. <b>Practice works like everything else:</b> FORGE SEED now also works for Damascus practice (a practice sheet, the guided practice, a worked example), with the same steps and buttons as a real seed; the seed is marked by a red PRACTICE banner, and every sheet printed and file saved from it says PRACTICE. The practice signer does what a real SeedSigner does and takes any seed: LOAD INTO THE PRACTICE SIGNER (under YOUR SEED, and on the Damascus tab) loads it in one click, a seed from it is marked PRACTICE only when it is public, and re-hide covers it while it holds a seed that is not public.
+          <b>Tools that work as in real life.</b>
+          (1) <b>Practice making a backup</b> also takes your own words (My own words, marked SECRET; do it on an offline computer): write them on paper, hide them, type them back, and the page checks every word. Re-hide covers them; CLEAR ALL, auto-clear and END SESSION wipe them. The six public test seeds stay.
+          (2) <b>OPEN A PRACTICE WALLET</b> opens your own words on the test network when you choose them (typed in its box, or the words in CHECK A BACKUP; the public test seed stays the default), and while practice mode is on a PRACTICE MODE note sits under every network menu, with a link to turn it off.
+          (3) <b>Practice your passphrase</b> can use your own seed (typed there, or the seed made on the page) instead of the public test seed: the fingerprint is then your passphrase wallet&rsquo;s real one, to compare with your device.
+          (4) <b>Regtest</b> is its own network in every network menu (Watch-only wallet, Open this wallet, the transaction checkers and multisig): bcrt1 addresses, keys written as on testnet. Explain an address knows bcrt1, and the Coldcard backup reader opens regtest (chain XRT) backups. Checked against Bitcoin Core&rsquo;s chainparams.cpp, Coldcard&rsquo;s chains.py and Electrum&rsquo;s constants.py.
+          (5) A <b>Network</b> menu in Open an Electrum wallet file, Read a Bitcoin Core wallet file and the Wallet Detective: as guessed, or Mainnet, Testnet or Regtest; the addresses (and keys) are worked out again for it.
+          (6) The <b>multisig</b> setup takes a key from the seed open in CHECK A BACKUP (USE THE SEED IN CHECK A BACKUP), not only one just made: only its public key is kept, and its words are wiped there.</li>
         <li><b>2.16.0</b> &mdash; <b>Recover old wallets.</b> (1) <b>Open this wallet</b> (CHECK A BACKUP) now takes any derivation path, written with &prime; or h, and a path below an xpub or xprv. It shows receive and change addresses together by default (10 of each), starts at any address number you type, and SHOW 20 MORE adds more, up to 200 in each list. Descriptor endings /0/*, /1/* and /&lt;0;1&gt;/* are understood. (2) <b>Open an Electrum wallet file</b> reads files from Electrum 1.x to 4.8: plain, with password-encrypted keys, or encrypted as a whole; standard, BIP39 and old seeds, imported keys and addresses, watch-only, hardware, multisig and 2FA wallets. It shows the wallet type, its xpub and the first 10 receive and 10 change addresses, checked against the file. The seed is behind SHOW THE SECRET. Files encrypted by a hardware device (BIE2) are refused. (3) <b>Read a Bitcoin Core wallet file (wallet.dat)</b> reads legacy (Berkeley DB) and descriptor (SQLite) wallets, with the passphrase if the wallet is encrypted: its descriptors, labels and the first 10 receive and 10 change addresses. Private keys are behind SHOW THE PRIVATE KEYS. Both file readers only read: they change nothing and send nothing. A wallet file holds private keys, so open a copy of it on an offline computer. (4) The self-test now runs 155 checks. New dictionary entries: wallet.dat, Berkeley DB, Descriptor wallet, Legacy wallet (Bitcoin Core), Wallet encryption (Bitcoin Core), Keypool, Electrum wallet file, Seed extension (Electrum), Two-factor wallet (Electrum 2FA), AES and ECIES.</li>
         <li><b>2.15.0</b> &mdash; <b>Stop costly mistakes, and one house style.</b> (1) <b>Re-hide:</b> words, rolls, passphrases and other secrets are covered again when you switch to another tab or app, click another window, print the page with the browser&rsquo;s own Print, or leave the page idle (5 minutes; you can choose off, 1, 2 or 5). Nothing is wiped: SHOW uncovers them. VOIDFORGE&rsquo;s own PRINT buttons still print what they say, and the practice signer is not covered. This hides the screen only: it does not protect against malware, a screen recorder already running, or someone watching. (2) <b>Passphrase check</b> under every passphrase box: it shows spaces as &#9251;, warns if the text changes under NFKD (the rewrite BIP39 applies) or is not plain ASCII, and warns above 60 and above 100 characters (a Coldcard accepts at most 100 characters, ASCII 32 to 126 only; SeedSigner 0.8.7&rsquo;s keyboard has printable ASCII only). (3) EXTRA TOOLS has <b>Practice your passphrase</b>: type it twice and see whether the two match, with the fingerprint, on a public test seed only. (4) EXTRA TOOLS has <b>Link as QR</b>: a link or short public text as a QR code, refusing common secret formats (seed words, SeedQR digits, codex32, hex keys, WIF, mini keys, xprv) as a safety net, not a guarantee. (5) <b>Damascus quick path:</b> on the page you enter only the dice (step 1) and the cards (step 2); the page does the Forge, the words and the last word, and shows a Ready line, then FORGE SEED sits under the steps. Steps 3 to 5 stay as the full paper path and optional checks. Trusting the page&rsquo;s math is your choice; checking on paper is still there. <b>GUIDED PRACTICE</b> (NEXT, BACK, STOP) walks through a published practice sheet in 12 parts, and each value says where it comes from and which sheet and box it goes in. (6) <b>Polish:</b> a written house style (docs/STYLE.md) that a test enforces; one &ldquo;start here&rdquo; row on the front page, with one gold button (I FOUND A BITCOIN BACKUP) and a gray OPEN PRACTICE SIGNER that mentions lessons; one warning style; the same status colors everywhere; &ldquo;practice seed&rdquo; and &ldquo;public test seed&rdquo; are now used in one way each; the button is now FILL IN A PRACTICE SHEET; the practice signer is tagged PRACTICE ONLY with a hint. Fixed: the practice signer&rsquo;s settings now really reset after a wipe. New dictionary entries: NFKD normalization, Printable ASCII, Re-hide, Unicode, Malware, Keylogger, Practice seed and Public test seed. (7) VOIDFORGE&rsquo;s home is now GitHub (github.com/Random21m/VOIDFORGE).</li>
         <li><b>2.14.0</b> &mdash; <b>The Damascus method, and lessons on the practice signer.</b> MAKE A SEED has a new <b>Damascus</b> tab: a 12- or 24-word seed made by hand from <b>dice and playing cards</b>, folded together and checked as you go. The dice fill the <b>Hammer sheet</b>, the cards fill the <b>Anvil sheet</b>, and folding them (same bits give 0, different bits give 1) gives the <b>Forge sheet</b>, whose rows you look up in a printed word table. If either the dice or the shuffle is good, the seed is random. <b>Hallmarks</b> (an odd-ones check on every row and column) catch copying mistakes, not cheating, and they reveal part of the seed (22 bits for 12 words, 34 for 24), so keep them only next to the words. The last word needs a computer: the tab says how to get it from a SeedSigner (or the practice signer) and from VOIDFORGE, and both must agree. Its 7 bits (3 for 24 words) come from the Forge sheet; they are not new coin flips. On screen it goes in <b>five steps</b> (Hammer, Anvil, Forge, Words, Last word) with a progress bar: tap the dice on the Dice tab&rsquo;s faces (two taps a pair) and the cards on the Cards &amp; hex tab&rsquo;s card picker, and each row, deck and word is checked as you finish it, with a mistake shown where it is. The last step shows the last word, fingerprint and first address, or works the last word out from the Forge sheet alone (<b>CALCULATE LAST WORD</b>, as SeedSigner&rsquo;s Calc 12th/24th word does). The tab has a quick guide and questions, three public worked examples, a <b>practice run</b> (a practice sheet made from a published rule, never from the page&rsquo;s random numbers, so anyone can make the same one), <b>CHECK MY SHEETS</b> (it works out every grid, hallmark and word and points to the row and column of a mistake), an <b>assay</b> (a second person checks one sheet only and sees that sheet&rsquo;s hallmarks and its own Seed XOR phrase, never the seed), and a printable kit: PRINT DAMASCUS KIT, the three sheets, the word table, a backup card and a trial checklist, on Letter or A4. CHECK A BACKUP has <b>Recheck a Damascus backup</b>: type the words and the hallmarks written next to them. It takes about 30 minutes once you know the steps, and was field-tested on a real SeedSigner and in Sparrow on 10 November 2026. The method is credited on the tab and in ABOUT &amp; HELP: &ldquo;The Damascus method, created by Random, 10 November 2026&rdquo;, with its origin record (tag damascus-origin-2026-11-10, Bitcoin block 975,337). The self-test now has 141 checks, one of them the first worked example. The <b>practice signer</b> has <b>six lessons</b> beside the device: make a seed from dice, load a seed and export the xpub, check a receive address, sign a transaction, set up and check a 2-of-3 multisig, and sign a message. Each step says what to press and what you should see, and moves on by itself when the device shows the right screen. Nothing is drawn on the device&rsquo;s screen. A <b>practice transaction</b> button makes a PSBT that spends made-up coins, holds it up to the device&rsquo;s camera, and after you sign it checks every signature on the page. Its coins do not exist, so it can never be broadcast. The lessons use public test seeds only (such as abandon ... about): never put coins on them. A card under the header and MENU &gt; PRACTICE SIGNER open it. CLEAR ALL, auto-clear, END SESSION and closing the box wipe the lessons and the practice transaction. Below the device, <b>FORGE SEED</b> takes a seed loaded on the practice signer into MAKE A SEED&rsquo;s usual result, marked PRACTICE (the device&rsquo;s fingerprint next to this page&rsquo;s is a consistency check only, not an independent one), and a practice Damascus seed goes onto the practice signer with <b>LOAD INTO THE PRACTICE SIGNER</b>, which takes practice seeds only (its SeedQR is held up to the device&rsquo;s camera). New dictionary entries: Damascus method, Hammer sheet, Anvil sheet, Forge sheet, Hallmark, Skew hallmark, Assay, Bias box, Binary word table, Practice sheet and Practice transaction.</li>
@@ -4209,6 +4248,24 @@ const NETS={
   main:{coin:0, hrp:"bc", pkh:0x00, sh:0x05, ver:{wpkh:[0x04,0xb2,0x47,0x46], "sh-wpkh":[0x04,0x9d,0x7c,0xb2], other:XPUB_VER, "ms-wsh":[0x02,0xaa,0x7e,0xd3], "ms-sh-wsh":[0x02,0x95,0xb4,0x3f], "ms-tr":XPUB_VER}},
   test:{coin:1, hrp:"tb", pkh:0x6f, sh:0xc4, ver:{wpkh:[0x04,0x5f,0x1c,0xf6], "sh-wpkh":[0x04,0x4a,0x52,0x62], other:[0x04,0x35,0x87,0xcf], "ms-wsh":[0x02,0x57,0x54,0x83], "ms-sh-wsh":[0x02,0x42,0x89,0xef], "ms-tr":[0x04,0x35,0x87,0xcf]}}
 };
+// v2.16.1: regtest, its own network: testnet with the bech32 prefix "bcrt". Checked in the primary sources (fetched 2026-11-12):
+// Bitcoin Core src/kernel/chainparams.cpp, CRegTestParams: bech32_hrp = "bcrt"; base58Prefixes PUBKEY_ADDRESS 111 (0x6f),
+// SCRIPT_ADDRESS 196 (0xc4), SECRET_KEY 239 (0xef), EXT_PUBLIC_KEY 0x043587CF, EXT_SECRET_KEY 0x04358394 (all as testnet);
+// message start fa bf b5 da. SLIP-0173 lists Bitcoin's prefixes as bc, tb and bcrt (BIP173 itself names only bc and tb).
+// SLIP-0044: coin type 1 is "Testnet (all coins)". SLIP-0132 has no regtest versions: Coldcard (shared/chains.py, class
+// BitcoinRegtest(BitcoinTestnet), ctype "XRT", bech32_hrp "bcrt") and Electrum (electrum/constants.py, class
+// BitcoinRegtest(BitcoinTestnet), SEGWIT_HRP "bcrt") keep testnet's tpub, upub, vpub, Upub and Vpub. So an extended key cannot
+// say regtest or testnet: keys read as "test", and a regtest wallet is chosen in the network menu.
+NETS.regtest = {...NETS.test, hrp:"bcrt"};
+function netIsTest(net){ return net === "test" || net === "regtest"; }
+const NET_NOTE = {test:"TESTNET (practice coins only)", regtest:"REGTEST (a private test network, no real coins)"};
+function netNote(net){ return NET_NOTE[net] || ""; }   // "" on mainnet
+function netTitle(net){ return net === "test" ? " (TESTNET)" : net === "regtest" ? " (REGTEST)" : ""; }
+function netName(net){ return net === "test" ? "Testnet" : net === "regtest" ? "Regtest" : "Mainnet"; }
+// The TESTNET or REGTEST bar of a tool (class ms-test): shown with its network's words, hidden on mainnet.
+function netBan(id, net){ const b = document.getElementById(id); if(!b) return; b.style.display = netIsTest(net) ? "" : "none"; if(netIsTest(net)) b.textContent = netNote(net) + ". These keys and addresses are not for real money."; }
+// A key read as "test" (tpub, vpub ...) fits a testnet or a regtest wallet.
+function netFits(keyNet, net){ return keyNet === net || (keyNet === "test" && net === "regtest"); }
 // BIP48 multisig cosigner keys: m/48'/coin'/account'/script', script 2 = native SegWit (P2WSH), 1 = nested (P2SH-P2WSH). They have no address of their own.
 // v2.11.0: script 3 = Taproot multisig, which BIP48 does not define; Coldcard EDGE uses it (see the Taproot multisig block below).
 const MULTISIG={ "ms-wsh":{script:2, kname:"Zpub", label:"Multisig cosigner, native SegWit (BIP48)"}, "ms-sh-wsh":{script:1, kname:"Ypub", label:"Multisig cosigner, nested SegWit (BIP48)"},
@@ -4235,14 +4292,16 @@ async function addressFromPub(type, pub, net){
   if(type === "sh-wpkh") return base58check(Uint8Array.of(N.sh, ...await hash160(Uint8Array.of(0x00, 0x14, ...h))));
   throw new Error("unknown address type");
 }
-function addressNetOf(addr){ return /^(tb1|[2mn])/.test(addr) ? "test" : "main"; }
+function addressNetOf(addr){ return /^bcrt1/.test(addr) ? "regtest" : /^(tb1|[2mn])/.test(addr) ? "test" : "main"; }
 // v2.6.0: a bc1q/tb1q address with a 32-byte program is a script address (P2WSH, as multisig wallets use), not a single-key one.
 // No one seed makes it, so the address searches say so instead of searching and reporting NOT FOUND.
 function scriptAddrNote(addr){
-  const s = /^(bc1|tb1)q[0-9a-z]{58}$/.test(addr) ? segwitDecode(addr) : null;
+  const s = /^(bc1|tb1|bcrt1)q[0-9a-z]{58}$/.test(addr) ? segwitDecode(addr) : null;
   return s && s.version === 0 && s.prog.length === 32 ? "This is a script address (P2WSH), as a multisig wallet uses, not a single-key address. No one seed makes it on its own, so it cannot be found from these words. Check it in the wallet app that has all of the wallet's keys, or in Set up a multisig wallet on this page with every co-signer's key." : null;
 }
 function addressTypeOf(addr){
+  if(/^bcrt1q/.test(addr)) return "wpkh";   // v2.16.1: regtest
+  if(/^bcrt1p/.test(addr)) return "tr";
   if(/^tb1q/.test(addr)) return "wpkh";
   if(/^tb1p/.test(addr)) return "tr";
   if(/^2/.test(addr)) return "sh-wpkh";
@@ -4654,7 +4713,7 @@ function qrTextDecode(text){
 // crypto-output (BCR-2020-010) for a multisig wallet, in the profile Sparrow writes: sortedmulti (407) inside wsh (401) or sh(wsh(...)),
 // each key a crypto-hdkey (303) with key data, chain code, coin info, origin (path, master fingerprint, depth) and parent fingerprint.
 function cryptoOutputMultisig(type, m, cos, net){
-  const coin = CB.tag(305, CB.map([[CB.uint(1), CB.uint(0)], [CB.uint(2), CB.uint(net === "test" ? 1 : 0)]]));
+  const coin = CB.tag(305, CB.map([[CB.uint(1), CB.uint(0)], [CB.uint(2), CB.uint(net === "main" ? 0 : 1)]]));
   const keys = cos.map(c => {
     const steps = c.path.split("/").filter(Boolean), comps = [];
     for(const x of steps){ comps.push(CB.uint(parseInt(x, 10)), CB.bool(/[h']$/i.test(x))); }
@@ -5078,7 +5137,7 @@ const DICT = [
   ["Receive address", "An address your wallet gives you to be paid at. A wallet makes a fresh one for each payment, numbered 0, 1, 2 and so on on the first chain of the account (the 0 in m/84'/0'/0'/0/index).", "First 10 receive and 10 change addresses; Open this wallet: the Receive choice.", "Addresses & scripts"],
   ["Redeem script and witness script", "The hidden script behind a P2SH or P2WSH address, revealed only when the coin is spent.", "", "Addresses & scripts"],
   ["Reforge", "The recovery tool in this page: it fills in missing seed words, finds a wrong or swapped word, or tries passphrase guesses, and reports only results it has checked against your wallet's fingerprint, an address or its xpub.", "EXTRA TOOLS.", "VOIDFORGE"],
-  ["Regtest", "A private test network that you run on your own computer, where blocks are made on demand. It is only for developers.", "", "Network & mining"],
+  ["Regtest", "A private test network that you run on your own computer, where blocks are made on demand. It is only for developers. Its SegWit addresses start with bcrt1; its other addresses and its keys are written as on testnet (m..., n..., 2..., tpub, vpub), so a key alone cannot say which of the two it is for.", "The network menus: choose Regtest. Explain an address, the Coldcard backup reader (chain XRT), and the Network menus of the Electrum and Bitcoin Core wallet file readers and the Wallet Detective.", "Network & mining"],
   ["Relay policy", "A node's own rules for which unconfirmed transactions it passes on (for example a minimum fee). They are not consensus rules.", "", "Network & mining"],
   ["Reorg (chain reorganization)", "When the network switches to a longer competing chain, so the last few blocks are replaced. This is why more confirmations mean more safety.", "", "Network & mining"],
   ["Reproducible build", "Software built so that anyone gets the byte-for-byte same file from the source code, proving the published file matches the code.", "", "Privacy & security"],
@@ -5353,7 +5412,7 @@ async function mnemonicFirstAddress(mnemonic, passphrase){ return firstAddressFr
 async function shownFirstAddress(mnemonic, passphrase){ return practiceOn ? (await walletAddresses(await mnemonicToSeed(mnemonic, passphrase), "wpkh", "test", 0, 0, 0, 1))[0].address : mnemonicFirstAddress(mnemonic, passphrase); }
 // v2.6.0: the first address on a chosen network, whatever practice mode shows. A recorded bc1q... address is a real backup, so VERIFY
 // compares it with the real (main network) address even in practice mode, and a recorded tb1q... with the test-network one.
-async function firstAddressOn(net, mnemonic, passphrase){ return net === "test" ? (await walletAddresses(await mnemonicToSeed(mnemonic, passphrase), "wpkh", net, 0, 0, 0, 1))[0].address : mnemonicFirstAddress(mnemonic, passphrase); }
+async function firstAddressOn(net, mnemonic, passphrase){ return net !== "main" ? (await walletAddresses(await mnemonicToSeed(mnemonic, passphrase), "wpkh", net, 0, 0, 0, 1))[0].address : mnemonicFirstAddress(mnemonic, passphrase); }
 async function sha256bytes(b){ return new Uint8Array(await crypto.subtle.digest("SHA-256", b)); }
 async function mnemonicFingerprint(mnemonic, passphrase){ return fingerprintFromSeed(await mnemonicToSeed(mnemonic, passphrase)); }
 
@@ -5548,7 +5607,8 @@ async function oeShow(oe, both, vp){
 }
 // Explain an address (v2.4.0): what a pasted address is (type, network, typo or not) and what someone can do with it. It needs
 // no seed and uses only the text. Keys, seed words, Lightning invoices and descriptors pasted by mistake are recognized too.
-const EXPLAIN_NET = {bc: "Bitcoin mainnet (real money)", tb: "testnet or signet (practice coins, worthless)", bcrt: "regtest (a private test network)"};
+const EXPLAIN_NET = {bc: "Bitcoin mainnet (real money)", tb: "testnet or signet (practice coins, worthless)", bcrt: "regtest (a private test network, no real coins)"};
+const EXPLAIN_B58T = "testnet, signet or regtest (no real coins; these three write m..., n... and 2... addresses the same way)";   // v2.16.1
 async function explainAddress(text){
   let t = String(text || "").trim(); const terms = [];
   if(!t) return null;
@@ -5589,8 +5649,8 @@ async function explainAddress(text){
   if(/^[1-9A-HJ-NP-Za-km-z]{25,112}$/.test(t)){
     let raw; try { raw = await base58decode(t); } catch(e) { return {level: "bad", text: "Not a valid address: the checksum does not match, so at least one character is wrong or missing. Do not send to it.", terms: ["Checksum", "Base58 and Base58Check"]}; }
     const v = raw[0];
-    if(raw.length === 21 && (v === 0 || v === 0x6f)) return {level: "ok", text: "Legacy address (P2PKH) on " + (v ? EXPLAIN_NET.tb : EXPLAIN_NET.bc) + ". The checksum is valid. It stands for one public key; sending to it costs more in fees than SegWit." + pub + uri, terms: terms.concat(["Legacy address", "P2PKH"])};
-    if(raw.length === 21 && (v === 5 || v === 0xc4)) return {level: "ok", text: "Script address (P2SH) on " + (v === 5 ? EXPLAIN_NET.bc : EXPLAIN_NET.tb) + ". The checksum is valid. It is most often nested SegWit (one key) or an older multisig; the address alone does not say which." + pub + uri, terms: terms.concat(["P2SH", "Nested SegWit"])};
+    if(raw.length === 21 && (v === 0 || v === 0x6f)) return {level: "ok", text: "Legacy address (P2PKH) on " + (v ? EXPLAIN_B58T : EXPLAIN_NET.bc) + ". The checksum is valid. It stands for one public key; sending to it costs more in fees than SegWit." + pub + uri, terms: terms.concat(["Legacy address", "P2PKH"])};
+    if(raw.length === 21 && (v === 5 || v === 0xc4)) return {level: "ok", text: "Script address (P2SH) on " + (v === 5 ? EXPLAIN_NET.bc : EXPLAIN_B58T) + ". The checksum is valid. It is most often nested SegWit (one key) or an older multisig; the address alone does not say which." + pub + uri, terms: terms.concat(["P2SH", "Nested SegWit"])};
     if(raw.length === 39 && v === 1 && (raw[1] === 0x42 || raw[1] === 0x43)) return {level: "bad", text: "This is a password-protected PRIVATE KEY (BIP38), not an address. With its password, anyone can spend the bitcoin it holds.", terms: ["Private key"]};
     if((raw.length === 33 || (raw.length === 34 && raw[33] === 1)) && (v === 0x80 || v === 0xef)) return {level: "bad", text: "This is a PRIVATE KEY (WIF), not an address. Anyone who sees it can spend the bitcoin it holds. Never share it or paste it into a website.", terms: ["WIF (Wallet Import Format)", "Private key"]};
     if(raw.length === 78){
@@ -5600,7 +5660,7 @@ async function explainAddress(text){
     }
     return {level: "bad", text: "Valid Base58 text, but not a Bitcoin address VOIDFORGE recognizes (it may belong to another coin). Do not send bitcoin to it.", terms: ["Base58 and Base58Check", "Altcoin"]};
   }
-  return {level: "bad", text: "Not a Bitcoin address VOIDFORGE recognizes. Bitcoin addresses start with bc1, 1 or 3 (testnet: tb1, m, n or 2).", terms: ["Address"]};
+  return {level: "bad", text: "Not a Bitcoin address VOIDFORGE recognizes. Bitcoin addresses start with bc1, 1 or 3 (testnet: tb1, m, n or 2; regtest: bcrt1, m, n or 2).", terms: ["Address"]};
 }
 // A descriptor holds a secret if any key in it is an extended private key or a WIF key.
 async function descriptorHasSecret(t){
@@ -6028,8 +6088,8 @@ async function reforgeTarget(raw){
   if(!s) return null;
   if(/^[0-9a-fA-F]{8}$/.test(s)) return {kind:"fp", fp:s.toLowerCase(), label:"master fingerprint " + s.toLowerCase()};
   const typo = "That address has a typo: its built-in checksum does not match. Check it character by character; a search against it could never succeed.";
-  const a = /^(bc1|tb1)/i.test(s) ? s.toLowerCase() : s;
-  if(/^(bc1|tb1)q[0-9a-z]{38}$/.test(a) || /^(bc1|tb1)p[0-9a-z]{58}$/.test(a)){
+  const a = /^(bc1|tb1|bcrt1)/i.test(s) ? s.toLowerCase() : s;
+  if(/^(bc1|tb1|bcrt1)q[0-9a-z]{38}$/.test(a) || /^(bc1|tb1|bcrt1)p[0-9a-z]{58}$/.test(a)){
     if(!reforgeBech32Ok(a)) throw new Error(typo);
     return {kind:"addr", addr:a, type:addressTypeOf(a), net:addressNetOf(a), label:"address " + a};
   }
@@ -6781,19 +6841,26 @@ async function runCompare(){
   catch(e){ st.className="status bad"; st.textContent=e.message; }
 }
 // ================= Backup practice (no real keys): a public test phrase to write down, hide, and check =================
-let practice = null;
+let practice = null, practiceBanText = "";
 async function practiceMake(entropy){ return (await entropyToMnemonic(entropy)).split(" "); }
-function practiceCompare(expected, typed){ // positions (1-based) that differ, or a count problem
+function practiceCompare(expected, typed, own){ // positions (1-based) that differ, or a count problem; own: the person's own words (v2.16.1)
   const got = typed.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if(got.length !== expected.length) return {ok:false, msg:"You typed " + got.length + " word" + (got.length===1?"":"s") + "; the public test seed has " + expected.length + ". Check for a missing or extra word."};
+  if(got.length !== expected.length) return {ok:false, msg:"You typed " + got.length + " word" + (got.length===1?"":"s") + "; " + (own ? "your seed has " : "the public test seed has ") + expected.length + ". Check for a missing or extra word."};
   const bad = []; expected.forEach((w,i)=>{ if(got[i] !== w) bad.push(i+1); });
-  if(bad.length === 0) return {ok:true, msg:"Your paper copy matches, word for word. Do exactly this with a real backup: write, hide, read it back, check."};
-  return {ok:false, msg:"Word" + (bad.length===1?"":"s") + " " + bad.join(", ") + " do" + (bad.length===1?"es":"") + " not match. On a real backup, find and fix this before you trust the paper."};
+  if(bad.length === 0) return {ok:true, msg:own ? "Your paper copy matches your words, word for word: every word is right and in its place. Keep the paper safe." : "Your paper copy matches, word for word. Do exactly this with a real backup: write, hide, read it back, check."};
+  return {ok:false, msg:"Word" + (bad.length===1?"":"s") + " " + bad.join(", ") + " do" + (bad.length===1?"es":"") + " not match. " + (own ? "Fix your paper before you trust it: one wrong word can make the backup useless." : "On a real backup, find and fix this before you trust the paper.")};
 }
 function practiceStatus(cls, text){ const t=document.getElementById("prStatus"); t.className="status" + (cls?" "+cls:""); t.textContent=text; }
 function practiceRender(){
   const ol=document.getElementById("prWords"); ol.textContent="";
   practice.words.forEach(w=>{ const li=document.createElement("li"); li.textContent=w; ol.appendChild(li); });
+  // v2.16.1: your own words carry no PRACTICE notice (they are your wallet); the public test seeds keep it
+  // own words that are public anyway (a test vector, a Damascus practice sheet ...) get the page's one PRACTICE mark (pubKind, pracBan)
+  const tip=document.getElementById("prOwnTip"), ban=document.getElementById("prBan"), kind=practice.own ? pubKind(practice.words.join(" ")) : "";
+  if(!practiceBanText) practiceBanText=ban.textContent;   // the PRACTICE ONLY notice of the public test seeds, as the page wrote it
+  ban.textContent=kind ? pracBan(kind) : practiceBanText; ban.style.display=practice.own && !kind ? "none" : "";
+  tip.style.display=practice.own?"":"none"; tip.textContent=practice.own?"Your own words. Write the " + practice.words.length + " words on paper, in order, with a pen. Then press HIDE.":"";
+  document.getElementById("prOwnRow").style.display="none";   // the box with your words is out of sight until CLEAR, so the check tests the paper
   document.getElementById("prShow").style.display="block"; document.getElementById("prCheck").style.display="none";
 }
 // The practice phrases are the published BIP39 test vectors (entropy in hex). They are public, so they can never hold real money,
@@ -6803,7 +6870,17 @@ let practiceNext = 0;
 // ================= Practice mode (v2.5.0) =================
 // One switch in Practice making a backup: every network menu is set to Testnet and locked there, the page shows a banner, a seed's
 // test-network first address is shown in place of the real one, and printed sheets with addresses or keys say TESTNET. Nothing is stored.
-const PRACTICE_NETS = ["wNet", "wvNet", "psbtNet", "cmpNet", "msNet"];
+const PRACTICE_NETS = ["wNet", "wvNet", "psbtNet", "cmpNet", "msNet", "detNet", "ewNet", "wdatNet"];   // v2.16.1: and the three Network menus of the wallet finders
+// v2.16.1: a note under every one of these menus while practice mode is on (the banner at the top of the page is out of sight
+// there), so nobody is left on Testnet without knowing it. The style sheet shows it (body.practice .pr-net).
+for(const id of PRACTICE_NETS){
+  const sel = document.getElementById(id); if(!sel) continue;
+  const n = document.createElement("div"), b = document.createElement("b"), off = document.createElement("button");
+  n.className = "pr-net"; n.id = id + "Pr"; b.textContent = "PRACTICE MODE:";
+  off.type = "button"; off.className = "linklike"; off.textContent = "Turn practice mode off"; off.addEventListener("click", () => practiceMode(false));
+  n.append(b, " this menu stays on Testnet, so every address here is a test-network address (worthless coins).", off);
+  (sel.closest(".ms-row, .wv-ctl, .net-pick") || sel.parentElement).after(n);
+}
 let practiceOn = false, practiceSaved = {};
 function practiceMode(on){
   on = !!on;
@@ -6815,14 +6892,14 @@ function practiceMode(on){
   for(const id of PRACTICE_NETS){
     const e = document.getElementById(id);
     if(on){ practiceSaved[id] = e.value; e.value = "test"; e.disabled = true; }
-    else { e.value = practiceSaved[id] || "main"; e.disabled = false; }
+    else { e.value = practiceSaved[id] !== undefined ? practiceSaved[id] : "main"; e.disabled = false; }   // v2.16.1: "" is "as guessed"
     e.dispatchEvent(new Event("change"));
   }
   if(wvCtx){
     // v2.6.0: a private key opened read only keeps its own network, so it is closed when practice mode changes
     if(wvCtx.secret){ clearWalletView(); const st = document.getElementById("pkStatus"); st.className = "status"; st.textContent = "Practice mode " + (on ? "is on" : "is off") + ", so the private key view was closed. Press OPEN READ ONLY to open it again."; }
     else if(wvCtx.kind === "pub" && wvCtx.net !== (on ? "test" : "main") && on){ clearWalletView(); const st = document.getElementById("wpStatus"); st.className = "status"; st.textContent = "Practice mode is on, so the mainnet watch-only wallet was closed."; }
-    else if(wvCtx.kind === "pub") document.getElementById("wvNet").disabled = true;
+    else if(wvCtx.kind === "pub") wvNetKey(wvCtx.key.net);   // v2.16.1: a test-network key may stay on regtest
     else document.getElementById("wvNet").disabled = on;
   }
   if(wvCtx && wvCtx.mnemonic && wvCtx.pass){ wvDecoyHide(); wvDecoyShow(wvCtx.mnemonic, wvCtx.pass); }   // v2.7.0: the side-by-side view follows the network
@@ -6846,27 +6923,56 @@ function reshowSeed(){
 async function practicePhrases(){ const out = []; for(const hex of PRACTICE_ENTROPY){ const e = new Uint8Array(16); for(let i = 0; i < 16; i++) e[i] = parseInt(hex.substr(i * 2, 2), 16); out.push((await practiceMake(e)).join(" ")); } return out; }
 async function isPracticePhrase(m){ return (await practicePhrases()).includes(String(m || "").trim().toLowerCase().split(/\s+/).join(" ")); }
 async function practiceWalletClose(){
-  const box = document.getElementById("phrase");
-  if(!(await isPracticePhrase(box.value))) return;
+  const box = document.getElementById("phrase"), was = box.value;
+  if(!(await isPracticePhrase(was)) || box.value !== was) return;   // v2.16.1: the box changed meanwhile (CLEAR ALL, another wallet): leave what is open now
   box.value = ""; box.dispatchEvent(new Event("input"));
   clearWalletView(); const st = document.getElementById("verifyStatus"); st.textContent = ""; st.className = "status";
 }
 // A public practice phrase (the same ones the writing practice uses), opened as a wallet on the test network.
 async function practiceWallet(){
   if(!gateOk()) return;
+  // v2.16.1: your own words when "My own words" is chosen: the box under it, else the words being practiced, else the words
+  // already typed in CHECK A BACKUP. Otherwise the public test seed.
+  let words;
+  if(practiceOwnOn()){
+    let r;
+    if(document.getElementById("prOwn").value.trim()) r = await practiceOwnWords();
+    else if(practice && practice.own) r = {words: practice.words};
+    else { const c = await checkPhrase(document.getElementById("phrase").value); r = c.ok ? {words: c.mnemonic.split(" ")} : {msg: "Type or paste your own seed words in the box first (or in CHECK A BACKUP), or choose the public test seed."}; }
+    if(r.msg) return practiceStatus("bad", r.msg);
+    words = r.words;
+  }
   if(!practiceOn) practiceMode(true);
   if(!practiceOn) return;
-  const hex = PRACTICE_ENTROPY[0], e = new Uint8Array(16);
-  for(let i = 0; i < 16; i++) e[i] = parseInt(hex.substr(i * 2, 2), 16);
-  const words = await practiceMake(e);
+  if(!words){ const hex = PRACTICE_ENTROPY[0], e = new Uint8Array(16); for(let i = 0; i < 16; i++) e[i] = parseInt(hex.substr(i * 2, 2), 16); words = await practiceMake(e); }
   showTab("check");
   const box = document.getElementById("phrase"), vp = document.getElementById("verifyPass");
   box.value = words.join(" "); vp.value = "";
   box.dispatchEvent(new Event("input")); vp.dispatchEvent(new Event("input"));
   await verify();
 }
+// v2.16.1: which words: a public test seed (built in), or your own (the box under "My own words").
+function practiceOwnOn(){ return document.getElementById("prSrcOwn").checked; }
+function practiceOwnEdit(){ practiceStatus("",""); }
+function practiceSrc(){ practiceClear(); }
+// Your own words, as a wallet reads them (checkPhrase: BIP39 words, 4-letter forms, SeedQR digits), or an error message.
+async function practiceOwnWords(){
+  const t=document.getElementById("prOwn").value;
+  if(!t.trim()) return {msg:"Type or paste your own seed words in the box first (or choose the public test seed)."};
+  const r=await checkPhrase(t);
+  return r.ok ? {words:r.mnemonic.split(" ")} : {msg:"These are not a valid seed (" + r.msg.replace(/\.$/, "") + "). Check them before you write them down."};
+}
+// CLEAR ALL, auto-clear and the other wipes (wipeSeed): your own words go (a public test seed may stay).
+function practiceOwnWipe(){ if(practice && practice.own) practiceClear(); const o=document.getElementById("prOwn"); if(o) o.value=""; }
 async function practiceStart(){
   if(!gateOk()) return;
+  if(practiceOwnOn()){
+    const r=await practiceOwnWords();
+    if(r.msg) return practiceStatus("bad", r.msg);
+    practice={words:r.words, own:true};
+    document.getElementById("prInput").value=""; practiceStatus("","");
+    return practiceRender();
+  }
   const hex=PRACTICE_ENTROPY[practiceNext % PRACTICE_ENTROPY.length]; practiceNext++;
   const e=new Uint8Array(16); for(let i=0;i<16;i++) e[i]=parseInt(hex.substr(i*2,2),16);
   practice={words:await practiceMake(e)};
@@ -6881,13 +6987,14 @@ function practiceHide(){
 function practicePeek(){ if(!practice) return; practiceRender(); practiceStatus("","Showing the words again. Hide them when you are ready to try once more."); }
 function practiceCheck(){
   if(!practice) return;
-  const r=practiceCompare(practice.words, document.getElementById("prInput").value);
+  const r=practiceCompare(practice.words, document.getElementById("prInput").value, !!practice.own);
   practiceStatus(r.ok?"ok":"bad", r.msg);
 }
 function practiceClear(){
   practice=null;
   document.getElementById("prWords").textContent=""; document.getElementById("prInput").value="";
   document.getElementById("prShow").style.display="none"; document.getElementById("prCheck").style.display="none"; practiceStatus("","");
+  document.getElementById("prOwnRow").style.display=practiceOwnOn()?"":"none";   // v2.16.1: CLEAR keeps the words in the box; CLEAR ALL wipes them
 }
 function jumpTo(id){ reveal(document.getElementById(id)); }
 // v2.16.1: after a seed is made the page lands on YOUR SEED, so the words themselves are in view (jumping to the result line
@@ -7650,9 +7757,9 @@ for(const [list, pfx] of [["addrList","aq"],["chList","aq"],["trList","aq"],["tr
 // Which address a QR button belongs to (v2.4.0), for its printed sheet: its path, and whether it is a change or testnet address.
 function addrMeta(list, b){
   const i = [...document.getElementById(list).children].indexOf(b.closest("li"));
-  if(list !== "wvList"){ const t = document.getElementById("addrBox").dataset.net === "test", [pu, ch] = ADDR_LISTS[list]; return {path: "m/" + pu + "'/" + (t ? 1 : 0) + "'/0'/" + ch + "/" + i, change: ch === 1, test: t}; }
+  if(list !== "wvList"){ const t = document.getElementById("addrBox").dataset.net === "test", [pu, ch] = ADDR_LISTS[list]; return {path: "m/" + pu + "'/" + (t ? 1 : 0) + "'/0'/" + ch + "/" + i, change: ch === 1, net: t ? "test" : "main"}; }
   const sh = wvCtx && wvCtx.shown, row = sh && sh.rows[i];
-  return row ? {path: row.path, change: row.chain === 1 || (row.chain === undefined && sh.chain === 1), test: (wvCtx.kind === "pub" ? wvCtx.net : sh.net) === "test"} : {};
+  return row ? {path: row.path, change: row.chain === 1 || (row.chain === undefined && sh.chain === 1), net: sh.net} : {};   // v2.16.1: the network shown (a test key can be shown on testnet or regtest)
 }
 function showAddrs(list, trList, net, chList, trChList){
   hideAddrQr("aq");
@@ -7689,7 +7796,7 @@ async function refreshWatch(){
   const net = document.getElementById("wNet").value, M = MULTISIG[type], T = M || SCRIPT_TYPES[type], acct = parseInt(raw, 10), coin = NETS[net].coin;
   const w = await watchOnlyFromSeed(await mnemonicToSeed(watchCtx.mnemonic, watchCtx.pass), type, acct, net);
   if(mine !== watchSeq || !watchCtx) return;
-  const kn = net === "test" ? ({zpub:"vpub", ypub:"upub", xpub:"tpub", Zpub:"Vpub", Ypub:"Upub"})[T.kname] : T.kname;
+  const kn = netIsTest(net) ? ({zpub:"vpub", ypub:"upub", xpub:"tpub", Zpub:"Vpub", Ypub:"Upub"})[T.kname] : T.kname;
   document.getElementById("wKeyLabel").textContent = "Extended public key (" + kn + ", m/" + (M ? "48'/" + coin + "'/" + acct + "'/" + M.script + "'" : T.purpose + "'/" + coin + "'/" + acct + "'") + (M ? (type === "ms-tr" ? "): add it as a cosigner of a Taproot multisig wallet (VOIDFORGE's MULTISIG WALLET card, Coldcard EDGE, Bitcoin Core)" : "): add it as a cosigner in Sparrow, Specter, Nunchuk, Electrum") : "): Electrum, Blue Wallet, Sparrow");
   document.getElementById("wDescLabelR").textContent = M ? (type === "ms-tr" ? "Cosigner key with origin, for a Taproot multisig descriptor: Bitcoin Core, Coldcard EDGE" : "Cosigner key with origin, for a multisig descriptor: Sparrow, Nunchuk, Bitcoin Core") : "Descriptor, receive addresses: Sparrow, Nunchuk, Bitcoin Core";
   document.getElementById("wDescGroupC").style.display = M ? "none" : "";
@@ -7704,11 +7811,12 @@ async function refreshWatch(){
   if(mine !== watchSeq || !watchCtx) return;
   document.getElementById("wFirst").textContent = recv.map(r => r.address).join("\n");
   document.getElementById("wChange").textContent = chg.map(r => r.address).join("\n");
-  const spA = await spAddressFromSeed(await mnemonicToSeed(watchCtx.mnemonic, watchCtx.pass), net, acct);
+  // v2.16.1: BIP352 names Silent Payment prefixes for mainnet (sp) and the testnets (tsp), none for regtest, so none is shown there
+  const spA = net === "regtest" ? "" : await spAddressFromSeed(await mnemonicToSeed(watchCtx.mnemonic, watchCtx.pass), net, acct);
   if(mine !== watchSeq || !watchCtx) return;
   document.getElementById("spAddr").textContent = spA;
-  document.getElementById("spBox").style.display = M ? "none" : "";
-  document.getElementById("wTestBan").style.display = net === "test" ? "" : "none";
+  document.getElementById("spBox").style.display = M || !spA ? "none" : "";
+  netBan("wTestBan", net);
   watchCtx.file = M ? null : {type, net, acct: acct};
   updateCore();
   hideQr();
@@ -7739,7 +7847,7 @@ function watchFileText(){
   const born = sumCtx && sumCtx.date && hasSeed() ? sumCtx.date : "";
   const first = document.getElementById("wFirst").textContent.split("\n").filter(Boolean), change = document.getElementById("wChange").textContent.split("\n").filter(Boolean);
   return ["# VOIDFORGE watch-only wallet. Public keys only: it can show addresses and balances, but it can never spend.",
-    "# Master fingerprint: " + fp + "   Address type: " + SCRIPT_TYPES[type].label + "   Account: " + f.acct + "   Network: " + (net === "test" ? "TESTNET (practice coins only)" : "Mainnet") + (born ? "   Made on: " + born : ""),
+    "# Master fingerprint: " + fp + "   Address type: " + SCRIPT_TYPES[type].label + "   Account: " + f.acct + "   Network: " + (netNote(net) || "Mainnet") + (born ? "   Made on: " + born : ""),
     "#",
     "# Sparrow: File > Import Wallet > Output Descriptor, then choose this file. It reads the next line:",
     "# Receive and change descriptor:",
@@ -7763,7 +7871,7 @@ function saveWatchFile(){
   const fp = (t.match(/Master fingerprint: ([0-9a-f]{8})/) || [])[1] || "wallet";
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([t], {type: "text/plain"}));
-  a.download = "voidforge-watch-only-" + fp + (/Network: TESTNET/.test(t) ? "-testnet" : "") + ".txt";
+  a.download = "voidforge-watch-only-" + fp + (/Network: TESTNET/.test(t) ? "-testnet" : /Network: REGTEST/.test(t) ? "-regtest" : "") + ".txt";
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
@@ -8074,7 +8182,7 @@ function detPlan(src, T){
 }
 // The search. hooks: {progress(done, total, label), stop()}. Returns {found, done, total, stopped}.
 async function detSearch(src, T, hooks){
-  const jobs = detPlan(src, T), coin = NETS[T.net].coin;
+  const jobs = detPlan(src, T), coin = NETS[T.pathNet || T.net].coin;   // v2.16.1: the Network menu can set the paths' coin type
   const total = src.passes.reduce((sum, [, pw]) => sum + jobs.reduce((s, j) => s + 2 * j.n * (j.P.seed === "electrum-old" ? (pw ? 0 : 1) : j.P.seed !== "bip39" && detRawDiffers(pw) ? 2 : 1), 0), 0);
   let done = 0;
   for(const [label, pw] of src.passes){
@@ -8134,7 +8242,7 @@ function detPub(src){ knownShow("detPub", src && src.mnemonic ? src.mnemonic : "
 function detApps(P, type){ return DET_APPS[P.id + "-" + type] || ""; }
 // How to open what was found, in plain steps.
 function detHowTo(f, withPass, net){
-  const tn = net === "test" ? " This is a test-network address, so switch the app to testnet first (its own documentation says how)." : "";
+  const tn = netIsTest(net) ? " This is a test-network address, so switch the app to " + (net === "regtest" ? "regtest" : "testnet") + " first (its own documentation says how)." : "";
   if(f.asTyped) return "Electrum itself cannot open it from these words, because it ignores capital letters and accents in the passphrase. The app that made this wallet keeps them (Sparrow, for one, reads Electrum wallet files that way): open it in that app, or from the Electrum wallet file if you have it." + tn;
   if(!f.P.steps(0, 0).length && f.P.seed === "bip39") return "Old Edge (Airbitz) wallets keep their addresses straight under the root key (m/0/0, m/0/1, ...): open it in Edge. Other apps, Sparrow among them, may not accept the root path m as a derivation." + tn;
   if(f.P.seed === "electrum-old") return OLD_EL_HOWTO + " Old Electrum seeds have no passphrase, so Electrum does not ask for one." + tn;   // v2.10.0
@@ -8144,6 +8252,7 @@ function detHowTo(f, withPass, net){
 function detReport(f, T){
   const withPass = f.pass === "with the passphrase", lines = [];
   lines.push("FOUND: " + T.addr + " is " + (f.chain ? "change" : "receive") + " address #" + f.index + " (" + f.path + ") of these words, " + f.pass + ".");
+  if(T.pathNet && T.pathNet !== T.net && NETS[T.pathNet].coin !== NETS[T.net].coin) lines.push("The paths used coin type " + NETS[T.pathNet].coin + " (" + netName(T.pathNet) + ", set in the Network menu), not the usual " + NETS[T.net].coin + " for this " + netName(T.net).toLowerCase() + " address: set the same path in the wallet app.");   // v2.16.1
   lines.push("");
   lines.push("Settings: " + (f.P.seed === "bip39" ? "BIP39 seed words" : f.P.seed === "electrum-old" ? "an old Electrum seed (made before Electrum 2.0, not BIP39)" : "an Electrum seed (not BIP39)") + (withPass ? " with the passphrase" : "") + ", address type " + DET_TYPE_NAME[f.type] + (f.P.seed === "electrum-old" ? " with uncompressed keys" : "") + ", " + (f.P.seed === "bip39" ? "derivation path " + f.account : f.P.seed === "electrum-old" ? "the old Electrum derivation (from the master public key, not BIP32)" : "Electrum's own derivation") + ".");
   const apps = detApps(f.P, f.type);
@@ -8357,7 +8466,8 @@ async function detFind(){
   try { T = await detTarget(document.getElementById("detAddr").value); } catch(e) { return detSay("bad", e.message); }
   if(my !== detSeq) return;
   if(!T) return detSay("bad", "Type one address this wallet received to, or press LIST FIRST ADDRESSES to see the first address of each common setting.");
-  if(practiceOn && T.net !== "test") return detSay("bad", "Practice mode is on, so the Detective searches only test-network addresses (tb1..., 2..., m... or n...). Turn practice mode off to search a real address.");
+  if(practiceOn && !netIsTest(T.net)) return detSay("bad", "Practice mode is on, so the Detective searches only test-network addresses (tb1..., bcrt1..., 2..., m... or n...). Turn practice mode off to search a real address.");
+  T.pathNet = document.getElementById("detNet").value || T.net;   // v2.16.1: as guessed from the address, or set by hand
   detStopFlag = false; detBusyUi(true);
   try {
     const r = await detSearch(src, T, {progress:(d, t, l) => { const pc = Math.floor(100 * d / t), msg = "Searching " + l + ": " + pc + "% done..."; if(my === detSeq && document.getElementById("detStatus").textContent !== msg) detSay("", msg); }, stop:() => detStopFlag || my !== detSeq});
@@ -8378,7 +8488,7 @@ async function detList(){
   const src = await detSource(document.getElementById("phrase").value, vp);
   if(my !== detSeq) return;
   if(src.error) return detSay("bad", src.error);
-  const net = practiceOn ? "test" : "main", coin = NETS[net].coin, pass = src.passes[0], lines = [];
+  const net = document.getElementById("detNet").value || "main", coin = NETS[net].coin, pass = src.passes[0], lines = [];   // v2.16.1: the Network menu (practice mode sets it to Testnet)
   detBusyUi(true);
   try {
     const roots = await detRoots(src, pass[1]);
@@ -8389,7 +8499,7 @@ async function detList(){
       if(my !== detSeq) return;
       lines.push(P.name + ", " + DET_TYPE_NAME[type] + ", " + a.path + (roots[P.seed][0].old ? " (uncompressed keys; old Electrum seeds have no passphrase)" : "") + "\n  " + a.address + "\n  Used by: " + detApps(P, type));
     }
-    detSay("ok", "The first receive address of each common setting, " + pass[0] + (net === "test" ? ", on the test network (practice mode)" : "") + ". Look them up on another device, for example in a block explorer. The one that shows a history is your wallet's setting; then type it above and press FIND MY WALLET for the steps to open it.");
+    detSay("ok", "The first receive address of each common setting, " + pass[0] + (document.getElementById("detNet").value && !practiceOn ? ", on " + netName(net) + " (set in the Network menu)" : net === "test" ? ", on the test network (practice mode)" : "") + ". Look them up on another device, for example in a block explorer. The one that shows a history is your wallet's setting; then type it above and press FIND MY WALLET for the steps to open it.");
     detPub(src); detShow(lines.join("\n\n") + "\n\nLooking an address up on a website tells that website you are interested in it. A watch-only wallet in Sparrow connected to your own node is more private.");
   } catch(e) { if(my === detSeq) detSay("bad", "Could not list: " + e.message); }
   finally { detBusyUi(false); }
@@ -10619,9 +10729,9 @@ function qrSnapshot(id, text){
   const foot = id === "spAddr" ? "PUBLIC: a Silent Payment address is made to be shared and reused. It cannot spend, and it does not show your balance.\nCheck it against your Silent Payment wallet before you give it out."
     : cos ? "PUBLIC: one cosigner key of a multisig wallet. It cannot spend, and on its own it shows no addresses.\nAdd it to the multisig setup in your wallet app and check its fingerprint there."
     : "PUBLIC: no seed words and no private keys, so it cannot spend. Anyone who scans it can see this wallet's addresses and balance: keep it private.\nScan it into a watch-only wallet app and check that the first address matches.";
-  return {id, text, foot, title: "VOIDFORGE " + (cos ? (id === "wZpub" ? "COSIGNER PUBLIC KEY" : "COSIGNER KEY WITH ORIGIN") : QR_PRINT_NAMES[id] || "PUBLIC KEY") + (net === "test" ? " (TESTNET)" : ""),
+  return {id, text, foot, title: "VOIDFORGE " + (cos ? (id === "wZpub" ? "COSIGNER PUBLIC KEY" : "COSIGNER KEY WITH ORIGIN") : QR_PRINT_NAMES[id] || "PUBLIC KEY") + netTitle(net),
     info: [document.getElementById("fingerprint").textContent, id === "spAddr" ? "Address type: Silent Payment (BIP352)" : "Address type: " + sel.options[sel.selectedIndex].text,
-      "Network: " + (net === "test" ? "TESTNET (practice coins only)" : "Mainnet"), "Account number: " + document.getElementById("wAcct").value.trim()]};
+      "Network: " + (netNote(net) || "Mainnet"), "Account number: " + document.getElementById("wAcct").value.trim()]};
 }
 // QR size on paper: 11 cm, or smaller with smaller text for big codes, so the code and its text stay on one page.
 function qrPrintSize(q){ return q.version <= 15 ? false : q.version <= 22 ? "pq-ms" : "pq-ms pq-ms-l"; }
@@ -10640,8 +10750,8 @@ function printAddrQr(pfx){
   const req = t !== addr, fpT = document.getElementById(pfx === "wvq" ? "wvFp" : "fingerprint").textContent, fp = /^Master fingerprint[^:]*: [0-9a-f]{8}/.test(fpT) ? fpT : "";
   let meta = {}; try { meta = JSON.parse(box.dataset.meta || "{}"); } catch(e) {}
   const pr = pfx === "wvq" ? "" : seedPr();   // v2.16.1: an address of a practice seed says so
-  printSqSheet("VOIDFORGE " + (req ? "PAYMENT REQUEST" : meta.change ? "CHANGE ADDRESS" : "RECEIVE ADDRESS") + (meta.test ? " (TESTNET)" : "") + (pr ? ": PRACTICE" : ""), qrSvg(q.rows), qrPrintSize(q),
-    (pr ? pr + "\n\n" : "") + (fp ? fp + "\n" : "") + (meta.path ? "Path: " + meta.path + "\n" : "") + (meta.test ? "Network: TESTNET (practice coins only)\n" : "") + "Address: " + addr + (req ? "\nPayment link: " + t : "") + "\n\nPUBLIC: an address can only receive. Scanning this QR code cannot spend anything.\nBefore anyone pays, check the address against your wallet app or hardware wallet.\n", "");
+  printSqSheet("VOIDFORGE " + (req ? "PAYMENT REQUEST" : meta.change ? "CHANGE ADDRESS" : "RECEIVE ADDRESS") + netTitle(meta.net) + (pr ? ": PRACTICE" : ""), qrSvg(q.rows), qrPrintSize(q),
+    (pr ? pr + "\n\n" : "") + (fp ? fp + "\n" : "") + (meta.path ? "Path: " + meta.path + "\n" : "") + (netIsTest(meta.net) ? "Network: " + netNote(meta.net) + "\n" : "") + "Address: " + addr + (req ? "\nPayment link: " + t : "") + "\n\nPUBLIC: an address can only receive. Scanning this QR code cannot spend anything.\nBefore anyone pays, check the address against your wallet app or hardware wallet.\n", "");
 }
 // Child seed (BIP85) print (v2.4.0): the words in boxes, or the key or password in one box, with what recreates it.
 const CHILD_PRINT_LABEL = {words: "PRINT CHILD SEED", wif: "PRINT HD SEED (WIF)", xprv: "PRINT XPRV", hex: "PRINT HEX", dice: "PRINT DICE ROLLS", pwd64: "PRINT PASSWORD", pwd85: "PRINT PASSWORD"};
@@ -10802,6 +10912,7 @@ function wipeSeed(){
   pnClear();   // v2.10.0: the punch plate on screen and the plate read-back boxes (secret)
   oeClear();   // v2.10.0: the old Electrum seed (secret)
   mkWipe();   // v2.15.0: passphrase practice and the passphrase checks under each box
+  practiceOwnWipe();   // v2.16.1: your own words in Practice making a backup (secret)
   wdatClear();   // v2.16.0: the wallet.dat reader (its passphrase, and the keys it decrypted or read)
   seedSig = null; passKey = null; exCtx = null;   // fixes release: these held the rolls and the passphrases after a wipe (found by tests/memory.test.mjs)
   clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo(); clearMsx();   // fixes release: public but private data (xpubs, descriptors, addresses, amounts)
@@ -10864,7 +10975,8 @@ document.addEventListener("visibilitychange", () => { if(document.hidden) camSto
 // The practice signer (v2.16.1) is covered like the rest: its device (screen and keys) is one of the places, and a reason to cover
 // whenever it holds a seed that is not public (vfSignerHoldsSecret: a seed loaded, being made or typed in, or a passphrase); the
 // public test seeds of its lessons and a Damascus practice seed are not a reason on their own. Auto-clear and CLEAR ALL wipe it.
-// Not covered: the practice phrase of "Practice making a backup" (a published test phrase), and public data (fingerprints, addresses, public keys, descriptors). Public practice
+// Not covered: the practice phrase of "Practice making a backup" (a published test phrase; your own words there are covered, see
+// AUTO_FIELDS.push("ppSeed", "prOwn") below), and public data (fingerprints, addresses, public keys, descriptors). Public practice
 // content in the Damascus boxes (a worked example, a practice sheet, the guided practice) is covered with the rest but is never
 // a reason to cover on its own.
 const RH_PLACES = [
@@ -11099,10 +11211,32 @@ for(const id of PPK_IDS){
 const PP_TEST = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 let ppSeq = 0;
 AUTO_FIELDS.push("ppA", "ppB");   // auto-clear and CLEAR ALL wipe these too, and know the page holds a secret while they are filled
+// v2.16.1 "Tools that work as in real life": your own seed words in two practice tools. They are secrets like every other: in
+// AUTO_FIELDS (re-hide covers them, auto-clear, CLEAR ALL and END SESSION wipe them, and auto-clear knows they are there).
+// Practice making a backup: the words on screen (prShow) and the copy typed back (prCheck) are covered too while they are your
+// own words; a public test seed stays uncovered, as before (RH_IF: covered with the rest, a reason to cover only when it holds a
+// secret).
+AUTO_FIELDS.push("ppSeed", "prOwn");
+RH_PLACES.push("prShow", "prCheck");
+RH_IF.prShow = RH_IF.prCheck = () => !!(practice && practice.own);
+// Practice your passphrase: which seed gives the fingerprint (the public test seed, the seed made on this page, or your own words).
+function ppSrcOf(){ return document.querySelector('input[name="ppSrc"]:checked').value; }
+function ppSrcSet(){ document.getElementById("ppOwnRow").style.display = ppSrcOf() === "own" ? "" : "none"; ppWipe(); }
+async function ppSeedWords(){
+  const src = ppSrcOf();
+  if(src === "made") return hasSeed() && madeMnemonic ? {words: madeMnemonic, own: true, what: "the seed made on this page"} : {msg: "No seed is made on this page yet: make one in MAKE A SEED (FORGE SEED), or choose another seed above."};
+  if(src === "own"){
+    const t = document.getElementById("ppSeed").value;
+    if(!t.trim()) return {msg: "Type or paste your own seed words in the box above, or choose another seed."};
+    const r = await checkPhrase(t);
+    return r.ok ? {words: r.mnemonic, own: true, what: "your seed words"} : {msg: "Your seed words are not a valid seed (" + r.msg.replace(/\.$/, "") + ")."};
+  }
+  return {words: PP_TEST, own: false};
+}
 for(const t of ["paste", "drop"]) document.getElementById("ppB").addEventListener(t, (ev) => { ev.preventDefault(); ppSay("bad", "Pasting is turned off in this box: type the passphrase from memory, the way you will on a device."); });
 function ppSay(cls, t){ const s = document.getElementById("ppStatus"); s.className = "status" + (cls ? " " + cls : ""); s.textContent = t; }
 function ppWipe(){ ppSeq++; ppSay("", ""); document.getElementById("ppFp").textContent = ""; }
-function ppClear(){ for(const id of ["ppA", "ppB"]){ const e = document.getElementById(id); e.value = ""; e.type = "password"; } const b = document.querySelector("#ppBox button.secondary"); if(b) b.textContent = "SHOW"; ppWipe(); ppkRender("ppA"); }
+function ppClear(){ for(const id of ["ppA", "ppB"]){ const e = document.getElementById(id); e.value = ""; e.type = "password"; } document.getElementById("ppSeed").value = ""; const b = document.querySelector("#ppBox button.secondary"); if(b) b.textContent = "SHOW"; ppWipe(); ppkRender("ppA"); }
 function ppToggle(btn){ const e = document.getElementById("ppA"), show = e.type === "password"; e.type = show ? "text" : "password"; btn.textContent = show ? "HIDE" : "SHOW"; }
 // Where two passphrases first differ, compared as the wallet uses them: null if they are the same.
 function ppDiff(a, b){
@@ -11117,13 +11251,16 @@ async function ppCheck(){
   if(!a || !b) return ppSay("bad", "Type your passphrase in the first box, then again from memory in the second.");
   const d = ppDiff(a, b);
   if(d) return ppSay("bad", "NO MATCH: they differ at character " + d.at + (d.la !== d.lb ? " (the first has " + d.la + " characters, the second " + d.lb + ")" : "") + ". A wallet would open a different, empty wallet with the second. Look at the first with SHOW, then type the second again.");
-  ppSay("ok", "MATCH: both are exactly the same, " + ppkCheck(a).len + " characters, as a wallet uses them. Working out the test fingerprint...");
-  const fp = await mnemonicFingerprint(PP_TEST, a);
+  const seed = await ppSeedWords(); if(my !== ppSeq) return;   // v2.16.1: the public test seed, the seed made on this page, or your own
+  if(seed.msg) return ppSay("bad", "MATCH: both are exactly the same. " + seed.msg);
+  ppSay("ok", "MATCH: both are exactly the same, " + ppkCheck(a).len + " characters, as a wallet uses them. Working out the " + (seed.own ? "" : "test ") + "fingerprint...");
+  const fp = await mnemonicFingerprint(seed.words, a);
   if(my !== ppSeq) return;
   ppSay("ok", "MATCH: both are exactly the same, " + ppkCheck(a).len + " characters, as a wallet uses them.");
   const o = document.getElementById("ppFp"), f = document.createElement("b");
   f.className = "ppk-fp"; f.textContent = fp;
-  o.append("With the public test seed abandon ... about and this passphrase, the master fingerprint is ", f, ". Load that test seed on your hardware wallet, type the passphrase there, and it must show this fingerprint. Keep it private (see above).");
+  if(seed.own) o.append("With " + seed.what + " and this passphrase, the master fingerprint is ", f, ". It is your passphrase wallet\u2019s real fingerprint: open the seed on your hardware wallet, type the passphrase there, and it must show this fingerprint. Anyone who sees it can link it to this wallet, so keep it private.");
+  else o.append("With the public test seed abandon ... about and this passphrase, the master fingerprint is ", f, ". Load that test seed on your hardware wallet, type the passphrase there, and it must show this fingerprint. Keep it private (see above).");
   if(rhOn) rhCover(o);
 }
 
@@ -11514,11 +11651,11 @@ async function printInherit(kind){
       add("ih-big", "Never share the words or the passphrase with anyone, never pay anyone to \"recover\" the bitcoin, and never hurry because someone says so. " + IH_SCAM
         + (st.help ? "\nWho can help: " + st.help : "\nWho can help: " + IH_BLANK) + (st.note ? "\nNote: " + st.note : ""));
     } else if(kind === "keys"){
-      add("ps-title", "VOIDFORGE KEY DETAILS (PUBLIC)" + (K.net === "test" ? " (TESTNET)" : ""));
+      add("ps-title", "VOIDFORGE KEY DETAILS (PUBLIC)" + netTitle(K.net));
       add("ps-sub", "No seed words, no passphrase and no private key are on this sheet: only public details, to find the right wallet and to watch it. They cannot spend.");
       add("ps-info", "Master fingerprint:      " + (K.fp ? K.fp + (K.pass ? " (with the passphrase)" : "") : st.fp || IH_BLANK) + (K.fp0 ? "\nWithout the passphrase:  " + K.fp0 + " (the words alone open this other wallet)" : "") + "\nPassphrase:              " + (K.fp ? (K.pass ? "used (kept separately; it is not written here)" : "none") : P)
         + "\nWallet app or device:    " + (st.app || IH_BLANK) + "\nWallet made on:          " + (st.born || IH_BLANK)
-        + "\nNetwork:                 " + (K.net ? (K.net === "test" ? "TESTNET (practice coins only)" : "Mainnet") : IH_BLANK) + "\nAddress type:            " + (K.type || IH_BLANK) + "\nAccount path:            " + (K.path || IH_BLANK));
+        + "\nNetwork:                 " + (K.net ? netNote(K.net) || "Mainnet" : IH_BLANK) + "\nAddress type:            " + (K.type || IH_BLANK) + "\nAccount path:            " + (K.path || IH_BLANK));
       if(K.note) add("ps-info ps-small", K.note);
       add("ps-rule", "");
       add("ps-info", "Watch-only: put the account public key or the two descriptors into a wallet app as a watch-only wallet (such as Sparrow) to see the balance and the addresses without the words. A watch-only wallet can never spend.");
@@ -11639,11 +11776,12 @@ function msBanner(){
   const b = msEl("msBanner");
   if(!ms || ms.done || ms.mode !== "make" || ms.keys.length >= ms.n){ b.style.display = "none"; return; }
   const k = ms.keys.length + 1;
-  msEl("msBanTitle").textContent = "MULTISIG: KEY " + k + " OF " + ms.n + (ms.net === "test" ? "  (TESTNET)" : "");
+  msEl("msBanTitle").textContent = "MULTISIG: KEY " + k + " OF " + ms.n + (netIsTest(ms.net) ? "  (" + netName(ms.net).toUpperCase() + ")" : "");
   const dots = msEl("msBanDots"); dots.textContent = "";
   for(let i = 0; i < ms.n; i++){ const d = document.createElement("i"); d.className = i < ms.keys.length ? "done" : i === ms.keys.length ? "cur" : ""; dots.appendChild(d); }
-  msEl("msBanText").textContent = "Make seed number " + k + " below, as usual (dice or coins). Write its words on paper and make any backup you want (SeedQR, print). Then press the button: the page keeps only the public part of this key and wipes the seed, so you can start the next one. Each key needs its own paper backup, kept in a different place.";
+  msEl("msBanText").textContent = "Make seed number " + k + " below, as usual (dice or coins). Write its words on paper and make any backup you want (SeedQR, print). Then press the button: the page keeps only the public part of this key and wipes the seed, so you can start the next one. Each key needs its own paper backup, kept in a different place. For a seed you already have, open it in CHECK A BACKUP (its words, and its passphrase if it has one) and press USE THE SEED IN CHECK A BACKUP.";
   msEl("msAddBtn").disabled = !(hasSeed() && watchCtx && !ms.busy);
+  msEl("msAddCheckBtn").disabled = !!ms.busy;
   b.style.display = "";
 }
 function msHasKey(fp, key){
@@ -11666,6 +11804,36 @@ async function msAddMade(){
   finally { ms.busy = false; }
   await msRender();
 }
+// v2.16.1: a key from the seed open in CHECK A BACKUP (the words and passphrase of VERIFY), for a seed you already have. As for a
+// seed made here, only its public key is kept, and the words and passphrase are wiped from CHECK A BACKUP afterwards.
+async function msAddChecked(){
+  if(!gateOk()) return;
+  if(!ms || ms.busy || ms.keys.length >= ms.n) return;
+  const eb = msEl("msBanErr"), raw = document.getElementById("phrase").value; eb.textContent = "";
+  const r = await checkPhrase(raw);
+  if(!r.ok){ eb.textContent = raw.trim() ? "The words in CHECK A BACKUP are not a valid BIP39 seed (" + r.msg.replace(/\.$/, "") + "). Check them there with VERIFY first." : "No seed is open in CHECK A BACKUP. Type its words there (and its passphrase, if it has one), press VERIFY to check them, then press this button again."; return; }
+  if(!ms || ms.busy || ms.keys.length >= ms.n) return;
+  ms.busy = true; msEl("msAddBtn").disabled = true; msEl("msAddCheckBtn").disabled = true;
+  try {
+    const w = await watchOnlyFromSeed(await mnemonicToSeed(r.mnemonic, document.getElementById("verifyPass").value), ms.type, ms.account, ms.net);
+    const key = await parseExtendedKey(w.key), dup = msHasKey(w.fp, key);
+    if(dup >= 0){ eb.textContent = "This is the same key as key " + (dup + 1) + " (fingerprint " + w.fp + "). Using one key twice would make the wallet weaker than it looks. Every key needs its own seed."; return; }
+    ms.keys.push({fp: w.fp, path: msPathOf(), key, xpub: w.xpub, src: "checked"});
+    ms.mode = "make";
+    msWipeChecked();
+  } catch(e) { eb.textContent = "Could not add this key: " + e.message; }
+  finally { ms.busy = false; }
+  await msRender();
+}
+// The seed open in CHECK A BACKUP, wiped after its key was added: the words, the passphrase and what was worked out from them.
+function msWipeChecked(){
+  for(const id of ["phrase", "verifyPass", "verifyRecorded"]){ const e = document.getElementById(id); e.value = ""; e.dispatchEvent(new Event("input")); }
+  document.getElementById("verifyPass").type = "password";
+  document.querySelectorAll('button[onclick^="toggleVerifyPassphrase("]').forEach(b => { if(b.textContent === "HIDE") b.textContent = "SHOW"; });
+  document.getElementById("verifyStatus").textContent = ""; document.getElementById("verifyMatch").textContent = ""; verifySeq++;
+  clearWalletView(); clearChild(); clearVerifyIcons(); detClear(); kcClear();
+  rhSettle();
+}
 async function msAddPasted(){
   if(!gateOk()) return;   // fixes release
   if(!ms || ms.busy || ms.keys.length >= ms.n) return;
@@ -11678,7 +11846,7 @@ async function msAddPasted(){
     if(!/^[0-9a-f]{8}$/.test(fp)) throw new Error("The fingerprint is 8 characters (0-9, a-f). Paste the whole [fingerprint/path]key line, or type the fingerprint in the box.");
     if(/^\s*[a-z]+(\s+[a-z]+){11,}\s*$/i.test(t)) throw new Error("That looks like seed words. Never type seed words here: paste a PUBLIC key (Zpub/xpub) instead.");
     const key = await parseExtendedKey(t), want = msPathOf(), script = MULTISIG[ms.type].script;
-    if(key.net !== ms.net) throw new Error("This key is for " + (key.net === "test" ? "Testnet" : "Mainnet") + ", but this wallet is on " + (ms.net === "test" ? "Testnet" : "Mainnet") + ".");
+    if(!netFits(key.net, ms.net)) throw new Error("This key is for " + (key.net === "test" ? "a test network (Testnet or Regtest)" : "Mainnet") + ", but this wallet is on " + netName(ms.net) + ".");
     if(key.type !== "other" && key.type !== ms.type) throw new Error("This key type does not fit this wallet. It looks like a " + (MULTISIG[key.type] ? "different multisig script type" : "single-signature (zpub/ypub/vpub) key") + ". A multisig wallet needs the cosigner key for " + msTypeName(ms.type) + ", path m/48'/" + NETS[ms.net].coin + "'/" + ms.account + "'/" + script + "'.");
     if(key.depth !== 4 || key.childNum !== ((script + 0x80000000) >>> 0)) throw new Error("This key is not at the expected place in the key tree (m/48'/" + NETS[ms.net].coin + "'/" + ms.account + "'/" + script + "'). Ask the other signer to export the multisig cosigner key for " + msTypeName(ms.type) + ", account " + ms.account + ".");
     if(path && path !== want) throw new Error("The path in your line (" + path + ") is not the one this wallet uses (" + want + "). All signers must use the same type and account.");
@@ -11694,8 +11862,8 @@ async function msRender(){
   if(!ms) return;
   msEl("msIntro").style.display = "none"; msEl("msRun").style.display = "";
   const full = ms.keys.length >= ms.n, N = NETS[ms.net];
-  msEl("msRunTitle").textContent = ms.m + "-of-" + ms.n + " multisig, " + msTypeName(ms.type) + ", account " + ms.account + (ms.net === "test" ? ", TESTNET" : "");
-  msEl("msTestBan").style.display = ms.net === "test" ? "" : "none";
+  msEl("msRunTitle").textContent = ms.m + "-of-" + ms.n + " multisig, " + msTypeName(ms.type) + ", account " + ms.account + (netIsTest(ms.net) ? ", " + netName(ms.net).toUpperCase() : "");
+  netBan("msTestBan", ms.net);
   { const pr = msEl("msProg"); pr.textContent = ms.keys.length + " of " + ms.n + " keys saved"; const bar = document.createElement("div"); bar.className = "ms-bar"; const fill = document.createElement("i"); fill.style.width = Math.round(100 * ms.keys.length / ms.n) + "%"; bar.appendChild(fill); pr.appendChild(bar); }
   const slots = msEl("msSlots"); slots.textContent = "";
   for(let i = 0; i < ms.n; i++){
@@ -11708,7 +11876,7 @@ async function msRender(){
     const chip = document.createElement("span"); chip.className = "ms-chip"; chip.textContent = k ? "SAVED" : cur ? "UP NEXT" : "WAITING"; tx.appendChild(chip);
     const st = document.createElement("div");
     if(k){
-      st.textContent = k.src === "made" ? "Made here. Fingerprint " + k.fp + ". The seed was wiped; only the public key is kept." : "Pasted from elsewhere. Fingerprint " + k.fp + ".";
+      st.textContent = k.src === "made" ? "Made here. Fingerprint " + k.fp + ". The seed was wiped; only the public key is kept." : k.src === "checked" ? "From the seed in CHECK A BACKUP. Fingerprint " + k.fp + ". Its words were wiped from CHECK A BACKUP; only the public key is kept." : "Pasted from elsewhere. Fingerprint " + k.fp + ".";
       const mono = document.createElement("div"); mono.className = "ms-mono"; mono.textContent = msCosigner(k); tx.appendChild(st); tx.appendChild(mono);
       const cb = document.createElement("button"); cb.type = "button"; cb.className = "secondary small"; cb.textContent = "COPY";
       cb.onclick = () => safeCopy(msCosigner(k)).then(() => showCopied(cb)).catch(() => alert("Copy failed. Select the text and copy it manually."));
@@ -11732,7 +11900,7 @@ async function msFinish(){
   ms.done = true; ms.descR = dr; ms.descC = dc; ms.addrs = addrs; ms.change = change;
   msEl("msDescR").textContent = dr; msEl("msDescC").textContent = dc;
   for(const [id, list] of [["msAddrs", addrs], ["msChange", change]]){ const ol = msEl(id); ol.textContent = ""; list.forEach(a => { const li = document.createElement("li"); li.textContent = a; ol.appendChild(li); }); }
-  msEl("msOneDev").style.display = ms.keys.every(k => k.src === "made") ? "" : "none";
+  msEl("msOneDev").style.display = ms.keys.every(k => k.src !== "pasted") ? "" : "none";   // v2.16.1: a seed opened in CHECK A BACKUP was on this device too
   msTrDone();   // v2.11.0: what the Taproot type can and cannot export, and the Bitcoin Core commands
   msEl("msDone").style.display = "";
   reveal(msEl("msDone"));
@@ -11746,7 +11914,7 @@ async function msAnim(kind){
   if(kind) msAnimKind = kind;
   if(ms.type === "ms-tr" && msAnimKind !== "bbqr") return;   // v2.11.0: only the descriptor as text (Coldcard Q, EDGE firmware) is confirmed for Taproot multisig
   const cos = ms.keys.map(k => ({fp: k.fp, path: k.path, key: k.key})), sz = parseInt(document.getElementById("msAnimSize").value, 10) || 0;
-  const test = ms.net === "test" ? " Testnet wallet." : "";
+  const test = netIsTest(ms.net) ? " " + netName(ms.net) + " wallet." : "";
   let parts, cap, rate = 200;
   if(msAnimKind === "ur"){ parts = urEncode("crypto-output", cryptoOutputMultisig(ms.type, ms.m, cos, ms.net), ANIM_SIZES.ur[sz]); cap = "For Sparrow, SeedSigner and Nunchuk (UR crypto-output)." + test; }
   else if(msAnimKind === "bbqr"){
@@ -11755,7 +11923,7 @@ async function msAnim(kind){
   } else {
     const t = await coldcardMultisigText(ms.type, ms.m, cos);
     parts = urEncode("bytes", CB.bytes(Array.from(new TextEncoder().encode(t))), ANIM_SIZES.ur[sz]);
-    cap = "For Keystone and Passport (UR bytes): the Coldcard-style multisig setup file. SeedSigner reads it too, for up to 9 keys." + (ms.net === "test" ? " Keystone does not take testnet multisig wallets." : "");
+    cap = "For Keystone and Passport (UR bytes): the Coldcard-style multisig setup file. SeedSigner reads it too, for up to 9 keys." + (netIsTest(ms.net) ? " Keystone does not take testnet multisig wallets." : "");
   }
   animStart("msAnim", parts, cap + " Hold the screen in front of the device's camera until it has every part.", rate);
   document.getElementById("msAnimPause").textContent = "PAUSE";
@@ -11775,7 +11943,7 @@ function msShowQr(){
 }
 function msHideQr(){ msEl("msQrImg").textContent = ""; msEl("msQrCaption").textContent = ""; msEl("msQrBox").style.display = "none"; }
 function msSheetText(withAddrs = true){
-  const lines = [ms.m + "-of-" + ms.n + " multisig, " + msTypeName(ms.type) + ", account " + ms.account + (ms.net === "test" ? ", TESTNET (practice coins only)" : ", mainnet"), "", "KEYS (any " + ms.m + " of these " + ms.n + " seeds can spend):"];
+  const lines = [ms.m + "-of-" + ms.n + " multisig, " + msTypeName(ms.type) + ", account " + ms.account + (netIsTest(ms.net) ? ", " + netNote(ms.net) : ", mainnet"), "", "KEYS (any " + ms.m + " of these " + ms.n + " seeds can spend):"];
   ms.keys.forEach((k, i) => lines.push((i + 1) + ". fingerprint " + k.fp + "   path m/" + k.path.replace(/h/g, "'")));
   lines.push("", "DESCRIPTOR (public keys only):", ms.descR, "", ...(withAddrs ? ["FIRST 10 RECEIVE ADDRESSES:", ...ms.addrs, "", "FIRST 10 CHANGE ADDRESSES:", ...ms.change, ""] : []),
     "This sheet holds NO seed words. It cannot spend. Keep it with your seed backups: without the descriptor (or all public keys), the seeds alone are not enough to find a multisig wallet's funds.",
@@ -11784,7 +11952,7 @@ function msSheetText(withAddrs = true){
 }
 function msPrint(){
   if(!ms || !ms.done) return;
-  const title = "VOIDFORGE MULTISIG RECOVERY SHEET" + (ms.net === "test" ? " (TESTNET)" : "");
+  const title = "VOIDFORGE MULTISIG RECOVERY SHEET" + netTitle(ms.net);
   const addrs = "FIRST 10 RECEIVE AND FIRST 10 CHANGE ADDRESSES (your app must show exactly these):\n" + addrSheetLines(ms.addrs, ms.change, 70);
   let q; try { q = qrMatrix(ms.descR); } catch(e) { return printSqSheet(title, "", "pq-ms", "The descriptor is too long for one QR code: copy it from the text below.\n\n" + msSheetText(false), "", addrs); }
   const nq = ms.n + (ms.type === "ms-tr" ? 1 : 0);   // v2.11.0: a Taproot descriptor holds one more xpub (the unspendable internal key)
@@ -11868,6 +12036,7 @@ function clearWalletView(){
   hideAddrQr("wvq"); wvSeedQrHide(); wvDecoyHide();
   pnShow(false);   // v2.10.0: the punch plate belongs to the words that were open
   for(const id of ["wvType","wvNet","wvAcct","wvChain"]) document.getElementById(id).disabled = false;
+  for(const o of document.getElementById("wvNet").options) o.disabled = false;   // v2.16.1: wvNetKey turns Mainnet off for a test-network key
   document.getElementById("wvChain").value = "both";   // v2.16.0: every wallet opens on its first 10 receive and first 10 change addresses
   if(practiceOn){ document.getElementById("wvNet").value = "test"; document.getElementById("wvNet").disabled = true; }
   if(document.getElementById("wvAcct").value === "-") document.getElementById("wvAcct").value = "0";
@@ -11903,7 +12072,7 @@ async function wvRefresh(){
   const rows = R.rows, both = R.chains.length === 2, star = R.chains[0] === null, each = rows.filter(r => r.chain === R.chains[0]);
   apRender(rows, both);
   const tail = (r) => r.path.replace(/\/[0-9]+$/, "/") + "index";
-  document.getElementById("wvPath").textContent = (net === "test" ? "TESTNET (practice coins only). " : "") + (star ? "Addresses" : both ? "Receive and change addresses" : R.chains[0] ? "Change addresses" : "Receive addresses") + " " + each[0].index + " to " + each[each.length - 1].index + ", " + SCRIPT_TYPES[type].label + ": " + tail(rows[0]) + (both ? " and " + tail(rows[each.length]) : "");
+  document.getElementById("wvPath").textContent = (netIsTest(net) ? netNote(net) + ". " : "") + (star ? "Addresses" : both ? "Receive and change addresses" : R.chains[0] ? "Change addresses" : "Receive addresses") + " " + each[0].index + " to " + each[each.length - 1].index + ", " + SCRIPT_TYPES[type].label + ": " + tail(rows[0]) + (both ? " and " + tail(rows[each.length]) : "");
   wvCtx.shown = {type, net, chain: both ? "both" : R.chains[0], acct, rows, sheet, custom: P ? custom.replace(/\s+/g, "").replace(/[hH]/g, "'") : "", star};
   apPager();
 }
@@ -11916,7 +12085,7 @@ function printRecoverySheet(){
   const add = (cls, text) => { const d = document.createElement("div"); if(cls) d.className = cls; d.textContent = text; po.appendChild(d); return d; };
   add("ps-title", "VOIDFORGE RECOVERY SHEET");
   add("ps-sub", "No seed words and no passphrase are on this sheet. It says which wallet your " + n + " words open, so the right one can be rebuilt. Keep it with the paper backup, not in the same place as the passphrase.");
-  add("ps-info", document.getElementById("wvFp").textContent + "\nPassphrase used: " + (wvCtx.pass ? "YES (kept separately; it is not written here)" : "NO") + "\nWallet made on: " + (document.getElementById("wvBorn").value || "____________") + "\nSeed phrase length: " + n + " words\nNetwork: " + (sh.net === "test" ? "TESTNET (practice coins only)" : "Mainnet") + "\nAddress type: " + T.label + (sh.custom ? "\nDerivation path: " + sh.custom + "/0/index (receive) and " + sh.custom + "/1/index (change), a custom path" : "\nDerivation path: m/" + T.purpose + "'/" + NETS[sh.net].coin + "'/" + sh.acct + "'/0/index (receive) and .../1/index (change)\nAccount number: " + sh.acct));
+  add("ps-info", document.getElementById("wvFp").textContent + "\nPassphrase used: " + (wvCtx.pass ? "YES (kept separately; it is not written here)" : "NO") + "\nWallet made on: " + (document.getElementById("wvBorn").value || "____________") + "\nSeed phrase length: " + n + " words\nNetwork: " + (netNote(sh.net) || "Mainnet") + "\nAddress type: " + T.label + (sh.custom ? "\nDerivation path: " + sh.custom + "/0/index (receive) and " + sh.custom + "/1/index (change), a custom path" : "\nDerivation path: m/" + T.purpose + "'/" + NETS[sh.net].coin + "'/" + sh.acct + "'/0/index (receive) and .../1/index (change)\nAccount number: " + sh.acct));
   add("ps-rule", "");
   if(!sh.sheet) return alert("Open the wallet again, then print.");
   add("ps-info", "First " + ADDR_SHOWN + " receive and first " + ADDR_SHOWN + " change addresses (public; to compare in the wallet app):"); add("ps-addr", addrSheetLines(sh.sheet.recv.map(r => r.address), sh.sheet.change.map(r => r.address)));
@@ -11968,13 +12137,13 @@ async function openWatchOnly(){
   clearWalletView();
   wvCtx = {kind: "pub", key: w.key, net: w.net, origin: w.origin}; const mine = wvSeq;
   const tSel = document.getElementById("wvType"), nSel = document.getElementById("wvNet"), aIn = document.getElementById("wvAcct"), cSel = document.getElementById("wvChain");
-  nSel.value = w.net; nSel.disabled = true;
+  wvNetKey(w.net);
   if(w.type){ tSel.value = w.type; } tSel.disabled = w.fixedType;
   const parts = w.origin ? w.origin.path.split("/") : [], last = parts.length === 4 ? parts[3].replace(/'/g, "") : "";
   aIn.value = /^[0-9]+$/.test(last) ? last : "-"; aIn.disabled = true;
   cSel.value = w.chain === null ? "both" : String(w.chain);
   st.className = "status ok";
-  st.textContent = "Watch-only wallet opened: " + (w.net === "test" ? "testnet " : "") + "public key" + (w.key.depth !== 3 ? " at depth " + w.key.depth + " (an account key is usually at depth 3; check the addresses carefully)" : "") + "." + (w.fixedType ? "" : " A plain xpub does not say which address type it is for: pick the type your wallet uses.");
+  st.textContent = "Watch-only wallet opened: " + (w.net === "test" ? "test-network " : "") + "public key" + (w.key.depth !== 3 ? " at depth " + w.key.depth + " (an account key is usually at depth 3; check the addresses carefully)" : "") + "." + (w.fixedType ? "" : " A plain xpub does not say which address type it is for: pick the type your wallet uses.") + (w.net === "test" ? " Testnet and regtest write their keys the same way: pick the network in the menu." : "");
   document.getElementById("wvBanner").textContent = "Watch-only: public key only. It shows addresses but can never spend, and it holds no seed words.";
   document.getElementById("wvSqBlock").style.display = "none"; document.getElementById("wvSheetBtn").style.display = "none"; document.getElementById("wvSheetHint").style.display = "none";
   document.getElementById("walletView").classList.add("wv-pub");
@@ -11982,6 +12151,14 @@ async function openWatchOnly(){
   if(w.origin){ document.getElementById("wvFp").textContent = "Master fingerprint (from the descriptor): " + w.origin.fp; showFpIcon("wvIcon", w.origin.fp); }
   else document.getElementById("wvFp").textContent = "Master fingerprint: not known. A plain xpub does not contain it; a descriptor with [fingerprint/path] does.";
   if(mine === wvSeq) await wvRefresh();
+}
+// v2.16.1: the network menu of the wallet view with a key open. A mainnet key stays on Mainnet. A test-network key (tpub, vpub,
+// tprv, a testnet WIF key ...) can be shown on Testnet or on Regtest, which write their keys the same way (see NETS.regtest).
+function wvNetKey(keyNet){
+  const n = document.getElementById("wvNet");
+  for(const o of n.options) o.disabled = !netFits(keyNet, o.value);
+  if(!netFits(keyNet, n.value)) n.value = keyNet;
+  n.disabled = keyNet === "main" || practiceOn;
 }
 // ================= Open a private key, read only (v2.6.0) =================
 // An extended private key, a WIF key or a Casascius mini key, for checking which addresses an old wallet controls. Read only: nothing
@@ -12032,7 +12209,7 @@ async function openPrivateKey(){
   if(practiceOn && p.net !== "test"){ st.className = "status bad"; st.textContent = "Practice mode is on, so only test-network private keys (tprv, uprv, vprv, or a testnet WIF key) open here. Turn practice mode off (in Practice making a backup) to open this mainnet key."; return; }
   const view = document.getElementById("walletView"), tSel = document.getElementById("wvType"), nSel = document.getElementById("wvNet"), aIn = document.getElementById("wvAcct");
   view.classList.add("wv-secret");
-  nSel.value = p.net; nSel.disabled = true;
+  wvNetKey(p.net);
   if(p.kind === "root"){
     wvCtx = {kind: "root", root: [p.k, p.chain], net: p.net, secret: true};
     if(p.type) tSel.value = p.type;
@@ -12059,13 +12236,13 @@ async function openPrivateKey(){
 }
 // One key: the address of each type it can have (a key that is not compressed only has a legacy address).
 async function wvRefreshSingle(mine){
-  const pub = pubOfPriv(wvCtx.k, wvCtx.compressed), net = wvCtx.net, types = wvCtx.compressed ? ["wpkh", "tr", "sh-wpkh", "pkh"] : ["pkh"];
+  const pub = pubOfPriv(wvCtx.k, wvCtx.compressed), net = document.getElementById("wvNet").value, types = wvCtx.compressed ? ["wpkh", "tr", "sh-wpkh", "pkh"] : ["pkh"];
   const rows = [];
   for(const t of types) rows.push({index: rows.length, type: t, path: "single key", address: await addressFromPub(t, pub, net)});
   if(mine !== wvSeq || !wvCtx) return;
   const ol = document.getElementById("wvList"); ol.textContent = "";
   rows.forEach(r => ol.appendChild(addrLi(r.address, SCRIPT_TYPES[r.type].label)));
-  document.getElementById("wvPath").textContent = (net === "test" ? "TESTNET (practice coins only). " : "") + "One key: " + (wvCtx.compressed ? "its Native SegWit, Taproot, Nested SegWit and Legacy addresses, in that order. Old wallets mostly used Legacy (1...)." : "only a Legacy (1...) address, because the key is not compressed.");
+  document.getElementById("wvPath").textContent = (netIsTest(net) ? netNote(net) + ". " : "") + "One key: " + (wvCtx.compressed ? "its Native SegWit, Taproot, Nested SegWit and Legacy addresses, in that order. Old wallets mostly used Legacy (1...)." : "only a Legacy (1...) address, because the key is not compressed.");
   wvCtx.shown = {single: true, net, chain: 0, rows};
 }
 // SHOW or HIDE what is typed in the password box just before the button (the file readers in CHECK A BACKUP).
@@ -14069,8 +14246,9 @@ async function ccRead(text){
   if(!/^# Coldcard backup file/.test(text)) throw new Error("It opened, but it is not a Coldcard backup text (its first line is wrong).");
   const v = {};
   for(const line of text.split("\n")){ if(!line.trim() || line[0] === "#") continue; const at = line.indexOf(" = "); if(at < 0) continue; try { v[line.slice(0, at)] = JSON.parse(line.slice(at + 3)); } catch(e) { /* not JSON: left out */ } }
-  if(v.chain !== undefined && v.chain !== "BTC" && v.chain !== "XTN") throw new Error(v.chain === "XRT" ? "This is a regtest (XRT) backup; VOIDFORGE shows mainnet and testnet wallets only." : "It opened, but it is for a chain this page does not know (" + String(v.chain).slice(0, 8) + ").");
-  const net = v.chain === "XTN" ? "test" : "main", rs = typeof v.raw_secret === "string" ? v.raw_secret : null;
+  // v2.16.1: XRT is Coldcard's regtest (shared/chains.py: BitcoinRegtest, ctype "XRT", a BitcoinTestnet with bech32_hrp "bcrt")
+  if(v.chain !== undefined && v.chain !== "BTC" && v.chain !== "XTN" && v.chain !== "XRT") throw new Error("It opened, but it is for a chain this page does not know (" + String(v.chain).slice(0, 8) + ").");
+  const net = v.chain === "XTN" ? "test" : v.chain === "XRT" ? "regtest" : "main", rs = typeof v.raw_secret === "string" ? v.raw_secret : null;
   if(!rs || !/^[0-9a-f]+$/.test(rs) || rs.length > 144) throw new Error("It opened, but it has no seed record (raw_secret) this page can read.");
   const r = fromHex(rs.padEnd(144, "0").slice(0, 144)), m = r[0];
   const has = (x) => Array.isArray(x) ? x.length > 0 : x && typeof x === "object" ? Object.keys(x).length > 0 : !!x;   // [] and {} hold nothing
@@ -14109,7 +14287,7 @@ function dbUtf8Safe(b){ try { return dbUtf8(b); } catch(e) { return ""; } }
 // --- the result, in plain words ---
 const DB_TYPES = {44: ["pkh", "legacy"], 49: ["sh-wpkh", "nested SegWit"], 84: ["wpkh", "native SegWit"], 86: ["tr", "Taproot"]};
 async function dbWalletText(root, fp, net, steps){
-  const t = DB_TYPES[steps.length ? steps[0][0] : 84] || DB_TYPES[84], last = ADDR_SHOWN - 1, tn = net === "test" ? " TESTNET (practice coins only)" : "";
+  const t = DB_TYPES[steps.length ? steps[0][0] : 84] || DB_TYPES[84], last = ADDR_SHOWN - 1, tn = netIsTest(net) ? " " + netNote(net) : "";
   const p = "m" + steps.map(([i, h]) => "/" + i + (h ? "'" : "")).join("");
   const rows = async (chain) => (await walletAddressesFrom(root, steps, t[0], net, chain, 0, ADDR_SHOWN)).map(a => String(chain + "/" + a.index).padEnd(5) + a.address).join("\n");
   return "Master fingerprint: " + fp + "\n\nFirst " + ADDR_SHOWN + tn + " receive addresses (" + t[1] + ", " + p + "/0/0 to 0/" + last + "):\n" + await rows(0) +
@@ -14172,7 +14350,7 @@ async function dbOpenUi(){
     } else {
       r = await ccOpen(bytes, pw, f ? f.name : "");
       head = "Coldcard backup opened" + (r.fw ? " (" + r.fw + ")" : "") + ".";
-      const coin = r.net === "test" ? 1 : 0, acct = [[84, true], [coin, true], [0, true]];
+      const coin = NETS[r.net].coin, acct = [[84, true], [coin, true], [0, true]];
       if(r.mnemonic){ const w = await dbRootFromWords(r.mnemonic); words = r.mnemonic; lines.push(await dbWalletText(w.root, w.fp, r.net, acct)); secret = "SEED WORDS: anyone with them can spend\n" + numberedWords(words); }
       else if(r.xprvOnly){ const fp = hex((await hash160(pubkeyBytes(r.root[0]))).slice(0, 4)); lines.push(await dbWalletText(r.root, fp, r.net, acct), "This backup holds a key, not seed words: a passphrase wallet or an imported xprv. A Coldcard never stores the passphrase itself.");
         secret = "MASTER PRIVATE KEY: anyone with it can spend\n" + await xprvText(r.root, r.net); }
@@ -14190,7 +14368,7 @@ async function dbOpenUi(){
 function dbReadFile(f){ return new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(new Uint8Array(r.result)); r.onerror = () => no(new Error("The file could not be read.")); r.readAsArrayBuffer(f); }); }
 function numberedWords(m){ const w = m.split(" "), out = []; for(let i = 0; i < w.length; i += 4) out.push(w.slice(i, i + 4).map((x, j) => String(i + j + 1).padStart(2) + ". " + x.padEnd(9)).join(" ")); return out.join("\n"); }
 async function xprvText(root, net){
-  const [k, c] = root, ver = net === "test" ? [0x04, 0x35, 0x83, 0x94] : [0x04, 0x88, 0xad, 0xe4];
+  const [k, c] = root, ver = netIsTest(net) ? [0x04, 0x35, 0x83, 0x94] : [0x04, 0x88, 0xad, 0xe4];
   return base58check(Uint8Array.from([...ver, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...c, 0, ...fromHex(k.toString(16).padStart(64, "0"))]));
 }
 function dbReveal(){
@@ -14607,7 +14785,7 @@ async function ewMultiAddr(W, chain, i){
 async function ewAddrs(W, chain, n){
   const out = [];
   if(W.kind === "imported") return out;
-  if(W.kind === "old"){ for(let i = 0; i < n; i++) out.push(await oldElAddr(W.keystores[0].old, chain, i, "main")); return out; }
+  if(W.kind === "old"){ for(let i = 0; i < n; i++) out.push(await oldElAddr(W.keystores[0].old, chain, i, W.net)); return out; }
   if(W.kind === "multi"){ for(let i = 0; i < n; i++) out.push(await ewMultiAddr(W, chain, i)); return out; }
   const K = W.keystores[0].key, [cp, cc] = await ckdPub(K.pub, K.chain, chain);
   for(let i = 0; i < n; i++){ const [pk] = await ckdPub(cp, cc, i); out.push(await addressFromPub(W.script, pk, W.net)); }
@@ -14642,7 +14820,7 @@ async function ewRead(data, password, how){
     if(Array.isArray(d.addresses)) for(const a of d.addresses) W.imported.push({addr: String(a), type: "", pub: ""});   // Electrum 2.x: a list (wallet_db.py _convert_version_14)
     else if(addrs) for(const [a, v] of Object.entries(addrs)) W.imported.push({addr: a, type: ewObj(v) && v.type ? v.type : "", pub: ewObj(v) && v.pubkey ? v.pubkey : ""});
     else for(const pub of Object.keys(pairs)) W.imported.push({addr: "", type: "p2pkh", pub});   // as _convert_version_13_b reads them: legacy addresses
-    W.net = W.imported.some(x => /^(tb1|[mn2])/.test(x.addr)) ? "test" : "main";
+    W.net = W.imported.some(x => /^bcrt1/.test(x.addr)) ? "regtest" : W.imported.some(x => /^(tb1|[mn2])/.test(x.addr)) ? "test" : "main";   // v2.16.1: regtest
     for(const x of W.imported) if(x.pub && EW_IMP_TYPE[x.type]){ const a = await ewPubAddr(EW_IMP_TYPE[x.type], x.pub, W.net); if(x.addr && a !== x.addr) throw new Error("The file says " + x.addr + " belongs to a key that makes " + a + ": the file is damaged."); x.addr = a; }
     if(ks && enc) for(const x of W.imported){
       if(!x.pub || !ewOwn(pairs, x.pub)) continue;
@@ -14723,12 +14901,15 @@ async function ewRead(data, password, how){
   }
   // what the file itself lists (deterministic wallets keep their addresses in "addresses": receiving and change)
   W.fileAddrs = ewObj(d.addresses) && Array.isArray(d.addresses.receiving) ? {recv: d.addresses.receiving, change: Array.isArray(d.addresses.change) ? d.addresses.change : []} : null;
+  // v2.16.1: a regtest wallet keeps testnet's key prefixes (Electrum constants.py: BitcoinRegtest(BitcoinTestnet), SEGWIT_HRP
+  // "bcrt"), so only the addresses it saved can say regtest
+  if(W.net === "test" && W.fileAddrs && W.fileAddrs.recv.some(a => /^bcrt1/.test(String(a)))) W.net = "regtest";
   W.channels = ewObj(data.channels) ? Object.keys(data.channels).length : 0;
   return W;
 }
 // The wallet in plain words: public facts, the first 10 receive and 10 change addresses, and what to do.
 async function ewReport(W){
-  const L = [], ks = W.keystores[0], net = W.net === "test" ? " TESTNET (practice coins only)" : "";
+  const L = [], ks = W.keystores[0], net = netIsTest(W.net) ? " " + netNote(W.net) : "";
   const kindText = W.kind === "multi" ? (W.walletType === "2fa" ? "two-factor (2FA) wallet with TrustedCoin, 2 of 3 keys" : "multisig wallet, " + W.m + " of " + W.n + " keys")
     : W.kind === "imported" ? "imported " + (ks && Object.keys(ks.keypairs).length ? "private keys" : "addresses (watch only)")
     : W.kind === "old" ? "old Electrum wallet (made before Electrum 2.0)"
@@ -14736,6 +14917,7 @@ async function ewReport(W){
     : ks.xprv ? (ks.seed ? "standard wallet from an Electrum seed" : ks.key.depth === 3 && /^m\/(44|49|84)/.test((ks.derivation || "").replace(/h/g, "'")) ? "standard wallet from a BIP39 seed or a master key (Electrum keeps only the account key)" : "standard wallet from a master private key")
     : "watch-only wallet (public key only)";
   L.push("Electrum wallet file: " + kindText + "." + net);
+  if(W.netSet) L.push("Network: set by hand to " + netName(W.net) + " (the file says " + netName(W.netFile) + "). The addresses below are worked out for " + netName(W.net) + ", so they are not compared with the ones the file saved.");
   L.push("Address type: " + (W.kind === "imported" ? "per address (below)" : EW_TYPE_NAME[W.script]) + ". Storage version " + W.version + (W.legacy ? " (from before Electrum 2.7)" : "") + ".");
   L.push("Password: " + (W.how.encFile ? "the whole file is encrypted with it (opened with the password typed)" : W.encKeys ? (W.locked ? "the keys are encrypted with it; type it to see them" : "the keys are encrypted with it (opened with the password typed)") : "none (anyone who has the file can spend)") + ".");
   if(W.how.patches) L.push("The file has " + W.how.patches + " change" + (W.how.patches === 1 ? "" : "s") + " saved at its end (Electrum’s partial writes); they are applied, as Electrum does.");
@@ -14801,10 +14983,19 @@ function ewWipe(){
 }
 function ewClear(){
   ewWipe(); ewDropped = null;
-  for(const id of ["ewIn", "ewPass", "ewFile"]) document.getElementById(id).value = "";
+  for(const id of ["ewIn", "ewPass", "ewFile", "ewNet"]) document.getElementById(id).value = "";
   document.getElementById("ewPass").type = "password"; document.getElementById("ewPassBtn").textContent = "SHOW";
   document.getElementById("ewDrop").textContent = "";
 }
+// v2.16.1: the Network menu of the box: as guessed from the file (its keys and addresses), or set by hand. The addresses are
+// worked out again for it; the ones the file saved are then not compared (they are on the network Electrum used).
+async function ewNetPick(W){
+  W.netFile = W.net; const v = document.getElementById("ewNet").value;
+  if(!v || v === W.net) return;
+  W.net = v; W.netSet = true; W.fileAddrs = null;
+  if(W.kind === "imported") for(const x of W.imported) if(x.pub && EW_IMP_TYPE[x.type]) x.addr = await ewPubAddr(EW_IMP_TYPE[x.type], x.pub, v);
+}
+function ewNetSet(){ if(ewGot) ewOpenUi(); }
 function ewTogglePass(b){ const e = document.getElementById("ewPass"), show = e.type === "password"; e.type = show ? "text" : "password"; b.textContent = show ? "HIDE" : "SHOW"; }
 async function ewOpenUi(){
   if(!gateOk()) return;
@@ -14830,7 +15021,8 @@ async function ewOpenUi(){
     if(run !== ewRun) return;
     const L = await ewLoadText(text, {next: EW_PACE, stop: () => run !== ewRun}, extra); Object.assign(how, {patches: L.patches, dropped: L.dropped, junk: L.junk, python: L.python});
     if(run !== ewRun) return;
-    const W = await ewRead(L.data, pw, how), out = await ewReport(W);
+    const W = await ewRead(L.data, pw, how); await ewNetPick(W);
+    const out = await ewReport(W);
     if(run !== ewRun) return;
     ewGot = {W, out, secret: W.secrets.join("\n\n"), words: W.words};
     ewSay(W.fileMatch === false ? "bad" : "ok", W.fileMatch === false ? "Opened, but the addresses do not match the ones in the file (see below)." : "Opened read only: " + out.split("\n")[0].replace(/^Electrum wallet file: /, "") + (how.junk ? " The end of the file is damaged: " + how.dropped.toLocaleString("en-US") + " bytes were left out (see below)." : "") + (W.secrets.length ? " The seed or keys are behind SHOW THE SECRET." : W.secretsLocked ? " Type the password to see the seed or keys." : ""));
@@ -14913,7 +15105,7 @@ for(const id of ["ewIn", "ewPass"]) document.getElementById(id).addEventListener
 // Large files: the pages are read in slices with a pause for the browser between them, transactions are counted but not kept,
 // and the lists are shown a page at a time. CLEAR stops a read or a passphrase check that is still running.
 const WDAT_MAX = 256 * 1048576;
-const WDAT_NETS = {f9beb4d9: ["main", "mainnet"], "0b110907": ["test", "testnet3"], "1c163f28": ["test", "testnet4"], fabfb5da: ["test", "regtest"]};
+const WDAT_NETS = {f9beb4d9: ["main", "mainnet"], "0b110907": ["test", "testnet3"], "1c163f28": ["test", "testnet4"], fabfb5da: ["regtest", "regtest"]};   // v2.16.1: regtest is its own network (bcrt1)
 const WDAT_FEATURES = [[169900, "pre-split key pool"], [159900, "no default key"], [139900, "HD, with a separate change chain"], [130000, "HD (BIP32)"], [60000, "compressed public keys"], [40000, "wallet encryption"], [10500, "base"]];
 const WDAT_FLAGS = [[0, "avoid address reuse"], [1, "key origin metadata"], [2, "last hardened xpubs cached"], [32, "private keys disabled (watch-only)"], [33, "blank wallet"], [34, "descriptor wallet"], [35, "external signer"]];
 const WDAT_TYPES = ["Legacy (pkh)", "Nested SegWit (sh(wpkh))", "Native SegWit (wpkh)", "Taproot (tr)"];   // OutputType LEGACY, P2SH_SEGWIT, BECH32, BECH32M
@@ -15354,9 +15546,9 @@ async function wdatUnlock(w, pass, prog, stop){
 function wdatClient(v){ return v >= 220000 ? Math.floor(v / 10000) + "." + Math.floor(v / 100) % 100 : "0." + Math.floor(v / 10000) + "." + Math.floor(v / 100) % 100; }
 function wdatDay(t){ return t > 0 ? new Date(t * 1000).toISOString().slice(0, 10) : ""; }
 function wdatStep(s){ const h = /[hH']$/.test(s), n = parseInt(s, 10); if(!(n >= 0 && n < B138_H)) throw new Error("a path step is out of range"); return h ? n + B138_H : n; }
-async function wdatWif(k, compressed, net){ return base58check(concatBytes(Uint8Array.of(net === "test" ? 0xef : 0x80), k, compressed ? Uint8Array.of(1) : new Uint8Array(0))); }
-function wdatXpub(x74, net){ return base58check(concatBytes(Uint8Array.from(net === "test" ? [0x04, 0x35, 0x87, 0xcf] : XPUB_VER), x74)); }
-function wdatXprv(x74, k, net){ return base58check(concatBytes(Uint8Array.from(net === "test" ? [0x04, 0x35, 0x83, 0x94] : [0x04, 0x88, 0xad, 0xe4]), x74.subarray(0, 41), Uint8Array.of(0), k)); }
+async function wdatWif(k, compressed, net){ return base58check(concatBytes(Uint8Array.of(netIsTest(net) ? 0xef : 0x80), k, compressed ? Uint8Array.of(1) : new Uint8Array(0))); }
+function wdatXpub(x74, net){ return base58check(concatBytes(Uint8Array.from(netIsTest(net) ? [0x04, 0x35, 0x87, 0xcf] : XPUB_VER), x74)); }
+function wdatXprv(x74, k, net){ return base58check(concatBytes(Uint8Array.from(netIsTest(net) ? [0x04, 0x35, 0x83, 0x94] : [0x04, 0x88, 0xad, 0xe4]), x74.subarray(0, 41), Uint8Array.of(0), k)); }
 function wdatKeyOf(D, pub){ const h = hex(pub); for(const x of D.keys.values()) if(hex(x.pub) === h || (pub.length === 32 && hex(x.pub.subarray(1)) === h)) return x; return null; }
 function wdatSecretOf(D, pub){ const x = wdatKeyOf(D, pub); return x && x.secret ? x.secret : null; }
 function wdatNet(w){ return w.net || "main"; }
@@ -15450,7 +15642,7 @@ async function wdatRead(bytes, prog, stop){
   }
   if(!w.net){   // a legacy file does not say its network: the address book, or the keys of its descriptors, tell it
     const book = [...w.book.keys()], descs = [...w.descs.values()].map(D => D.str).join(" ");
-    w.net = (book.length && book.every(a => /^(tb1|bcrt1|[mn2])/.test(a))) || /[tuv]pub/.test(descs) ? "test" : "main";
+    w.net = (book.length && book.every(a => /^(tb1|bcrt1|[mn2])/.test(a))) || /[tuv]pub/.test(descs) ? (book.some(a => /^bcrt1/.test(a)) ? "regtest" : "test") : "main";
     w.netGuess = true;
   }
   w.descriptor = w.flags !== undefined ? ((w.flags >> 34n) & 1n) === 1n : w.descs.size > 0;
@@ -15475,7 +15667,8 @@ function wdatTypeName(D){ const a = D.activeAs; return a ? (WDAT_TYPES[a.type] |
 async function wdatSummary(w){
   const L = [], c = (t) => w.counts[t] || 0, ck = c("ckey"), pk = c("key") + c("wkey");
   L.push("Wallet file: " + (w.fmt === "bdb" ? "Berkeley DB (btree, " + (w.db.big ? "big" : "little") + "-endian, " + wdatN(w.db.ps) + "-byte pages)" : "SQLite (" + wdatN(w.db.ps) + "-byte pages)") + ", a " + (w.descriptor ? "descriptor" : "legacy") + " wallet.");
-  L.push("Network: " + (w.netGuess ? (w.net === "test" ? "a test network (its address book holds test addresses); the addresses are shown for testnet" : "not stored in this file; the addresses are shown for mainnet") : w.netName + " (application ID " + w.db.app + ")") + ".");
+  if(w.netSet) L.push("Network: set by hand to " + netName(w.net) + " (" + (w.netFile.guess ? "the file does not store it; VOIDFORGE guessed " + netName(w.netFile.net) : "the file says " + w.netFile.name) + "). The addresses and keys below are written for " + netName(w.net) + ".");   // v2.16.1
+  else L.push("Network: " + (w.netGuess ? (netIsTest(w.net) ? "a test network (its address book holds test addresses); the addresses are shown for " + (w.net === "regtest" ? "regtest" : "testnet") : "not stored in this file; the addresses are shown for mainnet") : w.netName + " (application ID " + w.db.app + ")") + ".");
   if(w.version !== undefined) L.push("Last opened by: Bitcoin Core " + wdatClient(w.version) + " (version " + w.version + ").");
   if(w.minversion !== undefined){ const f = WDAT_FEATURES.find(([v]) => w.minversion >= v); L.push("Wallet features: " + w.minversion + (f ? " (" + f[1] + ")" : "") + "."); }
   if(w.flags !== undefined && w.flags !== 0n){ const names = WDAT_FLAGS.filter(([b]) => (w.flags >> BigInt(b)) & 1n).map(x => x[1]); L.push("Flags: " + (names.join(", ") || "none known") + "."); }
@@ -15581,6 +15774,7 @@ function wdatClear(){
   wdatRun++; wdatWipe();
   document.getElementById("wdatPass").value = ""; document.getElementById("wdatPass").type = "password"; document.getElementById("wdatShowPass").textContent = "SHOW";
   document.getElementById("wdatFile").value = ""; document.getElementById("wdatPicked").textContent = "Or drop the file on this box.";
+  document.getElementById("wdatNet").value = "";
 }
 function wdatPicked(){ wdatRun++; wdatWipe(); const f = document.getElementById("wdatFile").files[0]; document.getElementById("wdatPicked").textContent = f ? "Chosen: " + f.name + " (" + wdatN(f.size) + " bytes)." : "Or drop the file on this box."; }
 async function wdatOpenUi(){
@@ -15608,6 +15802,7 @@ async function wdatShow(bytes, pass, run){
     u = await wdatUnlock(w, pass, say, stop);
     if(run !== wdatRun || !u) return;
   }
+  wdatNetPick(w);   // v2.16.1: the Network menu
   await say("Working out the addresses..."); await wdatHash160s(w);
   w.addrRows = w.descs.size ? await wdatActiveRows(w) : [];
   if(run !== wdatRun) return;
@@ -15627,6 +15822,21 @@ async function wdatShow(bytes, pass, run){
   document.getElementById("wdatListBox").style.display = wdatV.length ? "" : "none";
   document.getElementById("wdatSecretRow").style.display = wdatHasSecret() ? "" : "none";
   wdatPg = 0; await wdatRender(run);
+}
+// v2.16.1: the Network menu: as the file says (or as guessed, for a legacy file), or set by hand. Addresses, WIF keys and extended
+// keys are written for the network chosen; changing it rewrites them without reading the file again.
+function wdatNetPick(w){
+  if(!w.netFile) w.netFile = {net: w.net, name: w.netName, guess: !!w.netGuess};
+  const v = document.getElementById("wdatNet").value;
+  w.net = v || w.netFile.net; w.netSet = !!v && v !== w.netFile.net;
+}
+async function wdatNetSet(){
+  const w = wdat; if(!w) return;
+  wdatNetPick(w); w.addrRows = w.descs.size ? await wdatActiveRows(w) : [];
+  if(wdat !== w) return;
+  document.getElementById("wdatOut").textContent = await wdatSummary(w) + (wdatHasSecret() ? "\n\n" + wdatNext(w) : "");
+  if(document.getElementById("wdatSecret").style.display !== "none"){ wdatSPg = 0; await wdatSecretRender(); }
+  wdatPg = 0; await wdatRender();
 }
 function wdatCur(){ return wdatV && wdatV.find(x => x.id === document.getElementById("wdatView").value) || (wdatV && wdatV[0]); }
 async function wdatRender(run){
