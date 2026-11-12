@@ -383,5 +383,9 @@ const OURS = /^This (Berkeley DB file|SQLite file) cannot be read: |^This is not
   Object.defineProperty($('wdatFile'), 'files', { value: [new w.File([file(MF.legacyOld.file)], 'wallet.dat')], configurable: true });
   ok(w.wdatHolds() && w.autoHasSecrets(), 'auto-clear: a chosen wallet.dat that is not read yet counts as a secret');
   delete $('wdatFile').files; ok(!w.autoHasSecrets(), 'auto-clear: and no longer once the file box is empty');
+  // the passphrase box: SHOW and HIDE, as the Electrum box (a button, not a tick box)
+  const sb = $('wdatShowPass'); ok(sb.tagName === 'BUTTON' && sb.textContent === 'SHOW' && sb.previousElementSibling === $('wdatPass') && $('ewPassBtn').previousElementSibling === $('ewPass') && $('dbShowKey').tagName === 'BUTTON' && $('dbShowKey').previousElementSibling === $('dbKey'), 'the three file readers show a passphrase the same way: a SHOW button after the box');
+  $('wdatPass').value = 'x'; sb.click(); ok($('wdatPass').type === 'text' && sb.textContent === 'HIDE', 'SHOW shows the passphrase'); w.rhHide('tab'); ok($('wdatPass').type === 'password' && sb.textContent === 'SHOW', 're-hide puts it back to dots and the button back to SHOW'); w.rhShow();
+  sb.click(); w.wdatClear(); ok($('wdatPass').type === 'password' && sb.textContent === 'SHOW' && $('wdatPass').value === '', 'CLEAR puts it back to dots too');
 }
 R.done('walletdat');

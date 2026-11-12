@@ -1007,6 +1007,9 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   h4.sec { font-size: 13px; margin: 10px 0 2px; }   /* v2.15.0: a sub-heading inside a section (the Damascus steps' "On paper" and "On this page") */
   .btn-row.top { margin-top: 8px; }   /* v2.15.0: a button row under an input or a paragraph (instead of an inline margin) */
   .sec-block { margin-top: 14px; padding-top: 4px; border-top: 1px solid var(--border); }
+  h3.sec.grp { font-size: 15px; margin: 22px 0 6px; padding-top: 10px; border-top: 2px solid var(--bd2); }   /* v2.16.0: the groups of CHECK A BACKUP */
+  #iHave { margin: 6px 0 0; font-size: 14px; line-height: 1.9; }
+  #iHave .linklike { margin: 0; padding: 0; background: none; border: none; color: var(--goldtx); font-weight: 600; font-size: 14px; letter-spacing: 0; text-transform: none; text-decoration: underline; text-underline-offset: 3px; box-shadow: none; min-height: 0; min-width: 0; width: auto; white-space: nowrap; }
   /* v2.2.0: backup checklist under the words */
   #bkList { margin-top: 12px; border: 1px solid var(--border); border-radius: 8px; padding: 4px 12px 10px; }
   #bkList label { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; font-size: 13px; line-height: 1.4; }
@@ -1046,6 +1049,8 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   #wvAbbrGrid.on { display: grid; }
   @media (max-width: 559px) { #wvAbbrGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .wv-ctl #wvType { flex:2 1 230px; }
+  .wv-ctl #wvChain { flex:1.5 1 230px; }   /* v2.16.0: room for "Receive and change" (the whole width on a phone) */
+  @media (max-width: 560px) { .wv-ctl #wvChain { flex-basis: 100%; } }
   .wv-ctl input { width:64px; flex:none; }
   #wvBanner { border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:8px; padding:8px 12px; margin:8px 0; font-size:13px; color:var(--muted); }
   #wvFpRow { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:8px 0 0; }
@@ -1695,6 +1700,235 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   <div class="card" id="cardCheck">
     <h2>CHECK A BACKUP</h2>
     <p class="sub">Type the words from your backup to see that they are valid and match your wallet. Nothing is saved or sent.</p>
+    <p class="hint" id="iHave">I have: <button type="button" class="linklike" onclick="iHaveGo('cwHead', 'phrase')">words</button> &middot; <button type="button" class="linklike" onclick="iHaveGo('wpBlock', 'wpIn')">a public key</button> &middot; <button type="button" class="linklike" onclick="iHaveGo('pkBlock', 'pkIn')">a private key</button> &middot; <button type="button" class="linklike" onclick="iHaveGo('addrBlockHead', 'checkAddr')">an address</button> &middot; <button type="button" class="linklike" onclick="iHaveGo('ewBox')">an Electrum wallet file</button> &middot; <button type="button" class="linklike" onclick="iHaveGo('wdatBox')">a Bitcoin Core wallet.dat</button> &middot; <button type="button" class="linklike" onclick="iHaveGo('dbBlock')">a signing device&rsquo;s backup</button> &middot; <button type="button" class="linklike" onclick="iHaveGo('lbBlock', 'lbIn')">a label file</button></p>
+    <h3 class="sec grp" id="cwHead">Check your words</h3>
+    <textarea id="phrase" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Type or paste your seed words to check..."></textarea>
+    <div class="status bad" id="phrasePub" role="status" style="word-break:break-word;"></div>
+    <div class="hint" style="margin:4px 0 0;">Also accepts a SeedSigner SeedQR digit string (48 or 96 digits) or CompactSeedQR hex: type it in, or press SCAN SEEDQR on your offline computer. Never scan a real seed QR with a phone or any device that is online.</div>
+    <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
+      <input type="password" id="verifyPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Passphrase (if you used one)" style="flex:1; min-width:0;">
+      <button type="button" class="secondary small" onclick="toggleVerifyPassphrase(this)">SHOW</button>
+    </div>
+    <div class="pass-warn" id="verifyPassWarn" role="status" aria-live="polite"></div>
+    <input type="text" id="verifyRecorded" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="What your wallet app shows (optional)" style="margin-top:6px;">
+    <div class="hint" style="margin:4px 0 0;">Optional: paste the fingerprint, an address (any of the first 10 receive or 10 change), zpub or descriptor your wallet app showed, and VERIFY tells you MATCH or NO MATCH.</div>
+    <div class="btn-row top">
+      <button id="verifyBtn" onclick="verify()" disabled>VERIFY</button>
+    </div>
+    <div id="verifyIcons" style="display:flex; gap:18px; margin-top:8px;">
+      <div id="vFig0" style="display:none; text-align:center;"><div id="vIcon0" class="lh" style="margin-top:0"></div><div class="hint">no passphrase</div></div>
+      <div id="vFig1" style="display:none; text-align:center;"><div id="vIcon1" class="lh" style="margin-top:0"></div><div class="hint">with passphrase</div></div>
+    </div>
+    <div class="status" id="verifyStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-all;"></div>
+    <div class="status" id="verifyMatch" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+    <div class="hint" id="vSmudge" style="margin:6px 0 0;"></div>
+    <div class="sec-block" id="oeBlock" style="display:none;">
+      <h3 class="sec">Old Electrum seed<span class="tag tag-secret">SECRET</span></h3>
+      <p class="hint" style="margin:0 0 6px;">Electrum before version 2.0 made seeds of 12 words from its own old list of 1626 words, not BIP39. They have no checksum and no passphrase. VOIDFORGE works out the wallet the way Electrum does: the words give the seed below, 100,000 rounds of SHA-256 turn it into the key, and the master public key gives every address. The seed is as secret as the words; the master public key and the addresses are public.</p>
+      <p class="hint" id="oeNote" style="margin:0 0 6px;"></p>
+      <div id="oeSeed" style="word-break:break-all; font-family:'Courier New',monospace; font-size:15px; margin-top:6px;"></div>
+      <pre id="oeOut" style="white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+    </div>
+    <div class="sec-block" id="wpBlock">
+      <h3 class="sec">Or open a watch-only wallet<span class="tag tag-public">PUBLIC KEYS ONLY</span></h3>
+      <p class="hint" style="margin:0 0 6px;">Paste an account public key (xpub, ypub, zpub, or tpub, upub, vpub for testnet) or a single-key descriptor such as <code>wpkh([fingerprint/84h/0h/0h]xpub.../0/*)</code>. It shows the same addresses without any seed words. It can never spend.</p>
+      <textarea id="wpIn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Public key or descriptor" placeholder="xpub..., zpub... or wpkh([...]xpub.../0/*)"></textarea>
+      <div class="btn-row" style="margin-top:6px;"><button type="button" id="wpBtn" onclick="openWatchOnly()">OPEN WATCH-ONLY</button></div>
+      <div class="status" id="wpStatus" aria-live="polite" style="word-break:break-word; margin-top:6px;"></div>
+<details id="wpbBox" class="ms-sub" style="margin-top:10px;">
+<summary>Save an encrypted backup of this descriptor (BIP138)<small>For a descriptor pasted above: a .bip138 file that only one of the wallet&rsquo;s keys opens.</small></summary>
+<p class="hint" style="margin:8px 0 6px;">Paste the wallet&rsquo;s descriptor in the box above (any kind: single key, multisig or miniscript). This saves it encrypted as a .bip138 file, the format Liana writes: store copies anywhere, even online. It opens only with one of the wallet&rsquo;s keys (its words, or just its xpub). The encryption needs a number used only once (a nonce), and VOIDFORGE never makes randomness itself: roll a die at least 50 times and type the results.</p>
+<textarea id="wpbRolls" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Dice rolls for the backup" placeholder="New dice rolls 1-6, at least 50"></textarea>
+<div class="btn-row" style="margin-top:6px;"><button type="button" id="wpbBtn" onclick="b138MakeUi('wpb')" disabled>SAVE ENCRYPTED DESCRIPTOR BACKUP</button><button type="button" class="secondary small" onclick="b138MakeClear('wpb')">CLEAR</button></div>
+<div class="status" id="wpbStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+<div id="wpbOut" style="display:none; margin-top:8px;">
+  <div class="wlabel">The same backup as text (Base64)</div>
+  <div class="wval" id="wpbText"></div>
+  <div class="btn-row"><button type="button" class="secondary small" onclick="b138Copy(this,'wpb')">COPY TEXT</button><button type="button" class="secondary small" onclick="b138ShowQr('wpb')">SHOW QR</button></div>
+  <div id="wpbQrBox" style="display:none; margin-top:10px; text-align:center;"><div id="wpbQrCap" class="hint"></div><div id="wpbQrImg" style="width:min(100%,340px); margin:8px auto; background:#fff; line-height:0;"></div><button type="button" class="secondary small" onclick="b138HideQr('wpb')">HIDE QR</button></div>
+</div>
+</details>
+<div id="camBox" class="cam-box" style="display:none;">
+  <div class="cam-ban">CAMERA ON: only this page sees the picture, and nothing is saved or sent. STOP CAMERA turns it off.</div>
+  <video id="camVideo" playsinline muted aria-label="Camera picture"></video>
+  <div class="status" id="camMsg" aria-live="polite" style="margin-top:6px;"></div>
+  <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" id="camStopBtn" onclick="camStop()">STOP CAMERA</button><button type="button" class="secondary small" id="camPhotoBtn" onclick="document.getElementById('camFile').click()">OPEN A PHOTO INSTEAD</button></div>
+  <input type="file" id="camFile" accept="image/*" multiple style="display:none;" aria-label="Photos of the QR code">
+</div>
+    </div>
+    <div class="sec-block" id="pkBlock">
+      <h3 class="sec">Or open a private key, read only<span class="tag tag-secret">SECRET</span></h3>
+      <p class="hint" style="margin:0 0 6px;">For an old wallet or a paper wallet: paste an extended private key (xprv, yprv, zprv, or tprv, uprv, vprv for testnet), a WIF private key (starts with 5, K or L, or 9 or c for testnet) or a Casascius mini key (starts with S). VOIDFORGE shows the addresses it controls, so you can look them up somewhere else. It never signs and never sends. <b>Anyone who sees this key can spend everything it holds:</b> use an offline computer, and press CLEAR ALL or END SESSION when you are done.</p>
+      <div style="display:flex; gap:6px; align-items:center;"><input type="password" id="pkIn" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Private key" placeholder="xprv..., WIF or mini key" style="flex:1; min-width:0;"><button type="button" class="secondary small" onclick="togglePkShow(this)">SHOW</button></div>
+      <div class="btn-row" style="margin-top:6px;"><button type="button" id="pkBtn" onclick="openPrivateKey()">OPEN READ ONLY</button></div>
+      <div class="status" id="pkStatus" aria-live="polite" style="word-break:break-word; margin-top:6px;"></div>
+    </div>
+    <details id="walletView" style="display:none; margin-top:10px;">
+      <summary>Open this wallet<span class="tag tag-public">PUBLIC ADDRESSES</span><small>Addresses with QR codes, and paper backups of the words, for the words or key above.</small></summary>
+      <p class="hint" id="wvWhy" style="margin:8px 0 0;">This lists the addresses your wallet app would show for these words, so you can compare them in the app. Pick the same address type and account number the app uses. The words are the same for every type.</p>
+      <div id="wvBanner">Imported: these words were typed or scanned here, not made by this page. The same words and passphrase give the same wallet in any app.</div>
+      <div class="status bad" id="wvPub" role="status" style="word-break:break-word;"></div>
+      <div id="wvFpRow"><div class="fp" id="wvFp"></div><div id="wvIcon" class="lh" title="Fingerprint picture (LifeHash) of this wallet"></div></div>
+      <div id="wvDecoy" class="wv-decoy" style="display:none;">
+        <div class="wv-dcol"><div class="wv-dh">Without the passphrase</div><div class="fp" id="wvD0"></div><div class="wv-da" id="wvD0a"></div></div>
+        <div class="wv-dcol"><div class="wv-dh">With the passphrase</div><div class="fp" id="wvD1"></div><div class="wv-da" id="wvD1a"></div></div>
+        <p class="hint wv-dwhy">Two wallets, one set of words. The passphrase makes a completely different wallet: another fingerprint, other addresses. Someone who finds only the words opens the wallet on the left, never the one on the right. Some people keep a small amount on the left as a decoy wallet, to hand over if they are forced to. Then store the passphrase well away from the words, and make sure your family knows that both wallets exist (see the Backup plan).</p>
+      </div>
+      <div class="wv-ctl">
+        <select id="wvType" aria-label="Address type"><option value="wpkh">Native SegWit (bc1q...)</option><option value="tr">Taproot (bc1p...)</option><option value="sh-wpkh">Nested SegWit (3...)</option><option value="pkh">Legacy (1...)</option></select>
+        <select id="wvChain" aria-label="Receive or change"><option value="0">Receive</option><option value="1">Change</option><option value="both" selected>Receive and change</option></select>
+        <select id="wvNet" aria-label="Network"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
+        <input type="text" id="wvAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number">
+      </div>
+      <input type="text" id="wvPathIn" class="wv-path" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Custom path (optional)" placeholder="Custom path (optional), such as m/0' or m/44'/0'/1', or m/44'/0'/0'/0/*">
+      <div class="hint wv-path" style="margin:0 0 4px;">Most wallet apps use the standard path for the address type, so leave this empty.</div>
+      <details class="wd-how wv-path" id="wvPathHow"><summary>How paths work</summary><p class="hint" style="margin:4px 0 0;">For an older or unusual app, type its path: an account path (its receive and change addresses go under it), or any path ending in <code>/*</code> for the addresses right under it, such as <code>m/0/*</code>. With a public key open, type the path below the key, such as <code>0/*</code> or <code>2/0/*</code>. Write a hardened step with <code>'</code> or <code>h</code>. The address type above still decides how the addresses are written.</p></details>
+      <label class="wv-start" for="wvStart">Start at address number<input type="text" id="wvStart" value="0" inputmode="numeric" spellcheck="false" autocomplete="off"></label>
+      <div class="status bad" id="wvErr"></div>
+      <div class="hint" id="wvPath" style="margin:0;"></div>
+      <ol id="wvList" class="addr-list"></ol>
+      <div class="btn-row" id="wvPager"><button type="button" class="secondary small" id="wvPrev" onclick="wvPage(-1)">PREVIOUS 10</button><button type="button" class="secondary small" id="wvNext" onclick="wvPage(1)">NEXT 10</button><button type="button" class="secondary small" id="wvMore" onclick="apMore()">SHOW 20 MORE</button><button type="button" class="secondary small" id="wvCopy" onclick="copyAddrList(this,'wvList')">COPY THESE 10</button><button type="button" class="secondary small" id="wvSheetBtn" onclick="printRecoverySheet()">PRINT RECOVERY SHEET</button></div>
+      <label class="wv-born" for="wvBorn">Wallet made on, if you know (printed on the recovery sheet)<input type="date" id="wvBorn"></label>
+      <p class="hint" id="wvSheetHint" style="margin:6px 0 0;">The recovery sheet holds no words and no passphrase: only the fingerprint, address type, path and the first addresses, plus how to restore. Keep it with your paper backup so someone you trust can tell which wallet the words belong to.</p>
+      <div id="wvqBox" class="qrbox"><div id="wvqCap" class="hint"></div><div id="wvqImg" class="qr-img"></div><details class="bip21" id="wvqReq"><summary>Payment request (BIP21)<small>Add an amount, label or message; the QR becomes a bitcoin: link.</small></summary><div class="b21-row"><input type="text" id="wvqAmt" inputmode="decimal" placeholder="Amount in BTC (optional)" aria-label="Amount in BTC" autocomplete="off" spellcheck="false"><input type="text" id="wvqLbl" placeholder="Label (optional)" aria-label="Label" autocomplete="off" spellcheck="false"><input type="text" id="wvqMsg" placeholder="Message (optional)" aria-label="Message" autocomplete="off" spellcheck="false"></div><div class="hint" id="wvqUri" style="word-break:break-all;"></div><button type="button" class="secondary small" onclick="copyReq(this,'wvq')">COPY LINK</button></details><button type="button" class="secondary small" onclick="printAddrQr('wvq')">PRINT THIS QR</button><button type="button" class="secondary small" onclick="hideAddrQr('wvq')">HIDE QR</button></div>
+      <div class="sec-block" id="wvSqBlock">
+        <h3 class="sec">Paper, metal and SeedQR backups<span class="tag tag-secret">SECRET</span></h3>
+        <p class="hint" style="margin:0 0 6px;">Make another backup of these words: print them, show or print their first 4 letters for a metal plate, lay them out for a punch plate, or print a SeedQR. Print only on a trusted offline computer with a directly connected printer. The passphrase is never shown or printed.</p>
+        <div class="btn-row" id="wvBkBtns"><button type="button" class="secondary small needs-words" id="wvAbbrBtn" onclick="wvAbbr()">SHOW FIRST 4 LETTERS</button><button type="button" class="secondary small needs-words" onclick="printSeed('check')">PRINT WORDS</button><button type="button" class="secondary small needs-words" onclick="printStamp('check')">PRINT STAMP SHEET</button></div>
+        <div id="wvAbbrGrid" aria-label="First 4 letters of each word"></div>
+        <div class="pn-ctl"><label for="pnFmt">Punch plate layout</label><select id="pnFmt" onchange="pnRender()"><option value="grid">Binary grid (TinySeed style)</option><option value="stack">Stackbit 1248</option><option value="num">Word numbers: decimal, hex and octal</option></select></div>
+        <p class="hint" style="margin:0 0 6px;">For a steel plate you punch. Each word is its number in the BIP39 word list, counted from 1 (abandon) to 2048 (zoo), as on TinySeed and Stackbit plates and in Krux. SeedQR counts from 0, so its numbers are 1 lower. To check a plate later, use Read a punch plate or word numbers, at the top of this tab.</p>
+        <div class="btn-row" id="pnBtns"><button type="button" class="secondary small needs-words" id="pnShowBtn" onclick="pnShow()">SHOW PLATE</button><button type="button" class="secondary small needs-words" onclick="printPlate()">PRINT PLATE</button><button type="button" class="secondary small" onclick="printPlateBlank('check')">PRINT BLANK PLATE</button></div>
+        <div id="pnView" aria-label="Punch plate layout of the words"></div>
+        <p class="hint" id="wvSqNote" style="margin:10px 0 6px;"></p>
+        <div class="btn-row" id="wvSqBtns"><button type="button" class="secondary small" onclick="wvSeedQr('seedqr')">SHOW SEEDQR</button><button type="button" class="secondary small" onclick="wvSeedQr('compact')">SHOW COMPACTSEEDQR</button><button type="button" class="secondary small" onclick="wvSeedQrHide()">HIDE</button></div>
+        <div id="wvsBox" class="qrbox"><div id="wvsCap" class="hint"></div><div id="wvsImg" class="qr-img"></div><div class="btn-row" style="justify-content:center;"><button type="button" class="secondary small" onclick="printSeedQr('check')">PRINT THIS QR</button><button type="button" class="secondary small" onclick="printSqGuide('check')">PRINT HAND-COPY GUIDE</button><button type="button" class="secondary small" onclick="printSqBlank('check')">PRINT BLANK GRID</button></div></div>
+      </div>
+    </details>
+    <h3 class="sec grp">Words on other media</h3>
+    <details id="dmrBox">
+      <summary>Recheck a Damascus backup<span class="tag tag-secret">SECRET</span><small>Type the words and the hallmarks written next to them: VOIDFORGE says whether they match, or which word is most likely wrong.</small></summary>
+      <p class="hint" style="margin:8px 0;">A Damascus backup keeps the row hallmark R of each word and the column hallmark M (and maybe the skew hallmark K) with the words. They catch any single wrong word except a wrong last word from the same table row (block, for 24 words): its last bits are not in the hallmarks, so only the checksum catches it, and RECHECK checks the checksum too. <b>By hand:</b> look up each word in the binary word table, write its 11 bits in a blank Forge grid (the last word: its first 7 bits, or 3 for 24 words), count the hallmarks again (an odd number of 1s gives 1) and compare.</p>
+      <textarea id="dmrWords" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The backup words" placeholder="The 12 or 24 words, in order (first four letters are enough)"></textarea>
+      <div class="dm-mine"><input type="text" id="dmrM" spellcheck="false" autocomplete="off" aria-label="Column hallmark M" placeholder="M: 11 bits"><input type="text" id="dmrR" spellcheck="false" autocomplete="off" aria-label="Row hallmark R" placeholder="R: one bit a word"><input type="text" id="dmrK" spellcheck="false" autocomplete="off" aria-label="Skew hallmark K" placeholder="K: 11 bits, optional"></div>
+      <div class="btn-row top"><button type="button" id="dmrBtn" onclick="dmRecheck()">RECHECK</button><button type="button" class="secondary small" onclick="dmrClear()">CLEAR</button></div>
+      <div id="dmrOut" class="status" role="status" aria-live="polite" style="white-space:pre-wrap;"></div>
+    </details>
+    <details id="pnRdBox">
+      <summary>Read a punch plate or word numbers<span class="tag tag-secret">SECRET</span><small>Type the word numbers (decimal, hex or octal), or tick the holes of a binary grid or a Stackbit 1248 plate, to put the words in the box above.</small></summary>
+      <p class="hint" style="margin:8px 0;">For a backup kept as numbers or as punched holes. Every number counts from 1 (abandon) to 2048 (zoo), as on TinySeed and Stackbit plates and in Krux. What you type or tick here is as secret as the words: use an offline computer, and press CLEAR when you are done. FILL THE WORDS BOX only fills the box; then press VERIFY to check the words.</p>
+      <div class="pn-ctl"><label for="pnRdFmt">The backup is</label><select id="pnRdFmt" onchange="pnRdLayout()"><option value="num">Word numbers</option><option value="grid">A binary grid (TinySeed style)</option><option value="stack">A Stackbit 1248 plate</option></select><select id="pnRdBase" aria-label="Number base"><option value="10">Decimal, 1 to 2048</option><option value="16">Hexadecimal, 1 to 800</option><option value="8">Octal, 1 to 4000</option></select><select id="pnRdLen" aria-label="Number of words" onchange="pnRdLayout()"><option value="12">12 words</option><option value="15">15 words</option><option value="18">18 words</option><option value="21">21 words</option><option value="24">24 words</option></select></div>
+      <textarea id="pnRdNums" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Word numbers, in order" placeholder="Word numbers in order, separated by spaces"></textarea>
+      <div id="pnRdGrid" aria-label="Tick the punched holes, one row for each word"></div>
+      <input type="hidden" id="pnRdTicks" value="">
+      <div class="btn-row top"><button type="button" id="pnRdBtn" onclick="pnReadUi()">FILL THE WORDS BOX</button><button type="button" class="secondary small" onclick="printPlateBlank('read')">PRINT BLANK PLATE</button><button type="button" class="secondary small" onclick="pnRdClear()">CLEAR</button></div>
+      <div class="status" id="pnRdStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+    </details>
+    <div class="sec-block">
+      <h3 class="sec" id="addrBlockHead">Explain an address, or check that it is yours</h3>
+      <div class="hint" style="margin:0 0 6px;">Paste any Bitcoin address and VOIDFORGE explains it at once: what kind it is, which network, whether it has a typo, and what someone can do with it. That needs no seed. To find it in your wallet, paste a receive or change address from a wallet app (bc1q SegWit, bc1p Taproot, 3 nested SegWit or 1 legacy; the box on the right is the account, almost always 0). It is searched in the wallet made by the words and passphrase above.</div>
+      <div style="display:flex; gap:6px;"><input type="text" id="checkAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Address (bc1q, bc1p, 3 or 1)" style="flex:1; min-width:0;"><input type="text" id="checkAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number (almost always 0)" style="width:56px; flex:none;"></div>
+      <div class="status" id="addrExplain" aria-live="polite" style="word-break:break-word; margin-top:6px;"></div>
+      <details id="payCheck" class="ms-sub" style="margin-top:10px;">
+        <summary>Check an address before you pay<small>Compare every character of the address you are about to pay with the one you were given.</small></summary>
+        <p class="hint" style="margin:8px 0;">Two common scams make a look-alike address whose first and last characters match the real one: a tiny payment from it lands in your history so you copy it by mistake later, or malware swaps the address you copied. Checking only the ends does not catch either. Paste the address from your wallet&rsquo;s send screen, then the one the person gave you (from their message, invoice or QR code). Nothing is sent anywhere.</p>
+        <input type="text" id="payA" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Address you are about to pay" placeholder="Address you are about to pay (from the send screen)">
+        <input type="text" id="payB" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Address you were given" placeholder="Address you were given (from the person, not from your history)" style="margin-top:6px;">
+        <div class="status" id="payOut" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+        <div class="pay-diff" id="payDiff" aria-hidden="true"></div>
+      </details>
+      <div class="btn-row top"><button type="button" id="checkAddrBtn" onclick="checkAddress()">CHECK ADDRESS</button><button type="button" id="checkAcctsBtn" onclick="checkAllAccounts()">TRY ACCOUNTS 0 TO 20</button><button type="button" id="checkAcctsStop" class="secondary small" onclick="acctScanStop = true" disabled>STOP</button></div>
+      <div class="hint" style="margin:6px 0 0;">Not sure of the account? TRY ACCOUNTS 0 TO 20 looks at the first 20 receive and change addresses of each account (the account box is ignored), with and without the passphrase above. It takes a while; STOP ends it.</div>
+      <div class="status" id="addrCheckStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+    </div>
+    <div class="sec-block" id="lbBlock">
+      <h3 class="sec">Read a label file (BIP329)<span class="tag tag-private">PRIVATE</span></h3>
+      <p class="hint" style="margin:0 0 6px;">Wallet apps such as Sparrow, Bitcoin Core and Nunchuk can export their labels (&ldquo;Rent, March&rdquo;, &ldquo;Savings&rdquo;) as a BIP329 file. Paste it or choose it: VOIDFORGE lists every label and, with the seed words typed above, says which labeled addresses are this seed&rsquo;s (the first 100 receive and change addresses of each address type, account 0). Labels are private: they link coins to you. The file is only read here, never stored or sent.</p>
+      <textarea id="lbIn" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Label file (BIP329, one JSON record per line)" placeholder='{"type": "addr", "ref": "bc1q...", "label": "Savings"}' oninput="lbClear(true)"></textarea>
+      <input type="file" id="lbFileIn" accept=".jsonl,.json,.txt,text/plain,application/json" aria-label="Choose the label file" onchange="lbFile()" style="width:100%; margin-top:6px;">
+      <label style="display:block; margin-top:6px; font-size:13px;"><input type="checkbox" id="lbPrintText"> Print the label text too (labels can be private)</label>
+      <div class="btn-row top"><button type="button" id="lbBtn" onclick="lbUi()" disabled>READ LABELS</button><button type="button" class="secondary small" id="lbPrintBtn" onclick="printLabels()" disabled>PRINT LABEL SHEET</button><button type="button" class="secondary small" onclick="lbClear()">CLEAR</button></div>
+      <div class="status" id="lbStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+      <pre id="lbOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
+    </div>
+    <div class="sec-block" id="detBlock">
+      <h3 class="sec">My wallet shows zero: Wallet Detective<span class="tag tag-secret">USES THE WORDS ABOVE</span></h3>
+      <p class="hint" style="margin:0 0 6px;">When the right words open an empty wallet, the app is often looking in a different place: another address type, account or path, a passphrase, or an Electrum seed. Type the words (and the passphrase, if any) in the boxes at the top of this tab, then one address you know this wallet received to (from an old message, invoice or exchange withdrawal). FIND MY WALLET tries the settings of well-known wallet apps until that address matches, then names the apps that use them and how to open it. It never looks up a balance. A search can take a minute or two (longer with a passphrase); STOP ends it. No address? LIST FIRST ADDRESSES shows the first address of each common setting, to look up on another device.</p>
+      <input type="text" id="detAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="An address this wallet received to" placeholder="An address this wallet received to (bc1q, bc1p, 3 or 1)" oninput="detClear(true)">
+      <div class="btn-row top"><button type="button" id="detBtn" onclick="detFind()" disabled>FIND MY WALLET</button><button type="button" class="secondary small" id="detListBtn" onclick="detList()" disabled>LIST FIRST ADDRESSES</button><button type="button" class="secondary small" id="detStop" onclick="detStop()" disabled>STOP</button><button type="button" class="secondary small" onclick="detClear()">CLEAR</button></div>
+      <div class="status bad" id="detPub" role="status" style="word-break:break-word;"></div>
+      <div class="status" id="detStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
+      <pre id="detOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+    </div>
+    <div class="sec-block" id="kcBlock">
+      <h3 class="sec">Is this seed in my wallet file?<span class="tag tag-secret">USES THE WORDS ABOVE</span></h3>
+      <p class="hint" style="margin:0 0 6px;">For a multisig wallet (or any wallet with a descriptor): paste its setup file, the output descriptor, the Coldcard multisig setup file or the BSMS record (or choose the file), with the seed words (and passphrase, if any) typed in the boxes above. VOIDFORGE checks every key in the file: is it made by this seed, with the fingerprint, path and key all matching? So you know which key of the wallet this backup is, before you rely on it. The file holds only public keys.</p>
+      <textarea id="kcIn" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Wallet file: descriptor, Coldcard multisig setup file or BSMS record" placeholder="wsh(sortedmulti(2,[fp/48h/0h/0h/2h]xpub.../0/*,...))#checksum&#10;or a Coldcard multisig setup file, or a BSMS record" oninput="kcClear(true)"></textarea>
+      <input type="file" id="kcFileIn" accept=".txt,.bsms,.json,text/plain" aria-label="Choose the wallet file" onchange="kcFile()" style="width:100%; margin-top:6px;">
+      <div class="btn-row top"><button type="button" id="kcBtn" onclick="kcUi()" disabled>CHECK THIS SEED</button><button type="button" class="secondary small" onclick="kcClear()">CLEAR</button></div>
+      <div class="status" id="kcStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+    </div>
+    <div class="sec-block" id="b138Block">
+      <h3 class="sec">Open an encrypted descriptor backup (BIP138)<span class="tag tag-secret">USES THE WORDS ABOVE</span></h3>
+      <p class="hint" style="margin:0 0 6px;">A .bip138 file (made by Liana or by VOIDFORGE) holds a wallet&rsquo;s descriptor, encrypted with the wallet&rsquo;s own public keys. Choose the file or paste its text, then type the words of ONE of the wallet&rsquo;s keys in the boxes at the top of this tab (with its passphrase, if it has one), or paste one of the wallet&rsquo;s public keys (xpub) below: a public key opens it too. VOIDFORGE shows the descriptor, its checksum, the first 10 receive and 10 change addresses, and which key opened it.</p>
+      <textarea id="b138In" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The backup as text (Base64)" placeholder="The backup as text (it starts with QklQMTM4), or choose the file below"></textarea>
+      <input type="file" id="b138File" accept=".bip138,.txt,application/octet-stream,text/plain" aria-label="Choose the backup file" style="width:100%; margin-top:6px;">
+      <input type="text" id="b138Pub" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="One of the wallet's public keys (optional)" placeholder="Or one of the wallet’s public keys: xpub..., tpub..., Zpub... (optional)" style="margin-top:6px;">
+      <div class="btn-row top"><button type="button" id="b138Btn" onclick="b138OpenUi()" disabled>OPEN BACKUP</button><button type="button" class="secondary small" onclick="b138OpenClear()">CLEAR</button></div>
+      <div class="status" id="b138Status" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+      <pre id="b138Out" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
+      <div class="btn-row" id="b138CopyRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" onclick="b138CopyDesc(this)">COPY DESCRIPTOR</button></div>
+    </div>
+    <h3 class="sec grp">No words? Open a wallet file</h3>
+    <details id="dbBlock">
+      <summary>Open a signing device&rsquo;s backup<span class="tag tag-secret">SECRET</span><small>Open an encrypted TAPSIGNER, Krux or Coldcard backup offline: which wallet it holds, and its seed.</small></summary>
+      <p class="hint" style="margin:8px 0 6px;">An encrypted backup a signing device wrote: a <b>TAPSIGNER</b> backup (.aes) with the key printed on the back of the card, a <b>Krux</b> encrypted seed (the encrypted QR&rsquo;s text, or seeds.json) with its key, or a <b>Coldcard</b> backup (.7z) with its 12 backup words. VOIDFORGE opens it here, offline, and shows which wallet it holds (the fingerprint and first addresses). The backup holds the wallet&rsquo;s private keys: open it only on your offline computer.</p>
+      <select id="dbKind" aria-label="Which device made the backup" style="width:100%;" onchange="dbKindSet()"><option value="ts">TAPSIGNER backup (.aes)</option><option value="krux">Krux encrypted seed (QR text or seeds.json)</option><option value="cc">Coldcard backup (.7z)</option></select>
+      <p class="hint" id="dbKindNote" style="margin:6px 0;"></p>
+      <input type="file" id="dbFile" accept=".aes,.sh,.7z,.json,.txt,application/octet-stream,text/plain,application/json" aria-label="Choose the backup file" onchange="dbWipe()" style="width:100%; margin-top:6px;">
+      <textarea id="dbIn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Or the backup as text" placeholder="Or paste it as text: the encrypted QR&rsquo;s text (Krux), seeds.json, or a TAPSIGNER .sh backup" style="margin-top:6px;" oninput="dbWipe()"></textarea>
+      <div style="display:flex; gap:6px; margin-top:6px; align-items:center;"><input type="password" id="dbKey" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="The backup's key or password" placeholder="Key or password: 32 characters from the card, the Krux key, or the 12 Coldcard words" style="flex:1; min-width:0;" oninput="dbWipe()"><button type="button" class="secondary small" id="dbShowKey" onclick="pwShowToggle(this)">SHOW</button></div>
+      <div class="btn-row top"><button type="button" id="dbBtn" onclick="dbOpenUi()" disabled>OPEN BACKUP</button><button type="button" class="secondary small" onclick="dbClear()">CLEAR</button></div>
+      <div class="status" id="dbStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+      <pre id="dbOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
+      <div class="btn-row" id="dbSecretRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" id="dbShowBtn" onclick="dbReveal()">SHOW THE SECRET</button><button type="button" class="secondary small" id="dbUseBtn" onclick="dbUseWords()">PUT THE WORDS IN THE BOX ABOVE</button></div>
+      <pre id="dbSecret" style="-webkit-user-select:none; user-select:none; display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:15px; margin:8px 0 0;"></pre>
+    </details>
+    <!-- v2.16.0 part A: Open an Electrum wallet file (the code is in the part A block of the script) -->
+    <details id="ewBox">
+      <summary>Open an Electrum wallet file<span class="tag tag-secret">SECRET</span><small>Read an Electrum wallet file offline: what kind of wallet it is, its keys and first addresses, and its seed with the password.</small></summary>
+      <p class="hint" style="margin:8px 0 6px;">Electrum keeps each wallet in one file, in the <code>wallets</code> folder of its data folder: <code>~/.electrum</code> on Linux and macOS, <code>%APPDATA%\Electrum</code> on Windows (the file is <code>default_wallet</code> unless you named it; testnet wallets are under <code>testnet</code>). Choose the file, drop it on this box or paste its text, and type the wallet password if it has one. VOIDFORGE only reads it: the file is never changed and nothing leaves the page. It reads files from Electrum 1.x to 4.8: wallets from an Electrum seed, a BIP39 seed or a master key, old seeds from before Electrum 2.0, imported addresses and private keys, hardware wallet and watch-only files, multisig and two-factor (2FA) wallets, with the keys encrypted with the password or the whole file encrypted. It cannot open a file encrypted with a hardware wallet, and it does not show Lightning channels.</p>
+      <input type="file" id="ewFile" aria-label="Choose the Electrum wallet file" style="width:100%;">
+      <div class="hint" id="ewDrop" aria-live="polite"></div>
+      <textarea id="ewIn" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Or the wallet file as text" placeholder="Or paste the file&rsquo;s text: it starts with { (or with QklFMQ when the whole file is encrypted)" style="margin-top:6px;"></textarea>
+      <div style="display:flex; gap:6px; margin-top:6px; align-items:center;"><input type="password" id="ewPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="Wallet password" placeholder="Wallet password (if it has one)" style="flex:1; min-width:0;"><button type="button" class="secondary small" id="ewPassBtn" onclick="ewTogglePass(this)">SHOW</button></div>
+      <div class="btn-row top"><button type="button" id="ewBtn" onclick="ewOpenUi()" disabled>OPEN WALLET FILE</button><button type="button" class="secondary small" id="ewPrintBtn" onclick="ewPrint()" disabled>PRINT SUMMARY</button><button type="button" class="secondary small" onclick="ewClear()">CLEAR</button></div>
+      <div class="status" id="ewStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+      <pre id="ewOut" style="display:none; white-space:pre-wrap; overflow-wrap:anywhere; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
+      <div class="btn-row top" id="ewSecretRow" style="display:none;"><button type="button" class="secondary small" id="ewShowBtn" onclick="ewReveal()">SHOW THE SECRET</button><button type="button" class="secondary small" id="ewUseBtn" onclick="ewUseWords()">PUT THE WORDS IN THE BOX ABOVE</button></div>
+      <pre id="ewSecret" style="-webkit-user-select:none; user-select:none; display:none; white-space:pre-wrap; overflow-wrap:anywhere; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+    </details>
+    <!-- v2.16.0: Read a Bitcoin Core wallet file (wallet.dat). The code is the block "v2.16.0 Read a Bitcoin Core wallet file" in the script. -->
+    <details id="wdatBox">
+      <summary>Read a Bitcoin Core wallet file (wallet.dat)<span class="tag tag-secret">SECRET</span><small>Choose an old wallet.dat: see what it holds and, with its passphrase, its private keys.</small></summary>
+      <p class="hint" style="margin:8px 0;">For a <b>wallet.dat</b> from Bitcoin Core (Bitcoin-Qt): an older <b>legacy wallet</b> (a Berkeley DB file) or a newer <b>descriptor wallet</b> (an SQLite file). VOIDFORGE reads it here, offline, and never changes it. It shows how the wallet was made, its keys, descriptors, address book labels and first addresses. If the wallet is encrypted, type its passphrase: VOIDFORGE checks it the way Bitcoin Core does and can then show the private keys. The file holds the private keys (encrypted or not): open it only on your offline computer, and use a copy, never your only one.</p>
+      <input type="file" id="wdatFile" accept=".dat,.sqlite,.bak,application/octet-stream" aria-label="Choose the wallet.dat file" onchange="wdatPicked()" style="width:100%;">
+      <p class="hint" id="wdatPicked" style="margin:4px 0 0;">Or drop the file on this box.</p>
+      <div style="display:flex; gap:6px; margin-top:6px; align-items:center;"><input type="password" id="wdatPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="The wallet's passphrase, if it is encrypted" placeholder="Passphrase, if it is encrypted" style="flex:1; min-width:0;"><button type="button" class="secondary small" id="wdatShowPass" onclick="pwShowToggle(this)">SHOW</button></div>
+      <div class="btn-row top"><button type="button" id="wdatBtn" onclick="wdatOpenUi()" disabled>READ WALLET FILE</button><button type="button" class="secondary small" id="wdatPrintBtn" onclick="wdatPrint()" disabled>PRINT SUMMARY</button><button type="button" class="secondary small" onclick="wdatClear()">CLEAR</button></div>
+      <div class="status" id="wdatStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+      <pre id="wdatOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
+      <div id="wdatListBox" style="display:none;">
+        <h4 class="sec">What it holds</h4>
+        <select id="wdatView" aria-label="What to list" onchange="wdatViewSet()" style="width:100%;"></select>
+        <div class="btn-row top"><button type="button" class="secondary small" id="wdatPrev" onclick="wdatPage(-1)">PREVIOUS</button><button type="button" class="secondary small" id="wdatNext" onclick="wdatPage(1)">NEXT</button></div>
+        <div class="status" id="wdatPageNote" aria-live="polite"></div>
+        <pre id="wdatList" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
+      </div>
+      <div class="btn-row top" id="wdatSecretRow" style="display:none;"><button type="button" class="secondary small" id="wdatShowBtn" onclick="wdatReveal()">SHOW THE PRIVATE KEYS</button><button type="button" class="secondary small" id="wdatSPrev" onclick="wdatSPage(-1)">PREVIOUS KEYS</button><button type="button" class="secondary small" id="wdatSNext" onclick="wdatSPage(1)">NEXT KEYS</button></div>
+      <pre id="wdatSecret" style="-webkit-user-select:none; user-select:none; display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
+    </details>
+    <h3 class="sec grp">Practice and plan</h3>
     <details id="practiceBox">
       <summary>Practice making a backup<span class="tag tag-ro">NO REAL KEYS</span><small>Rehearse writing words on paper and checking them, with a public test seed.</small></summary>
       <p class="hint" style="margin:8px 0;">Copying words by hand is where real backups go wrong. This gives you a <b>public test seed</b> to write on paper, hides it, then checks the copy you type back in. Do it once before the real thing. <b>These are published test seeds from the BIP39 standard, for practice only: never put money on them.</b></p>
@@ -1795,232 +2029,6 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <p class="hint" style="margin:6px 0;">A tamper-evident bag shows when it has been opened, and each bag has its own serial number. Seal each copy of the words in its own bag. Write down the serial (or photograph the sealed bag, never the words) and keep that record apart from the bag. At each check-up (the 5-minute routine on the printed plan), first check that the seal is intact and that the serial matches your record. <b>A changed serial or a broken seal means: assume the backup was seen,</b> and move the money to a new wallet. If you open a bag yourself to read the words, seal them in a new bag and write down its serial. PRINT BAG LOG prints a sheet for all of this.</p>
       <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" onclick="printInherit('bags')">PRINT BAG LOG</button></div>
       <div class="status" id="ihStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-    </details>
-    <details id="dmrBox">
-      <summary>Recheck a Damascus backup<span class="tag tag-secret">SECRET</span><small>Type the words and the hallmarks written next to them: VOIDFORGE says whether they match, or which word is most likely wrong.</small></summary>
-      <p class="hint" style="margin:8px 0;">A Damascus backup keeps the row hallmark R of each word and the column hallmark M (and maybe the skew hallmark K) with the words. They catch any single wrong word except a wrong last word from the same table row (block, for 24 words): its last bits are not in the hallmarks, so only the checksum catches it, and RECHECK checks the checksum too. <b>By hand:</b> look up each word in the binary word table, write its 11 bits in a blank Forge grid (the last word: its first 7 bits, or 3 for 24 words), count the hallmarks again (an odd number of 1s gives 1) and compare.</p>
-      <textarea id="dmrWords" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The backup words" placeholder="The 12 or 24 words, in order (first four letters are enough)"></textarea>
-      <div class="dm-mine"><input type="text" id="dmrM" spellcheck="false" autocomplete="off" aria-label="Column hallmark M" placeholder="M: 11 bits"><input type="text" id="dmrR" spellcheck="false" autocomplete="off" aria-label="Row hallmark R" placeholder="R: one bit a word"><input type="text" id="dmrK" spellcheck="false" autocomplete="off" aria-label="Skew hallmark K" placeholder="K: 11 bits, optional"></div>
-      <div class="btn-row top"><button type="button" id="dmrBtn" onclick="dmRecheck()">RECHECK</button><button type="button" class="secondary small" onclick="dmrClear()">CLEAR</button></div>
-      <div id="dmrOut" class="status" role="status" aria-live="polite" style="white-space:pre-wrap;"></div>
-    </details>
-    <details id="pnRdBox">
-      <summary>Read a punch plate or word numbers<span class="tag tag-secret">SECRET</span><small>Type the word numbers (decimal, hex or octal), or tick the holes of a binary grid or a Stackbit 1248 plate, to put the words in the box below.</small></summary>
-      <p class="hint" style="margin:8px 0;">For a backup kept as numbers or as punched holes. Every number counts from 1 (abandon) to 2048 (zoo), as on TinySeed and Stackbit plates and in Krux. What you type or tick here is as secret as the words: use an offline computer, and press CLEAR when you are done. FILL THE WORDS BOX only fills the box; then press VERIFY to check the words.</p>
-      <div class="pn-ctl"><label for="pnRdFmt">The backup is</label><select id="pnRdFmt" onchange="pnRdLayout()"><option value="num">Word numbers</option><option value="grid">A binary grid (TinySeed style)</option><option value="stack">A Stackbit 1248 plate</option></select><select id="pnRdBase" aria-label="Number base"><option value="10">Decimal, 1 to 2048</option><option value="16">Hexadecimal, 1 to 800</option><option value="8">Octal, 1 to 4000</option></select><select id="pnRdLen" aria-label="Number of words" onchange="pnRdLayout()"><option value="12">12 words</option><option value="15">15 words</option><option value="18">18 words</option><option value="21">21 words</option><option value="24">24 words</option></select></div>
-      <textarea id="pnRdNums" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Word numbers, in order" placeholder="Word numbers in order, separated by spaces"></textarea>
-      <div id="pnRdGrid" aria-label="Tick the punched holes, one row for each word"></div>
-      <input type="hidden" id="pnRdTicks" value="">
-      <div class="btn-row top"><button type="button" id="pnRdBtn" onclick="pnReadUi()">FILL THE WORDS BOX</button><button type="button" class="secondary small" onclick="printPlateBlank('read')">PRINT BLANK PLATE</button><button type="button" class="secondary small" onclick="pnRdClear()">CLEAR</button></div>
-      <div class="status" id="pnRdStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-    </details>
-    <h3 class="sec">Check your words</h3>
-    <textarea id="phrase" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Type or paste your seed words to check..."></textarea>
-    <div class="status bad" id="phrasePub" role="status" style="word-break:break-word;"></div>
-    <div class="hint" style="margin:4px 0 0;">Also accepts a SeedSigner SeedQR digit string (48 or 96 digits) or CompactSeedQR hex: type it in, or press SCAN SEEDQR on your offline computer. Never scan a real seed QR with a phone or any device that is online.</div>
-    <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
-      <input type="password" id="verifyPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Passphrase (if you used one)" style="flex:1; min-width:0;">
-      <button type="button" class="secondary small" onclick="toggleVerifyPassphrase(this)">SHOW</button>
-    </div>
-    <div class="pass-warn" id="verifyPassWarn" role="status" aria-live="polite"></div>
-    <input type="text" id="verifyRecorded" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="What your wallet app shows (optional)" style="margin-top:6px;">
-    <div class="hint" style="margin:4px 0 0;">Optional: paste the fingerprint, an address (any of the first 10 receive or 10 change), zpub or descriptor your wallet app showed, and VERIFY tells you MATCH or NO MATCH.</div>
-    <div class="btn-row top">
-      <button id="verifyBtn" onclick="verify()" disabled>VERIFY</button>
-    </div>
-    <div id="verifyIcons" style="display:flex; gap:18px; margin-top:8px;">
-      <div id="vFig0" style="display:none; text-align:center;"><div id="vIcon0" class="lh" style="margin-top:0"></div><div class="hint">no passphrase</div></div>
-      <div id="vFig1" style="display:none; text-align:center;"><div id="vIcon1" class="lh" style="margin-top:0"></div><div class="hint">with passphrase</div></div>
-    </div>
-    <div class="status" id="verifyStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-all;"></div>
-    <div class="status" id="verifyMatch" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-    <div class="hint" id="vSmudge" style="margin:6px 0 0;"></div>
-    <div class="sec-block" id="oeBlock" style="display:none;">
-      <h3 class="sec">Old Electrum seed<span class="tag tag-secret">SECRET</span></h3>
-      <p class="hint" style="margin:0 0 6px;">Electrum before version 2.0 made seeds of 12 words from its own old list of 1626 words, not BIP39. They have no checksum and no passphrase. VOIDFORGE works out the wallet the way Electrum does: the words give the seed below, 100,000 rounds of SHA-256 turn it into the key, and the master public key gives every address. The seed is as secret as the words; the master public key and the addresses are public.</p>
-      <p class="hint" id="oeNote" style="margin:0 0 6px;"></p>
-      <div id="oeSeed" style="word-break:break-all; font-family:'Courier New',monospace; font-size:15px; margin-top:6px;"></div>
-      <pre id="oeOut" style="white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
-    </div>
-    <div class="sec-block" id="wpBlock">
-      <h3 class="sec">Or open a watch-only wallet<span class="tag tag-public">PUBLIC KEYS ONLY</span></h3>
-      <p class="hint" style="margin:0 0 6px;">Paste an account public key (xpub, ypub, zpub, or tpub, upub, vpub for testnet) or a single-key descriptor such as <code>wpkh([fingerprint/84h/0h/0h]xpub.../0/*)</code>. It shows the same addresses without any seed words. It can never spend.</p>
-      <textarea id="wpIn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Public key or descriptor" placeholder="xpub..., zpub... or wpkh([...]xpub.../0/*)"></textarea>
-      <div class="btn-row" style="margin-top:6px;"><button type="button" id="wpBtn" onclick="openWatchOnly()">OPEN WATCH-ONLY</button></div>
-      <div class="status" id="wpStatus" aria-live="polite" style="word-break:break-word; margin-top:6px;"></div>
-<details id="wpbBox" class="ms-sub" style="margin-top:10px;">
-<summary>Save an encrypted backup of this descriptor (BIP138)<small>For a descriptor pasted above: a .bip138 file that only one of the wallet&rsquo;s keys opens.</small></summary>
-<p class="hint" style="margin:8px 0 6px;">Paste the wallet&rsquo;s descriptor in the box above (any kind: single key, multisig or miniscript). This saves it encrypted as a .bip138 file, the format Liana writes: store copies anywhere, even online. It opens only with one of the wallet&rsquo;s keys (its words, or just its xpub). The encryption needs a number used only once (a nonce), and VOIDFORGE never makes randomness itself: roll a die at least 50 times and type the results.</p>
-<textarea id="wpbRolls" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Dice rolls for the backup" placeholder="New dice rolls 1-6, at least 50"></textarea>
-<div class="btn-row" style="margin-top:6px;"><button type="button" id="wpbBtn" onclick="b138MakeUi('wpb')" disabled>SAVE ENCRYPTED DESCRIPTOR BACKUP</button><button type="button" class="secondary small" onclick="b138MakeClear('wpb')">CLEAR</button></div>
-<div class="status" id="wpbStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
-<div id="wpbOut" style="display:none; margin-top:8px;">
-  <div class="wlabel">The same backup as text (Base64)</div>
-  <div class="wval" id="wpbText"></div>
-  <div class="btn-row"><button type="button" class="secondary small" onclick="b138Copy(this,'wpb')">COPY TEXT</button><button type="button" class="secondary small" onclick="b138ShowQr('wpb')">SHOW QR</button></div>
-  <div id="wpbQrBox" style="display:none; margin-top:10px; text-align:center;"><div id="wpbQrCap" class="hint"></div><div id="wpbQrImg" style="width:min(100%,340px); margin:8px auto; background:#fff; line-height:0;"></div><button type="button" class="secondary small" onclick="b138HideQr('wpb')">HIDE QR</button></div>
-</div>
-</details>
-<div id="camBox" class="cam-box" style="display:none;">
-  <div class="cam-ban">CAMERA ON: only this page sees the picture, and nothing is saved or sent. STOP CAMERA turns it off.</div>
-  <video id="camVideo" playsinline muted aria-label="Camera picture"></video>
-  <div class="status" id="camMsg" aria-live="polite" style="margin-top:6px;"></div>
-  <div class="btn-row" style="margin-top:6px;"><button type="button" class="secondary small" id="camStopBtn" onclick="camStop()">STOP CAMERA</button><button type="button" class="secondary small" id="camPhotoBtn" onclick="document.getElementById('camFile').click()">OPEN A PHOTO INSTEAD</button></div>
-  <input type="file" id="camFile" accept="image/*" multiple style="display:none;" aria-label="Photos of the QR code">
-</div>
-    </div>
-    <div class="sec-block" id="pkBlock">
-      <h3 class="sec">Or open a private key, read only<span class="tag tag-secret">SECRET</span></h3>
-      <p class="hint" style="margin:0 0 6px;">For an old wallet or a paper wallet: paste an extended private key (xprv, yprv, zprv, or tprv, uprv, vprv for testnet), a WIF private key (starts with 5, K or L, or 9 or c for testnet) or a Casascius mini key (starts with S). VOIDFORGE shows the addresses it controls, so you can look them up somewhere else. It never signs and never sends. <b>Anyone who sees this key can spend everything it holds:</b> use an offline computer, and press CLEAR ALL or END SESSION when you are done.</p>
-      <div style="display:flex; gap:6px; align-items:center;"><input type="password" id="pkIn" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Private key" placeholder="xprv..., WIF or mini key" style="flex:1; min-width:0;"><button type="button" class="secondary small" onclick="togglePkShow(this)">SHOW</button></div>
-      <div class="btn-row" style="margin-top:6px;"><button type="button" id="pkBtn" onclick="openPrivateKey()">OPEN READ ONLY</button></div>
-      <div class="status" id="pkStatus" aria-live="polite" style="word-break:break-word; margin-top:6px;"></div>
-    </div>
-    <details id="walletView" style="display:none; margin-top:10px;">
-      <summary>Open this wallet<span class="tag tag-public">PUBLIC ADDRESSES</span><small>Addresses with QR codes, and paper backups of the words, for the words or key above.</small></summary>
-      <p class="hint" id="wvWhy" style="margin:8px 0 0;">This lists the addresses your wallet app would show for these words, so you can compare them in the app. Pick the same address type and account number the app uses. The words are the same for every type.</p>
-      <div id="wvBanner">Imported: these words were typed or scanned here, not made by this page. The same words and passphrase give the same wallet in any app.</div>
-      <div class="status bad" id="wvPub" role="status" style="word-break:break-word;"></div>
-      <div id="wvFpRow"><div class="fp" id="wvFp"></div><div id="wvIcon" class="lh" title="Fingerprint picture (LifeHash) of this wallet"></div></div>
-      <div id="wvDecoy" class="wv-decoy" style="display:none;">
-        <div class="wv-dcol"><div class="wv-dh">Without the passphrase</div><div class="fp" id="wvD0"></div><div class="wv-da" id="wvD0a"></div></div>
-        <div class="wv-dcol"><div class="wv-dh">With the passphrase</div><div class="fp" id="wvD1"></div><div class="wv-da" id="wvD1a"></div></div>
-        <p class="hint wv-dwhy">Two wallets, one set of words. The passphrase makes a completely different wallet: another fingerprint, other addresses. Someone who finds only the words opens the wallet on the left, never the one on the right. Some people keep a small amount on the left as a decoy wallet, to hand over if they are forced to. Then store the passphrase well away from the words, and make sure your family knows that both wallets exist (see the Backup plan).</p>
-      </div>
-      <div class="wv-ctl">
-        <select id="wvType" aria-label="Address type"><option value="wpkh">Native SegWit (bc1q...)</option><option value="tr">Taproot (bc1p...)</option><option value="sh-wpkh">Nested SegWit (3...)</option><option value="pkh">Legacy (1...)</option></select>
-        <select id="wvChain" aria-label="Receive or change"><option value="0">Receive</option><option value="1">Change</option><option value="both" selected>Both</option></select>
-        <select id="wvNet" aria-label="Network"><option value="main">Mainnet</option><option value="test">Testnet</option></select>
-        <input type="text" id="wvAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number">
-      </div>
-      <input type="text" id="wvPathIn" class="wv-path" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Custom path (optional)" placeholder="Custom path (optional), such as m/0' or m/44'/0'/1', or m/44'/0'/0'/0/*">
-      <div class="hint wv-path" style="margin:0 0 6px;">Most wallet apps use the standard path for the address type, so leave this empty. For an older or unusual app, type its path: an account path (its receive and change addresses go under it), or any path ending in <code>/*</code> for the addresses right under it, such as <code>m/0/*</code>. With a public key open, type the path below the key, such as <code>0/*</code> or <code>2/0/*</code>. Write a hardened step with <code>'</code> or <code>h</code>. The address type above still decides how the addresses are written.</div>
-      <label class="wv-start" for="wvStart">Start at address number<input type="text" id="wvStart" value="0" inputmode="numeric" spellcheck="false" autocomplete="off"></label>
-      <div class="status bad" id="wvErr"></div>
-      <div class="hint" id="wvPath" style="margin:0;"></div>
-      <ol id="wvList" class="addr-list"></ol>
-      <div class="btn-row" id="wvPager"><button type="button" class="secondary small" id="wvPrev" onclick="wvPage(-1)">PREVIOUS 10</button><button type="button" class="secondary small" id="wvNext" onclick="wvPage(1)">NEXT 10</button><button type="button" class="secondary small" id="wvMore" onclick="apMore()">SHOW 20 MORE</button><button type="button" class="secondary small" id="wvCopy" onclick="copyAddrList(this,'wvList')">COPY THESE 10</button><button type="button" class="secondary small" id="wvSheetBtn" onclick="printRecoverySheet()">PRINT RECOVERY SHEET</button></div>
-      <label class="wv-born" for="wvBorn">Wallet made on, if you know (printed on the recovery sheet)<input type="date" id="wvBorn"></label>
-      <p class="hint" id="wvSheetHint" style="margin:6px 0 0;">The recovery sheet holds no words and no passphrase: only the fingerprint, address type, path and the first addresses, plus how to restore. Keep it with your paper backup so someone you trust can tell which wallet the words belong to.</p>
-      <div id="wvqBox" class="qrbox"><div id="wvqCap" class="hint"></div><div id="wvqImg" class="qr-img"></div><details class="bip21" id="wvqReq"><summary>Payment request (BIP21)<small>Add an amount, label or message; the QR becomes a bitcoin: link.</small></summary><div class="b21-row"><input type="text" id="wvqAmt" inputmode="decimal" placeholder="Amount in BTC (optional)" aria-label="Amount in BTC" autocomplete="off" spellcheck="false"><input type="text" id="wvqLbl" placeholder="Label (optional)" aria-label="Label" autocomplete="off" spellcheck="false"><input type="text" id="wvqMsg" placeholder="Message (optional)" aria-label="Message" autocomplete="off" spellcheck="false"></div><div class="hint" id="wvqUri" style="word-break:break-all;"></div><button type="button" class="secondary small" onclick="copyReq(this,'wvq')">COPY LINK</button></details><button type="button" class="secondary small" onclick="printAddrQr('wvq')">PRINT THIS QR</button><button type="button" class="secondary small" onclick="hideAddrQr('wvq')">HIDE QR</button></div>
-      <div class="sec-block" id="wvSqBlock">
-        <h3 class="sec">Paper, metal and SeedQR backups<span class="tag tag-secret">SECRET</span></h3>
-        <p class="hint" style="margin:0 0 6px;">Make another backup of these words: print them, show or print their first 4 letters for a metal plate, lay them out for a punch plate, or print a SeedQR. Print only on a trusted offline computer with a directly connected printer. The passphrase is never shown or printed.</p>
-        <div class="btn-row" id="wvBkBtns"><button type="button" class="secondary small needs-words" id="wvAbbrBtn" onclick="wvAbbr()">SHOW FIRST 4 LETTERS</button><button type="button" class="secondary small needs-words" onclick="printSeed('check')">PRINT WORDS</button><button type="button" class="secondary small needs-words" onclick="printStamp('check')">PRINT STAMP SHEET</button></div>
-        <div id="wvAbbrGrid" aria-label="First 4 letters of each word"></div>
-        <div class="pn-ctl"><label for="pnFmt">Punch plate layout</label><select id="pnFmt" onchange="pnRender()"><option value="grid">Binary grid (TinySeed style)</option><option value="stack">Stackbit 1248</option><option value="num">Word numbers: decimal, hex and octal</option></select></div>
-        <p class="hint" style="margin:0 0 6px;">For a steel plate you punch. Each word is its number in the BIP39 word list, counted from 1 (abandon) to 2048 (zoo), as on TinySeed and Stackbit plates and in Krux. SeedQR counts from 0, so its numbers are 1 lower. To check a plate later, use Read a punch plate or word numbers, at the top of this tab.</p>
-        <div class="btn-row" id="pnBtns"><button type="button" class="secondary small needs-words" id="pnShowBtn" onclick="pnShow()">SHOW PLATE</button><button type="button" class="secondary small needs-words" onclick="printPlate()">PRINT PLATE</button><button type="button" class="secondary small" onclick="printPlateBlank('check')">PRINT BLANK PLATE</button></div>
-        <div id="pnView" aria-label="Punch plate layout of the words"></div>
-        <p class="hint" id="wvSqNote" style="margin:10px 0 6px;"></p>
-        <div class="btn-row" id="wvSqBtns"><button type="button" class="secondary small" onclick="wvSeedQr('seedqr')">SHOW SEEDQR</button><button type="button" class="secondary small" onclick="wvSeedQr('compact')">SHOW COMPACTSEEDQR</button><button type="button" class="secondary small" onclick="wvSeedQrHide()">HIDE</button></div>
-        <div id="wvsBox" class="qrbox"><div id="wvsCap" class="hint"></div><div id="wvsImg" class="qr-img"></div><div class="btn-row" style="justify-content:center;"><button type="button" class="secondary small" onclick="printSeedQr('check')">PRINT THIS QR</button><button type="button" class="secondary small" onclick="printSqGuide('check')">PRINT HAND-COPY GUIDE</button><button type="button" class="secondary small" onclick="printSqBlank('check')">PRINT BLANK GRID</button></div></div>
-      </div>
-    </details>
-    <div class="sec-block">
-      <h3 class="sec">Explain an address, or check that it is yours</h3>
-      <div class="hint" style="margin:0 0 6px;">Paste any Bitcoin address and VOIDFORGE explains it at once: what kind it is, which network, whether it has a typo, and what someone can do with it. That needs no seed. To find it in your wallet, paste a receive or change address from a wallet app (bc1q SegWit, bc1p Taproot, 3 nested SegWit or 1 legacy; the box on the right is the account, almost always 0). It is searched in the wallet made by the words and passphrase above.</div>
-      <div style="display:flex; gap:6px;"><input type="text" id="checkAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Address (bc1q, bc1p, 3 or 1)" style="flex:1; min-width:0;"><input type="text" id="checkAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number" title="Account number (almost always 0)" style="width:56px; flex:none;"></div>
-      <div class="status" id="addrExplain" aria-live="polite" style="word-break:break-word; margin-top:6px;"></div>
-      <details id="payCheck" class="ms-sub" style="margin-top:10px;">
-        <summary>Check an address before you pay<small>Compare every character of the address you are about to pay with the one you were given.</small></summary>
-        <p class="hint" style="margin:8px 0;">Two common scams make a look-alike address whose first and last characters match the real one: a tiny payment from it lands in your history so you copy it by mistake later, or malware swaps the address you copied. Checking only the ends does not catch either. Paste the address from your wallet&rsquo;s send screen, then the one the person gave you (from their message, invoice or QR code). Nothing is sent anywhere.</p>
-        <input type="text" id="payA" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Address you are about to pay" placeholder="Address you are about to pay (from the send screen)">
-        <input type="text" id="payB" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Address you were given" placeholder="Address you were given (from the person, not from your history)" style="margin-top:6px;">
-        <div class="status" id="payOut" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-        <div class="pay-diff" id="payDiff" aria-hidden="true"></div>
-      </details>
-      <div class="btn-row top"><button type="button" id="checkAddrBtn" onclick="checkAddress()">CHECK ADDRESS</button><button type="button" id="checkAcctsBtn" onclick="checkAllAccounts()">TRY ACCOUNTS 0 TO 20</button><button type="button" id="checkAcctsStop" class="secondary small" onclick="acctScanStop = true" disabled>STOP</button></div>
-      <div class="hint" style="margin:6px 0 0;">Not sure of the account? TRY ACCOUNTS 0 TO 20 looks at the first 20 receive and change addresses of each account (the account box is ignored), with and without the passphrase above. It takes a while; STOP ends it.</div>
-      <div class="status" id="addrCheckStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-    </div>
-    <div class="sec-block" id="detBlock">
-      <h3 class="sec">My wallet shows zero: Wallet Detective<span class="tag tag-secret">USES THE WORDS ABOVE</span></h3>
-      <p class="hint" style="margin:0 0 6px;">When the right words open an empty wallet, the app is often looking in a different place: another address type, account or path, a passphrase, or an Electrum seed. Type the words (and the passphrase, if any) in the boxes at the top of this tab, then one address you know this wallet received to (from an old message, invoice or exchange withdrawal). FIND MY WALLET tries the settings of well-known wallet apps until that address matches, then names the apps that use them and how to open it. It never looks up a balance. A search can take a minute or two (longer with a passphrase); STOP ends it. No address? LIST FIRST ADDRESSES shows the first address of each common setting, to look up on another device.</p>
-      <input type="text" id="detAddr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="An address this wallet received to" placeholder="An address this wallet received to (bc1q, bc1p, 3 or 1)" oninput="detClear(true)">
-      <div class="btn-row top"><button type="button" id="detBtn" onclick="detFind()" disabled>FIND MY WALLET</button><button type="button" class="secondary small" id="detListBtn" onclick="detList()" disabled>LIST FIRST ADDRESSES</button><button type="button" class="secondary small" id="detStop" onclick="detStop()" disabled>STOP</button><button type="button" class="secondary small" onclick="detClear()">CLEAR</button></div>
-      <div class="status bad" id="detPub" role="status" style="word-break:break-word;"></div>
-      <div class="status" id="detStatus" aria-live="polite" style="word-break:break-word; margin-top:8px;"></div>
-      <pre id="detOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
-    </div>
-    <div class="sec-block" id="kcBlock">
-      <h3 class="sec">Is this seed in my wallet file?<span class="tag tag-secret">USES THE WORDS ABOVE</span></h3>
-      <p class="hint" style="margin:0 0 6px;">For a multisig wallet (or any wallet with a descriptor): paste its setup file, the output descriptor, the Coldcard multisig setup file or the BSMS record (or choose the file), with the seed words (and passphrase, if any) typed in the boxes above. VOIDFORGE checks every key in the file: is it made by this seed, with the fingerprint, path and key all matching? So you know which key of the wallet this backup is, before you rely on it. The file holds only public keys.</p>
-      <textarea id="kcIn" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Wallet file: descriptor, Coldcard multisig setup file or BSMS record" placeholder="wsh(sortedmulti(2,[fp/48h/0h/0h/2h]xpub.../0/*,...))#checksum&#10;or a Coldcard multisig setup file, or a BSMS record" oninput="kcClear(true)"></textarea>
-      <input type="file" id="kcFileIn" accept=".txt,.bsms,.json,text/plain" aria-label="Choose the wallet file" onchange="kcFile()" style="width:100%; margin-top:6px;">
-      <div class="btn-row top"><button type="button" id="kcBtn" onclick="kcUi()" disabled>CHECK THIS SEED</button><button type="button" class="secondary small" onclick="kcClear()">CLEAR</button></div>
-      <div class="status" id="kcStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
-    </div>
-    <div class="sec-block" id="b138Block">
-      <h3 class="sec">Open an encrypted descriptor backup (BIP138)<span class="tag tag-secret">USES THE WORDS ABOVE</span></h3>
-      <p class="hint" style="margin:0 0 6px;">A .bip138 file (made by Liana or by VOIDFORGE) holds a wallet&rsquo;s descriptor, encrypted with the wallet&rsquo;s own public keys. Choose the file or paste its text, then type the words of ONE of the wallet&rsquo;s keys in the boxes at the top of this tab (with its passphrase, if it has one), or paste one of the wallet&rsquo;s public keys (xpub) below: a public key opens it too. VOIDFORGE shows the descriptor, its checksum, the first 10 receive and 10 change addresses, and which key opened it.</p>
-      <textarea id="b138In" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The backup as text (Base64)" placeholder="The backup as text (it starts with QklQMTM4), or choose the file below"></textarea>
-      <input type="file" id="b138File" accept=".bip138,.txt,application/octet-stream,text/plain" aria-label="Choose the backup file" style="width:100%; margin-top:6px;">
-      <input type="text" id="b138Pub" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="One of the wallet's public keys (optional)" placeholder="Or one of the wallet’s public keys: xpub..., tpub..., Zpub... (optional)" style="margin-top:6px;">
-      <div class="btn-row top"><button type="button" id="b138Btn" onclick="b138OpenUi()" disabled>OPEN BACKUP</button><button type="button" class="secondary small" onclick="b138OpenClear()">CLEAR</button></div>
-      <div class="status" id="b138Status" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
-      <pre id="b138Out" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
-      <div class="btn-row" id="b138CopyRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" onclick="b138CopyDesc(this)">COPY DESCRIPTOR</button></div>
-    </div>
-    <div class="sec-block" id="dbBlock">
-      <h3 class="sec">Open a signing device&rsquo;s backup<span class="tag tag-secret">SECRET</span></h3>
-      <p class="hint" style="margin:0 0 6px;">An encrypted backup a signing device wrote: a <b>TAPSIGNER</b> backup (.aes) with the key printed on the back of the card, a <b>Krux</b> encrypted seed (the encrypted QR&rsquo;s text, or seeds.json) with its key, or a <b>Coldcard</b> backup (.7z) with its 12 backup words. VOIDFORGE opens it here, offline, and shows which wallet it holds (the fingerprint and first addresses). The backup holds the wallet&rsquo;s private keys: open it only on your offline computer.</p>
-      <select id="dbKind" aria-label="Which device made the backup" style="width:100%;" onchange="dbKindSet()"><option value="ts">TAPSIGNER backup (.aes)</option><option value="krux">Krux encrypted seed (QR text or seeds.json)</option><option value="cc">Coldcard backup (.7z)</option></select>
-      <p class="hint" id="dbKindNote" style="margin:6px 0;"></p>
-      <input type="file" id="dbFile" accept=".aes,.sh,.7z,.json,.txt,application/octet-stream,text/plain,application/json" aria-label="Choose the backup file" onchange="dbWipe()" style="width:100%; margin-top:6px;">
-      <textarea id="dbIn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Or the backup as text" placeholder="Or paste it as text: the encrypted QR&rsquo;s text (Krux), seeds.json, or a TAPSIGNER .sh backup" style="margin-top:6px;" oninput="dbWipe()"></textarea>
-      <input type="password" id="dbKey" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="The backup's key or password" placeholder="Key or password: 32 characters from the card, the Krux key, or the 12 Coldcard words" style="width:100%; margin-top:6px;" oninput="dbWipe()">
-      <label style="display:block; margin-top:4px; font-size:13px;"><input type="checkbox" id="dbShowKey" onchange="document.getElementById('dbKey').type = this.checked ? 'text' : 'password'"> Show what I type</label>
-      <div class="btn-row top"><button type="button" id="dbBtn" onclick="dbOpenUi()" disabled>OPEN BACKUP</button><button type="button" class="secondary small" onclick="dbClear()">CLEAR</button></div>
-      <div class="status" id="dbStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
-      <pre id="dbOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
-      <div class="btn-row" id="dbSecretRow" style="display:none; margin-top:6px;"><button type="button" class="secondary small" id="dbShowBtn" onclick="dbReveal()">SHOW THE SECRET</button><button type="button" class="secondary small" id="dbUseBtn" onclick="dbUseWords()">PUT THE WORDS IN THE BOX ABOVE</button></div>
-      <pre id="dbSecret" style="-webkit-user-select:none; user-select:none; display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:15px; margin:8px 0 0;"></pre>
-    </div>
-    <!-- v2.16.0 part A: Open an Electrum wallet file (the code is in the part A block of the script) -->
-    <details id="ewBox">
-      <summary>Open an Electrum wallet file<span class="tag tag-secret">SECRET</span><small>Read an Electrum wallet file offline: what kind of wallet it is, its keys and first addresses, and its seed with the password.</small></summary>
-      <p class="hint" style="margin:8px 0 6px;">Electrum keeps each wallet in one file, in the <code>wallets</code> folder of its data folder: <code>~/.electrum</code> on Linux and macOS, <code>%APPDATA%\Electrum</code> on Windows (the file is <code>default_wallet</code> unless you named it; testnet wallets are under <code>testnet</code>). Choose the file, drop it on this box or paste its text, and type the wallet password if it has one. VOIDFORGE only reads it: the file is never changed and nothing leaves the page. It reads files from Electrum 1.x to 4.8: wallets from an Electrum seed, a BIP39 seed or a master key, old seeds from before Electrum 2.0, imported addresses and private keys, hardware wallet and watch-only files, multisig and two-factor (2FA) wallets, with the keys encrypted with the password or the whole file encrypted. It cannot open a file encrypted with a hardware wallet, and it does not show Lightning channels.</p>
-      <input type="file" id="ewFile" aria-label="Choose the Electrum wallet file" style="width:100%;">
-      <div class="hint" id="ewDrop" aria-live="polite"></div>
-      <textarea id="ewIn" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Or the wallet file as text" placeholder="Or paste the file&rsquo;s text: it starts with { (or with QklFMQ when the whole file is encrypted)" style="margin-top:6px;"></textarea>
-      <div style="display:flex; gap:6px; margin-top:6px; align-items:center;"><input type="password" id="ewPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="Wallet password" placeholder="Wallet password (if it has one)" style="flex:1; min-width:0;"><button type="button" class="secondary small" id="ewPassBtn" onclick="ewTogglePass(this)">SHOW</button></div>
-      <div class="btn-row top"><button type="button" id="ewBtn" onclick="ewOpenUi()" disabled>OPEN WALLET FILE</button><button type="button" class="secondary small" id="ewPrintBtn" onclick="ewPrint()" disabled>PRINT SUMMARY</button><button type="button" class="secondary small" onclick="ewClear()">CLEAR</button></div>
-      <div class="status" id="ewStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
-      <pre id="ewOut" style="display:none; white-space:pre-wrap; overflow-wrap:anywhere; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
-      <div class="btn-row top" id="ewSecretRow" style="display:none;"><button type="button" class="secondary small" id="ewShowBtn" onclick="ewReveal()">SHOW THE SECRET</button><button type="button" class="secondary small" id="ewUseBtn" onclick="ewUseWords()">PUT THE WORDS IN THE BOX ABOVE</button></div>
-      <pre id="ewSecret" style="-webkit-user-select:none; user-select:none; display:none; white-space:pre-wrap; overflow-wrap:anywhere; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
-    </details>
-    <div class="sec-block" id="lbBlock">
-      <h3 class="sec">Read a label file (BIP329)<span class="tag tag-private">PRIVATE</span></h3>
-      <p class="hint" style="margin:0 0 6px;">Wallet apps such as Sparrow, Bitcoin Core and Nunchuk can export their labels (&ldquo;Rent, March&rdquo;, &ldquo;Savings&rdquo;) as a BIP329 file. Paste it or choose it: VOIDFORGE lists every label and, with the seed words typed above, says which labeled addresses are this seed&rsquo;s (the first 100 receive and change addresses of each address type, account 0). Labels are private: they link coins to you. The file is only read here, never stored or sent.</p>
-      <textarea id="lbIn" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Label file (BIP329, one JSON record per line)" placeholder='{"type": "addr", "ref": "bc1q...", "label": "Savings"}' oninput="lbClear(true)"></textarea>
-      <input type="file" id="lbFileIn" accept=".jsonl,.json,.txt,text/plain,application/json" aria-label="Choose the label file" onchange="lbFile()" style="width:100%; margin-top:6px;">
-      <label style="display:block; margin-top:6px; font-size:13px;"><input type="checkbox" id="lbPrintText"> Print the label text too (labels can be private)</label>
-      <div class="btn-row top"><button type="button" id="lbBtn" onclick="lbUi()" disabled>READ LABELS</button><button type="button" class="secondary small" id="lbPrintBtn" onclick="printLabels()" disabled>PRINT LABEL SHEET</button><button type="button" class="secondary small" onclick="lbClear()">CLEAR</button></div>
-      <div class="status" id="lbStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
-      <pre id="lbOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
-    </div>
-    <!-- v2.16.0: Read a Bitcoin Core wallet file (wallet.dat). The code is the block "v2.16.0 Read a Bitcoin Core wallet file" in the script. -->
-    <details id="wdatBox" style="margin-top:12px;">
-      <summary>Read a Bitcoin Core wallet file (wallet.dat)<span class="tag tag-secret">SECRET</span><small>Choose an old wallet.dat: see what it holds and, with its passphrase, its private keys.</small></summary>
-      <p class="hint" style="margin:8px 0;">For a <b>wallet.dat</b> from Bitcoin Core (Bitcoin-Qt): an older <b>legacy wallet</b> (a Berkeley DB file) or a newer <b>descriptor wallet</b> (an SQLite file). VOIDFORGE reads it here, offline, and never changes it. It shows how the wallet was made, its keys, descriptors, address book labels and first addresses. If the wallet is encrypted, type its passphrase: VOIDFORGE checks it the way Bitcoin Core does and can then show the private keys. The file holds the private keys (encrypted or not): open it only on your offline computer, and use a copy, never your only one.</p>
-      <input type="file" id="wdatFile" accept=".dat,.sqlite,.bak,application/octet-stream" aria-label="Choose the wallet.dat file" onchange="wdatPicked()" style="width:100%;">
-      <p class="hint" id="wdatPicked" style="margin:4px 0 0;">Or drop the file on this box.</p>
-      <input type="password" id="wdatPass" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-label="The wallet's passphrase, if it is encrypted" placeholder="Passphrase, if it is encrypted" style="width:100%; margin-top:6px;">
-      <label style="display:block; margin-top:4px; font-size:13px;"><input type="checkbox" id="wdatShowPass" onchange="document.getElementById('wdatPass').type = this.checked ? 'text' : 'password'"> Show what I type</label>
-      <div class="btn-row top"><button type="button" id="wdatBtn" onclick="wdatOpenUi()" disabled>READ WALLET FILE</button><button type="button" class="secondary small" id="wdatPrintBtn" onclick="wdatPrint()" disabled>PRINT SUMMARY</button><button type="button" class="secondary small" onclick="wdatClear()">CLEAR</button></div>
-      <div class="status" id="wdatStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
-      <pre id="wdatOut" style="display:none; white-space:pre-wrap; word-break:break-word; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
-      <div id="wdatListBox" style="display:none;">
-        <h4 class="sec">What it holds</h4>
-        <select id="wdatView" aria-label="What to list" onchange="wdatViewSet()" style="width:100%;"></select>
-        <div class="btn-row top"><button type="button" class="secondary small" id="wdatPrev" onclick="wdatPage(-1)">PREVIOUS</button><button type="button" class="secondary small" id="wdatNext" onclick="wdatPage(1)">NEXT</button></div>
-        <div class="status" id="wdatPageNote" aria-live="polite"></div>
-        <pre id="wdatList" style="display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:13px; margin:8px 0 0;"></pre>
-      </div>
-      <div class="btn-row top" id="wdatSecretRow" style="display:none;"><button type="button" class="secondary small" id="wdatShowBtn" onclick="wdatReveal()">SHOW THE PRIVATE KEYS</button><button type="button" class="secondary small" id="wdatSPrev" onclick="wdatSPage(-1)">PREVIOUS KEYS</button><button type="button" class="secondary small" id="wdatSNext" onclick="wdatSPage(1)">NEXT KEYS</button></div>
-      <pre id="wdatSecret" style="-webkit-user-select:none; user-select:none; display:none; white-space:pre-wrap; word-break:break-all; font-family:'Courier New',monospace; font-size:14px; margin:8px 0 0;"></pre>
     </details>
   </div>
   </div>
@@ -10923,7 +10931,6 @@ function rhHide(why){
     e.type = "password"; rhMasked++;
     const b = e.nextElementSibling; if(b && b.tagName === "BUTTON" && b.textContent === "HIDE") b.textContent = "SHOW";
   }
-  for(const id of ["dbShowKey", "wdatShowPass"]){ const sk = document.getElementById(id); if(sk) sk.checked = false; }   // v2.16.0: the wallet.dat passphrase box too
   ppkRenderAll();
   rhOn = true;
   // the notice shows first, then its text is set, so a screen reader announces it
@@ -12038,6 +12045,17 @@ async function wvRefreshSingle(mine){
   rows.forEach(r => ol.appendChild(addrLi(r.address, SCRIPT_TYPES[r.type].label)));
   document.getElementById("wvPath").textContent = (net === "test" ? "TESTNET (practice coins only). " : "") + "One key: " + (wvCtx.compressed ? "its Native SegWit, Taproot, Nested SegWit and Legacy addresses, in that order. Old wallets mostly used Legacy (1...)." : "only a Legacy (1...) address, because the key is not compressed.");
   wvCtx.shown = {single: true, net, chain: 0, rows};
+}
+// SHOW or HIDE what is typed in the password box just before the button (the file readers in CHECK A BACKUP).
+function pwShowToggle(btn){ const el = btn.previousElementSibling, show = el.type === "password"; el.type = show ? "text" : "password"; btn.textContent = show ? "HIDE" : "SHOW"; }
+// v2.16.0: "I have: ..." under the CHECK A BACKUP heading: each choice opens its box (when it is one) and moves to it. The focus
+// goes to the box to type in (focusId), or to the opened box's title, so the keyboard carries on from there.
+function iHaveGo(id, focusId){
+  const t = document.getElementById(id); if(!t) return;
+  if(t.tagName === "DETAILS") t.open = true;
+  reveal(t);
+  const f = (focusId && document.getElementById(focusId)) || (t.tagName === "DETAILS" ? t.querySelector(":scope > summary") : null);
+  if(f) try { f.focus({preventScroll: true}); } catch(e) {}
 }
 function togglePkShow(btn){ const el = document.getElementById("pkIn"), show = el.type === "password"; el.type = show ? "text" : "password"; btn.textContent = show ? "HIDE" : "SHOW"; }
 document.getElementById("pkIn").addEventListener("input", () => { if(wvCtx && wvCtx.secret) clearWalletView(); const st = document.getElementById("pkStatus"); st.textContent = ""; st.className = "status"; });
@@ -14064,7 +14082,7 @@ function dbWipe(){ dbRun++; dbGot = null; const st = document.getElementById("db
   for(const id of ["dbOut", "dbSecret"]){ const e = document.getElementById(id); e.textContent = ""; e.style.display = "none"; }
   document.getElementById("dbSecretRow").style.display = "none"; document.getElementById("dbShowBtn").textContent = "SHOW THE SECRET"; }
 function dbClear(){ document.getElementById("dbIn").value = ""; document.getElementById("dbKey").value = ""; document.getElementById("dbFile").value = ""; dbWipe();
-  document.getElementById("dbKey").type = "password"; document.getElementById("dbShowKey").checked = false;
+  document.getElementById("dbKey").type = "password"; document.getElementById("dbShowKey").textContent = "SHOW";
   const ph = document.getElementById("phrase"); if(dbPut && ph.value === dbPut){ ph.value = ""; ph.dispatchEvent(new Event("input", {bubbles: true})); } dbPut = null; }
 const DB_NOTES = {ts: "<b>TAPSIGNER: only when you need it.</b> Coinkite says the key printed on the back of the card is for emergencies only: once it has been used, the TAPSIGNER is no longer secure. Open this backup only to recover the coins (the card is lost or broken, or its PIN is forgotten), then move them to a new wallet.",
   krux: "<b>Krux:</b> the encrypted QR&rsquo;s text, or seeds.json from its SD card, and the key you typed when you saved it.",
@@ -15510,7 +15528,7 @@ function wdatWipe(){
 }
 function wdatClear(){
   wdatRun++; wdatWipe();
-  document.getElementById("wdatPass").value = ""; document.getElementById("wdatPass").type = "password"; document.getElementById("wdatShowPass").checked = false;
+  document.getElementById("wdatPass").value = ""; document.getElementById("wdatPass").type = "password"; document.getElementById("wdatShowPass").textContent = "SHOW";
   document.getElementById("wdatFile").value = ""; document.getElementById("wdatPicked").textContent = "Or drop the file on this box.";
 }
 function wdatPicked(){ wdatRun++; wdatWipe(); const f = document.getElementById("wdatFile").files[0]; document.getElementById("wdatPicked").textContent = f ? "Chosen: " + f.name + " (" + wdatN(f.size) + " bytes)." : "Or drop the file on this box."; }

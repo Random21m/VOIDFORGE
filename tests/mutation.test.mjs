@@ -1813,8 +1813,8 @@ async function probe(w, mutated, fast, only, hooks) {
     $('dbKind').value = 'cc'; w.dbKindSet(); if (/no longer secure/.test($('dbKindNote').textContent) || !/12 backup words/.test($('dbKindNote').textContent)) fails.push('device backups: each kind has its own note');
     Object.defineProperty($('dbFile'), 'files', { value: [new w.File([new Uint8Array(40)], 'b.aes')], configurable: true }); await open('krux', qrU, 'ui key'); delete $('dbFile').files;
     if (!/use one of them/.test($('dbStatus').textContent) || $('dbOut').textContent !== '') fails.push('device backups: a chosen file and pasted text together are refused');
-    await open('krux', qrU, 'ui key'); w.dbUseWords(); $('dbShowKey').checked = true; $('dbKey').type = 'text'; w.dbClear();
-    if ($('phrase').value !== '' || $('dbKey').type !== 'password' || $('dbShowKey').checked) fails.push('device backups: CLEAR hides the key box again and takes back the words it put above');
+    await open('krux', qrU, 'ui key'); w.dbUseWords(); w.pwShowToggle($('dbShowKey')); const shown = $('dbKey').type === 'text' && $('dbShowKey').textContent === 'HIDE'; w.dbClear();
+    if (!shown || $('phrase').value !== '' || $('dbKey').type !== 'password' || $('dbShowKey').textContent !== 'SHOW') fails.push('device backups: CLEAR hides the key box again and takes back the words it put above');
     $('phrase').value = 'other words'; await open('krux', qrU, 'ui key'); w.dbClear(); if ($('phrase').value !== 'other words') fails.push('device backups: CLEAR leaves words it did not put there'); $('phrase').value = '';
     await open('krux', qrU, 'ui key'); w.dbClear(); if ($('dbIn').value !== '' || $('dbKey').value !== '' || $('dbOut').textContent !== '' || w.eval('dbGot')) fails.push('device backups: CLEAR wipes the box');
     if (!w.eval('AUTO_FIELDS').includes('dbIn') || !w.eval('AUTO_FIELDS').includes('dbKey')) fails.push('device backups: auto-clear knows the two boxes');
@@ -7371,7 +7371,7 @@ const M = [
   ["tapsigner: no warning before the key", "<b>TAPSIGNER: only when you need it.</b> Coinkite says", "Coinkite once said"],
   ["device backups: kind note never set", "\ndbKindSet();", "\n"],
   ["device backups: file and text both accepted", "  if(f && typed){ st.className = \"status bad\"; st.textContent = \"A file is chosen and text is pasted too: use one of them (CLEAR, then choose or paste again).\"; return; }\n", ""],
-  ["device backups: CLEAR leaves the key shown", "document.getElementById(\"dbKey\").type = \"password\"; document.getElementById(\"dbShowKey\").checked = false;", ""],
+  ["device backups: CLEAR leaves the key shown", "document.getElementById(\"dbKey\").type = \"password\"; document.getElementById(\"dbShowKey\").textContent = \"SHOW\";", ""],
   ["device backups: CLEAR leaves the words put above", "if(dbPut && ph.value === dbPut){ ph.value = \"\";", "if(false){ ph.value = \"\";"],
   ["coldcard: xprv line never compared", "if(typeof v.xprv === \"string\" && v.xprv !== await xprvText(root, net)) throw", "if(false) throw"],
   ["coldcard: regtest read as mainnet", "if(v.chain !== undefined && v.chain !== \"BTC\" && v.chain !== \"XTN\") throw", "if(false) throw"],

@@ -216,6 +216,22 @@ for (const [name, c] of Object.entries(E.cases)) {
   w.ewClear();
 }
 
+// ===== CHECK A BACKUP: the "I have: ..." chooser under the heading opens and moves to the right box (v2.16.0 review, layout)
+{
+  const bs = [...$('iHave').querySelectorAll('button')], want = { 'words': ['cwHead', 'phrase'], 'a public key': ['wpBlock', 'wpIn'], 'a private key': ['pkBlock', 'pkIn'], 'an address': ['addrBlockHead', 'checkAddr'],
+    'an Electrum wallet file': ['ewBox'], 'a Bitcoin Core wallet.dat': ['wdatBox'], 'a signing device’s backup': ['dbBlock'], 'a label file': ['lbBlock', 'lbIn'] };
+  ok($('iHave').closest('#cardCheck') && $('iHave').previousElementSibling.classList.contains('sub') && bs.map((b) => b.textContent).join('|') === Object.keys(want).join('|') && bs.every((b) => b.classList.contains('linklike') && b.type === 'button'), 'chooser: one line under the CHECK A BACKUP heading, I have: and its 8 choices');
+  let bad = [];
+  for (const b of bs) { const [box, f] = want[b.textContent]; for (const id of ['ewBox', 'wdatBox', 'dbBlock']) $(id).open = false; b.click();
+    const t = $(box); if (t.tagName === 'DETAILS' && !t.open) bad.push(b.textContent + ': box not opened'); const a = w.document.activeElement; if (f ? a !== $(f) : a !== t.querySelector(':scope > summary')) bad.push(b.textContent + ': focus on ' + (a && (a.id || a.tagName))); }
+  ok(bad.length === 0, 'chooser: each choice opens its box and puts the focus in it (' + (bad.join(', ') || 'all 8') + ')');
+  const ids = [...$('cardCheck').querySelectorAll('h3.grp, #ewBox, #wdatBox, #dbBlock, #lbBlock, #practiceBox, #ssBox, #planBox, #dmrBox, #pnRdBox, #addrBlockHead')].map((e) => e.id || e.textContent);
+  ok(ids.join('|') === 'cwHead|Words on other media|dmrBox|pnRdBox|addrBlockHead|lbBlock|No words? Open a wallet file|dbBlock|ewBox|wdatBox|Practice and plan|practiceBox|ssBox|planBox', 'layout: Check your words first; words on other media; the label file next to Explain an address; the three file readers together; practice and plan last (' + ids.join(' ') + ')');
+  ok(['dbBlock', 'ewBox', 'wdatBox'].every((id) => $(id).tagName === 'DETAILS' && $(id).querySelector(':scope > summary .tag').textContent === 'SECRET'), 'layout: the three file readers are boxes of the same shape, each tagged SECRET');
+  ok($('wvChain').querySelector('option[value=both]').textContent === 'Receive and change' && $('wvPathHow').matches('details.wd-how.wv-path') && /How paths work/.test($('wvPathHow').textContent) && $('wvPathIn').nextElementSibling.textContent.trim() === 'Most wallet apps use the standard path for the address type, so leave this empty.', 'Open this wallet: Receive and change in the list; one sentence under the path box, the rest in How paths work');
+  for (const id of ['ewBox', 'wdatBox', 'dbBlock']) $(id).open = false;
+}
+
 // ===== 3. Any path, more addresses (Open this wallet)
 {
   const rows = () => [...$('wvList').children].map((li) => li.firstChild.textContent), tags = () => [...$('wvList').children].map((li) => li.getAttribute('data-n'));

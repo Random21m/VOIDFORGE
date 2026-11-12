@@ -50,10 +50,10 @@ const html = readHtml();
   w.rhShow();
   // passphrase boxes go back to dots
   $('passphrase').value = 'pw'; $('passphrase2').value = 'pw'; const tb = $('passphrase').nextElementSibling; w.togglePassphrase(tb);
-  w.toggleVerifyPassphrase($('verifyPass').nextElementSibling); $('dbShowKey').checked = true; $('dbKey').type = 'text';
+  w.toggleVerifyPassphrase($('verifyPass').nextElementSibling); w.pwShowToggle($('dbShowKey')); $('wdatPass').value = 'x'; w.pwShowToggle($('wdatShowPass'));
   ok($('passphrase').type === 'text' && tb.textContent === 'HIDE', 'setup: the passphrase is shown');
   hideTab();
-  ok($('passphrase').type === 'password' && $('passphrase2').type === 'password' && tb.textContent === 'SHOW' && $('verifyPass').type === 'password' && $('verifyPass').nextElementSibling.textContent === 'SHOW' && $('dbKey').type === 'password' && !$('dbShowKey').checked && /back to dots/.test($('rhMsg').textContent), 're-hide: passphrase and key boxes go back to dots, their buttons say SHOW, and the notice says so');
+  ok($('passphrase').type === 'password' && $('passphrase2').type === 'password' && tb.textContent === 'SHOW' && $('verifyPass').type === 'password' && $('verifyPass').nextElementSibling.textContent === 'SHOW' && $('dbKey').type === 'password' && $('dbShowKey').textContent === 'SHOW' && $('wdatPass').type === 'password' && $('wdatShowPass').textContent === 'SHOW' && /back to dots/.test($('rhMsg').textContent), 're-hide: passphrase and key boxes go back to dots, their buttons say SHOW, and the notice says so');
   w.rhShow(); ok($('passphrase').type === 'password', 'SHOW leaves the passphrase as dots');
   // the browser's Print covers (hidden on paper), VOIDFORGE's own PRINT sheets do not
   w.dispatchEvent(new w.Event('beforeprint'));
