@@ -15,7 +15,7 @@ const HOOKS = [
   if(typeof ssPageWipe === "function") ssPageWipe();   // v2.13.0: the practice signer (stops it, wipes its seeds, closes its box)
 }`],
   [`for(const f of [reforgeStop, msReset, () => practiceMode(false), wipeSeed,`, `for(const f of [reforgeStop, msReset, () => practiceMode(false), () => ssPageWipe(), wipeSeed,`],
-  [`function autoHasSecrets(){ return hasSeed() || !!dbGot ||`, `function autoHasSecrets(){ return hasSeed() || !!dbGot || (typeof ssPageActive === "function" && ssPageActive()) ||`],
+  [`function autoHasSecrets(){ return hasSeed() || !!dbGot || ewHolds() || wdatHolds() ||`, `function autoHasSecrets(){ return hasSeed() || !!dbGot || ewHolds() || wdatHolds() || (typeof ssPageActive === "function" && ssPageActive()) ||`],
   [`  reforgeStop(); msReset(); dbClear(); wipeSeed(); planClear(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
   for(const id of AUTO_FIELDS)`, `  reforgeStop(); msReset(); dbClear(); wipeSeed(); planClear(); clearChild(); hideExplain(); hideQr(); hideSeedQr();
   if(typeof ssPageWipe === "function") ssPageWipe();   // v2.13.0: the practice signer
