@@ -113,8 +113,16 @@ async function probe(w, mutated, fast, only, hooks) {
   if (SEC(79, "v2.16.1: after FORGE SEED the page scrolls to YOUR SEED")) {
     const P = w.Element.prototype, had = P.scrollIntoView; let to = null;
     P.scrollIntoView = function () { to = this.id; };
-    try { w.jumpToSeed(); } finally { if (had) P.scrollIntoView = had; else delete P.scrollIntoView; }
-    if (to !== 'seedHead') fails.push('jump to the seed: lands on YOUR SEED (' + to + ')');
+    try {
+      w.jumpToSeed(); if (to !== 'seedHead') fails.push('jump to the seed: lands on YOUR SEED (' + to + ')');
+      // every FORGE SEED lands there: hex and cards (Cards & hex tab), then dice again, which also puts back the seed of section 0
+      to = null; $('cdHex').value = '0f1e2d3c4b5a69788796a5b4c3d2e1f0'; await w.cdHexGenerate(); await until(() => to !== null);
+      if (to !== 'seedHead') fails.push('jump to the seed: hex FORGE SEED lands on YOUR SEED (' + to + ')');
+      to = null; $('cdCards').value = 'QH 7C 2S KD 9H 4C JS 6D AH 3S 10C 8D 5H QS 2C 7D KH 9S 4D JC 6H AS 3C 10D 8H 5S QC 2D 7H KS'; await w.cdGenerate(); await until(() => to !== null);
+      if (to !== 'seedHead') fails.push('jump to the seed: cards FORGE SEED lands on YOUR SEED (' + to + ')');
+      to = null; $('cdHex').value = ''; $('cdCards').value = ''; await w.generate(); await until(() => to !== null);
+      if (to !== 'seedHead') fails.push('jump to the seed: dice FORGE SEED lands on YOUR SEED (' + to + ')');
+    } finally { if (had) P.scrollIntoView = had; else delete P.scrollIntoView; }
   }
   // v2.16.0 "Recover old wallets", part A: Open an Electrum wallet file (files made by Electrum 4.8.4 itself and what Electrum said
   // about them, tests/fixtures/electrum/), and any path with more addresses in Open this wallet (addresses from @scure/bip32). It
@@ -5519,6 +5527,9 @@ const M = [
   ['word draw: words rows missing', '  st.wordBits.forEach((b, i) => add((1 + i) + ".",', '  st.wordBits.slice(0, 0).forEach((b, i) => add((1 + i) + ".",'],
   ['word draw: flips row missing', '  add("Flips", st.flips + "  (" + st.flips.length + " bits)");\n', ''],
   ['word draw: no-hashing note missing', '  const n = document.createElement("div"); n.className = "hint"; n.style.margin = "6px 0 0"; n.textContent = "No hashing is applied to your words: they are the seed. Only the checksum is calculated."; o.appendChild(n);\n', ''],
+  ['jump to the seed: dice FORGE SEED does not scroll (v2.16.1)', '  if(hasSeed()) jumpToSeed();   // v2.16.1: the words in view under YOUR SEED', '  // removed'],
+  ['jump to the seed: cards FORGE SEED does not scroll (v2.16.1)', 'if(hasSeed()){ document.getElementById("explainBox").style.display = "none"; jumpToSeed(); }   // the dice explainer does not apply; v2.16.1: the words in view\n}\nasync function cdHexGenerate', 'if(hasSeed()){ document.getElementById("explainBox").style.display = "none"; }\n}\nasync function cdHexGenerate'],
+  ['jump to the seed: hex FORGE SEED does not scroll (v2.16.1)', '  await finishSeed(mnemonic, null, sig0, "hex", {});\n  if(hasSeed()){ document.getElementById("explainBox").style.display = "none"; jumpToSeed(); }', '  await finishSeed(mnemonic, null, sig0, "hex", {});\n  if(hasSeed()){ document.getElementById("explainBox").style.display = "none"; }'],
   ['jump to the seed: lands on the result line under the words (v2.16.1)', 'function jumpToSeed(){ jumpTo("seedHead"); }', 'function jumpToSeed(){ jumpTo("genResult"); }'],
   ['word draw: no scroll to the result (display only)', '  if(guideOn){ guideN = 3; guideRender(); }\n  jumpToSeed();', '  if(guideOn){ guideN = 3; guideRender(); }', true],
   ["address list not cleared after an error", "for(const id of Object.keys(ADDR_LISTS)) document.getElementById(id).textContent = \"\";", ""],
