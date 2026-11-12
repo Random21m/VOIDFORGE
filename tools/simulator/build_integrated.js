@@ -109,8 +109,8 @@ rep("\n</style>", css + "</style>");
 // ---- 2. the box, right after <details id="practiceBox"> ... </details> in CHECK A BACKUP ----
 const box = `
     <details id="ssBox">
-      <summary>Practice signer: works like SeedSigner<span class="tag tag-ro">PRACTICE ONLY</span><small>The same screens and buttons as a real SeedSigner, with step-by-step lessons and a practice transaction.</small></summary>
-      <p class="hint" style="margin:8px 0;">A practice copy of SeedSigner 0.8.7 on the SeedSigner+ screen (320 x 240): the same screens, menus and buttons. Seeds made here are for practice only.</p>
+      <summary>Practice signer: works like SeedSigner<span class="tag tag-secret">SECRET</span><small>The same screens and buttons as a real SeedSigner, with step-by-step lessons and a practice transaction.</small></summary>
+      <p class="hint" style="margin:8px 0;">A copy of SeedSigner 0.8.7 on the SeedSigner+ screen (320 x 240): the same screens, menus and buttons, and it does what the real device does.</p>
       <div class="ss-wrap">
         <div class="ss-dev" id="ssDevice" tabindex="0" role="application" aria-label="Practice signer. While it has focus: arrow keys move, Enter or Space presses the joystick, 1, 2 and 3 are KEY1, KEY2 and KEY3.">
           <button type="button" class="ss-k" id="ssKUp" tabindex="-1" aria-label="Joystick up"></button>
@@ -124,10 +124,10 @@ const box = `
           <button type="button" class="ss-k" id="ssK3" tabindex="-1" aria-label="KEY3"></button>
         </div>
       </div>
-      <p class="ms-test">PRACTICE ONLY: never put real coins on a seed made here. It is a real signer: never type in or scan a real seed.</p>
+      <p class="hint">It runs inside this page, so it is as safe as the page itself: use it on an offline computer and write any seed on paper. Re-hide covers it while it holds a seed, and CLEAR ALL, auto-clear and END SESSION wipe it.</p>
       <div class="ss-learn" id="ssLearn">
         <h3 class="sec">Use the seed in VOIDFORGE</h3>
-        <p class="hint" style="margin:0 0 8px;">FORGE SEED takes the seed loaded on the device, with its passphrase if one is applied, and shows it in MAKE A SEED like the other methods do: the words, fingerprint, addresses, SeedQR and watch-only wallet. It is marked PRACTICE.</p>
+        <p class="hint" style="margin:0 0 8px;">FORGE SEED takes the seed loaded on the device, with its passphrase if one is applied, and shows it in MAKE A SEED like the other methods do: the words, fingerprint, addresses, SeedQR and watch-only wallet. A public seed (such as a lesson&rsquo;s test seed) is marked PRACTICE; a seed made here from your own dice is not.</p>
         <div class="btn-row"><button type="button" id="ssForgeBtn">FORGE SEED</button><select id="ssForgePick" aria-label="Seed on the device, by fingerprint" hidden></select></div>
         <p class="status" id="ssForgeStatus" aria-live="polite"></p>
         <h3 class="sec">Lessons</h3>
@@ -142,6 +142,7 @@ const box = `
           <div class="btn-row" style="margin:6px 0 0;"><button type="button" class="secondary small" id="ssLearnBack">BACK</button><button type="button" class="secondary small" id="ssLearnNext">NEXT</button><button type="button" class="secondary small" id="ssLearnRestart">RESTART LESSON</button></div>
         </div>
         <div class="ss-l-cam" id="ssLearnCam" hidden><span>Held up to the device&rsquo;s camera: <b id="ssLearnCamWhat"></b>. <span id="ssLearnCamSay" aria-live="polite"></span></span><button type="button" class="secondary small" id="ssLearnCamOff">PUT IT AWAY</button></div>
+        <p class="status" id="ssLoadStatus" aria-live="polite"></p>
         <h3 class="sec">Practice transaction</h3>
         <p class="hint" style="margin:0 0 8px;">Makes a PSBT that spends made-up coins of the seed on the device and holds it up to the device&rsquo;s camera. After you sign it, this page reads the signed PSBT from the device&rsquo;s screen and checks every signature with its own code.</p>
         <div class="btn-row"><select id="ssTxKind" aria-label="Kind of practice transaction"><option value="single">Single key: 2 inputs</option><option value="multi">2-of-3 multisig: 1 input</option></select><button type="button" id="ssTxGo" class="secondary small">PRACTICE TRANSACTION</button></div>

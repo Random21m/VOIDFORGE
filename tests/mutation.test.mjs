@@ -402,6 +402,23 @@ async function probe(w, mutated, fast, only, hooks) {
     w.setMethod('damascus'); w.dmLoadExample(1); if (w.eval('rhAny()')) fails.push(T + 'a public Damascus example is not a secret'); w.dmClear(); w.setMethod('dice');
     typeIn('ppA', 'x'); if (!w.eval('rhAny()') || !w.eval('autoHasSecrets()')) fails.push(T + 'the practice box alone counts as a secret (re-hide and auto-clear)'); typeIn('ppA', '');
     $('checkAddr').value = AB; await w.explainAddrUi(); if (!w.eval('rhAny()')) fails.push(T + 'seed words in Explain an address count as a secret'); $('checkAddr').value = ''; await w.explainAddrUi();
+    // v2.16.1: the practice signer takes any seed, so re-hide covers its device (screen and keys) while it holds a seed that is not
+    // public; a public test seed (with no passphrase) is no reason on its own; CLEAR ALL wipes it. The device is a stand-in here.
+    { const E = (s) => w.eval(s), SC = E('SSController'), hold = (st) => { SC._instance = { _storage: st, current_destination: null, back_stack: [] }; E('ssPageOn = true'); return E('vfSignerHoldsSecret()'); };
+      w.rhShow(); w.clearAll(); await new Promise((r2) => setTimeout(r2, 30));
+      if (!E('rhIds()').includes('ssDevice')) fails.push(T + 'the practice signer\'s device is on the re-hide list (v2.16.1)');
+      const pub = hold({ seeds: [{ mnemonic_str: AB, passphrase: '' }], pending_seed: null, _pending_mnemonic: [] }), anyR = E('rhAny()');
+      const real = hold({ seeds: [{ mnemonic_str: AB, passphrase: '' }, { mnemonic_str: expect.d50, passphrase: '' }], pending_seed: null, _pending_mnemonic: [] });
+      const pass = hold({ seeds: [{ mnemonic_str: AB, passphrase: 'TREZOR' }], pending_seed: null, _pending_mnemonic: [] });
+      const pend = hold({ seeds: [], pending_seed: { mnemonic_str: expect.d50, passphrase: '' }, _pending_mnemonic: [] }), typed = hold({ seeds: [], pending_seed: null, _pending_mnemonic: ['zoo', 'zoo', null] });
+      if (pub || anyR) fails.push(T + 'a public test seed in the practice signer is no reason to cover (v2.16.1)');
+      if (!real || !pass || !pend || !typed) fails.push(T + 'a seed in the practice signer that is not public (loaded, with a passphrase, being made, being typed) is a reason to cover (v2.16.1): ' + JSON.stringify([real, pass, pend, typed]));
+      hold({ seeds: [{ mnemonic_str: expect.d50, passphrase: '' }], pending_seed: null, _pending_mnemonic: [] });
+      const hid = w.rhHide('tab'); if (!hid || !cov('ssDevice') || !E('rhAny()')) fails.push(T + 'the practice signer holding a real seed is covered, on its own (v2.16.1)');
+      w.rhShow(); if (cov('ssDevice')) fails.push(T + 'SHOW uncovers the practice signer');
+      w.clearAll(); await new Promise((r2) => setTimeout(r2, 30));
+      if (E('vfSignerHoldsSecret()') || E('rhAny()') || SC._instance || E('ssPageOn')) fails.push(T + 'CLEAR ALL wipes the practice signer: nothing left for re-hide (v2.16.1)');
+      SC._instance = null; E('ssPageOn = false'); }
     w.rhShow(); await run('dice', 12, D50);
   }
   // v2.13.0: the SeedSigner+ practice signer (CHECK A BACKUP > Practice signer; tools/simulator/). Its money-critical code is driven
@@ -913,18 +930,36 @@ async function probe(w, mutated, fast, only, hooks) {
       lesson('dice'); E('ssLearnGoto')(5, false); at('SSSeedWordsView', 'Seed Words'); tick(); const f = L.step; at('SSSeedWordsView', 'Seed Words: 1/3'); tick(); const g = L.step;
       if (f !== 5 || g !== 6) fails.push(T + 'lessons (dice): the seed words pages by their titles'); }
 
-    // 7. LOAD INTO THE PRACTICE SIGNER: only the Damascus tab's practice phrase goes, as its Standard SeedQR held up to the camera;
-    // it is wiped once the scan read it, when it is put away, and by the wipe
+    // 7. LOAD INTO THE PRACTICE SIGNER (v2.16.1: any 12- or 24-word seed, as a real SeedSigner takes any): its Standard SeedQR held
+    // up to the camera, then the device's own keys pressed (Home > Scan > Done); the SeedQR is wiped once the scan read it, when it
+    // is put away, and by the wipe
     await off(); E('ssPageStart = function () { ssPageOn = true; }');
-    { const o = $('dmOut'), d0 = o.dataset.practicePhrase, p0 = E('dmPractice'), setP = E('(v) => { dmPractice = v; }'), load = (p) => w.vfSignerLoadSeed(p);
+    { const o = $('dmOut'), d0 = o.dataset.practicePhrase, p0 = E('dmPractice'), setP = E('(v) => { dmPractice = v; }'), load = (p, x) => w.vfSignerLoadSeed(p, x);
       o.dataset.practicePhrase = PH; setP('practice sheet 1');
-      for (const [what, ph, dm] of [['another phrase', AB, 'practice sheet 1'], ['no practice result', PH, ''], ['an empty phrase', '', 'practice sheet 1']]) {
-        setP(dm); if (load(ph) || CAM.frames || $('ssBox').open || E('ssPageOn')) { fails.push(T + 'load into the practice signer: refused for ' + what); break; } }
-      setP('practice sheet 1'); for (const bad of [PH.replace('yellow', 'yellowx'), PH + ' zoo']) { o.dataset.practicePhrase = bad; if (load(bad) || CAM.frames) { fails.push(T + 'load into the practice signer: only 12 or 24 BIP39 words'); break; } }
+      if (load('') || load(null) || CAM.frames || $('ssBox').open || E('ssPageOn')) fails.push(T + 'load into the practice signer: refused for no phrase');
+      setP(''); if (!load(expect.d50) || !CAM.frames || CAM.frames[0] !== sqDigits(expect.d50) || !E('ssAuto.on')) fails.push(T + 'load into the practice signer: any seed goes (a real one, nothing marked practice), and the one-click load starts');
+      await off(); if (E('ssAuto.on') || CAM.frames) fails.push(T + 'load into the practice signer: the wipe stops the one-click load');
+      E('ssPageStart = function () { ssPageOn = true; }'); setP('practice sheet 1');
+      for (const bad of [PH.replace('yellow', 'yellowx'), PH + ' zoo']) { o.dataset.practicePhrase = bad; if (load(bad) || CAM.frames) { fails.push(T + 'load into the practice signer: only 12 or 24 BIP39 words'); break; } }
+      // the one-click load presses the device's own keys: Home > Scan, then Done on Finalize; the device's fingerprint is compared
+      { const taps = [], hb0 = E('SSHardwareButtons')._instance, hb = { _held: {}, _pending: {}, _pend_at: {}, tap: (k) => taps.push(k) };
+        E('SSHardwareButtons')._instance = hb; E('ssAutoWait = { keys: SSHardwareButtonsConstants.ALL_KEYS.slice() }');
+        o.dataset.practicePhrase = PH; load(PH); E('SSController')._instance = ctl; const A = E('ssAuto');
+        await until(() => A.fp === fp(PH, ''), 3000);
+        const step = (view, title, labels, screen, sel, extra) => { at(view, title, labels, screen, { scr: Object.assign({ selected_button: sel }, extra || {}) }); A.tapAt = 0; taps.length = 0; w.ssAutoTick(); return taps.slice(); };
+        const t1 = step('SSMainMenuView', 'Home', ['Scan', 'Seeds', 'Tools', 'Settings'], 'SSMainMenuScreen', 0), t2 = step('SSMainMenuView', 'Home', ['Scan', 'Seeds', 'Tools', 'Settings'], 'SSMainMenuScreen', 3);
+        if (t1.join() !== 'KEY_PRESS' || t2.join() !== 'KEY_UP') fails.push(T + 'load into the practice signer: on Home it goes to Scan and presses it (' + t1 + ' / ' + t2 + ')');
+        const t3 = step('SSSeedFinalizeView', '', ['Done', 'Passphrase'], 'SSButtonListScreen', 0, { fingerprint: fp(PH, '') }), t4 = step('SSSeedFinalizeView', '', ['Done', 'Passphrase'], 'SSButtonListScreen', 1, { fingerprint: fp(PH, '') });
+        if (t3.join() !== 'KEY_PRESS' || t4.join() !== 'KEY_UP') fails.push(T + 'load into the practice signer: on Finalize it chooses Done (' + t3 + ' / ' + t4 + ')');
+        step('SSSeedOptionsView', fp(PH, ''), [], 'SSButtonListScreen', 0);
+        if (A.on || $('ssLoadStatus').textContent !== 'Loaded: the device shows the seed with fingerprint ' + fp(PH, '') + ', the same as VOIDFORGE works out.' || !/ok/.test($('ssLoadStatus').className)) fails.push(T + 'load into the practice signer: it ends on the seed, the device\'s fingerprint the same as the page\'s');
+        load(PH, { pass: true }); await until(() => A.fp === fp(PH, ''), 3000); step('SSMainMenuView', 'Home', ['Scan', 'Seeds', 'Tools', 'Settings'], 'SSMainMenuScreen', 0); const t5 = step('SSSeedFinalizeView', '', ['Done', 'Passphrase'], 'SSButtonListScreen', 0, { fingerprint: fp(PH, '') });
+        if (t5.length || A.on || !/Choose Passphrase on the device/.test($('ssLoadStatus').textContent)) fails.push(T + 'load into the practice signer: with a passphrase on the page it stops on Finalize, for the passphrase');
+        E('ssAutoWait = null'); E('SSHardwareButtons')._instance = hb0; ctl.current_destination = null; await off(); E('ssPageStart = function () { ssPageOn = true; }'); }
       E('ssPageStart = function () {}'); o.dataset.practicePhrase = PH; if (load(PH) || CAM.frames) fails.push(T + 'load into the practice signer: nothing held up when the device did not start'); await off();
       E('ssPageStart = function () { ssPageOn = true; }'); L.lesson = E('SS_LEARN_LESSONS')[1]; const ok = load(PH), fr = CAM.frames, mx = fr && CAM.cache.get(fr[0]);
-      if (!ok || !$('ssBox').open || !fr || fr.length !== 1 || fr[0] !== sqDigits(PH) || CAM.key !== 'dmseed' || L.lesson) fails.push(T + 'load into the practice signer: the box opens and the practice wallet holds up the phrase\'s Standard SeedQR');
-      await until(() => CAM.say.includes(fp(PH, '')), 3000); if (!CAM.say.includes(fp(PH, ''))) fails.push(T + 'load into the practice signer: the page says the fingerprint to expect');
+      if (!ok || !$('ssBox').open || !fr || fr.length !== 1 || fr[0] !== sqDigits(PH) || CAM.key !== 'seedload' || L.lesson) fails.push(T + 'load into the practice signer: the box opens and the practice wallet holds up the phrase\'s Standard SeedQR');
+      await until(() => E('ssAuto.fp') === fp(PH, ''), 3000); if (E('ssAuto.fp') !== fp(PH, '') || !/^Loading: /.test($('ssLoadStatus').textContent)) fails.push(T + 'load into the practice signer: the page works out the fingerprint to compare and says it is loading');
       const c = Object.create(E('SSCamera').prototype); c._video_stream = null; c._picamera = null; c._camera_rotation = 180; await c.start_video_stream_mode({ resolution: [480, 480] });
       const hd = c._video_stream.handle, g = (void hd.video.videoWidth, ctxs.get(hd.video)), rd = g && w.qrDecodeRgba(g.buf, 640, 480);
       if (!rd || rd.text !== sqDigits(PH)) fails.push(T + 'load into the practice signer: the camera picture is the SeedQR');
@@ -957,9 +992,13 @@ async function probe(w, mutated, fast, only, hooks) {
         if (!x || bad !== 'status bad') fails.push(T + 'FORGE SEED: a different fingerprint on the device is flagged'); }
       { let blob = null; const ou = w.URL.createObjectURL; if (!w.URL.revokeObjectURL) w.URL.revokeObjectURL = () => {}; w.URL.createObjectURL = (b) => { blob = b; return 'blob:x'; }; w.downloadSeed(); w.URL.createObjectURL = ou;
         const txt = blob ? await new Promise((r2) => { const fr = new w.FileReader(); fr.onload = () => r2(fr.result); fr.readAsText(blob); }) : '';
-        if (!/^PRACTICE/.test(txt) || !txt.includes(AB) || !/Input: .*PRACTICE/.test(txt)) fails.push(T + 'FORGE SEED: the downloaded file is marked PRACTICE');
+        if (!/^PRACTICE: This seed came from the practice signer\. It is a public or predictable seed/.test(txt) || !txt.includes(AB) || !/Input: the practice signer/.test(txt)) fails.push(T + 'FORGE SEED: the downloaded file of a public seed is marked PRACTICE');
         let pt = ''; w.print = () => { pt = $('printOnly').textContent; }; w.printSeed(); w.dispatchEvent(new w.Event('afterprint')); w.print = print0;
         if (!/BACKUP SHEET: PRACTICE/.test(pt) || pt.split('PRACTICE').length < 3) fails.push(T + 'FORGE SEED: the printed sheet is marked PRACTICE'); }
+      // v2.16.1: a seed from the device that is not public (here section 0's dice seed) is not marked PRACTICE: no banner, no PRACTICE line
+      { const fD = fp(expect.d50, ''); await w.forgeFromSigner(expect.d50, '', fD); await until(() => /ok|bad/.test($('ssfCheck').className), 3000);
+        if (!E('hasSeed()') || res() !== expect.d50 || ban() || $('ssfBan').textContent || $('ssfCheck').style.display === 'none' || E('seedPr()')) fails.push(T + 'FORGE SEED: a seed from the device that is not public is not marked PRACTICE (the consistency line stays)');
+        await w.forgeFromSigner(AB, 'TREZOR', fP); await until(() => /ok|bad/.test($('ssfCheck').className), 3000); }
       // switched off: the seed it gave is cleared (and its passphrase); a seed made on the page is not, and it has no PRACTICE mark
       await off(); if (E('hasSeed()') || ban() || $('passphrase').value !== '' || $('passphrase2').value !== '' || $('fingerprint').textContent) fails.push(T + 'FORGE SEED: switching the practice signer off clears the seed it gave');
       r = await run('dice', 12, D50); const banAfter = ban(); await off();
@@ -1025,7 +1064,7 @@ async function probe(w, mutated, fast, only, hooks) {
       if (!/^Deck 2 has the .+ twice \(cards 2 and 7\)/.test($('dmMsg').textContent)) fails.push(T + 'a card twice in a deck is refused'); }
     // 3. practice by content (M2, M4), the practice rule, the public list
     set('dmCards', c1);
-    if (!/^PRACTICE: worked example 1 is public/.test($('dmPracticeBan').textContent) || !$('dmBtn').disabled) fails.push(T + 'review M2: worked example 1 typed by hand says PRACTICE and FORGE SEED stays off');
+    if (!/^PRACTICE: worked example 1 is public/.test($('dmPracticeBan').textContent) || $('dmBtn').disabled) fails.push(T + 'review M2: worked example 1 typed by hand says PRACTICE, and FORGE SEED is on (v2.16.1)');
     if (!/worked example of the Damascus/.test(w.knownPhrase(V.forge(sheets[0]).E.phrase.join(' ')) || '')) fails.push(T + 'review M2: worked example 1 is a known public phrase');
     const rule = (n, words) => { let block = 0, buf = Buffer.alloc(0), at = 0; const draw = (m) => { const lim = Math.floor(4294967296 / m) * m; for (;;) { if (at + 4 > buf.length) { buf = nc.createHash('sha256').update('VOIDFORGE Damascus practice ' + n + ' block ' + block++).digest(); at = 0; } const v = buf.readUInt32BE(at); at += 4; if (v < lim) return v % m; } };
       const pairs = []; let g = 0; while (g < Math.ceil(V.PLAN[words].bits / 5)) { const a = 1 + draw(6), b = 1 + draw(6); pairs.push(a + '' + b); if (V.mirrorCode(a, b) !== null) g++; } return pairs.join(' '); };
@@ -1034,7 +1073,7 @@ async function probe(w, mutated, fast, only, hooks) {
     await w.dmPracticeFill();
     if ($('dmDice').value !== rule(1, 12)) fails.push(T + 'after practice sheet 100 comes practice sheet 1 (sheets 1 to 100)');
     set('dmDice', $('dmDice').value + ' 12');
-    if (!/^PRACTICE: practice 1 comes from a published rule/.test($('dmPracticeBan').textContent) || !$('dmBtn').disabled) fails.push(T + 'review M2: a practice sheet is still PRACTICE by its content after an edit that keeps the seed');
+    if (!/^PRACTICE: practice 1 comes from a published rule/.test($('dmPracticeBan').textContent) || $('dmBtn').disabled) fails.push(T + 'review M2: a practice sheet is still PRACTICE by its content after an edit that keeps the seed (FORGE SEED on, v2.16.1)');
     const R = sheets[3], Rd = R.dice.map((p) => p.join('')).join(' '), Rc = cardsTxt(R.cards), Rref = V.forge(R), Rph = Rref.E.phrase.join(' ');
     set('dmDice', Rd);
     if ($('dmPracticeBan').style.display !== 'none' || w.eval('dmPractice') !== '') fails.push(T + 'review M4: real dice in place of the practice dice end PRACTICE at once');
@@ -1085,7 +1124,8 @@ async function probe(w, mutated, fast, only, hooks) {
       set('dmLwBits', bits.slice(1)); await w.dmLwCalc();
       if (!/^Type the 7 bits of your Forge sheet's last row: you typed 6\./.test($('dmLwOut').textContent)) fails.push(T + 'CALCULATE LAST WORD names a wrong bit count');
       const ph = V.forge(sheets[0]).E.phrase; set('dmLwWords', ph.slice(0, 11).join(' ')); set('dmLwBits', V.forge(sheets[0]).E.handWords[11].bits); await w.dmGenerate();
-      if (w.hasSeed() && w.eval('madeMnemonic') === ph.join(' ')) fails.push(T + 'FORGE SEED from paper refuses a public worked example');
+      if (!w.hasSeed() || w.eval('madeMnemonic') !== ph.join(' ') || !/^PRACTICE: This seed is Damascus worked example 1, a public worked example\./.test($('ssfBan').textContent)) fails.push(T + 'FORGE SEED from paper: a public worked example is forged, marked PRACTICE with its name (v2.16.1)');
+      w.wipeSeed();
       // review L1 with who checks as the only change: a seed forged from paper alone (no dice, no cards) keeps its paper boxes when an
       // assay is chosen, so only who checks (part of the seed's inputs) lets the stale guard drop it
       w.dmClear(); who('both');
@@ -1583,6 +1623,7 @@ async function probe(w, mutated, fast, only, hooks) {
       if (!bar.slice(2, 4).every((b) => b.classList.contains('done') && b.classList.contains('page')) || bar[4].classList.contains('done') || !bar[4].classList.contains('page')) fails.push(T + 'quick path: the step bar shows steps 3 and 4 done by the page, step 5 by the page but not done before FORGE SEED');
       if (!$('dmLiveF').textContent.includes(' 1  ' + g3(ref.E.bits.slice(0, 11)) + '  R ' + ref.E.marks.R[0]) || !ref.E.phrase.slice(0, 11).every((x) => $('dmLiveW').textContent.includes(x))) fails.push(T + 'quick path: steps 3 and 4 show grid F and the words, worked out by the page');
       await w.dmGenerate(); if (!w.hasSeed() || w.eval('madeMnemonic') !== phrase) fails.push(T + 'quick path: FORGE SEED gives the seed of the dice and the cards');
+      if ($('ssfBan').style.display !== 'none' || $('ssfBan').textContent || w.eval('seedPr()') || /PRACTICE/.test($('sumLine').textContent)) fails.push(T + 'a real Damascus seed has no PRACTICE mark (v2.16.1)');
       if (!/^Seed forged/.test($('dmReady').textContent) || !w.document.querySelectorAll('#dmFBar button')[4].classList.contains('done')) fails.push(T + 'quick path: after FORGE SEED the Ready line says forged and step 5 is done');
       w.dmClear(); }
     // 2. the guided practice: practice sheet 9, phase by phase
@@ -1609,9 +1650,19 @@ async function probe(w, mutated, fast, only, hooks) {
     for (const [i, [step, ok]] of want.entries()) {
       $('dmTourNext').click();
       if (w.eval('dmStep') !== step || !ok()) fails.push(T + 'phase ' + (i + 1) + ' fills in the sheet\'s values, says where they come from and shows its step');
-      if (w.eval('dmPractice') !== 'practice 9' || !$('dmBtn').disabled) fails.push(T + 'phase ' + (i + 1) + ' stays PRACTICE, FORGE SEED off');
+      if (w.eval('dmPractice') !== 'practice 9' || $('dmBtn').disabled !== ($('dmCards').value !== sh.cards)) fails.push(T + 'phase ' + (i + 1) + ' stays PRACTICE, FORGE SEED on once the dice and the cards are complete (v2.16.1)');
     }
     if ($('dmCards').value !== sh.cards || $('dmDice').value !== sh.dice || !/Damascus practice sheet/.test(w.knownPhrase(phrase) || '')) fails.push(T + 'it ends on exactly the practice sheet, a published practice phrase');
+    await w.dmGenerate(); const BAN9 = 'PRACTICE: This seed is Damascus practice sheet 9, a public practice seed. Anyone can make it again: never put money on it.';
+    if (!w.hasSeed() || w.eval('madeMnemonic') !== phrase || $('ssfBan').textContent !== BAN9 || $('ssfBan').style.display === 'none') fails.push(T + 'FORGE SEED at the end makes the practice sheet\'s words, the PRACTICE banner naming the sheet (v2.16.1)');
+    { const p0 = w.print; let pt = ''; w.print = () => { pt = $('printOnly').textContent + $('printQr').textContent; $('printOnly').textContent = ''; $('printQr').textContent = ''; };
+      const sheet = (f) => { pt = ''; f(); return pt; };
+      const ps = sheet(() => w.printSeed()), st = sheet(() => w.printStamp()), sm = sheet(() => w.printSummary()); await w.showSeedQr('seedqr'); const sq = sheet(() => w.printSeedQr()); w.print = p0;
+      if (!/^VOIDFORGE BACKUP SHEET: PRACTICE/.test(ps) || !ps.includes(BAN9) || !phrase.split(' ').every((x) => ps.includes(x))) fails.push(T + 'PRINT SEED of a practice seed is not blocked: the sheet is titled PRACTICE and carries the PRACTICE line (v2.16.1)');
+      if (!st.includes(BAN9) || !sm.includes(BAN9) || !sq.includes(BAN9)) fails.push(T + 'the stamp, summary and SeedQR sheets of a practice seed carry the PRACTICE line (v2.16.1)');
+      let txt = ''; const ou = w.URL.createObjectURL, B0 = w.Blob; if (!w.URL.revokeObjectURL) w.URL.revokeObjectURL = () => {};
+      w.Blob = function (parts, o) { txt = parts.join(''); return new B0(parts, o); }; w.URL.createObjectURL = () => 'blob:x'; w.downloadSeed(); w.URL.createObjectURL = ou; w.Blob = B0;
+      if (!txt.startsWith(BAN9 + '\n\n') || !txt.includes(phrase)) fails.push(T + 'DOWNLOAD of a practice seed: the file starts with the PRACTICE line (v2.16.1)'); }
     $('dmTourBack').click(); $('dmTourBack').click(); $('dmTourBack').click();
     if (!/9 of 12/.test($('dmTourTitle').textContent) || $('dmWords').value || $('dmFR').value !== ref.E.marks.R) fails.push(T + 'BACK goes back, with that phase\'s boxes');
     $('dmTourStop').click(); if (!$('dmTour').hidden || w.eval('dmPractice') !== 'practice 9') fails.push(T + 'STOP closes the guide and keeps the boxes, PRACTICE');
@@ -2854,7 +2905,7 @@ async function probe(w, mutated, fast, only, hooks) {
       if (doc.querySelectorAll('.tag-rec').length !== 3 || doc.querySelectorAll('option.opt-rec').length !== 1 || labels.length !== 4 || !labels.every((e) => e.querySelector('.tag-rec') || e.classList.contains('opt-rec'))) fails.push('recommended: every label is a gold word or a gold option');
       const notes = [...doc.querySelectorAll('.tag-note')], ros = [...doc.querySelectorAll('.tag-ro')];
       if (notes.length !== 3 || !notes.every((e) => /^ADVANCED$/.test(e.textContent)) || [...doc.querySelectorAll('summary')].some((e) => /\((demo only|advanced)/i.test(e.textContent))) fails.push('tags: ADVANCED is a gray label, not plain (brackets)');
-      if (ros.filter((e) => e.textContent === 'NEW').length !== 2 || ros.filter((e) => e.textContent === 'PRACTICE ONLY').length !== 1) fails.push('tags: every "NEW" label is the same gray tag-ro style, and the practice signer is PRACTICE ONLY in it');
+      if (ros.filter((e) => e.textContent === 'NEW').length !== 2 || ros.some((e) => e.textContent === 'PRACTICE ONLY') || !doc.querySelector('#ssBox > summary .tag-secret') || doc.querySelector('#ssBox > summary .tag-secret').textContent !== 'SECRET') fails.push('tags: every "NEW" label is the same gray tag-ro style, and the practice signer is SECRET');
       const sheet = mutated.match(/<style>[\s\S]*?<\/style>/)[0];
       if (!/\.tag, body\.light \.tag \{ border: 0; background: none;/.test(sheet) || !/\.tag-rec, body\.light \.tag-rec \{ color: var\(--warn-text\); background: none; \}/.test(sheet) || !/\.opt-rec \{[^}]*color: var\(--warn-text\)/.test(sheet)) fails.push('recommended: gold words, no pill');
       if (!/\.tag-secret, body\.light \.tag-secret \{ color: var\(--bad-text\); font-weight: 800; \}/.test(sheet) || !/\.tag-public \{ color: var\(--ok-text\); \}/.test(sheet) || !/\.tag-note, body\.light \.tag-note, \.tag-ro \{ color: var\(--muted\); background: none; \}/.test(sheet)) fails.push('tags: SECRET red, PUBLIC green, the rest gray');
@@ -4045,7 +4096,7 @@ async function probe(w, mutated, fast, only, hooks) {
       const d = w.document, gb = [...d.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'GUIDE ME'), gn = $('guideNew');
       if (gb.length !== 1 || !gn || gn.querySelector('button')) fails.push('calmer page: one GUIDE ME button');
       if (d.querySelector('.forge-note')) fails.push('calmer page: no second warning note by FORGE SEED');
-      if (!d.querySelector('.btn-row.seed-actions #abbrBtn') || d.querySelectorAll('.seed-actions button').length !== 5) fails.push('calmer page: the five seed buttons are grouped');
+      if (!d.querySelector('.btn-row.seed-actions #abbrBtn') || d.querySelectorAll('.seed-actions button').length !== 6) fails.push('calmer page: the six seed buttons are grouped');
       if (!/body:not\(\.has-seed\) \.seed-actions, body:not\(\.has-seed\) \.print-btn \{ display: none; \}/.test(css)) fails.push('calmer page: seed buttons are hidden until there is a seed');
       if ($('moreBox') || $('demoBox')) fails.push('calmer page: no More options box and no demo box');
       if (/#rollCount \{ display: none; \}/.test(css)) fails.push('calmer page: the roll count stays on every screen size');
@@ -5516,7 +5567,7 @@ const M = [
   ['step help: never updated', '  document.getElementById("stepWhy").textContent = WHY[cur];\n', ''],
   ['preview: too-few-rolls FORGE wipes the gray words', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote(); previewRefresh();', 'grid.classList.remove("slots"); renderSlots(); updateAbbrNote();'],
   ["preview: gray note stays after FORGE", "wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body", "wdWipe(); drillEnd(); bkReset(!!words); document.body"],
-  ["word draw: dice FORGE leaves old steps", "  sumCtx = null;\n  wdWipe(); drillEnd();", "  sumCtx = null;\n  drillEnd();"],
+  ["word draw: dice FORGE leaves old steps", "\n  wdWipe(); drillEnd(); if(words) previewClear();", "\n  drillEnd(); if(words) previewClear();"],
   ['word draw: CLEAR leaves the boxes', '  wdClear(); cdClear(); clearS39();\n', '  cdClear(); clearS39();\n'],
   ['word draw: CLEAR button leaves the words', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();'],
   ['word draw: CLEAR button leaves the flips', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdWords").value = "";\n  wdWipe(); wdUpdate();'],
@@ -6386,7 +6437,7 @@ const M = [
   ["address QR: old request kept when too long", "    delete box.dataset.text; document.getElementById(pfx + \"Img\").textContent = \"\";", "    document.getElementById(pfx + \"Img\").textContent = \"\";"],
   ["CLEAR ALL: child result kept", "clearWalletView(); clearChild();\n  document.getElementById(\"checkAddr\").value=\"\";", "clearWalletView();\n  document.getElementById(\"checkAddr\").value=\"\";"],
   ["CLEAR ALL: address and explanation kept", "  document.getElementById(\"checkAddr\").value=\"\"; explainSeq++; document.getElementById(\"addrExplain\").textContent=\"\"; document.getElementById(\"addrExplain\").className=\"status\";\n", ""],
-  ["summary: older seed kept in the line", "ssfRender();\n  sumCtx = null;\n  wdWipe();", "ssfRender();\n  wdWipe();"],
+  ["summary: older seed kept in the line", "ssfRender();\n  sumCtx = null; {", "ssfRender();\n  {"],
   ["summary: mismatch not explained", "  if(!hasSeed()) return alert(\"Generate a seed first\");\n  if(passMismatch()) return;\n  const S = seedSummary(); if(!S) return;", "  if(!hasSeed()) return alert(\"Generate a seed first\");\n  const S = seedSummary(); if(!S) return;"],
   ["child: words shown after HIDE", "parent = await mnemonicFingerprint(r.mnemonic, vp);\n    if(my !== childSeq) return;", "parent = await mnemonicFingerprint(r.mnemonic, vp);"],
   ["child: key shown after HIDE", "o = document.getElementById(\"childOut\");\n    if(my !== childSeq) return;", "o = document.getElementById(\"childOut\");"],
@@ -6508,7 +6559,7 @@ const M = [
   ["QR prints: cosigner footer", "    : cos ? \"PUBLIC: one cosigner key of a multisig wallet.", "    : false ? \"PUBLIC: one cosigner key of a multisig wallet."],
   ["QR prints: account missing", "\"Account number: \" + document.getElementById(\"wAcct\").value.trim()]};", "\"Account number: 0\"]};"],
   ["address QR: change called receive", ": meta.change ? \"CHANGE ADDRESS\" : \"RECEIVE ADDRESS\")", ": \"RECEIVE ADDRESS\")"],
-  ["address QR: testnet not named", "\"RECEIVE ADDRESS\") + (meta.test ? \" (TESTNET)\" : \"\"),", "\"RECEIVE ADDRESS\"),"],
+  ["address QR: testnet not named", "\"RECEIVE ADDRESS\") + (meta.test ? \" (TESTNET)\" : \"\") + (pr ?", "\"RECEIVE ADDRESS\") + (pr ?"],
   ["address QR: no path", "(meta.path ? \"Path: \" + meta.path + \"\\n\" : \"\")", "\"\""],
   ["address QR: unknown fingerprint printed", "fp = /^Master fingerprint[^:]*: [0-9a-f]{8}/.test(fpT) ? fpT : \"\";", "fp = fpT;"],
   ["address QR: Taproot path", "return {path: \"m/\" + pu + \"'/\"", "return {path: \"m/\" + 84 + \"'/\""],
@@ -7698,20 +7749,27 @@ const M = [
   ["learn: practice wallet: not put away after a complete scan", "if (d.is_complete && ssLearnCam.frames) ssLearnHide();", "if (false) ssLearnHide();"],
   ["learn: wipe: QR texts not overwritten", "  if (ssLearnCam.frames) ssLearnCam.frames.fill(\"\");\n", ""],
   ["learn: wipe: QR pictures not overwritten", "for (const m of ssLearnCam.cache.values()) for (const r of m) if (r && typeof r.fill === \"function\") r.fill(false);", ""],
-  ["learn: wipe: a practice seed's SeedQR kept when another QR is held up", "  if (ssLearnCam.key === \"dmseed\") ssLearnForget();", ""],
-  ["learn: wipe: a practice seed's SeedQR kept after the scan", "if (ssLearnCam.key === \"dmseed\" && ssLearnCam.read) setTimeout(", "if (false) setTimeout("],
-  ["learn: load: any phrase taken while a practice result is shown", " && !!o && o.dataset.practicePhrase === phrase;", " && !!o;"],
-  ["learn: load: taken without a practice result", "typeof dmPractice === \"string\" && dmPractice !== \"\" && !!o", "typeof dmPractice === \"string\" && !!o"],
+  ["learn: wipe: a seed's SeedQR kept when another QR is held up", "  if (ssLearnCam.key === \"seedload\") ssLearnForget();", ""],
+  ["learn: wipe: a seed's SeedQR kept after the scan", "if (ssLearnCam.key === \"seedload\" && ssLearnCam.read) setTimeout(", "if (false) setTimeout("],
+  ["learn: load: no phrase taken (v2.16.1)", "if (typeof phrase !== \"string\") return false;\n  const words", "const words"],
+  ["learn: load: the one-click load not started (v2.16.1)", "  ssAutoStart(phrase, !!(opts && opts.pass));\n", ""],
+  ["learn: load: Scan not pressed on Home (v2.16.1)", "sel === 0 ? \"KEY_PRESS\" : sel === 1", "sel === 0 ? \"KEY_LEFT\" : sel === 1"],
+  ["learn: load: Done not chosen on Finalize (v2.16.1)", "return ssAutoTap(hb, sel === i ? \"KEY_PRESS\"", "return ssAutoTap(hb, sel === i ? \"KEY_DOWN\""],
+  ["learn: load: a passphrase on the page ignored (v2.16.1)", "if (A.pass) return ssAutoEnd(", "if (false) return ssAutoEnd("],
+  ["learn: load: never says it is loaded (v2.16.1)", "if (s.view === \"SSSeedOptionsView\" && A.stage === \"fin\") {", "if (false) {"],
+  ["learn: wipe: the one-click load keeps running after the wipe (v2.16.1)", "  ssAutoEnd(\"\"); ssLearnSetText(\"ssLoadStatus\", \"\");\n", ""],
   ["learn: load: any number of words", "if ((words.length !== 12 && words.length !== 24) || idx.some((i) => i < 0)) return false;", "if (idx.some((i) => i < 0)) return false;"],
   ["learn: load: words not in the word list", "if ((words.length !== 12 && words.length !== 24) || idx.some((i) => i < 0)) return false;", "if (words.length !== 12 && words.length !== 24) return false;"],
   ["learn: load: held up while the device is off", "  if (!ssPageOn) return false;\n  ssLearn.lesson = null;", "  ssLearn.lesson = null;"],
-  ["learn: load: the practice signer not opened", "  const name = dmPractice;\n  ssPageOpen();\n", "  const name = dmPractice;\n"],
-  ["learn: load: the SeedQR not marked as a practice seed's", "\"dmseed\");\n  try { ssLearnCam.cache.set", "\"seedqr\");\n  try { ssLearnCam.cache.set"],
+  ["learn: load: the practice signer not opened", "kind = \"\"; }\n  ssPageOpen();\n", "kind = \"\"; }\n"],
+  ["learn: load: the SeedQR not marked as the loaded seed's", "\"seedload\");\n  try { ssLearnCam.cache.set", "\"seedqr\");\n  try { ssLearnCam.cache.set"],
   ["learn: open: the card does not open the practice signer", "id=\"ssPromoBtn\" onclick=\"ssPageOpen()\"", "id=\"ssPromoBtn\" onclick=\"\""],
   ["learn: open: MENU > PRACTICE SIGNER does nothing", "id=\"ssMenuBtn\" onclick=\"ssPageOpen()\"", "id=\"ssMenuBtn\" onclick=\"\""],
   ["learn: open: not on CHECK A BACKUP", "  if (typeof showTab === \"function\") showTab(\"check\");\n", ""],
   ["learn: open: the box not opened", "  if (!b.open) b.open = true;\n", ""],
-  ["learn: forge: banner never shown", "b.textContent = x ? SSF_BAN : \"\"; b.style.display = x ? \"\" : \"none\";", "b.textContent = \"\"; b.style.display = \"none\";"],
+  ["learn: forge: banner never shown", "b.textContent = x && x.ban ? x.ban : \"\"; b.style.display = x && x.ban ? \"\" : \"none\";", "b.textContent = \"\"; b.style.display = \"none\";"],
+  ["learn: forge: a public seed from the device not marked PRACTICE (v2.16.1)", "pracMark(pubKind(words.join(\" \")), {signer", "pracMark(\"\", {signer"],
+  ["learn: forge: a seed from the device that is not public marked PRACTICE (v2.16.1)", "pracMark(pubKind(words.join(\" \")), {signer", "pracMark(pubKind(words.join(\" \")) || \"public: x\", {signer"],
   ["learn: forge: a different fingerprint not flagged", "(x.deviceFp === x.vfFp ? \" ok\" : \" bad\") : \"\");", "(x.deviceFp === x.vfFp ? \" ok\" : \" ok\") : \"\");"],
   ["learn: forge: the PRACTICE mark kept across results", "ssfCtx = words && ssfNext ? ssfNext : null; ssfNext = null;", "ssfCtx = words && ssfNext ? ssfNext : ssfCtx; ssfNext = null;"],
   ["learn: forge: the PRACTICE mark goes to the next result", "ssfCtx = words && ssfNext ? ssfNext : null; ssfNext = null;", "ssfCtx = words && ssfNext ? ssfNext : null;"],
@@ -7722,8 +7780,8 @@ const M = [
   ["learn: forge: the passphrase dropped", "const ok = await forgeFromSigner(seed.mnemonic_str, seed.passphrase || \"\", fps[i]);", "const ok = await forgeFromSigner(seed.mnemonic_str, \"\", fps[i]);"],
   ["learn: forge: the pick ignored", "else if (!pick.hidden && ssForge.key === key) i = +pick.value;", "else if (!pick.hidden && ssForge.key === key) i = 0;"],
   ["learn: forge: the seed shown on the device ignored", "if (Number.isInteger(n) && seeds[n]) return seeds[n];", "if (Number.isInteger(n) && seeds[n]) return seeds[0];"],
-  ["learn: forge: the downloaded file's first line not PRACTICE", "const full = (seedKind === \"ss\" ? SSF_BAN + \"\\n\\n\" : \"\") + text", "const full = (\"\") + text"],
-  ["learn: forge: the printed sheet not PRACTICE", "check: false, practice: seedKind === \"ss\"};", "check: false, practice: false};"],
+  ["learn: forge: the downloaded file's first line not PRACTICE", "const full = (seedPr() ? seedPr() + \"\\n\\n\" : \"\") + text", "const full = (\"\") + text"],
+  ["learn: forge: the printed sheet not PRACTICE", "check: false, practice: seedPr()};", "check: false, practice: \"\"};"],
   ["learn: forge: switching off wipes a seed made on the page", "if(!ssfCtx || !hasSeed() || seedKind !== \"ss\") return;", "if(!hasSeed()) return;"],
   ["learn: forge: switching off keeps the passphrase", "  for(const id of [\"passphrase\", \"passphrase2\"]) document.getElementById(id).value = \"\";\n  updateAdvSummary();\n  setResult(\"The practice signer", "  updateAdvSummary();\n  setResult(\"The practice signer"],
   ["learn: forge: switching off keeps the seed", "  setResult(\"The practice signer was switched off", "  (\"The practice signer was switched off"],
@@ -7779,7 +7837,23 @@ const M = [
   ["damascus: the Hammer step marks every typed hallmark right", "else if(+t === m.R.charCodeAt(i) - 48) mark", "else if(true) mark"],
   ["damascus: the Forge step marks every typed row right", "if(tr[i] === m.R[i]) partsF.push", "if(true) partsF.push"],
   ["damascus: CALCULATE LAST WORD takes a wrong bit count", "if(bv.length !== P.fin) return", "if(false) return"],
-  ["damascus: FORGE SEED from paper takes a public example", "if(k && /Damascus/.test(k)){", "if(false){"],
+  ["damascus: FORGE SEED from paper: a public example not marked PRACTICE (v2.16.1)", "ssfNext = /^(practice|example) /.test(kind) ? pracMark(kind) : null;", "ssfNext = null;"],
+  ["practice forge: a Damascus practice seed not marked PRACTICE (v2.16.1)", "  ssfNext = dmPractice ? pracMark(dmPractice) : null;   // the PRACTICE mark", "  ssfNext = null;   // the PRACTICE mark"],
+  ["practice forge: the banner names another sheet (v2.16.1)", "\"Damascus practice sheet \" + kind.slice(9)", "\"Damascus practice sheet \" + kind.slice(8)"],
+  ["practice forge: FORGE SEED off for practice again (v2.16.1)", "both && (ready || (paperOnly && lw.ok)));", "both && ((ready && !dmPractice) || (paperOnly && lw.ok)));"],
+  ["practice forge: FORGE SEED makes nothing from practice (v2.16.1)", "if(dmWho() !== \"both\") return;\n  if(!document", "if(dmWho() !== \"both\" || dmPractice) return;\n  if(!document"],
+  ["practice print: the backup sheet of a practice seed has no PRACTICE line (v2.16.1)", "  if(S.practice) add(\"ps-warn\", S.practice);\n  add(\"ps-sub\", ws.length + \" words, in order. Check", "  add(\"ps-sub\", ws.length + \" words, in order. Check"],
+  ["practice print: the stamp sheet of a practice seed has no PRACTICE line (v2.16.1)", "  if(S.practice) add(\"ps-warn\", S.practice);\n  add(\"ps-sub\", ws.length + \" words, in order, cut", "  add(\"ps-sub\", ws.length + \" words, in order, cut"],
+  ["practice print: the summary sheet of a practice seed has no PRACTICE line (v2.16.1)", "    if(seedPr()) add(\"ps-warn\", seedPr());   // v2.16.1: a practice seed's sheet says so\n", ""],
+  ["practice print: the SeedQR sheet of a practice seed has no PRACTICE line (v2.16.1)", "(S.practice ? S.practice + \"\\n\\n\" : \"\") + S.fp + \"\\n\" + S.pass + \"\\n\\nScan with", "S.fp + \"\\n\" + S.pass + \"\\n\\nScan with"],
+  ["practice print: PRINT SEED blocked for a practice seed (v2.16.1)", "  const S = printSrc(from); if(!S) return;\n  if(!confirm(\"Printing sends your seed to a printer", "  const S = printSrc(from); if(!S || S.practice) return;\n  if(!confirm(\"Printing sends your seed to a printer"],
+  ["re-hide: the practice signer not on the list (v2.16.1)", "\"c32Status\",\n  // the practice signer: its screen and keys (v2.16.1)\n  \"ssDevice\"];", "\"c32Status\"];"],
+  ["re-hide: a seed in the practice signer no reason to cover (v2.16.1)", "const RH_HOLD = {ssDevice: () => typeof vfSignerHoldsSecret === \"function\" && vfSignerHoldsSecret()};", "const RH_HOLD = {ssDevice: () => false};"],
+  ["re-hide: the practice signer's own rule ignored (v2.16.1)", "  if(RH_HOLD[e.id]) return !!RH_HOLD[e.id]();\n", ""],
+  ["re-hide: a public test seed in the practice signer counts as a secret (v2.16.1)", "const pub = (s) => !s.passphrase && typeof knownPhrase === \"function\" && !!knownPhrase(s.mnemonic_str);", "const pub = (s) => false;"],
+  ["re-hide: a passphrase on a public seed in the practice signer not a secret (v2.16.1)", "const pub = (s) => !s.passphrase && ", "const pub = (s) => "],
+  ["re-hide: a seed being made on the practice signer not a secret (v2.16.1)", "    if (st.pending_seed && !pub(st.pending_seed)) return true;\n", ""],
+  ["re-hide: words being typed into the practice signer not a secret (v2.16.1)", "    if (pm.length && !pub({ mnemonic_str: pm.join(\" \"), passphrase: \"\" })) return true;\n", ""],
   // v2.15.0: the quick path and the guided practice (section 76)
   ['damascus guided: the practice mark is lost while it fills in', 'dmLoaded = {dice: b.dmDice, cards: b.dmCards, kind: "practice " + T.n};', 'dmLoaded = null;'],
   ['damascus guided: the Hammer hallmarks are not filled in', 'b.dmHR = i >= 3 ? T.mH.R : "";', 'b.dmHR = "";'],
