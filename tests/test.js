@@ -150,11 +150,15 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     { // Support this project (v1.27.3): optional, text plus a QR drawn by the page, no links, nothing sent
       const box=t.$('supportBox'), addr=t.$('supportAddr').textContent, code=t.$('supportLnurl').textContent.trim();
       ok(box&&!box.open&&/Support this project/.test(box.querySelector('summary').textContent)&&/Optional/.test(box.querySelector('summary').textContent),'support: a closed, optional "Support this project" box in ABOUT & HELP');
-      ok(addr==='dev@breez.tips'&&code==='LNURL1DP68GURN8GHJ7CNJV4JH5TN5D9C8XTMVDE6HYMRS9AJX2ASZ5RD0C','support: the Lightning address and payment code are exactly the maintainer\'s');
+      ok(addr==='keywest@strike.me'&&code==='LNURL1DP68GURN8GHJ7UM5WF5KKEFWD4JJ7TNHV4KXCTTTDEHHWM30D3H82UNVWQHKKETEWAJHXAQ6MZ0AF','support: the Lightning address and payment code are exactly the maintainer\'s');
       const svg=t.$('supportQr').querySelector('svg'); ok(svg&&svg.querySelector('path')&&t.w.qrMatrix(code).rows.length>=21,'support: the QR is drawn by the page from the payment code');
       ok(box.querySelectorAll('a, [href], img, iframe, script').length===0&&/never goes online/.test(box.textContent)&&/never send seed words/i.test(box.textContent),'support: no link, image or script in the box, and it says nothing is sent and never to send seed words');
       t.st.clip.length=0; const b=box.querySelectorAll('button'); b[0].click(); await new Promise(r=>setTimeout(r,20)); b[1].click(); await new Promise(r=>setTimeout(r,20)); const c1=t.st.clip[0], copied=t.st.clip[1];
-      ok(b.length===2&&c1==='dev@breez.tips'&&copied===code,'support: COPY copies the address and the payment code exactly'); }
+      ok(b.length===2&&c1==='keywest@strike.me'&&copied===code,'support: COPY copies the address and the payment code exactly');
+      // v2.16.1: a DONATE button at the bottom of every tab opens the box in ABOUT & HELP
+      const db=t.$('supportBtn'); t.w.showTab('make'); box.open=false; db.click();
+      ok(db&&db.textContent.trim()==='DONATE'&&db.closest('footer')&&!t.$('tp-about').classList.contains('tab-off')&&box.open,'support: DONATE (in the footer, on every tab) opens Support this project in ABOUT & HELP');
+      box.open=false; t.w.showTab('make'); }
     { // The dog logo is gone in the redesign. v2.14.0: the only pictures are the creator's profile picture next to the Damascus method's
       // creator line (top of the Damascus tab and ABOUT & HELP), one small WebP built into the file as a data: URI
       const im=[...t.w.document.querySelectorAll('img')], src=im.map(i=>i.getAttribute('src')||'');
