@@ -82,7 +82,7 @@ FILL IN A PRACTICE SHEET on the Damascus tab fills in practice sheet 1, 2, 3 ...
 3. **Dice:** pairs of draws, each 1 + a draw from 0 to 5 (first throw, then second), until the grid has 26 good pairs (52 for 24 words). Pairs that say "throw again" are kept, as on paper.
 4. **Cards:** for each deck, the 52 cards in the order clubs, diamonds, hearts, spades, Ace to King in each suit, shuffled by Fisher-Yates: for i from 51 down to 1, swap card i with card j, where j is a draw from 0 to i.
 
-The dice and the cards are drawn from one stream, dice first. Practice sheets 1 to 100 of both lengths make public test seeds: VOIDFORGE knows all 200 of them (and the three worked examples), says PRACTICE on the Damascus tab whenever the dice and cards make one, keeps FORGE SEED off for them, and warns about them in CHECK A BACKUP. `tests/vfmethod.test.mjs` makes all 200 again from this rule with node:crypto.
+The dice and the cards are drawn from one stream, dice first. Practice sheets 1 to 100 of both lengths make public test seeds: VOIDFORGE knows all 200 of them (and the three worked examples), says PRACTICE on the Damascus tab whenever the dice and cards make one, marks the seed PRACTICE when FORGE SEED shows it under YOUR SEED (and on every sheet and file made from it), and warns about them in CHECK A BACKUP. `tests/vfmethod.test.mjs` makes all 200 again from this rule with node:crypto.
 
 ## Prior art
 

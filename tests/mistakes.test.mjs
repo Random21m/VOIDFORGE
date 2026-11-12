@@ -78,8 +78,15 @@ const html = readHtml();
   // a result arriving while covered is covered too; a new passphrase check box too
   hideTab(); $('reforgeOut').style.filter = ''; $('reforgeOut').inert = false; E('rhCovered.delete(document.getElementById("reforgeOut"))'); w.rhTick(Date.now()); ok(covered('reforgeOut'), 're-hide: the 5-second check covers a place again if it was uncovered while hidden');
   w.rhShow();
-  // the practice signer, the practice phrase and public data are not on the list
-  ok(!E('rhIds()').some((id) => /^ss|^pr(Words|Input)$|^fingerprint$|^address$|^addrList$|^wvList$/.test(id)), 're-hide: the practice signer, the practice phrase and public data are not on the list');
+  // the practice phrase and public data are not on the list; v2.16.1: the practice signer is (its device: screen and keys)
+  ok(!E('rhIds()').some((id) => /^pr(Words|Input)$|^fingerprint$|^address$|^addrList$|^wvList$/.test(id)), 're-hide: the practice phrase and public data are not on the list');
+  ok(E('rhIds()').filter((id) => /^ss/.test(id)).join() === 'ssDevice', 're-hide (v2.16.1): the practice signer\u2019s device (screen and keys) is on the list');
+  { const keep = w.vfSignerHoldsSecret; w.clearAll(); await sleep(20);
+    w.vfSignerHoldsSecret = () => false; ok(E('rhAny()') === false && !w.rhHide('tab') && !covered('ssDevice'), 're-hide (v2.16.1): a practice signer with no seed, or only public ones, is no reason to cover');
+    w.vfSignerHoldsSecret = () => true; ok(E('rhAny()') === true, 're-hide (v2.16.1): a practice signer holding a seed that is not public is a reason to cover on its own');
+    hideTab(); ok(bar() && covered('ssDevice') && $('ssDevice').inert, 're-hide (v2.16.1): then the practice signer is covered and its keys do nothing until SHOW'); w.rhShow();
+    ok(!covered('ssDevice') && !$('ssDevice').inert, 're-hide (v2.16.1): SHOW uncovers the practice signer');
+    w.vfSignerHoldsSecret = keep; }
   // a secret in each kind of place triggers it: a box from AUTO_FIELDS, a box only on the re-hide list, an output, a QR picture
   w.clearAll(); await sleep(20);
   ok(E('rhAny()') === false, 'after CLEAR ALL the page holds no secret');

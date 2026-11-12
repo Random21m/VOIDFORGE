@@ -35,6 +35,22 @@ async function ssPageStart() {
   if (run !== ssPageRun) ssPageStop();   // closed while the fonts were loading
 }
 
+// v2.16.1: does the device hold a secret now (a reason for re-hide to cover it: RH_HOLD in the main script)? Any seed in its
+// memory, loaded or being made or typed in (the pending seed and words), unless it is a public seed with no passphrase (the
+// lessons' test seeds, a Damascus practice seed: knownPhrase). When it cannot tell, it says yes.
+function vfSignerHoldsSecret() {
+  if (!ssPageOn) return false;
+  try {
+    const st = SSController._instance && SSController._instance._storage; if (!st) return false;
+    const pub = (s) => !s.passphrase && typeof knownPhrase === "function" && !!knownPhrase(s.mnemonic_str);
+    for (const s of st.seeds || []) if (s && !pub(s)) return true;
+    if (st.pending_seed && !pub(st.pending_seed)) return true;
+    const pm = Array.isArray(st._pending_mnemonic) ? st._pending_mnemonic.filter(Boolean) : [];
+    if (pm.length && !pub({ mnemonic_str: pm.join(" "), passphrase: "" })) return true;
+    return false;
+  } catch (e) { return true; }
+}
+
 // Overwrites what can be overwritten in a seed (byte arrays, word lists) before the references are dropped.
 // (JavaScript strings cannot be wiped; dropping every reference lets the browser free them.)
 function ssPageScrubSeed(s) {
