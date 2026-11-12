@@ -2529,13 +2529,19 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       [st,cl,out]=await RF('abandon '.repeat(11)+'ab*'); ok(/^1 word fits at position 12/.test(st)&&out==='about','Reforge: one damaged word and nothing to check against lists the words that fit');
       [st,cl,out]=await RF('abandon '.repeat(8)+'ab?ndon aban*on a?a* ab*'); ok(/^\d+ phrases? fits? the letters you read and pass the checksum \(of 110 combinations\)/.test(st)&&/Phrase 1:/.test(out)&&/ok/.test(cl),'Reforge: a few phrases that pass the checksum are listed when nothing is given to check against');
       [st,cl,out]=await RF('abandon '.repeat(9)+'ab* c?ar ?'); ok(/^2,560 of the 40,960 combinations .* pass the checksum: too many to list \(more than 20\)/.test(st)&&out==='','Reforge: too many phrases to list asks for something to check against');
-      // a random wallet with three damaged words, found with its fingerprint and with one of its addresses
-      { const {generateMnemonic,mnemonicToSeedSync}=require('@scure/bip39'); const {HDKey}=require('@scure/bip32');
-        const m=generateMnemonic(W).split(' '), root=HDKey.fromMasterSeed(mnemonicToSeedSync(m.join(' '),'')), fpx=root.fingerprint.toString(16).padStart(8,'0');
-        const dm=m.slice(); dm[1]=m[1].slice(0,2)+'*'; dm[5]='?'+m[5].slice(1); dm[10]=m[10].slice(0,3)+'?';
-        [st,cl,out]=await RF(dm.join(' '),fpx); ok(/^FOUND/.test(st)&&out.includes(m.map((x,i)=>(i+1)+'. '+x).join('   '))&&/Changed: word 2 \([a-z]+\*\) is /.test(out),'Reforge: a random wallet with three damaged words is found by its fingerprint ('+dm[1]+', '+dm[5]+', '+dm[10]+')');
+      // a random wallet with three damaged words, found with its fingerprint and with one of its addresses. The wallet comes from a
+      // seeded stream (VF_SEED; by default seeds 1 and 2): its entropy is the first 16 bytes of SHA-256 of 'reforge damaged <seed>',
+      // so a failure names its seed and VF_SEED=<seed> replays it. Word 2 is damaged to its first 2 letters and *: for 34 words
+      // (rhythm, oyster, ugly ...) no other word starts with those 2 letters, so Reforge reads it as that word ("read word 2 'rh*'
+      // as 'rhythm'") and does not list it as changed. Seed 1 is such a wallet (rh*), seed 2 is not (fa*: 22 words). Word 11
+      // keeps 3 letters and ends in ?, one letter: a 3-letter word (103 of them, such as van) keeps 2, as van? fits no 3-letter word.
+      for(const seed of process.env.VF_SEED?[process.env.VF_SEED]:['1','2']){ const {entropyToMnemonic,mnemonicToSeedSync}=require('@scure/bip39'); const {HDKey}=require('@scure/bip32');
+        const m=entropyToMnemonic(nc.createHash('sha256').update('reforge damaged '+seed).digest().subarray(0,16),W).split(' '), root=HDKey.fromMasterSeed(mnemonicToSeedSync(m.join(' '),'')), fpx=root.fingerprint.toString(16).padStart(8,'0');
+        const dm=m.slice(); dm[1]=m[1].slice(0,2)+'*'; dm[5]='?'+m[5].slice(1); dm[10]=m[10].slice(0,Math.min(3,m[10].length-1))+'?';
+        const one=ref(dm[1]).length===1, w2=(st,out)=>one?st.includes("word 2 '"+dm[1]+"' as '"+m[1]+"'")&&!/word 2 \(/.test(out):out.includes('word 2 ('+dm[1]+') is '+m[1]), tag=' (seed '+seed+': '+dm[1]+', '+dm[5]+', '+dm[10]+(one?'; '+dm[1]+' fits only '+m[1]:'')+'; replay with VF_SEED='+seed+')';
+        [st,cl,out]=await RF(dm.join(' '),fpx); ok(/^FOUND/.test(st)&&out.includes(m.map((x,i)=>(i+1)+'. '+x).join('   '))&&w2(st,out),'Reforge: a random wallet with three damaged words is found by its fingerprint'+tag);
         const {bech32}=require('@scure/base'), ad=bech32.encode('bc',[0,...bech32.toWords(rmd(nsha(root.derive("m/84'/0'/0'/0/3").publicKey)))]);
-        [st,cl,out]=await RF(dm.join(' '),ad); ok(/^FOUND and confirmed/.test(st)&&/receive address #3/.test(out)&&out.includes(m.map((x,i)=>(i+1)+'.\u00a0'+x).join('   ')),'Reforge: ... and by one of its addresses'); }
+        [st,cl,out]=await RF(dm.join(' '),ad); ok(/^FOUND and confirmed/.test(st)&&/receive address #3/.test(out)&&out.includes(m.map((x,i)=>(i+1)+'. '+x).join('   '))&&w2(st,out),'Reforge: ... and by one of its addresses'+tag); }
       { $('reforgeWordsInput').value='c??? ? '+'abandon '.repeat(10); $('reforgeWordsCheck').value='73c5da0a';
         const run=w.reforgeWords(); await sleep(300); const busy=$('reforgeWordsBtn').disabled&&!$('reforgeStopBtn').disabled; w.reforgeStop(); await run;
         ok(busy&&/^STOPPED in step 1 after checking [\d,]+ of 370,688 phrases; nothing was compared yet\. The search is NOT complete/.test($('reforgeStatus').textContent)&&!$('reforgeWordsBtn').disabled,'Reforge: a damaged-word search shows progress and STOP ends it'); }

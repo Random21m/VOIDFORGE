@@ -1088,6 +1088,13 @@ async function probe(w, mutated, fast, only, hooks) {
       const o = $('dmrOut').textContent; if (/BIP39 checksum is wrong/.test(o) ? !/- two words in swapped places \(the row and column hallmarks miss/.test(o) : !/Without the skew hallmark K, two words in swapped places can still pass/.test(o)) fails.push(T + 'review M3: a swap without K is named as a possible cause');
       $('dmrWords').value = r0.E.phrase.join(' '); const p = w.dmRecheck(); w.dmrClear(); await p;
       if ($('dmrOut').textContent) fails.push(T + 'review L4: a recheck still working writes nothing after CLEAR'); }
+    { // K is the parity along (row + column) mod 11, so row 1 and row 12 (the last word's 7 bits) share it: worked example 1 with
+      // deal for kick changes 2 bits in columns 2 and 7, which fits word 1 and the last word alike, with or without K
+      const ph = 'kick confirm home few coin pencil praise burst business fix credit sword'.split(' '), bits = ph.flatMap((x, i) => [...wordlist.indexOf(x).toString(2).padStart(11, '0')].slice(0, i < 11 ? 11 : 7).map(Number)), mk = V.marks(bits);
+      const rk = async (K) => { $('dmrWords').value = ['deal', ...ph.slice(1)].join(' '); $('dmrM').value = mk.M; $('dmrR').value = mk.R; $('dmrK').value = K; await w.dmRecheck(); return $('dmrOut').textContent; };
+      if (!/cannot tell which, not even the skew hallmark K: words 1 and 12 are 11 rows apart in the grid, so they have the same skew letters\. With the checksum it is one of: word 1: kick; or word 12: [a-z]+\./.test(await rk(mk.K))) fails.push(T + 'recheck: with K, a wrong word 1 that fits the last word too lists both and says K cannot tell them apart');
+      if (!/cannot tell which \(nor would the skew hallmark K: words 1 and 12 are 11 rows apart/.test(await rk(''))) fails.push(T + 'recheck: without K, it does not claim K would tell word 1 from the last word');
+      w.dmrClear(); }
     // 9. printing waits for the self-test (L6)
     { let n = 0; w.print = () => { n++; }; const al = w.alert; w.alert = () => {}; w.eval("selfTestState = 'fail'"); w.dmPrint('h'); w.eval("selfTestState = 'pass'"); w.alert = al;
       if (n) fails.push(T + 'review L6: no sheet prints while the self-test has not passed'); w.dispatchEvent(new w.Event('afterprint')); }
@@ -7744,6 +7751,7 @@ const M = [
   ["damascus: the mistake finder names the wrong run", "const run = Math.floor(i / 5), k = good[run]", "const run = Math.floor(i / 6), k = good[run]"],
   ["damascus: a neighboring word not named", "if(Math.abs(got - want) === 1)", "if(Math.abs(got - want) === 2)"],
   ["damascus: recheck without K blames the last word (review M3)", "(gk ? \"- most likely", "(true ? \"- most likely"],
+  ["damascus: recheck says K would tell word 1 from the last word", "kn === cand.length ? \" (the skew hallmark K would)\"", "true ? \" (the skew hallmark K would)\""],
   ["damascus: recheck writes after CLEAR (review L4)", "function dmrWipe(){ dmrSeq++;", "function dmrWipe(){"],
   ["damascus: sheets print before the self-test (review L6)", "if(!gateOk()) return;   // review L6", "if(false) return;   // review L6"],
   ["damascus: the dice pad splits a pair", "(/^[1-6]$/.test(last) ? \"\" : t ? \" \" : \"\")", "(/^[1-6]$/.test(last) ? \" \" : t ? \" \" : \"\")"],

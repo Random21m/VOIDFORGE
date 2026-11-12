@@ -14,16 +14,18 @@
 //    examples and 20 random sheets, Tools > Calc 12th/24th word > words > Build Final Word > Coin flip entropy gives the same
 //    last word and fingerprint, and Address explorer the same first address; the labels match what the Forge sheet prints.
 //    With SEEDSIGNER_SRC set to SeedSigner's src folder, SeedSigner's own Python (tests/vendor/seedsigner_final_word.py) too.
-// Run: node tests/vfmethod.test.mjs     (VF_RANDOM=200 for fewer random sheets; VF_DEVICE=0 to skip the Chromium parts)
+// Run: node tests/vfmethod.test.mjs     (VF_RANDOM=200 for fewer random sheets; VF_DEVICE=0 to skip the Chromium parts;
+//      VF_SEED=n replays the seeded checks: the FORGE SEED sheet and the one-wrong-word recheck)
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
-import { randomInt, randomBytes } from "node:crypto";
+import { randomInt, randomBytes, createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { loadPage, ready, readHtml, HTML_PATH } from "./harness.mjs";
 
 const require = createRequire(import.meta.url);
+const cryptoInt = randomInt;   // randomSheet takes a seeded draw instead where a case must replay (VF_SEED)
 const here = path.dirname(fileURLToPath(import.meta.url));
 const vf = require("./fixtures/damascus/vf.js");
 const bip39 = require("@scure/bip39");
@@ -41,6 +43,11 @@ const $ = (id) => w.document.getElementById(id);
 check("the page self-test passes 155/155 (141, 6 from v2.15.0 and 8 from v2.16.0)", /SELF-TEST PASSED \(155\/155\)/.test($("selfTestBadge").textContent), $("selfTestBadge").textContent);
 
 // ---------- helpers
+// Seeded draws for the checks whose rare cases must replay: SHA-256 of "<name> seed <SEED> block k", 32-bit numbers, rejection.
+// VF_SEED picks the stream (default 1); a failure names its seed, and VF_SEED=<seed> runs it again.
+const SEED = process.env.VF_SEED || "1";
+const seeded = (name) => { let block = 0, buf = Buffer.alloc(0), at = 0;
+  return (m) => { const lim = Math.floor(4294967296 / m) * m; for(;;){ if(at + 4 > buf.length){ buf = createHash("sha256").update(name + " seed " + SEED + " block " + block++).digest(); at = 0; } const v = buf.readUInt32BE(at); at += 4; if(v < lim) return v % m; } }; };
 const ex = [1, 2, 3].map((i) => JSON.parse(readFileSync(path.join(here, "fixtures", "damascus", "example-" + i + ".json"), "utf8")));
 const pairsOf = (s) => String(s).trim().split(/\s+/).map((t) => [+t[0], +t[1]]);
 const refForge = (words, dice, cards) => vf.forge({ words, dice, cards: cards.map((d) => Array.isArray(d) ? d : String(d).trim().split(/\s+/)) });
@@ -54,7 +61,7 @@ const fpOf = (m) => rootOf(m).fingerprint.toString(16).padStart(8, "0");
 const addrOf = (m) => btc.p2wpkh(rootOf(m).derive("m/84'/0'/0'/0/0").publicKey).address;
 const ent = (m) => bip39.mnemonicToEntropy(m, wordlist);
 const xorB = (a, b) => a.map((x, i) => x ^ b[i]);
-function randomSheet(words){
+function randomSheet(words, randomInt = cryptoInt){
   const dice = []; let acc = 0, need = Math.ceil(vf.PLAN[words].bits / 5);
   while(acc < need + randomInt(4)){ const a = 1 + randomInt(6), b = 1 + randomInt(6); dice.push([a, b]); if(vf.mirrorCode(a, b) !== null) acc++; }
   const cards = vf.cardPlan(vf.PLAN[words].bits).map(() => { const d = Array.from({ length: 52 }, (_, i) => i); for(let i = 51; i > 0; i--){ const j = randomInt(i + 1); [d[i], d[j]] = [d[j], d[i]]; } return d.map(vf.cardName); });
@@ -140,7 +147,8 @@ check("the Damascus tab opens its box and says what it needs", w.document.body.c
 const E1 = exRes[0], E3 = exRes[2];
 w.confirm = () => true;   // the questions before an assay, a practice sheet and a mismatched forge (each one is tested below)
 // a random sheet of our own (not public), for FORGE SEED
-const RS = randomSheet(12), RSref = refForge(12, RS.dice, RS.cards), RSdice = RS.dice.map((p) => p.join("")).join(" "), RScards = pageCards(RS.cards.map((d) => d.join(" ").replace(/T/g, "10")));
+// the sheet used for FORGE SEED below, from the seeded stream: about 1 fair sheet in 30 fails a bias box, and the page then says so
+const RS = randomSheet(12, seeded("FORGE SEED sheet")), RSref = refForge(12, RS.dice, RS.cards), RSdice = RS.dice.map((p) => p.join("")).join(" "), RScards = pageCards(RS.cards.map((d) => d.join(" ").replace(/T/g, "10")));
 set("dmDice", RSdice); set("dmCards", RScards);
 check("both sheets typed (a sheet of our own): CHECK MY SHEETS and FORGE SEED turn on, no PRACTICE", !$("dmCheckBtn").disabled && !$("dmBtn").disabled && $("dmPracticeBan").style.display === "none", $("dmCount").textContent + " / " + $("dmMsg").textContent);
 set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards));
@@ -364,15 +372,39 @@ w.dmClear(); words(12);
   const ph = E1.p.F.phrase, mk = E1.p.F.marks;
   check("recheck: the right words and hallmarks match", /The hallmarks match these 12 words, and the BIP39 checksum is right/.test(await rc(ph, mk.M, mk.R, mk.K)));
   check("recheck: four-letter words work too", /The hallmarks match/.test(await rc(ph.split(" ").map((x) => x.slice(0, 4)).join(" "), mk.M, mk.R)));
-  let bad = [];
-  for(let t = 0; t < 30; t++){
-    const i = randomInt(11), ws = ph.split(" "); let nw; do nw = wordlist[randomInt(2048)]; while(nw === ws[i]); const right = ws[i]; ws[i] = nw;
+  // One wrong word, on a seeded stream (seeded below: a failure names its seed, so VF_SEED=<seed> replays it).
+  // The hallmarks are XOR-linear. A wrong word i (0-based row) changes its row by d = old XOR new (11 bits, not 0): M changes in
+  // the columns of d, R in row i only if d has an odd number of 1s, and K (K_l = XOR of the cells with (row + column) mod 11 = l)
+  // by d turned round i places. Flipping d back in row i always fits, so word i is always listed. Another row r fits M and R only
+  // if d has an even number of 1s, and K too only if r - i is 0 mod 11: in 12 words only row 0 with row 11, the last word (its
+  // first 7 bits, so d in columns 1 to 7). The last row needs no checksum match (its checksum is worked out again), so:
+  // - with K: exactly word i+1, except word 1 with d even and in columns 1 to 7 (63 of the 2,047 other words): then words 1
+  //   and 12 both fit every hallmark, and the page lists both and says K cannot tell them apart;
+  // - without K: d odd gives exactly word i+1; d even also lets other rows fit M and R, kept only if the typed last word still
+  //   fits the checksum (about 1 in 16), and the last row: word i+1 is listed among them.
+  const pop = (x) => x.toString(2).split("1").length - 1, idx = ph.split(" ").map((x) => wordlist.indexOf(x));
+  // the other fit: word 1 as typed, and d flipped in row 12 (the last word's first 7 bits) instead; its last word with @scure/bip39
+  const last12 = (d, nw) => { const b = [wordlist.indexOf(nw), ...idx.slice(1)].map((x) => x.toString(2).padStart(11, "0")).join("").slice(0, 128).split("").map(Number); for(let c = 0; c < 7; c++) b[121 + c] ^= (d >> (10 - c)) & 1;
+    return bip39.entropyToMnemonic(Uint8Array.from(b.join("").match(/.{8}/g).map((x) => parseInt(x, 2))), wordlist).split(" ")[11]; };
+  const oneWrong = async (i, nw) => {
+    const ws = ph.split(" "), right = ws[i], d = idx[i] ^ wordlist.indexOf(nw), out = []; ws[i] = nw;
     const o = await rc(ws.join(" "), mk.M, mk.R);
-    if(!/most likely wrong/.test(o) || !o.includes("word " + (i + 1) + ": " + right)) bad.push(i + ":" + o.slice(0, 160));
-    const o2 = await rc(ws.join(" "), mk.M, mk.R, mk.K);
-    if(!o2.includes("Word " + (i + 1) + " is most likely wrong. If it is the only wrong word, the backup should read word " + (i + 1) + ": " + right)) bad.push("K" + i + ":" + o2.slice(0, 160));
-  }
-  check("recheck: one wrong word (30 tries) is found with the word it should be (with K: exactly that word; without K: among the few the checksum allows)", bad.length === 0, bad.slice(0, 2).join(" | "));
+    if(!/most likely wrong/.test(o) || !o.includes("word " + (i + 1) + ": " + right) || (pop(d) % 2 && !o.includes("Word " + (i + 1) + " is most likely wrong. If it is the only wrong word, the backup should read word " + (i + 1) + ": " + right + " ("))) out.push(i + ">" + nw + ":" + o.slice(0, 200));
+    const o2 = await rc(ws.join(" "), mk.M, mk.R, mk.K), twin = i === 0 && pop(d) % 2 === 0 && (d & 15) === 0;
+    if(twin ? !o2.includes("cannot tell which, not even the skew hallmark K: words 1 and 12 are 11 rows apart in the grid, so they have the same skew letters. With the checksum it is one of: word 1: " + right + "; or word 12: " + last12(d, nw) + ". Check these")
+      : !o2.includes("Word " + (i + 1) + " is most likely wrong. If it is the only wrong word, the backup should read word " + (i + 1) + ": " + right + " (")) out.push("K" + i + ">" + nw + ":" + o2.slice(0, 200));
+    return { out, twin }; };
+  { const draw = seeded("recheck one wrong word"); let bad = [];
+    for(let t = 0; t < 30; t++){ const i = draw(11); let nw; do nw = wordlist[draw(2048)]; while(nw === ph.split(" ")[i]); bad.push(...(await oneWrong(i, nw)).out); }
+    check("recheck: one wrong word (30 tries, seed " + SEED + ") is found with the word it should be (with K: exactly that word, or words 1 and 12 when K cannot tell them apart; without K: among the few the checksum allows)", bad.length === 0, "replay with VF_SEED=" + SEED + ": " + bad.slice(0, 2).join(" | ")); }
+  { // every other word in place of word 1: 63 of them change only bits in columns 1 to 7, in an even number: K cannot tell word 1 from word 12
+    let bad = [], twins = 0;
+    for(let v = 0; v < 2048; v++) if(v !== idx[0]){ const r = await oneWrong(0, wordlist[v]); bad.push(...r.out); if(r.twin) twins++; }
+    check("recheck: all 2,047 wrong first words: word 1 is always listed; with K it is the only one, except the 63 that K cannot tell from the last word, which name words 1 and 12 and say why", bad.length === 0 && twins === 63, twins + " " + bad.slice(0, 2).join(" | ")); }
+  { // 24 words: K is the same on rows 11 or 22 apart, so a wrong word 2 that changes 2 of its first 3 bits fits the last word too
+    const ph3 = E3.p.F.phrase.split(" "), mk3 = E3.p.F.marks, ws = ph3.slice(), v = wordlist.indexOf(ws[1]) ^ 0b11000000000; ws[1] = wordlist[v];
+    const o = await rc(ws.join(" "), mk3.M, mk3.R, mk3.K);
+    check("recheck, 24 words: a wrong word 2 that K cannot tell from word 24 lists both and says they are 22 rows apart", /cannot tell which, not even the skew hallmark K: words 2 and 24 are 22 rows apart in the grid, so they have the same skew letters\. With the checksum it is one of: word 2: [a-z]+; or word 24: [a-z]+\./.test(o) && o.includes("word 2: " + ph3[1] + ";"), o); }
   { const ws = ph.split(" "); let a = 0, b = 0; for(a = 0; a < 11; a++){ for(b = a + 1; b < 11; b++) if(E1.p.F.marks.R[a] !== E1.p.F.marks.R[b]) break; if(b < 11) break; }
     [ws[a], ws[b]] = [ws[b], ws[a]]; const o = await rc(ws.join(" "), mk.M, mk.R, mk.K);
     check("recheck: two words in swapped places are named (the skew hallmark K agrees)", o.includes("Words " + (a + 1) + " and " + (b + 1) + " may be in swapped places (the skew hallmark K agrees)"), o); }
@@ -420,7 +452,8 @@ await w.dmGenerate();
 const RSfp = fpOf(RSref.E.phrase.join(" ")), RSad = addrOf(RSref.E.phrase.join(" "));
 check("FORGE SEED: the Damascus seed goes into the page's normal result (words, fingerprint, first address)", w.hasSeed() && w.eval("madeMnemonic") === RSref.E.phrase.join(" ") && $("fingerprint").textContent.includes(RSfp) && $("address").textContent.includes(RSad) && w.eval("seedKind") === "dm", $("fingerprint").textContent);
 { const S = w.seedSummary();
-  check("review L17: the seed summary gives the strength with its condition (the dice or the shuffle fair)", S && S.lines.some((l) => /^Strength: the words hold 128 bits of randomness \(if the dice or the shuffle was fair: either one is enough\)$/.test(l)), S && S.lines.join(" | ")); }
+  const biasFail = !RSref.bias.dice.pass || RSref.bias.cards.some((b) => !b.pass);   // a fair sheet can fail a bias box: then FORGE SEED asked first, and the line says so
+  check("review L17: the seed summary gives the strength with its condition (the dice or the shuffle fair" + (biasFail ? "; this sheet failed a bias box, and the line says so" : "") + ", seed " + SEED + ")", S && S.lines.includes("Strength: the words hold 128 bits of randomness (if the dice or the shuffle was fair: either one is enough" + (biasFail ? "; a bias box said FAIL and the seed was made anyway" : "") + ")"), "replay with VF_SEED=" + SEED + ": " + (S && S.lines.join(" | "))); }
 check("FORGE SEED: the summary says the Damascus method", /the Damascus method/.test($("sumLine").textContent), $("sumLine").textContent);
 set("dmDice", RSdice + " 12");
 check("changing the dice after FORGE SEED clears the words (stale guard)", !w.hasSeed() && /You changed the dice pairs, the cards, the word count or who checks after FORGE SEED/.test($("genResult").textContent));

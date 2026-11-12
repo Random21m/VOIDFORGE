@@ -17058,11 +17058,19 @@ async function dmRecheck(){
     const right = (await entropyToMnemonic(dmBytes(fix))).split(" ");
     if(seq !== dmrSeq) return;
     if(r < P.rows && right[wc - 1] !== typed[wc - 1]) continue;
-    cand.push({r, words: right.map((x, i) => x !== typed[i] ? "word " + (i + 1) + ": " + x : "").filter(Boolean)});
+    cand.push({r, k: fm.K, words: right.map((x, i) => x !== typed[i] ? "word " + (i + 1) + ": " + x : "").filter(Boolean)});
   }
   const sure = " This changes the backup to another valid phrase: change it only if your Forge sheet agrees and the fingerprint matches the one you wrote down.";
   if(cand.length === 1) lines.push("Word " + cand[0].r + " is most likely wrong. If it is the only wrong word, the backup should read " + cand[0].words.join(", ") + " (this fits all the hallmarks" + (cand[0].words.length > 1 ? "; the last word changes with it, because of the checksum" : "") + ")." + sure);
-  else if(cand.length > 1) lines.push("One word is most likely wrong, but the hallmarks cannot tell which" + (gk ? "" : " (the skew hallmark K would)") + ". With the checksum it is one of: " + cand.map(c => c.words.join(", ")).join("; or ") + ". Check these against the word table." + sure);
+  else if(cand.length > 1){
+    // A wrong word whose bits change in an even number of places (R misses it) changes M as the same change in any other row
+    // would. K is the parity along skew lines, (row + column) mod 11, so rows 11 or 22 apart have the same skew letters: K tells
+    // rows apart unless they are 11 or 22 apart (row 1 and the last row of 12 words; rows r, r + 11 and r + 22 of 24 words).
+    const kn = new Set(cand.map(c => c.k)).size, gap = wc === 24 ? "rows 11 or 22 apart" : "rows 11 apart";
+    const apart = cand.length === 2 ? "words " + cand[0].r + " and " + cand[1].r + " are " + (cand[1].r - cand[0].r) + " rows apart in the grid" : "words " + cand.map(c => c.r).join(", ").replace(/, (?=\d+$)/, " and ") + " are each 11 rows from the next in the grid";
+    lines.push("One word is most likely wrong, but the hallmarks cannot tell which" + (gk ? ", not even the skew hallmark K: " + apart + ", so they have the same skew letters"
+      : kn === cand.length ? " (the skew hallmark K would)" : kn > 1 ? " (the skew hallmark K would narrow it down, but not to one word: " + gap + " in the grid have the same skew letters)" : " (nor would the skew hallmark K: " + apart + ", so they have the same skew letters)") + ". With the checksum it is one of: " + cand.map(c => c.words.join(", ")).join("; or ") + ". Check these against the word table." + sure);
+  }
   else if(dr.length === 1 && !dm.length) lines.push("Row " + dr[0] + " is off but no column is: most likely the row hallmark of word " + dr[0] + " was copied wrong.");
   else if(dr.length === 2 && !dm.length){
     const [a, b] = dr, sw = bits.slice(); for(let c = 0; c < 11; c++){ const i = (a - 1) * 11 + c, j = (b - 1) * 11 + c; if(i < bits.length && j < bits.length){ sw[i] = bits[j]; sw[j] = bits[i]; } }
