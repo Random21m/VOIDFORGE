@@ -746,6 +746,12 @@ if(browser){
   await page.evaluate(async (e) => { document.getElementById("wordSel").value = "12"; document.getElementById("wordSel").dispatchEvent(new Event("change")); const s = (id, v) => { const x = document.getElementById(id); x.value = v; x.dispatchEvent(new Event("input")); }; s("dmDice", e.dice); s("dmCards", e.cards.join("\n")); document.getElementById("dmLwBox").open = true; await dmCheck(); }, { dice: E1.e.dice, cards: E1.e.cards });
   const sw = await page.evaluate(() => { const o = []; for(let n = 1; n <= 5; n++){ dmShowStep(n); o.push(document.documentElement.scrollWidth - document.documentElement.clientWidth); } return o; });
   check("phone width (360 px): the Damascus tab with a check on screen has no sideways scroll, in each of the five steps", sw.every((x) => x <= 0), sw.join(", "));
+  // v2.16.1 (owner's report): after FORGE SEED the page lands on YOUR SEED with the words in view, not below them under the tab bar
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(([d, c]) => { for(const [id, v] of [["dmDice", d], ["dmCards", c]]){ const x = document.getElementById(id); x.value = v; x.dispatchEvent(new Event("input", { bubbles: true })); } }, [RSdice, RScards]);
+  await page.click("#dmBtn"); await page.waitForFunction(() => hasSeed(), null, { timeout: 60000 });
+  let pos = null; for(let i = 0; i < 40; i++){ await sleep(100); const p2 = await page.evaluate(() => { const g = document.getElementById("wordGrid").getBoundingClientRect(), t = document.getElementById("tabs").getBoundingClientRect(); return [Math.round(g.top), Math.round(g.bottom), Math.round(t.bottom), innerHeight, scrollY]; }); if(pos && pos[4] === p2[4]) { pos = p2; break; } pos = p2; }
+  check("v2.16.1: after FORGE SEED (Damascus) the 12 words are in view, below the tab bar", pos && pos[0] >= pos[2] && pos[1] <= pos[3], JSON.stringify(pos));
   check("no page error in Chromium", problems.length === 0, problems.join(" | "));
   await ctx.close();
 }

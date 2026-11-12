@@ -108,6 +108,14 @@ async function probe(w, mutated, fast, only, hooks) {
   if (adOf() !== addr(expect.d50, '')) fails.push('first receive address');
   }
   if (hooks && hooks.afterBase) await hooks.afterBase();
+  // v2.16.1 (owner's report): after a seed is made the page scrolls to YOUR SEED, so the words are in view (jsdom has no layout,
+  // so the probe records which element is scrolled to)
+  if (SEC(79, "v2.16.1: after FORGE SEED the page scrolls to YOUR SEED")) {
+    const P = w.Element.prototype, had = P.scrollIntoView; let to = null;
+    P.scrollIntoView = function () { to = this.id; };
+    try { w.jumpToSeed(); } finally { if (had) P.scrollIntoView = had; else delete P.scrollIntoView; }
+    if (to !== 'seedHead') fails.push('jump to the seed: lands on YOUR SEED (' + to + ')');
+  }
   // v2.16.0 "Recover old wallets", part A: Open an Electrum wallet file (files made by Electrum 4.8.4 itself and what Electrum said
   // about them, tests/fixtures/electrum/), and any path with more addresses in Open this wallet (addresses from @scure/bip32). It
   // ends with the reader and the wallet view cleared, so the sections after it start as before.
@@ -5511,7 +5519,8 @@ const M = [
   ['word draw: words rows missing', '  st.wordBits.forEach((b, i) => add((1 + i) + ".",', '  st.wordBits.slice(0, 0).forEach((b, i) => add((1 + i) + ".",'],
   ['word draw: flips row missing', '  add("Flips", st.flips + "  (" + st.flips.length + " bits)");\n', ''],
   ['word draw: no-hashing note missing', '  const n = document.createElement("div"); n.className = "hint"; n.style.margin = "6px 0 0"; n.textContent = "No hashing is applied to your words: they are the seed. Only the checksum is calculated."; o.appendChild(n);\n', ''],
-  ['word draw: no scroll to the result (display only)', '  if(guideOn){ guideN = 3; guideRender(); }\n  jumpTo("genResult");', '  if(guideOn){ guideN = 3; guideRender(); }', true],
+  ['jump to the seed: lands on the result line under the words (v2.16.1)', 'function jumpToSeed(){ jumpTo("seedHead"); }', 'function jumpToSeed(){ jumpTo("genResult"); }'],
+  ['word draw: no scroll to the result (display only)', '  if(guideOn){ guideN = 3; guideRender(); }\n  jumpToSeed();', '  if(guideOn){ guideN = 3; guideRender(); }', true],
   ["address list not cleared after an error", "for(const id of Object.keys(ADDR_LISTS)) document.getElementById(id).textContent = \"\";", ""],
   ['address guide hidden after FORGE', 'document.getElementById("checkGuide").style.display = ""; document.getElementById("drillBox").style.display = "";\n}', 'document.getElementById("checkGuide").style.display = "none"; document.getElementById("drillBox").style.display = "";\n}'],
   ['4-letter view: three letters', 'e.textContent = abbrOn ? e.dataset.w.slice(0, 4) : e.dataset.w;', 'e.textContent = abbrOn ? e.dataset.w.slice(0, 3) : e.dataset.w;'],
