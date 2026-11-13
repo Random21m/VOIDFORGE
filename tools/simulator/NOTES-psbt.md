@@ -34,3 +34,21 @@ Built into the same script block as ss_tools_settings.js PART B (after it), so t
   flow ends on "Signing Failed" either way.
 - Wiping: ssPsbtWipeController (called by ssPageStop) overwrites the PSBT, signatures, descriptor, scanned decoder data
   and the signing root key held by PSBTParser.
+
+## v2.17.0: the practice signer for real (ss_own.js)
+Built into the last script block, after ss_page.js and ss_learn.js. Page glue only: nothing is drawn on the device or added to its
+menus, and nothing is put into its memory. A PSBT, address, sortedmulti descriptor or signmessage request typed, chosen or scanned
+next to the device is held up to its camera by the practice wallet (a PSBT as an animated UR crypto-psbt); the person chooses Scan.
+- SIM: VOIDFORGE rule, called by SSPSBTFinalizeView.run (after Approve transaction, before sign_with) and by
+  SSSeedSignMessageSignedMessageQRView.run (before sign_message): ssOwnSignGate. A PSBT whose key paths or global xpubs name another
+  network than the device's setting is refused ("Wrong network" on SeedSigner's own ErrorView, Back returns to Sign Transaction). A
+  seed that is not public (pubKind) signs a PSBT only after a yes to the page's confirm() (outputs checked; offline, or a warning
+  that the computer is online), and a message while online only after a yes; No shows "Not signed" and signs nothing. A public
+  seed and the made-up practice transaction sign with no question.
+- The signed PSBT offered as text and file is controller.psbt after PSBTParser.trim, the bytes the device's UR encoder shows; the
+  untrimmed PSBT (the parser's, signed in place) is checked with the page's inspectPsbt and psbtSigCheck first.
+- Schnorr nonces: no aux randomness, the key itself hashed into the nonce (see ssPsbtSchnorrSign); ECDSA: RFC 6979, low S, ground
+  for a DER signature of at most 70 bytes with the extra data 1, 2, ... (embit; Bitcoin Core grinds the same way on R alone).
+  @scure/btc-signer's own lowR grinding starts at 0 and so differs whenever the first R is high: the tests use their own reference.
+- The device's online rule for seed QR codes (ssToolsSeedScanBlocked) takes the decoder: a public seed is read online, and the
+  SeedQR of LOAD INTO THE PRACTICE SIGNER after the person said yes (ssLearnSeedScanOk).

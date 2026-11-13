@@ -1890,7 +1890,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const r=load(); await r.ready(); const $=r.$, w=r.w, AB='abandon '.repeat(11)+'about';
     const EL_STD='cycle rocket west magnet parrot shuffle foot correct salt library feed song', EL_SW='bitter grass shiver impose acquire brush forget axis eager alone wine silver';
     const DF=async(words,pass,addr)=>{ $('phrase').value=words; $('verifyPass').value=pass; $('detAddr').value=addr; await w.detFind(); return {st:$('detStatus').textContent, cls:$('detStatus').className, out:$('detOut').textContent, shown:$('detOut').style.display!=='none'}; };
-    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.16.1','v2.16.1: the footer shows the new version');
+    eq(html.match(/<div class="ft-name">VOIDFORGE <span>(v[\d.]+)<\/span>/)[1],'v2.17.0','v2.17.0: the footer shows the new version');
     ok(html.indexOf('<li><b>2.8.0</b>')>0&&html.indexOf('<li><b>2.8.0</b>')<html.indexOf('<li><b>2.7.0</b>'),'v2.8.0: the changelog lists 2.8.0 first');
     // --- Wallet Detective ---
     ok(!$('detBtn').disabled&&!$('detListBtn').disabled&&$('detStop').disabled&&$('detBtn').className===''&&$('detListBtn').className==='secondary small','Wallet Detective: FIND MY WALLET is the gold main button, enabled after the self-test; LIST and STOP are gray');
@@ -2891,12 +2891,36 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     w.setGate('fail','SELF-TEST FAILED','bad'); ok($('msStartBtn').disabled,'Taproot multisig: START MULTISIG SETUP waits for the self-test'); w.setGate('pass','SELF-TEST PASSED','good');
     ok(r.errors.length===0,'Taproot multisig: no page errors '+JSON.stringify(r.errors));
     r.w.close(); })();
+  // v2.17.0: the practice signer works for real (ss_own.js). The page text, the house style of the new box, the hooks into re-hide, the
+  // wipes and the camera, and in jsdom what the box reads and the warnings it gives (the signing itself: tests/oracle.test.mjs, the
+  // whole flow in Chromium: tests/simulator.test.mjs, the guards: tests/mutation.test.mjs section 83)
+  sweep(t);
+  await (async()=>{ const r=load(); await r.ready(); const $=r.$, w=r.w, d=w.document, names=w.eval('DICT').map(e=>e[0]), fs=require('fs');
+    const {HDKey}=require('@scure/bip32'), {mnemonicToSeedSync}=require('@scure/bip39'), btc=require('@scure/btc-signer');
+    ok(html.indexOf('<li><b>2.17.0</b>')>0&&html.indexOf('<li><b>2.17.0</b>')<html.indexOf('<li><b>2.16.1</b>'),'v2.17.0: the changelog lists 2.17.0 first');
+    { const li=html.slice(html.indexOf('<li><b>2.17.0</b>'),html.indexOf('<li><b>2.16.1</b>')); ok(/works fully for real/.test(li)&&/A browser is not a hardware signer/.test(li)&&/PRACTICE/.test(li)&&/LOAD INTO THE PRACTICE SIGNER<\/b> now loads a public or practice seed while the computer is online too/.test(li)&&/lessons<\/b> work with whatever seed/.test(li),'v2.17.0: the changelog entry names real signing, the warnings, PRACTICE, the online load and the lessons'); }
+    ok(['Partial signature','Change verification','BBQr','PSBT (partly signed Bitcoin transaction)'].every(n=>names.includes(n)),'dictionary: Partial signature, Change verification, BBQr and PSBT');
+    const box=$('ssOwnBox'); ok(box&&box.closest('#ssBox')&&/A browser is not a hardware signer/.test(box.querySelector('.ms-test').textContent),'v2.17.0: Use it for real sits in the practice signer box, with the browser-is-not-a-hardware-signer warning');
+    ok($('ssOwnGo').className===''&&['ssOwnFileBtn','ssOwnClear','ssMsgGo','ssOwnCopy','ssOwnSave'].every(id=>$(id).className==='secondary small')&&$('ssOwnGo').textContent==='HOLD UP TO THE DEVICE','v2.17.0: one gold main action (HOLD UP TO THE DEVICE); the file, clear, message, copy and save buttons are gray');
+    ok(!!$('cam-ssOwnIn')&&$('cam-ssOwnIn').textContent==='SCAN QR','v2.17.0: the page\'s own camera reads a PSBT, address, descriptor or message request into the box (SCAN QR)');
+    ok(w.eval('AUTO_FIELDS').includes('ssMsgIn')&&!w.eval('AUTO_FIELDS').includes('ssOwnIn')&&w.eval('rhIds()').includes('ssOwnOut'),'v2.17.0: the typed message is a secret box; the pasted PSBT is not; the signed output is a re-hide place');
+    ok(/ssOwnWipe\(\)/.test(w.wipeSeed.toString())&&/ssOwnWipe\(\)/.test(w.ssPageStop.toString()),'v2.17.0: wipeSeed and the device\'s stop wipe your PSBT, the output and the message');
+    // what the box reads
+    const AB='abandon '.repeat(11)+'about', R=HDKey.fromMasterSeed(mnemonicToSeedSync(AB,'')), k=R.derive("m/84'/0'/0'/0/0"), tx=new btc.Transaction();
+    tx.addInput({txid:new Uint8Array(32).fill(7),index:0,witnessUtxo:{script:btc.p2wpkh(k.publicKey).script,amount:50000n},bip32Derivation:[[k.publicKey,{fingerprint:R.fingerprint,path:[84+0x80000000,0x80000000,0x80000000,0,0]}]]}); tx.addOutput({script:btc.p2wpkh(k.publicKey).script,amount:49000n});
+    const raw=tx.toPSBT(0), kinds=[Buffer.from(raw).toString('base64'),Buffer.from(raw).toString('hex'),btc.p2wpkh(k.publicKey).address,'bitcoin:'+btc.p2wpkh(k.publicKey).address+'?amount=1','signmessage m/84h/0h/0h/0/0 ascii:Hello',AB,'0000'.repeat(12),R.privateExtendedKey,'wpkh([73c5da0a/84h/0h/0h]'+R.derive("m/84'/0'/0'").publicExtendedKey+'/0/*)','hello'].map(x=>{ const g=w.ssOwnRead(x); return g.kind||'error'; });
+    eq(kinds.join(),'psbt,psbt,address,address,msg,error,error,error,error,error','v2.17.0: the box reads a PSBT (base64, hex), an address, a signmessage request; it refuses seed words, a SeedQR, an xprv, a single-key descriptor and other text');
+    // the transaction size the fee rate uses, against btc-signer's own after signing (P2WPKH)
+    { const t2=btc.Transaction.fromPSBT(raw); t2.signIdx(k.privateKey,0); t2.finalize(); const real=t2.vsize, est=w.ssOwnVsize(w.eval('SSPSBT').parse(new (w.eval('Uint8Array'))(raw)));
+      ok(est>=real&&est<=real+2,'v2.17.0: the size the fee rate uses is within 2 vB above the real signed size ('+est+' vB, btc-signer '+real+')'); }
+    ok(/Real signing with the practice signer/.test(fs.readFileSync(path.join(__dirname,'..','README.md'),'utf8'))&&/Real signing \(v2\.17\.0\)/.test(fs.readFileSync(path.join(__dirname,'..','SECURITY.md'),'utf8'))&&/Real signing with the practice signer/.test(fs.readFileSync(path.join(__dirname,'..','THREAT_MODEL.md'),'utf8'))&&/ssOwnSignGate/.test(fs.readFileSync(path.join(__dirname,'..','REVIEW.md'),'utf8')),'v2.17.0: README, SECURITY.md, THREAT_MODEL.md and REVIEW.md describe real signing and its risks');
+    r.w.close(); })();
   // v2.14.0: docs and page text for the Damascus method and the lessons (the method is tested in tests/vfmethod.test.mjs, the lessons in tests/simulator.test.mjs)
   sweep(t);
   await (async()=>{ const r=load(); await r.ready(); const w=r.w, names=w.eval('DICT').map(e=>e[0]), fs=require('fs');
     ok(html.indexOf('<li><b>2.16.1</b>')>0&&html.indexOf('<li><b>2.16.1</b>')<html.indexOf('<li><b>2.16.0</b>')&&html.indexOf('<li><b>2.16.0</b>')<html.indexOf('<li><b>2.15.0</b>')&&html.indexOf('<li><b>2.15.0</b>')<html.indexOf('<li><b>2.14.0</b>'),'v2.16.1: the changelog lists 2.16.1 first, then 2.16.0 and 2.15.0');
     ok(['Damascus method','Hammer sheet','Anvil sheet','Forge sheet','Hallmark','Assay','Practice transaction'].every(n=>names.includes(n)),'dictionary: Damascus method, Hammer, Anvil and Forge sheets, Hallmark, Assay and Practice transaction');
-    ok(/voidforge-demo-2\.16\.1/.test(fs.readFileSync(path.join(__dirname,'..','demo','sw.js'),'utf8')),'v2.16.1: the demo cache name is bumped');
+    ok(/voidforge-demo-2\.17\.0/.test(fs.readFileSync(path.join(__dirname,'..','demo','sw.js'),'utf8')),'v2.17.0: the demo cache name is bumped');
     ok(/damascus-quick-guide\.md/.test(fs.readFileSync(path.join(__dirname,'..','README.md'),'utf8'))&&/Damascus/.test(fs.readFileSync(path.join(__dirname,'..','THREAT_MODEL.md'),'utf8')),'v2.14.0: the README links the Damascus guide and the threat model covers the Damascus method');
     r.w.close(); })();
   // v2.13.0: docs and page text for the practice signer (the practice signer itself is tested in tests/simulator.test.mjs)
