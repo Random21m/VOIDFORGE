@@ -8138,8 +8138,6 @@ const M = [
   ["damascus: the Hammer step marks every typed hallmark right", "else if(+t === m.R.charCodeAt(i) - 48) mark", "else if(true) mark"],
   ["damascus: the Forge step marks every typed row right", "if(tr[i] === m.R[i]) partsF.push", "if(true) partsF.push"],
   ["damascus: CALCULATE LAST WORD takes a wrong bit count", "if(bv.length !== P.fin) return", "if(false) return"],
-  ["damascus: FORGE SEED from paper: a public example not marked PRACTICE (v2.16.1)", "ssfNext = /^(practice|example) /.test(kind) ? pracMark(kind) : null;", "ssfNext = null;", true],  // equivalent since the v2.16.1 review: finishSeed marks every public seed by its words (pracMark(pubKind(mnemonic))) when ssfNext is empty, which gives the same mark here; the redundant line goes in v2.17.0
-  ["practice forge: a Damascus practice seed not marked PRACTICE (v2.16.1)", "  ssfNext = dmPractice ? pracMark(dmPractice) : null;   // the PRACTICE mark", "  ssfNext = null;   // the PRACTICE mark", true],  // equivalent since the v2.16.1 review: dmPractice comes from the seed's own entropy (dice XOR cards, or the loaded sheet) through the same lists pubKind reads, and finishSeed marks by the words when ssfNext is empty; the redundant line goes in v2.17.0
   ["practice forge: the banner names another sheet (v2.16.1)", "\"Damascus practice sheet \" + kind.slice(9)", "\"Damascus practice sheet \" + kind.slice(8)"],
   ["practice forge: FORGE SEED off for practice again (v2.16.1)", "both && (ready || (paperOnly && lw.ok)));", "both && ((ready && !dmPractice) || (paperOnly && lw.ok)));"],
   ["practice forge: FORGE SEED makes nothing from practice (v2.16.1)", "if(dmWho() !== \"both\") return;\n  if(!document", "if(dmWho() !== \"both\" || dmPractice) return;\n  if(!document"],

@@ -16679,7 +16679,6 @@ async function dmGenerate(){
   }
   const bad = [...(r.H.bias.pass ? [] : ["the dice bias box (" + r.H.bias.fail.join("; ") + ")"]), ...r.A.bias.filter(b => !b.pass).map(b => "the bias box of deck " + b.deck + " (" + b.fail.join("; ") + ")")];
   if(bad.length && !confirm("These failed: " + bad.join(", ") + ". The sheets say to throw or shuffle again. Make the seed anyway?")) return;
-  ssfNext = dmPractice ? pracMark(dmPractice) : null;   // the PRACTICE mark goes with these words (setResult)
   await finishSeed(r.F.phrase, null, inputSig("dm"), "dm", {biasFailed: bad.length > 0});
   dmUpdate();   // step 5 shows the seed as forged
   if(!hasSeed()) return;
@@ -16708,8 +16707,7 @@ function dmWhoChange(){
 async function dmGenerateFromPaper(){
   if(!gateOk()) return;
   const L = dmLwState(); if(!L.ok) return;
-  const r = await wdSteps(L.idx, L.bits, L.wc), kind = pubKind(r.mnemonic);
-  ssfNext = /^(practice|example) /.test(kind) ? pracMark(kind) : null;
+  const r = await wdSteps(L.idx, L.bits, L.wc);   // v2.17.0: finishSeed marks a public seed PRACTICE by its words
   await finishSeed(r.mnemonic, null, inputSig("dm"), "dm", {paper: true});
   if(!hasSeed()) return;
   document.getElementById("explainBox").style.display = "none";
