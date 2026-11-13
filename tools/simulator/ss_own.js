@@ -4,7 +4,8 @@
 // camera, the person chooses Scan, and the device does the rest exactly as SeedSigner 0.8.7 does (the review screens, change
 // verification by derivation path or wallet descriptor, its own warnings, signing). This part adds:
 //   - ssOwnRead: what was pasted, chosen (a file) or scanned (the page's camera: CAM_TARGETS.ssOwnIn). Seeds and private keys in
-//     any form (words, numbered or in a sentence, SeedQR digits, hex, WIF, xprv) are refused and the box is cleared; a file is
+//     their common forms (words, numbered, in a sentence, run together or with a typo; SLIP-39 words, SeedQR digits, hex, WIF,
+//     BIP38, codex32, xprv; a safety net, not a guarantee) are refused and the box is cleared (the message box too); a file is
 //     checked before it goes into the box; an address is checked with the page's own address checker. Cheap format checks come
 //     first and long text never reaches the device's QR type detection (its base43 decoding is quadratic);
 //   - ssOwnReview: warnings next to the device before the scan, worked out with the device's own parser: wrong network, no seed on
@@ -15,7 +16,7 @@
 //     held up;
 //   - ssOwnSignGate: the signing rules, called by the device when Approve transaction or Sign message is chosen (SIM: VOIDFORGE
 //     rule): the PSBT's network must be the device's, and every full previous transaction must be the coin it spends (both refused
-//     on the device's screen); with nothing to sign it asks nothing; a seed that is not public signs a PSBT or a message only after
+//     on the device's screen); with nothing new to sign (worked out without signing) it asks nothing; a seed that is not public signs a PSBT or a message only after
 //     a yes to a plain question (this computer offline, or a stronger warning while it is online), and multisig change the device
 //     did not verify needs a second yes that names the amount;
 //   - the outputs: the signed PSBT exactly as the device made it (SeedSigner's trimmed PSBT, the bytes its animated QR holds), as
@@ -57,38 +58,91 @@ function ssOwnIsPracticeTx(psbt) {   // the practice transaction of ss_learn.js 
 }
 function ssOwnDevNet() { const n = ssLearnNet(), S = SSSettingsConstants; return n === "M" ? S.MAINNET : n === "T" ? S.TESTNET : S.REGTEST; }
 
-// ---------------------------------------------------------------- seeds and private keys, in any form
-let ssOwnP4 = null;   // the first 4 letters of every BIP-39 word (each picks one word)
-function ssOwnWordRun(t) {   // the longest run of BIP-39 words (or their first 4 letters), with punctuation, numbering and case ignored
-  if (!ssOwnP4) ssOwnP4 = new Set(WORDLIST.map((w) => w.slice(0, 4)));
-  let run = 0, best = 0;
-  for (const x of t.toLowerCase().split(/[^a-z]+/)) {
-    if (!x) continue;
-    run = x.length >= 3 && x.length <= 8 && (Object.prototype.hasOwnProperty.call(WORD_MAP, x) || (x.length === 4 && ssOwnP4.has(x))) ? run + 1 : 0;
-    if (run > best) best = run;
+// ---------------------------------------------------------------- seeds and private keys in their common forms (a safety net, not a guarantee)
+let ssOwnP4 = null, ssOwnS39 = null;   // the first 4 letters of every BIP-39 word (each picks one word); the SLIP-39 words
+const SS_OWN_FILLER = new Set(["and", "or", "then"]);   // words between seed words that do not end a run ("abandon and ability and ...")
+const SS_OWN_MAX_KEYS = 64;   // WIF- and BIP38-shaped strings checked at most (each is a base58 decoding)
+// The BIP-39 word of a token, or -1: the whole word, or its unique first 4 letters
+function ssOwnWordIdx(x) {
+  if (!ssOwnP4) { ssOwnP4 = new Map(); WORDLIST.forEach((w, i) => ssOwnP4.set(w.slice(0, 4), i)); }
+  if (x.length < 3 || x.length > 8) return -1;
+  if (Object.prototype.hasOwnProperty.call(WORD_MAP, x)) return WORD_MAP[x];
+  return x.length === 4 && ssOwnP4.has(x) ? ssOwnP4.get(x) : -1;
+}
+// A run of letters with no spaces that is wholly made of 12 or more BIP-39 words (abandonabilityable...): their indexes, or null
+function ssOwnJoined(x) {
+  if (x.length < 36 || x.length > 216) return null;
+  const best = new Array(x.length + 1).fill(null); best[0] = [];
+  for (let i = 0; i < x.length; i++) {
+    if (!best[i]) continue;
+    for (let l = 3; l <= 8 && i + l <= x.length; l++) { const w = x.slice(i, i + l); if (Object.prototype.hasOwnProperty.call(WORD_MAP, w) && !best[i + l]) best[i + l] = [...best[i], WORD_MAP[w]]; }
   }
+  return best[x.length] && best[x.length].length >= 12 ? best[x.length] : null;
+}
+// The runs of seed words in a text: [{idx: [word numbers], miss}] (punctuation, numbering, case and "and" ignored; miss: tokens in
+// the run that are not words, at most 2 in any 13, so a seed with a typo or two still counts)
+function ssOwnWordRuns(t) {
+  const toks = t.toLowerCase().split(/[^a-z]+/).filter((x) => x && !SS_OWN_FILLER.has(x)), runs = [];
+  let cur = null;
+  for (const x of toks) {
+    const j = ssOwnWordIdx(x), jn = j < 0 ? ssOwnJoined(x) : null;
+    if (jn) { if (cur) runs.push(cur); runs.push({ idx: jn, miss: 0, at: [], n: jn.length }); cur = null; continue; }
+    if (j >= 0) { if (!cur) cur = { idx: [], miss: 0, at: [], n: 0 }; cur.idx.push(j); cur.n++; continue; }
+    if (cur && x.length >= 3 && x.length <= 9 && cur.at.filter((p) => p > cur.n - 13).length < 2) { cur.at.push(cur.n); cur.n++; cur.miss++; continue; }
+    if (cur) runs.push(cur);
+    cur = null;
+  }
+  if (cur) runs.push(cur);
+  return runs;
+}
+const ssOwnWordRun = (t) => ssOwnWordRuns(t).reduce((a, r) => Math.max(a, r.idx.length), 0);   // the most seed words in one run
+// A run that is a real seed: exactly 12, 15, 18, 21 or 24 words in a row, no typo, with a right BIP-39 checksum (for a message,
+// where plain English can be all seed words)
+async function ssOwnHasSeed(runs) {
+  for (const r of runs) {
+    if (r.miss || ![12, 15, 18, 21, 24].includes(r.idx.length)) continue;
+    try { if (await reforgeChecksumOk(r.idx)) return true; } catch (e) { /* not a seed */ }
+  }
+  return false;
+}
+function ssOwnS39Run(t) {   // the longest run of SLIP-39 share words
+  if (!ssOwnS39) ssOwnS39 = new Set(SLIP39_WORDS);
+  let run = 0, best = 0;
+  for (const x of t.toLowerCase().split(/[^a-z]+/)) { if (!x) continue; run = ssOwnS39.has(x) ? run + 1 : 0; if (run > best) best = run; }
   return best;
 }
-// What makes this text a secret, or "". Nothing of the text is ever repeated.
-async function ssOwnSecret(t) {
-  if (ssOwnWordRun(t) >= 12) return "This holds 12 or more seed words in a row: a seed.";
+// What makes this text a secret, or "", for the checks that need no hashing. msg: the text of a message to sign, where 12 English
+// words in a row can be an ordinary sentence (seed words count there only with a right checksum: ssOwnSecret)
+function ssOwnSecretQuick(t, msg = false) {
+  if (!msg && ssOwnWordRuns(t).some((r) => r.idx.length >= 12 || (r.idx.length >= 11 && r.miss >= 1))) return "This holds 12 or more seed words in a row: a seed.";
+  const s39 = ssOwnS39Run(t);
+  if (s39 >= (msg ? 20 : 15)) return "This holds the words of a SLIP-39 share: part of a seed.";
   const dg = t.replace(/[\s.,;:_-]+/g, "");
   if (/^\d+$/.test(dg) && [48, 60, 72, 84, 96].includes(dg.length) && dg.match(/\d{4}/g).every((x) => +x < 2048)) return "This looks like the digits of a SeedQR: a seed.";
-  const hx = t.replace(/\s+/g, "").replace(/^0x/i, "");
-  if (/^[0-9a-f]+$/i.test(hx) && [32, 40, 48, 56, 64, 128].includes(hx.length)) return "This is " + hx.length + " hex digits, which could be a private key or a seed written as hex: a secret.";
+  const hx = t.replace(/[\s:]+/g, "").replace(/^0x/i, "");
+  if (/^[0-9a-f]+$/i.test(hx) && ([32, 40, 48, 56, 64, 128].includes(hx.length) || (/^(80|ef)/i.test(hx) && (hx.length === 66 || (hx.length === 68 && /01$/.test(hx)))))) return "This is " + hx.length + " hex digits, which could be a private key or a seed written as hex: a secret.";
   if (/[xyztuvYZUV]prv[1-9A-HJ-NP-Za-km-z]{100}/.test(t)) return "This holds an extended private key (xprv), which can spend.";
-  if (/ur:crypto-seed\//i.test(t)) return "This is a seed in a UR code (crypto-seed).";
-  for (const m of t.matchAll(/(?<![1-9A-HJ-NP-Za-km-z])[5KLc9][1-9A-HJ-NP-Za-km-z]{50,51}(?![1-9A-HJ-NP-Za-km-z])/g)) {
+  if (/ur:crypto-(seed|bip39)\//i.test(t)) return "This is a seed in a UR code.";
+  if (/(?<![0-9a-z])ms1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{45,}/i.test(t)) return "This holds a codex32 share (ms1...): part of a seed.";
+  return "";
+}
+// What makes this text a secret, or "". Nothing of the text is ever repeated.
+async function ssOwnSecret(t, msg = false) {
+  const q = ssOwnSecretQuick(t, msg); if (q) return q;
+  if (msg && await ssOwnHasSeed(ssOwnWordRuns(t))) return "This holds 12 or more seed words in a row: a seed.";
+  let n = 0;
+  for (const m of t.matchAll(/(?<![1-9A-HJ-NP-Za-km-z])(?:[5KLc9][1-9A-HJ-NP-Za-km-z]{50,51}|6P[1-9A-HJ-NP-Za-km-z]{56})(?![1-9A-HJ-NP-Za-km-z])/g)) {
+    if (++n > SS_OWN_MAX_KEYS) break;
     let raw = null; try { raw = await base58decode(m[0]); } catch (e) { continue; }
     if ((raw.length === 33 || (raw.length === 34 && raw[33] === 1)) && (raw[0] === 0x80 || raw[0] === 0xef)) return "This holds a private key (WIF), which can spend.";
+    if (raw.length === 39 && raw[0] === 1 && (raw[1] === 0x42 || raw[1] === 0x43)) return "This holds a password-protected private key (BIP38).";
   }
   return "";
 }
-// A quick look for the page's camera (camValue): a SeedQR, seed words, an xprv or a WIF-shaped key never go into the box.
+// A quick look for the page's camera (camValue): a SeedQR, seed words, an xprv or a WIF- or BIP38-shaped key never go into the box.
 function ssOwnLooksSecret(text) {
-  const t = String(text || "").trim(), dg = t.replace(/[\s.,;:_-]+/g, "");
-  return (/^\d+$/.test(dg) && dg.length >= 48 && dg.length <= 96 && dg.length % 12 === 0) || ssOwnWordRun(t) >= 12 || /[xyztuvYZUV]prv[1-9A-HJ-NP-Za-km-z]{100}/.test(t) ||
-    /ur:crypto-seed\//i.test(t) || /^[5KLc9][1-9A-HJ-NP-Za-km-z]{50,51}$/.test(t.slice(/^bitcoin:/i.test(t) ? 8 : 0));
+  const t = String(text || "").trim(), m = /^signmessage\s+\S+\s+ascii:([\s\S]*)$/.exec(t);
+  return !!(m ? ssOwnSecretQuick(m[1], true) : ssOwnSecretQuick(t)) || /^(?:[5KLc9][1-9A-HJ-NP-Za-km-z]{50,51}|6P[1-9A-HJ-NP-Za-km-z]{56})$/.test(t.slice(/^bitcoin:/i.test(t) ? 8 : 0));
 }
 
 // ---------------------------------------------------------------- the network of an address ("main", "test", "regtest") against the device's
@@ -105,9 +159,9 @@ async function ssOwnRead(text) {
   const raw = String(text || ""), t = raw.trim();
   if (!t) return { error: "Paste a PSBT, an address, a wallet descriptor or a signmessage request first, or choose a .psbt file." };
   if (t.length > SS_OWN_MAX_TEXT) return { error: "This is longer than any PSBT the device reads." };
-  const sec = await ssOwnSecret(t);
+  const sm = /^signmessage\s/.test(t), sec = sm ? await ssOwnSecret(t.replace(/^signmessage\s+\S+\s+ascii:/, ""), true) || await ssOwnSecret(t.replace(/ascii:[\s\S]*$/, "")) : await ssOwnSecret(t);
   if (sec) return { error: sec, secret: true };
-  if (/^signmessage\s/.test(t)) {
+  if (sm) {
     const m = /^signmessage\s+(m(?:\/\d+[h']?)+)\s+ascii:([\s\S]*)$/.exec(raw.replace(/^\s+/, "").replace(/\r?\n$/, ""));
     if (!m) return { error: "A message request reads: signmessage <path> ascii:<message>, such as signmessage m/84h/0h/0h/0/0 ascii:Hello." };
     const e = ssOwnMsgError(m[2]); if (e) return { error: e };
@@ -229,19 +283,36 @@ async function ssOwnMsigTrust(psbt, seed, network, desc = ssOwnDesc()) {
   for (const inp of psbt.inputs) { let ok = false; try { ok = await desc.owns(inp); } catch (e) { ok = false; } if (!ok) return { trusted: false, desc, why: "the wallet descriptor on the device does not make the coins this PSBT spends" }; }
   return { trusted: true, desc, why: "" };
 }
-// Signs a copy of the PSBT with the seed's key and throws the copy away: which inputs the device would sign, and which of the
-// seed's own inputs it would leave unsigned. {n, signed: [i], left: [i], err}
-async function ssOwnDryRun(copy, root) {
-  const fp = hex(root.my_fingerprint), mine = [], cnt = (inp) => inp.partial_sigs.length + (inp.final_scriptwitness ? 1 : 0);
-  copy.inputs.forEach((inp, i) => { if ([...inp.bip32_derivations, ...inp.taproot_bip32_derivations].some((d) => hex(d.der.fingerprint) === fp)) mine.push(i); });
-  const before = copy.inputs.map(cnt);
-  let n = 0, err = "";
-  try { n = await copy.sign_with(root); } catch (e) { err = e && e.message ? e.message : String(e); }
-  const signed = copy.inputs.map((inp, i) => cnt(inp) > before[i] ? i : -1).filter((i) => i >= 0);
-  try { ssPsbtScrub(copy); } catch (e) { /* best effort */ }
-  return { n, signed, left: mine.filter((i) => !signed.includes(i)), err };
+// Which inputs the device would sign, worked out without signing anything (the key signs only after a yes): the rule of embit's
+// sign_with (SIGHASH_ALL, or DEFAULT for Taproot; a key for each derivation of this seed, which must match it; a Taproot key only
+// when its tweaked key is the coin's), and whether that signature would be new (SeedSigner calls it Signing Failed when nothing
+// new is added). {fresh: [i], again: [i] (signed by this seed already), left: [i] (the seed's inputs it skips), err}
+async function ssOwnWillSign(psbt, root) {
+  const fp = hex(root.my_fingerprint), out = { fresh: [], again: [], left: [], err: "" }, rootpub = root.get_public_key(), pkh = await hash160(rootpub);
+  for (let i = 0; i < psbt.inputs.length; i++) {
+    const inp = psbt.inputs[i], ders = [...inp.taproot_bip32_derivations.map((d) => ({ pub: ssPsbtSec(d.pub), der: d.der })), ...inp.bip32_derivations].filter((d) => hex(d.der.fingerprint) === fp);
+    let tap = false; try { tap = inp.is_taproot; } catch (e) { tap = false; }
+    let sh = inp.sighash_type; if (sh === null) sh = tap ? 0 : 1; if (!tap && sh === 0) sh = 1;
+    const keys = [];
+    try { for (const d of ders) { const hk = await root.derive(d.der.derivation); if (hex(hk.xonly()) !== hex(d.pub.length === 33 ? d.pub.slice(1) : d.pub)) throw new Error("Derivation path doesn't look right"); keys.push(d.pub); } }
+    catch (e) { out.err = e && e.message ? e.message : String(e); return out; }
+    let will = [];
+    if (sh === 0 || sh === 1) {
+      if (tap) {
+        let spk = null; try { spk = inp.utxo.script_pubkey; } catch (e) { spk = null; }
+        for (const k of [rootpub, ...keys]) { try { if (spk && ssPsbtContains(spk, await ssPsbtTaprootTweakPub(k, inp.taproot_merkle_root || new Uint8Array(0)))) will.push(k); } catch (e) { /* not this key */ } }
+      } else {
+        let sc = null; try { sc = inp.witness_script || inp.redeem_script || inp.utxo.script_pubkey; } catch (e) { sc = null; }
+        will = keys.slice(); if (sc && (ssPsbtContains(sc, rootpub) || ssPsbtContains(sc, pkh))) will.push(rootpub);
+      }
+    }
+    if (!will.length) { if (ders.length) out.left.push(i); continue; }
+    const isNew = tap ? !inp.final_scriptwitness : will.some((k) => !inp.partial_sigs.some((x) => hex(x.pub) === hex(k)));
+    (isNew ? out.fresh : out.again).push(i);
+  }
+  return out;
 }
-const ssOwnList = (a) => a.length === 1 ? "input " + a[0] : "inputs " + a.slice(0, -1).join(", ") + " and " + a[a.length - 1];
+const ssOwnList = (a) => !a.length ? "no input" : a.length === 1 ? "input " + a[0] : "inputs " + a.slice(0, -1).join(", ") + " and " + a[a.length - 1];
 
 // ---------------------------------------------------------------- warnings before the scan, with the device's own parser
 async function ssOwnReview(bytes) {
@@ -269,18 +340,25 @@ async function ssOwnReview(bytes) {
     if (sh === 0 && !inp.is_taproot && (inp.witness_utxo || inp.non_witness_utxo)) W.push({ warn: true, t: "Input " + i + " asks for sighash 0 (SIGHASH_DEFAULT), which is for Taproot only. The device signs it with SIGHASH_ALL, as SeedSigner does; a wallet that checks the type it asked for may refuse that signature." });
     if (inp.taproot_bip32_derivations.some((d) => d.leaf_hashes.length)) W.push({ bad: true, t: "Input " + i + " spends from a Taproot script tree. SeedSigner signs Taproot key spends only, so the device stops with an error." });
     if (!inp.witness_utxo && !inp.non_witness_utxo) { unreadable = unreadable || "input " + i + " does not include the coin it spends, so its amount and the fee are unknown"; W.push({ bad: true, t: "Input " + i + " does not carry the coin it spends, so its amount and the fee are unknown and the device cannot read this PSBT. Ask your wallet for a PSBT with the coins being spent." }); }
-    else if (inp.witness_utxo && !inp.non_witness_utxo && ssPsbtScriptType(inp.witness_utxo.script_pubkey) === "p2pkh") W.push({ bad: true, t: "Input " + i + " is a legacy (P2PKH) coin without its full previous transaction. A signature made from this PSBT would be invalid. Ask your wallet for a PSBT with the full previous transaction." });
+    else if (inp.witness_utxo && !inp.non_witness_utxo) {
+      const st = ssPsbtScriptType(inp.witness_utxo.script_pubkey), rs = inp.redeem_script ? ssPsbtScriptType(inp.redeem_script) : null;
+      // legacy coins: P2PKH, and P2SH that is not wrapped SegWit (embit then signs it as SegWit, so the signature is invalid)
+      if (st === "p2pkh" || (st === "p2sh" && !inp.witness_script && rs !== "p2wpkh" && rs !== "p2wsh")) W.push({ bad: true, t: "Input " + i + " is a legacy (" + (st === "p2pkh" ? "P2PKH" : "P2SH") + ") coin without its full previous transaction. A signature made from this PSBT would be invalid. Ask your wallet for a PSBT with the full previous transaction." });
+      // SegWit v0: the amount is the PSBT's word only, and with more than one input a wallet can lower it across two signings
+      else if (psbt.inputs.length > 1 && st !== "p2tr") W.push({ warn: true, t: "Input " + i + " (SegWit v0) comes without its full previous transaction, so its amount is the PSBT’s word only. A dishonest wallet that asks you to sign the same transaction twice can hide a larger fee this way. Prefer a PSBT that includes the full previous transactions; the page then checks them." });
+    }
   });
   if (!signer || unreadable) return { W, signer, unreadable };
   const mineIn = psbt.inputs.filter((inp) => [...inp.bip32_derivations, ...inp.taproot_bip32_derivations].some((d) => hex(d.der.fingerprint) === sfp)).length;
   if (mineIn < psbt.inputs.length) W.push({ bad: false, t: mineIn + " of " + psbt.inputs.length + " inputs belong to seed " + sfp + ": the device signs only those. The others need their own signers before the transaction can be sent." });
   let parser = null, dry = null;
-  try { parser = await SSPSBTParser.create(fresh(), signer, network); dry = await ssOwnDryRun(parser.psbt, parser.root); }
+  try { parser = await SSPSBTParser.create(fresh(), signer, network); dry = await ssOwnWillSign(parser.psbt, parser.root); }
   catch (e) { const m = e && e.message ? e.message : String(e); W.push({ bad: true, t: "The device cannot read this PSBT with seed " + sfp + ": " + m + "." }); return { W, signer, unreadable: "with seed " + sfp + ", " + m }; }
   finally { try { if (parser && parser.root) parser.root.wipe(); } catch (e) { /* nothing to wipe */ } }
   if (dry.err) W.push({ bad: true, t: "When it signs, the device will stop with an error: " + dry.err + ". Nothing will be signed." });
-  else if (!dry.n) W.push({ bad: true, t: "Seed " + sfp + " cannot add a signature to any input of this PSBT, so nothing will be signed (the device ends on Signing Failed)." });
-  else if (dry.left.length) W.push({ warn: true, t: "The device will leave " + ssOwnList(dry.left) + " of seed " + sfp + " unsigned (see above), and sign " + ssOwnList(dry.signed) + " only. The transaction is not complete until " + (dry.left.length === 1 ? "that input is" : "those inputs are") + " signed too." });
+  else if (!dry.fresh.length && dry.again.length) W.push({ bad: true, t: "Seed " + sfp + " has signed this PSBT already (" + ssOwnList(dry.again) + "): there is nothing new to sign, so the device ends on Signing Failed. Give the signed PSBT to your wallet instead." });
+  else if (!dry.fresh.length) W.push({ bad: true, t: "Seed " + sfp + " cannot add a signature to any input of this PSBT, so nothing will be signed (the device ends on Signing Failed)." });
+  else if (dry.left.length) W.push({ warn: true, t: "The device will leave " + ssOwnList(dry.left) + " of seed " + sfp + " unsigned (see above), and sign " + ssOwnList(dry.fresh.concat(dry.again).sort((x, y) => x - y)) + " only. The transaction is not complete until " + (dry.left.length === 1 ? "that input is" : "those inputs are") + " signed too." });
   const fee = parser.fee_amount, pay = parser.spend_amount, vb = ssOwnVsize(psbt), rate = vb > 0 ? fee / vb : 0, sent = pay > 0 ? pay : parser.change_amount;
   const rateText = "about " + Math.round(rate).toLocaleString("en-US") + " sat/vB (" + ssOwnSats(fee) + " for about " + vb + " vB)";
   if (pay > 0 && fee > pay) W.push({ bad: true, t: "The fee (" + ssOwnSats(fee) + ") is higher than the payment (" + ssOwnSats(pay) + "). Check the fee in your wallet before you sign." });
@@ -379,9 +457,12 @@ async function ssOwnHold(text, file) {
   } finally { ssOwn.busy = false; }
 }
 // HOLD UP THE MESSAGE: the signmessage request SeedSigner reads, for the address type and number chosen
-function ssOwnMsgGo() {
+async function ssOwnMsgGo() {
   const msg = (ssOwnEl("ssMsgIn") || {}).value || "", purpose = (ssOwnEl("ssMsgType") || {}).value || "84", idxText = String((ssOwnEl("ssMsgIdx") || {}).value || "").trim(), idx = Number(idxText);
   if (!ssPageOn) { ssOwnSay("Open the practice signer first: its box, above.", "bad"); return; }
+  const gen0 = ++ssOwn.gen, sec = await ssOwnSecret(msg, true);   // v2.17.0 review: the message box never holds up a seed or a key
+  if (gen0 !== ssOwn.gen || !ssPageOn) return;
+  if (sec) { const b = ssOwnEl("ssMsgIn"); if (b) b.value = ""; ssOwnDrop(); ssOwnSay("Not held up: " + sec + " The message box was cleared. Never type a seed or a private key here.", "bad"); return; }
   const e = ssOwnMsgError(msg); if (e) { ssOwnSay("Not held up: " + e, "bad"); return; }
   if (!idxText) { ssOwnSay("Not held up: type the number of the receive address whose key signs (0 for the first one, up to 999,999).", "bad"); return; }
   if (!/^\d+$/.test(idxText) || !Number.isInteger(idx) || idx < 0 || idx > 999999) { ssOwnSay("Not held up: the address number is 0 to 999,999.", "bad"); return; }
@@ -436,8 +517,9 @@ async function ssOwnSignGate(kind, seed, psbt, network, ctx = {}) {
       "Not signed: input " + prev[0].i + ": " + prev[0].why + ". The amounts and the fee the device showed cannot be trusted: a PSBT like this can hide a huge fee. Ask your wallet for a new PSBT.");
     // nothing to sign: no question (the device ends on Signing Failed, or stops with its own error)
     const parser = ctx.parser;
-    let dry = null; try { dry = parser && parser.root ? await ssOwnDryRun(SSPSBT.parse(psbt.serialize()), parser.root) : null; } catch (e) { dry = null; }
-    if (dry && (dry.err || !dry.n)) { ssOwnOutClear(); ssOwnSay("Nothing signed: seed " + fp + (dry.err ? " stops with an error on this PSBT (" + dry.err + ")." : " cannot add a signature to any input of this PSBT (not its coins, or sighash types SeedSigner does not sign).") + " Check that the right seed is loaded, with its passphrase.", "bad"); return null; }
+    let dry = null; try { dry = parser && parser.root ? await ssOwnWillSign(psbt, parser.root) : null; } catch (e) { dry = null; }
+    if (dry && !dry.err && !dry.fresh.length && dry.again.length) { ssOwnOutClear(); ssOwnSay("Nothing new to sign: seed " + fp + " has signed this PSBT already (" + ssOwnList(dry.again) + "). Give the signed PSBT to your wallet.", "bad"); return null; }
+    if (dry && (dry.err || !dry.fresh.length)) { ssOwnOutClear(); ssOwnSay("Nothing signed: seed " + fp + (dry.err ? " stops with an error on this PSBT (" + dry.err + ")." : " cannot add a signature to any input of this PSBT (not its coins, or sighash types SeedSigner does not sign).") + " Check that the right seed is loaded, with its passphrase.", "bad"); return null; }
   }
   if (ssOwnSeedPublic(seed)) return null;          // a public seed: PRACTICE, nothing to lose
   if (kind === "psbt" && ssOwnIsPracticeTx(psbt)) return null;   // the practice transaction spends made-up coins
@@ -450,7 +532,13 @@ async function ssOwnSignGate(kind, seed, psbt, network, ctx = {}) {
   if (kind === "psbt") {   // multisig change the device did not verify against a wallet descriptor of this seed: a second question
     const parser = ctx.parser;
     let left = [];
-    try { if (parser && parser.is_multisig && parser.change_data.length && !(await ssOwnMsigTrust(psbt, seed, network, ctx.desc && Array.isArray(ctx.desc.keys) ? ctx.desc : null)).trusted) left = parser.change_data; } catch (e) { left = parser ? parser.change_data : []; }
+    try {
+      if (parser && parser.is_multisig && parser.change_data.length) {
+        const tr = await ssOwnMsigTrust(psbt, seed, network, ctx.desc && Array.isArray(ctx.desc.keys) ? ctx.desc : null);
+        if (!tr.trusted) left = parser.change_data;
+        else for (const c of parser.change_data) { let ok = false; try { ok = await tr.desc.owns(psbt.outputs[c.output_index]); } catch (e) { ok = false; } if (!ok) left.push(c); }   // (the device has refused such change before this point)
+      }
+    } catch (e) { left = parser ? parser.change_data : []; }
     if (left.length && !confirm(SS_OWN_ASK_CHANGE(left)))
       return ssOwnBlock("Not signed", "You chose not to sign: the change was not verified. Nothing was signed.", "Not signed: you chose not to sign while the device had not verified the multisig change (" + ssOwnSats(left.reduce((a, x) => a + x.amount, 0)) + "). Nothing was signed.");
   }
@@ -468,12 +556,22 @@ function ssOwnTick() {
   else if (s.view === "SSSeedSignMessageSignedMessageQRView" && v && v.signed_message && v !== ssOwn.seenMsg) { ssOwn.seenMsg = v; ssOwnTakeMsg(v); }
   else if (s.view === "SSSeedAddressVerificationSuccessView" && s.scr && s.scr !== ssOwn.seenAddr && s.scr.address) {
     ssOwn.seenAddr = s.scr;
-    const nw = ssOwnAddrNetWrong(s.scr.address, ssLearnNet());
-    ssOwnSay("The device verified the address " + s.scr.address + ": it is " + (s.scr.verified_index_is_change ? "change" : "receive") + " address #" + s.scr.verified_index + " of this wallet" + (nw ? ", on the address’s own network. " + nw : "."), nw ? "bad" : "ok");
+    ssOwnAddrDone(s.scr, c, v);
   } else if (s.view === "SSMultisigWalletDescriptorView" && s.scr && s.scr !== ssOwn.seenDesc && s.scr.policy) {
     ssOwn.seenDesc = s.scr;
     ssOwnDescLoaded(s.scr, c.multisig_wallet_descriptor);
   }
+}
+// An address the device verified. A multisig address is matched against the wallet descriptor on the device: it says something
+// about your wallet only when a seed on the device is in that descriptor (its own key, at the path it names).
+async function ssOwnAddrDone(scr, ctl, view) {
+  const gen = ssOwn.gen, nw = ssOwnAddrNetWrong(scr.address, ssLearnNet()), kind = (scr.verified_index_is_change ? "change" : "receive") + " address #" + scr.verified_index;
+  const desc = view && view.seed ? null : ssOwnDesc(ctl);
+  let ds = null;
+  if (desc) { try { ds = await ssOwnDescSeeds(desc, ssLearnSeeds().filter((x) => x && x.seed_bytes instanceof Uint8Array), ssOwnDevNet()); } catch (e) { ds = { inIt: [] }; } }
+  if (gen !== ssOwn.gen || !ssPageOn) return;
+  if (desc && !ds.inIt.length) return ssOwnSay("The address " + scr.address + " is " + kind + " of the wallet descriptor on the device, which does not hold your seed’s key: this proves nothing about your wallet." + (nw ? " " + nw : ""), "bad");
+  ssOwnSay("The device verified the address " + scr.address + ": it is " + kind + " of " + (desc ? "the multisig wallet of seed " + ds.inIt.join(", ") : "this wallet") + (nw ? ", on the address’s own network. " + nw : "."), nw ? "bad" : "ok");
 }
 // A wallet descriptor loaded on the device: is a seed on the device in it, with its own key at the origin the descriptor names?
 // If not, the device's checks against it prove nothing about this seed's wallet (it may be anyone's), and the page says so.

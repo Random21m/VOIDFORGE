@@ -57,7 +57,8 @@ next to the device is held up to its camera by the practice wallet (a PSBT as an
   - SIM: VOIDFORGE rule in ssOwnSignGate, after the network: every non_witness_utxo must hash (the page's own psbtStripWitness and
     dsha256) to the input's txid, hold its output, and agree with a witness_utxo if there is one; else "Forged coin?" on the
     device's ErrorView. SeedSigner 0.8.7 (embit InputScope.utxo, PSBTParser._parse_inputs) takes the amount without this check.
-  - ssOwnSignGate signs a throwaway copy first (ssOwnDryRun): with nothing to sign it asks nothing (the device ends on Signing
+  - ssOwnSignGate works out first which inputs the key would sign, deriving public keys only (ssOwnWillSign; nothing is signed
+    before the yes): with nothing new to sign it asks nothing (the device ends on Signing
     Failed); multisig change not verified by a descriptor that holds the seed's own key (derived at the key's origin) and owns
     every input (ssOwnMsigTrust) needs a second confirm() that names the amount. ctx: {parser, desc} from SSPSBTFinalizeView.run,
     {message} from SSSeedSignMessageSignedMessageQRView.run (the message lesson's practice message signs with no question).
