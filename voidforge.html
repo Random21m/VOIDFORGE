@@ -37239,18 +37239,18 @@ async function ssLearnTxGo() {
   finally { ssLearn.building = false; ssLearnRender(); ssLearnTimer(); }
 }
 // The practice transaction dropped: the PSBT, the made-up previous transaction, the keys and paths in its records
-function ssLearnTxDrop() {
+function ssLearnTxDrop(hide = true) {   // hide: put the practice wallet's QR of it away too (the wipe overwrites it itself)
   const T = ssLearn.tx; ssLearn.tx = null; if (!T) return;
   for (const x of [T.psbt, T.utx]) if (x instanceof Uint8Array) x.fill(0);
   for (const m of [T.global, ...T.inMaps, ...T.outMaps]) for (const kv of m) for (const x of kv) if (x instanceof Uint8Array) x.fill(0);
-  if (ssLearnCam.key === "tx") ssLearnHide();
-  ssLearnRender();
+  if (hide && ssLearnCam.key === "tx") ssLearnHide();
+  if (hide) ssLearnRender();
 }
 // Called by ssPageStop: drops the lesson, the practice wallet's QR codes and the practice transaction.
 function ssLearnWipe() {
   const L = ssLearn;
   if (L.timer) { clearInterval(L.timer); L.timer = null; }
-  ssLearnTxDrop();
+  ssLearnTxDrop(false);
   L.lesson = null; L.fp = ""; L.fpSeed = null; L.step = 0; L.done = false; L.hold = null; L.tx = null; L.building = false; L.scanDec = null; L.msg = ""; L.gen++;
   ssAutoEnd(""); ssLearnSetText("ssLoadStatus", ""); ssLearnSetText("ssCamNote", "");
   ssLearnForget(); ssForgeReset();
