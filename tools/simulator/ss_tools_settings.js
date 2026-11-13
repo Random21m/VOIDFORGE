@@ -3400,20 +3400,23 @@ class SSToolsAddressExplorerAddressListScreen extends SSButtonListScreen {
 
 
 /* ---- views/scan_views.py ----------------------------------------------------------------------------------------- */
-// SIM: VOIDFORGE rule. The page's own camera reads a SeedQR only while the computer is offline (navigator.onLine false);
-// the practice signer follows the same rule for every seed QR (SeedQR, CompactSeedQR, mnemonic QR), shown on SeedSigner's
-// own error screen. v2.17.0: except a public or practice seed, and the SeedQR of LOAD INTO THE PRACTICE SIGNER after the person
-// said yes to loading it online (ssLearnSeedScanOk, ss_learn.js). decoder: the scan's decoder once it read a seed.
-function ssToolsSeedScanBlocked(decoder) {   // SIM: VOIDFORGE rule
-  if (typeof navigator === "undefined" || navigator.onLine !== true) return false;
+// SIM: VOIDFORGE rule. The page's own camera reads a SeedQR only while the computer is offline (navigator.onLine false).
+// v2.17.0 (the owner's "no restrictions" rule): the practice signer reads every seed QR (SeedQR, CompactSeedQR, mnemonic QR)
+// online too, but once it has read a real seed while the computer is online it asks first (SS_TOOLS_SCAN_ONLINE_ASK), in the
+// words of LOAD INTO THE PRACTICE SIGNER's question: Yes loads it, No loads nothing (SeedSigner's own error screen says so).
+// No question for a public or practice seed, or for the SeedQR of LOAD INTO THE PRACTICE SIGNER after the person said yes to it
+// (ssLearnSeedScanOk, ss_learn.js). decoder: the scan's decoder once it read a seed; before a scan there is nothing to ask.
+const SS_TOOLS_SCAN_ONLINE_ASK = "This computer is online. The practice signer read the SeedQR of a real seed: loading it here is like typing it into a website, and anything watching this computer could copy it. Use a test seed, or take this computer offline first.\n\nLoad it anyway?";
+function ssToolsSeedScanBlocked(decoder) {   // SIM: VOIDFORGE rule: true when the person said No
+  if (!decoder || typeof navigator === "undefined" || navigator.onLine !== true) return false;
   try { if (typeof ssLearnSeedScanOk === "function" && ssLearnSeedScanOk(decoder)) return false; } catch (e) { /* lessons part missing */ }
-  return true;
+  return !confirm(SS_TOOLS_SCAN_ONLINE_ASK);
 }
-function ssToolsOfflineOnlyDest() {   // SIM: VOIDFORGE rule
+function ssToolsNotLoadedDest() {   // SIM: VOIDFORGE rule
   return new SSDestination(SSErrorView, {view_args: {
     title: "Error",
-    status_headline: "Offline only",
-    text: "VOIDFORGE reads seed QR codes only while this computer is offline.",
+    status_headline: "Not loaded",
+    text: "You chose not to load this seed while this computer is online.",
     button_text: "Back",
     next_destination: new SSDestination(SSBackStackView, {skip_current_view: true}),
   }});
@@ -3435,8 +3438,6 @@ class SSScanView extends SSView {
 
   async run() {
     const C = SSSettingsConstants;
-    // SIM: VOIDFORGE rule: a scan that is only for a SeedQR does not start while the computer is online
-    if (this instanceof SSScanSeedQRView && ssToolsSeedScanBlocked()) return ssToolsOfflineOnlyDest();
     // Start the live preview and background QR reading
     try {
       await this.run_screen(SSScanScreen, {instructions_text: this.instructions_text, decoder: this.decoder});
@@ -3462,9 +3463,9 @@ class SSScanView extends SSView {
       }
 
       if (this.decoder.is_seed && ssToolsSeedScanBlocked(this.decoder)) {
-        // SIM: VOIDFORGE rule: a seed QR read while the computer is online is dropped, not loaded
+        // SIM: VOIDFORGE rule: a real seed read while the computer is online, and the person said No: dropped, not loaded
         this.decoder = new SSDecodeQR({wordlist_language_code: this.wordlist_language_code});
-        return ssToolsOfflineOnlyDest();
+        return ssToolsNotLoadedDest();
       }
 
       if (this.decoder.is_seed) {

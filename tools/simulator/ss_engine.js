@@ -5721,7 +5721,9 @@ class SSController {
                     // Home always wipes the back_stack and the state of temp vars
                     this.clear_back_stack();
                     this.resume_main_flow = null;
-                    this.multisig_wallet_descriptor = null;
+                    // SIM: VOIDFORGE rule (v2.17.0): a multisig wallet descriptor stays loaded until the device is switched off
+                    // or another one is scanned, so later PSBTs and multisig addresses are checked against it. SeedSigner 0.8.7
+                    // forgets it on every return to Home (controller.py: self.multisig_wallet_descriptor = None).
                     this.unverified_address = null;
                     this.address_explorer_data = null;
                     this.psbt = null;

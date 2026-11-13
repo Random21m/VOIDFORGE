@@ -123,6 +123,9 @@ const css = `
   #ssBox .ss-own-w { margin: 6px 0 8px; padding-left: 20px; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
   #ssBox .ss-own-w li { margin: 3px 0; }
   #ssBox .ss-own-w li.bad { color: var(--bad-text); font-weight: 600; }
+  #ssBox .ss-own-w li.warn { color: var(--warn-text); font-weight: 600; }
+  /* v2.17.0 phone review: buttons and menus under the device are at least 40 px tall on a touch screen */
+  @media (pointer: coarse) { #ssBox .ss-learn button, #ssBox .ss-learn select, #ssBox .ss-learn input[type="number"] { min-height: 40px; } }
   #ssBox #ssOwnStatus, #ssBox #ssOwnOutSay { overflow-wrap: anywhere; }
   /* v2.15.0: the practice signer's choice in the start row under the title (laid out by #startRow .sr-i) */
   body.guided #ssPromo { display: none; }

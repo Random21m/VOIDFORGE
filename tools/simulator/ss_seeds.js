@@ -4622,9 +4622,6 @@ class SSSeedTranscribeSeedQRConfirmScanView extends SSView {
         if (!this.decoder || typeof SSScanScreen === "undefined") {
             return ssSeedsDest(SSNotYetImplementedView);
         }
-        // SIM: VOIDFORGE rule: the page reads seed QR codes only while the computer is offline
-        if (typeof ssToolsSeedScanBlocked === "function" && ssToolsSeedScanBlocked()) return ssToolsOfflineOnlyDest();
-
         // Run the live preview and QR code capture process
         const scanning_done = await this.run_screen(SSScanScreen, {
             decoder: this.decoder,
@@ -5266,10 +5263,10 @@ class SSSeedSignMessageSignedMessageQRView extends SSView {
     async run() {
         // Python signs in __init__ (async here)
         await this._ss_seed._ready;
-        // SIM: VOIDFORGE rule (v2.17.0, ssOwnSignGate in ss_own.js): a seed that is not public signs a message while this computer is
-        // online only after a yes to the page's question
+        // SIM: VOIDFORGE rule (v2.17.0, ssOwnSignGate in ss_own.js): a seed that is not public signs a message only after a yes to
+        // the page's question (offline too; not for the lesson's practice message)
         if (typeof ssOwnSignGate === "function") {
-            const stop = await ssOwnSignGate("msg", this._ss_seed, null, (this.settings || SSSettings.get_instance()).get_value(SSSC().SETTING__NETWORK));
+            const stop = await ssOwnSignGate("msg", this._ss_seed, null, (this.settings || SSSettings.get_instance()).get_value(SSSC().SETTING__NETWORK), { message: this._ss_message });
             if (stop) return stop;
         }
         this.signed_message = await ssSeedsEmbitUtils.sign_message(this._ss_seed.seed_bytes, this._ss_derivation_path, this._ss_message);

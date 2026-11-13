@@ -356,10 +356,11 @@ class SSPSBTInputScope {
     this.taproot_merkle_root = null;
     this.unknown = [];              // [{key, val}]
   }
-  // SeedSigner behavior: embit's InputScope.vin is TransactionInput(txid, vout, sequence=(self.sequence or 0xFFFFFFFF)),
-  // so a sequence of 0 becomes 0xFFFFFFFF in the transaction SeedSigner signs and in the PSBT it returns (correct
-  // Bitcoin would keep 0; the device does not).
-  get vin() { return {txid: this.txid, vout: this.vout, script_sig: new Uint8Array(0), sequence: this.sequence || 0xffffffff}; }
+  // embit's InputScope.vin is TransactionInput(txid, vout, sequence=(self.sequence or 0xFFFFFFFF)), so on SeedSigner a
+  // sequence of 0 becomes 0xFFFFFFFF in the transaction it signs and in the PSBT it returns: a different transaction from the
+  // one the wallet made, whose signature the wallet cannot use. SIM: VOIDFORGE fix (v2.17.0): the sequence is kept exactly
+  // (0xFFFFFFFF only when the PSBT has none, a PSBTv2 input without a sequence record, as BIP-370 says).
+  get vin() { return {txid: this.txid, vout: this.vout, script_sig: new Uint8Array(0), sequence: this.sequence === null || this.sequence === undefined ? 0xffffffff : this.sequence}; }
   get utxo() {
     if (this.witness_utxo) return this.witness_utxo;
     if (this.non_witness_utxo) return this.non_witness_utxo.tx.vout[this.vout] || null;
@@ -2332,6 +2333,17 @@ class SSPSBTOverviewView extends SSView {
   }
 
   async run() {
+    // SIM: VOIDFORGE fix (v2.17.0): an input that does not carry the coin it spends stops SeedSigner's PSBTParser with an
+    // UnboundLocalError about script_pubkey (a System Error screen). Here the device says why instead.
+    const bare = this.controller.psbt ? this.controller.psbt.inputs.findIndex((inp) => !inp.witness_utxo && !inp.non_witness_utxo) : -1;
+    if (bare >= 0) {
+      this.controller.psbt_seed = null;
+      return new SSDestination(SSErrorView, {view_args: {
+        title: "Error", status_headline: "Cannot read PSBT",
+        text: `Input ${bare} does not include the coin it spends, so its amount is unknown.`,
+        button_text: "Back", next_destination: new SSDestination(SSMainMenuView, {clear_history: true}),
+      }});
+    }
     await this._ss_init();
     const psbt_parser = this.controller.psbt_parser;
 
@@ -2654,10 +2666,12 @@ class SSPSBTFinalizeView extends SSView {
 
     if (selected_menu_num === SS_RET_CODE__BACK_BUTTON) return new SSDestination(SSBackStackView);
 
-    // SIM: VOIDFORGE rule (v2.17.0, ssOwnSignGate in ss_own.js): the PSBT's network must be the device's, and a seed that is not
-    // public signs only after a yes to the page's question (outputs checked; this computer offline, or a warning while online)
+    // SIM: VOIDFORGE rule (v2.17.0, ssOwnSignGate in ss_own.js): the PSBT's network must be the device's and every full previous
+    // transaction the coin it spends; with nothing to sign there is no question; a seed that is not public signs only after a yes to
+    // the page's question (outputs checked; this computer offline, or a warning while online), and a second yes when multisig
+    // change was not verified against a wallet descriptor of this seed
     if (typeof ssOwnSignGate === "function") {
-      const stop = await ssOwnSignGate("psbt", this.controller.psbt_seed, psbt, (this.settings || SSSettings.get_instance()).get_value(SSSettingsConstants.SETTING__NETWORK));
+      const stop = await ssOwnSignGate("psbt", this.controller.psbt_seed, psbt, (this.settings || SSSettings.get_instance()).get_value(SSSettingsConstants.SETTING__NETWORK), {parser: psbt_parser, desc: this.controller.multisig_wallet_descriptor});
       if (stop) return stop;
     }
 
