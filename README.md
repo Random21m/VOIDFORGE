@@ -172,4 +172,4 @@ VOIDFORGE is free and open source, and it stays that way. Supporting it is optio
 
 <p align="center"><img src="docs/support-qr.png" alt="QR code for the Lightning address keywest@strike.me" width="200"><br><b>keywest@strike.me</b></p>
 
-The page itself never goes online, so scan the code (or type the address) in a Lightning wallet on your phone. The same address and code are in the page: tap DONATE at the bottom of any tab (it opens Support this project in ABOUT & HELP). This address replaced dev@breez.tips in v2.16.1. Be wary of any other "VOIDFORGE donation" address, and never send seed words or a passphrase to anyone, for any reason.
+The page itself never goes online, so scan the code (or type the address) in a Lightning wallet on your phone. The same address and code are in the page: tap SUPPORT at the bottom of any tab (DONATE before v2.17.0) (it opens Support this project in ABOUT & HELP). This address replaced dev@breez.tips in v2.16.1. Be wary of any other "VOIDFORGE donation" address, and never send seed words or a passphrase to anyone, for any reason.

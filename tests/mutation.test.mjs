@@ -3498,7 +3498,7 @@ async function probe(w, mutated, fast, only, hooks) {
       const clip = []; Object.defineProperty(w.navigator, 'clipboard', { value: { writeText: async (x) => { clip.push(x); } }, configurable: true }); const bs = box.querySelectorAll('button'); bs[0].click(); await new Promise((r) => setTimeout(r, 20)); bs[1].click(); await new Promise((r) => setTimeout(r, 20));
       if (bs.length !== 2 || clip[0] !== 'keywest@strike.me' || clip[1] !== code) fails.push('support: COPY copies the address and the code');
       { const db = $('supportBtn'); w.showTab('make'); box.open = false; if (db) db.click();
-        if (!db || !db.closest('footer') || $('tp-about').classList.contains('tab-off') || !box.open) fails.push('support: DONATE opens the box in ABOUT & HELP (v2.16.1)');
+        if (!db || !db.closest('footer') || $('tp-about').classList.contains('tab-off') || !box.open) fails.push('support: SUPPORT opens the box in ABOUT & HELP (v2.16.1; DONATE before v2.17.0)');
         box.open = false; w.showTab('make'); }
     }
     { // Check your download (v1.27.3)
