@@ -26,6 +26,7 @@
 //                  the signer's fingerprint is the page's
 //     new:practice-backup-own-words, new:practice-passphrase-own-words, new:practice-wallet-own-words
 //                  Practice making a backup, Practice your passphrase and OPEN A PRACTICE WALLET take the person's own words
+//   v2.17.0 (E2E_GROUPS=new217): new217:load-online, new217:own-psbt (see their notes below)
 // Every wait polls the page's state with a generous limit (no fixed sleeps), so a busy machine makes the run slower, not flaky.
 // Run: node tests/e2e.test.mjs     (E2E_VIEWS=phone or desktop; E2E_GROUPS=make:dice,check to run some, E2E_GROUPS=new for the
 // NEW in v2.16.1 groups only, E2E_GROUPS=make for every method; E2E_SKIP_NEW=1 leaves the NEW groups out)
@@ -104,7 +105,7 @@ const EX1 = 'kick confirm home few coin pencil praise burst business fix credit 
 
 // ================================================================ reporting
 const results = [];   // {view, group, ok, msg}
-const NEW = (g) => g.startsWith('new:');
+const NEW = (g) => g.startsWith('new:');   // (the v2.17.0 groups, new217:*, are ordinary groups: expected to pass)
 function reporter(view, group) {
   return (c, m) => { const r = { view, group, ok: !!c, msg: m }; results.push(r); console.log((c ? 'PASS ' : 'FAIL ') + '[' + view + '][' + group + '] ' + m); return !!c; };
 }
@@ -123,7 +124,7 @@ async function openPage(V, view) {
   const h = { p, view, mobile: VIEWS[view].mobile, errors: [], dialogs: [] };
   p.on('pageerror', (e) => h.errors.push('pageerror: ' + e.message));
   p.on('console', (m) => { if (m.type() === 'error') h.errors.push('console.error: ' + m.text().slice(0, 200)); });
-  p.on('dialog', (d) => { h.dialogs.push(d.type() + ': ' + d.message().slice(0, 160)); d.accept().catch(() => {}); });
+  p.on('dialog', (d) => { h.dialogs.push(d.type() + ': ' + d.message().slice(0, 160)); (h.no && h.no.test(d.message()) ? d.dismiss() : d.accept()).catch(() => {}); });   // h.no: a question the person answers No (Cancel)
   await p.goto(FILE);
   await p.waitForFunction(() => /PASSED/.test((document.getElementById('selfTestBadge') || {}).textContent || ''), null, { timeout: 180000 });
   const go = p.locator('#sgGo');
@@ -745,10 +746,99 @@ G['new:practice-wallet-own-words'] = async (t, h) => {
   noErrors(t, h, 'practice wallet');
 };
 
+// ================================================================ NEW in v2.17.0: the practice signer works for real
+// new217:load-online  online (as the GitHub Pages copy): LOAD INTO THE PRACTICE SIGNER loads a Damascus practice seed with no question;
+//                     a real seed (dice) asks first: Cancel loads nothing and says so in a red banner under YOUR SEED, OK loads it, and
+//                     the result is a gold banner next to the device, on screen; the computer's camera is never opened
+// new217:own-psbt     offline: a real seed loaded with one click; a PSBT for it (built here with @scure/btc-signer) typed into Use it
+//                     for real, HOLD UP TO THE DEVICE, then the device's own keys: Scan, the seed, the review, Approve (the page's
+//                     question, OK); the signed PSBT shows on the page, its signature verifies (noble), btc-signer finalizes it, COPY
+//                     copies it
+const { secp256k1 } = require('@noble/curves/secp256k1');
+const bannerOn = (p, id) => p.evaluate((id) => { const e = document.getElementById(id), r = e.getBoundingClientRect(); return { text: e.textContent, cls: e.className, shown: r.height > 0 && r.top >= 0 && r.bottom <= innerHeight + 1 }; }, id);
+async function countCamera(p) { await p.evaluate(() => { window.__gum = 0; const md = navigator.mediaDevices; if (md && md.getUserMedia) { const g = md.getUserMedia.bind(md); md.getUserMedia = (c) => { window.__gum++; return g(c); }; } }); }
+G['new217:load-online'] = async (t, h, V) => {
+  const { p } = h;
+  await V.ctx.setOffline(false);
+  try {
+    t(await p.evaluate(() => navigator.onLine) === true, 'online: this page is online');
+    await countCamera(p);
+    // a Damascus practice seed: no question
+    await toDamascus(h); await press(h, p.locator('#dmPracticeBtn'));
+    await until(async () => (await p.inputValue('#dmCards')).length > 100, 20000); await until(() => p.isEnabled('#dmBtn'), 20000);
+    await forge(h, '#dmBtn'); const pr = await afterForge(t, h, 'online practice seed', await boxesWords(p));
+    if (!pr) return;
+    const n0 = h.dialogs.length;
+    await press(h, p.locator('#genRight').getByRole('button', { name: 'LOAD INTO THE PRACTICE SIGNER' }));
+    const L = await until(async () => { const b = await bannerOn(p, 'ssLoadStatus'); return /^Loaded: /.test(b.text) ? b : null; }, 240000, 250);
+    t(!!L && /ss-banner ok/.test(L.cls) && L.shown && !h.dialogs.slice(n0).some((x) => /This computer is online/.test(x)), 'online: a practice seed loads with no question; the gold banner "' + (L ? L.text.slice(0, 60) : 'none') + '" is on screen next to the device');
+    // a real seed from dice: the question; Cancel loads nothing (red banner under YOUR SEED, on screen), OK loads it
+    await press(h, p.locator('#tab-make')); const R = rolls(50);
+    await toMethod(h, 'mt-dice'); await typeAtEnd(p.locator('#rolls'), R); await forge(h, '#forgeBtn');
+    const r = await afterForge(t, h, 'online real seed', hashWords(R, 12)); if (!r) return;
+    h.no = /This computer is online/; const n1 = h.dialogs.length;
+    await press(h, p.locator('#genRight').getByRole('button', { name: 'LOAD INTO THE PRACTICE SIGNER' }));
+    const no = await until(async () => { const b = await bannerOn(p, 'seedSignerNote'); return /^Not loaded: you chose not to load your real seed/.test(b.text) ? b : null; }, 30000);
+    t(!!no && /ss-banner/.test(no.cls) && /\bbad\b/.test(no.cls) && no.shown && h.dialogs.slice(n1).some((x) => /^confirm: This computer is online\. Loading your real seed into the practice signer shows it as a SeedQR/.test(x)), 'online: a real seed asks first; Cancel loads nothing, and a red banner under YOUR SEED says so, on screen (' + (no ? no.text.slice(0, 60) : 'none') + ')');
+    h.no = null;
+    await press(h, p.locator('#genRight').getByRole('button', { name: 'LOAD INTO THE PRACTICE SIGNER' }));
+    // the device still shows the practice seed: as the banner says, the person goes back to Home with its keys, and the load goes on
+    const home = await until(async () => /^Go back to Home/.test((await bannerOn(p, 'ssLoadStatus')).text), 60000);
+    t(home, 'online: with the device on another screen, the page says to go back to Home');
+    await p.evaluate(pageProbe); const dv = device(p);
+    for (let n = 0; n < 8; n++) { const st = await dv.state(); if (!st || st.view === 'SSMainMenuView' || st.view === 'SSScanView' || /^Loaded/.test((await bannerOn(p, 'ssLoadStatus')).text)) break; await dv.press('LEFT'); await dv.press('PRESS'); }
+    const ok2 = await until(async () => { const b = await bannerOn(p, 'ssLoadStatus'); return /^Loaded: the device shows the seed with fingerprint /.test(b.text) && b.text.includes(r.fp) ? b : null; }, 240000, 250);
+    const last = ok2 || await bannerOn(p, 'ssLoadStatus');
+    t(!!ok2 && /ss-banner ok/.test(ok2.cls) && ok2.shown, 'online: OK loads the real seed: the gold banner names fingerprint ' + r.fp + ' (@scure/bip32), on screen (' + JSON.stringify(last).slice(0, 200) + ')');
+    t(await p.evaluate(() => window.__gum) === 0, 'online: the computer\'s camera is never opened by these loads');
+  } finally { await V.ctx.setOffline(true); }
+  noErrors(t, h, 'load online');
+};
+G['new217:own-psbt'] = async (t, h) => {
+  const { p } = h, R = rolls(50);
+  await toMethod(h, 'mt-dice'); await typeAtEnd(p.locator('#rolls'), R); await forge(h, '#forgeBtn');
+  const r = await afterForge(t, h, 'own PSBT seed', hashWords(R, 12)); if (!r) return;
+  await loadIntoSigner(t, h, 'own PSBT seed', r.words);
+  const root = rootOf(r.words), path0 = "m/84'/0'/0'/0/1", k = root.derive(path0), H = 0x80000000, tx = new btc.Transaction();
+  const pay = btc.p2wpkh(rootOf('zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong').derive("m/84'/0'/0'/0/0").publicKey);
+  tx.addInput({ txid: new Uint8Array(32).fill(0x2a), index: 1, witnessUtxo: { script: btc.p2wpkh(k.publicKey).script, amount: 250000n }, bip32Derivation: [[k.publicKey, { fingerprint: root.fingerprint, path: [84 + H, H, H, 0, 1] }]] });
+  tx.addOutput({ script: pay.script, amount: 120000n });
+  const ck = root.derive("m/84'/0'/0'/1/0"); tx.addOutput({ script: btc.p2wpkh(ck.publicKey).script, amount: 129000n, bip32Derivation: [[ck.publicKey, { fingerprint: root.fingerprint, path: [84 + H, H, H, 1, 0] }]] });
+  const b64 = Buffer.from(tx.toPSBT(0)).toString('base64');
+  const box = p.locator('#ssOwnIn'); await box.scrollIntoViewIfNeeded(); await box.fill(b64);
+  await press(h, p.locator('#ssOwnGo'));
+  const held = await until(async () => { const b = await bannerOn(p, 'ssOwnStatus'); return /^Held up to the device’s camera: your PSBT/.test(b.text) ? b : null; }, 30000);
+  const warns = await p.evaluate(() => [...document.querySelectorAll('#ssOwnWarns li')].map((x) => x.textContent));
+  t(!!held && warns.some((x) => x.startsWith('Seed ' + r.fp + ' can sign. The device will show 250,000 sats in from 1 input, 120,000 sats to 1 address, 129,000 sats back as change, and a fee of 1,000 sats')), 'own PSBT: HOLD UP TO THE DEVICE holds it up and the page says what the device will show (' + (warns[0] || '').slice(0, 90) + ')');
+  const d = device(p);
+  await p.evaluate(pageProbe);
+  const s0 = await d.state(); await d.waitView(s0.view);   // the seed's own menu, after the load: Scan transaction (or Home > Scan)
+  if (s0.view === 'SSSeedOptionsView') await d.pick(/^Scan transaction$/); else { await d.waitView('SSMainMenuView'); await d.pick(/^Scan$/); }
+  const s1 = await until(async () => { const x = await d.state(); return x && /^SSPSBT(SelectSeed|Overview)View$/.test(x.view) ? x : null; }, 120000);
+  if (s1 && s1.view === 'SSPSBTSelectSeedView') { await d.waitView('SSPSBTSelectSeedView'); await d.pick(new RegExp('^' + r.fp + '$')); }
+  for (let n = 0; n < 12; n++) { const s = await d.state(); if (s && s.view === 'SSPSBTFinalizeView') break; await d.waitView(s.view); await d.press('PRESS'); }
+  const n0 = h.dialogs.length; await d.waitView('SSPSBTFinalizeView'); await d.press('PRESS');
+  await d.waitView('SSPSBTSignedQRDisplayView');
+  t(h.dialogs.slice(n0).some((x) => /^confirm: Sign this transaction with your real seed /.test(x)), 'own PSBT: before it signs, the page asks to confirm (OK)');
+  const out = await until(async () => { const x = await p.evaluate(() => { const o = document.getElementById('ssOwnOut'); return o.hidden ? null : { say: document.getElementById('ssOwnOutSay').textContent, text: document.getElementById('ssOwnOutText').value }; }); return x; }, 30000);
+  let ok = false, fin = false;
+  if (out) {
+    const sg = btc.Transaction.fromPSBT(Buffer.from(out.text, 'base64')), ps = sg.getInput(0).partialSig || [];
+    const h0 = tx.preimageWitnessV0(0, btc.OutScript.encode({ type: 'pkh', hash: btc.p2wpkh(k.publicKey).script.slice(2) }), btc.SigHash.ALL, 250000n);
+    ok = ps.length === 1 && secp256k1.verify(ps[0][1].slice(0, -1), h0, k.publicKey, { prehash: false, format: 'der', lowS: true });
+    try { const f = btc.Transaction.fromPSBT(tx.toPSBT(0)); f.combine(sg); f.finalize(); fin = f.extract().length > 0; } catch (e) { fin = false; }
+  }
+  t(!!out && /^Signed by seed /.test(out.say) && ok && fin, 'own PSBT: the signed PSBT shows on the page; its signature verifies (noble, BIP-143) and btc-signer finalizes the transaction');
+  await p.evaluate(() => { window.__copies = []; }); await press(h, p.locator('#ssOwnCopy'));
+  const cp = await until(() => p.evaluate(() => (window.__copies || [])[0] || null), 10000);
+  t(!!out && cp === out.text, 'own PSBT: COPY copies the signed PSBT (base64)');
+  noErrors(t, h, 'own PSBT');
+};
+
 // ================================================================ run
 const ORDER = ['make:dice', 'make:coin', 'make:words', 'make:cards', 'make:hex', 'make:damascus', 'make:dice24', 'followups', 'check', 'signer',
   'new:damascus-practice-sheet', 'new:damascus-guided-practice', 'new:damascus-worked-example', 'new:load-own-seed', 'new:load-practice-seed',
-  'new:practice-backup-own-words', 'new:practice-passphrase-own-words', 'new:practice-wallet-own-words'];
+  'new:practice-backup-own-words', 'new:practice-passphrase-own-words', 'new:practice-wallet-own-words', 'new217:load-online', 'new217:own-psbt'];
 const pick = process.env.E2E_GROUPS ? process.env.E2E_GROUPS.split(',') : null;   // a group's name, or the part before its colon (new, make)
 const wantGroups = ORDER.filter((g) => (!pick || pick.some((e) => g === e || g.startsWith(e + ':'))) && !(process.env.E2E_SKIP_NEW && NEW(g)));
 const wantViews = process.env.E2E_VIEWS ? process.env.E2E_VIEWS.split(',') : Object.keys(VIEWS);

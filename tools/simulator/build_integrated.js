@@ -133,7 +133,7 @@ rep("\n</style>", css + "</style>");
 // ---- 2. the box, right after <details id="practiceBox"> ... </details> in CHECK A BACKUP ----
 const box = `
     <details id="ssBox">
-      <summary>Practice signer: works like SeedSigner<span class="tag tag-secret">SECRET</span><small>The same screens and buttons as a real SeedSigner, with step-by-step lessons and a practice transaction.</small></summary>
+      <summary>Practice signer: works like SeedSigner<span class="tag tag-secret">SECRET</span><small>The same screens and buttons as a real SeedSigner, with step-by-step lessons, a practice transaction, and signing your own PSBTs and messages for real.</small></summary>
       <p class="hint" style="margin:8px 0;">A copy of SeedSigner 0.8.7 on the SeedSigner+ screen (320 x 240): the same screens, menus and buttons, and it does what the real device does.</p>
       <div class="ss-wrap">
         <div class="ss-dev" id="ssDevice" tabindex="0" role="application" aria-label="Practice signer. While it has focus: arrow keys move, Enter or Space presses the joystick, 1, 2 and 3 are KEY1, KEY2 and KEY3.">
@@ -184,7 +184,7 @@ const box = `
         <ul class="ss-own-w" id="ssOwnWarns" hidden></ul>
         <p class="hint" style="margin:10px 0 6px;"><b>Sign a message.</b> Signed with the key of one of the seed&rsquo;s single-key receive addresses, in the Bitcoin Signed Message format SeedSigner uses. Turn on Message signing on the device first (Settings &gt; Advanced).</p>
         <textarea id="ssMsgIn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Message to sign" placeholder="Message to sign (plain letters, digits and punctuation)"></textarea>
-        <div class="btn-row"><select id="ssMsgType" aria-label="Address type of the signing key"><option value="84">Native SegWit (bc1q), m/84h/...</option><option value="49">Nested SegWit (3...), m/49h/...</option><option value="44">Legacy (1...), m/44h/...</option></select><input type="number" id="ssMsgIdx" min="0" max="999999" step="1" value="0" aria-label="Receive address number"><button type="button" class="secondary small" id="ssMsgGo">HOLD UP THE MESSAGE</button></div>
+        <div class="btn-row"><select id="ssMsgType" aria-label="Address type of the signing key"><option value="84">Native SegWit (bc1q)</option><option value="49">Nested SegWit (3...)</option><option value="44">Legacy (1...)</option></select><input type="number" id="ssMsgIdx" min="0" max="999999" step="1" value="0" aria-label="Receive address number"><button type="button" class="secondary small" id="ssMsgGo">HOLD UP THE MESSAGE</button></div>
         <div id="ssOwnOut" hidden>
           <p class="status" id="ssOwnOutSay" aria-live="polite"></p>
           <textarea id="ssOwnOutText" rows="4" readonly spellcheck="false" aria-label="What the device made: the signed PSBT (base64) or the signed message"></textarea>

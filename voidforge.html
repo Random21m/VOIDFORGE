@@ -2015,7 +2015,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
       <p class="status" id="prWalletStatus" aria-live="polite"></p>
     </details>
     <details id="ssBox">
-      <summary>Practice signer: works like SeedSigner<span class="tag tag-secret">SECRET</span><small>The same screens and buttons as a real SeedSigner, with step-by-step lessons and a practice transaction.</small></summary>
+      <summary>Practice signer: works like SeedSigner<span class="tag tag-secret">SECRET</span><small>The same screens and buttons as a real SeedSigner, with step-by-step lessons, a practice transaction, and signing your own PSBTs and messages for real.</small></summary>
       <p class="hint" style="margin:8px 0;">A copy of SeedSigner 0.8.7 on the SeedSigner+ screen (320 x 240): the same screens, menus and buttons, and it does what the real device does.</p>
       <div class="ss-wrap">
         <div class="ss-dev" id="ssDevice" tabindex="0" role="application" aria-label="Practice signer. While it has focus: arrow keys move, Enter or Space presses the joystick, 1, 2 and 3 are KEY1, KEY2 and KEY3.">
@@ -2066,7 +2066,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <ul class="ss-own-w" id="ssOwnWarns" hidden></ul>
         <p class="hint" style="margin:10px 0 6px;"><b>Sign a message.</b> Signed with the key of one of the seed&rsquo;s single-key receive addresses, in the Bitcoin Signed Message format SeedSigner uses. Turn on Message signing on the device first (Settings &gt; Advanced).</p>
         <textarea id="ssMsgIn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Message to sign" placeholder="Message to sign (plain letters, digits and punctuation)"></textarea>
-        <div class="btn-row"><select id="ssMsgType" aria-label="Address type of the signing key"><option value="84">Native SegWit (bc1q), m/84h/...</option><option value="49">Nested SegWit (3...), m/49h/...</option><option value="44">Legacy (1...), m/44h/...</option></select><input type="number" id="ssMsgIdx" min="0" max="999999" step="1" value="0" aria-label="Receive address number"><button type="button" class="secondary small" id="ssMsgGo">HOLD UP THE MESSAGE</button></div>
+        <div class="btn-row"><select id="ssMsgType" aria-label="Address type of the signing key"><option value="84">Native SegWit (bc1q)</option><option value="49">Nested SegWit (3...)</option><option value="44">Legacy (1...)</option></select><input type="number" id="ssMsgIdx" min="0" max="999999" step="1" value="0" aria-label="Receive address number"><button type="button" class="secondary small" id="ssMsgGo">HOLD UP THE MESSAGE</button></div>
         <div id="ssOwnOut" hidden>
           <p class="status" id="ssOwnOutSay" aria-live="polite"></p>
           <textarea id="ssOwnOutText" rows="4" readonly spellcheck="false" aria-label="What the device made: the signed PSBT (base64) or the signed message"></textarea>
@@ -5181,9 +5181,9 @@ const DICT = [
   ["Proof of work", "The proof, shown by a block's hash, that a miner spent real computing effort on it. It makes rewriting history very expensive.", "", "Network & mining"],
   ["Protocol", "The shared rules and message formats that let different Bitcoin software work together.", "", "Basics"],
   ["Pruned node", "A full node that checks everything but then deletes old block data to save disk space.", "", "Network & mining"],
-  ["PSBT (partly signed Bitcoin transaction)", "A standard file for passing a transaction between a wallet, which builds it, and a signer, which signs it. VOIDFORGE's tools only read these. Only the practice signer signs them, your own too. It runs inside this page, so it is as safe as the page itself.", "Inspect a transaction (PSBT), Compare two transactions, the practice signer's Use it for real.", "Transactions"],
-  ["Partial signature", "One signer's signature added to a PSBT. A multisig transaction needs signatures from several cosigners, each added by its own signer; a wallet then combines them and sends the transaction. A signer such as SeedSigner gives back a PSBT that holds only its own signatures.", "The practice signer's Use it for real.", "Transactions"],
-  ["Change verification", "A signer's check that an output it calls your change really goes back to your wallet: it makes the address again from your seed at the derivation path the PSBT gives, or, for multisig, from the wallet descriptor. An output it cannot check this way is shown as a payment to someone else.", "The practice signer's review of a PSBT.", "Transactions"],
+  ["PSBT (partly signed Bitcoin transaction)", "A standard file for passing a transaction between a wallet, which builds it, and a signer, which signs it. VOIDFORGE’s tools only read these. Only the practice signer signs them, your own too. It runs inside this page, so it is as safe as the page itself.", "Inspect a transaction (PSBT), Compare two transactions, the practice signer’s Use it for real.", "Transactions"],
+  ["Partial signature", "One signer’s signature added to a PSBT. A multisig transaction needs signatures from several cosigners, each added by its own signer; a wallet then combines them and sends the transaction. A signer such as SeedSigner gives back a PSBT that holds only its own signatures.", "The practice signer’s Use it for real.", "Transactions"],
+  ["Change verification", "A signer’s check that an output it calls your change really goes back to your wallet: it makes the address again from your seed at the derivation path the PSBT gives, or, for multisig, from the wallet descriptor. An output it cannot check this way is shown as a payment to someone else.", "The practice signer’s review of a PSBT.", "Transactions"],
   ["Public key", "The number worked out from a private key. It can be shared and cannot be used to spend.", "", "Keys & seeds"],
   ["Public key hash (HASH160)", "The short fingerprint of a public key (SHA-256 then RIPEMD-160) that old address types are made from.", "", "Addresses & scripts"],
   ["QR code", "A square picture that holds text. VOIDFORGE draws QR codes on screen, and reads them with the camera only when you press a SCAN button (the camera stops as soon as the code is read).", "Watch-only QR, SeedQR, address QR, Support this project. PRINT THIS QR prints them; the SCAN buttons read them.", "Basics"],
@@ -37533,7 +37533,7 @@ async function ssOwnReview(bytes) {
   const W = [], S = SSSettingsConstants, n = ssLearnNet(), network = n === "M" ? S.MAINNET : n === "T" ? S.TESTNET : S.REGTEST;
   const psbt = SSPSBT.parse(bytes), fresh = () => SSPSBT.parse(bytes);
   const nw = ssOwnNetWrong(psbt, network);
-  if (nw) W.push({ bad: true, t: nw + " The device will not sign it (VOIDFORGE's rule): set the device's network in Settings > Advanced > Bitcoin network, or use the PSBT for this network." });
+  if (nw) W.push({ bad: true, t: nw + " The device will not sign it (VOIDFORGE’s rule): set the device’s network in Settings > Advanced > Bitcoin network, or use the PSBT for this network." });
   const inFps = new Set();
   for (const inp of psbt.inputs) { for (const d of inp.bip32_derivations) inFps.add(hex(d.der.fingerprint)); for (const d of inp.taproot_bip32_derivations) inFps.add(hex(d.der.fingerprint)); }
   const seeds = ssLearnSeeds().filter((s) => s && s.seed_bytes instanceof Uint8Array);
@@ -37593,10 +37593,10 @@ async function ssOwnGo() {
     ssLearnShow(frames, what, "own");
     ssOwnWarns(W);
     const next = { psbt: "On the device, choose Scan (Home > Scan), then the seed that signs. Check every address and amount on its screens.",
-      address: "On the device, choose Scan (Home > Scan). It searches the seed's receive and change addresses, as SeedSigner does; a multisig address needs the wallet descriptor first.",
+      address: "On the device, choose Scan (Home > Scan). It searches the seed’s receive and change addresses, as SeedSigner does; a multisig address needs the wallet descriptor first.",
       descriptor: "On the device, choose Scan (Home > Scan). It loads the wallet descriptor and then checks multisig change and addresses against it.",
       msg: "On the device, turn on Settings > Advanced > Message signing (off at first, as on SeedSigner), then choose Scan on Home." }[r.kind];
-    ssOwnSay("Held up to the device's camera: " + what + ". " + next, W.some((x) => x.bad) ? "" : "ok");
+    ssOwnSay("Held up to the device’s camera: " + what + ". " + next, W.some((x) => x.bad) ? "" : "ok");
     ssOwnTimerOn();
   } finally { ssOwn.busy = false; }
 }
@@ -37610,7 +37610,7 @@ function ssOwnMsgGo() {
   const path = "m/" + purpose + "h/" + ssLearnCoin(ssLearnNet()) + "h/0h/0/" + idx;
   ssOwn.gen++; ssOwn.kind = "msg"; ssOwnWarns([]);
   ssLearnShow(["signmessage " + path + " ascii:" + msg], "your request to sign a message with the key of receive address #" + idx + " (" + path + ")", "own");
-  ssOwnSay("Held up to the device's camera: a request to sign your message with the key at " + path + ". On the device, turn on Settings > Advanced > Message signing (off at first, as on SeedSigner), then choose Scan on Home.", "ok");
+  ssOwnSay("Held up to the device’s camera: a request to sign your message with the key at " + path + ". On the device, turn on Settings > Advanced > Message signing (off at first, as on SeedSigner), then choose Scan on Home.", "ok");
   ssOwnTimerOn();
 }
 async function ssOwnFile(ev) {
@@ -37626,7 +37626,7 @@ async function ssOwnFile(ev) {
 
 // ---------------------------------------------------------------- the signing rules (called by the device: SIM: VOIDFORGE rule)
 const SS_OWN_ASK_PSBT = (fp, online) => "Sign this transaction with your real seed " + fp + "?\n\n" +
-  "- Check every address and amount on the device's screen against what you meant to send. Change that the device cannot prove is yours is shown as a payment.\n" +
+  "- Check every address and amount on the device’s screen against what you meant to send. Change that the device cannot prove is yours is shown as a payment.\n" +
   (online ? "- THIS COMPUTER IS ONLINE. A browser is not a hardware signer: anything watching this computer could copy your seed. Take it offline before you sign for real coins.\n"
     : "- This computer looks offline. Keep it offline until you have wiped the seed (CLEAR ALL).\n") +
   "\nSign it?";
@@ -37642,7 +37642,7 @@ function ssOwnBlock(head, text, page, home) {
 async function ssOwnSignGate(kind, seed, psbt, network) {
   if (kind === "psbt") {
     const nw = ssOwnNetWrong(psbt, network);
-    if (nw) return ssOwnBlock("Wrong network", "This transaction is for another network than the device's.", "Not signed: " + nw + " Set the device's network in Settings > Advanced > Bitcoin network, or use the PSBT for this network.");
+    if (nw) return ssOwnBlock("Wrong network", "This transaction is for another network than the device’s.", "Not signed: " + nw + " Set the device’s network in Settings > Advanced > Bitcoin network, or use the PSBT for this network.");
   }
   if (ssOwnSeedPublic(seed)) return null;          // a public seed: PRACTICE, nothing to lose
   if (kind === "psbt" && ssOwnIsPracticeTx(psbt)) return null;   // the practice transaction spends made-up coins
@@ -37695,8 +37695,8 @@ async function ssOwnTakePsbt(c) {
     sigs + " signature" + (sigs === 1 ? "" : "s") + ", as the device shows it in its animated QR. ";
   let cls = pub ? "bad" : "ok";
   if (!chk) say += "This page could not check the signatures itself.";
-  else if (chk.bad.length) { say += "INVALID SIGNATURE on input " + chk.bad.join(", ") + " (checked by this page's own code). Do not broadcast this transaction."; cls = "bad"; }
-  else say += "Each signature checked by this page's own code: " + (chk.valid ? "valid" : "none could be checked") + (chk.unchecked.length ? "; input " + chk.unchecked.join(", ") + " not checked" : "") + ".";
+  else if (chk.bad.length) { say += "INVALID SIGNATURE on input " + chk.bad.join(", ") + " (checked by this page’s own code). Do not broadcast this transaction."; cls = "bad"; }
+  else say += "Each signature checked by this page’s own code: " + (chk.valid ? "valid" : "none could be checked") + (chk.unchecked.length ? "; input " + chk.unchecked.join(", ") + " not checked" : "") + ".";
   say += " Give it back to your wallet (the QR on the device, the text below, or the file), which adds the other signatures it needs and sends it.";
   ssOwnShow({ kind: "psbt", bytes, fp, pub, text: base64Encode(bytes), say, cls });
 }
@@ -37708,7 +37708,7 @@ async function ssOwnTakeMsg(v) {
   const block = "-----BEGIN BITCOIN SIGNED MESSAGE-----\n" + msg + "\n-----BEGIN SIGNATURE-----\n" + (addr || "") + "\n" + sig + "\n-----END BITCOIN SIGNED MESSAGE-----";
   const say = (pub ? "PRACTICE: signed with a public seed. Anyone can sign with it: never use it to prove anything. " : "Signed: ") +
     "the message, signed with the key of " + (addr || path) + " (" + path + "), in the Bitcoin Signed Message format SeedSigner uses. " +
-    (ok === true ? "The signature checks out (checked by this page's own code)." : ok === false ? "The signature does NOT check out against this address (checked by this page's own code)." : "") +
+    (ok === true ? "The signature checks out (checked by this page’s own code)." : ok === false ? "The signature does NOT check out against this address (checked by this page’s own code)." : "") +
     " The device shows the signature as a QR code.";
   ssOwnShow({ kind: "msg", sig, fp: "", pub, text: block, say, cls: pub || ok === false ? "bad" : "ok" });
 }

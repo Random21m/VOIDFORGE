@@ -1188,7 +1188,7 @@ async function practiceRun(t, d, page, tag, o) {
   const r = await readUR(page);
   t(!!r && r.type === 'crypto-psbt', tag + ': the device shows the signed PSBT as a UR crypto-psbt QR (' + (r ? r.parts + ' part(s), read with jsqr' : 'none read') + ')');
   const t0 = Date.now(); let p; while (Date.now() - t0 < 120000) { p = await panel(d); if (p.tx && p.tx.ok) break; await sleep(300); }
-  t(p.tx && p.tx.ok && /^Signed correctly: /.test(p.status) && /checked by this page's own code/.test(p.status), tag + ': the page reads the signed QR from the device\'s screen and says "' + p.status.split('(')[0].trim() + '"');
+  t(p.tx && p.tx.ok && /^Signed correctly: /.test(p.status) && /checked by this page’s own code/.test(p.status), tag + ': the page reads the signed QR from the device\'s screen and says "' + p.status.split('(')[0].trim() + '"');
   if (r) checkPractice(t, tag, origB, r.bytes, o);
   return origB;
 }
@@ -1300,7 +1300,7 @@ SCEN.forge = async (t, d, ctx, page) => {
   const checkResult = async (tag, m, pass) => {
     const r = await result(m), fp = fpOf(rootOf(m, pass)), r0 = addrOf(m, pass, 'native', 0, 0), c0 = addrOf(m, pass, 'native', 1, 0);
     t(r.words === m && r.kind === 'ss' && r.tab && r.inView, tag + ': FORGE SEED shows the words in MAKE A SEED (the tab is switched and scrolled to them), as @scure/bip39 gives them');
-    t(r.fp === 'Master fingerprint: ' + fp + (pass ? ' (with passphrase)' : '') && r.fpPic && r.check === 'Consistency check: the practice signer shows fingerprint ' + fp + ', and VOIDFORGE works out ' + fp + " for these words: the same. Both come from this page's own code, so this is not an independent check." && r.checkOk,
+    t(r.fp === 'Master fingerprint: ' + fp + (pass ? ' (with passphrase)' : '') && r.fpPic && r.check === 'Consistency check: the practice signer shows fingerprint ' + fp + ', and VOIDFORGE works out ' + fp + " for these words: the same. Both come from this page’s own code, so this is not an independent check." && r.checkOk,
       tag + ': fingerprint ' + fp + ' (@scure/bip32) with its picture, and "' + r.check + '"');
     t(r.r0.includes(r0) && r.c0.includes(c0), tag + ': the first receive and change addresses equal @scure/btc-signer\'s (' + r0.slice(0, 14) + '..., ' + c0.slice(0, 14) + '...), 10 of each');
     t(r.sq && r.watch && r.pass === pass, tag + ': SeedQR, xpub and watch-only are offered, and the passphrase box holds the passphrase applied on the device' + (pass ? ' ("' + pass + '")' : ' (none)'));
@@ -1671,7 +1671,7 @@ SCEN.own_psbt = async (t, d, ctx, page) => {
   const asked = []; page.on('dialog', (dl) => { if (/real seed/.test(dl.message())) asked.push(dl.message()); });
   await ownLoad(t, d, page);
   const P = ownPsbt(), pre = await ownHold(page, P.b64);
-  t(pre.parts >= 2 && /Held up to the device's camera: your PSBT/.test(pre.st) && pre.warns.some((w) => /^1 of 2 inputs belong to seed /.test(w)) && pre.warns.some((w) => w.startsWith('Seed ' + FPR + ' can sign. The device will show 500,000 sats in from 2 inputs, 300,000 sats to 1 address, 198,500 sats back as change, and a fee of 1,500 sats')),
+  t(pre.parts >= 2 && /Held up to the device’s camera: your PSBT/.test(pre.st) && pre.warns.some((w) => /^1 of 2 inputs belong to seed /.test(w)) && pre.warns.some((w) => w.startsWith('Seed ' + FPR + ' can sign. The device will show 500,000 sats in from 2 inputs, 300,000 sats to 1 address, 198,500 sats back as change, and a fee of 1,500 sats')),
     'own PSBT pasted as base64: held up as an animated UR (' + pre.parts + ' parts); the page says 1 of 2 inputs is this seed\'s and what the device will show (' + pre.warns.join(' | ').slice(0, 300) + ')');
   const seen = await ownReview(d);
   t(seen.num_inputs === 2 && seen.spend_amount === 300000 && seen.change_amount === 198500 && seen.fee_amount === 1500 && seen.input === 500000 && seen.payAddr === P.pay && seen.changeAddr === P.change && seen.changeOk === true,
@@ -1688,7 +1688,7 @@ SCEN.own_psbt = async (t, d, ctx, page) => {
   const out = await until(async () => { const x = await ownState(page); return x.out ? x : null; }, 30000);
   const signedB = r ? r.bytes : null, outB = out ? b64b(out.out.text) : null;
   t(!!r && !!outB && Buffer.compare(Buffer.from(signedB), Buffer.from(outB)) === 0, 'own PSBT: the animated QR on the device (read with jsqr and bc-ur, ' + (r ? r.parts : 0) + ' parts) is byte for byte the base64 the page gives to copy (' + (outB ? outB.length : 0) + ' bytes)');
-  t(!!out && /^Signed by seed /.test(out.out.say) && /ss-banner ok/.test(out.out.cls) && /checked by this page's own code: valid/.test(out.out.say) && !/PRACTICE/.test(out.out.say), 'own PSBT: a real seed\'s signature is not marked PRACTICE; the page checked it (' + (out ? out.out.say.slice(0, 120) : '') + ')');
+  t(!!out && /^Signed by seed /.test(out.out.say) && /ss-banner ok/.test(out.out.cls) && /checked by this page’s own code: valid/.test(out.out.say) && !/PRACTICE/.test(out.out.say), 'own PSBT: a real seed\'s signature is not marked PRACTICE; the page checked it (' + (out ? out.out.say.slice(0, 120) : '') + ')');
   // the .psbt file is the same bytes
   const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), page.click('#ssOwnSave')]);
   const fb = fs.readFileSync(await dl.path());

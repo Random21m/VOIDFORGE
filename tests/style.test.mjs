@@ -45,6 +45,7 @@ const STEPS = {
   c32Box: { "c32Btn": "c32CombinePanel", "c32mBtn": "c32MakePanel" },                            // modes: check and combine, or make
   msBox: { "msStartBtn": "msIntro", "ADD THIS KEY": "msRun", "msbBtn": "msDone" },               // set up, add each key, the finished wallet
   dmBox: { "dmBtn": "dmGoRow", "dmTourNext": "dmTour" },                                        // FORGE SEED, or NEXT while the guided practice runs (FORGE SEED is off then)
+  ssBox: { "ssForgeBtn": "", "ssOwnGo": "ssOwnBox" },                                          // v2.17.0: FORGE SEED from the device, and Use it for real (HOLD UP TO THE DEVICE)
 };
 // Boxes with no main action, so no gold button: they show something, work as you type, or hold settings (their buttons, if
 // any, are COPY, SHOW, HIDE or PRINT, all gray). Listed here, so a tool box without its gold button anywhere else fails.

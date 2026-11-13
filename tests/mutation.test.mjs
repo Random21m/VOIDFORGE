@@ -242,7 +242,7 @@ async function probe(w, mutated, fast, only, hooks) {
         let t2 = await take(mk({ ins: [["m/84'/0'/0'/0/0", 100000n, RB]] }).bytes, sPub);
         if (!t2.o || !/^PRACTICE: signed with a public seed \(73c5da0a\)/.test(t2.o.say) || t2.o.cls !== 'bad' || t2.o.text !== Buffer.from(t2.tr).toString('base64')) fails.push(T + 'output: a public seed\'s signed PSBT is marked PRACTICE, and the text is the trimmed PSBT in base64');
         t2 = await take(mk().bytes, sA);
-        if (!t2.o || !/^Signed by seed /.test(t2.o.say) || !/checked by this page's own code: valid/.test(t2.o.say) || t2.o.cls !== 'ok') fails.push(T + 'output: a real seed\'s signed PSBT, checked valid by the page');
+        if (!t2.o || !/^Signed by seed /.test(t2.o.say) || !/checked by this page’s own code: valid/.test(t2.o.say) || t2.o.cls !== 'ok') fails.push(T + 'output: a real seed\'s signed PSBT, checked valid by the page');
         t2 = await take(mk().bytes, sA, true);
         if (!t2.o || !/INVALID SIGNATURE on input 0/.test(t2.o.say) || t2.o.cls !== 'bad') fails.push(T + 'output: an invalid signature is called invalid (' + (t2.o ? t2.o.say.slice(0, 80) : 'none') + ')'); }
       // 7. re-hide: the signed output next to a real seed, and a message signature, are reasons to cover; the typed message too
