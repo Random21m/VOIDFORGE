@@ -258,7 +258,7 @@ async function probe(w, mutated, fast, only, hooks) {
         w.ssOwnShow({ kind: 'msg', sig: 'x', fp: '', pub: true, text: 'x', say: 'x', cls: 'ok' }); if (!w.rhHolds(e)) fails.push(T + 're-hide: a message signature is a reason to cover');
         if (!E('AUTO_FIELDS').includes('ssMsgIn')) fails.push(T + 'the typed message is in AUTO_FIELDS (re-hide, CLEAR ALL and auto-clear)'); }
       // 8. the message request holds the device's network: Testnet gives m/84h/1h/...
-      { E('SSSettings').get_instance().set_value(SC.SETTING__NETWORK, SC.TESTNET); $('ssMsgIn').value = 'hi'; $('ssMsgIdx').value = '2'; w.ssOwnMsgGo();
+      { E('SSSettings').get_instance().set_value(SC.SETTING__NETWORK, SC.TESTNET); $('ssMsgIn').value = 'hi'; $('ssMsgIdx').value = '2'; await w.ssOwnMsgGo();
         const f = E('ssLearnCam').frames; if (!f || f[0] !== 'signmessage m/84h/1h/0h/0/2 ascii:hi') fails.push(T + 'HOLD UP THE MESSAGE: the request is for the device\'s network (' + (f && f[0]) + ')');
         E('SSSettings').get_instance().set_value(SC.SETTING__NETWORK, SC.MAINNET); }
       // 9. the wipes: wipeSeed (with only a public seed on the device) and the device's own stop clear the boxes and the output
@@ -353,6 +353,10 @@ async function probe(w, mutated, fast, only, hooks) {
         if (r2.out || r2.asked.length !== 2 || !/^The device did NOT verify that this change comes back to your multisig wallet:\n\n- output 1: 1,998,000 sats to bc1q/.test(r2.asked[1]) || !/these 1,998,000 sats go to someone else/.test(r2.asked[1]) || r2.head !== 'Not signed') fails.push(T + 'M1: unverified multisig change asks a second question naming the amount; No signs nothing');
         answers = [true, true]; r2 = await sign(evil, fd); if (!r2.out || r2.asked.length !== 2) fails.push(T + 'M2: with a foreign descriptor the second question is asked too, and Yes signs');
         answers = []; r2 = await sign(good, rd); if (!r2.out || r2.asked.length !== 1) fails.push(T + 'M1: change verified by the wallet\'s own descriptor: one question only');
+        { const tx = new btc.Transaction(), gc = ms(hd, 1, 1), ec = ms(xh, 1, 1); tx.addInput({ txid: tid(3), index: 0, witnessUtxo: { script: i0.pay.script, amount: 2000000n }, witnessScript: i0.pay.witnessScript, bip32Derivation: i0.ders }); tx.addOutput({ script: ext, amount: 1000n });
+          tx.addOutput({ script: gc.pay.script, amount: 8000n, witnessScript: gc.pay.witnessScript, bip32Derivation: gc.ders }); tx.addOutput({ script: ec.pay.script, amount: 1990000n, witnessScript: ec.pay.witnessScript, bip32Derivation: ec.ders.map(([p, d], j) => [p, der(own[j], acct + '/1/1')]) });
+          answers = [true, false]; r2 = await sign(tx.toPSBT(0), rd);
+          if (r2.out || r2.asked.length !== 2 || !/- output 2: 1,990,000 sats/.test(r2.asked[1] || '') || /- output 1:/.test(r2.asked[1] || '')) fails.push(T + 'second review: with a trusted descriptor, change it does not make is put to the second question (' + r2.asked.length + ')'); answers = []; }
         dev.multisig_wallet_descriptor = null; }
       // 4. single-key change at an odd path (M3); sighash 0 (L5); amber fees (10% of the amount sent, 250 sat/vB)
       { const inp = wp("m/84'/0'/0'/0/1", 250000n);
@@ -402,8 +406,8 @@ async function probe(w, mutated, fast, only, hooks) {
         if (!d || !d.view_args || d.view_args.status_headline !== 'Cannot read PSBT' || !/^Input 0 does not include the coin it spends/.test(d.view_args.text)) fails.push(T + 'tester 5: the device says why it cannot read it (no System Error)'); }
       // 8. a new item puts the last output away (and so does No); an empty address number is refused
       { w.ssOwnShow({ kind: 'psbt', bytes: new Uint8Array(2), fp: fA, pub: false, text: 'x', say: 'Signed', cls: 'ok' });
-        $('ssMsgIn').value = 'hi'; $('ssMsgIdx').value = ''; w.ssOwnMsgGo(); if (!/^Not held up: type the number of the receive address/.test($('ssOwnStatus').textContent) || $('ssOwnOut').hidden) fails.push(T + 'tester 12: an empty address number is refused (the output stays)');
-        $('ssMsgIdx').value = '2'; w.ssOwnMsgGo(); if (!$('ssOwnOut').hidden || E('ssOwn').out) fails.push(T + 'tester 1: holding up a new item puts the last signed output away');
+        $('ssMsgIn').value = 'hi'; $('ssMsgIdx').value = ''; await w.ssOwnMsgGo(); if (!/^Not held up: type the number of the receive address/.test($('ssOwnStatus').textContent) || $('ssOwnOut').hidden) fails.push(T + 'tester 12: an empty address number is refused (the output stays)');
+        $('ssMsgIdx').value = '2'; await w.ssOwnMsgGo(); if (!$('ssOwnOut').hidden || E('ssOwn').out) fails.push(T + 'tester 1: holding up a new item puts the last signed output away');
         w.ssOwnShow({ kind: 'psbt', bytes: new Uint8Array(2), fp: fA, pub: false, text: 'x', say: 'Signed', cls: 'ok' }); answers = [false];
         const r2 = await sign(build([wp("m/84'/0'/0'/0/1", 250000n)], [[ext, 249000n]]).bytes); if (r2.out || !$('ssOwnOut').hidden) fails.push(T + 'tester 1: No to the question puts the last signed output away'); answers = []; }
       // 9. L3: public words with a passphrase ask online; tester 9: the practice transaction names a real seed; tester 12: stale texts
@@ -418,6 +422,45 @@ async function probe(w, mutated, fast, only, hooks) {
         w.ssLearnWipe(); E('ssPageOn = true');
         const sn = $('seedSignerNote'); sn.textContent = 'The practice signer is open in CHECK A BACKUP and loads this seed by itself from its SeedQR.'; sn.className = 'hint ss-banner ok'; w.ssfDeviceOff();
         if (sn.textContent) fails.push(T + 'tester 12: switching the device off clears the note that it loads the seed'); }
+      // 10. the second review: an address of a foreign descriptor; the message box; more forms of secrets (none in random PSBTs);
+      // the cap on keys decoded; re-signing; nothing signed before the yes; legacy P2SH and SegWit v0 notes
+      { E('SSController')._instance = dev; E('ssPageOn = true'); dev._storage.seeds = [sA];
+        const acct = "m/48'/0'/0'/2'", own = [RA, RB, RC], hd = own.map((r2) => r2.derive(acct)), xh = [0, 1, 2].map((i) => RZ.derive("m/48'/0'/" + (i + 5) + "'/2'"));
+        const dsc = (K, fps) => 'wsh(sortedmulti(2,' + K.map((a, j) => '[' + fps[j] + "/48h/0h/0h/2h]" + a.publicExtendedKey + '/{0,1}/*').join(',') + '))';
+        const scr = { address: 'bc1qexample', verified_index: 4, verified_index_is_change: false };
+        dev.multisig_wallet_descriptor = await E('SSDescriptor').from_string(dsc(xh, ['00000001', '00000002', '00000003'])); await w.ssOwnAddrDone(scr, dev, null);
+        if (!/is receive address #4 of the wallet descriptor on the device, which does not hold your seed’s key: this proves nothing about your wallet\./.test($('ssOwnStatus').textContent) || !/\bbad\b/.test($('ssOwnStatus').className) || /of this wallet/.test($('ssOwnStatus').textContent)) fails.push(T + 'M-a: an address of a descriptor without the seed is red, never "of this wallet"');
+        dev.multisig_wallet_descriptor = await E('SSDescriptor').from_string(dsc(hd, own.map(fx))); await w.ssOwnAddrDone(scr, dev, null);
+        if (!new RegExp('receive address #4 of the multisig wallet of seed ' + fA).test($('ssOwnStatus').textContent) || !/\bok\b/.test($('ssOwnStatus').className)) fails.push(T + 'M-a: an address of the wallet\'s own descriptor names the seed in it');
+        await w.ssOwnAddrDone(scr, dev, { seed: sA }); if (!/receive address #4 of this wallet\./.test($('ssOwnStatus').textContent)) fails.push(T + 'M-a: a single-key address is of this wallet');
+        dev.multisig_wallet_descriptor = null;
+        $('ssMsgIn').value = MN; $('ssMsgIdx').value = '0'; w.ssLearnHide(); await w.ssOwnMsgGo();
+        if ($('ssMsgIn').value || E('ssLearnCam').frames || !/^Not held up: This holds 12 or more seed words in a row: a seed\. The message box was cleared\./.test($('ssOwnStatus').textContent)) fails.push(T + 'second review: the message box refuses a seed and is cleared');
+        $('ssMsgIn').value = 'please enjoy this awesome winter picnic among good green garden tree under blue sky'; await w.ssOwnMsgGo();
+        if (!/^Held up/.test($('ssOwnStatus').textContent)) fails.push(T + 'second review: an ordinary sentence of seed-list words is a message, not a seed');
+        const W12 = MN.split(' '), k0 = RA.derive("m/84'/0'/0'/0/0"), kh = H(k0.privateKey);
+        const forms = { typo: W12.slice(0, 5).join(' ') + ' abandonn ' + W12.slice(6).join(' '), and: W12.join(' and '), joined: W12.join(''), slip39: 'duckling enlarge academic academic agency result length solution fridge kidney coal piece deal husband erode duke ajar critical decision keyboard',
+          colons: kh.match(/../g).join(':'), wifhex: '80' + kh, codex32: 'ms10testsxxxxxxxxxxxxxxxxxxxxxxxxxx4nzvca9cmczlw', bip39ur: 'ur:crypto-bip39/oeadlfihjkisinjziejtihjpkpjkjyiojkjlkpjpiaihjpiejljkjkjlkpjnjyihjpiaihjpjyihjpiajljpjlkpjyihjpaojpihidkpjyoyaxkgnbntfe', bip38: '6PRVWUbkzzsbcVac2qwfssoUJAN1Xhrg6bNk8J7Nzm5H7kxEbn2Nh2ZoGg',
+          msgSeed: 'signmessage m/84h/0h/0h/0/0 ascii:' + MN };
+        for (const [nm, t] of Object.entries(forms)) { const r2 = await w.ssOwnRead(t); if (!r2.secret) fails.push(T + 'second review: a secret is refused as a secret: ' + nm); }
+        for (const [nm, t] of Object.entries({ pubkey: H(k0.publicKey), descriptor: dsc(hd, own.map(fx)), message: 'signmessage m/84h/0h/0h/0/0 ascii:please enjoy this awesome winter picnic among good green garden tree under blue sky' })) { const r2 = await w.ssOwnRead(t); if (r2.secret || (nm !== 'pubkey' && !r2.kind)) fails.push(T + 'second review: not a secret: ' + nm + ' (' + (r2.error || '').slice(0, 50) + ')'); }
+        let fz = 0; for (let i = 0; i < 100; i++) { const b = Buffer.concat([Buffer.from('70736274ff', 'hex'), nc.randomBytes(200 + i * 60)]); for (const t of [b.toString('base64'), b.toString('hex')]) if (await w.ssOwnSecret(t)) fz++; }
+        if (fz) fails.push(T + 'second review: random PSBT-like texts are never called secrets (' + fz + ' of 200)');
+        const b58 = w.base58decode; let calls = 0; w.base58decode = (x) => { calls++; return b58(x); };
+        try { const t0 = Date.now(); await w.ssOwnRead(('0K' + 'a'.repeat(50)).repeat(20000)); if (calls > 64 || Date.now() - t0 > 10000) fails.push(T + 'second review: at most 64 base58 keys are decoded (' + calls + ')'); } finally { w.base58decode = b58; }
+        const Q = build([wp("m/84'/0'/0'/0/1", 250000n)], [[ext, 249000n]]), qs = E('SSPSBT').parse(P8(Q.bytes)), qp = await E('SSPSBTParser').create(qs, sA, SC.MAINNET); await qs.sign_with(qp.root); qp.root.wipe();
+        const done = Uint8Array.from(qs.serialize()), SW = E('SSPSBT').prototype, sw0 = SW.sign_with; let signs = 0;
+        let v = await rv(done); if (!/!Seed [0-9a-f]{8} has signed this PSBT already \(input 0\): there is nothing new to sign/.test(v.x) || /undefined/.test(v.x)) fails.push(T + 'LOW 3: a PSBT this seed signed already: the review says so');
+        SW.sign_with = function (...a) { signs++; return sw0.apply(this, a); };
+        try { await rv(Q.bytes); let r2 = await sign(done); if (r2.asked.length || r2.view !== 'SSPSBTSigningErrorView' || !/^Nothing new to sign: seed [0-9a-f]{8} has signed this PSBT already \(input 0\)/.test(r2.st)) fails.push(T + 'LOW 3: re-signing asks nothing and says Nothing new to sign');
+          const s0 = signs; answers = [false]; r2 = await sign(Q.bytes); if (signs !== s0 || signs !== 1) fails.push(T + 'LOW 6: no key signs before the yes (review and question; ' + signs + ' signings)'); answers = []; }
+        finally { SW.sign_with = sw0; }
+        const pubs = own.map((r2) => r2.derive("m/45'/0/1").publicKey), sp = pubs.slice().sort((x, y) => Buffer.compare(Buffer.from(x), Buffer.from(y))), pay = btc.p2sh(btc.p2ms(2, sp));
+        const lt = new btc.Transaction({ allowLegacyWitnessUtxo: true, disableScriptCheck: true }); lt.addInput({ txid: tid(12), index: 0, witnessUtxo: { script: pay.script, amount: 500000n }, redeemScript: pay.redeemScript, bip32Derivation: pubs.map((p, j) => [p, der(own[j], "m/45'/0/1")]) }); lt.addOutput({ script: ext, amount: 499000n });
+        v = await rv(lt.toPSBT(0)); if (!/!Input 0 is a legacy \(P2SH\) coin without its full previous transaction/.test(v.x)) fails.push(T + 'LOW 4: legacy P2SH multisig with only a witness UTXO gets the red note');
+        v = await rv(build([wp("m/84'/0'/0'/0/1", 250000n, { n: 1 }), wp("m/84'/0'/0'/0/2", 250000n, { n: 2, index: 1 })], [[ext, 499000n]]).bytes);
+        const v1 = await rv(Q.bytes);
+        if (!/~Input 0 \(SegWit v0\) comes without its full previous transaction/.test(v.x) || /SegWit v0\) comes without/.test(v1.x)) fails.push(T + 'LOW 7: a multi-input PSBT without a SegWit v0 input\'s previous transaction gets an amber note (not a single-input one)'); }
     } catch (e) { if (e instanceof ProbeStop) throw e; fails.push(T + 'the probe crashed: ' + e.message); }
     finally {
       w.confirm = conf0; w.Element.prototype.scrollIntoView = siv0; if (navOnline) Object.defineProperty(w.navigator, 'onLine', navOnline); else delete w.navigator.onLine;
@@ -8751,8 +8794,8 @@ const M = [
   ["v2.17.0 review: a PSBT of a seed not loaded not said", "  else if (!signer) W.push({ bad: true, t: \"This PSBT spends from a seed that is not loaded", "  else if (false) W.push({ bad: true, t: \"This PSBT spends from a seed that is not loaded"],
   ["v2.17.0 review: inputs of other signers not said", "  if (mineIn < psbt.inputs.length) W.push(", "  if (false) W.push("],
   ["v2.17.0 review: change not provably yours not flagged", "      W.push({ bad: true, t: \"Output \" + i + \" names seed \"", "      void ({ bad: true, t: \"Output \" + i + \" names seed \""],
-  ["v2.17.0 review: a legacy input without its previous transaction not flagged", "else if (inp.witness_utxo && !inp.non_witness_utxo && ssPsbtScriptType(inp.witness_utxo.script_pubkey) === \"p2pkh\") W.push(", "else if (false) W.push("],
-  ["v2.17.0 read: seed words taken", "  if (ssOwnWordRun(t) >= 12) return \"This holds 12 or more seed words in a row: a seed.\";", ""],
+  ["v2.17.0 review: a legacy input without its previous transaction not flagged", "      if (st === \"p2pkh\" || (st === \"p2sh\" && !inp.witness_script && rs !== \"p2wpkh\" && rs !== \"p2wsh\")) W.push(", "      if (false) W.push("],
+  ["v2.17.0 read: seed words taken", "  if (!msg && ssOwnWordRuns(t).some((r) => r.idx.length >= 12 || (r.idx.length >= 11 && r.miss >= 1))) return", "  if (false) return"],
   ["v2.17.0 read: an xprv taken", "  if (/[xyztuvYZUV]prv[1-9A-HJ-NP-Za-km-z]{100}/.test(t)) return", "  if (false) return"],
   ["v2.17.0 read: ascii: inside a message taken", "  if (msg.includes(\"ascii:\")) return", "  if (false) return"],
   ["v2.17.0 read: non-ASCII message taken", "  if (!/^[\\x20-\\x7e\\n]+$/.test(msg)) return", "  if (false) return"],
@@ -8769,7 +8812,7 @@ const M = [
   ["v2.17.0 review: H1: a witness UTXO that disagrees with the previous transaction not seen", "    else if (wu && (BigInt(wu.value) !== BigInt(o.value) || hex(wu.script_pubkey) !== hex(o.script_pubkey))) out.push(", "    else if (false) out.push("],
   ["v2.17.0 review: H1: a forged previous transaction not flagged before the scan", "  for (const x of await ssOwnPrevBad(psbt)) W.push(", "  for (const x of []) W.push("],
   ["v2.17.0 sign: H1: a forged previous transaction is signed", "    if (prev.length) return ssOwnBlock(\"Forged coin?\",", "    if (false) return ssOwnBlock(\"Forged coin?\","],
-  ["v2.17.0 sign: asked although nothing can be signed (tester 6)", "    if (dry && (dry.err || !dry.n)) {", "    if (false) {"],
+  ["v2.17.0 sign: asked although nothing can be signed (tester 6)", "    if (dry && (dry.err || !dry.fresh.length)) {", "    if (false) {"],
   ["v2.17.0 review: inputs left unsigned not said (tester 4)", "  else if (dry.left.length) W.push(", "  else if (false) W.push("],
   ["v2.17.0 output: a partly signed result in a gold banner (tester 4)", "if (cls === \"ok\") cls = \"warn\"; }", "}"],
   ["v2.17.0 output: unsigned inputs of the seed not named (tester 4)", "  if (left.length) { say += \" Signed \"", "  if (false) { say += \" Signed \""],
@@ -8795,9 +8838,9 @@ const M = [
   ["v2.17.0 review: a fee rate of 250 sat/vB not flagged (tester 10)", "  else if (rate >= SS_OWN_RATE_WARN) W.push(", "  else if (false) W.push("],
   ["v2.17.0 review: amber notes shown as plain notes", "else if (x.warn) li.className = \"warn\";", ""],
   ["v2.17.0 read: SeedQR digits with spaces taken", "  if (/^\\d+$/.test(dg) && [48, 60, 72, 84, 96].includes(dg.length) && dg.match(/\\d{4}/g).every((x) => +x < 2048)) return", "  if (false) return"],
-  ["v2.17.0 read: a hex private key or entropy taken", "  if (/^[0-9a-f]+$/i.test(hx) && [32, 40, 48, 56, 64, 128].includes(hx.length)) return", "  if (false) return"],
+  ["v2.17.0 read: a hex private key or entropy taken", "  if (/^[0-9a-f]+$/i.test(hx) && ([32, 40, 48, 56, 64, 128].includes(hx.length) ||", "  if (false && ([32, 40, 48, 56, 64, 128].includes(hx.length) ||"],
   ["v2.17.0 read: a WIF private key taken", "    if ((raw.length === 33 || (raw.length === 34 && raw[33] === 1)) && (raw[0] === 0x80 || raw[0] === 0xef)) return \"This holds a private key (WIF), which can spend.\";", ""],
-  ["v2.17.0 read: numbered or 4-letter seed words taken", "    run = x.length >= 3 && x.length <= 8 && (Object.prototype.hasOwnProperty.call(WORD_MAP, x) || (x.length === 4 && ssOwnP4.has(x))) ? run + 1 : 0;", "    run = x.length >= 3 && x.length <= 8 && Object.prototype.hasOwnProperty.call(WORD_MAP, x) ? run + 1 : 0;"],
+  ["v2.17.0 read: numbered or 4-letter seed words taken", "  return x.length === 4 && ssOwnP4.has(x) ? ssOwnP4.get(x) : -1;", "  return -1;"],
   ["v2.17.0 read: a secret paste left in the box", "        if (!file && box) box.value = \"\";", ""],
   ["v2.17.0 read: a refused paste keeps the last item held up (tester 7)", "      ssOwnDrop(); ssOwnWarns([]);\n", "      ssOwnWarns([]);\n"],
   ["v2.17.0 read: a file goes into the box before it is checked", "  await ssOwnHold(text, true);   // checked first", "  { const bx = ssOwnEl(\"ssOwnIn\"); if (bx) bx.value = text; } await ssOwnHold(text, true);   // checked first"],
@@ -8813,7 +8856,28 @@ const M = [
   ["v2.17.0 address: a Testnet address on a Mainnet device not flagged (tester 12)", "  if (!an || an === dn) return \"\";", "  return \"\";"],
   ["v2.17.0 lessons: a new lesson keeps the last result (tester 12)", "  if (ssLearn.tx && ssLearn.tx.result) ssLearnTxDrop();", ""],
   ["v2.17.0 lessons: a real seed's practice result not named (tester 9)", "\"Signed correctly\" + (T.real ? \" by your real seed \" + T.fp + \" (not a practice seed)\" : \"\")", "\"Signed correctly\""],
-  ["v2.17.0 page: the note says the device loads the seed after it is switched off (tester 12)", "  { const sn = document.getElementById(\"seedSignerNote\"); if(sn && sn.classList.contains(\"ok\")){ sn.textContent = \"\"; sn.className = \"hint\"; } }", ""]
+  ["v2.17.0 page: the note says the device loads the seed after it is switched off (tester 12)", "  { const sn = document.getElementById(\"seedSignerNote\"); if(sn && sn.classList.contains(\"ok\")){ sn.textContent = \"\"; sn.className = \"hint\"; } }", ""],
+  // v2.17.0 second review (probe section 84)
+  ["v2.17.0 second review: a foreign descriptor's address said as of this wallet", "  if (desc && !ds.inIt.length) return ssOwnSay(", "  if (false) return ssOwnSay("],
+  ["v2.17.0 second review: the message box holds up seed words", "  if (sec) { const b = ssOwnEl(\"ssMsgIn\"); if (b) b.value = \"\"; ssOwnDrop();", "  if (false) { const b = ssOwnEl(\"ssMsgIn\"); if (b) b.value = \"\"; ssOwnDrop();"],
+  ["v2.17.0 second review: a message with a seed of right checksum taken", "  if (msg && await ssOwnHasSeed(ssOwnWordRuns(t))) return", "  if (false) return"],
+  ["v2.17.0 second review: a seed with a typo taken", " || (r.idx.length >= 11 && r.miss >= 1))) return", ")) return"],
+  ["v2.17.0 second review: seed words with \"and\" between taken", "const SS_OWN_FILLER = new Set([\"and\", \"or\", \"then\"]);", "const SS_OWN_FILLER = new Set([]);"],
+  ["v2.17.0 second review: seed words run together taken", "    const j = ssOwnWordIdx(x), jn = j < 0 ? ssOwnJoined(x) : null;", "    const j = ssOwnWordIdx(x), jn = null;"],
+  ["v2.17.0 second review: SLIP-39 share words taken", "  if (s39 >= (msg ? 20 : 15)) return", "  if (false) return"],
+  ["v2.17.0 second review: hex with colons taken", "  const hx = t.replace(/[\\s:]+/g, \"\").replace(/^0x/i, \"\");", "  const hx = t.replace(/\\s+/g, \"\").replace(/^0x/i, \"\");"],
+  ["v2.17.0 second review: 80 + key hex taken", " || (/^(80|ef)/i.test(hx) && (hx.length === 66 || (hx.length === 68 && /01$/.test(hx)))))) return", ")) return"],
+  ["v2.17.0 second review: ur:crypto-bip39 taken", "  if (/ur:crypto-(seed|bip39)\\//i.test(t)) return", "  if (/ur:crypto-seed\\//i.test(t)) return"],
+  ["v2.17.0 second review: a codex32 share taken", "  if (/(?<![0-9a-z])ms1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{45,}/i.test(t)) return", "  if (false) return"],
+  ["v2.17.0 second review: a BIP38 key taken", "    if (raw.length === 39 && raw[0] === 1 && (raw[1] === 0x42 || raw[1] === 0x43)) return", "    if (false) return"],
+  ["v2.17.0 second review: no cap on base58 keys decoded (a freeze)", "    if (++n > SS_OWN_MAX_KEYS) break;", "    ++n;"],
+  ["v2.17.0 second review: re-signing asks and fails", "    if (dry && !dry.err && !dry.fresh.length && dry.again.length) {", "    if (false) {"],
+  ["v2.17.0 second review: a signature already there counted as new", "    const isNew = tap ? !inp.final_scriptwitness : will.some((k) => !inp.partial_sigs.some((x) => hex(x.pub) === hex(k)));", "    const isNew = true;"],
+  ["v2.17.0 second review: a skipped sighash counted as signed", "    if (sh === 0 || sh === 1) {", "    if (true) {"],
+  ["v2.17.0 second review: a derivation that is not the seed's not seen before signing", "if (hex(hk.xonly()) !== hex(d.pub.length === 33 ? d.pub.slice(1) : d.pub)) throw new Error(\"Derivation path doesn't look right\");", ""],
+  ["v2.17.0 second review: SegWit v0 without its previous transaction not noted", "      else if (psbt.inputs.length > 1 && st !== \"p2tr\") W.push(", "      else if (false) W.push("],
+  ["v2.17.0 second review: change a trusted descriptor does not make left out of the second question", "if (!ok) left.push(c); }", "}"],
+  ["v2.17.0 second review: an empty list said as \"inputs  and undefined\"", "const ssOwnList = (a) => !a.length ? \"no input\" :", "const ssOwnList = (a) =>"]
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

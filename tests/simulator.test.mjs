@@ -1750,7 +1750,7 @@ SCEN.own_online = async (t, d, ctx, page) => {
   // a message, signed online with the real seed: the question, then the signature, checked here by public key recovery (noble)
   await d.pick(/^Settings$/); await d.pick(/^Advanced$/); await d.pick(/Message signing/); await d.pick(/^Enabled$/); await d.back('SSMainMenuView');
   const MSG = 'VOIDFORGE v2.17.0 real message';
-  await page.fill('#ssMsgIn', MSG); await page.fill('#ssMsgIdx', '3'); await page.click('#ssMsgGo');
+  await page.fill('#ssMsgIn', MSG); await page.fill('#ssMsgIdx', '3'); await page.click('#ssMsgGo'); await until(async () => (await ownState(page)).held === 'own', 15000);
   await d.pick(/^Scan$/); await d.waitView('SSSeedSelectSeedView'); await d.pick(new RegExp('^' + FPR));
   for (let n = 0; n < 6; n++) { const s = await d.waitView((await d.state()).view); if (s.view === 'SSSeedSignMessageSignedMessageQRView') break; await d.press('PRESS'); }
   const qm = asked.find((x) => /^This computer is online\. Sign this message/.test(x));
@@ -1846,6 +1846,12 @@ SCEN.own_fix2 = async (t, d, ctx, page) => {
   const fb = await until(async () => { const x = await ownState(page); return /^The device loaded the wallet descriptor/.test(x.st) ? x : null; }, 30000);
   t(!!fb && /NONE of the seeds on the device is in it \(it names fingerprint [0-9a-f]{8}, but the key there is not that seed’s\)/.test(fb.st) && /\bbad\b/.test(fb.cls), 'M2: a descriptor that names this seed but holds another key is called someone else\'s, in red (' + (fb ? fb.st.slice(80, 200) : '') + ')');
   await d.press('PRESS'); await d.back('SSMainMenuView');
+  // second review M-a: an address of that foreign descriptor: the device finds it, the page says it proves nothing (red)
+  { const xh = [0, 1, 2].map((i) => R2.D.derive("m/48'/0'/" + (i + 5) + "'/2'")), pubs = xh.map((a) => a.deriveChild(0).deriveChild(4).publicKey).sort((x, y) => Buffer.compare(Buffer.from(x), Buffer.from(y)));
+    await ownHold(page, btc.p2wsh(btc.p2ms(2, pubs)).address); await d.pick(/^Scan$/);
+    const av = await until(async () => { const x = await ownState(page); return /receive address #4/.test(x.st) ? x : null; }, 120000);
+    t(!!av && /of the wallet descriptor on the device, which does not hold your seed’s key: this proves nothing about your wallet/.test(av.st) && /\bbad\b/.test(av.cls) && !/of this wallet/.test(av.st), 'M-a: an address of a foreign descriptor is found by the device, and the page says in red that this proves nothing (' + (av ? av.st.slice(0, 120) : 'none') + ')');
+    await d.press('PRESS'); await d.back('SSMainMenuView'); }
   // the wallet's own descriptor: gold; it stays loaded after Home (tester 2), so the device verifies the change at once
   await ownHold(page, good.descriptor); await d.pick(/^Scan$/); await d.waitView('SSMultisigWalletDescriptorView');
   const gb = await until(async () => { const x = await ownState(page); return /^The device loaded the wallet descriptor/.test(x.st) && /Seed /.test(x.st) ? x : null; }, 30000);
@@ -1869,10 +1875,14 @@ SCEN.own_fix2 = async (t, d, ctx, page) => {
 SCEN.own_fix3 = async (t, d, ctx, page) => {
   await ownLoad(t, d, page);
   // tester 12: an empty address number; tester 9: a message offline asks first
+  // second review: the message box refuses the seed's own words and is cleared
+  await page.fill('#ssMsgIn', REAL_MN); await page.fill('#ssMsgIdx', '0'); await page.click('#ssMsgGo');
+  const ms0 = await until(async () => { const x = await ownState(page); return /^Not held up/.test(x.st) ? x : null; }, 15000);
+  t(!!ms0 && /The message box was cleared/.test(ms0.st) && await page.inputValue('#ssMsgIn') === '' && ms0.held === '', 'second review: seed words typed as the message are refused, the message box is cleared, nothing is held up');
   await page.fill('#ssMsgIn', 'VOIDFORGE offline message'); await page.fill('#ssMsgIdx', ''); await page.click('#ssMsgGo');
-  t(/^Not held up: type the number of the receive address/.test((await ownState(page)).st), 'tester 12: an empty address number is refused, not taken as 0');
+  t(await until(async () => /^Not held up: type the number of the receive address/.test((await ownState(page)).st), 15000), 'tester 12: an empty address number is refused, not taken as 0');
   await d.pick(/^Settings$/); await d.pick(/^Advanced$/); await d.pick(/Message signing/); await d.pick(/^Enabled$/); await d.back('SSMainMenuView');
-  await page.fill('#ssMsgIdx', '1'); await page.click('#ssMsgGo'); await ownAsk(page, [true]);
+  await page.fill('#ssMsgIdx', '1'); await page.click('#ssMsgGo'); await until(async () => (await ownState(page)).held === 'own', 15000); await ownAsk(page, [true]);
   await d.pick(/^Scan$/); await d.waitView('SSSeedSelectSeedView'); await d.pick(new RegExp('^' + FPR));
   for (let n = 0; n < 6; n++) { const s = await d.waitView((await d.state()).view); if (s.view === 'SSSeedSignMessageSignedMessageQRView') break; await d.press('PRESS'); }
   const q = await ownAsked(page), mo = await until(async () => { const x = await ownState(page); return x.out ? x : null; }, 30000);
