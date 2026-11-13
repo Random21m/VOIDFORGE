@@ -364,7 +364,8 @@ async function probe(w, mutated, fast, only, hooks) {
         if (!/~Input 0 asks for sighash 0 \(SIGHASH_DEFAULT\), which is for Taproot only\. The device signs it with SIGHASH_ALL/.test(v.x) || /will not sign this input/.test(v.x)) fails.push(T + 'L5: sighash 0 on a non-Taproot input is signed as ALL, and the page says so (not "will not sign")');
         v = await rv(build([inp], [[ext, 200000n]]).bytes);
         if (!/~The fee \(50,000 sats\) is 25% of the amount sent \(200,000 sats\)/.test(v.x) || !/~The fee rate is about 455 sat\/vB/.test(v.x)) fails.push(T + 'fees: 10% of the amount sent and 250 sat/vB are flagged amber (' + v.x.slice(0, 120) + ')');
-        v = await rv(build([inp], [[ext, 246000n]]).bytes); if (/~The fee/.test(v.x)) fails.push(T + 'fees: an ordinary fee (4,000 sats, about 36 sat/vB) is not flagged'); }
+        v = await rv(build([inp], [[ext, 246000n]]).bytes); if (/~The fee/.test(v.x)) fails.push(T + 'fees: an ordinary fee (4,000 sats, about 36 sat/vB) is not flagged');
+        w.ssOwnWarns([{ bad: true, t: 'a' }, { warn: true, t: 'b' }, { t: 'c' }]); if ([...$('ssOwnWarns').children].map((li) => li.className).join() !== 'bad,warn,') fails.push(T + 'notes next to the device: red, amber and plain'); w.ssOwnWarns([]); }
       // 5. L1: sequence 0 kept; a signed transaction that is not the one held up, or unchecked signatures: nothing to copy or save
       { const Q = build([wp("m/84'/0'/0'/0/1", 250000n, { seq: 0 })], [[ext, 249000n]]), r2 = await sign(Q.bytes), sg = r2.out ? btc.Transaction.fromPSBT(r2.out) : null;
         if (!sg || sg.getInput(0).sequence !== 0 || H(sg.unsignedTx) !== H(Q.tx.unsignedTx)) fails.push(T + 'L1: an input with sequence 0 is signed as the wallet made it');
