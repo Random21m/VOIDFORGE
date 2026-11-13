@@ -537,6 +537,8 @@ async function probe(w, mutated, fast, only, hooks) {
         asked.length = 0; w.confirm = (q) => { asked.push(q); return true; };
         if ((await begin(RD)) !== true || asked.length !== 1 || !CAM.frames || !A.on || !A.online || step('SSMainMenuView', 'Home', HOME, 0) !== 'KEY_PRESS') fails.push(T + 'online: a yes loads the real seed (the SeedQR held up, Scan pressed)');
         if (E('ssToolsSeedScanBlocked()') !== false) fails.push(T + 'online: the device reads the SeedQR of a load the person said yes to');
+        { A.read = true; const dq = new (E('SSDecodeQR'))(); await dq.add_data(RD); asked.length = 0;   // v2.17.0 review: the scan's own question is not asked again
+          if (w.ssToolsSeedScanBlocked(dq) !== false || asked.length) fails.push(T + 'online: the SeedQR of a load the person said yes to is read with no second question'); A.read = false; }
         asked.length = 0;
         if ((await begin(AB)) !== true || asked.length || !A.on || step('SSMainMenuView', 'Home', HOME, 0) !== 'KEY_PRESS') fails.push(T + 'online: a public seed loads with no question');
         await off(); w.confirm = conf0; }
