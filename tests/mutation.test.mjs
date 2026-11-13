@@ -8388,7 +8388,10 @@ const M = [
   ["learn: lessons: jumps past a step that holds something up", "      if (les.steps[j].feed) break;", "      if (false) break;"],
   ["learn: lessons: last step never done", "if (j === les.steps.length - 1) { L.step = j; L.done = true;", "if (j === les.steps.length) { L.step = j; L.done = true;"],
   ["learn: lessons: steps for the test seed never passed over", "  while (L.step < les.steps.length - 1 && les.steps[L.step].skip && les.steps[L.step].skip()) L.step++;\n", ""],
-  ["learn: lessons: the test seed with a passphrase counts as the test seed", "ssLearnSeeds().some((s) => s && s.mnemonic_str === SS_LEARN_ABANDON && !s.passphrase)", "ssLearnSeeds().some((s) => s && s.mnemonic_str === SS_LEARN_ABANDON)"],
+  // v2.17.0 release run: equivalent. Since v2.17.0 the lessons use the newest loaded seed (ssLearnSeed); ssLearnHasTestSeed
+  // has no caller left in the page (its only use is the replacement of the "only the test seed counts as loaded" target), so
+  // changing its passphrase test changes nothing. The unused function is to be removed in v2.18.0.
+  ["learn: lessons: the test seed with a passphrase counts as the test seed", "ssLearnSeeds().some((s) => s && s.mnemonic_str === SS_LEARN_ABANDON && !s.passphrase)", "ssLearnSeeds().some((s) => s && s.mnemonic_str === SS_LEARN_ABANDON)", true],
   ["learn: lessons: the practice wallet never held up again", "if (st.feed && !ssLearnCam.frames && !(st.feed === \"tx\" && (!L.tx || L.tx.result))) ssLearnArm(st.feed, true);", ""],
   ["learn: lessons: multisig change step by any buttons", "s.labels[0] === \"Verify multisig change\" },", "s.labels.length > 0 },"],
   ["learn: lessons: RESTART does nothing", "if (ssLearn.lesson) { ssLearnHide(); ssLearnGoto(0, false); }", "if (ssLearn.lesson) { ssLearnHide(); }"],
