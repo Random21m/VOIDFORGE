@@ -1699,9 +1699,9 @@ SCEN.own_psbt = async (t, d, ctx, page) => {
     const h = orig.preimageWitnessV0(0, btc.OutScript.encode({ type: 'pkh', hash: btc.OutScript.decode(orig.getInput(0).witnessUtxo.script).hash }), btc.SigHash.ALL, 400000n);
     // the signature a real signer makes: RFC 6979, low S, ground (extra data 1, 2, ...) until the DER form is at most 70 bytes, as embit
     // (SeedSigner) and Bitcoin Core do (btc-signer's own grinding starts at 0, so it is not the reference)
-    let sg = secp256k1.sign(h, P.k0.privateKey, { prehash: false, lowS: true }), gn = 1;
-    while (sg.toDERRawBytes().length > 70) { const e = new Uint8Array(32); e[0] = gn & 255; gn++; sg = secp256k1.sign(h, P.k0.privateKey, { prehash: false, lowS: true, extraEntropy: e }); }
-    const want = Uint8Array.from([...sg.toDERRawBytes(), 1]);
+    let es = secp256k1.sign(h, P.k0.privateKey, { prehash: false, lowS: true }), gn = 1;
+    while (es.toDERRawBytes().length > 70) { const e = new Uint8Array(32); e[0] = gn & 255; gn++; es = secp256k1.sign(h, P.k0.privateKey, { prehash: false, lowS: true, extraEntropy: e }); }
+    const want = Uint8Array.from([...es.toDERRawBytes(), 1]);
     t(ps.length === 1 && ps1.length === 0 && hx(ps[0][1]) === hx(want) && secp256k1.verify(ps[0][1].slice(0, -1), h, P.k0.publicKey, { prehash: false, format: 'der', lowS: true }), 'own PSBT: input 0 (this seed) has the signature a real signer makes (RFC 6979, low S, low R as embit and Bitcoin Core grind) byte for byte, which verifies with noble (BIP-143, SIGHASH_ALL); input 1 (another seed) is left for its signer (' + JSON.stringify({ n: ps.length, n1: ps1.length, same: ps.length ? hx(ps[0][1]) === hx(want) : null, got: ps.length ? hx(ps[0][1]).slice(0, 20) : '', want: hx(want).slice(0, 20) }) + ')');
     const fin = btc.Transaction.fromPSBT(b64b(P.b64)); fin.combine(sg); fin.signIdx(R2.C.derive("m/84'/0'/0'/0/0").privateKey, 1);
     let ok2 = false; try { fin.finalize(); ok2 = fin.extract().length > 0; } catch (e) { ok2 = false; }
