@@ -130,6 +130,30 @@ async function probe(w, mutated, fast, only, hooks) {
       if (to !== 'seedHead') fails.push('jump to the seed: dice FORGE SEED lands on YOUR SEED (' + to + ')');
     } finally { if (had) P.scrollIntoView = had; else delete P.scrollIntoView; }
   }
+  // v2.16.1 (intermittent e2e failure): FORGE SEED goes on after the words and first address show (the address lists, then the
+  // watch-only box), seconds on a slow computer. A tab the person opens in that time stays open: the late jump to YOUR SEED does not
+  // pull them back to MAKE A SEED. With no tab chosen it still lands on YOUR SEED, also when it began on another tab (the practice
+  // signer's FORGE SEED in CHECK A BACKUP). The tabs are clicked while the watch-only box is worked out, its last step.
+  if (SEC(82, "v2.16.1: a tab chosen while FORGE SEED finishes stays open")) {
+    const P = w.Element.prototype, had = P.scrollIntoView, rw0 = w.refreshWatch, on = (n) => !$('tp-' + n).classList.contains('tab-off');
+    const res = () => $('genResult').textContent.split('\n')[0], fD = fp(expect.d50, ''); let to = null;
+    const forge = async (go, pick) => { let n = 0; to = null;
+      w.refreshWatch = function (...a) { if (!n++) for (const t of pick) $('tab-' + t).dispatchEvent(new w.MouseEvent('click', { bubbles: true })); return rw0.apply(this, a); };
+      try { await go(); } finally { w.refreshWatch = rw0; } return n; };
+    const dice = () => { mode('dice'); words(12); $('rolls').value = D50; $('rolls').oninput(); $('passphrase').value = ''; $('passphrase2').value = ''; return w.generate(); };
+    P.scrollIntoView = function () { to = this.id; };
+    try {
+      w.showTab('make'); let n = await forge(dice, ['tools']);
+      if (!n || res() !== expect.d50 || !on('tools') || on('make') || to === 'seedHead') fails.push('tab chosen while the seed is made: EXTRA TOOLS stays open, no jump to YOUR SEED (tab ' + ['make', 'check', 'tools', 'about'].filter(on) + ', scrolled to ' + to + ')');
+      w.showTab('make'); n = await forge(dice, ['check', 'make']);
+      if (!n || res() !== expect.d50 || !on('make') || to !== 'seedHead') fails.push('tab chosen while the seed is made: back on MAKE A SEED, it still lands on YOUR SEED (scrolled to ' + to + ')');
+      w.showTab('check'); n = await forge(() => w.forgeFromSigner(expect.d50, '', fD), []);
+      if (!n || res() !== expect.d50 || !on('make') || to !== 'seedHead') fails.push('no tab chosen: the practice signer\'s FORGE SEED (begun in CHECK A BACKUP) lands on YOUR SEED (scrolled to ' + to + ')');
+      w.showTab('check'); n = await forge(() => w.forgeFromSigner(expect.d50, '', fD), ['about']);
+      if (!n || res() !== expect.d50 || !on('about') || on('make') || to === 'seedHead') fails.push('tab chosen while the practice signer\'s seed is made: ABOUT & HELP stays open (tab ' + ['make', 'check', 'tools', 'about'].filter(on) + ', scrolled to ' + to + ')');
+    } finally { w.refreshWatch = rw0; if (had) P.scrollIntoView = had; else delete P.scrollIntoView; }
+    w.showTab('make'); r = await run('dice', 12, D50); if (r !== expect.d50 || w.eval('ssfCtx')) fails.push('tab chosen while the seed is made: the dice seed of section 0 again, not marked from the practice signer');
+  }
   // v2.16.1 "Tools that work as in real life": your own words in the practice tools, regtest as its own network, the Network
   // menus of the wallet finders, a multisig key from CHECK A BACKUP. Expected values from @scure/bip32, @scure/bip39 and
   // @scure/btc-signer (regtest: testnet with bech32 "bcrt", Bitcoin Core chainparams.cpp CRegTestParams). It ends with the page
@@ -5852,7 +5876,13 @@ const M = [
   ['jump to the seed: hex FORGE SEED does not scroll (v2.16.1)', '  await finishSeed(mnemonic, null, sig0, "hex", {});\n  if(hasSeed()){ document.getElementById("explainBox").style.display = "none"; jumpToSeed(); }', '  await finishSeed(mnemonic, null, sig0, "hex", {});\n  if(hasSeed()){ document.getElementById("explainBox").style.display = "none"; }'],
   ['scroll: ignores reduced motion (v2.16.1)', '.matches ? "auto" : "smooth"; } catch(e)', '.matches ? "smooth" : "smooth"; } catch(e)'],
   ['scroll: never smooth (v2.16.1)', '.matches ? "auto" : "smooth"; } catch(e)', '.matches ? "auto" : "auto"; } catch(e)'],
-  ['jump to the seed: lands on the result line under the words (v2.16.1)', 'function jumpToSeed(){ jumpTo("seedHead"); }', 'function jumpToSeed(){ jumpTo("genResult"); }'],
+  ['jump to the seed: lands on the result line under the words (v2.16.1)', '  jumpTo("seedHead");\n}', '  jumpTo("genResult");\n}'],
+  // v2.16.1 (intermittent e2e failure): a tab chosen while FORGE SEED finishes stays open (probe section 82)
+  ['jump to the seed: a late jump pulls the person back from the tab they chose (v2.16.1)', '  if(tabMoves !== seedTabMoves && document.getElementById("tp-make").classList.contains("tab-off")) return;\n', ''],
+  ['jump to the seed: opening a tab is not counted (v2.16.1)', '  if(TAB_NAMES.indexOf(name) < 0) return;\n  tabMoves++;\n', '  if(TAB_NAMES.indexOf(name) < 0) return;\n'],
+  ['jump to the seed: FORGE SEED does not note the tabs opened so far (v2.16.1)', '  seedTabMoves = tabMoves;   // v2.16.1', '  // v2.16.1'],
+  ['jump to the seed: any tab opened since stops the jump, even back on MAKE A SEED (v2.16.1)', '  if(tabMoves !== seedTabMoves && document.getElementById("tp-make").classList.contains("tab-off")) return;\n', '  if(tabMoves !== seedTabMoves) return;\n'],
+  ['jump to the seed: the practice signer\'s FORGE SEED opens MAKE A SEED whatever tab was chosen (v2.16.1)', '  jumpToSeed();   // opens MAKE A SEED, unless', '  showTab("make"); jumpToSeed();   // opens MAKE A SEED, unless'],
   ['word draw: no scroll to the result (display only)', '  if(guideOn){ guideN = 3; guideRender(); }\n  jumpToSeed();', '  if(guideOn){ guideN = 3; guideRender(); }', true],
   ["address list not cleared after an error", "for(const id of Object.keys(ADDR_LISTS)) document.getElementById(id).textContent = \"\";", ""],
   ['address guide hidden after FORGE', 'document.getElementById("checkGuide").style.display = ""; document.getElementById("drillBox").style.display = "";\n}', 'document.getElementById("checkGuide").style.display = "none"; document.getElementById("drillBox").style.display = "";\n}'],

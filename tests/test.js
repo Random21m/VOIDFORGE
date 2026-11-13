@@ -1053,7 +1053,16 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(tl.w.document.querySelector('.strip b').textContent==='Educational, not independently audited.','the one-line notice says the app is educational and not audited');
     tl.w.showTab('make');
     // SEND TO CHECK moves you to the Check tab
-    { const AB='abandon '.repeat(11)+'about'; tl.$('phrase').value=''; const tf2=tl; tf2.set(rnd(50,6)); tf2.$('forgeBtn').disabled=false; await tf2.w.generate(); ok(on('make')&&tf2.w.hasSeed(),'forge keeps you on Make a seed'); await tf2.w.sendToVerify(); ok(on('check')&&tf2.$('phrase').value.split(' ').length===12,'SEND TO CHECK opens the Check tab with the words in the box'); }
+    { const AB='abandon '.repeat(11)+'about'; tl.$('phrase').value=''; const tf2=tl; tf2.set(rnd(50,6)); tf2.$('forgeBtn').disabled=false; await tf2.w.generate(); ok(on('make')&&tf2.w.hasSeed(),'forge keeps you on Make a seed');
+      // v2.16.1 (an intermittent e2e failure): FORGE SEED goes on after the words show (address lists, then the watch-only box); a tab
+      // opened in that time stays open, and back on Make a seed it still lands on YOUR SEED. The tab is clicked during the last step.
+      { const rw0=tf2.w.refreshWatch, P=tf2.w.Element.prototype, siv=P.scrollIntoView; let to=null; P.scrollIntoView=function(){ to=this.id; };
+        const during=async(pick)=>{ let n=0; to=null; tf2.w.refreshWatch=function(...a){ if(!n++) for(const k of pick) tf2.$('tab-'+k).dispatchEvent(new tf2.w.MouseEvent('click',{bubbles:true})); return rw0.apply(this,a); }; try{ tf2.set(rnd(50,6)); await tf2.w.generate(); } finally { tf2.w.refreshWatch=rw0; } return n; };
+        try {
+          let n=await during(['check']); ok(n===1&&tf2.w.hasSeed()&&on('check')&&!on('make')&&to!=='seedHead','a tab opened while FORGE SEED finishes stays open: no late jump back to YOUR SEED (v2.16.1)');
+          tf2.w.showTab('make'); n=await during(['tools','make']); ok(n===1&&tf2.w.hasSeed()&&on('make')&&to==='seedHead','back on Make a seed before FORGE SEED finishes: it still lands on YOUR SEED (v2.16.1)');
+        } finally { if(siv) P.scrollIntoView=siv; else delete P.scrollIntoView; tf2.w.showTab('make'); } }
+      await tf2.w.sendToVerify(); ok(on('check')&&tf2.$('phrase').value.split(' ').length===12,'SEND TO CHECK opens the Check tab with the words in the box'); }
     // every control from earlier versions is still in exactly one tab or in the page frame
     { const ids=['brandDie','menuBox','rolls','forgeBtn','genResult','wordGrid','fingerprint','address','passphrase','passphrase2','note','phrase','verifyPass','verifyRecorded','checkAddr','psbtInput','cmpA','cmpB','msN','msM','msBox','wdBox','methodTabs','wordSel','advanced','addrBox','explainBox','seedQrBox','watchBox','about','beforeCard','disclaimer','safetyBox','privacyBox','multiHelp','practiceBox','psbtBox','fpIcon','guidePanel','tapRow','testResults','printOnly','printQr','netTag','selfTestBadge'];
       const missing=ids.filter(id=>!tl.$(id)); ok(missing.length===0,'feature inventory: every earlier control and section is still on the page'+(missing.length?' (missing '+missing.join(', ')+')':''));

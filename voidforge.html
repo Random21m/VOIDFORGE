@@ -2703,7 +2703,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
     <details>
       <summary>Changelog</summary>
       <ul>
-        <li><b>2.16.1</b> &mdash; <b>A fix.</b> After FORGE SEED (every method: Dice, Coin, Word draw, Cards, Hex, Damascus and the practice signer) the page now lands on <b>YOUR SEED</b> with the words in view. Before, it scrolled to the line under the words, so the words sat hidden above the screen. If your system is set to reduce motion, the page now jumps instead of scrolling smoothly. <b>Donations:</b> the Lightning address for supporting the project is now <b>keywest@strike.me</b> (it replaces dev@breez.tips), and a DONATE button at the bottom of every tab opens it. <b>Practice works like everything else:</b> FORGE SEED now also works for Damascus practice (a practice sheet, the guided practice, a worked example), with the same steps and buttons as a real seed; the seed is marked by a red PRACTICE banner, and every sheet printed and file saved from it says PRACTICE. Every way to make a seed marks a public seed (a published test phrase, or one made from a pattern such as counting numbers) the same way, and a multisig key from one is taken after a warning and marked PRACTICE. The practice signer does what a real SeedSigner does and takes any seed: LOAD INTO THE PRACTICE SIGNER (under YOUR SEED, and on the Damascus tab) loads it in one click while the computer is offline (a SeedQR is read only while offline), a seed from it is marked PRACTICE only when it is public, and re-hide covers it while it holds a seed that is not public or a passphrase is typed on it. Wiping the seed (CLEAR ALL, or ADD THIS KEY &amp; WIPE THE SEED in the multisig box) wipes the practice signer&rsquo;s copy too. Sheets printed from a public seed in CHECK A BACKUP, Seed XOR and BIP85 say PRACTICE as well. On a phone the practice signer stands upright, with bigger keys.
+        <li><b>2.16.1</b> &mdash; <b>A fix.</b> After FORGE SEED (every method: Dice, Coin, Word draw, Cards, Hex, Damascus and the practice signer) the page now lands on <b>YOUR SEED</b> with the words in view. Before, it scrolled to the line under the words, so the words sat hidden above the screen. If your system is set to reduce motion, the page now jumps instead of scrolling smoothly. A tab you open while FORGE SEED is still finishing (the address lists and the watch-only box, a few seconds on a slow computer) now stays open; before, the page could pull you back to MAKE A SEED a moment later. <b>Donations:</b> the Lightning address for supporting the project is now <b>keywest@strike.me</b> (it replaces dev@breez.tips), and a DONATE button at the bottom of every tab opens it. <b>Practice works like everything else:</b> FORGE SEED now also works for Damascus practice (a practice sheet, the guided practice, a worked example), with the same steps and buttons as a real seed; the seed is marked by a red PRACTICE banner, and every sheet printed and file saved from it says PRACTICE. Every way to make a seed marks a public seed (a published test phrase, or one made from a pattern such as counting numbers) the same way, and a multisig key from one is taken after a warning and marked PRACTICE. The practice signer does what a real SeedSigner does and takes any seed: LOAD INTO THE PRACTICE SIGNER (under YOUR SEED, and on the Damascus tab) loads it in one click while the computer is offline (a SeedQR is read only while offline), a seed from it is marked PRACTICE only when it is public, and re-hide covers it while it holds a seed that is not public or a passphrase is typed on it. Wiping the seed (CLEAR ALL, or ADD THIS KEY &amp; WIPE THE SEED in the multisig box) wipes the practice signer&rsquo;s copy too. Sheets printed from a public seed in CHECK A BACKUP, Seed XOR and BIP85 say PRACTICE as well. On a phone the practice signer stands upright, with bigger keys.
           <b>Tools that work as in real life.</b>
           (1) <b>Practice making a backup</b> also takes your own words (My own words, marked SECRET; do it on an offline computer): write them on paper, hide them, type them back, and the page checks every word. Re-hide covers them; CLEAR, CLEAR ALL, auto-clear and END SESSION wipe them. The six public test seeds stay.
           (2) <b>OPEN A PRACTICE WALLET</b> opens your own words on the test network when you choose them (typed in its box, or the words in CHECK A BACKUP; the public test seed stays the default), and while practice mode is on a PRACTICE MODE note sits under every network menu, with a link to turn it off.
@@ -7056,7 +7056,13 @@ function practiceClear(){
 function jumpTo(id){ reveal(document.getElementById(id)); }
 // v2.16.1: after a seed is made the page lands on YOUR SEED, so the words themselves are in view (jumping to the result line
 // under them scrolled the words up under the tab bar).
-function jumpToSeed(){ jumpTo("seedHead"); }
+// v2.16.1 (e2e): making a seed goes on after the words and first address show (the address lists and the watch-only box), up to
+// seconds on a slow computer. A tab chosen since FORGE SEED began (tabMoves moved on from seedTabMoves) wins: the late jump does
+// not pull the person back from CHECK A BACKUP or EXTRA TOOLS to MAKE A SEED. On MAKE A SEED it still scrolls to the words.
+function jumpToSeed(){
+  if(tabMoves !== seedTabMoves && document.getElementById("tp-make").classList.contains("tab-off")) return;
+  jumpTo("seedHead");
+}
 function clearPsbt(all){
   svRun++;   // v2.10.0: a signature check still running for the old input is dropped
   const o=document.getElementById("psbtOut"); o.textContent=""; o.style.display="none";
@@ -7337,6 +7343,7 @@ let passKey = null, passWork = Promise.resolve();
 // sig0: the input signature taken before the words were worked out. A roll typed while they were worked out makes the boxes
 // differ from it, and staleCheck then clears the new words at once (fixes release; before, the signature was taken afterwards).
 async function finishSeed(mnemonic, ctx, sig0, kind, info){
+  seedTabMoves = tabMoves;   // v2.16.1: a tab chosen from here on wins over the jump to YOUR SEED (see jumpToSeed)
   const p1 = document.getElementById("passphrase").value, p2 = document.getElementById("passphrase2").value, run = ++forgeRun;
   seedSig = null; passKey = JSON.stringify([p1, p2]);
   if(!ssfNext){ const pk = pubKind(mnemonic); if(pk) ssfNext = pracMark(pk); }   // v2.16.1 review: every method marks a public seed PRACTICE, by its words
@@ -9179,8 +9186,10 @@ function hasSeed(){ return document.getElementById("genResult").dataset.seed ===
 
 // ---- Tabs (v1.25.0): one section at a time. Every control still exists; hiding a tab only hides it from view. ----
 const TAB_NAMES = ["make", "check", "tools", "about"];
+let tabMoves = 0, seedTabMoves = 0;   // v2.16.1: tabs opened so far, and that count when the last seed began (see jumpToSeed)
 function showTab(name, targetId, focusTab){
   if(TAB_NAMES.indexOf(name) < 0) return;
+  tabMoves++;
   camStop();   // v2.9.0: the camera never keeps running on another tab
   TAB_NAMES.forEach(t => {
     const on = t === name, panel = document.getElementById("tp-" + t), btn = document.getElementById("tab-" + t);
@@ -13488,7 +13497,7 @@ async function forgeFromSigner(mnemonic, pass, deviceFp){
   ssfNext = x;
   await finishSeed(words.join(" "), null, inputSig("ss"), "ss", {});
   if(ssfCtx !== x) return false;   // overtaken by another result or a wipe
-  showTab("make"); jumpToSeed();
+  jumpToSeed();   // opens MAKE A SEED, unless the person chose a tab while the seed was made (v2.16.1)
   let fp = ""; try { fp = await mnemonicFingerprint(words.join(" "), pass); } catch(e) { fp = "unavailable"; }
   if(ssfCtx !== x) return false;
   x.vfFp = fp; ssfRender(); jumpToSeed();   // the check line above the words grew: keep the words in view

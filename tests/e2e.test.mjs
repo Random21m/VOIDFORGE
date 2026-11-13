@@ -223,6 +223,22 @@ async function printChecks(t, h, label, words, o = {}) {
   return pr;
 }
 async function toMethod(h, id) { await press(h, h.p.locator('#' + id)); await until(() => h.p.evaluate((id) => document.getElementById(id).getAttribute('aria-selected') === 'true', id), 10000); }
+// A tab, pressed as a person does, once its panel shows. Right after FORGE SEED (o.forge) it also waits for FORGE SEED to finish
+// (its last step shows the watch-only box) and checks the tab stayed open: v2.16.1 found the page pulling the person back to MAKE A
+// SEED a moment after the words and first address showed (the late jump to YOUR SEED), which left the next step of the test
+// scrolling to a hidden box until it timed out.
+const TAB_LABEL = { make: 'MAKE A SEED', check: 'CHECK A BACKUP', tools: 'EXTRA TOOLS', about: 'ABOUT & HELP' };
+const openTab = (p) => p.evaluate(() => ['make', 'check', 'tools', 'about'].filter((n) => !document.getElementById('tp-' + n).classList.contains('tab-off') && document.getElementById('tab-' + n).getAttribute('aria-selected') === 'true').join(','));
+async function toTab(t, h, name, label, o = {}) {
+  const { p } = h;
+  await press(h, p.locator('#tab-' + name));
+  const shown = await until(async () => (await openTab(p)) === name, 15000);
+  if (!t(shown, label + ': pressing ' + TAB_LABEL[name] + ' opens it (open: ' + (await openTab(p)) + ')')) return false;
+  if (!o.forge) return true;
+  const done = await until(() => p.evaluate(() => document.getElementById('watchBox').style.display !== 'none'), 120000);
+  const now = await openTab(p);
+  return t(done && now === name, label + ': ' + TAB_LABEL[name] + ', pressed as soon as the seed showed, stays open once FORGE SEED has finished (open: ' + now + (done ? '' : '; FORGE SEED did not finish') + ')');
+}
 async function typeAtEnd(loc, text) { await loc.click(); await loc.press('ControlOrMeta+End'); await loc.pressSequentially(text); }
 
 // ================================================================ the methods (MAKE A SEED)
@@ -411,7 +427,7 @@ G.followups = async (t, h, V) => {
 // ================================================================ CHECK A BACKUP
 async function checkWords(t, h, m, label) {
   const { p } = h, fp = fpOf(m);
-  await press(h, p.locator('#tab-check'));
+  if (!await toTab(t, h, 'check', label)) return null;
   await p.locator('#phrase').pressSequentially(m);
   await p.locator('#verifyRecorded').pressSequentially(fp);
   await until(() => p.isEnabled('#verifyBtn'), 15000);
@@ -660,8 +676,8 @@ G['new:load-practice-seed'] = async (t, h) => {
 async function ownSeed(h) {
   const { p } = h, R = rolls(50);
   await toMethod(h, 'mt-dice'); await typeAtEnd(p.locator('#rolls'), R); await forge(h, '#forgeBtn');
-  // wait for the seed itself (on a busy machine FORGE SEED can take longer than 90 s; going on before it is shown let the page jump
-  // to YOUR SEED in the middle of the next typing, so words typed into CHECK A BACKUP were lost)
+  // wait for the seed itself (on a busy machine FORGE SEED can take longer than 90 s); the next tab is pressed as soon as the words
+  // and first address show, as a person would, and toTab checks the page leaves it open while FORGE SEED finishes (v2.16.1)
   const s = await waitSeed(p, 12, 600000); return s ? s.words : hashWords(R, 12);
 }
 async function chooseOwn(h, box) {   // a visible control in the box that says it uses my own words / my seed, if there is one
@@ -678,7 +694,7 @@ async function ownWordsBox(h, box, skip) {   // a visible words box in the secti
 }
 G['new:practice-backup-own-words'] = async (t, h) => {
   const { p } = h, m = await ownSeed(h);
-  await press(h, p.locator('#tab-check'));
+  if (!await toTab(t, h, 'check', 'Practice making a backup', { forge: true })) return;
   await p.locator('#practiceBox > summary').scrollIntoViewIfNeeded(); await press(h, p.locator('#practiceBox > summary'));
   const chose = await chooseOwn(h, 'practiceBox');
   const box = await ownWordsBox(h, 'practiceBox', ['prInput']);
@@ -696,7 +712,7 @@ G['new:practice-backup-own-words'] = async (t, h) => {
 };
 G['new:practice-passphrase-own-words'] = async (t, h) => {
   const { p } = h, m = await ownSeed(h), pass = 'Tr0ubad0r & 3';
-  await press(h, p.locator('#tab-tools'));
+  if (!await toTab(t, h, 'tools', 'Practice your passphrase', { forge: true })) return;
   await p.locator('#ppBox > summary').scrollIntoViewIfNeeded(); await press(h, p.locator('#ppBox > summary'));
   const chose = await chooseOwn(h, 'ppBox');
   const box = await ownWordsBox(h, 'ppBox', ['ppA', 'ppB']);
@@ -710,7 +726,7 @@ G['new:practice-passphrase-own-words'] = async (t, h) => {
 };
 G['new:practice-wallet-own-words'] = async (t, h) => {
   const { p } = h, m = await ownSeed(h);
-  await press(h, p.locator('#tab-check'));
+  if (!await toTab(t, h, 'check', 'OPEN A PRACTICE WALLET', { forge: true })) return;
   await p.locator('#phrase').pressSequentially(m);   // my own words in Check your words
   t((await p.inputValue('#phrase')).trim() === m, 'my own words are in the CHECK A BACKUP box, as typed');
   await p.locator('#practiceBox > summary').scrollIntoViewIfNeeded(); await press(h, p.locator('#practiceBox > summary'));
