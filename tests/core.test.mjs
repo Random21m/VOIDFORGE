@@ -4,7 +4,11 @@
 //   Core" commands run as written, and a payment to the page's first address shows up in that watch-only wallet);
 // - a multisig descriptor (checksum and addresses), native and nested SegWit and (v2.11.0) Taproot, which is also imported and paid;
 // - a transaction (PSBT) made by Core: the page's inspector shows the same outputs and fee;
-// - a message signed by Core: the page says the signature is valid, and not valid for a changed message.
+// - a message signed by Core: the page says the signature is valid, and not valid for a changed message;
+// - (v2.17.0) real regtest coins on every address type the practice signer signs (P2PKH, P2SH-P2WPKH, P2WPKH, P2TR key path, 2-of-3
+//   P2WSH and P2SH-P2WSH), each spent by a PSBT the practice signer's own Approve transaction signs: Core combines its trimmed PSBT
+//   with the original (and a second cosigner's for multisig), finalizes it, and testmempoolaccept accepts the transaction (Core's
+//   script verification); a message the practice signer signs is valid for Core's verifymessage.
 // Regtest uses the testnet address versions; its SegWit addresses start with bcrt1 where testnet's start with tb1, so those are
 // compared by their witness program.
 //
@@ -19,6 +23,7 @@ import { entropyToMnemonic, mnemonicToSeedSync } from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';
 import { HDKey } from '@scure/bip32';
 import { bech32, bech32m } from '@scure/base';
+import * as btc from '@scure/btc-signer';
 import { loadPage, ready, readHtml, makeReporter } from './harness.mjs';
 
 const BIN = process.env.BITCOIN_BIN;
@@ -149,6 +154,53 @@ try {
     R.ok(vm.state === 'valid', 'signed message: the page accepts a two-line message Core signed');
     R.ok((await w.verifyMessage(a, msg + '.', sig)).state === 'invalid' || (await w.verifyMessage(a, msg + '.', sig)).state !== 'valid', 'signed message: the page rejects it for a changed message');
     R.ok((await rpc('verifymessage', [a, sig, msg])) === true, 'signed message: Core itself agrees it is valid'); }
+
+  // ---- 5. v2.17.0: the practice signer signs real regtest coins; Core verifies the scripts (testmempoolaccept) ----
+  { const E = (x) => w.eval(x), P8 = (b) => new (E('Uint8Array'))(b), SC = E('SSSettingsConstants'), H = 0x80000000;
+    const REG = { bech32: 'bcrt', pubKeyHash: 0x6f, scriptHash: 0xc4, wif: 0xef };
+    const root = HDKey.fromMasterSeed(mnemonicToSeedSync(words, pass)), sd = await E('SSSeed').create({ mnemonic: words, passphrase: pass });
+    const B = HDKey.fromMasterSeed(mnemonicToSeedSync(entropyToMnemonic(nc.randomBytes(16), wordlist), '')), C = HDKey.fromMasterSeed(mnemonicToSeedSync(entropyToMnemonic(nc.randomBytes(16), wordlist), ''));
+    const der = (r, p) => ({ fingerprint: r.fingerprint, path: p.split('/').slice(1).map((x) => x.endsWith("'") ? parseInt(x) + H : +x) });
+    Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => false });
+    const devSign = async (b64) => { const ps = E('SSPSBT').parse(P8(Buffer.from(b64, 'base64'))), c = { psbt: ps, psbt_seed: sd, psbt_parser: await E('SSPSBTParser').create(ps, sd, SC.REGTEST) };
+      const fv = Object.create(E('SSPSBTFinalizeView').prototype); fv.controller = c; fv.settings = { get_value: () => SC.REGTEST }; fv.run_screen = async () => 0; await fv.run();
+      return c.psbt !== ps ? Buffer.from(c.psbt.serialize()).toString('base64') : null; };
+    const back = await rpc('getnewaddress', ['', 'bech32'], 'miner');
+    const kinds = [
+      ['P2PKH', "m/44'/1'/0'/0/7", (k) => btc.p2pkh(k.publicKey, REG)],
+      ['P2SH-P2WPKH', "m/49'/1'/0'/0/7", (k) => btc.p2sh(btc.p2wpkh(k.publicKey, REG), REG)],
+      ['P2WPKH', "m/84'/1'/0'/0/7", (k) => btc.p2wpkh(k.publicKey, REG)],
+      ['P2TR key path', "m/86'/1'/0'/0/7", (k) => btc.p2tr(k.publicKey.slice(1), undefined, REG)],
+      ['2-of-3 P2WSH', "m/48'/1'/0'/2'", null],
+      ['2-of-3 P2SH-P2WSH', "m/48'/1'/0'/1'", null],
+    ];
+    for (const [name, path, payOf] of kinds) {
+      let pay, inp = {}, more = null;
+      if (payOf) { const k = root.derive(path); pay = payOf(k);
+        if (/P2TR/.test(name)) { const x = k.publicKey.slice(1); inp = { tapInternalKey: x, tapBip32Derivation: [[x, { hashes: [], der: der(root, path) }]] }; } else inp = { bip32Derivation: [[k.publicKey, der(root, path)]] }; }
+      else { const accts = [root, B, C].map((r) => r.derive(path)), keys = accts.map((a) => a.deriveChild(0).deriveChild(0).publicKey), sorted = keys.slice().sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
+        const inner = btc.p2wsh(btc.p2ms(2, sorted), REG); pay = /P2SH/.test(name) ? btc.p2sh(inner, REG) : inner;
+        inp = { witnessScript: inner.witnessScript, bip32Derivation: keys.map((pk, j) => [pk, der([root, B, C][j], path + '/0/0')]) };
+        more = (b64) => { const t2 = btc.Transaction.fromPSBT(Buffer.from(b64, 'base64')); t2.signIdx(B.derive(path + '/0/0').privateKey, 0); return Buffer.from(t2.toPSBT(0)).toString('base64'); }; }
+      if (pay.redeemScript) inp.redeemScript = pay.redeemScript;
+      const txid = await rpc('sendtoaddress', [pay.address, 1.0], 'miner'); await mine(1);
+      const raw = (await rpc('gettransaction', [txid], 'miner')).hex, dec = await rpc('decoderawtransaction', [raw]), vout = dec.vout.findIndex((o) => o.scriptPubKey.address === pay.address);
+      const tx = new btc.Transaction();
+      tx.addInput({ txid, index: vout, ...(/P2PKH/.test(name) ? { nonWitnessUtxo: Buffer.from(raw, 'hex') } : { witnessUtxo: { script: pay.script, amount: 100000000n } }), ...inp });
+      tx.addOutputAddress(back, 99990000n, REG);
+      const orig = Buffer.from(tx.toPSBT(0)).toString('base64'), signed = await devSign(orig);
+      if (!signed) { R.ok(false, 'practice signer, ' + name + ': the device signed nothing'); continue; }
+      const parts = [orig, signed]; if (more) parts.push(more(orig));
+      const comb = await rpc('combinepsbt', [parts]), fin = await rpc('finalizepsbt', [comb]);
+      const acc = fin.complete ? (await rpc('testmempoolaccept', [[fin.hex]]))[0] : { allowed: false, 'reject-reason': 'not complete' };
+      R.ok(fin.complete && acc.allowed === true, 'practice signer, ' + name + ': Core combines the signed PSBT' + (more ? ' (and a second cosigner\'s)' : '') + ', finalizes it, and testmempoolaccept accepts the transaction (' + (acc.allowed ? 'allowed' : acc['reject-reason']) + ')');
+    }
+    // a message signed by the practice signer's own view: Core's verifymessage agrees (legacy address)
+    { const v = Object.create(E('SSSeedSignMessageSignedMessageQRView').prototype), msg = 'VOIDFORGE v2.17.0 ' + nc.randomBytes(3).toString('hex');
+      v._ss_seed = sd; v._ss_derivation_path = "m/44h/1h/0h/0/3"; v._ss_message = msg; v.settings = { get_value: () => SC.REGTEST }; v.controller = { resume_main_flow: null, sign_message_data: {} }; v.run_screen = async () => 0; await v.run();
+      const a = btc.p2pkh(root.derive("m/44'/1'/0'/0/3").publicKey, REG).address;
+      R.ok((await rpc('verifymessage', [a, v.signed_message, msg])) === true, 'practice signer: a message it signs (legacy address ' + a.slice(0, 10) + '...) is valid for Core\'s verifymessage'); }
+    delete w.navigator.onLine; }
 } catch (e) { R.ok(false, 'the test stopped: ' + e.message); }
 stop();
 R.done('core');
