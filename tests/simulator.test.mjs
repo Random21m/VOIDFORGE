@@ -1188,7 +1188,7 @@ async function practiceRun(t, d, page, tag, o) {
   const r = await readUR(page);
   t(!!r && r.type === 'crypto-psbt', tag + ': the device shows the signed PSBT as a UR crypto-psbt QR (' + (r ? r.parts + ' part(s), read with jsqr' : 'none read') + ')');
   const t0 = Date.now(); let p; while (Date.now() - t0 < 120000) { p = await panel(d); if (p.tx && p.tx.ok) break; await sleep(300); }
-  t(p.tx && p.tx.ok && /^Signed correctly: /.test(p.status) && /checked by this page’s own code/.test(p.status), tag + ': the page reads the signed QR from the device\'s screen and says "' + p.status.split('(')[0].trim() + '"');
+  t(p.tx && p.tx.ok && /^Signed correctly: /.test(p.status) && /checked by this page's own code/.test(p.status), tag + ': the page reads the signed QR from the device\'s screen and says "' + p.status.split('(')[0].trim() + '"');
   if (r) checkPractice(t, tag, origB, r.bytes, o);
   return origB;
 }
@@ -1218,8 +1218,8 @@ SCEN.practice_tx = async (t, d, ctx, page) => {   // Testnet, no lesson: the PRA
 };
 SCEN.lessons_dice = async (t, d, ctx, page) => {
   const rolls = '1'.repeat(50), exp = diceWords(rolls, 12).split(' ');
-  t(await d.ev(() => SS_LEARN_LESSONS.length === 6 && SS_LEARN_LESSONS.every((l) => l.name && l.note && l.end && l.steps.every((s) => s.do && s.see && typeof s.at === 'function')) && /public test seeds only/.test(document.getElementById('ssLearn').textContent)),
-    'lessons: six lessons next to the device, each step with plain text and a "what you should see" line; the panel says they use public test seeds only');
+  t(await d.ev(() => SS_LEARN_LESSONS.length === 6 && SS_LEARN_LESSONS.every((l) => l.name && l.note && l.end && l.steps.every((s) => s.do && s.see && typeof s.at === 'function')) && /They work with the seed loaded on the device, real or practice; with none loaded, they load the public test seed abandon \.\.\. about/.test(document.getElementById('ssLearn').textContent)),
+    'lessons: six lessons next to the device, each step with plain text and a "what you should see" line; the panel says they use the seed on the device, or the public test seed when none is loaded (v2.17.0)');
   let words = [];
   const answer = async (d) => {
     for (let n = 0; n < 14; n++) {
@@ -1300,7 +1300,7 @@ SCEN.forge = async (t, d, ctx, page) => {
   const checkResult = async (tag, m, pass) => {
     const r = await result(m), fp = fpOf(rootOf(m, pass)), r0 = addrOf(m, pass, 'native', 0, 0), c0 = addrOf(m, pass, 'native', 1, 0);
     t(r.words === m && r.kind === 'ss' && r.tab && r.inView, tag + ': FORGE SEED shows the words in MAKE A SEED (the tab is switched and scrolled to them), as @scure/bip39 gives them');
-    t(r.fp === 'Master fingerprint: ' + fp + (pass ? ' (with passphrase)' : '') && r.fpPic && r.check === 'Consistency check: the practice signer shows fingerprint ' + fp + ', and VOIDFORGE works out ' + fp + " for these words: the same. Both come from this page’s own code, so this is not an independent check." && r.checkOk,
+    t(r.fp === 'Master fingerprint: ' + fp + (pass ? ' (with passphrase)' : '') && r.fpPic && r.check === 'Consistency check: the practice signer shows fingerprint ' + fp + ', and VOIDFORGE works out ' + fp + " for these words: the same. Both come from this page's own code, so this is not an independent check." && r.checkOk,
       tag + ': fingerprint ' + fp + ' (@scure/bip32) with its picture, and "' + r.check + '"');
     t(r.r0.includes(r0) && r.c0.includes(c0), tag + ': the first receive and change addresses equal @scure/btc-signer\'s (' + r0.slice(0, 14) + '..., ' + c0.slice(0, 14) + '...), 10 of each');
     t(r.sq && r.watch && r.pass === pass, tag + ': SeedQR, xpub and watch-only are offered, and the passphrase box holds the passphrase applied on the device' + (pass ? ' ("' + pass + '")' : ' (none)'));
