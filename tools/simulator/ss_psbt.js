@@ -2654,6 +2654,13 @@ class SSPSBTFinalizeView extends SSView {
 
     if (selected_menu_num === SS_RET_CODE__BACK_BUTTON) return new SSDestination(SSBackStackView);
 
+    // SIM: VOIDFORGE rule (v2.17.0, ssOwnSignGate in ss_own.js): the PSBT's network must be the device's, and a seed that is not
+    // public signs only after a yes to the page's question (outputs checked; this computer offline, or a warning while online)
+    if (typeof ssOwnSignGate === "function") {
+      const stop = await ssOwnSignGate("psbt", this.controller.psbt_seed, psbt, (this.settings || SSSettings.get_instance()).get_value(SSSettingsConstants.SETTING__NETWORK));
+      if (stop) return stop;
+    }
+
     // Sign PSBT
     const sig_cnt = SSPSBTParser.sig_count(psbt);
     await psbt.sign_with(psbt_parser.root);

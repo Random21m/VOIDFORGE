@@ -255,6 +255,10 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .status.bad { color: var(--danger); }
   .sv-ok { color: var(--ok-text); font-weight: 700; } .sv-bad { color: var(--bad-text); font-weight: 700; } .sv-na { color: var(--muted); font-weight: 700; }
   .status.warn { color: var(--warn-text); }
+  .ss-banner { display: block; padding: 8px 10px; border-radius: 8px; font-weight: 600; margin: 8px 0; line-height: 1.45; }   /* v2.17.0: a load or signing result */
+  .ss-banner:empty { display: none; }
+  .ss-banner.ok { border: 1.5px solid var(--gold); background: rgba(227, 184, 63, .14); color: var(--text); }
+  .ss-banner.bad { border: 1.5px solid var(--danger); background: rgba(238, 138, 143, .14); color: var(--text); }
   .entropy-bar {
     height: 6px;
     background: #222;
@@ -1140,6 +1144,13 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   #ssBox .ss-l-do { font-size: 15px; line-height: 1.5; }
   #ssBox .ss-l-cam { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; margin: 0 0 10px; overflow-wrap: anywhere; }
   #ssBox #ssTxStatus { white-space: pre-line; overflow-wrap: anywhere; }
+  /* v2.17.0 Use it for real: your own PSBT, address, wallet descriptor or message */
+  #ssBox .ss-own textarea { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; font-size: 12px; }
+  #ssBox .ss-own input[type="number"] { width: 7em; flex: none; }
+  #ssBox .ss-own-w { margin: 6px 0 8px; padding-left: 20px; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+  #ssBox .ss-own-w li { margin: 3px 0; }
+  #ssBox .ss-own-w li.bad { color: var(--bad-text); font-weight: 600; }
+  #ssBox #ssOwnStatus, #ssBox #ssOwnOutSay { overflow-wrap: anywhere; }
   /* v2.15.0: the practice signer's choice in the start row under the title (laid out by #startRow .sr-i) */
   body.guided #ssPromo { display: none; }
   @media print { #ssPromo { display: none !important; } }
@@ -2026,7 +2037,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <div class="btn-row"><button type="button" id="ssForgeBtn">FORGE SEED</button><select id="ssForgePick" aria-label="Seed on the device, by fingerprint" hidden></select></div>
         <p class="status" id="ssForgeStatus" aria-live="polite"></p>
         <h3 class="sec">Lessons</h3>
-        <p class="hint" style="margin:0 0 8px;">Short lessons that walk you through the device, one press at a time. Each step moves on by itself when the device shows the right screen. The lessons use public test seeds only (such as abandon ... about): anyone can make them, so never put coins on them.</p>
+        <p class="hint" style="margin:0 0 8px;">Short lessons that walk you through the device, one press at a time. Each step moves on by itself when the device shows the right screen. They work with the seed loaded on the device, real or practice; with none loaded, they load the public test seed abandon ... about (anyone can make it, so never put coins on it). Their practice transactions spend made-up coins, so they can never be broadcast.</p>
         <div class="btn-row"><select id="ssLearnPick" aria-label="Lesson"></select><button type="button" id="ssLearnGo" class="secondary small">START LESSON</button></div>
         <div class="ss-l-run" id="ssLearnRun" hidden>
           <p><b id="ssLearnName"></b> &middot; <span id="ssLearnCount"></span></p>
@@ -2045,6 +2056,23 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <p class="ms-test" id="ssTxNet" hidden>Mainnet: these coins don&rsquo;t exist; this PSBT can never be broadcast.</p>
         <p class="status" id="ssTxStatus" aria-live="polite"></p>
         <p class="hint" id="ssTxCoins"></p>
+        <div class="ss-own" id="ssOwnBox">
+        <h3 class="sec">Use it for real: your own PSBT, address, wallet or message</h3>
+        <p class="ms-test">A browser is not a hardware signer. This device signs for real, inside this page: a real SeedSigner keeps the seed off every computer, and this does not. With real coins, use it only on an offline computer you trust, check every address and amount on its screen against what you meant to send, and wipe the seed afterwards (CLEAR ALL).</p>
+        <p class="hint" style="margin:0 0 8px;">Paste a PSBT from your wallet (Sparrow, Electrum, Nunchuk, Specter, Bitcoin Core: base64, hex, or the parts of an animated UR or BBQr QR, one per line), an address to verify, a multisig wallet descriptor (sortedmulti), or a signmessage request; or choose a .psbt file, or scan a QR with this computer&rsquo;s camera. HOLD UP TO THE DEVICE shows it to the device&rsquo;s camera; then choose Scan on the device. The device reviews it and signs as SeedSigner does, and the signed PSBT comes back here too, byte for byte as in its QR code.</p>
+        <textarea id="ssOwnIn" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Your PSBT, address, wallet descriptor or signmessage request" placeholder="PSBT (cHNidP8... or 70736274ff...), address, wallet descriptor or signmessage request"></textarea>
+        <div class="btn-row"><button type="button" id="ssOwnGo">HOLD UP TO THE DEVICE</button><button type="button" class="secondary small" id="ssOwnFileBtn">CHOOSE .PSBT FILE</button><input type="file" id="ssOwnFile" accept=".psbt,.txt,application/octet-stream" hidden><button type="button" class="secondary small" id="ssOwnClear">CLEAR</button></div>
+        <p class="status" id="ssOwnStatus" aria-live="polite"></p>
+        <ul class="ss-own-w" id="ssOwnWarns" hidden></ul>
+        <p class="hint" style="margin:10px 0 6px;"><b>Sign a message.</b> Signed with the key of one of the seed&rsquo;s single-key receive addresses, in the Bitcoin Signed Message format SeedSigner uses. Turn on Message signing on the device first (Settings &gt; Advanced).</p>
+        <textarea id="ssMsgIn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Message to sign" placeholder="Message to sign (plain letters, digits and punctuation)"></textarea>
+        <div class="btn-row"><select id="ssMsgType" aria-label="Address type of the signing key"><option value="84">Native SegWit (bc1q), m/84h/...</option><option value="49">Nested SegWit (3...), m/49h/...</option><option value="44">Legacy (1...), m/44h/...</option></select><input type="number" id="ssMsgIdx" min="0" max="999999" step="1" value="0" aria-label="Receive address number"><button type="button" class="secondary small" id="ssMsgGo">HOLD UP THE MESSAGE</button></div>
+        <div id="ssOwnOut" hidden>
+          <p class="status" id="ssOwnOutSay" aria-live="polite"></p>
+          <textarea id="ssOwnOutText" rows="4" readonly spellcheck="false" aria-label="What the device made: the signed PSBT (base64) or the signed message"></textarea>
+          <div class="btn-row"><button type="button" class="secondary small" id="ssOwnCopy">COPY</button><button type="button" class="secondary small" id="ssOwnCopySig" hidden>COPY SIGNATURE ONLY</button><button type="button" class="secondary small" id="ssOwnSave">SAVE .PSBT FILE</button></div>
+        </div>
+        </div>
       </div>
     </details>
     <details id="planBox">
@@ -9157,7 +9185,7 @@ let ssfNext = null, ssfCtx = null;
 function setResult(text, words){
   madeMnemonic = words ? words.join(" ") : "";
   ssfCtx = words && ssfNext ? ssfNext : null; ssfNext = null; ssfRender();
-  sumCtx = null; { const sn = document.getElementById("seedSignerNote"); if(sn) sn.textContent = ""; }
+  sumCtx = null; { const sn = document.getElementById("seedSignerNote"); if(sn){ sn.textContent = ""; sn.className = "hint"; } }
   wdWipe(); drillEnd(); if(words) previewClear(); bkReset(!!words); document.body.classList.toggle("has-seed", !!words);
   const g = document.getElementById("genResult"), grid = document.getElementById("wordGrid");
   g.textContent = text; g.classList.toggle("nores", text === "\u2014"); grid.textContent = "";
@@ -10444,7 +10472,8 @@ const CAM_TARGETS = {
   wpIn: {after: "wpBtn", label: "SCAN QR", what: "account public key or descriptor"},
   psbtInput: {after: "psbtBtn", label: "SCAN QR", what: "transaction (a still or moving QR)", parts: true},
   checkAddr: {after: "checkAcct", label: "SCAN", what: "address", addr: true},
-  detAddr: {after: "detBtn", label: "SCAN QR", what: "address", addr: true}
+  detAddr: {after: "detBtn", label: "SCAN QR", what: "address", addr: true},
+  ssOwnIn: {after: "ssOwnGo", label: "SCAN QR", what: "PSBT, address, wallet descriptor or message request (a still or moving QR)", parts: true}   // v2.17.0: the practice signer, for real
 };
 const CAM_SECONDS = 120;
 let cam = null, camRun = 0;
@@ -10525,7 +10554,7 @@ function camGot(r){
 function camDone(value, note){
   const id = cam.id, el = document.getElementById(id);
   el.value = value; el.dispatchEvent(new Event("input", {bubbles: true}));
-  camStop(note + " The camera is off. Check what was filled in" + (id === "psbtInput" ? ", then press INSPECT." : id === "phrase" ? ", then press VERIFY." : "."));
+  camStop(note + " The camera is off. Check what was filled in" + (id === "psbtInput" ? ", then press INSPECT." : id === "ssOwnIn" ? ", then press HOLD UP TO THE DEVICE." : id === "phrase" ? ", then press VERIFY." : "."));
 }
 // Stops the camera (and forgets the parts read). With a message, the box stays open to show it.
 function camStop(note){
@@ -11033,11 +11062,12 @@ function wipeSeed(){
   safeCopy("").catch(()=>{});
   updateCount();
   if(typeof vfSignerDropSeed === "function") vfSignerDropSeed();   // v2.16.1: no copy of the seed is left in the practice signer
+  if(typeof ssOwnWipe === "function") ssOwnWipe();   // v2.17.0: your own PSBT, what the practice signer signed, the message
   rhSettle();   // v2.15.0: nothing secret left, so the re-hide notice goes and the boxes open again
 }
 
 // Auto-clear (v1.34.0): optional, off at every page load, nothing stored. Wipes the secrets without asking after idle time or when the tab is hidden.
-const AUTO_FIELDS = ["pkIn", "rolls", "passphrase", "passphrase2", "note", "phrase", "verifyPass", "verifyRecorded", "checkAddr", "drillWords", "drillPass", "prInput", "reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "wdWords", "wdFlips", "wdFind", "cdCards", "cdHex", "s39In", "s39Pass", "dpRolls", "dcRolls", "s39mRolls", "s39mPass", "s39mPass2", "cmxTrng", "cmxRolls", "dbIn", "dbKey"];
+const AUTO_FIELDS = ["ssMsgIn", "pkIn", "rolls", "passphrase", "passphrase2", "note", "phrase", "verifyPass", "verifyRecorded", "checkAddr", "drillWords", "drillPass", "prInput", "reforgeWordsInput", "reforgeWordsCheck", "reforgeWordsPass", "reforgePassWords", "reforgePassInput", "reforgePassCheck", "wdWords", "wdFlips", "wdFind", "cdCards", "cdHex", "s39In", "s39Pass", "dpRolls", "dcRolls", "s39mRolls", "s39mPass", "s39mPass2", "cmxTrng", "cmxRolls", "dbIn", "dbKey"];
 let autoLast = Date.now(), autoTimer = null;
 function autoTouch(){ autoLast = Date.now(); }
 ["keydown", "pointerdown", "input", "touchstart", "wheel"].forEach(e => document.addEventListener(e, autoTouch, {capture: true, passive: true}));
@@ -11102,8 +11132,8 @@ const RH_PLACES = [
   // repeat a word or a share typed in
   "reforgeOut", "dcOut", "cmxOut", "xorIn", "xorRolls", "xorOut", "s39mOut", "c32mOut", "childOut", "ppB", "ppFp",
   "wpbRolls", "msbRolls", "mxbRolls", "reforgeStatus", "cmxStatus", "xorStatus", "s39Status", "c32Status",
-  // the practice signer: its screen and keys (v2.16.1)
-  "ssDevice"];
+  // the practice signer: its screen and keys (v2.16.1), and what it signed for you (v2.17.0)
+  "ssDevice", "ssOwnOut"];
 // Covered with the rest, but never a reason to cover on their own (they always show something, or only echo a box listed above).
 const RH_ONLY_COVER = ["rollHistory", "diceVisual", "cdGrid", "dmPairBoxes", "dmDeal", "dmCardGrid", "dmLiveH", "dmLiveA", "dmLiveF", "dmLiveW", "dmLiveL", "pnRdGrid", "smudgeNote", "vSmudge",
   "sqGuideCaption", "passWarn", "verifyPassWarn", "verifyStatus", "drillStatus", "pkStatus", "reforgeStatus", "cmxStatus", "xorStatus", "s39Status", "c32Status"];
@@ -11115,7 +11145,8 @@ const RH_NOT = ["verifyRecorded", "pnRdTicks", "prInput"];
 // Covered always, but a reason to cover only when it holds a secret: the address box, when Explain an address says it is one.
 const RH_IF = {checkAddr: () => /SEED WORDS|PRIVATE|SECRET|SeedQR digits/.test(document.getElementById("addrExplain").textContent)};
 // Covered always, and a reason to cover exactly when this says so: the practice signer, while it holds a seed that is not public.
-const RH_HOLD = {ssDevice: () => typeof vfSignerHoldsSecret === "function" && vfSignerHoldsSecret()};
+// v2.17.0: what the practice signer signed for you, while it holds a message signature or the device holds a seed that is not public.
+const RH_HOLD = {ssDevice: () => typeof vfSignerHoldsSecret === "function" && vfSignerHoldsSecret(), ssOwnOut: () => typeof ssOwnHoldsSecret === "function" && ssOwnHoldsSecret()};
 const RH_WHY = {tab: "you switched to another tab or app", blur: "this window lost focus", print: "the page was printed with the browser\u2019s Print", idle: "nothing happened for a while"};
 const RH_IDLE_DEFAULT = "5";
 let rhOn = false, rhLast = Date.now(), rhPrinting = false, rhMasked = 0, rhFocus = null, rhDlg = 0, rhDlgEnd = 0;
@@ -13506,17 +13537,23 @@ async function forgeFromSigner(mnemonic, pass, deviceFp){
 // v2.16.1 LOAD INTO THE PRACTICE SIGNER under YOUR SEED, for any seed shown there: window.vfSignerLoadSeed (tools/simulator/
 // ss_learn.js) opens the practice signer, holds the seed's Standard SeedQR up to its camera and goes Home > Scan on the device
 // itself, as a person would, so the device loads it and shows its fingerprint. A passphrase is not carried over: the device stops
-// on its Finalize screen so it can be added there (BIP-39 Passphrase), as on a real SeedSigner. A SeedQR is read only while
-// offline, so while the computer is online it is not held up at all (signerLoadNote says why).
-const SIGNER_ONLINE = "Not loaded: this computer looks online, and a SeedQR is read only while offline. Take this computer offline, then press LOAD INTO THE PRACTICE SIGNER again.";
-function signerLoadNote(ok, what){ return ok ? "The practice signer is open in CHECK A BACKUP and loads " + what + " by itself from its SeedQR." : navigator.onLine === true ? SIGNER_ONLINE : "Not loaded: the practice signer could not start."; }
+// on its Finalize screen so it can be added there (BIP-39 Passphrase), as on a real SeedSigner. v2.17.0: a public or practice seed
+// loads online too; a real seed while online loads only after a yes to a plain question (vfSignerLoadSeed asks). The result is a
+// banner here (gold: on its way; red: not loaded), and the load's own result is a banner next to the device.
+const SIGNER_CANCELLED = "Not loaded: you chose not to load your real seed while this computer is online. Take this computer offline, or use a test seed, then press LOAD INTO THE PRACTICE SIGNER again.";
+function signerLoadNote(ok, what){ return ok === true ? "The practice signer is open in CHECK A BACKUP and loads " + what + " by itself from its SeedQR." : ok === "cancelled" ? SIGNER_CANCELLED : "Not loaded: the practice signer could not start."; }
+function signerNoteShow(note, ok, what){
+  note.textContent = signerLoadNote(ok, what);
+  note.classList.add("ss-banner"); note.classList.toggle("ok", ok === true); note.classList.toggle("bad", ok !== true);
+  if(ok !== true) try { note.scrollIntoView({block: "nearest"}); } catch(e) { /* not laid out */ }
+}
 function seedToSigner(){
   const note = document.getElementById("seedSignerNote");
   if(!hasSeed()) return alert("Generate a seed first");
   if(typeof window.vfSignerLoadSeed !== "function"){ note.textContent = "Open CHECK A BACKUP, then the practice signer, and choose Seeds > Load a seed > Enter " + madeMnemonic.split(" ").length + "-word seed. Type the words with its keys."; return; }
   const words = madeMnemonic.split(" ");
   if(![12, 24].includes(words.length)){ note.textContent = "SeedSigner takes 12- and 24-word seeds only; this one has " + words.length + " words."; return; }
-  note.textContent = signerLoadNote(window.vfSignerLoadSeed(madeMnemonic, {pass: !!document.getElementById("passphrase").value}), "this seed");
+  signerNoteShow(note, window.vfSignerLoadSeed(madeMnemonic, {pass: !!document.getElementById("passphrase").value}), "this seed");
 }
 // The practice signer was switched off (its box closed, CLEAR ALL, auto-clear, END SESSION): a seed it gave is cleared here too.
 function ssfDeviceOff(){
@@ -16970,7 +17007,7 @@ function dmToSigner(){
   const o = document.getElementById("dmOut"), ph = o.dataset.practicePhrase || "", note = document.getElementById("dmSignerNote");
   if(!dmPractice || !ph) return;
   if(typeof window.vfSignerLoadSeed === "function"){
-    note.textContent = signerLoadNote(window.vfSignerLoadSeed(ph), "the practice seed");
+    signerNoteShow(note, window.vfSignerLoadSeed(ph), "the practice seed");
     return;
   }
   note.textContent = "Open CHECK A BACKUP, then the practice signer, and choose Seeds > Load a seed > Enter " + ph.split(" ").length + "-word seed. Type the practice words with its keys.";
@@ -31497,6 +31534,12 @@ class SSSeedSignMessageSignedMessageQRView extends SSView {
     async run() {
         // Python signs in __init__ (async here)
         await this._ss_seed._ready;
+        // SIM: VOIDFORGE rule (v2.17.0, ssOwnSignGate in ss_own.js): a seed that is not public signs a message while this computer is
+        // online only after a yes to the page's question
+        if (typeof ssOwnSignGate === "function") {
+            const stop = await ssOwnSignGate("msg", this._ss_seed, null, (this.settings || SSSettings.get_instance()).get_value(SSSC().SETTING__NETWORK));
+            if (stop) return stop;
+        }
         this.signed_message = await ssSeedsEmbitUtils.sign_message(this._ss_seed.seed_bytes, this._ss_derivation_path, this._ss_message);
 
         const qr_encoder = new SSSeedsGenericStaticQrEncoder({ data: this.signed_message });
@@ -32726,9 +32769,12 @@ class SSToolsAddressExplorerAddressListScreen extends SSButtonListScreen {
 /* ---- views/scan_views.py ----------------------------------------------------------------------------------------- */
 // SIM: VOIDFORGE rule. The page's own camera reads a SeedQR only while the computer is offline (navigator.onLine false);
 // the practice signer follows the same rule for every seed QR (SeedQR, CompactSeedQR, mnemonic QR), shown on SeedSigner's
-// own error screen.
-function ssToolsSeedScanBlocked() {   // SIM: VOIDFORGE rule
-  return typeof navigator !== "undefined" && navigator.onLine === true;
+// own error screen. v2.17.0: except a public or practice seed, and the SeedQR of LOAD INTO THE PRACTICE SIGNER after the person
+// said yes to loading it online (ssLearnSeedScanOk, ss_learn.js). decoder: the scan's decoder once it read a seed.
+function ssToolsSeedScanBlocked(decoder) {   // SIM: VOIDFORGE rule
+  if (typeof navigator === "undefined" || navigator.onLine !== true) return false;
+  try { if (typeof ssLearnSeedScanOk === "function" && ssLearnSeedScanOk(decoder)) return false; } catch (e) { /* lessons part missing */ }
+  return true;
 }
 function ssToolsOfflineOnlyDest() {   // SIM: VOIDFORGE rule
   return new SSDestination(SSErrorView, {view_args: {
@@ -32782,7 +32828,7 @@ class SSScanView extends SSView {
         }});
       }
 
-      if (this.decoder.is_seed && ssToolsSeedScanBlocked()) {
+      if (this.decoder.is_seed && ssToolsSeedScanBlocked(this.decoder)) {
         // SIM: VOIDFORGE rule: a seed QR read while the computer is online is dropped, not loaded
         this.decoder = new SSDecodeQR({wordlist_language_code: this.wordlist_language_code});
         return ssToolsOfflineOnlyDest();
@@ -36355,6 +36401,13 @@ class SSPSBTFinalizeView extends SSView {
 
     if (selected_menu_num === SS_RET_CODE__BACK_BUTTON) return new SSDestination(SSBackStackView);
 
+    // SIM: VOIDFORGE rule (v2.17.0, ssOwnSignGate in ss_own.js): the PSBT's network must be the device's, and a seed that is not
+    // public signs only after a yes to the page's question (outputs checked; this computer offline, or a warning while online)
+    if (typeof ssOwnSignGate === "function") {
+      const stop = await ssOwnSignGate("psbt", this.controller.psbt_seed, psbt, (this.settings || SSSettings.get_instance()).get_value(SSSettingsConstants.SETTING__NETWORK));
+      if (stop) return stop;
+    }
+
     // Sign PSBT
     const sig_cnt = SSPSBTParser.sig_count(psbt);
     await psbt.sign_with(psbt_parser.root);
@@ -36452,7 +36505,7 @@ function ssPsbtWipeController(ctl) {
 </script>
 <script>
 "use strict";
-// v2.13.0 practice signer: ss_page.js and ss_learn.js (the page knows this script as its own: see "Is anything watching this page?")
+// v2.13.0 practice signer: ss_page.js, ss_learn.js and ss_own.js (the page knows this script as its own: see "Is anything watching this page?")
 if(window.vfOwnEls) window.vfOwnEls.push(document.currentScript);
 // ss_page.js: VOIDFORGE page glue for the SeedSigner 0.8.7 practice signer (CHECK A BACKUP > Practice signer).
 // The device starts only when its box is opened, and stops when the box is closed, on CLEAR ALL, on auto-clear and on
@@ -36584,6 +36637,7 @@ function ssPageStop() {
   try { _ss_scratch = null; _ss_measure_ctx = null; _ss_color_ctx = null; } catch (e) { /* engine missing */ }
   try { SS_TOOLS_PENDING_FIELDS.length = 0; } catch (e) { /* tools part missing */ }
   try { if (typeof ssLearnWipe === "function") ssLearnWipe(); } catch (e) { /* lessons part missing */ }   // v2.14.0: lessons, practice wallet, practice PSBT
+  try { if (typeof ssOwnWipe === "function") ssOwnWipe(); } catch (e) { /* real-use part missing */ }   // v2.17.0: your own PSBT, the signed output, the message
   try { if (typeof ssfDeviceOff === "function") ssfDeviceOff(); } catch (e) { /* page part missing */ }   // v2.14.0: a seed FORGE SEED took from it
 }
 
@@ -36673,7 +36727,7 @@ const SS_LEARN_FP = "73c5da0a";   // fingerprint of abandon ... about
 const SS_LEARN_MARK = "VOIDFORGE practice coins: made up, not real, never on the blockchain";
 const SS_LEARN_FRAME_MS = 300;    // one QR part every 0.3 s, as a wallet app's animated QR
 
-const ssLearn = { arming: false, lesson: null, step: 0, hold: null, done: false, timer: null, tx: null, building: false, reading: false, scanDec: null, msg: "", gen: 0 };
+const ssLearn = { fp: "", fpSeed: null, arming: false, lesson: null, step: 0, hold: null, done: false, timer: null, tx: null, building: false, reading: false, scanDec: null, msg: "", gen: 0 };
 const ssLearnCam = { byLesson: false, frames: null, what: "", say: "", key: "", on: false, shown: null, read: false, t0: 0, cache: new Map() };
 
 // ---------------------------------------------------------------- the device, as the lessons see it
@@ -36689,6 +36743,17 @@ const ssLearnArg = (s, k) => { try { const a = s.ctl.current_destination.view_ar
 const ssLearnKey = (s) => s ? s.view + "|" + s.screen + "|" + s.title : "";
 function ssLearnSeeds() { try { const st = SSController._instance && SSController._instance._storage; return (st && st.seeds) || []; } catch (e) { return []; } }
 function ssLearnHasTestSeed() { return ssLearnSeeds().some((s) => s && s.mnemonic_str === SS_LEARN_ABANDON && !s.passphrase); }
+// v2.17.0: the lessons work with any seed loaded on the device, real or practice: the lesson's seed is the newest one loaded (its
+// fingerprint stands for {fp} in the lesson texts). With none loaded, the lesson loads the public test seed abandon ... about first.
+function ssLearnSeed() { const s = ssLearnSeeds().filter((x) => x && x.seed_bytes instanceof Uint8Array); return s.length ? s[s.length - 1] : null; }
+const ssLearnHasSeed = () => !!ssLearnSeed();
+async function ssLearnFpNow() {
+  const s = ssLearnSeed(); if (s === ssLearn.fpSeed) return;
+  ssLearn.fpSeed = s; let f = SS_LEARN_FP;
+  if (s) { try { f = await s.get_fingerprint(); } catch (e) { f = "the seed"; } }
+  if (ssLearn.fpSeed === s && ssLearn.fp !== f) { ssLearn.fp = f; ssLearnRender(); }
+}
+const ssLearnT = (x) => String(x || "").split("{fp}").join(ssLearn.fp || SS_LEARN_FP);
 // The device's settings, read without making them: with the device off there are none (v2.15.0: reading them here used to load
 // them again from the microSD while the device stopped, so a wipe did not bring the defaults back).
 const ssLearnSettings = () => { try { return ssPageOn ? SSSettings.get_instance() : null; } catch (e) { return null; } };
@@ -36805,14 +36870,14 @@ async function ssLearnAcct(seed, type, n) {   // account key of a seed: [fp/purp
 }
 async function ssLearnChild(a, branch, index) { const [p, c] = await ckdPub(a.key.pub, a.key.chain, branch); return (await ckdPub(p, c, index))[0]; }
 const ssLearnP2wpkh = async (pub) => Uint8Array.of(0x00, 20, ...(await hash160(pub)));
-async function ssLearnAddress(n, branch, index) {   // native SegWit address of the test seed (abandon ... about)
-  const a = await ssLearnAcct(await mnemonicToSeed(SS_LEARN_ABANDON, ""), "wpkh", n);
+async function ssLearnAddress(n, branch, index) {   // native SegWit address of the lesson's seed (v2.17.0), or of the test seed
+  const sd = ssLearnSeed(), a = await ssLearnAcct(sd ? sd.seed_bytes : await mnemonicToSeed(SS_LEARN_ABANDON, ""), "wpkh", n);
   return bech32Encode(ssLearnHrp(n), 0, await hash160(await ssLearnChild(a, branch, index)));
 }
 async function ssLearnFeed(kind) {   // [frames, what the panel says the practice wallet shows]
   const n = ssLearnNet();
   if (kind === "seedqr") return [[SS_LEARN_ABANDON.split(" ").map((w) => String(WORDLIST.indexOf(w)).padStart(4, "0")).join("")], "the SeedQR of the public test seed abandon ... about"];
-  if (kind === "address") { const a = await ssLearnAddress(n, 0, 3); return [["bitcoin:" + a], "receive address #3 of the public test seed: " + a]; }
+  if (kind === "address") { const a = await ssLearnAddress(n, 0, 3); return [["bitcoin:" + a], "receive address #3 of " + (ssLearnSeed() ? "seed " + ssLearnT("{fp}") : "the public test seed") + ": " + a]; }
   if (kind === "signmsg") return [["signmessage m/84h/" + ssLearnCoin(n) + "h/0h/0/0 ascii:Practice message from VOIDFORGE"], "a request to sign the message \"Practice message from VOIDFORGE\""];
   if (kind === "descriptor") { const t = ssLearn.tx && ssLearn.tx.descriptor; return t ? [[t], "the 2-of-3 wallet descriptor"] : [null, ""]; }
   if (kind === "tx") { const t = ssLearn.tx; return t && !t.result ? [t.frames, "the practice transaction (" + t.frames.length + " QR parts)"] : [null, ""]; }
@@ -36843,16 +36908,12 @@ function ssLearnPsbt(tx) {
   for (const m of [tx.global, ...tx.inMaps, ...tx.outMaps]) { for (const [k, v] of m) p.push(ssLearnKV(k, v)); p.push(Uint8Array.of(0)); }
   return concatBytes(...p);
 }
-// The seed the practice transaction spends from: in a lesson, the test seed the lesson names (review L7: the last seed loaded
-// may be another one, and the lesson says to sign with the test seed); otherwise the last one loaded on the device, or the test seed.
+// The seed the practice transaction spends from: the newest one loaded on the device, the lesson's seed (v2.17.0: in a lesson too,
+// real or practice: the lesson names it by its fingerprint), or the test seed when none is loaded.
 async function ssLearnSpender() {
-  const seeds = ssLearnSeeds().filter((s) => s && s.seed_bytes instanceof Uint8Array);
-  if (ssLearn.lesson && ssLearn.lesson.txKind) {
-    const t = seeds.find((s) => s.mnemonic_str === SS_LEARN_ABANDON && !s.passphrase);
-    return t ? { seed: t.seed_bytes, own: true } : { seed: await mnemonicToSeed(SS_LEARN_ABANDON, ""), own: false };
-  }
-  if (seeds.length) { const s = seeds[seeds.length - 1]; return { seed: s.seed_bytes, own: true }; }
-  return { seed: await mnemonicToSeed(SS_LEARN_ABANDON, ""), own: false };
+  const s = ssLearnSeed();
+  if (s) return { seed: s.seed_bytes, own: true, mnemonic: s.passphrase ? "" : s.mnemonic_str };
+  return { seed: await mnemonicToSeed(SS_LEARN_ABANDON, ""), own: false, mnemonic: SS_LEARN_ABANDON };
 }
 async function ssLearnBuild(kind) {
   const n = ssLearnNet(), coin = ssLearnCoin(n), sp = await ssLearnSpender(), multi = kind === "multi";
@@ -36871,7 +36932,9 @@ async function ssLearnBuild(kind) {
     change.script = await ssLearnP2wpkh(cpub); change.map.push([Uint8Array.of(0x02, ...cpub), ssLearnPath(A.fp, [...acct, 1, 0])]);
   } else {
     A = await ssLearnAcct(sp.seed, "ms-wsh", n);
-    const B = await ssLearnAcct(await mnemonicToSeed(SS_LEARN_TEST.B, ""), "ms-wsh", n), C = await ssLearnAcct(await mnemonicToSeed(SS_LEARN_TEST.C, ""), "ms-wsh", n);
+    // the two other cosigners: public test seeds, never the spender's own seed (v2.17.0: the lesson's seed may be one of them)
+    const [mB, mC] = [SS_LEARN_TEST.B, SS_LEARN_TEST.C, SS_LEARN_ABANDON].filter((m) => m !== sp.mnemonic);
+    const B = await ssLearnAcct(await mnemonicToSeed(mB, ""), "ms-wsh", n), C = await ssLearnAcct(await mnemonicToSeed(mC, ""), "ms-wsh", n);
     cos = [A, B, C]; const acct = [48 + SS_LEARN_H, coin + SS_LEARN_H, SS_LEARN_H, 2 + SS_LEARN_H];
     const msAt = async (branch, index) => {
       const ws = (await multisigScript(2, cos.map((c) => ({ key: c.key })), branch, index)).script, derivs = [];
@@ -36961,13 +37024,13 @@ const ssLearnTxIs = (kind) => () => !!(ssLearn.tx && ssLearn.tx.kind === kind &&
 const ssLearnTxOk = () => !!(ssLearn.tx && ssLearn.tx.result && ssLearn.tx.result.ok);
 const SS_LEARN_HOME = { do: "Go to the Home screen. If you are somewhere else, press the joystick left to select the back arrow at the top left, then press it in. Repeat until you see Home.", see: "Home, with Scan, Seeds, Tools and Settings.", at: ssLearnIs("SSMainMenuView") };
 const SS_LEARN_LOAD = [   // load the test seed abandon ... about by its SeedQR (passed over when it is loaded already)
-  Object.assign({}, SS_LEARN_HOME, { skip: ssLearnHasTestSeed, do: "First, load the public test seed. " + SS_LEARN_HOME.do }),
-  { skip: ssLearnHasTestSeed, feed: "seedqr", do: "Scan is selected: press the joystick in. The practice wallet holds the SeedQR of the public test seed abandon ... about up to the device's camera.",
-    see: "The camera picture, then Finalize Seed with the fingerprint " + SS_LEARN_FP + ". (This page reads a SeedQR only while the computer is offline. If the device says Offline only, turn off the network and scan again.)", at: ssLearnIs("SSSeedFinalizeView") },
-  { skip: ssLearnHasTestSeed, do: "Check that the fingerprint is " + SS_LEARN_FP + ". Done is selected: press the joystick in.", see: "A menu titled " + SS_LEARN_FP + ": Scan transaction, Export xpub, Address explorer, Backup seed, Discard seed.", at: ssLearnIs("SSSeedOptionsView") },
+  Object.assign({}, SS_LEARN_HOME, { skip: ssLearnHasSeed, do: "First, load the public test seed. " + SS_LEARN_HOME.do }),
+  { skip: ssLearnHasSeed, feed: "seedqr", do: "Scan is selected: press the joystick in. The practice wallet holds the SeedQR of the public test seed abandon ... about up to the device's camera.",
+    see: "The camera picture, then Finalize Seed with the fingerprint " + SS_LEARN_FP + ".", at: ssLearnIs("SSSeedFinalizeView") },
+  { skip: ssLearnHasSeed, do: "Check that the fingerprint is " + SS_LEARN_FP + ". Done is selected: press the joystick in.", see: "A menu titled " + SS_LEARN_FP + ": Scan transaction, Export xpub, Address explorer, Backup seed, Discard seed.", at: ssLearnIs("SSSeedOptionsView") },
 ];
 const SS_LEARN_PSBT = [   // review and sign the practice PSBT, after it was scanned
-  { do: SS_LEARN_FP + " is selected: press the joystick in.", see: "Review Transaction: what this transaction sends, and the fee.", at: ssLearnIs("SSPSBTOverviewView") },
+  { do: "Choose {fp} and press the joystick in.", see: "Review Transaction: what this transaction sends, and the fee.", at: ssLearnIs("SSPSBTOverviewView") },
   { do: "Press the joystick in (Review details).", see: "Transaction Math: what comes in, minus what you send, minus the fee, is your change.", at: ssLearnIs("SSPSBTMathView") },
   { do: "Check the math. Press the joystick in (Review recipients).", see: "Will Send: the amount and the address it goes to.", at: ssLearnIs("SSPSBTAddressDetailsView") },
 ];
@@ -36976,7 +37039,7 @@ const SS_LEARN_SIGN = [
   { do: "Press the joystick in (Approve transaction). The device signs.", see: "An animated QR code: the signed PSBT.", at: ssLearnIs("SSPSBTSignedQRDisplayView") },
   { do: "Leave the QR code on the screen. The practice wallet reads it, as your wallet app would, and checks every signature.", see: "Under Practice transaction: Signed correctly.", at: ssLearnTxOk },
 ];
-const SS_LEARN_SEEDNOTE = "This lesson uses the public test seed abandon ... about (fingerprint " + SS_LEARN_FP + "). Anyone can load it, so never put coins on it.";
+const SS_LEARN_SEEDNOTE = "This lesson uses the seed on the device (the newest one loaded, fingerprint {fp}), real or practice. With no seed loaded, it first loads the public test seed abandon ... about (fingerprint " + SS_LEARN_FP + "): anyone can load that one, so never put coins on it.";
 const SS_LEARN_LESSONS = [
   { id: "dice", name: "Make a seed from dice (12 words)",
     note: "This lesson makes a public test seed: you enter fifty 1s instead of real dice rolls. Anyone can enter the same rolls, so never put coins on this seed.",
@@ -37000,7 +37063,7 @@ const SS_LEARN_LESSONS = [
     note: SS_LEARN_SEEDNOTE + " You load it from a SeedQR, then show its xpub to a wallet app as a QR code.",
     end: "Your wallet app scans this QR code to make a watch-only wallet: it sees the addresses and the balance, but it cannot spend. Press the joystick in to go back to Home.",
     steps: [...SS_LEARN_LOAD,
-      { do: "Open the seed: on Home, choose Seeds, then " + SS_LEARN_FP + ". (If you just loaded it, you are there already.)", see: "A menu titled " + SS_LEARN_FP + ": Scan transaction, Export xpub, Address explorer, Backup seed, Discard seed.", at: ssLearnIs("SSSeedOptionsView") },
+      { do: "Open the seed: on Home, choose Seeds, then {fp}. (If you just loaded it, you are there already.)", see: "A menu titled {fp}: Scan transaction, Export xpub, Address explorer, Backup seed, Discard seed.", at: ssLearnIs("SSSeedOptionsView") },
       { do: "Press down once to Export xpub and press in.", see: "Export Xpub: Single Sig and Multisig.", at: ssLearnIs("SSSeedExportXpubSigTypeView") },
       { do: "Single Sig is selected: press the joystick in.", see: "Export Xpub: Native Segwit, Nested Segwit and Taproot.", at: ssLearnIs("SSSeedExportXpubScriptTypeView") },
       { do: "Native Segwit is selected: press the joystick in.", see: "Xpub QR Format: Animated (default) and Static.", at: ssLearnIs("SSSeedExportXpubQRFormatView") },
@@ -37012,25 +37075,25 @@ const SS_LEARN_LESSONS = [
     note: SS_LEARN_SEEDNOTE + " The practice wallet shows an address it says is yours: the device checks that the address really comes from your seed.",
     end: "The address is receive address #3 of your seed. Check every address this way before you use it: malware on a computer can swap the address on its screen.",
     steps: [...SS_LEARN_LOAD, SS_LEARN_HOME,
-      { feed: "address", do: "Scan is selected: press the joystick in. The practice wallet holds a receive address up to the device's camera.", see: "Verify Address: Select seed to verify, with " + SS_LEARN_FP + " first.", at: ssLearnIs("SSSeedSelectSeedView") },
-      { do: SS_LEARN_FP + " is selected: press the joystick in.", see: "Verify Address while it searches, then Success! Address Verified.", at: ssLearnIs("SSSeedAddressVerificationSuccessView") },
+      { feed: "address", do: "Scan is selected: press the joystick in. The practice wallet holds a receive address up to the device's camera.", see: "Verify Address: Select seed to verify, with {fp} in the list.", at: ssLearnIs("SSSeedSelectSeedView") },
+      { do: "Choose {fp} and press the joystick in.", see: "Verify Address while it searches, then Success! Address Verified.", at: ssLearnIs("SSSeedAddressVerificationSuccessView") },
     ] },
   { id: "sign", name: "Sign your first transaction", txKind: "single",
     note: SS_LEARN_SEEDNOTE + " The transaction is the practice transaction below: its coins are made up, so it can never be broadcast.",
     end: "You reviewed and signed a transaction. With real coins, your wallet app would now broadcast it. This one spends made-up coins, so it never can.",
     steps: [...SS_LEARN_LOAD, SS_LEARN_HOME,
       { do: "Below, under Practice transaction, choose Single key: 2 inputs and press PRACTICE TRANSACTION.", see: "Under the button: what the transaction spends and pays.", at: ssLearnTxIs("single") },
-      { feed: "tx", do: "On the device, Scan is selected: press the joystick in. The practice wallet holds the transaction (a PSBT, as an animated QR code) up to the camera.", see: "The camera picture with a progress bar, then Select Signer with " + SS_LEARN_FP + ".", at: ssLearnIs("SSPSBTSelectSeedView") },
+      { feed: "tx", do: "On the device, Scan is selected: press the joystick in. The practice wallet holds the transaction (a PSBT, as an animated QR code) up to the camera.", see: "The camera picture with a progress bar, then Select Signer with {fp}.", at: ssLearnIs("SSPSBTSelectSeedView") },
       ...SS_LEARN_PSBT,
       { do: "Check the address and the amount. Press the joystick in (Next).", see: "Your Change: the change and its address, checked by the device as yours.", at: ssLearnIs("SSPSBTChangeDetailsView") },
       ...SS_LEARN_SIGN,
     ] },
   { id: "multisig", name: "Set up and check a 2-of-3 multisig", txKind: "multi",
-    note: "This lesson uses three public test seeds: abandon ... about on the device (fingerprint " + SS_LEARN_FP + ") and two more for the other cosigners. Anyone can load them, so never put coins on them. The coins are made up.",
+    note: "This lesson uses the seed on the device (the newest one loaded, fingerprint {fp}; with none loaded, it first loads the public test seed abandon ... about) and two public test seeds for the other cosigners. The coins are made up, so the transaction can never be broadcast.",
     end: "You loaded the wallet descriptor, the device checked the change against it, and you signed. With real coins, a second cosigner would sign too before a 2-of-3 transaction could be broadcast. This one spends made-up coins, so it never can.",
     steps: [...SS_LEARN_LOAD, SS_LEARN_HOME,
       { do: "Below, under Practice transaction, choose 2-of-3 multisig: 1 input and press PRACTICE TRANSACTION.", see: "Under the button: what the transaction spends and pays.", at: ssLearnTxIs("multi") },
-      { feed: "tx", do: "On the device, Scan is selected: press the joystick in. The practice wallet holds the transaction (a PSBT) up to the camera.", see: "Select Signer, with " + SS_LEARN_FP + ".", at: ssLearnIs("SSPSBTSelectSeedView") },
+      { feed: "tx", do: "On the device, Scan is selected: press the joystick in. The practice wallet holds the transaction (a PSBT) up to the camera.", see: "Select Signer, with {fp}.", at: ssLearnIs("SSPSBTSelectSeedView") },
       ...SS_LEARN_PSBT,
       { do: "Press the joystick in (Next).", see: "Your Change, with Verify multisig change and Skip verification: the device cannot yet tell that the change comes back to this wallet.", at: (s) => s.view === "SSPSBTChangeDetailsView" && s.labels[0] === "Verify multisig change" },
       { do: "Verify multisig change is selected: press the joystick in.", see: "Multisig Verification, with Scan descriptor and Cancel.", at: ssLearnIs("SSLoadMultisigWalletDescriptorView") },
@@ -37048,8 +37111,8 @@ const SS_LEARN_LESSONS = [
       { do: "Move down to Message signing (near the end of the list) and press in.", see: "Message signing: Enabled and Disabled.", at: (s) => s.view === "SSSettingsEntryUpdateSelectionView" && ssLearnArg(s, "attr_name") === SSSettingsConstants.SETTING__MESSAGE_SIGNING },
       { do: "Move up to Enabled and press in.", see: "Advanced again. Message signing is on.", at: () => ssLearnSetting(SSSettingsConstants.SETTING__MESSAGE_SIGNING) === SSSettingsConstants.OPTION__ENABLED },
       SS_LEARN_HOME,
-      { feed: "signmsg", do: "Scan is selected: press the joystick in. The practice wallet holds up a request to sign a message.", see: "Sign Message: Select seed to sign with, with " + SS_LEARN_FP + " first.", at: ssLearnTitle("SSSeedSelectSeedView", /Sign Message/) },
-      { do: SS_LEARN_FP + " is selected: press the joystick in.", see: "Review Message: Practice message from VOIDFORGE.", at: ssLearnIs("SSSeedSignMessageConfirmMessageView") },
+      { feed: "signmsg", do: "Scan is selected: press the joystick in. The practice wallet holds up a request to sign a message.", see: "Sign Message: Select seed to sign with, with {fp} in the list.", at: ssLearnTitle("SSSeedSelectSeedView", /Sign Message/) },
+      { do: "Choose {fp} and press the joystick in.", see: "Review Message: Practice message from VOIDFORGE.", at: ssLearnIs("SSSeedSignMessageConfirmMessageView") },
       { do: "Read the message. Press the joystick in (Next).", see: "Confirm Address: the address whose key signs, and Sign message.", at: ssLearnIs("SSSeedSignMessageConfirmAddressView") },
       { do: "Press the joystick in (Sign message).", see: "A QR code that holds the signature.", at: ssLearnIs("SSSeedSignMessageSignedMessageQRView") },
     ] },
@@ -37065,10 +37128,10 @@ function ssLearnRender() {
   if (les) {
     const st = les.steps[Math.min(L.step, les.steps.length - 1)];
     ssLearnSetText("ssLearnName", les.name);
-    ssLearnSetText("ssLearnNote", les.note);
+    ssLearnSetText("ssLearnNote", ssLearnT(les.note));
     ssLearnSetText("ssLearnCount", L.done ? "Done" : "Step " + (L.step + 1) + " of " + les.steps.length);
-    ssLearnSetText("ssLearnDo", L.done ? les.end : st.do);
-    ssLearnSetText("ssLearnSee", L.done ? "" : "What you should see: " + st.see);
+    ssLearnSetText("ssLearnDo", ssLearnT(L.done ? les.end : st.do));
+    ssLearnSetText("ssLearnSee", L.done ? "" : ssLearnT("What you should see: " + st.see));
     ssLearnSetText("ssLearnState", L.done ? "Lesson done." : L.msg);
     ssLearnEl("ssLearnBack").disabled = !L.done && !L.lesson.steps.slice(0, L.step).some((s) => !(s.skip && s.skip()));
     ssLearnEl("ssLearnNext").disabled = L.done;
@@ -37107,6 +37170,7 @@ function ssLearnGoto(i, hold) {
 }
 function ssLearnTick() {
   if (!ssPageOn) { ssLearnTimer(); return; }
+  if (ssLearn.lesson) ssLearnFpNow();   // v2.17.0: the lesson's seed, by its fingerprint
   const L = ssLearn, s = ssLearnState(); if (!s) return;
   // a scan that read the practice wallet's QR completely: the practice wallet is put away
   if (s.screen === "SSScanScreen" && s.scr && s.scr.decoder) L.scanDec = s.scr.decoder;
@@ -37132,7 +37196,7 @@ function ssLearnTick() {
 }
 function ssLearnStart() {
   const sel = ssLearnEl("ssLearnPick"), les = SS_LEARN_LESSONS.find((x) => x.id === (sel && sel.value)) || SS_LEARN_LESSONS[0];
-  ssLearn.lesson = les; ssLearnHide(); ssLearnGoto(0, false);
+  ssLearn.lesson = les; ssLearn.fpSeed = undefined; ssLearnFpNow(); ssLearnHide(); ssLearnGoto(0, false);
   if (les.txKind) { const k = ssLearnEl("ssTxKind"); if (k) k.value = les.txKind; }
 }
 async function ssLearnTxGo() {
@@ -37153,7 +37217,7 @@ function ssLearnWipe() {
     for (const x of [T.psbt, T.utx]) if (x instanceof Uint8Array) x.fill(0);
     for (const m of [T.global, ...T.inMaps, ...T.outMaps]) for (const kv of m) for (const x of kv) if (x instanceof Uint8Array) x.fill(0);
   }
-  L.lesson = null; L.step = 0; L.done = false; L.hold = null; L.tx = null; L.building = false; L.scanDec = null; L.msg = ""; L.gen++;
+  L.lesson = null; L.fp = ""; L.fpSeed = null; L.step = 0; L.done = false; L.hold = null; L.tx = null; L.building = false; L.scanDec = null; L.msg = ""; L.gen++;
   ssAutoEnd(""); ssLearnSetText("ssLoadStatus", ""); ssLearnSetText("ssCamNote", "");
   ssLearnForget(); ssForgeReset();
   ssLearnCam.frames = null; ssLearnCam.byLesson = false; ssLearnCam.what = ""; ssLearnCam.key = ""; ssLearnCam.shown = null; ssLearnCam.cache.clear();
@@ -37183,21 +37247,30 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 // page, it stops on the Finalize screen, where the passphrase is added on the device (BIP-39 Passphrase), as on a real SeedSigner.
 // On any other screen the page says to go back to Home, and the scan goes on from there by itself. The SeedQR is wiped when the
 // practice wallet puts it away (after the scan, PUT IT AWAY, another QR) and by every wipe (ssLearnWipe).
-// v2.16.1 review: a SeedQR is read only while offline, so nothing starts while the computer is online, and the load stops if it goes
-// online. Scan is pressed only while the SeedQR is held up (so a scan never opens the computer's camera), Done only on the Finalize
-// screen of the seed this scan read (read), and "Loaded" is said only after the device's fingerprint was compared with the page's.
-const SS_AUTO_OFFLINE = "Not loaded: a SeedQR is read only while offline. Take this computer offline, then press LOAD INTO THE PRACTICE SIGNER again.";
-const ssAuto = { on: false, gen: 0, fp: "", fpErr: false, pass: false, stage: "", read: false, t0: 0, tapAt: 0, scanAt: 0, timer: null, told: false };
+// v2.17.0: a public or practice seed (pubKind) loads online or offline, with no question. A seed that is not public loads offline
+// with no question; while the computer is online the person is asked first (SS_AUTO_ONLINE_ASK), and only a yes loads it (the
+// device's online rule for a seed QR lets exactly this load through: ssLearnSeedScanOk). A load started offline stops if the
+// computer goes online before the device read the SeedQR. Scan is pressed only while the SeedQR is held up (so a scan never opens the
+// computer's camera), Done only on the Finalize screen of the seed this scan read (read), and "Loaded" is said only after the
+// device's fingerprint was compared with the page's. The result is a banner next to the device (gold: loaded; red: not loaded),
+// scrolled into view.
+const SS_AUTO_ONLINE_ASK = "This computer is online. Loading your real seed into the practice signer shows it as a SeedQR on this screen, like typing it into a website: anything watching this computer could copy it. Use a test seed, or take this computer offline first.\n\nLoad it anyway?";
+const SS_AUTO_WENT_ONLINE = "Not loaded: this computer went online during the load, so the SeedQR of your real seed was put away. Take this computer offline, or press LOAD INTO THE PRACTICE SIGNER again and answer the question.";
+const ssAuto = { on: false, gen: 0, fp: "", fpErr: false, pass: false, online: false, stage: "", read: false, t0: 0, tapAt: 0, scanAt: 0, timer: null, told: false };
 let ssAutoWait = null;   // set while the device waits for a key (the wait_for patch above)
-function ssAutoSay(text, cls) { ssLearnSetText("ssLoadStatus", text); const e = ssLearnEl("ssLoadStatus"); if (e) e.className = "status" + (cls ? " " + cls : ""); }
+function ssAutoSay(text, cls) {   // v2.17.0: a result (ok or bad) is a banner, scrolled into view
+  ssLearnSetText("ssLoadStatus", text); const e = ssLearnEl("ssLoadStatus"); if (!e) return;
+  e.className = "status" + (cls ? " ss-banner " + cls : "");
+  if (cls && text) try { e.scrollIntoView({ block: "nearest" }); } catch (err) { /* not laid out */ }
+}
 function ssAutoEnd(text, cls) {
   const A = ssAuto; A.on = false; A.gen++; A.stage = "";
   if (A.timer) { clearInterval(A.timer); A.timer = null; }
   if (text) ssAutoSay(text, cls);
 }
-function ssAutoStart(phrase, pass) {
+function ssAutoStart(phrase, pass, online) {
   const A = ssAuto; ssAutoEnd("");
-  const gen = A.gen; A.on = true; A.fp = ""; A.fpErr = false; A.pass = !!pass; A.stage = "scan"; A.read = false; A.t0 = Date.now(); A.tapAt = 0; A.told = false;
+  const gen = A.gen; A.on = true; A.fp = ""; A.fpErr = false; A.pass = !!pass; A.online = !!online; A.stage = "scan"; A.read = false; A.t0 = Date.now(); A.tapAt = 0; A.told = false;
   ssAutoSay("Loading: the device goes to Home > Scan by itself and reads the SeedQR.");
   mnemonicFingerprint(phrase, "").then((fp) => { if (A.gen === gen) A.fp = fp; }).catch(() => { if (A.gen === gen) A.fpErr = true; });
   A.timer = setInterval(ssAutoTick, 150);
@@ -37207,7 +37280,7 @@ function ssAutoTap(hb, key) { ssAuto.tapAt = Date.now(); hb.tap(key); }
 function ssAutoTick() {
   const A = ssAuto; if (!A.on) return;
   if (!ssPageOn) return ssAutoEnd("");
-  if (navigator.onLine === true) { if (ssLearnCam.key === "seedload") ssLearnHide(); return ssAutoEnd(SS_AUTO_OFFLINE, "bad"); }
+  if (navigator.onLine === true && !A.online && !A.read) { if (ssLearnCam.key === "seedload") ssLearnHide(); return ssAutoEnd(SS_AUTO_WENT_ONLINE, "bad"); }
   if (Date.now() - A.t0 > 180000) return ssAutoEnd(A.read ? "Not loaded: the device did not finish loading the seed in 3 minutes. Press LOAD INTO THE PRACTICE SIGNER again." : "Not loaded: the device did not get to its scan in 3 minutes. Choose Scan on Home to scan the SeedQR, or press LOAD INTO THE PRACTICE SIGNER again.", "bad");
   const s = ssLearnState(), hb = SSHardwareButtons._instance, now = Date.now();
   if (!s || !hb || !ssAutoWait || now - A.tapAt < 400) return;   // the device is busy, or still taking the last key
@@ -37251,8 +37324,10 @@ function vfSignerLoadSeed(phrase, opts) {
   if (typeof phrase !== "string") return false;
   const words = phrase.split(" "), idx = words.map((w) => WORDLIST.indexOf(w));
   if ((words.length !== 12 && words.length !== 24) || idx.some((i) => i < 0)) return false;
-  if (navigator.onLine === true) return false;   // v2.16.1 review: a SeedQR is read only while offline (the caller says so)
   let kind = ""; try { kind = typeof pubKind === "function" ? pubKind(phrase) : ""; } catch (e) { kind = ""; }
+  // v2.17.0: online, a seed that is not public loads only after a yes (a public or practice seed loads with no question)
+  const online = navigator.onLine === true;
+  if (online && !kind && !confirm(SS_AUTO_ONLINE_ASK)) return "cancelled";
   ssPageOpen();
   if (!ssPageOn) ssPageStart();
   if (!ssPageOn) return false;
@@ -37261,8 +37336,22 @@ function vfSignerLoadSeed(phrase, opts) {
   ssLearnShow([qr], "the Standard SeedQR of " + (kind ? pracName(kind) : "the seed from MAKE A SEED") + " (" + words.length + " words)", "seedload");
   try { ssLearnCam.cache.set(qr, seedQrMatrix(words, "standard").rows); } catch (e) { /* drawn as a plain QR */ }
   ssLearnRender();
-  ssAutoStart(phrase, !!(opts && opts.pass));
+  ssAutoStart(phrase, !!(opts && opts.pass), online || !!kind);
   return true;
+}
+
+// v2.17.0: the device's online rule for seed QR codes (ssToolsSeedScanBlocked) lets these through while the computer is online: a
+// public or practice seed (its words, once read: decoder), and the SeedQR of LOAD INTO THE PRACTICE SIGNER after the person said yes
+// (ssAuto.online, read by this scan). Before a scan (no decoder): only while the practice wallet holds up such a SeedQR.
+function ssLearnSeedScanOk(decoder) {
+  const pub = (m) => { try { return !!m && typeof pubKind === "function" && !!pubKind(m); } catch (e) { return false; } };
+  const load = ssAuto.on && ssAuto.online && ssLearnCam.key === "seedload";
+  if (decoder) {
+    let m = ""; try { const w = decoder.get_seed_phrase(); m = Array.isArray(w) ? w.join(" ") : ""; } catch (e) { m = ""; }
+    return pub(m) || (load && ssAuto.read);
+  }
+  const F = ssLearnCam.frames; if (!F || !F.length) return false;
+  return load || F.every((f) => pub(ssSeedQrPhrase(f)));
 }
 
 // ---------------------------------------------------------------- FORGE SEED: the seed on the device, into VOIDFORGE
@@ -37313,6 +37402,369 @@ async function ssForgeGo() {
   } catch (e) { say("Could not take the seed: " + (e && e.message ? e.message : e), "bad"); }
   finally { ssForge.busy = false; }
 }
+
+// ss_own.js: "Use it for real" (v2.17.0), next to the practice signer in #ssBox. The practice signer is a real signer: this part
+// lets a person show it their own PSBT, address, multisig wallet descriptor or message request, and takes back what the device
+// makes. Nothing is put into the device's memory from here: the practice wallet (ss_learn.js) holds the QR code up to the device's
+// camera, the person chooses Scan, and the device does the rest exactly as SeedSigner 0.8.7 does (the review screens, change
+// verification by derivation path or wallet descriptor, its own warnings, signing). This part adds:
+//   - ssOwnRead: what was pasted, chosen (a .psbt file) or scanned (the page's camera: CAM_TARGETS.ssOwnIn), and refuses seeds and
+//     private keys;
+//   - ssOwnReview: warnings next to the device before the scan (wrong network, no seed on the device can sign it, inputs of other
+//     signers, sighash types SeedSigner does not sign, a fee above the payment or a very high fee rate, outputs that name the seed
+//     but are not provably its own, so the device shows them as payments), worked out with the device's own parser;
+//   - ssOwnSignGate: the signing rules, called by the device when Approve transaction or Sign message is chosen (SIM: VOIDFORGE
+//     rule): the PSBT's network must be the device's, and a seed that is not public signs a PSBT only after a yes to a plain
+//     question (checked outputs; this computer offline, or a stronger warning while it is online), a message while online too;
+//   - the outputs: the signed PSBT exactly as the device made it (SeedSigner's trimmed PSBT, the bytes its animated QR holds), as
+//     base64 to copy and a .psbt file to save, with every signature checked by the page's own code (inspectPsbt, psbtSigCheck);
+//     the message signature (base64, and a signed-message block). A seed that is public signs as PRACTICE.
+// Wiped by ssPageStop (box closed, CLEAR ALL, auto-clear, END SESSION) and wipeSeed (ssOwnWipe).
+
+const SS_OWN_FRAG = 120;          // UR fragment length of a PSBT held up (as a wallet app's animated QR)
+const SS_OWN_HIGH_RATE = 1000;    // sat/vB: a fee rate at or above this is called very high
+const SS_OWN_MAX_FILE = 4000000;  // bytes: a larger file is not read
+const ssOwn = { gen: 0, timer: null, psbt: null, txKey: "", kind: "", out: null, msgAddr: "", seenSig: null, seenMsg: null, seenAddr: null, seenDesc: null, busy: false };
+const ssOwnEl = (id) => document.getElementById(id);
+
+function ssOwnSay(text, cls) {
+  const e = ssOwnEl("ssOwnStatus"); if (!e) return;
+  if (e.textContent !== text) e.textContent = text;
+  e.className = "status" + (cls && text ? " ss-banner " + cls : "");
+  if (cls && text) try { e.scrollIntoView({ block: "nearest" }); } catch (err) { /* not laid out */ }
+}
+function ssOwnWarns(list) {   // [{t, bad}] next to the device
+  const u = ssOwnEl("ssOwnWarns"); if (!u) return;
+  u.textContent = "";
+  for (const x of list || []) { const li = document.createElement("li"); li.textContent = x.t; if (x.bad) li.className = "bad"; u.appendChild(li); }
+  u.hidden = !(list && list.length);
+}
+const ssOwnSats = (v) => Number(v).toLocaleString("en-US") + " sats";
+function ssOwnNetName(n) { return n === "M" ? "Mainnet" : n === "T" ? "Testnet" : "Regtest"; }
+function ssOwnSeedPublic(seed) {   // a public or practice seed with no passphrase (pubKind: its words are published or predictable)
+  try { return !!seed && !seed.passphrase && typeof pubKind === "function" && !!pubKind(seed.mnemonic_str); } catch (e) { return false; }
+}
+function ssOwnIsPracticeTx(psbt) {   // the practice transaction of ss_learn.js (made-up coins): its unsigned transaction
+  try { return !!(ssLearn.tx && psbt && hex(ssPsbtSerializeTx(psbt.tx)) === hex(ssLearn.tx.utx)); } catch (e) { return false; }
+}
+
+// ---------------------------------------------------------------- what was pasted, chosen or scanned
+function ssOwnRead(text) {
+  const raw = String(text || ""), t = raw.trim();
+  if (!t) return { error: "Paste a PSBT, an address, a wallet descriptor or a signmessage request first, or choose a .psbt file." };
+  const words = t.toLowerCase().split(/\s+/);
+  if (/^(\d{48}|\d{96})$/.test(t) || (words.length >= 12 && words.length <= 24 && words.every((w) => WORDLIST.includes(w))))
+    return { error: "This looks like the words or SeedQR of a seed. Never paste a seed here: load it with LOAD INTO THE PRACTICE SIGNER (under YOUR SEED) or on the device itself." };
+  if (/[xyztuvYZUV]prv[1-9A-HJ-NP-Za-km-z]{100}/.test(t)) return { error: "This holds a private key (xprv). The device reads public keys only: paste the wallet descriptor with xpubs." };
+  if (/^signmessage\s/.test(t)) {
+    const m = /^signmessage\s+(m(?:\/\d+[h']?)+)\s+ascii:([\s\S]*)$/.exec(raw.replace(/^\s+/, "").replace(/\r?\n$/, ""));
+    if (!m) return { error: "A message request reads: signmessage <path> ascii:<message>, such as signmessage m/84h/0h/0h/0/0 ascii:Hello." };
+    const e = ssOwnMsgError(m[2]); if (e) return { error: e };
+    return { kind: "msg", frames: [raw.replace(/^\s+/, "").replace(/\r?\n$/, "")], what: "your request to sign a message with the key at " + m[1] };
+  }
+  let type = ""; try { type = SSDecodeQR.detect_segment_type(t.split(/\r?\n/)[0].trim()); } catch (e) { type = ""; }
+  if (type === SSQRType.BITCOIN_ADDRESS && !/\s/.test(t) && !/^cHNidP8/.test(t)) return { kind: "address", frames: [t], what: "the address " + t.slice(/^bitcoin:/i.test(t) ? 8 : 0).split("?")[0] };
+  let bytes = null, perr = "";
+  try { bytes = psbtFromText(t); } catch (e) { perr = e && e.message ? e.message : String(e); }
+  if (bytes) {
+    try { SSPSBT.parse(bytes); return { kind: "psbt", bytes, frames: null, what: "" }; }
+    catch (e) { if (bytes.length > 4 && bytes[0] === 0x70 && bytes[1] === 0x73) return { error: "The device cannot read this PSBT: " + (e && e.message ? e.message : e) + "." }; }
+  }
+  const lines = t.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+  if (lines.length > 1 && lines.every((x) => /^ur:crypto-(output|account)\//i.test(x))) return { kind: "descriptor", frames: lines.map((x) => x.toUpperCase()), what: "your wallet descriptor (" + lines.length + " QR parts)" };
+  if (/^(wallet__|output__ur|account__ur)/.test(type)) return { kind: "descriptor", frames: [t], what: "your wallet descriptor" };
+  if (/\bmulti\(/.test(t)) return { error: "SeedSigner reads multisig wallet descriptors with sortedmulti only (wsh(sortedmulti(...)) or sh(wsh(sortedmulti(...)))). This one uses multi." };
+  if (/^(wpkh|sh|pkh|tr)\(/.test(t)) return { error: "SeedSigner loads multisig wallet descriptors only. For a single-key wallet, the device checks change and addresses from the seed itself." };
+  return { error: perr && /^(cHNidP8|70736274)/i.test(t) ? perr : "The device does not read this. Paste a PSBT (base64, hex, or the parts of an animated UR or BBQr QR, one per line), an address, a multisig wallet descriptor or a signmessage request." };
+}
+function ssOwnMsgError(msg) {
+  if (!msg) return "The message is empty.";
+  if (msg.length > 1000) return "The message is too long for one QR code (at most 1,000 characters).";
+  if (!/^[\x20-\x7e\n]+$/.test(msg)) return "SeedSigner signs ascii: messages only: use plain letters, digits, punctuation and line breaks.";
+  if (msg.includes("ascii:")) return "The message holds the text ascii:, where SeedSigner would cut it off. Leave that out.";
+  return "";
+}
+
+// ---------------------------------------------------------------- the network a PSBT's key paths name ("main", "test", "mixed" or "")
+function ssOwnPsbtNet(psbt) {
+  const seen = new Set(), H = 0x80000000;
+  const look = (der) => { const d = der && der.derivation; if (d && d.length >= 2 && d[0] >= H && [44, 49, 84, 86, 48].includes(d[0] - H) && d[1] >= H) { const c = d[1] - H; if (c === 0) seen.add("main"); else if (c === 1) seen.add("test"); } };
+  for (const sc of [...psbt.inputs, ...psbt.outputs]) { for (const x of sc.bip32_derivations || []) look(x.der); for (const x of sc.taproot_bip32_derivations || []) look(x.der); }
+  for (const x of psbt.xpubs || []) { const v = hex(x.key.slice(0, 4)); if (v === "0488b21e") seen.add("main"); else if (v === "043587cf") seen.add("test"); }
+  return seen.size === 1 ? [...seen][0] : seen.size > 1 ? "mixed" : "";
+}
+function ssOwnNetWrong(psbt, network) {   // "" when the PSBT may be signed on the device's network, else why not
+  const pn = ssOwnPsbtNet(psbt), dn = network === SSSettingsConstants.MAINNET ? "main" : "test", dName = network === SSSettingsConstants.MAINNET ? "Mainnet" : network === SSSettingsConstants.TESTNET ? "Testnet" : "Regtest";
+  if (pn === "mixed") return "This PSBT mixes Mainnet and Testnet key paths.";
+  if (pn && pn !== dn) return "This PSBT is for " + (pn === "main" ? "Mainnet" : "Testnet or Regtest") + ", but the device is set to " + dName + ".";
+  return "";
+}
+
+// ---------------------------------------------------------------- the size of the signed transaction, roughly (for the fee rate)
+function ssOwnVsize(psbt) {
+  const tx = psbt.tx, vl = (n) => varintBytes(n).length;
+  let w = 4 * (8 + vl(tx.vin.length) + vl(tx.vout.length)), seg = false, bare = 0;
+  for (const o of tx.vout) w += 4 * (8 + vl(o.script_pubkey.length) + o.script_pubkey.length);
+  const msM = (sc) => { try { return SSPSBTParser._parse_multisig(sc)[0]; } catch (e) { return 1; } };
+  const msWit = (sc) => 1 + 1 + msM(sc) * 73 + vl(sc.length) + sc.length;
+  for (const inp of psbt.inputs) {
+    let spk = null; try { spk = inp.utxo.script_pubkey; } catch (e) { spk = null; }
+    const t = spk ? ssPsbtScriptType(spk) : null;
+    let ss = 0, wit = 0;
+    if (t === "p2wpkh") wit = 1 + 1 + 72 + 1 + 33;
+    else if (t === "p2tr") wit = 1 + 1 + 65;
+    else if (t === "p2wsh") wit = inp.witness_script ? msWit(inp.witness_script) : 1 + 1 + 72 + 1 + 33;
+    else if (t === "p2sh" && inp.witness_script) { ss = 1 + 34; wit = msWit(inp.witness_script); }
+    else if (t === "p2sh" && inp.redeem_script && ssPsbtScriptType(inp.redeem_script) === "p2wpkh") { ss = 1 + 22; wit = 1 + 1 + 72 + 1 + 33; }
+    else if (t === "p2sh" && inp.redeem_script) ss = 1 + msM(inp.redeem_script) * 73 + 3 + inp.redeem_script.length;
+    else ss = 1 + 72 + 1 + 33;   // P2PKH (anything else is counted as one)
+    w += 4 * (32 + 4 + 4 + vl(ss) + ss) + wit;
+    if (wit) seg = true; else bare++;
+  }
+  if (seg) w += 2 + bare;   // the segwit marker and flag, and an empty witness for each input without one
+  return Math.ceil(w / 4);
+}
+
+// ---------------------------------------------------------------- warnings before the scan, with the device's own parser
+async function ssOwnReview(bytes) {
+  const W = [], S = SSSettingsConstants, n = ssLearnNet(), network = n === "M" ? S.MAINNET : n === "T" ? S.TESTNET : S.REGTEST;
+  const psbt = SSPSBT.parse(bytes), fresh = () => SSPSBT.parse(bytes);
+  const nw = ssOwnNetWrong(psbt, network);
+  if (nw) W.push({ bad: true, t: nw + " The device will not sign it (VOIDFORGE's rule): set the device's network in Settings > Advanced > Bitcoin network, or use the PSBT for this network." });
+  const inFps = new Set();
+  for (const inp of psbt.inputs) { for (const d of inp.bip32_derivations) inFps.add(hex(d.der.fingerprint)); for (const d of inp.taproot_bip32_derivations) inFps.add(hex(d.der.fingerprint)); }
+  const seeds = ssLearnSeeds().filter((s) => s && s.seed_bytes instanceof Uint8Array);
+  let signer = null, sfp = ""; const fps = [];
+  for (const s of seeds) {
+    const fp = await s.get_fingerprint(network); fps.push(fp + (s.passphrase ? " (with passphrase)" : ""));
+    if (!signer && await SSPSBTParser.has_matching_input_fingerprint(fresh(), s, network)) { signer = s; sfp = fp; }
+  }
+  const named = inFps.size ? " Its inputs name " + [...inFps].join(", ") + "." : " Its inputs name no key (no derivation paths), so no seed can be matched to them.";
+  if (!seeds.length) W.push({ bad: false, t: "No seed is loaded on the device yet. Load the seed that owns these coins first (on the device, or LOAD INTO THE PRACTICE SIGNER under YOUR SEED)." + named });
+  else if (!signer) W.push({ bad: true, t: "This PSBT spends from a seed that is not loaded: none of its inputs belong to the seed" + (fps.length > 1 ? "s" : "") + " on the device (" + fps.join(", ") + ")." + named + " The device cannot sign it with " + (fps.length > 1 ? "these seeds" : "this seed") + ": load the right seed, with its passphrase if it has one." });
+  psbt.inputs.forEach((inp, i) => {
+    const sh = inp.sighash_type, okSh = sh === null || sh === 1 || (inp.is_taproot && sh === 0);
+    if (!okSh) W.push({ bad: true, t: "Input " + i + " asks for sighash " + (typeof sighashName === "function" ? sighashName(inp.is_taproot ? "Schnorr" : "ECDSA", sh) : sh) + ". SeedSigner signs only with SIGHASH_ALL (and SIGHASH_DEFAULT for Taproot), so the device will not sign this input." });
+    if (inp.taproot_bip32_derivations.some((d) => d.leaf_hashes.length)) W.push({ bad: true, t: "Input " + i + " spends from a Taproot script tree. SeedSigner signs Taproot key spends only, so the device stops with an error." });
+    if (!inp.witness_utxo && !inp.non_witness_utxo) W.push({ bad: true, t: "Input " + i + " does not carry the coin it spends, so its amount and the fee are unknown and the device cannot read this PSBT. Ask your wallet for a PSBT with the coins being spent." });
+    else if (inp.witness_utxo && !inp.non_witness_utxo && ssPsbtScriptType(inp.witness_utxo.script_pubkey) === "p2pkh") W.push({ bad: true, t: "Input " + i + " is a legacy (P2PKH) coin without its full previous transaction. A signature made from this PSBT would be invalid. Ask your wallet for a PSBT with the full previous transaction." });
+  });
+  if (!signer) return { W, signer: null };
+  const mineIn = psbt.inputs.filter((inp) => [...inp.bip32_derivations, ...inp.taproot_bip32_derivations].some((d) => hex(d.der.fingerprint) === sfp)).length;
+  if (mineIn < psbt.inputs.length) W.push({ bad: false, t: mineIn + " of " + psbt.inputs.length + " inputs belong to seed " + sfp + ": the device signs only those. The others need their own signers before the transaction can be sent." });
+  let parser = null;
+  try { parser = await SSPSBTParser.create(fresh(), signer, network); }
+  catch (e) { W.push({ bad: true, t: "The device cannot read this PSBT with seed " + sfp + ": " + (e && e.message ? e.message : e) + "." }); return { W, signer }; }
+  finally { try { if (parser && parser.root) parser.root.wipe(); } catch (e) { /* nothing to wipe */ } }
+  const fee = parser.fee_amount, pay = parser.spend_amount, vb = ssOwnVsize(psbt), rate = vb > 0 ? fee / vb : 0;
+  if (pay > 0 && fee > pay) W.push({ bad: true, t: "The fee (" + ssOwnSats(fee) + ") is higher than the payment (" + ssOwnSats(pay) + "). Check the fee in your wallet before you sign." });
+  if (rate >= SS_OWN_HIGH_RATE) W.push({ bad: true, t: "The fee rate is about " + Math.round(rate).toLocaleString("en-US") + " sat/vB (" + ssOwnSats(fee) + " for about " + vb + " vB). That is very high: check the fee in your wallet before you sign." });
+  const changeIdx = new Set(parser.change_data.map((c) => c.output_index));
+  psbt.outputs.forEach((o, i) => {
+    if (changeIdx.has(i)) return;
+    if ([...o.bip32_derivations, ...o.taproot_bip32_derivations].some((d) => hex(d.der.fingerprint) === sfp))
+      W.push({ bad: true, t: "Output " + i + " names seed " + sfp + " but the device cannot prove it is yours (its key or script does not match), so the device shows it as a payment (Will Send), as SeedSigner does. Check that address before you sign." });
+  });
+  W.push({ bad: false, t: "Seed " + sfp + " can sign. The device will show " + ssOwnSats(parser.input_amount) + " in from " + parser.num_inputs + " input" + (parser.num_inputs === 1 ? "" : "s") + ", " + ssOwnSats(pay) + " to " + parser.num_destinations + " address" + (parser.num_destinations === 1 ? "" : "es") + ", " + ssOwnSats(parser.change_amount) + " back as change, and a fee of " + ssOwnSats(fee) + " (about " + (Math.round(rate * 10) / 10).toLocaleString("en-US") + " sat/vB). Anything it cannot prove is yours is shown as a payment." });
+  return { W, signer };
+}
+
+// ---------------------------------------------------------------- HOLD UP TO THE DEVICE
+async function ssOwnGo() {
+  if (ssOwn.busy) return;
+  if (!ssPageOn) { ssOwnSay("Open the practice signer first: its box, above.", "bad"); return; }
+  const r = ssOwnRead((ssOwnEl("ssOwnIn") || {}).value);
+  if (r.error) { ssOwnWarns([]); ssOwnSay("Not held up: " + r.error, "bad"); return; }
+  ssOwn.busy = true; const gen = ++ssOwn.gen;
+  try {
+    let frames = r.frames, what = r.what, W = [];
+    if (r.kind === "psbt") {
+      const p = SSPSBT.parse(r.bytes);
+      ssOwn.psbt = r.bytes.slice(); ssOwn.txKey = hex(ssPsbtSerializeTx(p.tx));
+      frames = urEncode("crypto-psbt", CB.bytes(Array.from(r.bytes)), SS_OWN_FRAG).map((x) => x.toUpperCase());
+      what = "your PSBT (" + frames.length + " QR part" + (frames.length === 1 ? "" : "s") + ")";
+      try { W = (await ssOwnReview(r.bytes)).W; } catch (e) { W = [{ bad: true, t: "Could not review this PSBT: " + (e && e.message ? e.message : e) + "." }]; }
+      if (gen !== ssOwn.gen || !ssPageOn) return;
+    }
+    ssOwn.kind = r.kind;
+    ssLearnShow(frames, what, "own");
+    ssOwnWarns(W);
+    const next = { psbt: "On the device, choose Scan (Home > Scan), then the seed that signs. Check every address and amount on its screens.",
+      address: "On the device, choose Scan (Home > Scan). It searches the seed's receive and change addresses, as SeedSigner does; a multisig address needs the wallet descriptor first.",
+      descriptor: "On the device, choose Scan (Home > Scan). It loads the wallet descriptor and then checks multisig change and addresses against it.",
+      msg: "On the device, turn on Settings > Advanced > Message signing (off at first, as on SeedSigner), then choose Scan on Home." }[r.kind];
+    ssOwnSay("Held up to the device's camera: " + what + ". " + next, W.some((x) => x.bad) ? "" : "ok");
+    ssOwnTimerOn();
+  } finally { ssOwn.busy = false; }
+}
+// HOLD UP THE MESSAGE: the signmessage request SeedSigner reads, for the address type and number chosen
+function ssOwnMsgGo() {
+  const msg = (ssOwnEl("ssMsgIn") || {}).value || "", purpose = (ssOwnEl("ssMsgType") || {}).value || "84", idx = Number((ssOwnEl("ssMsgIdx") || {}).value || 0);
+  if (!ssPageOn) { ssOwnSay("Open the practice signer first: its box, above.", "bad"); return; }
+  const e = ssOwnMsgError(msg); if (e) { ssOwnSay("Not held up: " + e, "bad"); return; }
+  if (!Number.isInteger(idx) || idx < 0 || idx > 999999) { ssOwnSay("Not held up: the address number is 0 to 999,999.", "bad"); return; }
+  if (!["84", "49", "44"].includes(purpose)) return;
+  const path = "m/" + purpose + "h/" + ssLearnCoin(ssLearnNet()) + "h/0h/0/" + idx;
+  ssOwn.gen++; ssOwn.kind = "msg"; ssOwnWarns([]);
+  ssLearnShow(["signmessage " + path + " ascii:" + msg], "your request to sign a message with the key of receive address #" + idx + " (" + path + ")", "own");
+  ssOwnSay("Held up to the device's camera: a request to sign your message with the key at " + path + ". On the device, turn on Settings > Advanced > Message signing (off at first, as on SeedSigner), then choose Scan on Home.", "ok");
+  ssOwnTimerOn();
+}
+async function ssOwnFile(ev) {
+  const f = ev.target.files && ev.target.files[0]; ev.target.value = "";
+  if (!f) return;
+  if (f.size > SS_OWN_MAX_FILE) { ssOwnSay("Not read: this file is larger than a PSBT should be.", "bad"); return; }
+  let b; try { b = new Uint8Array(await f.arrayBuffer()); } catch (e) { ssOwnSay("Not read: the file could not be opened.", "bad"); return; }
+  const box = ssOwnEl("ssOwnIn"); if (!box) return;
+  box.value = b.length > 4 && b[0] === 0x70 && b[1] === 0x73 && b[2] === 0x62 && b[3] === 0x74 && b[4] === 0xff ? base64Encode(b) : new TextDecoder().decode(b).trim();
+  b.fill(0);
+  await ssOwnGo();
+}
+
+// ---------------------------------------------------------------- the signing rules (called by the device: SIM: VOIDFORGE rule)
+const SS_OWN_ASK_PSBT = (fp, online) => "Sign this transaction with your real seed " + fp + "?\n\n" +
+  "- Check every address and amount on the device's screen against what you meant to send. Change that the device cannot prove is yours is shown as a payment.\n" +
+  (online ? "- THIS COMPUTER IS ONLINE. A browser is not a hardware signer: anything watching this computer could copy your seed. Take it offline before you sign for real coins.\n"
+    : "- This computer looks offline. Keep it offline until you have wiped the seed (CLEAR ALL).\n") +
+  "\nSign it?";
+const SS_OWN_ASK_MSG = (fp) => "This computer is online. Sign this message with your real seed " + fp + "?\n\n" +
+  "A browser is not a hardware signer: anything watching this computer could copy your seed. Take it offline first if you can.\n\nSign it?";
+function ssOwnBlock(head, text, page, home) {
+  ssOwnSay(page, "bad");
+  return new SSDestination(SSErrorView, { view_args: {
+    title: "Error", status_headline: head, text, button_text: "Back",
+    next_destination: home ? new SSDestination(SSMainMenuView, { clear_history: true }) : new SSDestination(SSBackStackView),   // back to Sign Transaction
+  } });
+}
+async function ssOwnSignGate(kind, seed, psbt, network) {
+  if (kind === "psbt") {
+    const nw = ssOwnNetWrong(psbt, network);
+    if (nw) return ssOwnBlock("Wrong network", "This transaction is for another network than the device's.", "Not signed: " + nw + " Set the device's network in Settings > Advanced > Bitcoin network, or use the PSBT for this network.");
+  }
+  if (ssOwnSeedPublic(seed)) return null;          // a public seed: PRACTICE, nothing to lose
+  if (kind === "psbt" && ssOwnIsPracticeTx(psbt)) return null;   // the practice transaction spends made-up coins
+  const online = navigator.onLine === true;
+  if (kind === "msg" && !online) return null;
+  let fp = "this seed"; try { fp = await seed.get_fingerprint(network); } catch (e) { /* named without it */ }
+  if (confirm(kind === "psbt" ? SS_OWN_ASK_PSBT(fp, online) : SS_OWN_ASK_MSG(fp))) return null;
+  if (kind === "msg") { try { const c = SSController._instance; c.sign_message_data = null; c.resume_main_flow = null; } catch (e) { /* no device */ } }
+  return ssOwnBlock("Not signed", "You chose not to sign. Nothing was signed.", "Not signed: you chose not to sign with seed " + fp + ". Nothing was signed.", kind === "msg");
+}
+
+// ---------------------------------------------------------------- what the device made, taken back
+function ssOwnTimerOn() { if (!ssOwn.timer && ssPageOn) ssOwn.timer = setInterval(ssOwnTick, 250); }
+function ssOwnTick() {
+  if (!ssPageOn) { if (ssOwn.timer) { clearInterval(ssOwn.timer); ssOwn.timer = null; } return; }
+  const s = ssLearnState(); if (!s || !s.ctl) return;
+  const c = s.ctl, v = c.current_destination && c.current_destination.view;
+  if (s.view === "SSPSBTSignedQRDisplayView" && c.psbt && c.psbt !== ssOwn.seenSig) { ssOwn.seenSig = c.psbt; ssOwnTakePsbt(c); }
+  else if (s.view === "SSSeedSignMessageConfirmAddressView" && v && v.address) ssOwn.msgAddr = v.address;
+  else if (s.view === "SSSeedSignMessageSignedMessageQRView" && v && v.signed_message && v !== ssOwn.seenMsg) { ssOwn.seenMsg = v; ssOwnTakeMsg(v); }
+  else if (s.view === "SSSeedAddressVerificationSuccessView" && s.scr && s.scr !== ssOwn.seenAddr && s.scr.address) {
+    ssOwn.seenAddr = s.scr;
+    ssOwnSay("The device verified the address " + s.scr.address + ": it is " + (s.scr.verified_index_is_change ? "change" : "receive") + " address #" + s.scr.verified_index + " of this wallet.", "ok");
+  } else if (s.view === "SSMultisigWalletDescriptorView" && s.scr && s.scr !== ssOwn.seenDesc && s.scr.policy) {
+    ssOwn.seenDesc = s.scr;
+    ssOwnSay("The device loaded the wallet descriptor: policy " + s.scr.policy + ", cosigners " + (s.scr.fingerprints || []).join(", ") + ". It now checks multisig change and addresses against it (until the device is switched off).", "ok");
+  }
+}
+// Every signature in the PSBT the device signed (before SeedSigner trims it), checked with the page's own code
+async function ssOwnCheck(full, n) {
+  const res = await inspectPsbt(full, ssLearnKeyNet(n));
+  await psbtSigCheck(res);
+  const S = res.ins.map((x, i) => ({ i, R: x.sv })).filter((o) => o.R && o.R.state !== "none");
+  const bad = S.filter((o) => o.R.state === "invalid").map((o) => o.i), ok = S.filter((o) => o.R.state === "valid");
+  return { bad, valid: ok.reduce((a, o) => a + o.R.n, 0), unchecked: S.filter((o) => o.R.state === "unchecked").map((o) => o.i) };
+}
+async function ssOwnTakePsbt(c) {
+  const signed = c.psbt, seed = c.psbt_seed, parser = c.psbt_parser, gen = ssOwn.gen, n = ssLearnNet();
+  if (ssOwnIsPracticeTx(signed)) return;   // the practice transaction: the practice wallet reads it back itself (ss_learn.js)
+  let bytes, full = null;
+  try { bytes = signed.serialize(); } catch (e) { return; }
+  try { full = parser && parser.psbt ? parser.psbt.serialize() : null; } catch (e) { full = null; }
+  const pub = ssOwnSeedPublic(seed);
+  let fp = ""; try { fp = await seed.get_fingerprint(); } catch (e) { fp = ""; }
+  let chk = null; try { chk = full ? await ssOwnCheck(full, n) : null; } catch (e) { chk = null; }
+  if (full) full.fill(0);
+  if (gen !== ssOwn.gen || !ssPageOn) { bytes.fill(0); return; }
+  const sigs = SSPSBTParser.sig_count(signed);
+  let say = (pub ? "PRACTICE: signed with a public seed (" + fp + "). Anyone can sign with it: never put money on it. " : "Signed by seed " + fp + ": ") +
+    sigs + " signature" + (sigs === 1 ? "" : "s") + ", as the device shows it in its animated QR. ";
+  let cls = pub ? "bad" : "ok";
+  if (!chk) say += "This page could not check the signatures itself.";
+  else if (chk.bad.length) { say += "INVALID SIGNATURE on input " + chk.bad.join(", ") + " (checked by this page's own code). Do not broadcast this transaction."; cls = "bad"; }
+  else say += "Each signature checked by this page's own code: " + (chk.valid ? "valid" : "none could be checked") + (chk.unchecked.length ? "; input " + chk.unchecked.join(", ") + " not checked" : "") + ".";
+  say += " Give it back to your wallet (the QR on the device, the text below, or the file), which adds the other signatures it needs and sends it.";
+  ssOwnShow({ kind: "psbt", bytes, fp, pub, text: base64Encode(bytes), say, cls });
+}
+async function ssOwnTakeMsg(v) {
+  const sig = v.signed_message, msg = v._ss_message, path = v._ss_derivation_path, seed = v._ss_seed, addr = ssOwn.msgAddr, gen = ssOwn.gen;
+  const pub = ssOwnSeedPublic(seed);
+  let ok = null; try { ok = addr ? (await verifyMessage(addr, msg, sig)).state === "valid" : null; } catch (e) { ok = null; }
+  if (gen !== ssOwn.gen || !ssPageOn) return;
+  const block = "-----BEGIN BITCOIN SIGNED MESSAGE-----\n" + msg + "\n-----BEGIN SIGNATURE-----\n" + (addr || "") + "\n" + sig + "\n-----END BITCOIN SIGNED MESSAGE-----";
+  const say = (pub ? "PRACTICE: signed with a public seed. Anyone can sign with it: never use it to prove anything. " : "Signed: ") +
+    "the message, signed with the key of " + (addr || path) + " (" + path + "), in the Bitcoin Signed Message format SeedSigner uses. " +
+    (ok === true ? "The signature checks out (checked by this page's own code)." : ok === false ? "The signature does NOT check out against this address (checked by this page's own code)." : "") +
+    " The device shows the signature as a QR code.";
+  ssOwnShow({ kind: "msg", sig, fp: "", pub, text: block, say, cls: pub || ok === false ? "bad" : "ok" });
+}
+function ssOwnShow(o) {
+  if (ssOwn.out && ssOwn.out.bytes) ssOwn.out.bytes.fill(0);
+  ssOwn.out = o;
+  const box = ssOwnEl("ssOwnOut"); if (!box) return;
+  box.hidden = false;
+  const s = ssOwnEl("ssOwnOutSay"); s.textContent = o.say; s.className = "status ss-banner " + o.cls;
+  ssOwnEl("ssOwnOutText").value = o.text;
+  ssOwnEl("ssOwnSave").hidden = o.kind !== "psbt";
+  ssOwnEl("ssOwnCopySig").hidden = o.kind !== "msg";
+  try { box.scrollIntoView({ block: "nearest" }); } catch (e) { /* not laid out */ }
+}
+function ssOwnCopy(btn, sigOnly) {
+  const o = ssOwn.out; if (!o) return;
+  const t = sigOnly ? o.sig : o.text;
+  (typeof safeCopy === "function" ? safeCopy(t) : Promise.reject(new Error("no clipboard"))).then(() => { if (typeof showCopied === "function") showCopied(btn); }).catch(() => alert("Copy failed. Select the text and copy it manually."));
+}
+function ssOwnSave() {
+  const o = ssOwn.out; if (!o || o.kind !== "psbt") return;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([o.bytes], { type: "application/octet-stream" }));
+  a.download = "voidforge-signed-" + (o.fp || "psbt") + (o.pub ? "-PRACTICE" : "") + ".psbt";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+// Re-hide (RH_HOLD in the main script): the output is a reason to cover while it holds a message signature, or while the device
+// holds a seed that is not public
+function ssOwnHoldsSecret() {
+  if (!ssOwn.out) return false;
+  try { return ssOwn.out.kind === "msg" || vfSignerHoldsSecret(); } catch (e) { return true; }
+}
+// Called by ssPageStop and wipeSeed: the PSBT held up, the outputs, the typed message and request, the warnings
+function ssOwnWipe() {
+  ssOwn.gen++;
+  if (ssOwn.timer) { clearInterval(ssOwn.timer); ssOwn.timer = null; }
+  if (ssOwn.out && ssOwn.out.bytes) ssOwn.out.bytes.fill(0);
+  if (ssOwn.psbt) ssOwn.psbt.fill(0);
+  ssOwn.psbt = null; ssOwn.out = null; ssOwn.txKey = ""; ssOwn.kind = ""; ssOwn.msgAddr = ""; ssOwn.seenSig = null; ssOwn.seenMsg = null; ssOwn.seenAddr = null; ssOwn.seenDesc = null;
+  try { if (ssLearnCam.key === "own") ssLearnHide(); } catch (e) { /* lessons part missing */ }
+  for (const id of ["ssOwnIn", "ssMsgIn", "ssOwnOutText"]) { const e = ssOwnEl(id); if (e) e.value = ""; }
+  const box = ssOwnEl("ssOwnOut"); if (box) box.hidden = true;
+  const s = ssOwnEl("ssOwnOutSay"); if (s) { s.textContent = ""; s.className = "status"; }
+  ssOwnWarns([]); ssOwnSay("");
+}
+function ssOwnInit() {
+  const go = ssOwnEl("ssOwnGo"); if (!go) return;
+  go.addEventListener("click", ssOwnGo);
+  ssOwnEl("ssMsgGo").addEventListener("click", ssOwnMsgGo);
+  ssOwnEl("ssOwnFileBtn").addEventListener("click", () => ssOwnEl("ssOwnFile").click());
+  ssOwnEl("ssOwnFile").addEventListener("change", ssOwnFile);
+  ssOwnEl("ssOwnClear").addEventListener("click", ssOwnWipe);
+  ssOwnEl("ssOwnCopy").addEventListener("click", (e) => ssOwnCopy(e.currentTarget, false));
+  ssOwnEl("ssOwnCopySig").addEventListener("click", (e) => ssOwnCopy(e.currentTarget, true));
+  ssOwnEl("ssOwnSave").addEventListener("click", ssOwnSave);
+  const box = ssOwnEl("ssBox"); if (box) box.addEventListener("toggle", () => { if (box.open) setTimeout(ssOwnTimerOn, 0); });
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", ssOwnInit); else ssOwnInit();
 
 </script>
 </body>

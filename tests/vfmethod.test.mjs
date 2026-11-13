@@ -359,8 +359,11 @@ words(12); set("dmDice", E1.e.dice); set("dmCards", pageCards(E1.e.cards));
   check("practice: the practice words go to the hook, and the note says the practice signer loads it by itself (v2.16.1: one click)", got && got === ph1 && got.split(" ").length === 12 && /loads the practice seed by itself from its SeedQR\./.test($("dmSignerNote").textContent), $("dmSignerNote").textContent);
   w.vfSignerLoadSeed = () => false; Object.defineProperty(w.navigator, "onLine", { configurable: true, get: () => false }); $("dmSignerBtn").click();
   check("practice: a failure of the hook is said plainly", /^Not loaded: the practice signer could not start/.test($("dmSignerNote").textContent));
-  Object.defineProperty(w.navigator, "onLine", { configurable: true, get: () => true }); w.vfSignerLoadSeed = hook; $("dmSignerBtn").click();
-  check("v2.16.1 review: online, LOAD INTO THE PRACTICE SIGNER holds nothing up and says a SeedQR is read only while offline", /^Not loaded: this computer looks online, and a SeedQR is read only while offline\./.test($("dmSignerNote").textContent) && !$("ssBox").open, $("dmSignerNote").textContent);
+  { const siv = w.Element.prototype.scrollIntoView; w.Element.prototype.scrollIntoView = function () {}; Object.defineProperty(w.navigator, "onLine", { configurable: true, get: () => true }); let asked = 0; const c0 = w.confirm; w.confirm = () => { asked++; return false; }; got = null; w.vfSignerLoadSeed = (m) => { got = m; return hook(m); }; $("dmSignerBtn").click();
+    check("v2.17.0: online, LOAD INTO THE PRACTICE SIGNER loads a practice seed with no question, and the note is a gold banner", asked === 0 && got === ph1 && /loads the practice seed by itself from its SeedQR\./.test($("dmSignerNote").textContent) && /ss-banner/.test($("dmSignerNote").className) && /\bok\b/.test($("dmSignerNote").className), $("dmSignerNote").textContent + " | " + $("dmSignerNote").className);
+    w.ssPageWipe(); w.vfSignerLoadSeed = () => "cancelled"; $("dmSignerBtn").click();
+    check("v2.17.0: a real seed not loaded online (No to the question) is said plainly, as a red banner", /^Not loaded: you chose not to load your real seed while this computer is online\./.test($("dmSignerNote").textContent) && /\bbad\b/.test($("dmSignerNote").className), $("dmSignerNote").textContent);
+    w.confirm = c0; w.Element.prototype.scrollIntoView = siv; }
   delete w.navigator.onLine;
   w.vfSignerLoadSeed = hook;
   set("dmDice", $("dmDice").value + " 12");

@@ -3402,9 +3402,12 @@ class SSToolsAddressExplorerAddressListScreen extends SSButtonListScreen {
 /* ---- views/scan_views.py ----------------------------------------------------------------------------------------- */
 // SIM: VOIDFORGE rule. The page's own camera reads a SeedQR only while the computer is offline (navigator.onLine false);
 // the practice signer follows the same rule for every seed QR (SeedQR, CompactSeedQR, mnemonic QR), shown on SeedSigner's
-// own error screen.
-function ssToolsSeedScanBlocked() {   // SIM: VOIDFORGE rule
-  return typeof navigator !== "undefined" && navigator.onLine === true;
+// own error screen. v2.17.0: except a public or practice seed, and the SeedQR of LOAD INTO THE PRACTICE SIGNER after the person
+// said yes to loading it online (ssLearnSeedScanOk, ss_learn.js). decoder: the scan's decoder once it read a seed.
+function ssToolsSeedScanBlocked(decoder) {   // SIM: VOIDFORGE rule
+  if (typeof navigator === "undefined" || navigator.onLine !== true) return false;
+  try { if (typeof ssLearnSeedScanOk === "function" && ssLearnSeedScanOk(decoder)) return false; } catch (e) { /* lessons part missing */ }
+  return true;
 }
 function ssToolsOfflineOnlyDest() {   // SIM: VOIDFORGE rule
   return new SSDestination(SSErrorView, {view_args: {
@@ -3458,7 +3461,7 @@ class SSScanView extends SSView {
         }});
       }
 
-      if (this.decoder.is_seed && ssToolsSeedScanBlocked()) {
+      if (this.decoder.is_seed && ssToolsSeedScanBlocked(this.decoder)) {
         // SIM: VOIDFORGE rule: a seed QR read while the computer is online is dropped, not loaded
         this.decoder = new SSDecodeQR({wordlist_language_code: this.wordlist_language_code});
         return ssToolsOfflineOnlyDest();

@@ -5266,6 +5266,12 @@ class SSSeedSignMessageSignedMessageQRView extends SSView {
     async run() {
         // Python signs in __init__ (async here)
         await this._ss_seed._ready;
+        // SIM: VOIDFORGE rule (v2.17.0, ssOwnSignGate in ss_own.js): a seed that is not public signs a message while this computer is
+        // online only after a yes to the page's question
+        if (typeof ssOwnSignGate === "function") {
+            const stop = await ssOwnSignGate("msg", this._ss_seed, null, (this.settings || SSSettings.get_instance()).get_value(SSSC().SETTING__NETWORK));
+            if (stop) return stop;
+        }
         this.signed_message = await ssSeedsEmbitUtils.sign_message(this._ss_seed.seed_bytes, this._ss_derivation_path, this._ss_message);
 
         const qr_encoder = new SSSeedsGenericStaticQrEncoder({ data: this.signed_message });

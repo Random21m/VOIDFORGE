@@ -117,6 +117,13 @@ const css = `
   #ssBox .ss-l-do { font-size: 15px; line-height: 1.5; }
   #ssBox .ss-l-cam { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; margin: 0 0 10px; overflow-wrap: anywhere; }
   #ssBox #ssTxStatus { white-space: pre-line; overflow-wrap: anywhere; }
+  /* v2.17.0 Use it for real: your own PSBT, address, wallet descriptor or message */
+  #ssBox .ss-own textarea { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; font-size: 12px; }
+  #ssBox .ss-own input[type="number"] { width: 7em; flex: none; }
+  #ssBox .ss-own-w { margin: 6px 0 8px; padding-left: 20px; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+  #ssBox .ss-own-w li { margin: 3px 0; }
+  #ssBox .ss-own-w li.bad { color: var(--bad-text); font-weight: 600; }
+  #ssBox #ssOwnStatus, #ssBox #ssOwnOutSay { overflow-wrap: anywhere; }
   /* v2.15.0: the practice signer's choice in the start row under the title (laid out by #startRow .sr-i) */
   body.guided #ssPromo { display: none; }
   @media print { #ssPromo { display: none !important; } }
@@ -148,7 +155,7 @@ const box = `
         <div class="btn-row"><button type="button" id="ssForgeBtn">FORGE SEED</button><select id="ssForgePick" aria-label="Seed on the device, by fingerprint" hidden></select></div>
         <p class="status" id="ssForgeStatus" aria-live="polite"></p>
         <h3 class="sec">Lessons</h3>
-        <p class="hint" style="margin:0 0 8px;">Short lessons that walk you through the device, one press at a time. Each step moves on by itself when the device shows the right screen. The lessons use public test seeds only (such as abandon ... about): anyone can make them, so never put coins on them.</p>
+        <p class="hint" style="margin:0 0 8px;">Short lessons that walk you through the device, one press at a time. Each step moves on by itself when the device shows the right screen. They work with the seed loaded on the device, real or practice; with none loaded, they load the public test seed abandon ... about (anyone can make it, so never put coins on it). Their practice transactions spend made-up coins, so they can never be broadcast.</p>
         <div class="btn-row"><select id="ssLearnPick" aria-label="Lesson"></select><button type="button" id="ssLearnGo" class="secondary small">START LESSON</button></div>
         <div class="ss-l-run" id="ssLearnRun" hidden>
           <p><b id="ssLearnName"></b> &middot; <span id="ssLearnCount"></span></p>
@@ -167,6 +174,23 @@ const box = `
         <p class="ms-test" id="ssTxNet" hidden>Mainnet: these coins don&rsquo;t exist; this PSBT can never be broadcast.</p>
         <p class="status" id="ssTxStatus" aria-live="polite"></p>
         <p class="hint" id="ssTxCoins"></p>
+        <div class="ss-own" id="ssOwnBox">
+        <h3 class="sec">Use it for real: your own PSBT, address, wallet or message</h3>
+        <p class="ms-test">A browser is not a hardware signer. This device signs for real, inside this page: a real SeedSigner keeps the seed off every computer, and this does not. With real coins, use it only on an offline computer you trust, check every address and amount on its screen against what you meant to send, and wipe the seed afterwards (CLEAR ALL).</p>
+        <p class="hint" style="margin:0 0 8px;">Paste a PSBT from your wallet (Sparrow, Electrum, Nunchuk, Specter, Bitcoin Core: base64, hex, or the parts of an animated UR or BBQr QR, one per line), an address to verify, a multisig wallet descriptor (sortedmulti), or a signmessage request; or choose a .psbt file, or scan a QR with this computer&rsquo;s camera. HOLD UP TO THE DEVICE shows it to the device&rsquo;s camera; then choose Scan on the device. The device reviews it and signs as SeedSigner does, and the signed PSBT comes back here too, byte for byte as in its QR code.</p>
+        <textarea id="ssOwnIn" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Your PSBT, address, wallet descriptor or signmessage request" placeholder="PSBT (cHNidP8... or 70736274ff...), address, wallet descriptor or signmessage request"></textarea>
+        <div class="btn-row"><button type="button" id="ssOwnGo">HOLD UP TO THE DEVICE</button><button type="button" class="secondary small" id="ssOwnFileBtn">CHOOSE .PSBT FILE</button><input type="file" id="ssOwnFile" accept=".psbt,.txt,application/octet-stream" hidden><button type="button" class="secondary small" id="ssOwnClear">CLEAR</button></div>
+        <p class="status" id="ssOwnStatus" aria-live="polite"></p>
+        <ul class="ss-own-w" id="ssOwnWarns" hidden></ul>
+        <p class="hint" style="margin:10px 0 6px;"><b>Sign a message.</b> Signed with the key of one of the seed&rsquo;s single-key receive addresses, in the Bitcoin Signed Message format SeedSigner uses. Turn on Message signing on the device first (Settings &gt; Advanced).</p>
+        <textarea id="ssMsgIn" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Message to sign" placeholder="Message to sign (plain letters, digits and punctuation)"></textarea>
+        <div class="btn-row"><select id="ssMsgType" aria-label="Address type of the signing key"><option value="84">Native SegWit (bc1q), m/84h/...</option><option value="49">Nested SegWit (3...), m/49h/...</option><option value="44">Legacy (1...), m/44h/...</option></select><input type="number" id="ssMsgIdx" min="0" max="999999" step="1" value="0" aria-label="Receive address number"><button type="button" class="secondary small" id="ssMsgGo">HOLD UP THE MESSAGE</button></div>
+        <div id="ssOwnOut" hidden>
+          <p class="status" id="ssOwnOutSay" aria-live="polite"></p>
+          <textarea id="ssOwnOutText" rows="4" readonly spellcheck="false" aria-label="What the device made: the signed PSBT (base64) or the signed message"></textarea>
+          <div class="btn-row"><button type="button" class="secondary small" id="ssOwnCopy">COPY</button><button type="button" class="secondary small" id="ssOwnCopySig" hidden>COPY SIGNATURE ONLY</button><button type="button" class="secondary small" id="ssOwnSave">SAVE .PSBT FILE</button></div>
+        </div>
+        </div>
       </div>
     </details>`;
 {
@@ -189,7 +213,7 @@ const parts = [
   ["ss_engine.js", rd("ss_engine.js")],
   ["ss_seeds.js", rd("ss_seeds.js")],
   ["ss_tools_settings.js PART B and ss_psbt.js", tools.slice(mark) + "\n" + rd("ss_psbt.js").replace(/^"use strict";$/m, "")],
-  ["ss_page.js and ss_learn.js", rd("ss_page.js") + "\n" + rd("ss_learn.js").replace(/^"use strict";$/m, "")],
+  ["ss_page.js, ss_learn.js and ss_own.js", rd("ss_page.js") + "\n" + rd("ss_learn.js").replace(/^"use strict";$/m, "") + "\n" + rd("ss_own.js").replace(/^"use strict";$/m, "")],
 ];
 let blocks = "";
 for (const [name, code] of parts) {

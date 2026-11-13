@@ -522,15 +522,28 @@ SCEN.offline = async (t, d, ctx, page) => {
   t(s.view === 'SSErrorView' && /Offline only/.test(s.headline) && /only while this computer is offline/.test(s.text) && cam === false, 'online: "Scan a SeedQR" is refused with "Offline only" and the camera stays off');
   await d.press('PRESS');
   for (let n = 0; n < 4 && (await d.state()).view !== 'SSMainMenuView'; n++) { await d.press('LEFT'); await d.press('PRESS'); }
-  await d.pick(/^Scan$/); s = await until(async () => { const x = await d.state(); return x && x.view !== 'SSMainMenuView' && x.view !== 'SSScanView' && await d.idle(0) ? x : null; }, 60000) || await d.state();
-  const seeds = await d.ev(() => SSController._instance.storage.seeds.length), pend = await d.ev(() => !!SSController._instance.storage.pending_seed);
-  t(s.view === 'SSErrorView' && /Offline only/.test(s.headline) && seeds === 0 && !pend, 'online: the Scan on Home refuses the SeedQR too, and no seed is loaded');
-  // v2.16.1 review: LOAD INTO THE PRACTICE SIGNER refuses up front while online: nothing is held up, no key is pressed, and the note
-  // under YOUR SEED says why (before, the page pressed Scan with nothing held up, and the scan opened the computer's camera)
-  const ol = await d.ev((m) => { const r = vfSignerLoadSeed(m); return { r, held: !!ssLearnCam.frames, auto: ssAuto.on }; }, ABANDON);
-  t(ol.r === false && !ol.held && !ol.auto, 'online: vfSignerLoadSeed refuses: no SeedQR held up, no key pressed (' + JSON.stringify(ol) + ')');
-  const note = await page.evaluate(async () => { showTab('make'); setMethod('cards'); document.getElementById('cdHex').value = '00'.repeat(16); await cdHexGenerate(); seedToSigner(); return { note: document.getElementById('seedSignerNote').textContent, held: !!ssLearnCam.frames, auto: ssAuto.on }; });
-  t(/^Not loaded: this computer looks online, and a SeedQR is read only while offline\./.test(note.note) && !note.held && !note.auto, 'online: LOAD INTO THE PRACTICE SIGNER under YOUR SEED says it is not loaded because the computer is online (' + note.note + ')');
+  // v2.17.0: the camera's SeedQR here is abandon ... about, a public seed: it is read while online (a real seed QR is still refused)
+  await d.pick(/^Scan$/); s = await d.waitView('SSSeedFinalizeView');
+  t(s.view === 'SSSeedFinalizeView' && await d.ev(() => SSController._instance.current_destination.view.screen.fingerprint) === fpOf(rootOf(ABANDON)), 'v2.17.0 online: the Scan on Home reads the public test seed abandon ... about (fingerprint ' + fpOf(rootOf(ABANDON)) + ')');
+  await d.pick(/^Done$/); await d.waitView('SSSeedOptionsView'); await d.back('SSMainMenuView');
+  // v2.17.0: LOAD INTO THE PRACTICE SIGNER online. A public seed loads with no question; a real seed asks first: No loads nothing and
+  // says so in a red banner, Yes loads it. The computer's camera is never opened during a load.
+  const asked = []; page.on('dialog', (dl) => { if (/online/i.test(dl.message())) asked.push(dl.message()); });   // (the cards box asks about its own digits first)
+  await page.evaluate(() => { window.__gum = 0; const md = navigator.mediaDevices; if (md && md.getUserMedia) { const g = md.getUserMedia.bind(md); md.getUserMedia = (c) => { window.__gum++; return g(c); }; } });
+  const loaded = (m) => until(async () => { const x = await d.ev((w) => ({ st: document.getElementById('ssLoadStatus').textContent, cls: document.getElementById('ssLoadStatus').className, has: ssLearnSeeds().some((q) => q && q.mnemonic_str === w), auto: ssAuto.on }), m); return /^Loaded: /.test(x.st) && x.has && !x.auto ? x : null; }, 120000);
+  const pub = await page.evaluate(async () => { showTab('make'); setMethod('cards'); document.getElementById('cdHex').value = '00'.repeat(16); await cdHexGenerate(); seedToSigner(); const n = document.getElementById('seedSignerNote'); return { note: n.textContent, cls: n.className }; });
+  const pl = await loaded(ABANDON);
+  t(asked.length === 0 && /loads this seed by itself/.test(pub.note) && /ss-banner/.test(pub.cls) && /\bok\b/.test(pub.cls) && !!pl && /ss-banner ok/.test(pl.cls), 'v2.17.0 online: LOAD INTO THE PRACTICE SIGNER loads a public seed (abandon ... about) with no question; gold banners under YOUR SEED and next to the device (' + JSON.stringify({ asked, pub, pl }) + ')');
+  const REAL = diceWords('62514361', 12), fpR = fpOf(rootOf(REAL));
+  const no = await page.evaluate((m) => { const c0 = window.confirm; let q = ''; window.confirm = (x) => { q = x; return false; }; try { const r = vfSignerLoadSeed(m); return { r, q, held: !!ssLearnCam.frames, auto: ssAuto.on }; } finally { window.confirm = c0; } }, REAL);
+  t(no.r === 'cancelled' && /^This computer is online\. Loading your real seed into the practice signer shows it as a SeedQR on this screen, like typing it into a website: anything watching this computer could copy it\./.test(no.q) && !no.held && !no.auto, 'v2.17.0 online: a real seed asks first; No holds nothing up and presses nothing (' + JSON.stringify({ r: no.r, held: no.held }) + ')');
+  const nn = await page.evaluate(() => { signerNoteShow(document.getElementById('seedSignerNote'), 'cancelled', 'this seed'); const n = document.getElementById('seedSignerNote'); return { t: n.textContent, c: n.className }; });
+  t(/^Not loaded: you chose not to load your real seed while this computer is online\./.test(nn.t) && /ss-banner/.test(nn.c) && /\bbad\b/.test(nn.c), 'v2.17.0: No is said in a red banner under YOUR SEED (' + nn.t.slice(0, 60) + ')');
+  await d.back('SSMainMenuView');   // the load goes on from Home
+  const yes = await page.evaluate((m) => vfSignerLoadSeed(m), REAL);   // Playwright accepts the question: Yes
+  const yl = await loaded(REAL), ys = await d.state();
+  t(yes === true && asked.length === 1 && /^This computer is online/.test(asked[0]) && !!yl && ys.title === fpR && /ss-banner ok/.test(yl.cls), 'v2.17.0 online: Yes loads the real seed; the device shows fingerprint ' + fpR + ' (@scure/bip32) in a gold banner (' + (yl && yl.st) + ')');
+  t(await page.evaluate(() => window.__gum) === 0, 'v2.17.0: the computer\'s camera is never opened during these loads');
 };
 
 // ---- wipe: CLEAR ALL, closing the section, the auto-clear, END SESSION; the keyboard only with focus
@@ -1190,10 +1203,10 @@ SCEN.practice_tx = async (t, d, ctx, page) => {   // Testnet, no lesson: the PRA
   t(!p.net && /Spends 2 made-up coins of seed 73c5da0a/.test(p.status) && /made-up transaction [0-9a-f]{16}\.\.\., marked "VOIDFORGE practice coins/.test(await page.textContent('#ssTxCoins')),
     tag + ': PRACTICE TRANSACTION spends made-up coins of the seed on the device, names the made-up transaction, and shows no Mainnet warning on Testnet');
   const origB = await practiceRun(t, d, page, tag, { net: 'T' });
-  // review L7: in a lesson, the practice transaction spends from the test seed the lesson names, even with another seed loaded after it
+  // v2.17.0 (was review L7): the lessons work with any seed: the practice transaction spends the newest seed loaded, in a lesson too
   const l7 = await d.ev(async () => { const st = SSController._instance._storage, other = await SSSeed.create({ mnemonic: 'legal winner thank year wave sausage worth useful legal winner thank yellow' }); st.seeds.push(other);
     try { ssLearn.lesson = SS_LEARN_LESSONS.find((l) => l.id === 'sign'); const a = await ssLearnBuild('single'); ssLearn.lesson = null; const b = await ssLearnBuild('single'); return [a.fp, b.fp]; } finally { ssLearn.lesson = null; st.seeds.pop(); } });
-  t(l7[0] === '73c5da0a' && l7[1] === 'b8688df1', 'review L7: with another seed loaded after the test seed, a lesson\'s practice transaction still spends the test seed 73c5da0a it names (outside a lesson: the last seed loaded) (' + l7.join(', ') + ')');
+  t(l7[0] === 'b8688df1' && l7[1] === 'b8688df1', 'v2.17.0: with another seed loaded after the test seed, the practice transaction spends the newest seed b8688df1, in a lesson too (the lesson names it by its fingerprint) (' + l7.join(', ') + ')');
   // the device itself: its menus are SeedSigner's own, nothing of the lessons is on its screen or in its menus
   await toHomeAny(d); const s = await d.state();
   t(JSON.stringify(s.labels) === '["Scan","Seeds","Tools","Settings"]' && s.title === 'Home', 'the device keeps SeedSigner\'s own Home menu (Scan, Seeds, Tools, Settings): nothing is added to it');
@@ -1516,13 +1529,14 @@ SCEN.loadedge = async (t, d, ctx, page) => {
     return { fired, gum: window.__gum, view: (ssLearnState() || {}).view, st: document.getElementById('ssLoadStatus').textContent }; }, ABANDON);
   t(cr.fired && cr.gum === 0 && cr.view === 'SSCameraConnectionErrorView' && /^Not loaded: the SeedQR was put away before the device read it\./.test(cr.st), 'second review: the SeedQR put away as the page presses Scan: the scan does not open the computer\'s camera; the device shows its camera error and the page says not loaded (' + JSON.stringify(cr) + ')');
   await d.press('PRESS'); await d.waitView('SSMainMenuView');
-  // 5. online while the SeedQR is held up: the load stops, the SeedQR is put away, and Scan is never pressed
+  // 5. a real seed's load started offline, then the computer goes online while the SeedQR is held up: the load stops, the SeedQR is
+  // put away, and Scan is never pressed (v2.17.0: online, a real seed loads only after a yes to the question)
   await page.evaluate(() => { const b = document.getElementById('ssBox'); b.open = true; }); await d.waitView('SSMainMenuView');
   await d.pick(/^Settings$/); await sleep(300);
-  await d.ev((m) => vfSignerLoadSeed(m), ABANDON); await say(/^Go back to Home/);
+  await d.ev((m) => vfSignerLoadSeed(m), REAL); await say(/^Go back to Home/);
   await ctx.setOffline(false);
-  x = await say(/^Not loaded: a SeedQR is read only while offline/);
-  t(!x.auto && !x.held && /bad/.test(x.cls), 'online during the load: it stops with "Not loaded: a SeedQR is read only while offline", the SeedQR put away (' + x.st + ')');
+  x = await say(/^Not loaded: this computer went online during the load/);
+  t(!x.auto && !x.held && /ss-banner bad/.test(x.cls), 'online during a real seed\'s load: it stops with "Not loaded: this computer went online during the load", the SeedQR put away, a red banner (' + x.st + ')');
   await d.back('SSMainMenuView'); await sleep(1500); x = await st();
   t(x.view === 'SSMainMenuView' && x.gum === 0, 'online: back on Home nothing presses Scan, and the computer\'s camera is never opened (' + JSON.stringify(x) + ')');
   await ctx.setOffline(true);
@@ -1609,9 +1623,137 @@ SCEN.find = async (t, d, ctx, page) => {
   t(mb === 'GUIDE ME|PRACTICE SIGNER|TEXT A+|PRINT SEED|PRINT STAMP SHEET|IS ANYTHING WATCHING THIS PAGE?|DARK|END SESSION / secondary small', 'MENU: PRACTICE SIGNER sits right after GUIDE ME, in the gray secondary style of the MENU helpers (' + mb + ')');
 };
 
+// ================================================================ v2.17.0: Use it for real (ss_own.js): your own PSBT, address, descriptor, message
+// A real seed (not public: made here from dice rolls with @scure/bip39), loaded with LOAD INTO THE PRACTICE SIGNER. A PSBT built here
+// with @scure/btc-signer (one input of this seed, one of another seed: mixed inputs; a payment and change) is pasted as base64 next to
+// the device and held up; the device reviews it (its own screens, read here), asks the page's question before it signs (Playwright
+// answers it), and shows the signed PSBT as an animated UR. The QR is read back from the screen with jsqr + bc-ur, and must be byte for
+// byte the base64 the page gives to copy and the .psbt file it saves; its signature must be btc-signer's own (low R, RFC 6979), verify
+// with noble, and finalize with btc-signer after the other seed signs. Also: the wrong network is refused at Approve, No to the question
+// signs nothing, online asks with the ONLINE warning, a message signed and checked by public key recovery, and CLEAR ALL wipes it all.
+const REAL_MN = diceWords('6152433615243362514', 12), REAL = rootOf(REAL_MN), FPR = fpOf(REAL);
+function ownPsbt(o = {}) {   // P2WPKH: input 0 of REAL (m/84'/coin'/0'/0/2), input 1 of seed C (another signer); pay EXT1 or a tb1 address; change /1/4
+  const coin = o.test ? 1 : 0, net = o.test ? btc.TEST_NETWORK : btc.NETWORK, tx = new btc.Transaction(), C = R2.C, p0 = `m/84'/${coin}'/0'/0/2`, p1 = `m/84'/${coin}'/0'/0/0`;
+  const k0 = REAL.derive(p0), k1 = C.derive(p1);
+  tx.addInput({ txid: txid2(21), index: 1, witnessUtxo: { script: btc.p2wpkh(k0.publicKey).script, amount: 400000n }, bip32Derivation: [[k0.publicKey, deriv(REAL, p0)]] });
+  if (o.mixed !== false) tx.addInput({ txid: txid2(22), index: 0, witnessUtxo: { script: btc.p2wpkh(k1.publicKey).script, amount: 100000n }, bip32Derivation: [[k1.publicKey, deriv(C, p1)]] });
+  tx.addOutput({ script: btc.p2wpkh(R2.D.derive(`m/84'/${coin}'/0'/0/0`).publicKey).script, amount: 300000n });
+  const cp = `m/84'/${coin}'/0'/1/4`, ck = REAL.derive(cp);
+  tx.addOutput({ script: btc.p2wpkh(ck.publicKey).script, amount: (o.mixed !== false ? 198500n : 98500n), bip32Derivation: [[ck.publicKey, deriv(REAL, cp)]] });
+  return { b64: Buffer.from(tx.toPSBT(0)).toString('base64'), k0, k1, change: btc.p2wpkh(ck.publicKey, net).address, pay: btc.p2wpkh(R2.D.derive(`m/84'/${coin}'/0'/0/0`).publicKey, net).address };
+}
+const ownState = (page) => page.evaluate(() => ({ st: document.getElementById('ssOwnStatus').textContent, cls: document.getElementById('ssOwnStatus').className,
+  warns: [...document.querySelectorAll('#ssOwnWarns li')].map((x) => (x.className === 'bad' ? '!' : '') + x.textContent), out: document.getElementById('ssOwnOut').hidden ? null : { say: document.getElementById('ssOwnOutSay').textContent, cls: document.getElementById('ssOwnOutSay').className, text: document.getElementById('ssOwnOutText').value },
+  held: ssLearnCam.frames ? ssLearnCam.key : '', parts: ssLearnCam.frames ? ssLearnCam.frames.length : 0 }));
+async function ownLoad(t, d, page) {
+  await d.waitView('SSMainMenuView');
+  await page.evaluate((m) => vfSignerLoadSeed(m), REAL_MN);
+  const L = await until(() => d.ev((w) => /^Loaded: /.test(document.getElementById('ssLoadStatus').textContent) && ssLearnSeeds().some((q) => q.mnemonic_str === w) && !ssAuto.on, REAL_MN), 120000);
+  t(L, 'own: the real seed ' + FPR + ' (@scure/bip32) is loaded with LOAD INTO THE PRACTICE SIGNER');
+  await d.back('SSMainMenuView');
+}
+async function ownHold(page, text) { await page.fill('#ssOwnIn', text); await page.click('#ssOwnGo'); return until(async () => { const x = await ownState(page); return x.held === 'own' ? x : null; }, 30000) || ownState(page); }
+async function ownReview(d) {   // Home > Scan, the seed, then Next through the review screens to Sign Transaction; returns what they showed
+  await d.pick(/^Scan$/); await d.waitView('SSPSBTSelectSeedView'); await d.pick(new RegExp('^' + FPR + '$'));
+  const seen = {};
+  for (let n = 0; n < 12; n++) {
+    const s = await d.waitView((await d.state()).view);
+    if (s.view === 'SSPSBTFinalizeView') return seen;
+    if (s.view === 'SSPSBTOverviewView') Object.assign(seen, await screenFields(d, ['spend_amount', 'change_amount', 'fee_amount', 'num_inputs', 'destination_addresses']));
+    if (s.view === 'SSPSBTMathView') seen.input = amountOf((await screenFields(d, ['input_amount'])).input_amount);
+    if (s.view === 'SSPSBTChangeDetailsView') { const f = await screenFields(d, ['address', 'amount', 'is_change_addr_verified']); seen.changeAddr = f.address; seen.changeOk = f.is_change_addr_verified; }
+    if (s.view === 'SSPSBTAddressDetailsView') seen.payAddr = (await screenFields(d, ['address'])).address;
+    await d.press('PRESS');
+  }
+  throw new Error('the review never reached Sign Transaction: ' + JSON.stringify(await d.state()));
+}
+SCEN.own_psbt = async (t, d, ctx, page) => {
+  const asked = []; page.on('dialog', (dl) => { if (/real seed/.test(dl.message())) asked.push(dl.message()); });
+  await ownLoad(t, d, page);
+  const P = ownPsbt(), pre = await ownHold(page, P.b64);
+  t(pre.parts >= 2 && /Held up to the device's camera: your PSBT/.test(pre.st) && pre.warns.some((w) => /^1 of 2 inputs belong to seed /.test(w)) && pre.warns.some((w) => w.startsWith('Seed ' + FPR + ' can sign. The device will show 500,000 sats in from 2 inputs, 300,000 sats to 1 address, 198,500 sats back as change, and a fee of 1,500 sats')),
+    'own PSBT pasted as base64: held up as an animated UR (' + pre.parts + ' parts); the page says 1 of 2 inputs is this seed\'s and what the device will show (' + pre.warns.join(' | ').slice(0, 300) + ')');
+  const seen = await ownReview(d);
+  t(seen.num_inputs === 2 && seen.spend_amount === 300000 && seen.change_amount === 198500 && seen.fee_amount === 1500 && seen.input === 500000 && seen.payAddr === P.pay && seen.changeAddr === P.change && seen.changeOk === true,
+    'own PSBT: the device reviews it as SeedSigner does: 500,000 in, 300,000 to ' + P.pay.slice(0, 12) + '..., change 198,500 verified at ' + P.change.slice(0, 12) + '..., fee 1,500 (' + JSON.stringify(seen).slice(0, 200) + ')');
+  // No to the question: nothing is signed, the device says Not signed and goes back to Sign Transaction
+  await page.evaluate(() => { window.__c0 = window.confirm; window.confirm = (q) => { window.__q = q; return false; }; });
+  await d.press('PRESS'); let s = await d.waitView('SSErrorView');
+  const no = await page.evaluate(() => { window.confirm = window.__c0; return { q: window.__q, st: document.getElementById('ssOwnStatus').textContent, sigs: SSPSBTParser.sig_count(SSController._instance.psbt) }; });
+  t(/^Sign this transaction with your real seed /.test(no.q) && /This computer looks offline/.test(no.q) && /Not signed/.test(s.headline) && no.sigs === 0 && /^Not signed: you chose not to sign/.test(no.st), 'own PSBT: No to the page\'s question signs nothing; the device shows Not signed and the page says so (' + s.headline + ')');
+  await d.press('PRESS'); await d.waitView('SSPSBTFinalizeView');
+  await d.press('PRESS'); await d.waitView('SSPSBTSignedQRDisplayView');   // Yes (Playwright answers the question)
+  t(asked.length === 1 && /This computer looks offline/.test(asked[0]) && /Check every address and amount/.test(asked[0]), 'own PSBT: before it signs, the page asks to confirm the outputs are checked and the computer is offline (' + (asked[0] || '').slice(0, 80) + '...)');
+  const r = await readUR(page);
+  const out = await until(async () => { const x = await ownState(page); return x.out ? x : null; }, 30000);
+  const signedB = r ? r.bytes : null, outB = out ? b64b(out.out.text) : null;
+  t(!!r && !!outB && Buffer.compare(Buffer.from(signedB), Buffer.from(outB)) === 0, 'own PSBT: the animated QR on the device (read with jsqr and bc-ur, ' + (r ? r.parts : 0) + ' parts) is byte for byte the base64 the page gives to copy (' + (outB ? outB.length : 0) + ' bytes)');
+  t(!!out && /^Signed by seed /.test(out.out.say) && /ss-banner ok/.test(out.out.cls) && /checked by this page's own code: valid/.test(out.out.say) && !/PRACTICE/.test(out.out.say), 'own PSBT: a real seed\'s signature is not marked PRACTICE; the page checked it (' + (out ? out.out.say.slice(0, 120) : '') + ')');
+  // the .psbt file is the same bytes
+  const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), page.click('#ssOwnSave')]);
+  const fb = fs.readFileSync(await dl.path());
+  t(outB && Buffer.compare(fb, Buffer.from(outB)) === 0 && dl.suggestedFilename() === 'voidforge-signed-' + FPR + '.psbt', 'own PSBT: SAVE .PSBT FILE saves the same bytes as ' + dl.suggestedFilename());
+  // independent checks: btc-signer's own signature (low R), noble verify, and the transaction finalizes with the other signer's signature
+  if (signedB) {
+    const orig = btc.Transaction.fromPSBT(b64b(P.b64)), sg = btc.Transaction.fromPSBT(signedB), ps = sg.getInput(0).partialSig || [], ps1 = sg.getInput(1).partialSig || [];
+    const h = orig.preimageWitnessV0(0, btc.OutScript.encode({ type: 'pkh', hash: btc.OutScript.decode(orig.getInput(0).witnessUtxo.script).hash }), btc.SigHash.ALL, 400000n);
+    // the signature a real signer makes: RFC 6979, low S, ground (extra data 1, 2, ...) until the DER form is at most 70 bytes, as embit
+    // (SeedSigner) and Bitcoin Core do (btc-signer's own grinding starts at 0, so it is not the reference)
+    let sg = secp256k1.sign(h, P.k0.privateKey, { prehash: false, lowS: true }), gn = 1;
+    while (sg.toDERRawBytes().length > 70) { const e = new Uint8Array(32); e[0] = gn & 255; gn++; sg = secp256k1.sign(h, P.k0.privateKey, { prehash: false, lowS: true, extraEntropy: e }); }
+    const want = Uint8Array.from([...sg.toDERRawBytes(), 1]);
+    t(ps.length === 1 && ps1.length === 0 && hx(ps[0][1]) === hx(want) && secp256k1.verify(ps[0][1].slice(0, -1), h, P.k0.publicKey, { prehash: false, format: 'der', lowS: true }), 'own PSBT: input 0 (this seed) has the signature a real signer makes (RFC 6979, low S, low R as embit and Bitcoin Core grind) byte for byte, which verifies with noble (BIP-143, SIGHASH_ALL); input 1 (another seed) is left for its signer (' + JSON.stringify({ n: ps.length, n1: ps1.length, same: ps.length ? hx(ps[0][1]) === hx(want) : null, got: ps.length ? hx(ps[0][1]).slice(0, 20) : '', want: hx(want).slice(0, 20) }) + ')');
+    const fin = btc.Transaction.fromPSBT(b64b(P.b64)); fin.combine(sg); fin.signIdx(R2.C.derive("m/84'/0'/0'/0/0").privateKey, 1);
+    let ok2 = false; try { fin.finalize(); ok2 = fin.extract().length > 0; } catch (e) { ok2 = false; }
+    t(ok2, 'own PSBT: btc-signer combines it, the other signer signs input 1, and the transaction finalizes');
+  }
+  await d.press('PRESS'); await d.waitView('SSMainMenuView');
+  // the wrong network: a Testnet PSBT while the device is on Mainnet is refused at Approve
+  const PT = ownPsbt({ test: true, mixed: false }), wt = await ownHold(page, PT.b64);
+  t(wt.warns.some((w) => /^!This PSBT is for Testnet or Regtest, but the device is set to Mainnet\./.test(w)), 'wrong network: the page warns before the scan (' + (wt.warns[0] || '').slice(0, 80) + ')');
+  const n0 = asked.length; await ownReview(d); await d.press('PRESS'); const wv = await d.waitView('SSErrorView');
+  const wst = (await ownState(page)).st, wsig = await d.ev(() => SSPSBTParser.sig_count(SSController._instance.psbt));
+  t(/Wrong network/.test(wv.headline) && wsig === 0 && asked.length === n0 && /^Not signed: This PSBT is for Testnet or Regtest, but the device is set to Mainnet\./.test(wst), 'wrong network: Approve on the device is refused with "Wrong network", nothing signed, no question asked (' + wst.slice(0, 90) + ')');
+  await d.press('PRESS'); await d.waitView('SSPSBTFinalizeView'); await d.back('SSMainMenuView');
+  // re-hide covers the signed output while the real seed is loaded; CLEAR ALL wipes the box, the output and the device
+  await ownHold(page, P.b64);
+  const cov = await page.evaluate(() => { ssOwnShow({ kind: 'psbt', bytes: new Uint8Array(3), fp: 'x', pub: false, text: 'cHNidP8=', say: 'x', cls: 'ok' }); const had = rhAny(); rhHide('tab'); const e = document.getElementById('ssOwnOut'); const r = { had, cov: e.classList.contains('rh-cov') }; rhShow(); return r; });
+  t(cov.had && cov.cov, 're-hide: the signed output next to a real seed is covered (' + JSON.stringify(cov) + ')');
+  await page.evaluate(() => clearAll()); await until(() => d.ev(() => !SSController._instance), 30000);
+  const w = await page.evaluate(() => ({ inp: document.getElementById('ssOwnIn').value, msg: document.getElementById('ssMsgIn').value, out: document.getElementById('ssOwnOut').hidden, text: document.getElementById('ssOwnOutText').value, own: ssOwn.out, psbt: ssOwn.psbt, held: !!ssLearnCam.frames }));
+  t(!w.inp && !w.msg && w.out && !w.text && !w.own && !w.psbt && !w.held, 'CLEAR ALL: your PSBT box, the message box, the signed output and what was held up are wiped (' + JSON.stringify(w) + ')');
+};
+// online: the question carries the ONLINE warning (and a real seed's load asks first: Playwright says yes to both)
+SCEN.own_online = async (t, d, ctx, page) => {
+  const asked = []; page.on('dialog', (dl) => asked.push(dl.message()));
+  await d.waitView('SSMainMenuView');
+  t(await page.evaluate(() => navigator.onLine) === true, 'own (online): this browser context is online');
+  await page.evaluate((m) => vfSignerLoadSeed(m), REAL_MN);
+  await until(() => d.ev(() => /^Loaded: /.test(document.getElementById('ssLoadStatus').textContent) && !ssAuto.on), 120000); await d.back('SSMainMenuView');
+  const P = ownPsbt({ mixed: false }); await ownHold(page, P.b64); await ownReview(d);
+  await d.press('PRESS'); await d.waitView('SSPSBTSignedQRDisplayView');
+  const q = asked.find((x) => /^Sign this transaction/.test(x)) || '';
+  t(/THIS COMPUTER IS ONLINE\. A browser is not a hardware signer/.test(q), 'own (online): signing a real seed\'s PSBT online asks with the ONLINE warning, and Yes signs (' + q.slice(0, 60) + '...)');
+  const out = await until(async () => { const x = await ownState(page); return x.out ? x : null; }, 30000);
+  t(!!out && /Signed by seed /.test(out.out.say), 'own (online): the signed PSBT comes back to the page');
+  await d.press('PRESS'); await d.waitView('SSMainMenuView');
+  // a message, signed online with the real seed: the question, then the signature, checked here by public key recovery (noble)
+  await d.pick(/^Settings$/); await d.pick(/^Advanced$/); await d.pick(/Message signing/); await d.pick(/^Enabled$/); await d.back('SSMainMenuView');
+  const MSG = 'VOIDFORGE v2.17.0 real message';
+  await page.fill('#ssMsgIn', MSG); await page.fill('#ssMsgIdx', '3'); await page.click('#ssMsgGo');
+  await d.pick(/^Scan$/); await d.waitView('SSSeedSelectSeedView'); await d.pick(new RegExp('^' + FPR));
+  for (let n = 0; n < 6; n++) { const s = await d.waitView((await d.state()).view); if (s.view === 'SSSeedSignMessageSignedMessageQRView') break; await d.press('PRESS'); }
+  const qm = asked.find((x) => /^This computer is online\. Sign this message/.test(x));
+  const mo = await until(async () => { const x = await ownState(page); return x.out && /BEGIN BITCOIN SIGNED MESSAGE/.test(x.out.text) ? x : null; }, 30000);
+  const k = REAL.derive("m/84'/0'/0'/0/3"), addr = btc.p2wpkh(k.publicKey).address;
+  const m = mo && /-----BEGIN BITCOIN SIGNED MESSAGE-----\n([\s\S]*)\n-----BEGIN SIGNATURE-----\n(\S+)\n(\S+)\n-----END BITCOIN SIGNED MESSAGE-----/.exec(mo.out.text);
+  t(!!qm && !!m && m[1] === MSG && m[2] === addr && checkMessageSig(m[3], MSG, k.publicKey, 'p2wpkh').ok && /checks out/.test(mo.out.say), 'own (online): a message signed with receive address #3 (' + addr.slice(0, 12) + '...) after the question; the signature recovers to its key (noble) and the page checked it');
+  const qr = await d.readQR();
+  t(!!qr && m && qr.text === m[3], 'own: the device\'s QR holds the same signature the page gives to copy');
+};
 // ================================================================ run
-SCEN.tools.clock = true; SCEN.offline.online = true;
-const order = ['lessons_dice', 'lessons_tx', 'lessons_seed', 'practice_tx', 'damascus', 'forge', 'loadreal', 'loadedge', 'phone', 'find', 'review', 'psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'settings_wipe', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
+SCEN.tools.clock = true; SCEN.offline.online = true; SCEN.own_online.online = true;
+const order = ['own_psbt', 'own_online', 'lessons_dice', 'lessons_tx', 'lessons_seed', 'practice_tx', 'damascus', 'forge', 'loadreal', 'loadedge', 'phone', 'find', 'review', 'psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'settings_wipe', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
 const want = process.env.SCEN ? process.env.SCEN.split(',') : order;
 const results = [];
 async function runScenario(browser, name) {

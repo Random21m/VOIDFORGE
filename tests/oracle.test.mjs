@@ -1107,4 +1107,164 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
   R.ok(bad === 0, `${n} master xprv keys with custom account paths (such as m/0'): the first addresses equal @scure's`);
 }
 
+// v2.17.0: the practice signer signs for real (tools/simulator/ss_psbt.js, the device's own Approve transaction, with the page's
+// signing rules from ss_own.js). Each PSBT is built here with @scure/btc-signer for a seed that is not public (its words from SHA-256 of
+// a fixed text, @scure/bip39), signed by the device's own view (PSBTFinalizeView: sign_with, then SeedSigner's trim), and compared:
+// the trimmed PSBT must be exactly SeedSigner's form (written here from BIP-174: the unsigned transaction, then only the signatures);
+// each ECDSA signature must be byte for byte the one a real signer makes (RFC 6979, low S, ground for low R as embit and Bitcoin Core do) and verify with @noble/curves against btc-signer's
+// signature hash; each Schnorr signature must verify (BIP-340, noble) and equal a BIP-340 signature made here with the nonce rule
+// SeedSigner's libsecp256k1 uses without aux randomness (t = d); and btc-signer must combine, finalize and extract the transaction.
+{
+  const E = (x) => w.eval(x), P8 = (b) => new (E('Uint8Array'))(b), H = (b) => Buffer.from(b).toString('hex'), HP = 0x80000000;
+  const SC = E('SSSettingsConstants'), SSSeed = E('SSSeed');
+  const mn = (t) => entropyToMnemonic(sha(t).slice(0, 16), wordlist), MN = mn('VOIDFORGE v2.17.0 oracle: a real seed'), MB = mn('cosigner B'), MC = mn('cosigner C');
+  const rootOf = (m) => HDKey.fromMasterSeed(mnemonicToSeedSync(m, '')), RA = rootOf(MN), RB = rootOf(MB), RC = rootOf(MC);
+  const der = (r, p) => ({ fingerprint: r.fingerprint, path: p.split('/').slice(1).map((x) => x.endsWith("'") ? parseInt(x) + HP : +x) });
+  const tid = (n) => Uint8Array.from({ length: 32 }, (_, i) => (i * 11 + n * 29) & 255);
+  const seed = await SSSeed.create({ mnemonic: MN });
+  R.ok(!w.pubKind(MN), 'v2.17.0 real signing: the oracle seed is not public (pubKind empty), so the page\'s signing rules apply');
+  const navOn = Object.getOwnPropertyDescriptor(w.navigator, 'onLine'); Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => false });
+  const asked = []; w.confirm = (q) => { asked.push(q); return true; };
+  const devSign = async (bytes, net = SC.MAINNET, sd = seed) => {
+    const ps = E('SSPSBT').parse(P8(bytes)), c = { psbt: ps, psbt_seed: sd, psbt_parser: await E('SSPSBTParser').create(ps, sd, net) };
+    const fv = Object.create(E('SSPSBTFinalizeView').prototype); fv.controller = c; fv.settings = { get_value: () => net }; fv.run_screen = async () => 0;
+    const dest = await fv.run(); try { c.psbt_parser.root.wipe(); } catch (e) { /* none */ }
+    return { view: dest && dest.View_cls ? dest.View_cls.name : '', args: dest && dest.view_args, out: c.psbt !== ps ? Uint8Array.from(c.psbt.serialize()) : null };
+  };
+  // SeedSigner's trimmed PSBT, written here: magic, {0x00: unsigned tx}, then per input its partial sigs (0x02 + key) or final witness (0x08)
+  const cs = (n) => n < 253 ? [n] : [253, n & 255, n >> 8];
+  const kv = (k, v) => [...cs(k.length), ...k, ...cs(v.length), ...v];
+  const trimmed = (unsigned, ins, nOut) => Uint8Array.from([0x70, 0x73, 0x62, 0x74, 0xff, ...kv([0], unsigned), 0,
+    ...ins.flatMap((x) => [...(x.wit ? kv([8], [...cs(x.wit.length), ...x.wit.flatMap((it) => [...cs(it.length), ...it])]) : x.sigs.flatMap(([pub, sig]) => kv([2, ...pub], sig))), 0]), ...Array(nOut).fill(0)]);
+  // the ECDSA signature a real signer makes: RFC 6979, low S, and ground for a DER signature of at most 70 bytes with the extra data
+  // 1, 2, 3 ... (32 bytes, little endian), as embit's PrivateKey.sign (SeedSigner) and Bitcoin Core do. (btc-signer's own lowR grinding
+  // starts its counter at 0, so it gives another signature whenever the first R is high: it is not used as the reference here.)
+  const lowR = (h, priv) => { let sg = secp256k1.sign(h, priv, { prehash: false, lowS: true }), n = 1;
+    while (sg.toDERRawBytes().length > 70) { const e = new Uint8Array(32); e[0] = n & 255; e[1] = (n >> 8) & 255; n++; sg = secp256k1.sign(h, priv, { prehash: false, lowS: true, extraEntropy: e }); }
+    return Uint8Array.from([...sg.toDERRawBytes(), 1]); };
+  const bip340 = (m, priv) => {   // BIP-340 with t = d (no aux randomness), from noble's primitives only
+    const G = secp256k1.ProjectivePoint.BASE, N = secp256k1.CURVE.n, b2n = (b) => BigInt('0x' + H(b)), n2b = (n) => Uint8Array.from(Buffer.from(n.toString(16).padStart(64, '0'), 'hex'));
+    let d = b2n(priv); const P = G.multiply(d); if (P.toAffine().y & 1n) d = N - d;
+    const px = n2b(P.toAffine().x), k0 = b2n(schnorr.utils.taggedHash('BIP0340/nonce', n2b(d), px, m)) % N, Rp = G.multiply(k0), k = Rp.toAffine().y & 1n ? N - k0 : k0, rx = n2b(Rp.toAffine().x);
+    const e = b2n(schnorr.utils.taggedHash('BIP0340/challenge', rx, px, m)) % N; return Uint8Array.from([...rx, ...n2b((k + e * d) % N)]);
+  };
+  const tweakPriv = (priv) => { const G = secp256k1.ProjectivePoint.BASE, N = secp256k1.CURVE.n, b2n = (b) => BigInt('0x' + H(b)); let d = b2n(priv); const P = G.multiply(d); if (P.toAffine().y & 1n) d = N - d;
+    const px = Uint8Array.from(Buffer.from(P.toAffine().x.toString(16).padStart(64, '0'), 'hex')); return Uint8Array.from(Buffer.from(((d + b2n(schnorr.utils.taggedHash('TapTweak', px))) % N).toString(16).padStart(64, '0'), 'hex')); };
+  const finalOk = (b64, signed, more = () => {}) => { try { const f = btc.Transaction.fromPSBT(b64, { allowUnknownOutputs: true }); f.combine(btc.Transaction.fromPSBT(signed, { allowUnknownOutputs: true })); more(f); f.finalize(); return f.extract().length > 0; } catch (e) { return 'error: ' + e.message; } };
+  const ext = btc.p2wpkh(RB.derive("m/84'/0'/9'/0/0").publicKey).script;
+  // the single-key script types
+  const single = [
+    ['P2WPKH (native SegWit)', "m/84'/0'/0'/0/5", (pub) => btc.p2wpkh(pub)],
+    ['P2SH-P2WPKH (nested SegWit)', "m/49'/0'/0'/0/1", (pub) => btc.p2sh(btc.p2wpkh(pub))],
+    ['P2PKH (legacy, full previous transaction)', "m/44'/0'/0'/0/7", (pub) => btc.p2pkh(pub)],
+  ];
+  for (const [name, path, payOf] of single) {
+    const k = RA.derive(path), pay = payOf(k.publicKey), tx = new btc.Transaction(), amount = 750000n;
+    const inp = { txid: tid(1), index: 0, bip32Derivation: [[k.publicKey, der(RA, path)]] };
+    if (/P2PKH/.test(name)) { const prev = new btc.Transaction(); prev.addOutput({ script: pay.script, amount }); prev.addInput({ txid: tid(9), index: 0, finalScriptSig: Uint8Array.of(0x51) }); inp.txid = prev.id; inp.nonWitnessUtxo = prev.toBytes(true, false); }
+    else inp.witnessUtxo = { script: pay.script, amount };
+    if (pay.redeemScript) inp.redeemScript = pay.redeemScript;
+    tx.addInput(inp); tx.addOutput({ script: ext, amount: 740000n });
+    const b64 = tx.toPSBT(0), r = await devSign(b64);
+    const sc = /P2PKH/.test(name) ? pay.script : btc.OutScript.encode({ type: 'pkh', hash: /P2SH/.test(name) ? pay.redeemScript.slice(2) : pay.script.slice(2) });
+    const h = /P2PKH/.test(name) ? tx.preimageLegacy(0, sc, btc.SigHash.ALL) : tx.preimageWitnessV0(0, sc, btc.SigHash.ALL, amount);
+    const sig = lowR(h, k.privateKey), want = trimmed(tx.unsignedTx, [{ sigs: [[k.publicKey, sig]] }], 1);
+    R.ok(r.view === 'SSPSBTSignedQRDisplayView' && !!r.out && H(r.out) === H(want), 'v2.17.0 real signing, ' + name + ': the signed PSBT is exactly SeedSigner\'s trimmed form with the low-R signature a real signer makes (' + (r.out ? r.out.length : 0) + ' bytes)');
+    R.ok(secp256k1.verify(sig.slice(0, -1), h, k.publicKey, { prehash: false, format: 'der', lowS: true }) && finalOk(b64, r.out || new Uint8Array()) === true, 'v2.17.0 real signing, ' + name + ': the signature verifies with noble (btc-signer\'s sighash), and btc-signer finalizes and extracts the transaction');
+  }
+  // P2TR key path: SIGHASH_DEFAULT (64 bytes) and SIGHASH_ALL (65 bytes)
+  for (const sh of [undefined, 1]) {
+    const path = "m/86'/0'/0'/0/2", k = RA.derive(path), x = k.publicKey.slice(1), pay = btc.p2tr(x), tx = new btc.Transaction(), amount = 330000n;
+    tx.addInput({ txid: tid(2), index: 1, witnessUtxo: { script: pay.script, amount }, tapInternalKey: x, tapBip32Derivation: [[x, { hashes: [], der: der(RA, path) }]], ...(sh ? { sighashType: sh } : {}) });
+    tx.addOutput({ script: ext, amount: 320000n });
+    const b64 = tx.toPSBT(0), r = await devSign(b64), h = tx.preimageWitnessV1(0, [pay.script], sh || btc.SigHash.DEFAULT, [amount]);
+    const want = bip340(h, tweakPriv(k.privateKey)), wit = sh ? Uint8Array.from([...want, sh]) : want;
+    R.ok(!!r.out && H(r.out) === H(trimmed(tx.unsignedTx, [{ wit: [wit] }], 1)) && schnorr.verify(want, h, pay.tweakedPubkey), 'v2.17.0 real signing, P2TR key path, ' + (sh ? 'SIGHASH_ALL (65 bytes)' : 'SIGHASH_DEFAULT (64 bytes)') + ': SeedSigner\'s trimmed form with the final witness; the signature verifies with noble (BIP-340, btc-signer\'s sighash, the tweaked key) and equals a BIP-340 signature with no aux randomness (nonce from the secret key itself, as SeedSigner\'s libsecp256k1)');
+    const f = btc.Transaction.fromPSBT(b64); let okF = false; try { f.updateInput(0, { tapKeySig: wit }); f.finalize(); okF = f.extract().length > 0; } catch (e) { okF = false; }
+    R.ok(okF, 'v2.17.0 real signing, P2TR key path (' + (sh ? 'ALL' : 'DEFAULT') + '): btc-signer finalizes and extracts the transaction');
+  }
+  // 2-of-3 multisig, P2WSH and P2SH-P2WSH (sortedmulti at m/48'/0'/0'/2' and /1'), the global xpubs as Sparrow writes them
+  for (const [name, script] of [['P2WSH 2-of-3', 2], ['P2SH-P2WSH 2-of-3', 1]]) {
+    const acct = "m/48'/0'/0'/" + script + "'", hds = [RA, RB, RC].map((r) => r.derive(acct));
+    const ms = (branch, i) => { const ks = hds.map((a, j) => ({ j, pub: a.deriveChild(branch).deriveChild(i).publicKey })).sort((a, b) => Buffer.compare(Buffer.from(a.pub), Buffer.from(b.pub)));
+      const inner = btc.p2wsh(btc.p2ms(2, ks.map((x) => x.pub))); return { pay: script === 2 ? inner : btc.p2sh(inner), ders: hds.map((a, j) => [a.deriveChild(branch).deriveChild(i).publicKey, der([RA, RB, RC][j], acct + '/' + branch + '/' + i)]) }; };
+    const i0 = ms(0, 3), c0 = ms(1, 1), tx = new btc.Transaction();
+    tx.addInput({ txid: tid(3), index: 0, witnessUtxo: { script: i0.pay.script, amount: 2000000n }, witnessScript: i0.pay.witnessScript, ...(i0.pay.redeemScript ? { redeemScript: i0.pay.redeemScript } : {}), bip32Derivation: i0.ders });
+    tx.addOutput({ script: ext, amount: 1200000n });
+    tx.addOutput({ script: c0.pay.script, amount: 797000n, witnessScript: c0.pay.witnessScript, ...(c0.pay.redeemScript ? { redeemScript: c0.pay.redeemScript } : {}), bip32Derivation: c0.ders });
+    tx.global.xpub = hds.map((a, j) => [{ version: 0x0488b21e, depth: a.depth, parentFingerprint: a.parentFingerprint, childNumber: a.index, chainCode: a.chainCode, publicKey: a.publicKey }, der([RA, RB, RC][j], acct)]);
+    const b64 = tx.toPSBT(0), r = await devSign(b64), kA = RA.derive(acct + '/0/3');
+    const h = tx.preimageWitnessV0(0, i0.pay.witnessScript, btc.SigHash.ALL, 2000000n), sig = lowR(h, kA.privateKey);
+    R.ok(!!r.out && H(r.out) === H(trimmed(tx.unsignedTx, [{ sigs: [[kA.publicKey, sig]] }], 2)) && secp256k1.verify(sig.slice(0, -1), h, kA.publicKey, { prehash: false, format: 'der', lowS: true }), 'v2.17.0 real signing, ' + name + ': one partial signature added (this seed\'s), the real signer\'s byte for byte (RFC 6979, low R), verified with noble; SeedSigner\'s trimmed form');
+    R.ok(finalOk(b64, r.out || new Uint8Array(), (f) => f.signIdx(RB.derive(acct + '/0/3').privateKey, 0)) === true, 'v2.17.0 real signing, ' + name + ': with cosigner B\'s signature (btc-signer) the transaction finalizes and extracts');
+  }
+  // mixed inputs: one of this seed, one of another; the device signs only its own
+  {
+    const pa = "m/84'/0'/0'/0/1", pb = "m/84'/0'/0'/0/1", ka = RA.derive(pa), kb = RB.derive(pb), tx = new btc.Transaction();
+    tx.addInput({ txid: tid(4), index: 0, witnessUtxo: { script: btc.p2wpkh(ka.publicKey).script, amount: 100000n }, bip32Derivation: [[ka.publicKey, der(RA, pa)]] });
+    tx.addInput({ txid: tid(5), index: 2, witnessUtxo: { script: btc.p2wpkh(kb.publicKey).script, amount: 200000n }, bip32Derivation: [[kb.publicKey, der(RB, pb)]] });
+    tx.addOutput({ script: ext, amount: 299000n });
+    const b64 = tx.toPSBT(0), r = await devSign(b64), sig = lowR(tx.preimageWitnessV0(0, btc.OutScript.encode({ type: 'pkh', hash: btc.p2wpkh(ka.publicKey).script.slice(2) }), btc.SigHash.ALL, 100000n), ka.privateKey);
+    R.ok(!!r.out && H(r.out) === H(trimmed(tx.unsignedTx, [{ sigs: [[ka.publicKey, sig]] }, { sigs: [] }], 1)) && finalOk(b64, r.out, (f) => f.signIdx(kb.privateKey, 1)) === true, 'v2.17.0 real signing, mixed inputs: only this seed\'s input is signed (the real signer\'s signature); with the other seed\'s signature the transaction finalizes');
+    const rv = (await E('ssOwnReview')(P8(b64))).W.map((x) => x.t).join(' | '), fa = RA.fingerprint.toString(16).padStart(8, '0'), fb = RB.fingerprint.toString(16).padStart(8, '0');
+    R.ok(/^No seed is loaded on the device yet\./.test(rv) && rv.includes('Its inputs name ' + fa + ', ' + fb + '.'), 'v2.17.0: with no seed on the device, the page says so and names the inputs\' fingerprints (' + fa + ', ' + fb + ', @scure/bip32)');
+  }
+  // sighash types SeedSigner does not sign: refused (Signing Failed on the device, a warning on the page)
+  for (const sh of [2, 3, 0x81]) {
+    const path = "m/84'/0'/0'/0/0", k = RA.derive(path), tx = new btc.Transaction();
+    tx.addOutput({ script: ext, amount: 89000n });   // (btc-signer takes no output after an input whose sighash type covers the outputs)
+    tx.addInput({ txid: tid(6), index: 0, witnessUtxo: { script: btc.p2wpkh(k.publicKey).script, amount: 90000n }, bip32Derivation: [[k.publicKey, der(RA, path)]], sighashType: sh });
+    const b64 = tx.toPSBT(0), r = await devSign(b64);
+    R.ok(r.view === 'SSPSBTSigningErrorView' && !r.out, 'v2.17.0 real signing: sighash ' + sh + ' is not signed, as SeedSigner (the device says Signing Failed)');
+  }
+  // the wrong network: refused at Approve, nothing signed, no question asked
+  for (const [coin, net, nm] of [[1, SC.MAINNET, 'a Testnet PSBT on a Mainnet device'], [0, SC.TESTNET, 'a Mainnet PSBT on a Testnet device']]) {
+    const path = "m/84'/" + coin + "'/0'/0/0", k = RA.derive(path), tx = new btc.Transaction(); asked.length = 0;
+    tx.addInput({ txid: tid(7), index: 0, witnessUtxo: { script: btc.p2wpkh(k.publicKey).script, amount: 90000n }, bip32Derivation: [[k.publicKey, der(RA, path)]] });
+    tx.addOutput({ script: ext, amount: 89000n });
+    const r = await devSign(tx.toPSBT(0), net);
+    R.ok(r.view === 'SSErrorView' && r.args && r.args.status_headline === 'Wrong network' && !r.out && !asked.length, 'v2.17.0 real signing: ' + nm + ' is refused ("Wrong network"), nothing signed');
+  }
+  // the question before a real seed signs: offline and online wording; No signs nothing
+  {
+    const path = "m/84'/0'/0'/0/0", k = RA.derive(path), tx = new btc.Transaction();
+    tx.addInput({ txid: tid(8), index: 0, witnessUtxo: { script: btc.p2wpkh(k.publicKey).script, amount: 90000n }, bip32Derivation: [[k.publicKey, der(RA, path)]] });
+    tx.addOutput({ script: ext, amount: 89000n });
+    asked.length = 0; let r = await devSign(tx.toPSBT(0));
+    R.ok(!!r.out && asked.length === 1 && /This computer looks offline/.test(asked[0]), 'v2.17.0 real signing: a real seed signs after a yes (offline wording)');
+    Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => true }); w.confirm = (q) => { asked.push(q); return false; }; asked.length = 0;
+    r = await devSign(tx.toPSBT(0));
+    R.ok(!r.out && r.view === 'SSErrorView' && r.args.status_headline === 'Not signed' && /THIS COMPUTER IS ONLINE/.test(asked[0] || ''), 'v2.17.0 real signing: online, the question warns that the computer is online, and No signs nothing');
+    w.confirm = (q) => { asked.push(q); return true; }; Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => false });
+    const pub = await SSSeed.create({ mnemonic: 'abandon '.repeat(11) + 'about' }); asked.length = 0;
+    const ka = HDKey.fromMasterSeed(mnemonicToSeedSync('abandon '.repeat(11) + 'about', '')).derive(path), t2 = new btc.Transaction();
+    t2.addInput({ txid: tid(8), index: 0, witnessUtxo: { script: btc.p2wpkh(ka.publicKey).script, amount: 90000n }, bip32Derivation: [[ka.publicKey, der(HDKey.fromMasterSeed(mnemonicToSeedSync('abandon '.repeat(11) + 'about', '')), path)]] }); t2.addOutput({ script: ext, amount: 89000n });
+    r = await devSign(t2.toPSBT(0), SC.MAINNET, pub);
+    R.ok(!!r.out && !asked.length, 'v2.17.0 real signing: a public seed (PRACTICE) signs with no question');
+  }
+  // messages: SeedSigner's "signmessage <path> ascii:<message>", signed by the device's view; verified by public key recovery (noble)
+  for (const [path, kind] of [["m/84h/0h/0h/0/4", 'wpkh'], ["m/49h/0h/0h/0/0", 'sh'], ["m/44h/0h/0h/0/9", 'pkh']]) {
+    const msg = 'Real message ' + kind + '\nsecond line', v = Object.create(E('SSSeedSignMessageSignedMessageQRView').prototype);
+    v._ss_seed = seed; v._ss_derivation_path = path; v._ss_message = msg; v.settings = { get_value: () => SC.MAINNET }; v.controller = { resume_main_flow: null, sign_message_data: {} }; v.run_screen = async () => 0;
+    await v.run();
+    const sig = Buffer.from(v.signed_message || '', 'base64'), k = RA.derive(path.replace(/h/g, "'"));
+    const vs = (b) => Buffer.concat([Buffer.from([b.length]), b]), hm = sha(sha(Buffer.concat([vs(Buffer.from('Bitcoin Signed Message:\n')), vs(Buffer.from(msg))])));
+    let ok = false; try { ok = sig.length === 65 && sig[0] >= 31 && sig[0] <= 34 && H(secp256k1.Signature.fromCompact(sig.subarray(1)).addRecoveryBit(sig[0] - 31).recoverPublicKey(hm).toRawBytes(true)) === H(k.publicKey); } catch (e) { ok = false; }
+    R.ok(ok, 'v2.17.0 real message signing (' + path + '): the Bitcoin Signed Message signature recovers to the key at that path (noble)');
+  }
+  // what the page reads: a PSBT as base64, hex, UR parts (bc-ur) and BBQr parts (bbqr) gives the same bytes; seeds and private keys are refused
+  {
+    const k = RA.derive("m/84'/0'/0'/0/0"), tx = new btc.Transaction();
+    tx.addInput({ txid: tid(9), index: 0, witnessUtxo: { script: btc.p2wpkh(k.publicKey).script, amount: 90000n }, bip32Derivation: [[k.publicKey, der(RA, "m/84'/0'/0'/0/0")]] }); tx.addOutput({ script: ext, amount: 89000n });
+    const raw = tx.toPSBT(0), enc = new UREncoder(new UR(Buffer.from(E('CB').bytes(Array.from(raw))), 'crypto-psbt'), 60, 0);
+    const ur = []; for (let i = 0; i < enc.fragmentsLength; i++) ur.push(enc.nextPart());
+    const bb = splitQRs(raw, 'P', { encoding: 'Z', minVersion: 5, maxVersion: 10 }).parts;
+    const got = ['cHNidP8' === base64.encode(raw).slice(0, 7) ? base64.encode(raw) : '', bhex.encode(raw), ur.join('\n'), bb.join('\n')].map((x) => { const r2 = w.ssOwnRead(x); return r2.kind === 'psbt' ? H(r2.bytes) : r2.error; });
+    R.ok(got.every((x) => x === H(raw)), 'v2.17.0: a PSBT pasted as base64, hex, UR crypto-psbt parts (bc-ur) or BBQr parts (bbqr) is read as the same bytes (' + got.map((x) => x.slice(0, 12)).join(', ') + ')');
+    const kinds = [btc.p2wpkh(k.publicKey).address, 'signmessage m/84h/0h/0h/0/0 ascii:hi', 'wsh(sortedmulti(2,[' + RA.fingerprint.toString(16).padStart(8, '0') + "/48h/0h/0h/2h]" + RA.derive("m/48'/0'/0'/2'").publicExtendedKey + '/0/*,' + RB.derive("m/48'/0'/0'/2'").publicExtendedKey + '/0/*))', MN, RA.privateExtendedKey].map((x) => { const r2 = w.ssOwnRead(x); return r2.kind || 'error'; });
+    R.ok(JSON.stringify(kinds) === JSON.stringify(['address', 'msg', 'descriptor', 'error', 'error']), 'v2.17.0: an address, a signmessage request and a sortedmulti descriptor are held up as such; seed words and an xprv are refused (' + kinds.join(', ') + ')');
+  }
+  w.confirm = () => true; if (navOn) Object.defineProperty(w.navigator, 'onLine', navOn); else delete w.navigator.onLine;
+}
+
 R.done('oracle');
