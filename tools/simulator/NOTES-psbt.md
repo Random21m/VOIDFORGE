@@ -43,7 +43,8 @@ next to the device is held up to its camera by the practice wallet (a PSBT as an
   SSSeedSignMessageSignedMessageQRView.run (before sign_message): ssOwnSignGate. A PSBT whose key paths or global xpubs name another
   network than the device's setting is refused ("Wrong network" on SeedSigner's own ErrorView, Back returns to Sign Transaction). A
   seed that is not public (pubKind) signs a PSBT only after a yes to the page's confirm() (outputs checked; offline, or a warning
-  that the computer is online), and a message while online only after a yes; No shows "Not signed" and signs nothing. A public
+  that the computer is online), and a message only after a yes too (v2.17.0 review: offline as well); No shows "Not signed" and
+  signs nothing. A public
   seed and the made-up practice transaction sign with no question.
 - The signed PSBT offered as text and file is controller.psbt after PSBTParser.trim, the bytes the device's UR encoder shows; the
   untrimmed PSBT (the parser's, signed in place) is checked with the page's inspectPsbt and psbtSigCheck first.
@@ -52,3 +53,19 @@ next to the device is held up to its camera by the practice wallet (a PSBT as an
   @scure/btc-signer's own lowR grinding starts at 0 and so differs whenever the first R is high: the tests use their own reference.
 - The device's online rule for seed QR codes (ssToolsSeedScanBlocked) takes the decoder: a public seed is read online, and the
   SeedQR of LOAD INTO THE PRACTICE SIGNER after the person said yes (ssLearnSeedScanOk).
+- v2.17.0 review and hands-on test (ss_own.js unless named):
+  - SIM: VOIDFORGE rule in ssOwnSignGate, after the network: every non_witness_utxo must hash (the page's own psbtStripWitness and
+    dsha256) to the input's txid, hold its output, and agree with a witness_utxo if there is one; else "Forged coin?" on the
+    device's ErrorView. SeedSigner 0.8.7 (embit InputScope.utxo, PSBTParser._parse_inputs) takes the amount without this check.
+  - ssOwnSignGate signs a throwaway copy first (ssOwnDryRun): with nothing to sign it asks nothing (the device ends on Signing
+    Failed); multisig change not verified by a descriptor that holds the seed's own key (derived at the key's origin) and owns
+    every input (ssOwnMsigTrust) needs a second confirm() that names the amount. ctx: {parser, desc} from SSPSBTFinalizeView.run,
+    {message} from SSSeedSignMessageSignedMessageQRView.run (the message lesson's practice message signs with no question).
+  - SIM: VOIDFORGE fix in SSPSBTInputScope.vin: the sequence is kept exactly (embit: `self.sequence or 0xFFFFFFFF`).
+  - SIM: VOIDFORGE fix in SSPSBTOverviewView.run: an input with neither utxo shows "Cannot read PSBT" (SeedSigner: System Error,
+    "local variable 'script_pubkey' referenced before assignment").
+  - SIM: VOIDFORGE rule in SSController.start (ss_engine.js): Home keeps multisig_wallet_descriptor (SeedSigner 0.8.7 controller.py
+    sets it to None there); it is dropped when the device is switched off (ssPageStop) or another descriptor is scanned.
+  - SIM: VOIDFORGE rule in ssToolsSeedScanBlocked (ss_tools_settings.js): a seed QR scan starts while online; once a real seed is
+    read the device asks (confirm), Yes loads it, No shows "Not loaded". No question offline, for a public seed, or for the SeedQR
+    of an approved LOAD INTO THE PRACTICE SIGNER.
