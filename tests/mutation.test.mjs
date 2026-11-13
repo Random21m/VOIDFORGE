@@ -362,7 +362,7 @@ async function probe(w, mutated, fast, only, hooks) {
       { const inp = wp("m/84'/0'/0'/0/1", 250000n);
         for (const [cp, re] of [["m/84'/0'/123456'/1/0", /its account is not the one the inputs come from \(m\/84h\/0h\/0h\)/], ["m/84'/0'/0'/1/20000", /its address number \(20,000\) is far past/], ["m/999'/1/0", /its path has 3 levels, where wallets use 5/]]) {
           const [sc, d] = ch(cp), v = await rv(build([inp], [[ext, 10000n], [sc, 238000n, d]]).bytes);
-          if (!new RegExp('!Output 1 \\(238,000 sats\\) is change at ' + cp.replace(/'/g, 'h').replace(/\//g, '\\/') + '\\. The device will say Address Verified').test(v.x) || !re.test(v.x)) fails.push(T + 'M3: change at ' + cp + ' is flagged (' + v.x.slice(0, 100) + ')'); }
+          if (!v.x.includes('!Output 1 (238,000 sats) is change at ' + cp.replace(/'/g, 'h') + '. The device will say Address Verified') || !re.test(v.x)) fails.push(T + 'M3: change at ' + cp + ' is flagged (' + v.x.slice(0, 100) + ')'); }
         { const [sc, d] = ch("m/84'/0'/0'/1/9999"), v = await rv(build([inp], [[ext, 200000n], [sc, 49000n, d]]).bytes); if (/is change at/.test(v.x)) fails.push(T + 'M3: ordinary change (/1/9999 of the inputs\' account) is not flagged'); }
         let v = await rv(build([wp("m/84'/0'/0'/0/1", 250000n, { sh: 0 })], [[ext, 249000n]]).bytes);
         if (!/~Input 0 asks for sighash 0 \(SIGHASH_DEFAULT\), which is for Taproot only\. The device signs it with SIGHASH_ALL/.test(v.x) || /will not sign this input/.test(v.x)) fails.push(T + 'L5: sighash 0 on a non-Taproot input is signed as ALL, and the page says so (not "will not sign")');
