@@ -517,15 +517,25 @@ SCEN.tools = async (t, d) => {
 SCEN.offline = async (t, d, ctx, page) => {
   t(await d.ev(() => navigator.onLine) === true, 'this browser context is online (navigator.onLine)');
   await d.waitView('SSMainMenuView');
+  // v2.17.0 review (the owner's "no restrictions" rule): online, Seeds > Scan a SeedQR starts; the stand-in camera's SeedQR is the
+  // public test seed abandon ... about, loaded with no question
+  await page.evaluate(() => { window.__q = []; window.__yes = false; window.__c0 = window.confirm; window.confirm = (x) => { window.__q.push(x); return window.__yes; }; });
   await d.pick(/^Seeds$/); await d.pick(/Scan a SeedQR/);
-  let s = await d.state(); const cam = await d.ev(() => document.body.classList.contains('cam-on'));
-  t(s.view === 'SSErrorView' && /Offline only/.test(s.headline) && /only while this computer is offline/.test(s.text) && cam === false, 'online: "Scan a SeedQR" is refused with "Offline only" and the camera stays off');
-  await d.press('PRESS');
-  for (let n = 0; n < 4 && (await d.state()).view !== 'SSMainMenuView'; n++) { await d.press('LEFT'); await d.press('PRESS'); }
-  // v2.17.0: the camera's SeedQR here is abandon ... about, a public seed: it is read while online (a real seed QR is still refused)
-  await d.pick(/^Scan$/); s = await d.waitView('SSSeedFinalizeView');
-  t(s.view === 'SSSeedFinalizeView' && await d.ev(() => SSController._instance.current_destination.view.screen.fingerprint) === fpOf(rootOf(ABANDON)), 'v2.17.0 online: the Scan on Home reads the public test seed abandon ... about (fingerprint ' + fpOf(rootOf(ABANDON)) + ')');
+  let s = await d.waitView('SSSeedFinalizeView');
+  t(await d.ev(() => SSController._instance.current_destination.view.screen.fingerprint) === fpOf(rootOf(ABANDON)) && (await d.ev(() => window.__q.length)) === 0, 'v2.17.0 online: "Scan a SeedQR" starts and reads the public test seed abandon ... about (fingerprint ' + fpOf(rootOf(ABANDON)) + ') with no question');
   await d.pick(/^Done$/); await d.waitView('SSSeedOptionsView'); await d.back('SSMainMenuView');
+  // a real seed's SeedQR, held up by the practice wallet: the device asks first; No loads nothing ("Not loaded"), Yes loads it
+  const RQ = diceWords('31415265', 12), RQD = RQ.split(' ').map((x) => String(wordlist.indexOf(x)).padStart(4, '0')).join('');
+  const hold = () => page.evaluate((g) => ssLearnShow([g], 'a real SeedQR', 'test'), RQD);
+  await hold(); await d.pick(/^Scan$/); s = await d.waitView('SSErrorView');
+  let q = await d.ev(() => window.__q.slice());
+  t(/^Not loaded$/.test(s.headline) && /You chose not to load this seed while this computer is online/.test(s.text) && q.length === 1 && /^This computer is online\. The practice signer read the SeedQR of a real seed: loading it here is like typing it into a website/.test(q[0]) && !(await d.ev((m) => ssLearnSeeds().some((x) => x.mnemonic_str === m), RQ)), 'v2.17.0 online: a real seed\'s SeedQR read on the device asks first; No loads nothing and the device says "Not loaded" (' + s.headline + ')');
+  await d.press('PRESS'); await d.back('SSMainMenuView');
+  await page.evaluate(() => { window.__yes = true; window.__q.length = 0; }); await hold(); await d.pick(/^Scan$/); s = await d.waitView('SSSeedFinalizeView');
+  q = await d.ev(() => window.__q.slice());
+  t(q.length === 1 && await d.ev(() => SSController._instance.current_destination.view.screen.fingerprint) === fpOf(rootOf(RQ)), 'v2.17.0 online: Yes loads the real seed from its SeedQR (fingerprint ' + fpOf(rootOf(RQ)) + ', @scure/bip32)');
+  await d.pick(/^Done$/); await d.waitView('SSSeedOptionsView'); await d.back('SSMainMenuView');
+  await page.evaluate(() => { window.confirm = window.__c0; });
   // v2.17.0: LOAD INTO THE PRACTICE SIGNER online. A public seed loads with no question; a real seed asks first: No loads nothing and
   // says so in a red banner, Yes loads it. The computer's camera is never opened during a load.
   const asked = []; page.on('dialog', (dl) => { if (/online/i.test(dl.message())) asked.push(dl.message()); });   // (the cards box asks about its own digits first)
@@ -893,7 +903,7 @@ SCEN.psbt_msig_bad = async (t, d, ctx, page) => {   // a descriptor of other cos
   const st = await d.state();
   t(/Suspicious Transaction/.test(st.title) && /Address Verification Failed/.test(st.headline) && /change address could not be verified from wallet descriptor/.test(st.text) && /Discard transaction/.test(st.labels[0]), tag + ': "Address Verification Failed" warns that the change could not be verified from the wallet descriptor (' + st.headline + ')');
   await d.press('PRESS'); await d.waitView('SSMainMenuView');
-  t(await d.ev(() => SSController._instance.psbt === null && SSController._instance.multisig_wallet_descriptor === null), tag + ': discarding clears the PSBT and the descriptor');
+  t(await d.ev(() => SSController._instance.psbt === null && !!SSController._instance.multisig_wallet_descriptor), tag + ': discarding clears the PSBT; the descriptor stays loaded until the device is switched off (VOIDFORGE rule, v2.17.0)');
 };
 
 // ---- address verification: an address scanned from a QR code is found among the seed's (or the descriptor's) addresses
@@ -1643,7 +1653,7 @@ function ownPsbt(o = {}) {   // P2WPKH: input 0 of REAL (m/84'/coin'/0'/0/2), in
   return { b64: Buffer.from(tx.toPSBT(0)).toString('base64'), k0, k1, change: btc.p2wpkh(ck.publicKey, net).address, pay: btc.p2wpkh(R2.D.derive(`m/84'/${coin}'/0'/0/0`).publicKey, net).address };
 }
 const ownState = (page) => page.evaluate(() => ({ st: document.getElementById('ssOwnStatus').textContent, cls: document.getElementById('ssOwnStatus').className,
-  warns: [...document.querySelectorAll('#ssOwnWarns li')].map((x) => (x.className === 'bad' ? '!' : '') + x.textContent), out: document.getElementById('ssOwnOut').hidden ? null : { say: document.getElementById('ssOwnOutSay').textContent, cls: document.getElementById('ssOwnOutSay').className, text: document.getElementById('ssOwnOutText').value },
+  warns: [...document.querySelectorAll('#ssOwnWarns li')].map((x) => (x.className === 'bad' ? '!' : x.className === 'warn' ? '~' : '') + x.textContent), out: document.getElementById('ssOwnOut').hidden ? null : { say: document.getElementById('ssOwnOutSay').textContent, cls: document.getElementById('ssOwnOutSay').className, text: document.getElementById('ssOwnOutText').value },
   held: ssLearnCam.frames ? ssLearnCam.key : '', parts: ssLearnCam.frames ? ssLearnCam.frames.length : 0 }));
 async function ownLoad(t, d, page) {
   await d.waitView('SSMainMenuView');
@@ -1751,9 +1761,152 @@ SCEN.own_online = async (t, d, ctx, page) => {
   const qr = await d.readQR();
   t(!!qr && m && qr.text === m[3], 'own: the device\'s QR holds the same signature the page gives to copy');
 };
+// ================================================================ v2.17.0 review and hands-on test: real signing, end to end
+// own_fix1: a forged previous transaction refused on the device (H1); sequence 0 kept (L1); a new item puts the last output away
+//           (tester 1); a partly signed result in an amber banner (tester 4); nothing to sign: no question (tester 6)
+// own_fix2: multisig change claimed only: red note, and a second question naming the amount after Skip verification (M1); a
+//           foreign descriptor: red note (M2); the wallet's own descriptor stays loaded after Home and verifies change (tester 2);
+//           change it does not make: Address Verification Failed
+// own_fix3: a message offline asks (tester 9); an empty address number (tester 12); a Testnet address on a Mainnet device (tester
+//           12); secrets refused and cleared, a file of seed words never in the box, the last item put away (L2, tester 7); 3 MB of
+//           text answered at once (tester 3); a PSBT the device cannot read is not held up (tester 5)
+const ownAsk = (page, answers) => page.evaluate((a) => { window.__asked = []; window.__ans = a.slice(); window.__c0 = window.__c0 || window.confirm; window.confirm = (q) => { window.__asked.push(q); return window.__ans.length ? window.__ans.shift() : true; }; }, answers);
+const ownAsked = (page) => page.evaluate(() => window.__asked || []);
+const ownP2wpkh = (ins, outs) => {   // ins: [path, amount, {seq, sh, root}], outs: [script, amount, [path of REAL]?]
+  const tx = new btc.Transaction({ allowUnknownSighash: true });
+  ins.forEach(([p, a, o = {}], i) => { const r = o.root || REAL, k = r.derive(p); tx.addInput({ txid: txid2(40 + i), index: i, ...(o.seq !== undefined ? { sequence: o.seq } : {}), ...(o.sh !== undefined ? { sighashType: o.sh } : {}), witnessUtxo: { script: btc.p2wpkh(k.publicKey).script, amount: a }, bip32Derivation: [[k.publicKey, deriv(r, p)]] }); });
+  for (const [sc, a, cp] of outs) { const k = cp ? REAL.derive(cp) : null; tx.addOutput({ script: sc || btc.p2wpkh(k.publicKey).script, amount: a, ...(k ? { bip32Derivation: [[k.publicKey, deriv(REAL, cp)]] } : {}) }); }
+  return { tx, b64: Buffer.from(tx.toPSBT(0)).toString('base64') };
+};
+const PAY1 = btc.p2wpkh(R2.D.derive("m/84'/0'/0'/0/0").publicKey).script;
+async function ownToFinalize(d, pickRe) {   // Home > Scan, the seed, then Next (and Continue) through the review to Sign Transaction
+  await d.pick(/^Scan$/); await d.waitView('SSPSBTSelectSeedView'); await d.pick(pickRe || new RegExp('^' + FPR + '$'));
+  for (let n = 0; n < 14; n++) { const s = await d.waitView((await d.state()).view); if (s.view === 'SSPSBTFinalizeView') return s; if (s.view === 'SSErrorView' || s.view === 'SSPSBTAddressVerificationFailedView') return s; await d.press('PRESS'); }
+  throw new Error('the review never reached Sign Transaction: ' + JSON.stringify(await d.state()));
+}
+SCEN.own_fix1 = async (t, d, ctx, page) => {
+  await ownLoad(t, d, page);
+  // H1: a P2PKH coin of 10 BTC, with a made-up previous transaction of 1.0001 BTC put in its place
+  { const p = "m/44'/0'/0'/0/7", k = REAL.derive(p), pay = btc.p2pkh(k.publicKey);
+    const prev = (amt, n) => { const x = new btc.Transaction(); x.addOutput({ script: pay.script, amount: amt }); x.addInput({ txid: txid2(n), index: 0, finalScriptSig: Uint8Array.of(0x51) }); return x; };
+    const real = prev(1000000000n, 9), fake = prev(100010000n, 8), tx = new btc.Transaction();
+    tx.addInput({ txid: real.id, index: 0, nonWitnessUtxo: real.toBytes(true, false), bip32Derivation: [[k.publicKey, deriv(REAL, p)]] }); tx.addOutput({ script: PAY1, amount: 100000000n });
+    const g = Buffer.from(tx.toPSBT(0)), rb = Buffer.from(real.toBytes(true, false)), at = g.indexOf(rb), forged = Buffer.concat([g.subarray(0, at), Buffer.from(fake.toBytes(true, false)), g.subarray(at + rb.length)]);
+    const pre = await ownHold(page, forged.toString('base64'));
+    t(pre.warns.some((w) => /^!Input 0: its full previous transaction is not the one it spends \(the txid does not match\)/.test(w)), 'H1: a forged previous transaction is flagged red before the scan (' + (pre.warns[0] || '').slice(0, 80) + ')');
+    await ownAsk(page, []); const s = await ownToFinalize(d); await d.press('PRESS'); const e = await d.waitView('SSErrorView'); const st = (await ownState(page)).st;
+    t(s.view === 'SSPSBTFinalizeView' && /Forged coin\?/.test(e.headline) && /not the coin it spends/.test(e.text) && (await ownAsked(page)).length === 0 && /^Not signed: input 0: its full previous transaction is not the one it spends/.test(st) && await d.ev(() => SSPSBTParser.sig_count(SSController._instance.psbt)) === 0, 'H1: the device refuses to sign it, with the reason on its screen ("' + e.headline + '") and on the page; no question, no signature');
+    await d.press('PRESS'); await d.waitView('SSPSBTFinalizeView'); await d.back('SSMainMenuView'); }
+  // L1: sequence 0 is signed as the wallet made it; btc-signer finalizes it
+  { const P = ownP2wpkh([["m/84'/0'/0'/0/2", 400000n, { seq: 0 }]], [[PAY1, 300000n], [null, 99000n, "m/84'/0'/0'/1/4"]]);
+    await ownHold(page, P.b64); await ownAsk(page, [true]); await ownToFinalize(d); await d.press('PRESS'); await d.waitView('SSPSBTSignedQRDisplayView');
+    const out = await until(async () => { const x = await ownState(page); return x.out ? x : null; }, 30000);
+    let same = false, fin = false; if (out && out.out.text) { const sg = btc.Transaction.fromPSBT(b64b(out.out.text)); same = sg.getInput(0).sequence === 0 && hx(sg.unsignedTx) === hx(P.tx.unsignedTx); try { const f = btc.Transaction.fromPSBT(b64b(P.b64)); f.combine(sg); f.finalize(); fin = f.extract().length > 0; } catch (e) { fin = false; } }
+    t(same && fin && /: valid/.test(out.out.say) && /ss-banner ok/.test(out.out.cls), 'L1: an input with sequence 0 is signed as the wallet made it (txid unchanged), checked valid, and btc-signer finalizes it');
+    await d.press('PRESS'); await d.waitView('SSMainMenuView');
+    // tester 1: holding up a new item puts that output away
+    await ownHold(page, ownP2wpkh([["m/84'/0'/0'/0/2", 400000n]], [[PAY1, 399000n]]).b64);
+    t(!(await ownState(page)).out, 'tester 1: holding up a new PSBT puts the last signed output away'); }
+  // tester 4: two inputs of the seed, one asking for SIGHASH_NONE: the device signs one; the page says which, in amber
+  { const P = ownP2wpkh([["m/84'/0'/0'/0/2", 200000n], ["m/84'/0'/0'/0/3", 200000n, { sh: 2 }]], [[PAY1, 399000n]]);
+    const pre = await ownHold(page, P.b64); await ownAsk(page, [true]); await ownToFinalize(d); await d.press('PRESS'); await d.waitView('SSPSBTSignedQRDisplayView');
+    const out = await until(async () => { const x = await ownState(page); return x.out ? x : null; }, 30000);
+    t(pre.warns.some((w) => /^~The device will leave input 1 of seed [0-9a-f]{8} unsigned/.test(w)) && !!out && /ss-banner warn/.test(out.out.cls) && /Signed input 0 of this seed’s inputs; NOT signed: input 1 /.test(out.out.say), 'tester 4: a partly signed result names the signed and unsigned inputs, in an amber banner (' + (out ? out.out.say.slice(-150) : 'none') + ')');
+    await d.press('PRESS'); await d.waitView('SSMainMenuView'); }
+  // tester 6: a PSBT of another seed: no question, Signing Failed, and the page says nothing was signed
+  { const P = ownP2wpkh([["m/84'/0'/0'/0/0", 200000n, { root: R2.C }]], [[PAY1, 199000n]]);
+    await ownHold(page, P.b64); await ownAsk(page, []); await ownToFinalize(d, new RegExp('^' + FPR)); await d.press('PRESS'); const e = await d.waitView('SSPSBTSigningErrorView');
+    const st = (await ownState(page)).st;
+    t(e.view === 'SSPSBTSigningErrorView' && (await ownAsked(page)).length === 0 && /^Nothing signed: seed [0-9a-f]{8} cannot add a signature/.test(st), 'tester 6: a PSBT the seed cannot sign asks nothing, ends on Signing Failed, and the page says "Nothing signed" (' + st.slice(0, 60) + ')'); }
+};
+function ownMs(o = {}) {   // 2-of-3 P2WSH of REAL, B and C at m/48'/0'/0'/2' (no xpubs in the PSBT): in /0/5 5,000,000; pay 3,000,000; change /1/2, or to the attacker's 2-of-3
+  const acct = "m/48'/0'/0'/2'", roots = [REAL, R2.B, R2.C], hd = roots.map((r) => r.derive(acct)), xh = [0, 1, 2].map((i) => R2.D.derive("m/48'/0'/" + (i + 5) + "'/2'"));
+  const ms = (K, b, i) => { const pubs = K.map((a) => a.deriveChild(b).deriveChild(i).publicKey), sorted = pubs.slice().sort((x, y) => Buffer.compare(Buffer.from(x), Buffer.from(y))); return { pay: btc.p2wsh(btc.p2ms(2, sorted)), ders: pubs.map((p, j) => [p, deriv(roots[j], acct + '/' + b + '/' + i)]) }; };
+  const i0 = ms(hd, 0, 5), c0 = ms(o.evil ? xh : hd, 1, 2), tx = new btc.Transaction();
+  tx.addInput({ txid: txid2(50), index: 0, witnessUtxo: { script: i0.pay.script, amount: 5000000n }, witnessScript: i0.pay.witnessScript, bip32Derivation: i0.ders });
+  tx.addOutputAddress(EXT1, 3000000n); tx.addOutput({ script: c0.pay.script, amount: 1998000n, witnessScript: c0.pay.witnessScript, bip32Derivation: c0.ders });
+  const desc = (K) => 'wsh(sortedmulti(2,' + K.map((a, j) => '[' + fpOf(roots[j]) + '/48h/0h/0h/2h]' + a.publicExtendedKey + '/0/*').join(',') + '))';
+  return { b64: Buffer.from(tx.toPSBT(0)).toString('base64'), descriptor: desc(hd), foreign: desc(xh), change: c0.pay.address };
+}
+SCEN.own_fix2 = async (t, d, ctx, page) => {
+  await ownLoad(t, d, page);
+  // M1: no descriptor and no xpubs: claimed change, red; Skip verification, Approve: a second question names the amount; No signs nothing
+  const evil = ownMs({ evil: true }), good = ownMs();
+  let pre = await ownHold(page, evil.b64);
+  t(pre.warns.some((w) => /^!Output 1 \(1,998,000 sats\) is claimed change, NOT verified: no wallet descriptor is loaded on the device and the PSBT has no cosigner keys/.test(w)), 'M1: change that only the PSBT claims is called "claimed change, NOT verified" in red before the scan');
+  await d.pick(/^Scan$/); await d.waitView('SSPSBTSelectSeedView'); await d.pick(new RegExp('^' + FPR + '$'));
+  for (let n = 0; n < 8; n++) { const s = await d.waitView((await d.state()).view); if (s.view === 'SSPSBTChangeDetailsView') break; await d.press('PRESS'); }
+  let s = await d.state(); t(s.labels && s.labels[0] === 'Verify multisig change', 'M1: the device offers Verify multisig change and Skip verification');
+  await d.pick(/Skip verification/); await d.waitView('SSPSBTFinalizeView'); await ownAsk(page, [true, false]); await d.press('PRESS'); const e = await d.waitView('SSErrorView');
+  let q = await ownAsked(page);
+  t(q.length === 2 && /^The device did NOT verify that this change comes back to your multisig wallet:\n\n- output 1: 1,998,000 sats to /.test(q[1]) && /Not signed/.test(e.headline) && await d.ev(() => SSPSBTParser.sig_count(SSController._instance.psbt)) === 0, 'M1: after Skip verification, signing asks a second question naming the 1,998,000 sats; No signs nothing');
+  await d.press('PRESS'); await d.waitView('SSPSBTFinalizeView'); await d.back('SSMainMenuView');
+  // M2: a foreign descriptor (the attacker's keys, labelled with this seed's fingerprint): the page says it is not this seed's
+  await ownHold(page, evil.foreign); await d.pick(/^Scan$/); await d.waitView('SSMultisigWalletDescriptorView');
+  const fb = await until(async () => { const x = await ownState(page); return /^The device loaded the wallet descriptor/.test(x.st) ? x : null; }, 30000);
+  t(!!fb && /NONE of the seeds on the device is in it \(it names fingerprint [0-9a-f]{8}, but the key there is not that seed’s\)/.test(fb.st) && /\bbad\b/.test(fb.cls), 'M2: a descriptor that names this seed but holds another key is called someone else\'s, in red (' + (fb ? fb.st.slice(80, 200) : '') + ')');
+  await d.press('PRESS'); await d.back('SSMainMenuView');
+  // the wallet's own descriptor: gold; it stays loaded after Home (tester 2), so the device verifies the change at once
+  await ownHold(page, good.descriptor); await d.pick(/^Scan$/); await d.waitView('SSMultisigWalletDescriptorView');
+  const gb = await until(async () => { const x = await ownState(page); return /^The device loaded the wallet descriptor/.test(x.st) && /Seed /.test(x.st) ? x : null; }, 30000);
+  t(!!gb && new RegExp('Seed ' + FPR + ' is in it').test(gb.st) && /ss-banner ok/.test(gb.cls), 'M2: the wallet\'s own descriptor: the page finds seed ' + FPR + ' in it (gold)');
+  await d.press('PRESS'); await d.back('SSMainMenuView');
+  t(await d.ev(() => !!SSController._instance.multisig_wallet_descriptor), 'tester 2: back on Home, the descriptor is still loaded (VOIDFORGE rule: until the device is switched off)');
+  pre = await ownHold(page, good.b64);
+  t(!pre.warns.some((w) => /claimed change|NOT verified/.test(w)), 'tester 2: the review counts the change as verified by the loaded descriptor');
+  await d.pick(/^Scan$/); await d.waitView('SSPSBTSelectSeedView'); await d.pick(new RegExp('^' + FPR + '$'));
+  for (let n = 0; n < 8; n++) { s = await d.waitView((await d.state()).view); if (s.view === 'SSPSBTChangeDetailsView') break; await d.press('PRESS'); }
+  const f = await screenFields(d, ['is_change_addr_verified', 'address']);
+  t(s.labels && s.labels[0] === 'Next' && f.is_change_addr_verified === true && f.address === good.change, 'tester 2: the device verifies the multisig change against the descriptor scanned before Home');
+  await d.press('PRESS'); await d.waitView('SSPSBTFinalizeView'); await ownAsk(page, [true]); await d.press('PRESS'); await d.waitView('SSPSBTSignedQRDisplayView');
+  q = await ownAsked(page); t(q.length === 1, 'M1: verified multisig change: one question only');
+  await d.press('PRESS'); await d.waitView('SSMainMenuView');
+  // change the loaded descriptor does not make: red note, and the device discards the transaction
+  pre = await ownHold(page, evil.b64);
+  t(pre.warns.some((w) => /^!Output 1 \(1,998,000 sats\) is called change, but your wallet descriptor on the device does not make it/.test(w)), 'M2: change the wallet\'s own descriptor does not make is flagged red');
+  s = await ownToFinalize(d); t(s.view === 'SSPSBTAddressVerificationFailedView', 'M2: the device says Address Verification Failed for it (' + s.view + ')');
+};
+SCEN.own_fix3 = async (t, d, ctx, page) => {
+  await ownLoad(t, d, page);
+  // tester 12: an empty address number; tester 9: a message offline asks first
+  await page.fill('#ssMsgIn', 'VOIDFORGE offline message'); await page.fill('#ssMsgIdx', ''); await page.click('#ssMsgGo');
+  t(/^Not held up: type the number of the receive address/.test((await ownState(page)).st), 'tester 12: an empty address number is refused, not taken as 0');
+  await d.pick(/^Settings$/); await d.pick(/^Advanced$/); await d.pick(/Message signing/); await d.pick(/^Enabled$/); await d.back('SSMainMenuView');
+  await page.fill('#ssMsgIdx', '1'); await page.click('#ssMsgGo'); await ownAsk(page, [true]);
+  await d.pick(/^Scan$/); await d.waitView('SSSeedSelectSeedView'); await d.pick(new RegExp('^' + FPR));
+  for (let n = 0; n < 6; n++) { const s = await d.waitView((await d.state()).view); if (s.view === 'SSSeedSignMessageSignedMessageQRView') break; await d.press('PRESS'); }
+  const q = await ownAsked(page), mo = await until(async () => { const x = await ownState(page); return x.out ? x : null; }, 30000);
+  t(q.length === 1 && /^Sign this message with your real seed /.test(q[0]) && /This computer looks offline/.test(q[0]) && !!mo && new RegExp('^Signed with your real seed ' + FPR + ': ').test(mo.out.say), 'tester 9: a message signed offline with a real seed asks first, and the result says it is the real seed');
+  await d.press('PRESS'); await d.waitView('SSMainMenuView');
+  // tester 12: a Testnet address on a Mainnet device: held up with a red note, and the result says so too
+  const ta = btc.p2wpkh(REAL.derive("m/84'/1'/0'/0/0").publicKey, btc.TEST_NETWORK).address, pre = await ownHold(page, ta);
+  t(pre.warns.some((w) => /^!This is a Testnet address, but the device is set to Mainnet\./.test(w)), 'tester 12: a Testnet address held up on a Mainnet device gets a red note');
+  await d.pick(/^Scan$/); await d.waitView('SSSeedSelectSeedView'); await d.pick(new RegExp('^' + FPR));
+  const vr = await until(async () => { const x = await ownState(page); return /^The device verified the address/.test(x.st) ? x : null; }, 120000);
+  t(!!vr && /receive address #0 of this wallet, on the address’s own network\. This is a Testnet address, but the device is set to Mainnet/.test(vr.st) && /\bbad\b/.test(vr.cls), 'tester 12: the verified Testnet address is said in red, with the network mismatch');
+  await d.press('PRESS'); await d.back('SSMainMenuView');
+  // L2 / tester 7: seed words pasted (numbered): refused in red, the box cleared, the address held up before put away
+  const W = REAL_MN.split(' ');
+  await ownHold(page, EXT1); const was = (await ownState(page)).held;
+  await page.fill('#ssOwnIn', W.map((x, i) => (i + 1) + '. ' + x).join('\n')); await page.click('#ssOwnGo');
+  const r1 = await until(async () => { const x = await ownState(page); return /^Not held up/.test(x.st) ? x : null; }, 15000);
+  t(was === 'own' && !!r1 && r1.held === '' && await page.inputValue('#ssOwnIn') === '' && /The box was cleared/.test(r1.st) && !W.some((x) => r1.st.includes(' ' + x + ' ')) && /\bbad\b/.test(r1.cls), 'L2 / tester 7: numbered seed words are refused in red, never repeated, the box is cleared and the address held up before is put away');
+  // a file of seed words never goes into the box
+  await page.setInputFiles('#ssOwnFile', { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('my words: ' + REAL_MN + '\n') });
+  const r2 = await until(async () => { const x = await ownState(page); return /^Not read/.test(x.st) ? x : null; }, 15000);
+  t(!!r2 && await page.inputValue('#ssOwnIn') === '' && /The file was not put in the box/.test(r2.st), 'L2: a file of seed words is refused before it reaches the box');
+  // tester 3: 3 MB of text is answered at once
+  const ms = await page.evaluate(async () => { document.getElementById('ssOwnIn').value = 'A'.repeat(3000000); const t0 = performance.now(); await ssOwnGo(); return performance.now() - t0; });
+  t(ms < 3000 && /^Not held up: The device does not read this/.test((await ownState(page)).st), 'tester 3: 3 MB of "A" is refused in ' + Math.round(ms) + ' ms');
+  // tester 5: a PSBT that does not carry the coin it spends is not held up
+  const tx = new btc.Transaction(); tx.addInput({ txid: txid2(60), index: 0, bip32Derivation: [[REAL.derive("m/84'/0'/0'/0/0").publicKey, deriv(REAL, "m/84'/0'/0'/0/0")]] }); tx.addOutput({ script: PAY1, amount: 1000n });
+  await page.fill('#ssOwnIn', Buffer.from(tx.toPSBT(0)).toString('base64')); await page.click('#ssOwnGo');
+  const r3 = await until(async () => { const x = await ownState(page); return /^Not held up/.test(x.st) ? x : null; }, 15000);
+  t(!!r3 && r3.held === '' && /the device cannot read this PSBT: input 0 does not include the coin it spends/.test(r3.st), 'tester 5: a PSBT the device cannot read is not held up, and the page says why');
+};
 // ================================================================ run
 SCEN.tools.clock = true; SCEN.offline.online = true; SCEN.own_online.online = true;
-const order = ['own_psbt', 'own_online', 'lessons_dice', 'lessons_tx', 'lessons_seed', 'practice_tx', 'damascus', 'forge', 'loadreal', 'loadedge', 'phone', 'find', 'review', 'psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'settings_wipe', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
+const order = ['own_psbt', 'own_online', 'own_fix1', 'own_fix2', 'own_fix3', 'lessons_dice', 'lessons_tx', 'lessons_seed', 'practice_tx', 'damascus', 'forge', 'loadreal', 'loadedge', 'phone', 'find', 'review', 'psbt_msig', 'psbt_wipe', 'psbt_p2wpkh', 'psbt_p2sh', 'psbt_p2tr', 'psbt_msig_bad', 'signmsg', 'addr_single', 'addr_taproot', 'addr_multi', 'dice12', 'dice24', 'words', 'settings', 'settings_wipe', 'seedqr', 'tools', 'native', 'nested', 'taproot', 'wipe', 'offline'];
 const want = process.env.SCEN ? process.env.SCEN.split(',') : order;
 const results = [];
 async function runScenario(browser, name) {

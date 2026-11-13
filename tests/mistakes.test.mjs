@@ -80,7 +80,7 @@ const html = readHtml();
   w.rhShow();
   // the practice phrase and public data are not on the list; v2.16.1: the practice signer is (its device: screen and keys)
   ok(!E('rhIds()').some((id) => /^pr(Words|Input)$|^fingerprint$|^address$|^addrList$|^wvList$/.test(id)), 're-hide: the practice phrase and public data are not on the list');
-  ok(E('rhIds()').filter((id) => /^ss/.test(id)).sort().join() === 'ssDevice,ssMsgIn,ssOwnOut', 're-hide (v2.16.1): the practice signer\u2019s device (screen and keys) is on the list (v2.17.0: with the signed output and the typed message)');
+  ok(E('rhIds()').filter((id) => /^ss/.test(id)).sort().join() === 'ssDevice,ssMsgIn,ssOwnIn,ssOwnOut', 're-hide (v2.16.1): the practice signer\u2019s device (screen and keys) is on the list (v2.17.0: with the signed output, the typed message and, cover only, the box for your PSBT)');
   { const keep = w.vfSignerHoldsSecret; w.clearAll(); await sleep(20);
     w.vfSignerHoldsSecret = () => false; ok(E('rhAny()') === false && !w.rhHide('tab') && !covered('ssDevice'), 're-hide (v2.16.1): a practice signer with no seed, or only public ones, is no reason to cover');
     w.vfSignerHoldsSecret = () => true; ok(E('rhAny()') === true, 're-hide (v2.16.1): a practice signer holding a seed that is not public is a reason to cover on its own');

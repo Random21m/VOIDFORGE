@@ -215,7 +215,13 @@ async function probe(w, mutated, fast, only, hooks) {
         online(false); answer = true; asked.length = 0; m2 = await msgView(sA, "m/84h/0h/0h/0/1", 'hello');
         const sg = Buffer.from(m2.v.signed_message || '', 'base64'), vs = (b) => Buffer.concat([Buffer.from([b.length]), b]), hm = nsha(nsha(Buffer.concat([vs(Buffer.from('Bitcoin Signed Message:\n')), vs(Buffer.from('hello'))])));
         let ok = false; try { ok = sg.length === 65 && H(secp256k1.Signature.fromCompact(sg.subarray(1)).addRecoveryBit(sg[0] - 31).recoverPublicKey(hm).toRawBytes(true)) === H(RA.derive("m/84'/0'/0'/0/1").publicKey); } catch (e) { ok = false; }
-        if (!ok || asked.length) fails.push(T + 'a message offline: signed with no question; the signature recovers to the key at the path (noble)'); }
+        if (!ok || asked.length !== 1 || !/^Sign this message with your real seed .*This computer looks offline/s.test(asked[0])) fails.push(T + 'a message offline (v2.17.0 review): asked first, with the offline wording; the signature recovers to the key at the path (noble)');
+        answer = false; asked.length = 0; m2 = await msgView(sA, "m/84h/0h/0h/0/1", 'hello');
+        if (m2.v.signed_message || asked.length !== 1) fails.push(T + 'a message offline: No signs nothing');
+        answer = false; asked.length = 0; m2 = await msgView(sA, "m/84h/0h/0h/0/0", 'Practice message from VOIDFORGE');
+        if (!m2.v.signed_message || asked.length) fails.push(T + 'the message lesson\'s practice message signs with no question');
+        answer = false; asked.length = 0; m2 = await msgView(sPub, "m/84h/0h/0h/0/0", 'hello');
+        if (!m2.v.signed_message || asked.length) fails.push(T + 'a public seed signs a message with no question'); answer = true; }
       // 4. the warnings before the scan, worked out with the device's own parser (a stand-in device holding the seeds)
       const dev = { current_destination: null, back_stack: [], _storage: { seeds: [sA], pending_seed: null, _pending_mnemonic: [] } };
       E('SSController')._instance = dev; E('ssPageOn = true');
@@ -231,14 +237,14 @@ async function probe(w, mutated, fast, only, hooks) {
         x = await rv({ ins: [["m/44'/0'/0'/0/0", 100000n, RA, btc.p2pkh(RA.derive("m/44'/0'/0'/0/0").publicKey).script]] }); if (!/!Input 0 is a legacy \(P2PKH\) coin without its full previous transaction/.test(x)) fails.push(T + 'review: a legacy input without its full previous transaction is flagged'); }
       // 5. what is read: seeds and private keys refused; a message with ascii: in it refused; PSBT bytes as given
       { const rd = (x) => w.ssOwnRead(x);
-        if (!/words or SeedQR of a seed/.test(rd(MN).error || '') || !/words or SeedQR of a seed/.test(rd(MN.split(' ').map((x) => String(wordlist.indexOf(x)).padStart(4, '0')).join('')).error || '')) fails.push(T + 'read: seed words and a SeedQR are refused');
-        if (!/private key/.test(rd(RA.privateExtendedKey).error || '')) fails.push(T + 'read: an xprv is refused');
-        if (!/ascii:/.test(rd('signmessage m/84h/0h/0h/0/0 ascii:pay ascii:me').error || '') || rd('signmessage m/84h/0h/0h/0/0 ascii:hi').kind !== 'msg' || !/ascii: messages only/.test(w.ssOwnMsgError('café'))) fails.push(T + 'read: a message request is read; ascii: inside a message and non-ASCII text are refused');
-        const P = mk(), g = rd(Buffer.from(P.bytes).toString('base64')); if (g.kind !== 'psbt' || H(g.bytes) !== H(P.bytes)) fails.push(T + 'read: a base64 PSBT is read as its bytes'); }
+        if (!/seed words in a row/.test((await rd(MN)).error || '') || !/digits of a SeedQR/.test((await rd(MN.split(' ').map((x) => String(wordlist.indexOf(x)).padStart(4, '0')).join(''))).error || '')) fails.push(T + 'read: seed words and a SeedQR are refused');
+        if (!/private key/.test((await rd(RA.privateExtendedKey)).error || '')) fails.push(T + 'read: an xprv is refused');
+        if (!/ascii:/.test((await rd('signmessage m/84h/0h/0h/0/0 ascii:pay ascii:me')).error || '') || (await rd('signmessage m/84h/0h/0h/0/0 ascii:hi')).kind !== 'msg' || !/ascii: messages only/.test(w.ssOwnMsgError('café'))) fails.push(T + 'read: a message request is read; ascii: inside a message and non-ASCII text are refused');
+        const P = mk(), g = await rd(Buffer.from(P.bytes).toString('base64')); if (g.kind !== 'psbt' || H(g.bytes) !== H(P.bytes)) fails.push(T + 'read: a base64 PSBT is read as its bytes'); }
       // 6. the outputs: what the device signed, taken back; PRACTICE for a public seed; an invalid signature is called invalid
       { const take = async (bytes, seed, spoil) => { const ps = E('SSPSBT').parse(P8(bytes)), parser = await E('SSPSBTParser').create(ps, seed, SC.MAINNET); await ps.sign_with(parser.root); parser.root.wipe();
           if (spoil) { const s0 = ps.inputs[0].partial_sigs[0].sig; s0[10] ^= 1; }
-          const tr = E('SSPSBTParser').trim(ps); E('ssOwn').out = null; await w.ssOwnTakePsbt({ psbt: tr, psbt_seed: seed, psbt_parser: { psbt: ps } }); return { o: E('ssOwn').out, tr: Uint8Array.from(tr.serialize()) }; };
+          const tr = E('SSPSBTParser').trim(ps); E('ssOwn').out = null; E('ssOwn').txid = ''; await w.ssOwnTakePsbt({ psbt: tr, psbt_seed: seed, psbt_parser: { psbt: ps } }); return { o: E('ssOwn').out, tr: Uint8Array.from(tr.serialize()) }; };
         let t2 = await take(mk({ ins: [["m/84'/0'/0'/0/0", 100000n, RB]] }).bytes, sPub);
         if (!t2.o || !/^PRACTICE: signed with a public seed \(73c5da0a\)/.test(t2.o.say) || t2.o.cls !== 'bad' || t2.o.text !== Buffer.from(t2.tr).toString('base64')) fails.push(T + 'output: a public seed\'s signed PSBT is marked PRACTICE, and the text is the trimmed PSBT in base64');
         t2 = await take(mk().bytes, sA);
@@ -265,6 +271,156 @@ async function probe(w, mutated, fast, only, hooks) {
     finally {
       w.confirm = conf0; w.Element.prototype.scrollIntoView = siv0; if (navOnline) Object.defineProperty(w.navigator, 'onLine', navOnline); else delete w.navigator.onLine;
       try { w.ssPageStop(); } catch (e) { /* off */ } E('SSController')._instance = ctl0; E('ssPageOn = false'); try { E('ssLearn').tx = null; } catch (e) { /* none */ }
+    }
+    r = await run('dice', 12, D50);
+  }
+  // v2.17.0 review and hands-on test of real signing (tools/simulator/ss_own.js and the device's signing rules). PSBTs built here
+  // with @scure/btc-signer; expected keys, txids and fingerprints from @scure/bip32 and node:crypto. Covers: a forged full previous
+  // transaction (H1) and a witness UTXO that disagrees with it, refused on the device; no question when nothing can be signed; a
+  // partly signed result; multisig change only claimed (no descriptor, a foreign descriptor, a descriptor that does not make the
+  // inputs) with the second question naming the amount; change at an odd path; sequence 0 kept and a transaction that is not the
+  // one held up; no copy or save of an unchecked result; sighash 0; amber fee warnings; seeds and keys in any form refused and
+  // cleared (box, file, camera, re-hide); a refused paste stops holding up the last item; long text read at once; a PSBT the device
+  // cannot read not held up and the device's own clean error; the output cleared by a new item; an empty address number; a testnet
+  // address on a Mainnet device; public words with a passphrase asked online; a real seed named in the practice transaction's result
+  // and a new lesson that drops the last result; the note under YOUR SEED cleared when the device is switched off.
+  if (SEC(84, "v2.17.0 review: forged previous transaction, claimed change, odd change, secrets in any form, partial signing, stale outputs")) {
+    const navOnline = Object.getOwnPropertyDescriptor(w.navigator, 'onLine'), conf0 = w.confirm, siv0 = w.Element.prototype.scrollIntoView;
+    const E = (s) => w.eval(s), T = 'review 2.17: ', P8 = (b) => new (E('Uint8Array'))(b), H = (b) => Buffer.from(b).toString('hex'), HP = 0x80000000;
+    const online = (on) => Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => on });
+    const ctl0 = E('SSController')._instance, start0 = E('ssPageStart');
+    try {
+      w.Element.prototype.scrollIntoView = function () {};
+      const SC = E('SSSettingsConstants'), SSSeed = E('SSSeed'), AB = 'abandon '.repeat(11) + 'about', MN = expect.d50, MX = 'legal winner thank year wave sausage worth useful legal winner thank yellow';
+      const rootOf = (m) => HDKey.fromMasterSeed(mnemonicToSeedSync(m, '')), RA = rootOf(MN), RB = rootOf(AB), RC = rootOf(MX), RZ = rootOf('zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong');
+      const fx = (r2) => r2.fingerprint.toString(16).padStart(8, '0'), fA = fx(RA);
+      const der = (r2, p) => ({ fingerprint: r2.fingerprint, path: p.split('/').slice(1).map((x) => x.endsWith("'") ? parseInt(x) + HP : +x) });
+      const sA = await SSSeed.create({ mnemonic: MN }), sPub = await SSSeed.create({ mnemonic: AB });
+      const asked = []; let answers = []; w.confirm = (q) => { asked.push(q); return answers.length ? answers.shift() : true; };
+      const ext = btc.p2wpkh(RZ.derive("m/84'/0'/0'/0/0").publicKey).script, tid = (n) => Uint8Array.from({ length: 32 }, (_, j) => (j * 11 + n * 29) & 255);
+      const wp = (p, a, o = {}) => { const k = RA.derive(p); return { txid: tid(o.n || 1), index: o.index || 0, ...(o.seq !== undefined ? { sequence: o.seq } : {}), witnessUtxo: { script: btc.p2wpkh(k.publicKey).script, amount: a }, bip32Derivation: [[k.publicKey, der(RA, p)]], ...(o.sh !== undefined ? { sighashType: o.sh } : {}) }; };
+      const build = (ins, outs) => { const tx = new btc.Transaction({ allowUnknownSighash: true }); ins.forEach((x) => tx.addInput(x)); outs.forEach(([sc, a, d]) => tx.addOutput({ script: sc, amount: a, ...(d ? { bip32Derivation: d } : {}) })); return { tx, bytes: tx.toPSBT(0) }; };
+      const ch = (p) => { const k = RA.derive(p); return [btc.p2wpkh(k.publicKey).script, [[k.publicKey, der(RA, p)]]]; };
+      const dev = { current_destination: null, back_stack: [], multisig_wallet_descriptor: null, _storage: { seeds: [sA], pending_seed: null, _pending_mnemonic: [] } };
+      E('SSController')._instance = dev; E('ssPageOn = true');
+      const rv = async (bytes) => { const r2 = await w.ssOwnReview(P8(bytes)); return { x: r2.W.map((y) => (y.bad ? '!' : y.warn ? '~' : '') + y.t).join(' | '), un: r2.unreadable }; };
+      const sign = async (bytes, desc = null, seed = sA) => {
+        const ps = E('SSPSBT').parse(P8(bytes)), c = { psbt: ps, psbt_seed: seed, multisig_wallet_descriptor: desc, psbt_parser: await E('SSPSBTParser').create(ps, seed, SC.MAINNET) };
+        const fv = Object.create(E('SSPSBTFinalizeView').prototype); fv.controller = c; fv.settings = { get_value: () => SC.MAINNET }; fv.run_screen = async () => 0;
+        asked.length = 0; const dest = await fv.run(); try { c.psbt_parser.root.wipe(); } catch (e) { /* none */ }
+        return { view: dest && dest.View_cls ? dest.View_cls.name : '', head: dest && dest.view_args ? dest.view_args.status_headline : '', out: c.psbt !== ps ? Uint8Array.from(c.psbt.serialize()) : null, asked: asked.slice(), st: $('ssOwnStatus').textContent };
+      };
+      online(false);
+      // 1. H1: a P2PKH coin of 10 BTC with a made-up previous transaction of 1.0001 BTC: the review says so, the device refuses
+      { const p = "m/44'/0'/0'/0/7", k = RA.derive(p), pay = btc.p2pkh(k.publicKey);
+        const mkPrev = (amt, n) => { const t2 = new btc.Transaction(); t2.addOutput({ script: pay.script, amount: amt }); t2.addInput({ txid: tid(n), index: 0, finalScriptSig: Uint8Array.of(0x51) }); return t2; };
+        const real = mkPrev(1000000000n, 9), fake = mkPrev(100010000n, 8), G = build([{ txid: real.id, index: 0, nonWitnessUtxo: real.toBytes(true, false), bip32Derivation: [[k.publicKey, der(RA, p)]] }], [[ext, 100000000n]]);
+        const gb = Buffer.from(G.bytes), rb = Buffer.from(real.toBytes(true, false)), at = gb.indexOf(rb), forged = Buffer.concat([gb.subarray(0, at), Buffer.from(fake.toBytes(true, false)), gb.subarray(at + rb.length)]);
+        let v = await rv(forged); if (!/!Input 0: its full previous transaction is not the one it spends \(the txid does not match\)\. Its amount, and so the fee, cannot be trusted/.test(v.x)) fails.push(T + 'H1: a forged previous transaction is flagged red before the scan (' + v.x.slice(0, 90) + ')');
+        let r2 = await sign(forged); if (r2.out || r2.head !== 'Forged coin?' || r2.asked.length || !/^Not signed: input 0: its full previous transaction is not the one it spends/.test(r2.st)) fails.push(T + 'H1: the device refuses to sign a PSBT with a forged previous transaction, and says why (' + r2.head + ')');
+        r2 = await sign(G.bytes); v = await rv(G.bytes); if (!r2.out || /previous transaction/.test(v.x)) fails.push(T + 'H1: the genuine previous transaction (txid ' + real.id.slice(0, 12) + '...) signs, with no warning');
+        // a witness UTXO that disagrees with the full previous transaction
+        const w2 = btc.p2wpkh(RA.derive("m/84'/0'/0'/0/3").publicKey), prev = new btc.Transaction(); prev.addOutput({ script: w2.script, amount: 500000n }); prev.addInput({ txid: tid(4), index: 0, finalScriptSig: Uint8Array.of(0x51) });
+        const D = build([{ txid: prev.id, index: 0, nonWitnessUtxo: prev.toBytes(true, false), bip32Derivation: [[RA.derive("m/84'/0'/0'/0/3").publicKey, der(RA, "m/84'/0'/0'/0/3")]] }], [[ext, 499000n]]);
+        const dp = E('SSPSBT').parse(P8(D.bytes)); dp.inputs[0].witness_utxo = { value: 5000n, script_pubkey: P8(w2.script) }; const db = Uint8Array.from(dp.serialize());
+        v = await rv(db); r2 = await sign(db);
+        if (!/!Input 0: its witness UTXO and its full previous transaction give different coins/.test(v.x) || r2.out || r2.head !== 'Forged coin?') fails.push(T + 'H1: a witness UTXO that disagrees with the full previous transaction is flagged and refused (' + r2.head + ')'); }
+      // 2. nothing to sign: no question, and the page says so; a sighash the device skips leaves that input unsigned (amber)
+      { const N = build([{ ...wp("m/84'/0'/0'/0/0", 100000n), bip32Derivation: [[RB.derive("m/84'/0'/0'/0/0").publicKey, der(RB, "m/84'/0'/0'/0/0")]], witnessUtxo: { script: btc.p2wpkh(RB.derive("m/84'/0'/0'/0/0").publicKey).script, amount: 100000n } }], [[ext, 99000n]]);
+        const S2 = build([wp("m/84'/0'/0'/0/0", 100000n, { sh: 2 })], [[ext, 99000n]]);
+        for (const [nm, b] of [['another seed\'s coin', N.bytes], ['sighash NONE only', S2.bytes]]) { const r2 = await sign(b); if (r2.out || r2.asked.length || r2.view !== 'SSPSBTSigningErrorView' || !/^Nothing signed: seed [0-9a-f]{8} cannot add a signature/.test(r2.st)) fails.push(T + 'nothing to sign (' + nm + '): no question, Signing Failed, and the page says Nothing signed (' + r2.st.slice(0, 60) + ')'); }
+        const PS = build([wp("m/84'/0'/0'/0/0", 100000n, { n: 1 }), wp("m/84'/0'/0'/0/1", 100000n, { n: 2, index: 1, sh: 2 })], [[ext, 199000n]]);
+        const v = await rv(PS.bytes); if (!/~The device will leave input 1 of seed [0-9a-f]{8} unsigned \(see above\), and sign input 0 only/.test(v.x)) fails.push(T + 'partial: the review says which input will be left unsigned (amber)');
+        const ps = E('SSPSBT').parse(P8(PS.bytes)), pr = await E('SSPSBTParser').create(ps, sA, SC.MAINNET); await ps.sign_with(pr.root); pr.root.wipe();
+        E('ssOwn').txid = ''; await w.ssOwnTakePsbt({ psbt: E('SSPSBTParser').trim(ps), psbt_seed: sA, psbt_parser: { psbt: ps } }); const o = E('ssOwn').out;
+        if (!o || o.cls !== 'warn' || !/Signed input 0 of this seed’s inputs; NOT signed: input 1 /.test(o.say) || $('ssOwnOutSay').className !== 'status ss-banner warn') fails.push(T + 'partial: the result names the signed and the unsigned inputs in an amber banner (' + (o ? o.cls + ' ' + o.say.slice(-160) : 'none') + ')'); }
+      // 3. multisig change: claimed only (no descriptor), a foreign descriptor, the wallet's own descriptor; the second question
+      { const acct = "m/48'/0'/0'/2'", own = [RA, RB, RC], hd = own.map((r2) => r2.derive(acct)), xh = [0, 1, 2].map((i) => RZ.derive("m/48'/0'/" + (i + 5) + "'/2'"));
+        const sp = (a) => a.slice().sort((x, y) => Buffer.compare(Buffer.from(x), Buffer.from(y)));
+        const ms = (K, b, i) => { const pubs = K.map((a) => a.deriveChild(b).deriveChild(i).publicKey); return { pay: btc.p2wsh(btc.p2ms(2, sp(pubs))), ders: pubs.map((p, j) => [p, der(own[j], acct + '/' + b + '/' + i)]) }; };
+        const dsc = (K) => 'wsh(sortedmulti(2,' + K.map((a, j) => '[' + fx(own[j]) + "/48h/0h/0h/2h]" + a.publicExtendedKey + '/{0,1}/*').join(',') + '))';
+        const i0 = ms(hd, 0, 3), mkM = (o) => { const tx = new btc.Transaction(); tx.addInput({ txid: tid(3), index: 0, witnessUtxo: { script: i0.pay.script, amount: 2000000n }, witnessScript: i0.pay.witnessScript, bip32Derivation: i0.ders }); tx.addOutput({ script: ext, amount: 1000n }); tx.addOutput({ script: o.pay.script, amount: 1998000n, witnessScript: o.pay.witnessScript, bip32Derivation: o.ders }); return tx.toPSBT(0); };
+        const evil = mkM(ms(xh, 1, 0)), good = mkM(ms(hd, 1, 0)), DS = E('SSDescriptor'), fd = await DS.from_string(dsc(xh)), rd = await DS.from_string(dsc(hd));
+        let v = await rv(evil); if (!/!Output 1 \(1,998,000 sats\) is claimed change, NOT verified: no wallet descriptor is loaded on the device and the PSBT has no cosigner keys/.test(v.x)) fails.push(T + 'M1: multisig change with no descriptor and no xpubs is called claimed, NOT verified (red)');
+        dev.multisig_wallet_descriptor = fd; v = await rv(evil); if (!/!Output 1 \(1,998,000 sats\) is claimed change, NOT verified: the wallet descriptor on the device names this seed’s fingerprint, but the key there is not this seed’s/.test(v.x)) fails.push(T + 'M2: a foreign descriptor that names this seed\'s fingerprint does not verify change');
+        const ds = await w.ssOwnDescSeeds(rd, [sA, sPub], SC.MAINNET), df = await w.ssOwnDescSeeds(fd, [sA], SC.MAINNET);
+        if (ds.inIt.join() !== [fA, fx(RB)].join() || df.inIt.length || df.claims.join() !== fA) fails.push(T + 'M2: the seeds in a descriptor are found by their own keys at its origins (' + JSON.stringify([ds, df]) + ')');
+        dev.multisig_wallet_descriptor = rd; v = await rv(good); if (/claimed change/.test(v.x)) fails.push(T + 'M2: the wallet\'s own descriptor verifies its own change');
+        v = await rv(evil); if (!/!Output 1 \(1,998,000 sats\) is called change, but your wallet descriptor on the device does not make it/.test(v.x)) fails.push(T + 'M2: change the wallet\'s own descriptor does not make is flagged');
+        { const other = ms(hd.map((a, j) => j ? a : RA.derive("m/48'/0'/1'/2'")), 0, 0), tx = new btc.Transaction(); tx.addInput({ txid: tid(5), index: 0, witnessUtxo: { script: other.pay.script, amount: 50000n }, witnessScript: other.pay.witnessScript, bip32Derivation: other.ders.map(([p, d], j) => [p, j ? d : der(RA, "m/48'/0'/1'/2'/0/0")]) }); tx.addOutput({ script: ext, amount: 49000n });
+          if ((await w.ssOwnMsigTrust(E('SSPSBT').parse(P8(tx.toPSBT(0))), sA, SC.MAINNET, rd)).trusted) fails.push(T + 'M2: a descriptor that does not make the inputs does not verify change'); }
+        answers = [true, false]; let r2 = await sign(evil, null);
+        if (r2.out || r2.asked.length !== 2 || !/^The device did NOT verify that this change comes back to your multisig wallet:\n\n- output 1: 1,998,000 sats to bc1q/.test(r2.asked[1]) || !/these 1,998,000 sats go to someone else/.test(r2.asked[1]) || r2.head !== 'Not signed') fails.push(T + 'M1: unverified multisig change asks a second question naming the amount; No signs nothing');
+        answers = [true, true]; r2 = await sign(evil, fd); if (!r2.out || r2.asked.length !== 2) fails.push(T + 'M2: with a foreign descriptor the second question is asked too, and Yes signs');
+        answers = []; r2 = await sign(good, rd); if (!r2.out || r2.asked.length !== 1) fails.push(T + 'M1: change verified by the wallet\'s own descriptor: one question only');
+        dev.multisig_wallet_descriptor = null; }
+      // 4. single-key change at an odd path (M3); sighash 0 (L5); amber fees (10% of the amount sent, 250 sat/vB)
+      { const inp = wp("m/84'/0'/0'/0/1", 250000n);
+        for (const [cp, re] of [["m/84'/0'/123456'/1/0", /its account is not the one the inputs come from \(m\/84h\/0h\/0h\)/], ["m/84'/0'/0'/1/20000", /its address number \(20,000\) is far past/], ["m/999'/1/0", /its path has 3 levels, where wallets use 5/]]) {
+          const [sc, d] = ch(cp), v = await rv(build([inp], [[ext, 10000n], [sc, 238000n, d]]).bytes);
+          if (!new RegExp('!Output 1 \\(238,000 sats\\) is change at ' + cp.replace(/'/g, 'h').replace(/\//g, '\\/') + '\\. The device will say Address Verified').test(v.x) || !re.test(v.x)) fails.push(T + 'M3: change at ' + cp + ' is flagged (' + v.x.slice(0, 100) + ')'); }
+        { const [sc, d] = ch("m/84'/0'/0'/1/9999"), v = await rv(build([inp], [[ext, 200000n], [sc, 49000n, d]]).bytes); if (/is change at/.test(v.x)) fails.push(T + 'M3: ordinary change (/1/9999 of the inputs\' account) is not flagged'); }
+        let v = await rv(build([wp("m/84'/0'/0'/0/1", 250000n, { sh: 0 })], [[ext, 249000n]]).bytes);
+        if (!/~Input 0 asks for sighash 0 \(SIGHASH_DEFAULT\), which is for Taproot only\. The device signs it with SIGHASH_ALL/.test(v.x) || /will not sign this input/.test(v.x)) fails.push(T + 'L5: sighash 0 on a non-Taproot input is signed as ALL, and the page says so (not "will not sign")');
+        v = await rv(build([inp], [[ext, 200000n]]).bytes);
+        if (!/~The fee \(50,000 sats\) is 25% of the amount sent \(200,000 sats\)/.test(v.x) || !/~The fee rate is about 455 sat\/vB/.test(v.x)) fails.push(T + 'fees: 10% of the amount sent and 250 sat/vB are flagged amber (' + v.x.slice(0, 120) + ')');
+        v = await rv(build([inp], [[ext, 246000n]]).bytes); if (/~The fee/.test(v.x)) fails.push(T + 'fees: an ordinary fee (4,000 sats, about 36 sat/vB) is not flagged'); }
+      // 5. L1: sequence 0 kept; a signed transaction that is not the one held up, or unchecked signatures: nothing to copy or save
+      { const Q = build([wp("m/84'/0'/0'/0/1", 250000n, { seq: 0 })], [[ext, 249000n]]), r2 = await sign(Q.bytes), sg = r2.out ? btc.Transaction.fromPSBT(r2.out) : null;
+        if (!sg || sg.getInput(0).sequence !== 0 || H(sg.unsignedTx) !== H(Q.tx.unsignedTx)) fails.push(T + 'L1: an input with sequence 0 is signed as the wallet made it');
+        const take = async (b, txid, spoil) => { const ps = E('SSPSBT').parse(P8(b)), pr = await E('SSPSBTParser').create(ps, sA, SC.MAINNET); await ps.sign_with(pr.root); pr.root.wipe(); if (spoil) ps.inputs[0].partial_sigs[0].sig[10] ^= 1; E('ssOwn').txid = txid; await w.ssOwnTakePsbt({ psbt: E('SSPSBTParser').trim(ps), psbt_seed: sA, psbt_parser: { psbt: ps } }); return E('ssOwn').out; };
+        let o = await take(Q.bytes, Q.tx.id); if (!o || o.noOut || o.cls !== 'ok' || $('ssOwnCopy').hidden || $('ssOwnSave').hidden || !o.text) fails.push(T + 'L1: the transaction held up, signed and checked: offered to copy and save');
+        o = await take(Q.bytes, 'ab'.repeat(32)); if (!o || !o.noOut || !/This is NOT the transaction you held up/.test(o.say) || o.cls !== 'bad' || !$('ssOwnCopy').hidden || !$('ssOwnSave').hidden || $('ssOwnOutText').value) fails.push(T + 'L1: a signed transaction that is not the one held up is red, with nothing to copy or save');
+        o = await take(Q.bytes, Q.tx.id, true); if (!o || !o.noOut || !$('ssOwnCopy').hidden || /: valid/.test(o.say)) fails.push(T + 'L4: an INVALID signature: nothing to copy or save');
+        w.ssOwnCopy($('ssOwnCopy'), false); w.ssOwnSave(); }
+      // 6. secrets in any form: refused, never repeated, the box cleared; a refused paste stops holding up the last item
+      { const k0 = RA.derive("m/84'/0'/0'/0/0"), wif = btc.WIF().encode(k0.privateKey), W12 = MN.split(' '), dig = W12.map((x) => String(wordlist.indexOf(x)).padStart(4, '0'));
+        const forms = { 'numbered': W12.map((x, i) => (i + 1) + '. ' + x).join('\n'), 'commas': W12.join(', '), 'sentence': 'My seed is: ' + MN + '. Keep it safe', '4 letters': W12.map((x) => x.slice(0, 4)).join(' '),
+          'SeedQR spaced': dig.join(' '), 'WIF': wif, 'bitcoin:WIF': 'bitcoin:' + wif, 'hex key': H(k0.privateKey), 'hex entropy': H(mnemonicToEntropy(MN, wordlist)), 'xprv in a descriptor': 'wpkh(' + RA.privateExtendedKey + '/0/*)' };
+        for (const [nm, t] of Object.entries(forms)) { const r2 = await w.ssOwnRead(t); if (!r2.secret || !r2.error) fails.push(T + 'L2: a secret is refused as a secret: ' + nm); }
+        const addr = btc.p2wpkh(RA.derive("m/84'/0'/0'/0/4").publicKey).address;
+        $('ssOwnIn').value = addr; await w.ssOwnGo(); const held = E('ssLearnCam').key;
+        $('ssOwnIn').value = forms.numbered; await w.ssOwnGo(); const st = $('ssOwnStatus').textContent;
+        if (held !== 'own' || $('ssOwnIn').value !== '' || E('ssLearnCam').frames || !/^Not held up: This holds 12 or more seed words in a row: a seed\. The box was cleared\./.test(st) || W12.some((x) => st.includes(' ' + x + ' ')) || !/\bbad\b/.test($('ssOwnStatus').className)) fails.push(T + 'L2: seed words pasted: refused in red, the box cleared, nothing repeated, and the address held up before is put away (tester 7)');
+        $('ssOwnIn').value = 'bitcoin:' + wif; await w.ssOwnGo(); if ($('ssOwnIn').value !== '' || E('ssLearnCam').frames || $('ssOwnStatus').textContent.includes(wif.slice(1, 12))) fails.push(T + 'L2: bitcoin:<WIF> is refused, not held up as an address');
+        const fileGo = async (body) => { const b = E('(t) => new TextEncoder().encode(t)')(body), ev = { target: { files: [{ size: b.length, arrayBuffer: async () => b.buffer }], value: 'x' } }; await w.ssOwnFile(ev); };
+        $('ssOwnIn').value = ''; await fileGo(MN); if ($('ssOwnIn').value !== '' || !/^Not read: This holds 12 or more seed words in a row: a seed\. The file was not put in the box\./.test($('ssOwnStatus').textContent)) fails.push(T + 'L2: a file of seed words is checked before it goes into the box');
+        await fileGo(addr); if ($('ssOwnIn').value !== addr || E('ssLearnCam').key !== 'own') fails.push(T + 'L2: a file with an address goes into the box and is held up');
+        const cv = (text, bytes) => w.camValue('ssOwnIn', { text, bytes });
+        if (!cv(dig.join('')).error || !cv(MN).error || !cv('bitcoin:' + wif).error || !cv('', P8(mnemonicToEntropy(MN, wordlist))).error || cv(addr).value !== addr) fails.push(T + 'L2: the camera never puts a SeedQR, a CompactSeedQR, seed words or a WIF key into the box');
+        if (!E('RH_PLACES').includes('ssOwnIn') || !E('RH_ONLY_COVER').includes('ssOwnIn')) fails.push(T + 'L2: the box for your PSBT is covered by re-hide (cover only)');
+        let r2 = await w.ssOwnRead(addr.slice(0, -1) + (addr.endsWith('q') ? 'p' : 'q')); if (r2.kind || !/checksum/.test(r2.error || '')) fails.push(T + 'L2: an address with a wrong checksum is refused (the page\'s own address checker)');
+        r2 = await w.ssOwnRead(btc.p2wpkh(k0.publicKey, btc.TEST_NETWORK).address); if (r2.kind !== 'address' || !/^This is a Testnet address, but the device is set to Mainnet\./.test((r2.warns[0] || {}).t || '')) fails.push(T + 'tester 12: a Testnet address on a Mainnet device is held up with a red note'); }
+      // 7. long text is read at once (the device's QR type detection never gets it); a PSBT the device cannot read is not held up
+      { const DQ = E('SSDecodeQR'), d0 = DQ.detect_segment_type; let long = 0; DQ.detect_segment_type = function (s2, l) { if (String(s2).length > 4000) long++; return d0.call(this, s2, l); };
+        try { const t0 = Date.now(), r2 = await w.ssOwnRead('A'.repeat(3000000)); if (long || !r2.error || Date.now() - t0 > 15000) fails.push(T + 'tester 3: 3 MB of "A" is refused at once (' + (Date.now() - t0) + ' ms, ' + long + ' long type checks)'); } finally { DQ.detect_segment_type = d0; }
+        const tx = new btc.Transaction(); tx.addInput({ txid: tid(7), index: 0, bip32Derivation: [[RA.derive("m/84'/0'/0'/0/0").publicKey, der(RA, "m/84'/0'/0'/0/0")]] }); tx.addOutput({ script: ext, amount: 1000n });
+        const nb = tx.toPSBT(0); w.ssLearnHide(); $('ssOwnIn').value = Buffer.from(nb).toString('base64'); await w.ssOwnGo();
+        if (E('ssLearnCam').frames || !/^Not held up: the device cannot read this PSBT: input 0 does not include the coin it spends/.test($('ssOwnStatus').textContent)) fails.push(T + 'tester 5: a PSBT the device cannot read is not held up (' + $('ssOwnStatus').textContent.slice(0, 80) + ')');
+        const ov = Object.create(E('SSPSBTOverviewView').prototype); ov.controller = { psbt: E('SSPSBT').parse(P8(nb)), psbt_seed: sA }; const d = await ov.run();
+        if (!d || !d.view_args || d.view_args.status_headline !== 'Cannot read PSBT' || !/^Input 0 does not include the coin it spends/.test(d.view_args.text)) fails.push(T + 'tester 5: the device says why it cannot read it (no System Error)'); }
+      // 8. a new item puts the last output away (and so does No); an empty address number is refused
+      { w.ssOwnShow({ kind: 'psbt', bytes: new Uint8Array(2), fp: fA, pub: false, text: 'x', say: 'Signed', cls: 'ok' });
+        $('ssMsgIn').value = 'hi'; $('ssMsgIdx').value = ''; w.ssOwnMsgGo(); if (!/^Not held up: type the number of the receive address/.test($('ssOwnStatus').textContent) || $('ssOwnOut').hidden) fails.push(T + 'tester 12: an empty address number is refused (the output stays)');
+        $('ssMsgIdx').value = '2'; w.ssOwnMsgGo(); if (!$('ssOwnOut').hidden || E('ssOwn').out) fails.push(T + 'tester 1: holding up a new item puts the last signed output away');
+        w.ssOwnShow({ kind: 'psbt', bytes: new Uint8Array(2), fp: fA, pub: false, text: 'x', say: 'Signed', cls: 'ok' }); answers = [false];
+        const r2 = await sign(build([wp("m/84'/0'/0'/0/1", 250000n)], [[ext, 249000n]]).bytes); if (r2.out || !$('ssOwnOut').hidden) fails.push(T + 'tester 1: No to the question puts the last signed output away'); answers = []; }
+      // 9. L3: public words with a passphrase ask online; tester 9: the practice transaction names a real seed; tester 12: stale texts
+      { E('ssPageStart = function () { ssPageOn = true; }'); online(true); answers = [false]; asked.length = 0;
+        const r2 = w.vfSignerLoadSeed(AB, { pass: true }); if (r2 !== 'cancelled' || asked.length !== 1 || !/^This computer is online\. These words are public, but with your passphrase they make a real wallet\./.test(asked[0])) fails.push(T + 'L3: public words with a passphrase ask before they load online');
+        answers = []; asked.length = 0; w.vfSignerLoadSeed(AB, {}); if (asked.length) fails.push(T + 'L3: public words with no passphrase load online with no question'); w.ssAutoEnd(''); w.ssLearnHide(); online(false);
+        E('SSController')._instance = dev; E('ssPageOn = true'); dev._storage.seeds = [sA];
+        const T1 = await w.ssLearnBuild('single'), ps = E('SSPSBT').parse(T1.psbt), pr = await E('SSPSBTParser').create(ps, sA, SC.MAINNET); await ps.sign_with(pr.root); pr.root.wipe();
+        const res = await w.ssLearnCheck(T1, Uint8Array.from(E('SSPSBTParser').trim(ps).serialize()));
+        if (!res || !res.ok || !/^Signed correctly by your real seed [0-9a-f]{8} \(not a practice seed\): /.test(res.text) || !/The coins are made up/.test(res.text)) fails.push(T + 'tester 9: the practice transaction signed by a real seed says so (' + (res && res.text.slice(0, 60)) + ')');
+        E('ssLearn').tx = Object.assign(T1, { result: res }); $('ssLearnPick').value = 'address'; w.ssLearnStart(); if (E('ssLearn').tx) fails.push(T + 'tester 12: a new lesson drops the last practice transaction\'s result');
+        w.ssLearnWipe(); E('ssPageOn = true');
+        const sn = $('seedSignerNote'); sn.textContent = 'The practice signer is open in CHECK A BACKUP and loads this seed by itself from its SeedQR.'; sn.className = 'hint ss-banner ok'; w.ssfDeviceOff();
+        if (sn.textContent) fails.push(T + 'tester 12: switching the device off clears the note that it loads the seed'); }
+    } catch (e) { if (e instanceof ProbeStop) throw e; fails.push(T + 'the probe crashed: ' + e.message); }
+    finally {
+      w.confirm = conf0; w.Element.prototype.scrollIntoView = siv0; if (navOnline) Object.defineProperty(w.navigator, 'onLine', navOnline); else delete w.navigator.onLine;
+      try { w.ssPageStop(); } catch (e) { /* off */ } E('(f) => { ssPageStart = f; }')(start0); E('SSController')._instance = ctl0; E('ssPageOn = false'); try { E('ssLearn').tx = null; } catch (e) { /* none */ }
     }
     r = await run('dice', 12, D50);
   }
@@ -1016,23 +1172,31 @@ async function probe(w, mutated, fast, only, hooks) {
       const t0 = new btc.Transaction(); t0.addInput({ txid: '66'.repeat(32), index: 0, witnessUtxo: { script: btc.p2wpkh(q).script, amount: 9000n }, bip32Derivation: [[q, { fingerprint: 0, path: [84 + HP, HP, HP, 0, 0] }]] }); t0.addOutput({ script: btc.p2wpkh(q2).script, amount: 8000n });
       const pz = E('SSPSBT').parse(P8(t0.toPSBT())), pr = await E('SSPSBTParser').create(pz, sAB, SC.MAINNET);
       if (H(pz.inputs[0].bip32_derivations[0].der.fingerprint) !== fAB || await pz.sign_with(pr.root) !== 1 || !(await E('SSPSBTParser').has_matching_input_fingerprint(E('SSPSBT').parse(P8(t0.toPSBT())), sAB))) fails.push(T + 'PSBT: a zero fingerprint is filled in when the key is the seed\'s, and it signs'); }
-    // 10. The offline-only rule for seed QR codes (VOIDFORGE's own camera rule)
-    online(true); if (!w.ssToolsSeedScanBlocked()) fails.push(T + 'seed QR codes are refused while the computer is online');
-    { const dr = new DQ(); await dr.add_data(expect.d50); const da = new DQ(); await da.add_data(AB);
-      if (!w.ssToolsSeedScanBlocked(dr) || w.ssToolsSeedScanBlocked(da)) fails.push(T + 'v2.17.0: online, a real seed QR is refused, a public one (abandon ... about) is read'); }
-    online(false); if (w.ssToolsSeedScanBlocked()) fails.push(T + 'seed QR codes are read while the computer is offline');
-    { const scanView = async (cls, on, data) => { const v = Object.create(E(cls).prototype), got = {}; v.wordlist_language_code = SC.WORDLIST_LANGUAGE__ENGLISH; v.decoder = new DQ(); v.settings = E('SSSettings').get_instance();
-        v.controller = { storage: { set_pending_seed: (s) => { got.seed = s; } }, reset_screensaver_timeout: () => {} }; v.run_screen = async () => { got.ran = true; if (data) await v.decoder.add_data(data); };
-        online(on); got.dest = await v.run(); return got; };
-      const dg = idx(AB).map((i) => String(i).padStart(4, '0')).join('');
-      const dr = idx(expect.d50).map((i) => String(i).padStart(4, '0')).join('');
-      let g = await scanView('SSScanSeedQRView', true, dg); if (g.ran || g.seed || !g.dest.view_args || g.dest.view_args.status_headline !== 'Offline only') fails.push(T + 'the SeedQR scan does not start while online');
-      g = await scanView('SSScanView', true, dr); if (g.seed || !g.dest.view_args || g.dest.view_args.status_headline !== 'Offline only') fails.push(T + 'a real SeedQR read by the general scan while online is not loaded');
-      g = await scanView('SSScanView', true, P8(mnemonicToEntropy(expect.d50, wordlist))); if (g.seed || !g.dest.view_args || g.dest.view_args.status_headline !== 'Offline only') fails.push(T + 'a real CompactSeedQR read while online is not loaded');
-      g = await scanView('SSScanView', true, dg); if (!g.seed || g.seed.mnemonic_str !== AB) fails.push(T + 'v2.17.0: a public SeedQR (abandon ... about) read while online is loaded');
-      g = await scanView('SSScanSeedQRView', false, dg); if (!g.seed || g.seed.mnemonic_str !== AB || g.dest.View_cls !== E('SSSeedFinalizeView')) fails.push(T + 'a SeedQR read while offline is loaded');
-      const tv = Object.create(E('SSSeedTranscribeSeedQRConfirmScanView').prototype); let ran = false; tv.decoder = new DQ(); tv.run_screen = async () => { ran = true; return false; }; online(true); const d0 = await tv.run();
-      if (ran || !d0.view_args || d0.view_args.status_headline !== 'Offline only') fails.push(T + 'checking a written SeedQR by scanning it waits for offline'); }
+    // 10. Seed QR codes read while the computer is online (VOIDFORGE's rule; v2.17.0 review: the owner's "no restrictions"): every
+    // scan starts; once a real seed is read the device asks first (Yes loads it, No loads nothing: "Not loaded"); a public seed and
+    // an offline scan load with no question
+    { const cf0 = w.confirm, qs = []; let yes = false; w.confirm = (q) => { qs.push(q); return yes; };
+      try {
+        online(true); if (w.ssToolsSeedScanBlocked() || qs.length) fails.push(T + 'v2.17.0: online, a seed QR scan starts with no question (it comes once a seed is read)');
+        { const dr = new DQ(); await dr.add_data(expect.d50); const da = new DQ(); await da.add_data(AB);
+          if (!w.ssToolsSeedScanBlocked(dr) || qs.length !== 1 || !/^This computer is online\. The practice signer read the SeedQR of a real seed: loading it here is like typing it into a website/.test(qs[0])) fails.push(T + 'v2.17.0: online, a real seed QR read asks first, and No refuses it');
+          yes = true; qs.length = 0; if (w.ssToolsSeedScanBlocked(dr) || qs.length !== 1) fails.push(T + 'v2.17.0: online, Yes to the question loads a real seed QR');
+          qs.length = 0; if (w.ssToolsSeedScanBlocked(da) || qs.length) fails.push(T + 'v2.17.0: online, a public seed QR (abandon ... about) is read with no question'); }
+        online(false); qs.length = 0; { const dr = new DQ(); await dr.add_data(expect.d50); if (w.ssToolsSeedScanBlocked(dr) || qs.length) fails.push(T + 'seed QR codes are read while the computer is offline, with no question'); }
+        const scanView = async (cls, on, data) => { const v = Object.create(E(cls).prototype), got = {}; v.wordlist_language_code = SC.WORDLIST_LANGUAGE__ENGLISH; v.decoder = new DQ(); v.settings = E('SSSettings').get_instance();
+          v.controller = { storage: { set_pending_seed: (s) => { got.seed = s; } }, reset_screensaver_timeout: () => {} }; v.run_screen = async () => { got.ran = true; if (data) await v.decoder.add_data(data); };
+          online(on); qs.length = 0; got.dest = await v.run(); got.asked = qs.length; return got; };
+        const dg = idx(AB).map((i) => String(i).padStart(4, '0')).join('');
+        const dr = idx(expect.d50).map((i) => String(i).padStart(4, '0')).join('');
+        yes = false; let g = await scanView('SSScanSeedQRView', true, dg); if (!g.ran || !g.seed || g.seed.mnemonic_str !== AB || g.asked) fails.push(T + 'v2.17.0: the SeedQR scan starts while online and loads a public seed with no question');
+        g = await scanView('SSScanView', true, dr); if (g.seed || g.asked !== 1 || !g.dest.view_args || g.dest.view_args.status_headline !== 'Not loaded') fails.push(T + 'a real SeedQR read by the general scan while online, No: not loaded, and the device says so');
+        g = await scanView('SSScanView', true, P8(mnemonicToEntropy(expect.d50, wordlist))); if (g.seed || g.asked !== 1 || !g.dest.view_args || g.dest.view_args.status_headline !== 'Not loaded') fails.push(T + 'a real CompactSeedQR read while online, No: not loaded');
+        yes = true; g = await scanView('SSScanSeedQRView', true, dr); if (!g.seed || g.seed.mnemonic_str !== expect.d50 || g.asked !== 1) fails.push(T + 'v2.17.0: a real SeedQR read while online, Yes: loaded');
+        g = await scanView('SSScanView', true, dg); if (!g.seed || g.seed.mnemonic_str !== AB) fails.push(T + 'v2.17.0: a public SeedQR (abandon ... about) read while online is loaded');
+        yes = false; g = await scanView('SSScanSeedQRView', false, dr); if (!g.seed || g.seed.mnemonic_str !== expect.d50 || g.asked || g.dest.View_cls !== E('SSSeedFinalizeView')) fails.push(T + 'a SeedQR read while offline is loaded, with no question');
+        const tv = Object.create(E('SSSeedTranscribeSeedQRConfirmScanView').prototype); let ran = false; tv.decoder = new DQ(); tv.run_screen = async () => { ran = true; return false; }; online(true); await tv.run();
+        if (!ran) fails.push(T + 'v2.17.0: checking a written SeedQR by scanning it starts while online too');
+      } finally { w.confirm = cf0; } }
     if (navOnline) Object.defineProperty(w.navigator, 'onLine', navOnline); else delete w.navigator.onLine;
     // 11. The wipe: the controller's PSBT, signing key and scanned data, and (CLEAR ALL, auto-clear, END SESSION) the seeds in memory
     { const [psbt, parser] = kept || [], d = new DQ(); await d.add_data(P8(mnemonicToEntropy(AB, wordlist)));
@@ -1142,7 +1306,8 @@ async function probe(w, mutated, fast, only, hooks) {
         if (made || msg !== "Can't read one byte from the stream" || !btcRefuses(v2([0xfe, 255, 255, 255, 255]))) fails.push(T + 'PSBTv2: an input count larger than the bytes left fails at once'); } }
     // 15. A taproot key with a missing (00000000) fingerprint is the seed's only with an even y, as SeedSigner's sec() comparison
     // finds it (the parity from @scure/bip32): then it is offered, filled in and signed, else none of these; and an input with
-    // sequence 0 is signed and returned with 0xffffffff, as embit does (the signature checked with btc-signer's hash of that).
+    // sequence 0 is signed and returned as 0 (SIM: VOIDFORGE fix; embit makes it 0xffffffff, a different transaction), the signature
+    // checked with btc-signer's hash of the transaction as the wallet made it.
     { const q0 = kAt("m/84'/0'/0'/0/0").publicKey, q1 = kAt("m/84'/0'/0'/0/1").publicKey, P = E('SSPSBTParser');
       const tapZ = (i) => { const k = kAt(`m/86'/0'/0'/0/${i}`).publicKey, x = k.slice(1), t = new btc.Transaction();
         t.addInput({ txid: H(sha('vf-ss-tz' + i)), index: 0, witnessUtxo: { script: btc.p2tr(x).script, amount: 7000n }, tapInternalKey: x, tapBip32Derivation: [[x, { hashes: [], der: { fingerprint: 0, path: [86 + HP, HP, HP, 0, i] } }]] });
@@ -1155,7 +1320,7 @@ async function probe(w, mutated, fast, only, hooks) {
         if (!ok) { fails.push(T + 'PSBT: a taproot key with a zero fingerprint is the seed\'s only with an even y (' + (even ? 'even' : 'odd') + ' y)'); break; } }
       const s0 = (seq) => { const t = new btc.Transaction(); t.addInput({ txid: '58'.repeat(32), index: 1, sequence: seq, witnessUtxo: { script: btc.p2wpkh(q0).script, amount: 9000n }, bip32Derivation: [[q0, { fingerprint: FPI, path: [84 + HP, HP, HP, 0, 0] }]] }); t.addOutput({ script: btc.p2wpkh(q1).script, amount: 8000n }); return t; };
       const p0 = E('SSPSBT').parse(P8(s0(0).toPSBT())), hk = await E('SSPsbtHDKey').from_seed(sAB.seed_bytes), n0 = await p0.sign_with(hk), back = btc.Transaction.fromPSBT(p0.serialize()), sg = back.getInput(0).partialSig || [];
-      if (n0 !== 1 || back.getInput(0).sequence !== 0xffffffff || sg.length !== 1 || !secp256k1.verify(secp256k1.Signature.fromDER(sg[0][1].slice(0, -1)), s0(0xffffffff).preimageWitnessV0(0, btc.p2pkh(q0).script, 1, 9000n), q0)) fails.push(T + 'PSBT: an input with sequence 0 is signed and returned with 0xffffffff, as embit does'); }
+      if (n0 !== 1 || back.getInput(0).sequence !== 0 || H(back.unsignedTx) !== H(s0(0).unsignedTx) || sg.length !== 1 || !secp256k1.verify(secp256k1.Signature.fromDER(sg[0][1].slice(0, -1)), s0(0).preimageWitnessV0(0, btc.p2pkh(q0).script, 1, 9000n), q0)) fails.push(T + 'PSBT: an input with sequence 0 is signed and returned with sequence 0, the transaction the wallet made (v2.17.0 fix)'); }
     // 16. Address Explorer: it holds the account's extended public key only (no private key, no seed), from the right path, and
     // lists the addresses of that network (regtest change: bcrt1 addresses from the change chain), as btc-signer makes them
     { const st = new (E('SSSeedStorage'))(), S = E('SSSettings').get_instance(), load0 = w.ssToolsLoading; st.seeds.push(sAB);
@@ -7995,10 +8160,10 @@ const M = [
   ["practice signer: words QR: checksum not checked", "        await ssBip39MnemonicToBytes(seed_phrase_list.join(\" \").normalize(\"NFKD\"), false, this.wordlist);", "        await ssBip39MnemonicToBytes(seed_phrase_list.join(\" \").normalize(\"NFKD\"), true, this.wordlist);"],
   ["practice signer: QR type: 12-word SeedQR not recognized", "if (/\\d{48,96}/.test(s)) return T.SEED__SEEDQR;", "if (/\\d{49,96}/.test(s)) return T.SEED__SEEDQR;"],
   ["practice signer: QR type: 12-word CompactSeedQR not recognized", "if (bytes.length === 32 || bytes.length === 16) return T.SEED__COMPACTSEEDQR;", "if (bytes.length === 32 || bytes.length === 17) return T.SEED__COMPACTSEEDQR;"],
-  ["practice signer: offline rule: seed QR codes read while online", "  return true;\n}\nfunction ssToolsOfflineOnlyDest", "  return false;\n}\nfunction ssToolsOfflineOnlyDest"],
-  ["practice signer: offline rule: SeedQR scan starts while online", "    if (this instanceof SSScanSeedQRView && ssToolsSeedScanBlocked()) return ssToolsOfflineOnlyDest();\n", ""],
-  ["practice signer: offline rule: a seed read by the general scan is loaded while online", "      if (this.decoder.is_seed && ssToolsSeedScanBlocked(this.decoder)) {", "      if (false) {"],
-  ["practice signer: offline rule: SeedQR check scan starts while online", "        if (typeof ssToolsSeedScanBlocked === \"function\" && ssToolsSeedScanBlocked()) return ssToolsOfflineOnlyDest();\n", ""],
+  ["practice signer: online rule: a real seed QR read online loads with no question", "  return !confirm(SS_TOOLS_SCAN_ONLINE_ASK);", "  return false;"],
+  ["practice signer: online rule: No to the question loads the seed anyway", "  return !confirm(SS_TOOLS_SCAN_ONLINE_ASK);", "  confirm(SS_TOOLS_SCAN_ONLINE_ASK); return false;"],
+  ["practice signer: online rule: an offline scan is asked too", "  if (!decoder || typeof navigator === \"undefined\" || navigator.onLine !== true) return false;", "  if (!decoder || typeof navigator === \"undefined\") return false;"],
+  ["practice signer: online rule: a real seed read by the general scan is loaded after No", "      if (this.decoder.is_seed && ssToolsSeedScanBlocked(this.decoder)) {", "      if (false) {"],
   ["practice signer: verify address: receive found as change", "            if (this.address === receive_address) {\n                this.verified_index.set_value(i);\n                this.verified_index_is_change.set_value(0);", "            if (this.address === receive_address) {\n                this.verified_index.set_value(i);\n                this.verified_index_is_change.set_value(1);"],
   ["practice signer: verify address: change chain not searched", "change_address = await U.get_single_sig_address(this.xpub, this.script_type, i, true, this.embit_network);", "change_address = await U.get_single_sig_address(this.xpub, this.script_type, i, false, this.embit_network);"],
   ["practice signer: verify address: multisig change chain not searched", "change_address = await U.get_multisig_address(this.descriptor, i, true, this.embit_network);", "change_address = await U.get_multisig_address(this.descriptor, i, false, this.embit_network);"],
@@ -8130,7 +8295,7 @@ const M = [
   ["practice signer: taproot: zero fingerprint matched with an odd y", "function ssPsbtSec(pub) { return pub.length === 32 ? concatBytes(Uint8Array.of(0x02), pub) : pub; }", "function ssPsbtSec(pub) { return pub.length === 32 ? concatBytes(Uint8Array.of(0x03), pub) : pub; }"],
   ["practice signer: taproot: an odd-y key with a zero fingerprint offered for signing", "          return ssPsbtEq(derived_key.pub, ssPsbtSec(public_key));   // Public keys match", "          return ssPsbtEq(derived_key.pub.slice(1), public_key.slice(-32));   // Public keys match"],
   ["practice signer: taproot: an odd-y zero fingerprint filled in", "      if (ssPsbtEq(derived_key.pub, ssPsbtSec(public_key))) return {fingerprint:", "      if (ssPsbtEq(derived_key.pub.slice(1), public_key.slice(-32))) return {fingerprint:"],
-  ["practice signer: PSBT: sequence 0 signed as 0", "script_sig: new Uint8Array(0), sequence: this.sequence || 0xffffffff}; }", "script_sig: new Uint8Array(0), sequence: this.sequence === null ? 0xffffffff : this.sequence}; }"],
+  ["practice signer: PSBT: sequence 0 signed as 0xffffffff (embit's quirk, v2.17.0 fix)", "sequence: this.sequence === null || this.sequence === undefined ? 0xffffffff : this.sequence}; }", "sequence: this.sequence || 0xffffffff}; }"],
   ["practice signer: explorer: regtest shown with testnet prefixes", "get_single_sig_address(xpub, script_type, i, is_change, embit_network));", "get_single_sig_address(xpub, script_type, i, is_change, embit_network === \"regtest\" ? \"test\" : embit_network));"],
   ["practice signer: explorer: the account key carries the seed", "  if (typeof seed.get_xpub === \"function\") return seed.get_xpub(derivation_path, network);", "  if (typeof seed.get_xpub === \"function\") return Object.assign(await seed.get_xpub(derivation_path, network), {seed_bytes: seed.seed_bytes});"],
   // v2.14.0: Learn on the practice signer (tools/simulator/ss_learn.js), LOAD INTO THE PRACTICE SIGNER and FORGE SEED from it, the
@@ -8186,7 +8351,7 @@ const M = [
   ["learn: wipe: a seed's SeedQR kept when another QR is held up", "  if (ssLearnCam.key === \"seedload\") ssLearnForget();", ""],
   ["learn: wipe: a seed's SeedQR kept after the scan", "if (ssLearnCam.key === \"seedload\" && ssLearnCam.read) setTimeout(", "if (false) setTimeout("],
   ["learn: load: no phrase taken (v2.16.1)", "if (typeof phrase !== \"string\") return false;\n  const words", "const words"],
-  ["learn: load: the one-click load not started (v2.16.1)", "  ssAutoStart(phrase, !!(opts && opts.pass), online || !!kind);\n", ""],
+  ["learn: load: the one-click load not started (v2.16.1)", "  ssAutoStart(phrase, pass, online || !!kind);\n", ""],
   ["learn: load: Scan not pressed on Home (v2.16.1)", "sel === 0 ? \"KEY_PRESS\" : sel === 1", "sel === 0 ? \"KEY_LEFT\" : sel === 1"],
   ["learn: load: Done not chosen on Finalize (v2.16.1)", "return ssAutoTap(hb, sel === i ? \"KEY_PRESS\"", "return ssAutoTap(hb, sel === i ? \"KEY_DOWN\""],
   ["learn: load: a passphrase on the page ignored (v2.16.1)", "    if (A.pass) {\n      const pl", "    if (false) {\n      const pl"],
@@ -8221,8 +8386,8 @@ const M = [
   ["learn: forge: switching off keeps the seed", "  setResult(\"The practice signer was switched off", "  (\"The practice signer was switched off"],
   ["learn: wipe: the device's stop leaves the seed FORGE SEED took", "  try { if (typeof ssfDeviceOff === \"function\") ssfDeviceOff(); } catch (e) { /* page part missing */ }   // v2.14.0: a seed FORGE SEED took from it\n", ""],
   ["learn: wipe: the device's stop leaves the lessons", "  try { if (typeof ssLearnWipe === \"function\") ssLearnWipe(); } catch (e) { /* lessons part missing */ }   // v2.14.0: lessons, practice wallet, practice PSBT\n", ""],
-  ["learn: wipe: practice PSBT bytes kept", "    for (const x of [T.psbt, T.utx]) if (x instanceof Uint8Array) x.fill(0);\n", ""],
-  ["learn: wipe: practice PSBT records kept", "    for (const m of [T.global, ...T.inMaps, ...T.outMaps]) for (const kv of m) for (const x of kv) if (x instanceof Uint8Array) x.fill(0);\n", ""],
+  ["learn: wipe: practice PSBT bytes kept", "  for (const x of [T.psbt, T.utx]) if (x instanceof Uint8Array) x.fill(0);\n", ""],
+  ["learn: wipe: practice PSBT records kept", "  for (const m of [T.global, ...T.inMaps, ...T.outMaps]) for (const kv of m) for (const x of kv) if (x instanceof Uint8Array) x.fill(0);\n", ""],
   ["learn: wipe: the practice wallet's QR codes not overwritten", "  ssLearnForget(); ssForgeReset();\n", "  ssForgeReset();\n"],
   ["learn: wipe: the practice wallet still holds its QR codes", "  ssLearnCam.frames = null; ssLearnCam.byLesson = false; ssLearnCam.what = \"\";", "  ssLearnCam.byLesson = false; ssLearnCam.what = \"\";"],
   // v2.14.0: the Damascus method (dm-prefixed code), caught by section 74 or the self-test (worked example 1). Left out as
@@ -8279,7 +8444,7 @@ const M = [
   ["practice print: the summary sheet of a practice seed has no PRACTICE line (v2.16.1)", "    if(seedPr()) add(\"ps-warn\", seedPr());   // v2.16.1: a practice seed's sheet says so\n", ""],
   ["practice print: the SeedQR sheet of a practice seed has no PRACTICE line (v2.16.1)", "(S.practice ? S.practice + \"\\n\\n\" : \"\") + S.fp + \"\\n\" + S.pass + \"\\n\\nScan with", "S.fp + \"\\n\" + S.pass + \"\\n\\nScan with"],
   ["practice print: PRINT SEED blocked for a practice seed (v2.16.1)", "  const S = printSrc(from); if(!S) return;\n  if(!confirm(\"Printing sends your seed to a printer", "  const S = printSrc(from); if(!S || S.practice) return;\n  if(!confirm(\"Printing sends your seed to a printer"],
-  ["re-hide: the practice signer not on the list (v2.16.1)", "\"c32Status\",\n  // the practice signer: its screen and keys (v2.16.1), and what it signed for you (v2.17.0)\n  \"ssDevice\", \"ssOwnOut\"];", "\"c32Status\",\n  // the practice signer: its screen and keys (v2.16.1), and what it signed for you (v2.17.0)\n  \"ssOwnOut\"];"],
+  ["re-hide: the practice signer not on the list (v2.16.1)", "  \"ssDevice\", \"ssOwnOut\", \"ssOwnIn\"];", "  \"ssOwnOut\", \"ssOwnIn\"];"],
   ["re-hide: a seed in the practice signer no reason to cover (v2.16.1)", "const RH_HOLD = {ssDevice: () => typeof vfSignerHoldsSecret === \"function\" && vfSignerHoldsSecret(), ssOwnOut:", "const RH_HOLD = {ssDevice: () => false, ssOwnOut:"],
   ["re-hide: the practice signer's own rule ignored (v2.16.1)", "  if(RH_HOLD[e.id]) return !!RH_HOLD[e.id]();\n", ""],
   ["re-hide: a public test seed in the practice signer counts as a secret (v2.16.1)", "const pub = (s) => !s.passphrase && known(s.mnemonic_str);", "const pub = (s) => false;"],
@@ -8501,8 +8666,9 @@ const M = [
   // v2.16.1 review (a fresh review of the v2.16.1 changes): probe section 81
   ["review: the load goes on when the computer goes online", "if (navigator.onLine === true && !A.online && !A.read) { if (ssLearnCam.key === \"seedload\") ssLearnHide(); return ssAutoEnd(SS_AUTO_WENT_ONLINE, \"bad\"); }", ""],
   // v2.17.0: the one-click load online (probe section 81, and 72 for the device's rule)
-  ["v2.17.0 load: a real seed loads online without asking", "  if (online && !kind && !confirm(SS_AUTO_ONLINE_ASK)) return \"cancelled\";", ""],
-  ["v2.17.0 load: a public seed asks online too", "  if (online && !kind && !confirm(SS_AUTO_ONLINE_ASK)) return \"cancelled\";", "  if (online && !confirm(SS_AUTO_ONLINE_ASK)) return \"cancelled\";"],
+  ["v2.17.0 load: a real seed loads online without asking", "  if (online && (!kind || pass) && !confirm(kind ? SS_AUTO_ONLINE_ASK_PASS : SS_AUTO_ONLINE_ASK)) return \"cancelled\";", ""],
+  ["v2.17.0 load: a public seed asks online too", "  if (online && (!kind || pass) && !confirm(", "  if (online && !confirm("],
+  ["v2.17.0 load: public words with a passphrase load online without asking (review L3)", "  if (online && (!kind || pass) && !confirm(", "  if (online && !kind && !confirm("],
   ["v2.17.0 load: the cancelled load said as could not start", "ok === \"cancelled\" ? SIGNER_CANCELLED : ", ""],
   ["v2.17.0 load: an approved online load is refused by the device", "  const load = ssAuto.on && ssAuto.online && ssLearnCam.key === \"seedload\";", "  const load = false;"],
   ["v2.17.0 load: a public seed QR refused online by the device", "    return pub(m) || (load && ssAuto.read);", "    return load && ssAuto.read;"],
@@ -8568,8 +8734,9 @@ const M = [
   ["v2.17.0 sign: the wrong network is signed", "    if (nw) return ssOwnBlock(\"Wrong network\",", "    if (false) return ssOwnBlock(\"Wrong network\","],
   ["v2.17.0 sign: a public seed is asked too", "  if (ssOwnSeedPublic(seed)) return null;          // a public seed", "  // a public seed"],
   ["v2.17.0 sign: the practice transaction is asked too", "  if (kind === \"psbt\" && ssOwnIsPracticeTx(psbt)) return null;   // the practice transaction spends made-up coins", ""],
-  ["v2.17.0 sign: a message online is not asked", "  if (kind === \"msg\" && !online) return null;", "  if (kind === \"msg\") return null;"],
-  ["v2.17.0 sign: No signs anyway", "  if (confirm(kind === \"psbt\" ? SS_OWN_ASK_PSBT(fp, online) : SS_OWN_ASK_MSG(fp))) return null;", "  confirm(kind === \"psbt\" ? SS_OWN_ASK_PSBT(fp, online) : SS_OWN_ASK_MSG(fp)); return null;"],
+  ["v2.17.0 sign: the message lesson's practice message is asked too", "  if (kind === \"msg\" && ctx.message === SS_LEARN_MSG) return null;", ""],
+  ["v2.17.0 sign: a message offline is not asked (review)", "  if (kind === \"msg\" && ctx.message === SS_LEARN_MSG) return null;", "  if (kind === \"msg\" && navigator.onLine !== true) return null;"],
+  ["v2.17.0 sign: No signs anyway", "  if (!confirm(kind === \"psbt\" ? SS_OWN_ASK_PSBT(fp, online) : SS_OWN_ASK_MSG(fp, online))) {", "  if (!confirm(kind === \"psbt\" ? SS_OWN_ASK_PSBT(fp, online) : SS_OWN_ASK_MSG(fp, online)) && false) {"],
   ["v2.17.0 sign: the question never says the computer is online", "  (online ? \"- THIS COMPUTER IS ONLINE.", "  (false ? \"- THIS COMPUTER IS ONLINE."],
   ["v2.17.0 sign: the device's Approve skips the page's rules", "    if (typeof ssOwnSignGate === \"function\") {\n      const stop = await ssOwnSignGate(\"psbt\",", "    if (false) {\n      const stop = await ssOwnSignGate(\"psbt\","],
   ["v2.17.0 sign: the device's Sign message skips the page's rules", "        if (typeof ssOwnSignGate === \"function\") {\n            const stop = await ssOwnSignGate(\"msg\",", "        if (false) {\n            const stop = await ssOwnSignGate(\"msg\","],
@@ -8582,11 +8749,11 @@ const M = [
   ["v2.17.0 review: inputs of other signers not said", "  if (mineIn < psbt.inputs.length) W.push(", "  if (false) W.push("],
   ["v2.17.0 review: change not provably yours not flagged", "      W.push({ bad: true, t: \"Output \" + i + \" names seed \"", "      void ({ bad: true, t: \"Output \" + i + \" names seed \""],
   ["v2.17.0 review: a legacy input without its previous transaction not flagged", "else if (inp.witness_utxo && !inp.non_witness_utxo && ssPsbtScriptType(inp.witness_utxo.script_pubkey) === \"p2pkh\") W.push(", "else if (false) W.push("],
-  ["v2.17.0 read: seed words taken", "    return { error: \"This looks like the words or SeedQR of a seed.", "    return { kind: \"address\", frames: [t], what: \"This looks like the words or SeedQR of a seed."],
+  ["v2.17.0 read: seed words taken", "  if (ssOwnWordRun(t) >= 12) return \"This holds 12 or more seed words in a row: a seed.\";", ""],
   ["v2.17.0 read: an xprv taken", "  if (/[xyztuvYZUV]prv[1-9A-HJ-NP-Za-km-z]{100}/.test(t)) return", "  if (false) return"],
   ["v2.17.0 read: ascii: inside a message taken", "  if (msg.includes(\"ascii:\")) return", "  if (false) return"],
   ["v2.17.0 read: non-ASCII message taken", "  if (!/^[\\x20-\\x7e\\n]+$/.test(msg)) return", "  if (false) return"],
-  ["v2.17.0 output: a public seed's PSBT not marked PRACTICE", "  let say = (pub ? \"PRACTICE: signed with a public seed (\" + fp + \"). Anyone can sign with it: never put money on it. \" : \"Signed by seed \" + fp + \": \") +", "  let say = (\"Signed by seed \" + fp + \": \") +"],
+  ["v2.17.0 output: a public seed's PSBT not marked PRACTICE", "  let say = (pub ? \"PRACTICE: signed with a public seed (\" + fp + \"). Anyone can sign with it: never put money on it. \" : \"Signed by seed \" + fp + \" (a real seed): \") +", "  let say = (\"Signed by seed \" + fp + \" (a real seed): \") +"],
   ["v2.17.0 output: an invalid signature not called invalid", "  else if (chk.bad.length) {", "  else if (false) {"],
   ["v2.17.0 re-hide: the signed output not covered", "ssOwnOut: () => typeof ssOwnHoldsSecret === \"function\" && ssOwnHoldsSecret()};", "ssOwnOut: () => false};"],
   ["v2.17.0 re-hide: a message signature next to a public seed not covered", "  try { return ssOwn.out.kind === \"msg\" || vfSignerHoldsSecret(); } catch (e) { return true; }", "  try { return vfSignerHoldsSecret(); } catch (e) { return true; }"],
@@ -8594,6 +8761,56 @@ const M = [
   ["v2.17.0 wipe: wipeSeed leaves your PSBT and the output", "  if(typeof ssOwnWipe === \"function\") ssOwnWipe();   // v2.17.0: your own PSBT, what the practice signer signed, the message", ""],
   ["v2.17.0 wipe: the device's stop leaves your PSBT and the output", "  try { if (typeof ssOwnWipe === \"function\") ssOwnWipe(); } catch (e) { /* real-use part missing */ }", ""],
   ["v2.17.0 message: the request always for Mainnet", "const path = \"m/\" + purpose + \"h/\" + ssLearnCoin(ssLearnNet()) + \"h/0h/0/\" + idx;", "const path = \"m/\" + purpose + \"h/0h/0h/0/\" + idx;"],
+  // v2.17.0 review and hands-on test (probe section 84, and 72 and 83)
+  ["v2.17.0 review: H1: a forged previous transaction's txid not compared", "    if (!id || !inp.txid || hex(id) !== hex(inp.txid)) out.push(", "    if (false) out.push("],
+  ["v2.17.0 review: H1: a witness UTXO that disagrees with the previous transaction not seen", "    else if (wu && (BigInt(wu.value) !== BigInt(o.value) || hex(wu.script_pubkey) !== hex(o.script_pubkey))) out.push(", "    else if (false) out.push("],
+  ["v2.17.0 review: H1: a forged previous transaction not flagged before the scan", "  for (const x of await ssOwnPrevBad(psbt)) W.push(", "  for (const x of []) W.push("],
+  ["v2.17.0 sign: H1: a forged previous transaction is signed", "    if (prev.length) return ssOwnBlock(\"Forged coin?\",", "    if (false) return ssOwnBlock(\"Forged coin?\","],
+  ["v2.17.0 sign: asked although nothing can be signed (tester 6)", "    if (dry && (dry.err || !dry.n)) {", "    if (false) {"],
+  ["v2.17.0 review: inputs left unsigned not said (tester 4)", "  else if (dry.left.length) W.push(", "  else if (false) W.push("],
+  ["v2.17.0 output: a partly signed result in a gold banner (tester 4)", "if (cls === \"ok\") cls = \"warn\"; }", "}"],
+  ["v2.17.0 output: unsigned inputs of the seed not named (tester 4)", "  if (left.length) { say += \" Signed \"", "  if (false) { say += \" Signed \""],
+  ["v2.17.0 review: M1: claimed multisig change not flagged", "    if (!tr.trusted) for (const c of parser.change_data)", "    if (false) for (const c of parser.change_data)"],
+  ["v2.17.0 review: M1: claimed multisig change amber, not red", "      W.push({ bad: !xp || !!tr.desc, warn: xp && !tr.desc,", "      W.push({ bad: false, warn: true,"],
+  ["v2.17.0 sign: M1: no second question for unverified multisig change", "    if (left.length && !confirm(SS_OWN_ASK_CHANGE(left)))", "    if (false)"],
+  ["v2.17.0 sign: M1: the second question's No signs anyway", "    if (left.length && !confirm(SS_OWN_ASK_CHANGE(left)))", "    if (left.length && !confirm(SS_OWN_ASK_CHANGE(left)) && false)"],
+  ["v2.17.0 M2: a descriptor's key not compared with the seed's own", "      if (x && hex(x.key) === hex(k.key.pub) && hex(x.chain_code) === hex(k.key.chain)) { inIt.push(fp); break; }", "      if (x) { inIt.push(fp); break; }"],
+  ["v2.17.0 M2: a descriptor that does not make the inputs verifies change", "if (!ok) return { trusted: false, desc, why: \"the wallet descriptor on the device does not make the coins this PSBT spends\" }; }", "}"],
+  ["v2.17.0 M2: a descriptor without this seed verifies change", "  if (!ds.inIt.length) return { trusted: false, desc, why:", "  if (false) return { trusted: false, desc, why:"],
+  ["v2.17.0 review: M2: change the own descriptor does not make not flagged", "      if (!ok) W.push({ bad: true, t: \"Output \" + c.output_index + \" (\" + ssOwnSats(c.amount) + \") is called change, but your wallet descriptor", "      if (false) W.push({ bad: true, t: \"Output \" + c.output_index + \" (\" + ssOwnSats(c.amount) + \") is called change, but your wallet descriptor"],
+  ["v2.17.0 review: M3: change in another account not flagged", "      else if (acct.size && !acct.has(ssPsbtPathToStr(p.slice(0, -2)))) odd.push(", "      else if (false) odd.push("],
+  ["v2.17.0 review: M3: an unusual change path depth not flagged", "      if (p.length !== 5) odd.push(", "      if (false) odd.push("],
+  ["v2.17.0 review: M3: a far change address number not flagged", "      if (idx >= SS_OWN_FAR_INDEX) odd.push(", "      if (false) odd.push("],
+  ["v2.17.0 review: M3: odd change paths not said", "      if (odd.length) W.push({ bad: true, t: \"Output \" + c.output_index + \" (\" + ssOwnSats(c.amount) + \") is change at \"", "      if (false) W.push({ bad: true, t: \"Output \" + c.output_index + \" (\" + ssOwnSats(c.amount) + \") is change at \""],
+  ["v2.17.0 output: L1: a transaction other than the one held up offered", "  if (ssOwn.txid && txid !== ssOwn.txid) {", "  if (false) {"],
+  ["v2.17.0 output: L4: an invalid signature still offered to copy and save", "  ssOwnEl(\"ssOwnCopy\").hidden = !!o.noOut;", "  ssOwnEl(\"ssOwnCopy\").hidden = false;"],
+  ["v2.17.0 output: L4: the save button for an unchecked result", "  ssOwnEl(\"ssOwnSave\").hidden = o.kind !== \"psbt\" || !!o.noOut;", "  ssOwnEl(\"ssOwnSave\").hidden = o.kind !== \"psbt\";"],
+  ["v2.17.0 output: L4: an unchecked result's text offered", "  ssOwnShow({ kind: \"psbt\", bytes, fp, pub, text: good ? base64Encode(bytes) : \"\", say, cls, noOut: !good });", "  ssOwnShow({ kind: \"psbt\", bytes, fp, pub, text: base64Encode(bytes), say, cls, noOut: !good });"],
+  ["v2.17.0 review: L5: sighash 0 said as not signed", "okSh = sh === null || sh === 1 || sh === 0;", "okSh = sh === null || sh === 1 || (inp.is_taproot && sh === 0);"],
+  ["v2.17.0 review: L5: sighash 0 on a non-Taproot input not explained", "    if (sh === 0 && !inp.is_taproot && (inp.witness_utxo || inp.non_witness_utxo)) W.push(", "    if (false) W.push("],
+  ["v2.17.0 review: a fee of 10% of the amount sent not flagged (tester 10)", "  else if (sent > 0 && fee >= sent * SS_OWN_FEE_SHARE) W.push(", "  else if (false) W.push("],
+  ["v2.17.0 review: a fee rate of 250 sat/vB not flagged (tester 10)", "  else if (rate >= SS_OWN_RATE_WARN) W.push(", "  else if (false) W.push("],
+  ["v2.17.0 review: amber notes shown as plain notes", "else if (x.warn) li.className = \"warn\";", ""],
+  ["v2.17.0 read: SeedQR digits with spaces taken", "  if (/^\\d+$/.test(dg) && [48, 60, 72, 84, 96].includes(dg.length) && dg.match(/\\d{4}/g).every((x) => +x < 2048)) return", "  if (false) return"],
+  ["v2.17.0 read: a hex private key or entropy taken", "  if (/^[0-9a-f]+$/i.test(hx) && [32, 40, 48, 56, 64, 128].includes(hx.length)) return", "  if (false) return"],
+  ["v2.17.0 read: a WIF private key taken", "    if ((raw.length === 33 || (raw.length === 34 && raw[33] === 1)) && (raw[0] === 0x80 || raw[0] === 0xef)) return \"This holds a private key (WIF), which can spend.\";", ""],
+  ["v2.17.0 read: numbered or 4-letter seed words taken", "    run = x.length >= 3 && x.length <= 8 && (Object.prototype.hasOwnProperty.call(WORD_MAP, x) || (x.length === 4 && ssOwnP4.has(x))) ? run + 1 : 0;", "    run = x.length >= 3 && x.length <= 8 && Object.prototype.hasOwnProperty.call(WORD_MAP, x) ? run + 1 : 0;"],
+  ["v2.17.0 read: a secret paste left in the box", "        if (!file && box) box.value = \"\";", ""],
+  ["v2.17.0 read: a refused paste keeps the last item held up (tester 7)", "      ssOwnDrop(); ssOwnWarns([]);\n", "      ssOwnWarns([]);\n"],
+  ["v2.17.0 read: a file goes into the box before it is checked", "  await ssOwnHold(text, true);   // checked first", "  { const bx = ssOwnEl(\"ssOwnIn\"); if (bx) bx.value = text; } await ssOwnHold(text, true);   // checked first"],
+  ["v2.17.0 read: an address not checked by the page's own checker", "    if (!ex || ex.level !== \"ok\") return { error:", "    if (false) return { error:"],
+  ["v2.17.0 camera: a SeedQR scanned into the box for your PSBT", "  if(id === \"ssOwnIn\" && ((r.bytes", "  if(false && ((r.bytes"],
+  ["v2.17.0 re-hide: the box for your PSBT not covered", "\"c32Status\", \"ssOwnIn\"];", "\"c32Status\"];"],
+  ["v2.17.0 read: long text given to the device's QR type detection (tester 3)", "  if (!psbtLike && first.length <= SS_OWN_TYPE_MAX) {", "  if (!psbtLike) {"],
+  ["v2.17.0 hold: a PSBT the device cannot read is held up (tester 5)", "      if (rv && rv.unreadable) {", "      if (false) {"],
+  ["v2.17.0 device: an input without its coin gives a System Error (tester 5)", "    if (bare >= 0) {\n      this.controller.psbt_seed = null;", "    if (false) {\n      this.controller.psbt_seed = null;"],
+  ["v2.17.0 hold: the last output stays when a new item is held up (tester 1)", "  ssOwn.gen++; ssOwnDrop(); ssOwnOutClear(); ssOwn.kind = \"msg\";", "  ssOwn.gen++; ssOwnDrop(); ssOwn.kind = \"msg\";"],
+  ["v2.17.0 sign: the last output stays after No (tester 1)", "  ssOwnOutClear();   // a signed PSBT shown from before is not this answer\n", ""],
+  ["v2.17.0 message: an empty address number means 0 (tester 12)", "  if (!idxText) { ssOwnSay(", "  if (false) { ssOwnSay("],
+  ["v2.17.0 address: a Testnet address on a Mainnet device not flagged (tester 12)", "  if (!an || an === dn) return \"\";", "  return \"\";"],
+  ["v2.17.0 lessons: a new lesson keeps the last result (tester 12)", "  if (ssLearn.tx && ssLearn.tx.result) ssLearnTxDrop();", ""],
+  ["v2.17.0 lessons: a real seed's practice result not named (tester 9)", "\"Signed correctly\" + (T.real ? \" by your real seed \" + T.fp + \" (not a practice seed)\" : \"\")", "\"Signed correctly\""],
+  ["v2.17.0 page: the note says the device loads the seed after it is switched off (tester 12)", "  { const sn = document.getElementById(\"seedSignerNote\"); if(sn && sn.classList.contains(\"ok\")){ sn.textContent = \"\"; sn.className = \"hint\"; } }", ""]
 ];
 
 if (process.env.MUT_CHECK_TARGETS) { // quick mode: only check that every mutation target occurs exactly once in the page

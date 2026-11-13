@@ -1259,9 +1259,9 @@ R.ok(bad === 0, `${n} last-word candidate lists (11 to 23 words) equal the indep
     const raw = tx.toPSBT(0), enc = new UREncoder(new UR(Buffer.from(E('CB').bytes(Array.from(raw))), 'crypto-psbt'), 60, 0);
     const ur = []; for (let i = 0; i < enc.fragmentsLength; i++) ur.push(enc.nextPart());
     const bb = splitQRs(raw, 'P', { encoding: 'Z', minVersion: 5, maxVersion: 10 }).parts;
-    const got = ['cHNidP8' === base64.encode(raw).slice(0, 7) ? base64.encode(raw) : '', bhex.encode(raw), ur.join('\n'), bb.join('\n')].map((x) => { const r2 = w.ssOwnRead(x); return r2.kind === 'psbt' ? H(r2.bytes) : r2.error; });
+    const got = ['cHNidP8' === base64.encode(raw).slice(0, 7) ? base64.encode(raw) : '', bhex.encode(raw), ur.join('\n'), bb.join('\n')]; for (let i = 0; i < got.length; i++) { const r2 = await w.ssOwnRead(got[i]); got[i] = r2.kind === 'psbt' ? H(r2.bytes) : r2.error; }
     R.ok(got.every((x) => x === H(raw)), 'v2.17.0: a PSBT pasted as base64, hex, UR crypto-psbt parts (bc-ur) or BBQr parts (bbqr) is read as the same bytes (' + got.map((x) => x.slice(0, 12)).join(', ') + ')');
-    const kinds = [btc.p2wpkh(k.publicKey).address, 'signmessage m/84h/0h/0h/0/0 ascii:hi', 'wsh(sortedmulti(2,[' + RA.fingerprint.toString(16).padStart(8, '0') + "/48h/0h/0h/2h]" + RA.derive("m/48'/0'/0'/2'").publicExtendedKey + '/0/*,' + RB.derive("m/48'/0'/0'/2'").publicExtendedKey + '/0/*))', MN, RA.privateExtendedKey].map((x) => { const r2 = w.ssOwnRead(x); return r2.kind || 'error'; });
+    const kinds = [btc.p2wpkh(k.publicKey).address, 'signmessage m/84h/0h/0h/0/0 ascii:hi', 'wsh(sortedmulti(2,[' + RA.fingerprint.toString(16).padStart(8, '0') + "/48h/0h/0h/2h]" + RA.derive("m/48'/0'/0'/2'").publicExtendedKey + '/0/*,' + RB.derive("m/48'/0'/0'/2'").publicExtendedKey + '/0/*))', MN, RA.privateExtendedKey]; for (let i = 0; i < kinds.length; i++) kinds[i] = (await w.ssOwnRead(kinds[i])).kind || 'error';
     R.ok(JSON.stringify(kinds) === JSON.stringify(['address', 'msg', 'descriptor', 'error', 'error']), 'v2.17.0: an address, a signmessage request and a sortedmulti descriptor are held up as such; seed words and an xprv are refused (' + kinds.join(', ') + ')');
   }
   w.confirm = () => true; if (navOn) Object.defineProperty(w.navigator, 'onLine', navOn); else delete w.navigator.onLine;

@@ -26,7 +26,7 @@
 //                  the signer's fingerprint is the page's
 //     new:practice-backup-own-words, new:practice-passphrase-own-words, new:practice-wallet-own-words
 //                  Practice making a backup, Practice your passphrase and OPEN A PRACTICE WALLET take the person's own words
-//   v2.17.0 (E2E_GROUPS=new217): new217:load-online, new217:own-psbt (see their notes below)
+//   v2.17.0 (E2E_GROUPS=new217): new217:load-online, new217:own-psbt, new217:fixes (see their notes below)
 // Every wait polls the page's state with a generous limit (no fixed sleeps), so a busy machine makes the run slower, not flaky.
 // Run: node tests/e2e.test.mjs     (E2E_VIEWS=phone or desktop; E2E_GROUPS=make:dice,check to run some, E2E_GROUPS=new for the
 // NEW in v2.16.1 groups only, E2E_GROUPS=make for every method; E2E_SKIP_NEW=1 leaves the NEW groups out)
@@ -835,10 +835,51 @@ G['new217:own-psbt'] = async (t, h) => {
   noErrors(t, h, 'own PSBT');
 };
 
+// new217:fixes      (v2.17.0 review and hands-on test) offline: a real seed loaded with one click, the "Loaded" banner wholly on
+//                     screen; a PSBT typed into Use it for real and HOLD UP TO THE DEVICE brings the device on screen; on a phone,
+//                     the buttons under the device and LOAD INTO THE PRACTICE SIGNER are at least 40 px tall; seed words typed into
+//                     the box are refused in red and the box is cleared; the note under YOUR SEED no longer says the signer loads
+//                     the seed once its box is closed
+G['new217:fixes'] = async (t, h) => {
+  const { p } = h, R = rolls(50);
+  await toMethod(h, 'mt-dice'); await typeAtEnd(p.locator('#rolls'), R); await forge(h, '#forgeBtn');
+  const r = await afterForge(t, h, 'review fixes seed', hashWords(R, 12)); if (!r) return;
+  if (h.mobile) {
+    const hb = await p.evaluate(() => Math.round(document.getElementById('seedSignerBtn').getBoundingClientRect().height));
+    t(hb >= 40, 'phone: LOAD INTO THE PRACTICE SIGNER is at least 40 px tall (' + hb + ' px)');
+  }
+  await loadIntoSigner(t, h, 'review fixes seed', r.words);
+  const L = await until(async () => { const b = await bannerOn(p, 'ssLoadStatus'); return /^Loaded: /.test(b.text) ? b : null; }, 60000, 250);
+  t(!!L && L.shown, 'the "Loaded" banner is wholly on screen (' + JSON.stringify(L).slice(0, 120) + ')');
+  // a PSBT for this seed, held up: the device comes on screen
+  const root = rootOf(r.words), k = root.derive("m/84'/0'/0'/0/1"), tx = new btc.Transaction();
+  tx.addInput({ txid: new Uint8Array(32).fill(0x2b), index: 0, witnessUtxo: { script: btc.p2wpkh(k.publicKey).script, amount: 250000n }, bip32Derivation: [[k.publicKey, { fingerprint: root.fingerprint, path: [84 + 0x80000000, 0x80000000, 0x80000000, 0, 1] }]] });
+  tx.addOutput({ script: btc.p2wpkh(rootOf('zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong').derive("m/84'/0'/0'/0/0").publicKey).script, amount: 249000n });
+  const box = p.locator('#ssOwnIn'); await box.scrollIntoViewIfNeeded(); await box.fill(Buffer.from(tx.toPSBT(0)).toString('base64'));
+  await press(h, p.locator('#ssOwnGo'));
+  const held = await until(() => p.evaluate(() => /^Held up to the device’s camera: your PSBT/.test(document.getElementById('ssOwnStatus').textContent)), 30000);
+  await sleep(800);   // the scroll settles
+  const dv = await p.evaluate(() => { const r2 = document.getElementById('ssDevice').getBoundingClientRect(); return { top: Math.round(r2.top), bottom: Math.round(r2.bottom), vh: innerHeight }; });
+  t(held && dv.top >= 0 && dv.bottom <= dv.vh + 1, 'HOLD UP TO THE DEVICE brings the device on screen (' + JSON.stringify(dv) + ')');
+  if (h.mobile) {
+    const hs = await p.evaluate(() => ['ssOwnFileBtn', 'ssOwnClear', 'cam-ssOwnIn', 'ssMsgGo', 'ssLearnGo', 'ssLearnCamOff', 'ssTxGo', 'ssForgeBtn'].map((id) => { const e = document.getElementById(id); return [id, e && e.offsetParent ? Math.round(e.getBoundingClientRect().height) : -1]; }));
+    t(hs.every(([, x]) => x >= 40), 'phone: the buttons under the device are at least 40 px tall (' + hs.map((x) => x.join(' ')).join(', ') + ')');
+  }
+  // seed words typed into the box: refused in red, the box cleared
+  await box.scrollIntoViewIfNeeded(); await box.fill(r.words.split(' ').map((x, i) => (i + 1) + ') ' + x).join(', ')); await press(h, p.locator('#ssOwnGo'));
+  const no = await until(async () => { const b = await bannerOn(p, 'ssOwnStatus'); return /^Not held up/.test(b.text) ? b : null; }, 15000);
+  t(!!no && /\bbad\b/.test(no.cls) && await p.inputValue('#ssOwnIn') === '' && !r.words.split(' ').slice(0, 3).some((x) => no.text.includes(' ' + x + ',')), 'seed words typed into the box are refused in red and the box is cleared (' + (no ? no.text.slice(0, 70) : 'none') + ')');
+  // the box closed: the note under YOUR SEED no longer says the signer loads this seed
+  await p.evaluate(() => { document.getElementById('ssBox').open = false; });
+  await press(h, p.locator('#tab-make'));
+  const note = await until(() => p.evaluate(() => !/loads this seed by itself/.test(document.getElementById('seedSignerNote').textContent)), 10000);
+  t(note, 'with the practice signer switched off, the note under YOUR SEED no longer says it loads the seed');
+  noErrors(t, h, 'review fixes');
+};
 // ================================================================ run
 const ORDER = ['make:dice', 'make:coin', 'make:words', 'make:cards', 'make:hex', 'make:damascus', 'make:dice24', 'followups', 'check', 'signer',
   'new:damascus-practice-sheet', 'new:damascus-guided-practice', 'new:damascus-worked-example', 'new:load-own-seed', 'new:load-practice-seed',
-  'new:practice-backup-own-words', 'new:practice-passphrase-own-words', 'new:practice-wallet-own-words', 'new217:load-online', 'new217:own-psbt'];
+  'new:practice-backup-own-words', 'new:practice-passphrase-own-words', 'new:practice-wallet-own-words', 'new217:load-online', 'new217:own-psbt', 'new217:fixes'];
 const pick = process.env.E2E_GROUPS ? process.env.E2E_GROUPS.split(',') : null;   // a group's name, or the part before its colon (new, make)
 const wantGroups = ORDER.filter((g) => (!pick || pick.some((e) => g === e || g.startsWith(e + ':'))) && !(process.env.E2E_SKIP_NEW && NEW(g)));
 const wantViews = process.env.E2E_VIEWS ? process.env.E2E_VIEWS.split(',') : Object.keys(VIEWS);
