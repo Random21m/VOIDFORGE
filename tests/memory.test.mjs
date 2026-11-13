@@ -172,6 +172,17 @@ async function ssKb(name, target) {   // target: a letter, or {x, y}
   }
   throw new Error('practice signer: keyboard stuck at ' + target + ' ' + JSON.stringify(await ssState()) + ' ' + JSON.stringify(await p.evaluate((name) => { const k = SSController._instance.current_destination.view.screen[name]; return [k.selected_key.x, k.selected_key.y, k.keys.map((r) => r.map((x) => x.letter).join('')).join('|')]; }, name)));
 }
+// types one key and checks the screen took it: on a busy machine the device can drop a press, so a key whose text did not
+// grow is typed again (up to 3 times)
+async function ssType(typeKey) {
+  const look = async () => { const s = await ssState(); return { screen: s && s.screen, len: String((s && s.input) || '').length }; };
+  const before = await look(), taken = (x) => x.screen !== before.screen || x.len > before.len;   // the last roll moves on to the next screen
+  for (let n = 0; n < 3; n++) {
+    await typeKey();
+    const t = Date.now(); while (Date.now() - t < 3000) { if (taken(await look())) return; await p.waitForTimeout(50); }
+  }
+  throw new Error('practice signer: a key press was not taken 3 times (' + JSON.stringify(await ssState()) + ')');
+}
 async function ssMakeSeed(rolls, pw) {
   await p.evaluate(() => { showTab('check'); const b = document.getElementById('ssBox'); b.open = true; b.scrollIntoView(); });
   await ssWait('SSMainMenuView');
@@ -180,14 +191,14 @@ async function ssMakeSeed(rolls, pw) {
   await ssPress('PRESS');
   await ssPick(/12 words/);
   await ssWait('SSToolsDiceEntropyEntryScreen');
-  for (const r of rolls) { const k = +r - 1; await ssKb('keyboard', { x: k % 3, y: Math.floor(k / 3) }); }
+  for (const r of rolls) { const k = +r - 1; await ssType(() => ssKb('keyboard', { x: k % 3, y: Math.floor(k / 3) })); }
   await ssWait('SSSeedWordsWarningView'); await ssPress('PRESS');
   const words = [];
   for (let page = 0; page < 3; page++) { await ssWait('SSSeedWordsScreen'); words.push(...await p.evaluate(() => SSController._instance.current_destination.view.screen.words)); await ssPress('PRESS'); }
   await ssWait('SSSeedWordsBackupTestPromptView'); await ssPick(/Skip/);
   await ssWait('SSSeedFinalizeView'); await ssPick(/Passphrase/);
   await ssWait('SSSeedAddPassphraseScreen');
-  for (const ch of pw) await ssKb('keyboard_abc', ch);
+  for (const ch of pw) await ssType(() => ssKb('keyboard_abc', ch));
   const typed = await p.evaluate(() => SSController._instance.current_destination.view.screen.passphrase);
   await ssPress('K3'); await ssWait('SSSeedReviewPassphraseView'); await ssPick(/^Done$/);
   let s = await ssState(); if (s.view === 'SSSeedFinalizeView') await ssPick(/^Done$/);
