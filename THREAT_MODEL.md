@@ -15,6 +15,21 @@ What VOIDFORGE protects, who it protects against, what it does about each threat
 - The words written on paper or stamped in metal, and checked with a second independent tool or device before real funds go to them.
 - Phones and the online copy at https://random21m.github.io/VOIDFORGE/ are for learning and practice only, never for real funds.
 
+## Which amounts
+
+- **Making a seed** (dice, coins, cards, the Damascus method) and **checking a backup** are meant for real savings, used as described above: offline, the file checked, and the words compared with a second independent tool or device before funds go to them.
+- **Real signing in the browser** (v2.17.0) is for learning, for amounts you could afford to lose, and for getting coins out when your usual signer is lost or broken. A browser tab is not a hardware signer. For savings, sign with a hardware signer or with Bitcoin Core on a dedicated offline computer.
+- These are guidance, not limits: the page does not count your coins and cannot stop you.
+
+## What VOIDFORGE adds, and what it does not prove
+
+Some careful setups use Bitcoin Core alone, on dedicated offline computers, and argue that any extra tool is more code that could steal or leak a key. That is a fair point, and it applies to VOIDFORGE:
+
+- **It is more software.** VOIDFORGE runs on top of whatever wallet you use; it does not replace Bitcoin Core or a hardware signer. Its code turns your rolls into words, and a bug or a changed copy there could make a bad seed even when every roll was fair. Watching your own rolls does not prove that code is honest.
+- **The release signature covers the file, not what runs it.** The signature and SHA-256 prove you have the file the maintainer released. They say nothing about the browser engine, the operating system or the computer that run it, and nothing about whether that file is correct.
+- **What you can do about it:** compare the words and fingerprint VOIDFORGE gives with a second tool it did not write: the same rolls on a SeedSigner or a Coldcard (the page uses their dice method and is tested against their code), or the words in Bitcoin Core or another wallet. The file is one readable HTML page with no network code, and its source and tests are public.
+- **Why make your own randomness at all.** A device's own random number generator can fail silently for years. Coinkite's own security advisory says COLDCARD firmware from 2021 to July 2026 made seeds with far fewer random bits than intended, and large thefts from weak seeds were reported after it; the page's *Was my seed made by a flawed device?* lists it with its source. Dice take the device's generator out of the seed, but make you the source of randomness and add VOIDFORGE's code as the converter. Neither choice removes trust; they move it. The check with a second tool above is what covers the converter.
+
 ## Who might attack, and what VOIDFORGE does
 
 | Threat | What VOIDFORGE does | What is left to you |
@@ -46,11 +61,13 @@ What VOIDFORGE protects, who it protects against, what it does about each threat
 
 - A computer that is compromised at the hardware or firmware level, or a browser that is itself malicious.
 - Someone who gets your written words or passphrase.
+- A signer and the wallet that builds its transactions working together to leak a key in its signatures (a chosen nonce, "Dark Skippy", 2024). VOIDFORGE signs with fixed nonces (RFC 6979; BIP-340 with no aux randomness), so the same transaction signed again elsewhere with the same seed gives the same signatures, but the page has no anti-exfil protocol and cannot check a signature made by another device without the seed.
 - Timing attacks on the key math: the secp256k1 code is not constant-time, which is acceptable only because the computer is offline and not shared.
 - Mistakes the page cannot see: a word written down wrongly, a roll left out, a passphrase forgotten. The restore drill and VERIFY help catch these before funds are sent.
 
 ## Trust you still place
 
-- In the browser and the operating system of the offline computer.
+- In the browser engine, the operating system and the hardware of the offline computer. The release signature does not cover them.
+- In VOIDFORGE's own code, unless you check its results with a second tool it did not write.
 - In the person who signs releases (one maintainer key; see SECURITY.md for its fingerprint).
 - In the standards themselves (BIP39, BIP32 and the rest) and in the independent libraries the tests compare against.
