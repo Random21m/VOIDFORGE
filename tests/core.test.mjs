@@ -212,7 +212,7 @@ try {
   // heir spend; version 1 is refused (CSV fails); the owner's key spends at once. The page's inspector reads Core's PSBT.
   { const REG = { bech32: 'bcrt', pubKeyHash: 0x6f, scriptHash: 0xc4, wif: 0xef }, N = 10, H = 0x80000000;
     const ownerWords = entropyToMnemonic(nc.randomBytes(16), wordlist), heirWords = entropyToMnemonic(nc.randomBytes(16), wordlist);
-    const rO = HDKey.fromMasterSeed(mnemonicToSeedSync(ownerWords, '')), rH = HDKey.fromMasterSeed(mnemonicToSeedSync(heirWords, ''));
+    const TV = { private: 0x04358394, public: 0x043587cf }, rO = HDKey.fromMasterSeed(mnemonicToSeedSync(ownerWords, ''), TV), rH = HDKey.fromMasterSeed(mnemonicToSeedSync(heirWords, ''), TV);   // tpub/tprv, as the page writes keys on regtest
     const kO = rO.derive("m/48'/1'/0'/2'"), kH = rH.derive("m/48'/1'/0'/2'");
     w.xlReset(); $('xlNet').value = 'regtest';
     $('phrase').value = ownerWords; await w.xlFromWords('owner'); $('phrase').value = heirWords; await w.xlFromWords('heir');
@@ -239,13 +239,7 @@ try {
     R.ok(sp.fin.complete, 'Extra Life: Core signs and finalizes the heir\'s spend (nSequence ' + N + ', version 2) with the heir\'s key alone');
     { const rep = w.psbtReport(await w.inspectPsbt(w.psbtFromText(sp.psbt), 'regtest'), null);
       R.ok(new RegExp('SCRIPT WAIT, input 0: its script has older\\(' + N + '\\) on at least one way to spend; this transaction meets it\\.').test(rep) && /RELATIVE TIMELOCK, input 0: it can be mined only 10 blocks/.test(rep), 'Extra Life: the page\'s inspector reads Core\'s heir PSBT: the relative timelock, and that it meets the script\'s older()'); }
-    await mine(N - 2);   // the tip is now the coin's block + N - 2
-    let acc = (await rpc('testmempoolaccept', [[sp.fin.hex]]))[0];
-    R.ok(acc.allowed === false && /non-BIP68-final/.test(acc['reject-reason'] || ''), 'Extra Life: before the wait the heir\'s spend is refused (' + (acc['reject-reason'] || 'allowed') + ') at the coin\'s block + ' + (N - 2));
-    await mine(1);       // + N - 1: the next block is + N, the earliest block the page names
-    acc = (await rpc('testmempoolaccept', [[sp.fin.hex]]))[0];
-    R.ok(acc.allowed === true, 'Extra Life: once the coin has waited, the heir\'s key alone spends it (accepted for block ' + (c0.height + N) + ' = the coin\'s block + ' + N + ') ' + (acc['reject-reason'] || ''));
-    // a second tool: @scure/btc-signer signs the same heir path from the heir's words; version 1 fails the CSV check
+    // a second tool: @scure/btc-signer builds the same script and signs the same heir path from the heir's words
     const owner0 = kO.deriveChild(0).deriveChild(0), heir0 = kH.deriveChild(0).deriveChild(0), heirPriv = rH.derive("m/48'/1'/0'/2'/0/0").privateKey;
     const script = btc.Script.encode([owner0.publicKey, 'CHECKSIG', 'IFDUP', 'NOTIF', 'DUP', 'HASH160', ripemd160(nsha(heir0.publicKey)), 'EQUALVERIFY', 'CHECKSIGVERIFY', N, 'CHECKSEQUENCEVERIFY', 'ENDIF']);
     const pay = btc.p2wsh({ type: 'unknown', script }, REG);
@@ -254,12 +248,36 @@ try {
       tx.addInput({ txid: c0.txid, index: c0.vout, sequence: seq, witnessUtxo: { script: pay.script, amount: 100000000n }, witnessScript: script });
       tx.addOutputAddress(back, 99990000n, REG); tx.signIdx(sign, 0, [btc.SigHash.ALL]); const sig = tx.getInput(0).partialSig[0][1];
       tx.updateInput(0, { finalScriptWitness: sign === heirPriv ? [sig, heir0.publicKey, new Uint8Array(0), script] : [sig, script] }, true); return Buffer.from(tx.extract()).toString("hex"); };
-    acc = (await rpc('testmempoolaccept', [[scureSpend(2, N, heirPriv)]]))[0];
-    R.ok(acc.allowed === true, 'Extra Life: a second tool (@scure/btc-signer) signs the heir\'s spend from the heir\'s words, and Core accepts it ' + (acc['reject-reason'] || ''));
-    acc = (await rpc('testmempoolaccept', [[scureSpend(1, N, heirPriv)]]))[0];
+    const scureHex = scureSpend(2, N, heirPriv), test = async (hex) => (await rpc('testmempoolaccept', [[hex]]))[0];
+    await mine(N - 2);   // the tip is now the coin's block + N - 2: the next block, + N - 1, is one block too early
+    let acc = await test(sp.fin.hex), acc2 = await test(scureHex);
+    R.ok(acc.allowed === false && /non-BIP68-final/.test(acc['reject-reason'] || ''), 'Extra Life: one block before the wait ends, the heir\'s spend signed by Core is refused (' + (acc['reject-reason'] || 'allowed') + ') with the tip at the coin\'s block + ' + (N - 2));
+    R.ok(acc2.allowed === false && /non-BIP68-final/.test(acc2['reject-reason'] || ''), 'Extra Life: one block before the wait ends, the heir\'s spend signed by the second tool (@scure/btc-signer) is refused too (' + (acc2['reject-reason'] || 'allowed') + ')');
+    await mine(1);       // + N - 1: the next block is + N, the earliest block the page names
+    acc = await test(sp.fin.hex); acc2 = await test(scureHex);
+    R.ok(acc.allowed === true, 'Extra Life: once the coin has waited, the heir\'s key alone spends it, signed by Core (accepted for block ' + (c0.height + N) + ' = the coin\'s block + ' + N + ') ' + (acc['reject-reason'] || ''));
+    R.ok(acc2.allowed === true, 'Extra Life: at the same boundary the second tool\'s heir spend is accepted ' + (acc2['reject-reason'] || ''));
+    acc = await test(scureSpend(1, N, heirPriv));
     R.ok(acc.allowed === false, 'Extra Life: the same heir spend as transaction version 1 is refused (' + (acc['reject-reason'] || 'allowed') + ')');
-    acc = (await rpc('testmempoolaccept', [[scureSpend(2, N - 1, heirPriv)]]))[0];
+    acc = await test(scureSpend(2, N - 1, heirPriv));
     R.ok(acc.allowed === false, 'Extra Life: a heir spend with nSequence ' + (N - 1) + ' is refused (' + (acc['reject-reason'] || 'allowed') + ')');
+    { const id = await rpc('sendrawtransaction', [scureHex]); await mine(1); const blk = await rpc('getblock', [await rpc('getblockhash', [c0.height + N])]);
+      R.ok(blk.tx.includes(id), 'Extra Life: the second tool\'s heir spend is mined in block ' + (c0.height + N) + ', the coin\'s block + ' + N + ', the earliest the page says'); }
+    // after(H) by height: the page says the first block is H + 1. A heir spend with nLockTime H is refused while the next block is H
+    // and accepted when it is H + 1 (Core's IsFinalTx: the locktime must be below the block height); mined in block H + 1.
+    { const tip = await rpc('getblockcount'), H = tip + 6; w.xlBack(); $('xlClock').value = 'height'; $('xlAfterH').value = String(H); $('xlNow').value = String(tip); await w.xlMake(); const Y = w.eval('xl');
+      R.ok(!!Y && Y.desc.includes('after(' + H + ')') && /from block [\d,]+ on/.test($('xlHead').textContent) && $('xlHead').textContent.includes((H + 1).toLocaleString('en-US')), 'Extra Life after(' + H + '): the page says the heir\'s key opens from block ' + (H + 1));
+      R.ok(Y.desc.endsWith('#' + (await rpc('getdescriptorinfo', [Y.desc])).checksum), 'Extra Life after(): Core gives the same checksum');
+      const c2 = await fund(Y.recv[0]), o0 = kO.deriveChild(0).deriveChild(0), sc2 = btc.Script.encode([o0.publicKey, 'CHECKSIG', 'IFDUP', 'NOTIF', 'DUP', 'HASH160', ripemd160(nsha(heir0.publicKey)), 'EQUALVERIFY', 'CHECKSIGVERIFY', btc.ScriptNum().encode(BigInt(H)), 'CHECKLOCKTIMEVERIFY', 'ENDIF']);
+      const p2 = btc.p2wsh({ type: 'unknown', script: sc2 }, REG); R.ok(p2.address === Y.recv[0], 'Extra Life after(): @scure/btc-signer builds the same address');
+      const tx = new btc.Transaction({ version: 2, lockTime: H, allowUnknownInputs: true }); tx.addInput({ txid: c2.txid, index: c2.vout, sequence: 0xfffffffe, witnessUtxo: { script: p2.script, amount: 100000000n }, witnessScript: sc2 });
+      tx.addOutputAddress(back, 99990000n, REG); tx.signIdx(heirPriv, 0, [btc.SigHash.ALL]); tx.updateInput(0, { finalScriptWitness: [tx.getInput(0).partialSig[0][1], heir0.publicKey, new Uint8Array(0), sc2] }, true);
+      const hx = Buffer.from(tx.extract()).toString('hex');
+      await mine(H - 1 - (await rpc('getblockcount')));   // the tip is H - 1: the next block is H
+      let a2 = await test(hx); R.ok(a2.allowed === false && /non-final/.test(a2['reject-reason'] || ''), 'Extra Life after(' + H + '): while the next block is ' + H + ' the heir\'s spend is refused (' + (a2['reject-reason'] || 'allowed') + ')');
+      await mine(1); a2 = await test(hx); R.ok(a2.allowed === true, 'Extra Life after(' + H + '): when the next block is ' + (H + 1) + ' it is accepted ' + (a2['reject-reason'] || ''));
+      const id = await rpc('sendrawtransaction', [hx]); await mine(1); R.ok((await rpc('getblock', [await rpc('getblockhash', [H + 1])])).tx.includes(id), 'Extra Life after(' + H + '): the heir\'s spend is mined in block ' + (H + 1));
+      w.xlBack(); $('xlClock').value = 'older'; }
     // the owner's key spends a fresh coin at once
     { const c1 = await fund(X.recv[1]), o1 = kO.deriveChild(0).deriveChild(1), h1 = kH.deriveChild(0).deriveChild(1), oPriv = rO.derive("m/48'/1'/0'/2'/0/1").privateKey;
       const s1 = btc.Script.encode([o1.publicKey, 'CHECKSIG', 'IFDUP', 'NOTIF', 'DUP', 'HASH160', ripemd160(nsha(h1.publicKey)), 'EQUALVERIFY', 'CHECKSIGVERIFY', N, 'CHECKSEQUENCEVERIFY', 'ENDIF']);
