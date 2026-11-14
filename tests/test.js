@@ -2924,7 +2924,8 @@ const part=(f)=>()=>f().catch(e=>ok(false,'a part of the run stopped (the run go
   await part(async()=>{ const r=load(); await r.ready(); const w=r.w, names=w.eval('DICT').map(e=>e[0]), fs=require('fs');
     ok(html.indexOf('<li><b>2.16.1</b>')>0&&html.indexOf('<li><b>2.16.1</b>')<html.indexOf('<li><b>2.16.0</b>')&&html.indexOf('<li><b>2.16.0</b>')<html.indexOf('<li><b>2.15.0</b>')&&html.indexOf('<li><b>2.15.0</b>')<html.indexOf('<li><b>2.14.0</b>'),'v2.16.1: the changelog lists 2.16.1 first, then 2.16.0 and 2.15.0');
     ok(['Damascus method','Hammer sheet','Anvil sheet','Forge sheet','Hallmark','Assay','Practice transaction'].every(n=>names.includes(n)),'dictionary: Damascus method, Hammer, Anvil and Forge sheets, Hallmark, Assay and Practice transaction');
-    ok(/voidforge-demo-2\.17\.0/.test(fs.readFileSync(path.join(__dirname,'..','demo','sw.js'),'utf8')),'v2.17.0: the demo cache name is bumped');
+    { const ver=html.match(/<div class="ft-name">VOIDFORGE <span>v([\d.]+)<\/span>/)[1], cache=(fs.readFileSync(path.join(__dirname,'..','demo','sw.js'),'utf8').match(/const CACHE = '([^']+)'/)||[])[1];   // v2.18.0: follows the footer, so it is never pinned to one release
+      eq(cache,'voidforge-demo-'+ver,'every release: the demo cache name is bumped to the page version (RELEASING step 6)'); }
     ok(/damascus-quick-guide\.md/.test(fs.readFileSync(path.join(__dirname,'..','README.md'),'utf8'))&&/Damascus/.test(fs.readFileSync(path.join(__dirname,'..','THREAT_MODEL.md'),'utf8')),'v2.14.0: the README links the Damascus guide and the threat model covers the Damascus method');
     r.w.close(); })();
   // v2.13.0: docs and page text for the practice signer (the practice signer itself is tested in tests/simulator.test.mjs)
