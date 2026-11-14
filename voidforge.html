@@ -2989,7 +2989,7 @@ function s39ChecksumOk(indices, extendable){
 
 // Split typed text into lower-case words. Any spaces, tabs or new lines separate words.
 function s39Words(text){
-  return String(text == null ? "" : text).toLowerCase().trim().split(/\s+/).filter(Boolean);
+  return wordsClean(text).text.toLowerCase().trim().split(/\s+/).filter(Boolean);   // v2.18.0: numbering, commas and invisible characters out
 }
 
 // Edit distance between two words, counting a swap of two neighboring letters as one edit.
@@ -5853,7 +5853,35 @@ function unknownWordsMsg(words, bad){
   const one = (i) => { const c = closestWords(words[i], 3); return words[i] + " (word " + (i + 1) + ")" + (c.length ? ": closest BIP39 word" + (c.length > 1 ? "s " : " ") + c.join(", ") : ": no BIP39 word is close"); };
   return (bad.length === 1 ? "Unknown word: " : "Unknown words: ") + bad.slice(0, 4).map(one).join("; ") + (bad.length > 4 ? "; and " + (bad.length - 4) + " more" : "") + ". Check " + (bad.length === 1 ? "it" : "them") + " on your backup.";
 }
+// v2.18.0: words as people paste them. A numbered list ("1. abandon", "2) ability", "#3 able", "4: about", as the page's own sheets
+// number them), commas or semicolons between words, and invisible characters that a copy from a document or a chat can carry
+// (zero-width spaces and joiners, soft hyphens, direction marks, variation selectors, the byte-order mark) are taken out, and
+// notes says what was taken out; full-width letters (ａｂｏｕｔ) are read as plain ones, as BIP39's own NFKD normalization reads them. Text with no letters at all (SeedQR digits, CompactSeedQR hex) only loses the invisible characters.
+const WORDS_INVISIBLE = /[\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180b-\u180f\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u206f\u3164\ufe00-\ufe0f\ufeff\uffa0]/g;
+function wordsClean(text){
+  let t = String(text == null ? "" : text); const notes = [];
+  const inv = (t.match(WORDS_INVISIBLE) || []).length;
+  if(inv){ t = t.replace(WORDS_INVISIBLE, ""); notes.push(inv + " invisible character" + (inv === 1 ? "" : "s")); }
+  const nk = t.normalize("NFKC");   // full-width letters (ａｂｏｕｔ) and other compatibility forms, as BIP39's own NFKD reads them
+  if(nk.replace(/\s/g, " ") !== t.replace(/\s/g, " ")){ notes.push("full-width letters"); } t = nk;
+  if(!/[a-z]/i.test(t)) return {text: t, notes};
+  const sep = (t.match(/[,;]/g) || []).length;
+  if(sep){ t = t.replace(/[,;]/g, " "); notes.push(sep === 1 ? "a comma" : "commas"); }
+  let num = 0;
+  const toks = t.split(/\s+/).filter(Boolean).map(w => { const m = /^#?\d{1,2}[.):\-]?(\D*)$/.exec(w); if(m){ num++; return m[1]; } return w; }).filter(Boolean);
+  if(num){ notes.push("the numbering"); t = toks.join(" "); }
+  return {text: t, notes};
+}
+function wordsCleanNote(notes){ return notes.length ? notes.join(", ").replace(/, ([^,]*)$/, " and $1") : ""; }
 async function checkPhrase(phrase){
+  const cl = wordsClean(phrase), r = await checkPhraseRead(cl.text);
+  if(!cl.notes.length) return r;
+  const say = wordsCleanNote(cl.notes);
+  r.msg = /\.$/.test(r.msg) ? r.msg + " (Cleaned up before reading: " + say + ".)" : r.msg + " (cleaned up before reading: " + say + ")";
+  if(r.ok) r.expanded = true;   // VERIFY puts the clean words back in the box
+  return r;
+}
+async function checkPhraseRead(phrase){
   const pc = await phraseFromCode(phrase);
   if(pc && pc.error) return {ok:false, msg:pc.error};
   if(pc) phrase = pc.words;
@@ -6054,7 +6082,8 @@ const reforgeHas = (w) => Object.prototype.hasOwnProperty.call(WORD_MAP, w);
 // Read the typed words. "?" is an unknown word. A BIP39 word is used as is. 4 or more letters that start exactly one BIP39
 // word (backups on steel often keep only the first 4 letters) are read as that word. Anything else becomes an unknown word.
 function reforgeParseWords(text){
-  const toks = String(text || "").trim().toLowerCase().split(/\s+/).filter(Boolean), idx = [], notes = [], read = [], sets = [], pats = [];
+  const cl = wordsClean(text);   // v2.18.0: numbering, commas and invisible characters out
+  const toks = cl.text.trim().toLowerCase().split(/\s+/).filter(Boolean), idx = [], notes = [], read = [], sets = [], pats = [];
   toks.forEach((t, i) => {
     if(t === "?"){ idx.push(-1); return; }
     if(reforgeHas(t)){ idx.push(WORD_MAP[t]); return; }
@@ -6073,6 +6102,7 @@ function reforgeParseWords(text){
     idx.push(-1); notes.push("word " + (i + 1) + " '" + t + "' is not a BIP39 word, so it is treated as unknown");
   });
   if(read.length) notes.unshift(read.length > 3 ? read.length + " words were read from their first letters (for example " + read[0] + ")" : "read " + read.join(", "));
+  if(cl.notes.length) notes.unshift("cleaned up before reading: " + wordsCleanNote(cl.notes));
   return {idx, notes, sets, pats};
 }
 // v2.10.0 damaged backups (burned, rusted or smudged): in a word, ? is one letter that cannot be read and * is any number of them
@@ -6982,7 +7012,7 @@ async function runCompare(){
 let practice = null, practiceBanText = "";
 async function practiceMake(entropy){ return (await entropyToMnemonic(entropy)).split(" "); }
 function practiceCompare(expected, typed, own){ // positions (1-based) that differ, or a count problem; own: the person's own words (v2.16.1)
-  const got = typed.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const got = wordsClean(typed).text.trim().toLowerCase().split(/\s+/).filter(Boolean);   // v2.18.0: numbering, commas, invisible characters
   if(got.length !== expected.length) return {ok:false, msg:"You typed " + got.length + " word" + (got.length===1?"":"s") + "; " + (own ? "your seed has " : "the public test seed has ") + expected.length + ". Check for a missing or extra word."};
   const bad = []; expected.forEach((w,i)=>{ if(got[i] !== w) bad.push(i+1); });
   if(bad.length === 0) return {ok:true, msg:own ? "Your paper copy matches your words, word for word: every word is right and in its place. Keep the paper safe." : "Your paper copy matches, word for word. Do exactly this with a real backup: write, hide, read it back, check."};
@@ -18044,7 +18074,7 @@ function drillList(a){ return a.length === 1 ? String(a[0]) : a.slice(0, -1).joi
 async function drillCheck(){
   const st = document.getElementById("drillStatus"); st.className = "status";
   if(!drillCtx){ st.textContent = "Press START DRILL first."; return; }
-  const typed = document.getElementById("drillWords").value.trim().toLowerCase().split(/\s+/).filter(Boolean), want = drillCtx.words;
+  const typed = wordsClean(document.getElementById("drillWords").value).text.trim().toLowerCase().split(/\s+/).filter(Boolean), want = drillCtx.words;   // v2.18.0
   const bad = (m) => { st.textContent = m; st.classList.add("bad"); };
   if(typed.length !== want.length){ bad("You typed " + typed.length + " words, but this seed has " + want.length + ". Check your paper and try again."); return; }
   const unknown = []; typed.forEach((w, i) => { if(!(w in WORD_MAP)) unknown.push(i + 1); });
