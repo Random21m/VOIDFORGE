@@ -6869,7 +6869,7 @@ function csvMiss(res, x, n){
   if(res.version<2) return "transaction version " + res.version + " turns relative timelocks off (BIP68 and BIP112 need version 2 or more)";
   const L=seqLock(x.seq), want=seqLock(n);
   if(!want) return "";
-  if(!L) return "its sequence (" + x.seq + ") turns its relative timelock off; it must be " + n + " or more of the same kind";
+  if(!L) return "its sequence (0x" + x.seq.toString(16) + ") turns its relative timelock off; it must be " + n + " or more of the same kind";
   if(L.time!==want.time) return "its sequence counts " + (L.time ? "time" : "blocks") + " but the script counts " + (want.time ? "time" : "blocks");
   if(L.n<want.n) return "its sequence asks for only " + seqLockText(L) + ", less than the script’s " + seqLockText(want);
   return "";
