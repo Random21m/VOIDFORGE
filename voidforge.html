@@ -2588,7 +2588,7 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <div id="xlOlderRow">
           <label for="xlBlocks" class="xl-l">The wait, in blocks after each deposit (1 to 65,535; about 144 a day)</label>
           <input type="text" id="xlBlocks" value="52560" inputmode="numeric" spellcheck="false" autocomplete="off">
-          <div class="ms-pop">Common: <button type="button" class="ms-preset" data-xl="26280">about 6 months</button><button type="button" class="ms-preset" data-xl="52560">about 1 year</button><button type="button" class="ms-preset" data-xl="65535">the longest (about 15 months)</button></div>
+          <div class="btn-row top"><button type="button" class="secondary small" data-v="26280">ABOUT 6 MONTHS</button><button type="button" class="secondary small" data-v="52560">ABOUT 1 YEAR</button><button type="button" class="secondary small" data-v="65535">THE LONGEST (ABOUT 15 MONTHS)</button></div>
         </div>
         <div id="xlHeightRow" style="display:none">
           <label for="xlAfterH" class="xl-l">The block height the heir waits for (1 to 499,999,999)</label>
@@ -12565,7 +12565,7 @@ for(const id of ["xlClock", "xlNet"]) xlEl(id).addEventListener("change", () => 
 for(const id of ["xlBlocks", "xlAfterH", "xlAfterD", "xlNow", "xlOwner", "xlHeir", "xlAcct"]) xlEl(id).addEventListener("input", () => { xlWipe(); xlNote(); });
 xlEl("xlDeps").addEventListener("input", xlRefresh);
 xlEl("xlTestIn").addEventListener("input", () => { if(xl && !xl.tested){ const s = xlEl("xlTestStatus"); s.textContent = ""; s.className = "status"; } });
-document.querySelectorAll("#xlOlderRow .ms-preset").forEach(b => b.addEventListener("click", () => { xlEl("xlBlocks").value = b.getAttribute("data-xl"); xlWipe(); xlNote(); }));
+document.querySelectorAll("#xlOlderRow button[data-v]").forEach(b => b.addEventListener("click", () => { xlEl("xlBlocks").value = b.getAttribute("data-v"); xlWipe(); xlNote(); }));   // not .ms-preset: those are the multisig presets
 xlNote();
 // ===== v2.11.0 Taproot multisig: the wizard's parts (the address and descriptor code is next to multisigDescriptor) =====
 function msTrNoteShow(){ msEl("msTrNote").style.display = msEl("msType").value === "ms-tr" ? "" : "none"; }
