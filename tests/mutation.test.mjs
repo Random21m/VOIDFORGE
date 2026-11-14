@@ -8389,10 +8389,6 @@ const M = [
   ["learn: lessons: jumps past a step that holds something up", "      if (les.steps[j].feed) break;", "      if (false) break;"],
   ["learn: lessons: last step never done", "if (j === les.steps.length - 1) { L.step = j; L.done = true;", "if (j === les.steps.length) { L.step = j; L.done = true;"],
   ["learn: lessons: steps for the test seed never passed over", "  while (L.step < les.steps.length - 1 && les.steps[L.step].skip && les.steps[L.step].skip()) L.step++;\n", ""],
-  // v2.17.0 release run: equivalent. Since v2.17.0 the lessons use the newest loaded seed (ssLearnSeed); ssLearnHasTestSeed
-  // has no caller left in the page (its only use is the replacement of the "only the test seed counts as loaded" target), so
-  // changing its passphrase test changes nothing. The unused function is to be removed in v2.18.0.
-  ["learn: lessons: the test seed with a passphrase counts as the test seed", "ssLearnSeeds().some((s) => s && s.mnemonic_str === SS_LEARN_ABANDON && !s.passphrase)", "ssLearnSeeds().some((s) => s && s.mnemonic_str === SS_LEARN_ABANDON)", true],
   ["learn: lessons: the practice wallet never held up again", "if (st.feed && !ssLearnCam.frames && !(st.feed === \"tx\" && (!L.tx || L.tx.result))) ssLearnArm(st.feed, true);", ""],
   ["learn: lessons: multisig change step by any buttons", "s.labels[0] === \"Verify multisig change\" },", "s.labels.length > 0 },"],
   ["learn: lessons: RESTART does nothing", "if (ssLearn.lesson) { ssLearnHide(); ssLearnGoto(0, false); }", "if (ssLearn.lesson) { ssLearnHide(); }"],
@@ -8783,7 +8779,6 @@ const M = [
   ["second review: a read SeedQR said to be put away before the read", "(frames ? key !== \"seedload\" : !ssAuto.read)) ssAutoEnd(", "(frames ? key !== \"seedload\" : !ssLearnCam.read)) ssAutoEnd("],
   ["second review: small keys on a narrow screen", "    #ssBox .ss-k { width: calc(64 * var(--u)); height: calc(64 * var(--u)); }\n", ""],
   // v2.17.0: the signer works fully for real (probe section 83)
-  ["v2.17.0 lessons: only the test seed counts as loaded", "const ssLearnHasSeed = () => !!ssLearnSeed();", "const ssLearnHasSeed = ssLearnHasTestSeed;"],
   ["v2.17.0 lessons: the seed's fingerprint not filled in", "const ssLearnT = (x) => String(x || \"\").split(\"{fp}\").join(ssLearn.fp || SS_LEARN_FP);", "const ssLearnT = (x) => String(x || \"\").split(\"{fp}\").join(SS_LEARN_FP);"],
   ["v2.17.0 lessons: the address to check is the test seed's", "const sd = ssLearnSeed(), a = await ssLearnAcct(sd ? sd.seed_bytes : await mnemonicToSeed(SS_LEARN_ABANDON, \"\"), \"wpkh\", n);", "const sd = null, a = await ssLearnAcct(await mnemonicToSeed(SS_LEARN_ABANDON, \"\"), \"wpkh\", n);"],
   ["v2.17.0 sign: the wrong network is signed", "    if (nw) return ssOwnBlock(\"Wrong network\",", "    if (false) return ssOwnBlock(\"Wrong network\","],

@@ -35,7 +35,6 @@ function ssLearnState() {
 const ssLearnArg = (s, k) => { try { const a = s.ctl.current_destination.view_args; return a ? a[k] : undefined; } catch (e) { return undefined; } };   // an argument of the View shown
 const ssLearnKey = (s) => s ? s.view + "|" + s.screen + "|" + s.title : "";
 function ssLearnSeeds() { try { const st = SSController._instance && SSController._instance._storage; return (st && st.seeds) || []; } catch (e) { return []; } }
-function ssLearnHasTestSeed() { return ssLearnSeeds().some((s) => s && s.mnemonic_str === SS_LEARN_ABANDON && !s.passphrase); }
 // v2.17.0: the lessons work with any seed loaded on the device, real or practice: the lesson's seed is the newest one loaded (its
 // fingerprint stands for {fp} in the lesson texts). With none loaded, the lesson loads the public test seed abandon ... about first.
 function ssLearnSeed() { const s = ssLearnSeeds().filter((x) => x && x.seed_bytes instanceof Uint8Array); return s.length ? s[s.length - 1] : null; }
