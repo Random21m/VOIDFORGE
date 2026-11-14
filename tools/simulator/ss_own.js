@@ -348,6 +348,13 @@ async function ssOwnReview(bytes) {
       else if (psbt.inputs.length > 1 && st !== "p2tr") W.push({ warn: true, t: "Input " + i + " (SegWit v0) comes without its full previous transaction, so its amount is the PSBT’s word only. A dishonest wallet that asks you to sign the same transaction twice can hide a larger fee this way. Prefer a PSBT that includes the full previous transactions; the page then checks them." });
     }
   });
+  // v2.18.0: a timelocked or other miniscript coin (such as an Extra Life heir wallet) has a witness script that is not plain multisig.
+  // SeedSigner reads only single-key and plain multisig coins (embit's parse_multisig), so it cannot sign it: said plainly, by input.
+  psbt.inputs.forEach((inp, i) => {
+    if (!inp.witness_script) return;
+    let plain = true; try { SSPSBTParser._parse_multisig(inp.witness_script); } catch (e) { plain = false; }
+    if (!plain) W.push({ bad: true, t: "Input " + i + " spends from a timelocked or other miniscript wallet (such as an Extra Life heir wallet). This practice signer works like a SeedSigner, which signs only single-key and plain multisig coins, so it cannot sign this input. Sign it with a wallet that signs miniscript, such as Bitcoin Core (a descriptor wallet) or Liana." });
+  });
   if (!signer || unreadable) return { W, signer, unreadable };
   const mineIn = psbt.inputs.filter((inp) => [...inp.bip32_derivations, ...inp.taproot_bip32_derivations].some((d) => hex(d.der.fingerprint) === sfp)).length;
   if (mineIn < psbt.inputs.length) W.push({ bad: false, t: mineIn + " of " + psbt.inputs.length + " inputs belong to seed " + sfp + ": the device signs only those. The others need their own signers before the transaction can be sent." });

@@ -504,7 +504,9 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
   .ms-dots i.cur { background: var(--accent); }
   .ms-ban p { font-size: 13px; line-height: 1.5; margin: 6px 0; }
   #msBox { margin-top: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
-  #msBox summary { cursor: pointer; font-weight: 600; }
+  #msBox summary, #xlBox > summary { cursor: pointer; font-weight: 600; }
+  .xl-l { display: block; font-weight: 600; font-size: 13px; margin: 10px 0 4px; }   /* v2.18.0: Extra Life */
+  #xlWarn .ms-test { margin-top: 8px; }
   #msBox summary small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
   #msBox select, #msBox input[type=text] { min-width: 0; }
 
@@ -2555,6 +2557,99 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         </div>
         <div class="btn-row" style="margin-top:10px;"><button type="button" class="secondary small" onclick="msCancel()">START OVER</button></div>
         <p class="hint" style="margin:8px 0 0;">Honest note: after you press ADD, the seed is erased from the page, but a browser cannot promise it also erased every trace from memory. For the strictest safety, reload or restart before the next key, or make the next key on another device and paste its public key.</p>
+      </div>
+    </details>
+    <details id="xlBox">
+      <summary>Extra Life: a timelocked key for your heir<span class="tag tag-public">PUBLIC KEYS ONLY</span><span class="tag tag-ro">NEW</span><small>You can spend at any time; your heir&rsquo;s own key works only after a waiting time you choose.</small></summary>
+      <div id="xlIntro">
+        <div class="ms-why">
+          <div class="ms-why-i"><b>What it is.</b> One wallet with two keys and two ways to spend: <b>your key, at any time</b>, or <b>your heir&rsquo;s key, but only after a wait</b>. Your heir never holds your words, and cannot touch the coins while you keep them moving.</div>
+          <div class="ms-why-i"><b>Your duty.</b> With a wait after each deposit, the heir&rsquo;s key opens for each coin once that coin has sat still for the wait. Moving a coin to a new address of the same wallet (a refresh) starts its wait again. With a fixed date or block, the heir&rsquo;s key opens for good on that day.</div>
+          <div class="ms-why-i"><b>What the heir needs.</b> Their own words, this wallet&rsquo;s descriptor (printed, and as a .bip138 file), the wait, and a wallet that can spend a timelocked (miniscript) wallet. Their words alone open an empty wallet in an ordinary app.</div>
+        </div>
+        <p class="hint" style="margin:8px 0 6px;">Paste each key as the whole line a wallet or device exports for a multisig or miniscript wallet: <code>[fingerprint/48h/0h/0h/2h]xpub...</code>. Or type that person&rsquo;s words in CHECK A BACKUP and press USE THE WORDS IN CHECK A BACKUP: only the public key is kept, and the words are wiped from CHECK A BACKUP afterwards. Never paste a private key or seed words here.</p>
+        <label for="xlOwner" class="xl-l">Your key (the owner, spends at any time)</label>
+        <textarea id="xlOwner" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="[a1b2c3d4/48h/0h/0h/2h]xpub..."></textarea>
+        <div class="btn-row top"><button type="button" class="secondary small" id="xlOwnerWords" onclick="xlFromWords('owner')">USE THE WORDS IN CHECK A BACKUP</button></div>
+        <label for="xlHeir" class="xl-l">Your heir&rsquo;s key (spends only after the wait)</label>
+        <textarea id="xlHeir" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="[e5f6a7b8/48h/0h/0h/2h]xpub..."></textarea>
+        <div class="btn-row top"><button type="button" class="secondary small" id="xlHeirWords" onclick="xlFromWords('heir')">USE THE WORDS IN CHECK A BACKUP</button></div>
+        <div class="ms-row">
+          <label>When the heir&rsquo;s key opens<select id="xlClock" aria-label="When the heir’s key opens"><option value="older" selected>A wait after each deposit (older)</option><option value="height">From a fixed block height (after)</option><option value="date">From a fixed date (after)</option></select></label>
+          <label>Network<select id="xlNet" aria-label="Network"><option value="main">Mainnet</option><option value="test">Testnet</option><option value="regtest">Regtest</option></select></label>
+          <label>Account (for the words)<input type="text" id="xlAcct" value="0" inputmode="numeric" spellcheck="false" autocomplete="off" aria-label="Account number for keys made from words" style="width:64px;"></label>
+        </div>
+        <div id="xlOlderRow">
+          <label for="xlBlocks" class="xl-l">The wait, in blocks after each deposit (1 to 65,535; about 144 a day)</label>
+          <input type="text" id="xlBlocks" value="52560" inputmode="numeric" spellcheck="false" autocomplete="off">
+          <div class="ms-pop">Common: <button type="button" class="ms-preset" data-xl="26280">about 6 months</button><button type="button" class="ms-preset" data-xl="52560">about 1 year</button><button type="button" class="ms-preset" data-xl="65535">the longest (about 15 months)</button></div>
+        </div>
+        <div id="xlHeightRow" style="display:none">
+          <label for="xlAfterH" class="xl-l">The block height the heir waits for (1 to 499,999,999)</label>
+          <input type="text" id="xlAfterH" inputmode="numeric" spellcheck="false" autocomplete="off" placeholder="such as 1030000">
+        </div>
+        <div id="xlDateRow" style="display:none">
+          <label for="xlAfterD" class="xl-l">The date the heir waits for (UTC, up to 2038-01-18)</label>
+          <input type="date" id="xlAfterD" min="1985-11-06" max="2038-01-18">
+        </div>
+        <label for="xlNow" class="xl-l">Current block height (optional; any block explorer or your wallet app shows it)</label>
+        <input type="text" id="xlNow" inputmode="numeric" spellcheck="false" autocomplete="off" placeholder="such as 975000">
+        <div class="hint" id="xlWaitNote" aria-live="polite" style="margin:6px 0 0;"></div>
+        <div class="ms-bad" id="xlErr" role="alert"></div>
+        <div class="btn-row"><button type="button" id="xlBtn" onclick="xlMake()" disabled>MAKE THE EXTRA LIFE WALLET</button></div>
+      </div>
+      <div id="xlDone" style="display:none">
+        <div class="ms-done-head"><span class="ms-tick" aria-hidden="true">&#10003;</span><span id="xlHead">Your Extra Life wallet is made</span></div>
+        <div class="ms-test" id="xlTestBan" style="display:none"></div>
+        <div id="xlWarn"></div>
+        <div class="status ok" id="xlPlain" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+        <div class="ms-sub">
+          <div class="wlabel">Descriptor (public keys only; its 8-character checksum after # is part of it)</div>
+          <div class="wval" id="xlDesc"></div>
+          <div class="btn-row"><button type="button" class="secondary small" onclick="xlCopy(this)">COPY DESCRIPTOR</button><button type="button" class="secondary small" onclick="xlPrint()">PRINT EXTRA LIFE SHEET</button></div>
+          <p class="hint" style="margin:8px 0 0;">The descriptor is not a secret key, but <b>losing it loses the coins</b>: the heir&rsquo;s words alone cannot find this wallet. And anyone who holds it can see every address and the whole balance. Print the sheet for your heir and keep copies with your backups.</p>
+        </div>
+<div class="ms-sub" id="xlbBox">
+<div class="wlabel">Encrypted descriptor backup (BIP138)</div>
+<p class="hint" style="margin:0 0 6px;">Also keep the descriptor as a .bip138 file, the format Liana writes: it opens only with your key or your heir&rsquo;s key (their words, or just the public key), so copies can go anywhere, even online. The encryption needs a number used only once (a nonce), and VOIDFORGE never makes randomness itself: roll a die at least 50 times and type the results.</p>
+<textarea id="xlbRolls" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Dice rolls for the backup" placeholder="New dice rolls 1-6, at least 50"></textarea>
+<div class="btn-row top"><button type="button" class="secondary small" id="xlbBtn" onclick="b138MakeUi('xlb')" disabled>SAVE ENCRYPTED DESCRIPTOR BACKUP</button><button type="button" class="secondary small" onclick="b138MakeClear('xlb')">CLEAR</button></div>
+<div class="status" id="xlbStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+<div id="xlbOut" style="display:none; margin-top:8px;">
+  <div class="wlabel">The same backup as text (Base64)</div>
+  <div class="wval" id="xlbText"></div>
+  <div class="btn-row"><button type="button" class="secondary small" onclick="b138Copy(this,'xlb')">COPY TEXT</button><button type="button" class="secondary small" onclick="b138ShowQr('xlb')">SHOW QR</button></div>
+  <div id="xlbQrBox" style="display:none; margin-top:10px; text-align:center;"><div id="xlbQrCap" class="hint"></div><div id="xlbQrImg" style="width:min(100%,340px); margin:8px auto; background:#fff; line-height:0;"></div><button type="button" class="secondary small" onclick="b138HideQr('xlb')">HIDE QR</button></div>
+</div>
+</div>
+        <div class="ms-sub" id="xlTestBox">
+          <div class="wlabel">Test the backup before you send any money (required)</div>
+          <p class="hint" style="margin:0 0 6px;">Type the descriptor back from the printed sheet, or open the .bip138 file in CHECK A BACKUP (Open an encrypted descriptor backup) with your words or your heir&rsquo;s and paste the descriptor it shows. Pasting the text from this page tests nothing. The addresses appear once your copy matches, checksum included.</p>
+          <textarea id="xlTestIn" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="The descriptor from your backup" placeholder="wsh(or_d(pk([...]xpub.../<0;1>/*),and_v(v:pkh([...]xpub.../<0;1>/*),older(...))))#checksum"></textarea>
+          <div class="btn-row top"><button type="button" id="xlTestBtn" onclick="xlTest()">CHECK MY BACKUP</button></div>
+          <div class="status" id="xlTestStatus" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+        </div>
+        <div id="xlUse" style="display:none">
+          <div class="ms-sub">
+            <div class="wlabel" id="xlRefreshHead">Move or refresh by (rough dates)</div>
+            <p class="hint" style="margin:0 0 6px;" id="xlRefreshHint"></p>
+            <textarea id="xlDeps" rows="3" spellcheck="false" autocomplete="off" aria-label="Block heights of your deposits, one per line" placeholder="The block height each deposit confirmed in, one per line (your wallet app shows it), such as 975100"></textarea>
+            <div class="status" id="xlRefresh" aria-live="polite" style="white-space:pre-wrap; word-break:break-word; margin-top:8px;"></div>
+          </div>
+          <div class="ms-sub">
+            <div class="wlabel">First 10 receive addresses: after importing, your wallet app must show exactly these</div>
+            <ol class="wval" id="xlAddrs" start="0" style="padding-left:22px;"></ol>
+            <div class="wlabel">First 10 change addresses</div>
+            <ol class="wval" id="xlChange" start="0" style="padding-left:22px;"></ol>
+          </div>
+          <details id="xlCoreBox" class="ms-sub">
+            <summary style="cursor:pointer; font-weight:600;">Watch it in Bitcoin Core<span class="tag tag-note">ADVANCED</span><small>A watch-only wallet in Bitcoin Core, with no private key.</small></summary>
+            <p class="hint" style="margin:8px 0;">These two commands make an empty watch-only wallet in Bitcoin Core and load the receive and change descriptors into it. It shows the balance and the addresses but can never spend. To spend, the heir imports the same descriptor with their own key (see the printed sheet).</p>
+            <div class="wval" id="xlCoreCmd" style="white-space:pre-wrap;"></div>
+            <button type="button" class="secondary small" onclick="xlCopyCore(this)">COPY COMMANDS</button>
+          </details>
+        </div>
+        <div class="btn-row top"><button type="button" class="secondary small" onclick="xlBack()">CHANGE THE SETTINGS</button><button type="button" class="secondary small" onclick="xlReset()">START OVER</button></div>
       </div>
     </details>
     <details id="reuseBox">
@@ -5004,6 +5099,13 @@ const DICT = [
   ["BIP389 (multipath descriptors)", "One descriptor for both receiving and change addresses: the step that is 0 or 1 is written as 0;1 between angle brackets. Sparrow and newer wallet apps read it.", "The watch-only file.", "Standards (BIPs)"],
   ["Hidden characters", "Spaces at either end, double spaces, tabs and invisible characters. In a passphrase they count like any letter, so one added by accident opens a different wallet.", "VOIDFORGE warns about them under each passphrase box.", "Keys & seeds"],
   ["Practice mode", "A switch that puts every address and key on the test network, with worthless test coins, so the whole job can be rehearsed without risk. The seed words themselves are the same on every network.", "Practice making a backup, in CHECK A BACKUP.", "VOIDFORGE"],
+  ["BIP65", "OP_CHECKLOCKTIMEVERIFY (CLTV): a script demands that the spending transaction’s locktime has reached a block height or a date. Miniscript writes it after(N); a height N first fits in block N + 1.", "Extra Life (a fixed block or date); Explain an inheritance or timelock wallet.", "Standards (BIPs)"],
+  ["BIP68", "Relative timelocks: from transaction version 2, an input’s sequence number can make it wait a number of blocks (up to 65,535) or of 512-second units after the coin it spends was mined.", "Inspect a transaction (PSBT) names the wait of each input.", "Standards (BIPs)"],
+  ["BIP112", "OP_CHECKSEQUENCEVERIFY (CSV): a script demands a relative wait (BIP68) in the spending input’s sequence. Miniscript writes it older(N): the spend fits at the earliest in the coin’s own block + N.", "Extra Life (a wait after each deposit); Explain an inheritance or timelock wallet.", "Standards (BIPs)"],
+  ["BIP113", "Median time past: a date lock is judged against the median time of the last 11 blocks, about an hour behind the clock, not against one block’s own time.", "Explain an inheritance or timelock wallet; Inspect a transaction.", "Standards (BIPs)"],
+  ["BIP379 (Miniscript)", "The standard for Miniscript: its parts (pk, older, or_d and the others), their types, and the rules for a sane script that wallets can spend and check.", "One reader for the explainer, the address lists and Extra Life refuses what Bitcoin Core refuses.", "Standards (BIPs)"],
+  ["Extra Life (timelocked heir key)", "A VOIDFORGE wallet with two keys: the owner spends at any time, the heir’s own key only after a wait, as wsh(or_d(pk(OWNER),and_v(v:pkh(HEIR),older(N)))). The owner moves each coin before its wait ends.", "EXTRA TOOLS, MULTISIG WALLET card.", "VOIDFORGE"],
+  ["Refresh (timelocked coins)", "Moving coins to a new address of the same timelocked wallet, which starts their wait again, so a recovery key stays closed while the owner is around. Liana can do it for you.", "Extra Life: the move or refresh by dates.", "Wallets & backups"],
   ["Practice signer", "A copy of SeedSigner 0.8.7 inside the page: the same screens, menus and buttons. It takes any seed and signs your own PSBTs and messages for real. It is only as safe as the page: a browser is not a hardware signer, so use it with real coins only on an offline computer.", "CHECK A BACKUP: Practice signer: works like SeedSigner, and Use it for real.", "VOIDFORGE"],
   ["Stamp sheet", "A printed page with each seed word cut to its first 4 letters in large capitals, as a guide for stamping a metal plate. It is as secret as the words.", "PRINT STAMP SHEET, after FORGE and in CHECK A BACKUP.", "VOIDFORGE"],
   ["Binary grid (TinySeed)", "A steel plate with 12 holes in a row for each word: punching the columns 2048, 1024 ... 2, 1 that add up to the word's number in the BIP39 list (abandon is 1, zoo is 2048, punched alone). TinySeed plates hold 12 words a side; Krux reads them. As secret as the words.", "CHECK A BACKUP: Open this wallet, Punch plate layout; Read a punch plate or word numbers.", "Wallets & backups"],
@@ -5136,7 +5238,7 @@ const DICT = [
   ["Lightning invoice (BOLT11)", "A payment request for a Lightning payment, usually starting with lnbc, that holds the amount and where to pay.", "", "Lightning & layers"],
   ["Lightning Network", "A second layer on top of Bitcoin for fast, cheap payments. VOIDFORGE does not make Lightning wallets.", "Support this project.", "Lightning & layers"],
   ["LNURL", "A bech32-written web address that Lightning wallets read to find out how to pay someone.", "Support this project.", "Lightning & layers"],
-  ["Locktime", "A transaction field that stops it being mined before a chosen time or block.", "Inspect a transaction (PSBT).", "Transactions"],
+  ["Locktime", "A transaction field that stops it being mined before a chosen block or time. A block height N must be below the block’s height, so the first block that can hold it is N + 1; a time must be passed by the median time of the last 11 blocks (BIP113).", "Inspect a transaction (PSBT) says the first block.", "Transactions"],
   ["Lost coins", "Bitcoin that can no longer be spent because the keys are gone. Without a backup of the seed, nobody can recover them.", "", "Wallets & backups"],
   ["Mainnet", "The real Bitcoin network, where coins have value. Compare testnet.", "", "Network & mining"],
   ["Malleability", "Before SegWit, someone could change a transaction's ID without changing what it did. SegWit fixed this for its own inputs.", "", "Transactions"],
@@ -5272,7 +5374,7 @@ const DICT = [
   ["Tapscript", "The script rules used inside Taproot's hidden branches.", "", "Addresses & scripts"],
   ["Testnet", "A practice copy of Bitcoin whose coins are worthless, for learning without risk. Its SegWit addresses start with tb1. Testnet3, testnet4 and signet all use the same address and key forms, so the same TESTNET (practice coins only) setting works for each.", "The network menus; Practice mode in CHECK A BACKUP.", "Network & mining"],
   ["Threat model", "A plain list of who might attack you, how, and what you are protecting. It tells you how much protection is enough.", "", "Privacy & security"],
-  ["Timelock", "A rule that stops a coin or transaction being spent until a chosen time or block. Locktime and the opcodes CLTV and CSV are timelocks. In a descriptor, older() waits a number of blocks after each deposit (BIP68) and after() waits for a fixed block or date (BIP65).", "EXTRA TOOLS: Explain an inheritance or timelock wallet.", "Transactions"],
+  ["Timelock", "A rule that stops a coin or transaction being spent until a chosen time or block. Locktime and the opcodes CLTV and CSV are timelocks. In a descriptor, older() waits a number of blocks after each deposit (BIP68, BIP112) and after() waits for a fixed block or date (BIP65).", "EXTRA TOOLS: Explain an inheritance or timelock wallet.", "Transactions"],
   ["Tor", "A network that hides where a connection comes from. Some wallets and nodes use it for privacy.", "", "Privacy & security"],
   ["Transaction (tx)", "A message that moves coins: it spends some outputs and makes new ones.", "", "Transactions"],
   ["TXID (transaction ID)", "The unique fingerprint (a hash) of a transaction, used to look it up on the blockchain.", "", "Transactions"],
@@ -11098,6 +11200,7 @@ function updateRollHistory(rolls){
 function clearAll(){
   if(!confirm("Clear all rolls, results, the verify box, the backup plan and (if the browser allows) the clipboard?")) return;
   reforgeStop(); reforgeReset(true); AUTO_FIELDS.forEach(id => { const e = document.getElementById(id); if(e) e.value = ""; });   // v2.6.0: also Reforge and every box auto-clear wipes
+  xlReset();   // v2.18.0: Extra Life (public keys only)
   msReset(); dbClear(); wipeSeed(); planClear(); camStop();
   if(typeof ssPageWipe === "function") ssPageWipe();   // v2.13.0: the practice signer (stops it, wipes its seeds, closes its box)
 }
@@ -12222,6 +12325,228 @@ function msPrint(){
   const nq = ms.n + (ms.type === "ms-tr" ? 1 : 0);   // v2.11.0: a Taproot descriptor holds one more xpub (the unspendable internal key)
   printSqSheet(title, qrSvg(q.rows), nq >= 9 ? "pq-ms pq-ms-l pq-ms-xl" : nq >= 5 ? "pq-ms pq-ms-l" : "pq-ms", msSheetText(false), "", addrs);
 }
+// ===== v2.18.0 Extra Life: a timelocked key for an heir =====
+// One P2WSH wallet, wsh(or_d(pk(OWNER),and_v(v:pkh(HEIR),older(N)))) (the shape Liana uses): the owner’s key spends at any time,
+// the heir’s own key only after a wait. Either a wait after each deposit (older, BIP68 and BIP112: 1 to 65535 blocks, counted from
+// the block that confirmed each coin, so a spend can be in that block + N at the earliest) or a fixed block height or date
+// (after, BIP65: a height below 500,000,000, first possible in block N + 1, or a Unix time up to 2^31 - 1 that the median time
+// of the last 11 blocks must pass). Never both in one way to spend. Every key carries its origin [fingerprint/path] and /<0;1>/*
+// (receive and change, BIP389); when the heir’s key is the owner’s own key, it takes /<2;3>/* so no key appears twice (as Liana
+// does), with a loud warning. The descriptor goes through the same strict reader as everything else (msCheckDesc), so the page
+// never makes one that Bitcoin Core refuses. Only public keys are kept; words typed in CHECK A BACKUP are wiped after use.
+let xl = null, xlRun = 0;
+const xlPr = {owner: null, heir: null};   // {kind, xpub} when a key came from a public seed (pubKind), for the PRACTICE warning
+const XL_BLOCKS_MAX = 65535, XL_SHORT = 4320, XL_LONG = 60000;
+function xlEl(id){ return document.getElementById(id); }
+// A key line [fingerprint/path]xpub (with or without /<0;1>/* or /0/* after it) for this network: {fp, path, xpub, line}.
+async function xlKeyLine(raw, net, who){
+  const t0 = String(raw || "").trim();
+  if(!t0) throw new Error(who + ": paste the key line, or type the words in CHECK A BACKUP and press USE THE WORDS IN CHECK A BACKUP.");
+  if(/^[a-z]+(\s+[a-z]+){11,}$/i.test(t0)) throw new Error(who + ": that looks like seed words. Never paste seed words here: type them in CHECK A BACKUP and press USE THE WORDS IN CHECK A BACKUP, or paste the PUBLIC key line.");
+  const t = t0.replace(/\s+/g, ""), o = /^\[([0-9a-fA-F]{8})((?:\/[0-9]+[hH']?)*)\]([1-9A-HJ-NP-Za-km-z]{100,112})(?:\/(?:<0;1>|0)\/\*)?$/.exec(t);
+  if(!o) throw new Error(who + ": a key line looks like [a1b2c3d4/48h/0h/0h/2h]xpub...: the 8-character fingerprint and the key’s path in square brackets, then the public key. Export it from the wallet or device as a multisig or miniscript key.");
+  let key; try { key = await parseExtendedKey(o[3]); } catch(e) { throw new Error(who + ": " + e.message); }
+  const path = o[2].replace(/^\//, "").replace(/['H]/g, "h"), steps = path ? path.split("/").length : 0;
+  if(path.split("/").some(s => s && parseInt(s, 10) >= 0x80000000)) throw new Error(who + ": a step of the path is out of range.");
+  if(key.depth !== steps) throw new Error(who + ": the path in brackets has " + steps + " step" + (steps === 1 ? "" : "s") + " but the key is " + key.depth + " steps deep, so the line does not fit together. Copy the whole line again from the wallet or device.");
+  if(!netFits(key.net, net)) throw new Error(who + ": this key is for " + (key.net === "test" ? "a test network (Testnet or Regtest)" : "Mainnet") + ", but the Network menu says " + netName(net) + ".");
+  const xpub = await base58check(Uint8Array.from([...NETS[key.net].ver.other, ...(await base58decode(key.str)).slice(4)]));   // a plain xpub: Core does not read Zpub
+  const fp = o[1].toLowerCase();
+  return {fp, path, xpub, line: "[" + fp + (path ? "/" + path : "") + "]" + xpub};
+}
+// USE THE WORDS IN CHECK A BACKUP: the key at m/48'/coin'/account'/2' (BIP48, P2WSH) of the words and passphrase there.
+async function xlFromWords(who){
+  if(!gateOk()) return;
+  const err = xlEl("xlErr"), raw = document.getElementById("phrase").value, acct = parseInt(xlEl("xlAcct").value.trim() || "0", 10);
+  err.textContent = ""; xlWipe();
+  if(!/^\d{1,10}$/.test(xlEl("xlAcct").value.trim() || "0") || !validAccount(acct)){ err.textContent = "The account is a whole number from 0 to 2147483647 (almost always 0)."; return; }
+  const r = await checkPhrase(raw);
+  if(!r.ok){ err.textContent = raw.trim() ? "The words in CHECK A BACKUP are not a valid BIP39 seed (" + r.msg.replace(/\.$/, "") + "). Check them there with VERIFY first." : "No words are typed in CHECK A BACKUP. Type the " + (who === "owner" ? "owner’s" : "heir’s") + " words there (and the passphrase, if there is one), then press this button again."; return; }
+  const pk = pubKind(r.mnemonic);
+  if(pk && !confirm("PRACTICE: these words are " + pracName(pk) + ". Anyone can make them again, so a key from them protects nothing. Use them only to practice, never for real money.\n\nUse them anyway?")) return;
+  try {
+    const w = await watchOnlyFromSeed(await mnemonicToSeed(r.mnemonic, document.getElementById("verifyPass").value), "ms-wsh", acct, xlEl("xlNet").value);
+    xlEl(who === "owner" ? "xlOwner" : "xlHeir").value = w.receive; xlPr[who] = pk ? {kind: pk, xpub: w.xpub} : null;
+    msWipeChecked();
+    xlEl("xlWaitNote").textContent = (who === "owner" ? "Your key" : "Your heir’s key") + " was filled in from the words in CHECK A BACKUP (fingerprint " + w.fp + "). Only the public key is kept here; the words were wiped from CHECK A BACKUP.";
+  } catch(e) { err.textContent = "Could not use these words: " + e.message; }
+}
+// The wait as typed: {kind: "older"|"after", n, text, warn: [...]}, or it throws when the value cannot work as typed.
+function xlLock(now){
+  const clock = xlEl("xlClock").value, warn = [], left = (h) => now ? msDur(Math.max(0, h - now) * 600) : null;
+  if(clock === "older"){
+    const t = xlEl("xlBlocks").value.trim().replace(/[,\s]/g, "");
+    if(!/^\d{1,12}$/.test(t)) throw new Error("The wait is a whole number of blocks, such as 52560 (about a year).");
+    const n = parseInt(t, 10);
+    if(n < 1) throw new Error("The wait must be at least 1 block.");
+    if(n > XL_BLOCKS_MAX) throw new Error("Bitcoin counts a wait after each deposit up to 65,535 blocks (about 455 days). " + msGroup(n) + " would be read as a different, shorter wait (only the lowest 16 bits count), so it cannot be used. For a longer wait, use a fixed block height or date.");
+    if(n < XL_SHORT) warn.push("SHORT WAIT: the heir’s key opens " + msDur(n * 600) + " after each deposit. Whoever holds the heir’s words could take any coin you have not moved within that time, so you would have to refresh every coin more often than that.");
+    if(n >= XL_LONG) warn.push("NEAR THE LONGEST WAIT: 65,535 blocks (about 455 days) is the most Bitcoin allows after each deposit. With " + msGroup(n) + ", your heir waits " + msDur(n * 600) + " after the last time you moved the coins, and the wait cannot be made longer later.");
+    return {kind: "older", n, text: msGroup(n) + " blocks after each deposit (" + msDur(n * 600) + ")", warn};
+  }
+  let n;
+  if(clock === "height"){
+    const t = xlEl("xlAfterH").value.trim().replace(/[,\s]/g, "");
+    if(!/^\d{1,12}$/.test(t)) throw new Error("The block height is a whole number, such as 1030000.");
+    n = parseInt(t, 10);
+    if(n < 1) throw new Error("The block height must be at least 1.");
+    if(n >= 500000000) throw new Error("Bitcoin reads a lock of 500,000,000 or more as a date, not a block height, so " + msGroup(n) + " cannot be used as a height. Choose a fixed date instead.");
+    if(now && n <= now) warn.push("ALREADY OPEN: the current block is " + msGroup(now) + ", so block " + msGroup(n + 1) + " can be the next one or is past: the heir’s key can spend at once.");
+    else if(now && n + 1 - now < XL_SHORT) warn.push("SOON: the heir’s key opens in block " + msGroup(n + 1) + ", " + left(n + 1) + " from now.");
+    else if(!now) warn.push("Type the current block height to see roughly when block " + msGroup(n + 1) + " comes.");
+  } else {
+    const d = xlEl("xlAfterD").value;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error("Choose the date the heir waits for.");
+    n = Math.floor(Date.parse(d + "T00:00:00Z") / 1000);
+    if(!(n >= 500000000)) throw new Error("Bitcoin reads a lock below 500,000,000 (5 November 1985) as a block height, so a date that early cannot be used.");
+    if(n > 2147483647) throw new Error("after() can count dates only up to 19 January 2038 (2^31 - 1 seconds). For a later time, use a block height.");
+    const days = (n * 1000 - Date.now()) / 86400000;
+    if(days <= 0) warn.push("ALREADY OPEN: " + d + " is past by your computer’s clock, so the heir’s key can spend at once.");
+    else if(days < 30) warn.push("SOON: the heir’s key opens after " + d + ", in " + msDur(days * 86400) + ".");
+  }
+  warn.push("A FIXED " + (clock === "height" ? "BLOCK" : "DATE") + " NEVER RESTARTS: once it passes, the heir’s key can spend for good. To keep the coins yours alone after that, move them to a new Extra Life wallet with a later " + (clock === "height" ? "block" : "date") + " before it comes.");
+  return {kind: "after", n, text: clock === "height" ? "from block " + msGroup(n + 1) + " on (after(" + n + "))" : "after " + new Date(n * 1000).toISOString().slice(0, 10) + " (UTC, by the network’s median time)", warn};
+}
+// The live hint under the inputs: what the wait means, as it is typed.
+function xlNote(){
+  if(xl) return;
+  const note = xlEl("xlWaitNote"), clock = xlEl("xlClock").value;
+  for(const [id, c] of [["xlOlderRow", "older"], ["xlHeightRow", "height"], ["xlDateRow", "date"]]) xlEl(id).style.display = clock === c ? "" : "none";
+  const h = msHeight(xlEl("xlNow").value);
+  try { const L = xlLock(h.err ? null : h.v); note.textContent = "The heir’s key opens " + L.text + "."; }
+  catch(e) { note.textContent = e.message; }
+}
+function xlWipe(){ xlRun++; xlEl("xlErr").textContent = ""; }
+// MAKE THE EXTRA LIFE WALLET
+async function xlMake(){
+  if(!gateOk()) return;
+  const run = ++xlRun, err = xlEl("xlErr"), net = xlEl("xlNet").value; err.textContent = "";
+  try {
+    const h = msHeight(xlEl("xlNow").value); if(h.err) throw new Error(h.err);
+    const L = xlLock(h.v), owner = await xlKeyLine(xlEl("xlOwner").value, net, "Your key"), heir = await xlKeyLine(xlEl("xlHeir").value, net, "Your heir’s key");
+    const warn = [];
+    if(h.warn) warn.push("CHECK THE BLOCK HEIGHT: " + h.warn);
+    const same = owner.xpub === heir.xpub;
+    if(owner.fp === heir.fp) warn.push("SAME SEED: your key and the heir’s key come from the same seed (fingerprint " + owner.fp + "). Whoever holds those words can spend through your way at any time, so the heir’s key and the wait add nothing. Give your heir a seed of their own." + (same ? " (The heir’s key here is your own key, so it uses /<2;3>/* to keep the two keys apart, as Liana does.)" : ""));
+    for(const [w, k, key] of [["Your key", "owner", owner], ["Your heir’s key", "heir", heir]]) if(xlPr[k] && xlPr[k].xpub === key.xpub) warn.push("PRACTICE: " + w.toLowerCase() + " comes from " + pracName(xlPr[k].kind) + ". Anyone can make it again. Never put money on this wallet.");
+    warn.push(...L.warn);
+    const lock = L.kind === "older" ? "older(" + L.n + ")" : "after(" + L.n + ")";
+    const desc = descriptorChecksum("wsh(or_d(pk(" + owner.line + "/<0;1>/*),and_v(v:pkh(" + heir.line + (same ? "/<2;3>/*" : "/<0;1>/*") + ")," + lock + ")))");
+    const body = desc.replace(/#[a-z0-9]{8}$/, "");
+    try { await msCheckDesc(body); } catch(e) { throw new Error("VOIDFORGE made a descriptor that Bitcoin Core would refuse (" + msWhy(e) + "), so it shows nothing. Please report this."); }
+    const recv = [], chg = [];
+    for(let i = 0; i < ADDR_SHOWN; i++){ recv.push(await b138Address(body, 0, i, net)); chg.push(await b138Address(body, 1, i, net)); }
+    const plain = await msExplain(desc, h.v, "", "");
+    if(run !== xlRun) return;
+    if(plain.state !== "ok") throw new Error("The explainer cannot read the descriptor VOIDFORGE made (" + plain.text + "). Please report this.");
+    xl = {desc, body, net, lock: L, owner, heir, same, warn, recv, chg, plain: plain.text, now: h.v, tested: false};
+    xlShow();
+  } catch(e) { if(run === xlRun) err.textContent = e.message; }
+}
+function xlShow(){
+  xlEl("xlIntro").style.display = "none"; xlEl("xlDone").style.display = "";
+  xlEl("xlHead").textContent = "Your Extra Life wallet: you at any time; your heir " + xl.lock.text + (netIsTest(xl.net) ? " (" + netName(xl.net).toUpperCase() + ")" : "");
+  netBan("xlTestBan", xl.net);
+  const wb = xlEl("xlWarn"); wb.textContent = "";
+  for(const w of xl.warn){ const d = document.createElement("div"); d.className = "ms-test"; d.textContent = w; wb.appendChild(d); }
+  xlEl("xlPlain").textContent = "In plain words (the explainer’s reading of this descriptor):\n" + xl.plain;
+  xlEl("xlDesc").textContent = xl.desc;
+  b138MakeClear("xlb");
+  xlEl("xlTestIn").value = ""; const ts = xlEl("xlTestStatus"); ts.textContent = ""; ts.className = "status";
+  xlEl("xlUse").style.display = "none";
+}
+// CHECK MY BACKUP: the copy must be the descriptor itself, checksum included, before the addresses show.
+function xlTest(){
+  if(!xl) return;
+  const st = xlEl("xlTestStatus"), got = xlEl("xlTestIn").value.replace(/\s+/g, ""), want = xl.desc;
+  st.className = "status bad";
+  if(!got){ st.textContent = "Type or paste the descriptor from your backup first."; return; }
+  if(got === want){
+    xl.tested = true; st.className = "status ok";
+    st.textContent = "BACKUP CHECKED: your copy is the same descriptor, checksum included. Keep it with the heir’s papers. The addresses are below; compare them with your wallet app after you import the descriptor there.";
+    xlUseShow(); return;
+  }
+  if(got === xl.body) { st.textContent = "The descriptor matches, but your copy has no checksum (the 8 characters after # at the end: #" + want.slice(-8) + "). Write it down too: it lets any wallet catch a typo."; return; }
+  let i = 0; while(i < got.length && i < want.length && got[i] === want[i]) i++;
+  st.textContent = "NO MATCH: your copy differs from the descriptor at character " + (i + 1) + " (it has “" + (got.slice(i, i + 12) || "nothing more") + "” where the descriptor has “" + want.slice(i, i + 12) + "”). Fix your backup, then check again. A wrong descriptor cannot find the coins.";
+}
+function xlUseShow(){
+  xlEl("xlUse").style.display = "";
+  for(const [id, list] of [["xlAddrs", xl.recv], ["xlChange", xl.chg]]){ const ol = xlEl(id); ol.textContent = ""; for(const a of list){ const li = document.createElement("li"); li.textContent = a; ol.appendChild(li); } }
+  const one = (b) => descriptorChecksum(xl.body.split("/<0;1>/*").join("/" + b + "/*").split("/<2;3>/*").join("/" + (b + 2) + "/*"));
+  xlEl("xlCoreCmd").textContent = coreImportText(one(0), one(1), "now");
+  xlEl("xlRefreshHint").textContent = xl.lock.kind === "older"
+    ? "Each coin’s wait starts when it confirms. Type the block height of each deposit (and of the change of each payment): VOIDFORGE says when the heir’s key opens for it and when to move or refresh it, at about 144 blocks a day (rough). A new deposit has its own clock."
+    : "A fixed " + (xlEl("xlClock").value === "height" ? "block" : "date") + " is the same for every coin: the heir’s key opens for all of them at once, and for good.";
+  xlEl("xlDeps").style.display = xl.lock.kind === "older" ? "" : "none";
+  xlRefresh();
+}
+// "Move or refresh by": for older(N), each deposit at height D opens to the heir in block D + N; refresh a margin before (30 days,
+// or a quarter of a short wait). Dates are rough: today plus 10 minutes a block from the current height typed above.
+function xlRefresh(){
+  if(!xl) return;
+  const out = xlEl("xlRefresh"), now = xl.now, date = (h) => now ? todayISO(new Date(Date.now() + (h - now) * 600000)) : null, L = [];
+  if(xl.lock.kind === "after"){
+    const n = xl.lock.n;
+    L.push(n < 500000000 ? "All coins: the heir’s key opens in block " + msGroup(n + 1) + (now ? (n <= now ? ": it is open now." : " (about " + date(n + 1) + ", rough).") : " (type the current block height above, then make the wallet again, for a rough date).") + " Move the coins to a new Extra Life wallet before then."
+      : "All coins: the heir’s key opens once the network’s median time passes " + new Date(n * 1000).toISOString().slice(0, 10) + " (UTC). Move the coins to a new Extra Life wallet before then.");
+    out.className = "status"; out.textContent = L.join("\n"); return;
+  }
+  const N = xl.lock.n, margin = Math.min(XL_SHORT, Math.floor(N / 4)), lines = xlEl("xlDeps").value.split(/\n/).map(x => x.trim().replace(/[,\s]/g, "")).filter(Boolean);
+  if(!lines.length){ out.className = "status"; out.textContent = "No deposits typed yet." + (now ? "" : " Type the current block height above (then make the wallet again) to see rough dates."); return; }
+  let bad = false;
+  for(const t of lines){
+    if(!/^\d{1,9}$/.test(t) || parseInt(t, 10) < 1){ L.push("“" + t + "” is not a block height (a whole number, such as 975100)."); bad = true; continue; }
+    const D = parseInt(t, 10), open = D + N, by = open - margin;
+    if(now && D > now){ L.push("Block " + msGroup(D) + " is after the current block " + msGroup(now) + ": check the number."); bad = true; continue; }
+    const state = !now ? "" : open <= now + 1 ? " OPEN NOW: the heir’s key can already spend this coin." : by <= now ? " REFRESH NOW: the heir’s key opens in " + msDur((open - now) * 600) + "." : "";
+    L.push("Deposit in block " + msGroup(D) + ": the heir’s key opens in block " + msGroup(open) + (date(open) ? " (about " + date(open) + ")" : "") + ". Move or refresh it by block " + msGroup(by) + (date(by) ? " (about " + date(by) + ")" : "") + "." + state);
+  }
+  out.className = "status" + (bad || L.some(x => / NOW:/.test(x)) ? " bad" : "");
+  out.textContent = L.join("\n") + (now ? "" : "\nType the current block height above (then make the wallet again) for rough dates.");
+}
+function xlCopy(btn){ if(xl) safeCopy(xl.desc).then(() => showCopied(btn)).catch(() => alert("Copy failed. Select the text and copy it manually.")); }
+function xlCopyCore(btn){ const t = xlEl("xlCoreCmd").textContent; if(t) safeCopy(t).then(() => showCopied(btn)).catch(() => alert("Copy failed. Select the text and copy it manually.")); }
+// The sheet for the heir and the owner: the full descriptor with its checksum, what the wait means, the owner’s duty, and the heir’s
+// steps, which say what a recovery spend needs (BIP68, BIP112 and BIP65).
+function xlSheetText(){
+  const L = xl.lock, older = L.kind === "older", pr = xl.warn.filter(w => /^(PRACTICE|SAME SEED)/.test(w));
+  return [...pr, ...(pr.length ? [""] : []),
+    "WHAT THIS WALLET IS: one wallet, two ways to spend.",
+    "  1. The owner’s key (fingerprint " + xl.owner.fp + ", path m/" + xl.owner.path.replace(/h/g, "'") + "), at any time.",
+    "  2. The heir’s key (fingerprint " + xl.heir.fp + ", path m/" + xl.heir.path.replace(/h/g, "'") + "), but only " + L.text + ".",
+    "", "DESCRIPTOR (public keys only; write it with its checksum, the 8 characters after #):", xl.desc, "",
+    "FOR THE OWNER: " + (older ? "the heir’s key opens for each coin " + msGroup(L.n) + " blocks after the block that confirmed it (the earliest block for the heir is that block + " + msGroup(L.n) + "). Move or refresh every coin before then: send it to a new address of this same wallet. Every deposit, and the change of every payment, has its own clock." : "the heir’s key opens for every coin " + L.text + ", and for good. Move the coins to a new Extra Life wallet before then to keep them yours alone."),
+    "", "FOR THE HEIR: you need four things.",
+    "  1. Your own words (the heir’s key). Your words alone open an EMPTY wallet in an ordinary wallet app.",
+    "  2. This descriptor (above, or the .bip138 file, which your words open in VOIDFORGE or Liana).",
+    "  3. The wait: " + L.text + ".",
+    "  4. A wallet that can spend a timelocked (miniscript) wallet with your key: Bitcoin Core (a descriptor wallet: import this descriptor with your private key in place of your xpub) or Liana. VOIDFORGE checked Bitcoin Core 32.1 on a test network (regtest).",
+    "  The recovery spend must be transaction version 2 or more and " + (older ? "have a sequence (nSequence) of " + L.n + " on every input; it can be mined only once each coin has waited." : "have a locktime (nLockTime) of " + L.n + " and a sequence below 0xffffffff on every input."),
+    "  Check with VOIDFORGE first: EXTRA TOOLS, Explain an inheritance or timelock wallet, names your key and the wait; Inspect a transaction shows whether a spend meets it.",
+    "", "Never share the words. Anyone who holds this descriptor can see every address and the balance, but cannot spend."].join("\n");
+}
+function xlPrint(){
+  if(!xl) return;
+  const title = "VOIDFORGE EXTRA LIFE SHEET" + netTitle(xl.net) + (xl.warn.some(w => /^PRACTICE/.test(w)) ? ": PRACTICE" : "");
+  const addrs = "FIRST 10 RECEIVE AND FIRST 10 CHANGE ADDRESSES (the wallet app must show exactly these):\n" + addrSheetLines(xl.recv, xl.chg, 70);
+  let q; try { q = qrMatrix(xl.desc); } catch(e) { return printSqSheet(title, "", "pq-ms", "The descriptor is too long for one QR code: copy it from the text below.\n\n" + xlSheetText(), "", addrs); }
+  printSqSheet(title, qrSvg(q.rows), "pq-ms pq-ms-l", xlSheetText(), "", addrs);
+}
+function xlBack(){ xl = null; xlRun++; b138MakeClear("xlb"); xlEl("xlDone").style.display = "none"; xlEl("xlIntro").style.display = ""; xlNote(); }
+function xlReset(){
+  xl = null; xlRun++; xlPr.owner = null; xlPr.heir = null;
+  for(const id of ["xlOwner", "xlHeir", "xlAfterH", "xlAfterD", "xlNow", "xlDeps", "xlTestIn"]) xlEl(id).value = "";
+  xlEl("xlBlocks").value = "52560"; xlEl("xlClock").value = "older"; xlEl("xlAcct").value = "0";
+  for(const id of ["xlErr", "xlDesc", "xlPlain", "xlWarn", "xlRefresh", "xlTestStatus", "xlAddrs", "xlChange", "xlCoreCmd"]) xlEl(id).textContent = "";
+  b138MakeClear("xlb"); xlEl("xlDone").style.display = "none"; xlEl("xlUse").style.display = "none"; xlEl("xlIntro").style.display = ""; xlNote();
+}
+for(const id of ["xlClock", "xlNet"]) xlEl(id).addEventListener("change", () => { xlWipe(); xlNote(); });
+for(const id of ["xlBlocks", "xlAfterH", "xlAfterD", "xlNow", "xlOwner", "xlHeir", "xlAcct"]) xlEl(id).addEventListener("input", () => { xlWipe(); xlNote(); });
+xlEl("xlDeps").addEventListener("input", xlRefresh);
+xlEl("xlTestIn").addEventListener("input", () => { if(xl && !xl.tested){ const s = xlEl("xlTestStatus"); s.textContent = ""; s.className = "status"; } });
+document.querySelectorAll("#xlOlderRow .ms-preset").forEach(b => b.addEventListener("click", () => { xlEl("xlBlocks").value = b.getAttribute("data-xl"); xlWipe(); xlNote(); }));
+xlNote();
 // ===== v2.11.0 Taproot multisig: the wizard's parts (the address and descriptor code is next to multisigDescriptor) =====
 function msTrNoteShow(){ msEl("msTrNote").style.display = msEl("msType").value === "ms-tr" ? "" : "none"; }
 msEl("msType").addEventListener("change", msTrNoteShow);
@@ -14426,11 +14751,12 @@ async function b138Read(bytes, phrase, vp, pubText){
 }
 // --- On the page. Three places make a backup (panel prefixes): msb = the finished Multisig wallet card, wpb = the descriptor pasted in
 // Or open a watch-only wallet, mxb = the descriptor pasted in Explain an inheritance or timelock wallet. b138 = the reader in CHECK A BACKUP.
-const B138_PANELS = ["msb", "wpb", "mxb"];
-function b138Gated(){ return ["msbBtn", "wpbBtn", "mxbBtn", "b138Btn"]; }   // read by setGate: they wait for the self-test
+const B138_PANELS = ["msb", "wpb", "mxb", "xlb"];   // v2.18.0: xlb = the Extra Life wallet
+function b138Gated(){ return ["msbBtn", "wpbBtn", "mxbBtn", "xlbBtn", "b138Btn"]; }   // read by setGate: they wait for the self-test
 const b138Ctx = {}, b138Seq = {};
 function b138Source(P){
   if(P === "msb") return ms && ms.done ? descriptorChecksum(ms.descR.replace(/#[a-z0-9]{8}$/, "").split("/0/*").join("/<0;1>/*")) : "";   // receive and change in one (BIP389)
+  if(P === "xlb") return xl ? xl.desc : "";   // v2.18.0: the Extra Life wallet just made
   return document.getElementById(P === "wpb" ? "wpIn" : "msxIn").value;
 }
 function b138MakeClear(P, keepRolls){
@@ -14561,6 +14887,18 @@ function b138SelfTests(eq){
   eq("BIP138: whole backup, one key and 4 decoys (BIP138 test vector, SHA-256 of the file)", async () => hex(await sha256bytes(await V1())), "df66f033ecf386b47340f4e85a3f9fbd106da5d741ebb854f87cba40c4e85267");
   eq("BIP138: that backup opens with its key and gives the content back", async () => { const o = await b138TryKeys(b138Parse(await V1()), [{xonly: K1}]); return o ? new TextDecoder().decode(b138Items(o.pt)[0].data) : "not opened"; }, "00");
   eq("Descriptor addresses: inheritance wallet wsh(or_d(pk, and_v(v:pkh, older))), change #1 (from embit)", async () => b138Address(await b138KatDesc("wsh(or_d(pk(@0/<0;1>/*),and_v(v:pkh(@1/<2;3>/*),older(52560))))"), 1, 1, "test"), "tb1q7w7zn820ppazmrwmtf8lxwsmht5d3739q2fzgc93n2vsr70y588qm4g8d5");
+  // v2.18.0: the Extra Life shape and the strict miniscript reader, against Bitcoin Core 32.1 (getdescriptorinfo and deriveaddresses,
+  // run offline). The keys are the master xpubs of BIP32 test vectors 1 and 2, with made-up origins.
+  const XA = "[aaaaaaaa/48h/0h/0h/2h]xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8/<0;1>/*", XB = "[bbbbbbbb/48h/0h/0h/2h]xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB/<0;1>/*";
+  const XL = (lock, heir) => "wsh(or_d(pk(" + XA + "),and_v(v:pkh(" + (heir || XB) + ")," + lock + ")))";
+  eq("Extra Life descriptor: checksum of wsh(or_d(pk, and_v(v:pkh, older(52560)))) (from Bitcoin Core 32.1)", () => descriptorChecksum(XL("older(52560)")).slice(-8), "6mzpxsph");
+  eq("Extra Life descriptor: receive #0 and change #11 (from Bitcoin Core 32.1)", async () => (await b138Address(XL("older(52560)"), 0, 0, "main")) + " " + (await b138Address(XL("older(52560)"), 1, 11, "main")), "bc1q7r8yhlf272j03cpwdrtawqlhdl0nstfp66m4ddlttceycgxujn3q9akcgr bc1qwvfm3ne340dxn0hurhu4c899q6seeghqu2zmgpfp59lxurtnt4mskl5h76");
+  eq("Miniscript reader: refuses older(0), older(1e3), blocks and seconds in one way, a key twice and a way with no key (as Bitcoin Core 32.1 does)", async () => {
+    const out = [];
+    for(const d of [XL("older(0)"), XL("older(1e3)"), "wsh(and_v(v:pk(" + XA + "),and_v(v:after(900000),after(1800000000))))", XL("older(52560)", XA), "wsh(or_b(pk(" + XA + "),a:older(100)))", XL("older(52560)")]){
+      try { await msCheckDesc(d); out.push("accepted"); } catch(e) { out.push(e.vf ? "refused" : "error"); } }
+    return out.join(" ");
+  }, "refused refused refused refused refused accepted");
   eq("Descriptor addresses: Taproot tree with multi_a and a timelock, receive #2 (from embit)", async () => b138Address(await b138KatDesc("tr(" + B138_NUMS + ",{multi_a(2,@0/<0;1>/*,@1/<0;1>/*),and_v(v:pk(@2/<0;1>/*),after(1900000000))})"), 0, 2, "test"), "tb1p5s7jxwgesjusln3fl6sy678pgh98puxp8lvsum69fdrlwpw6nfqqm4dr77");
 }
 // The test wallets' keys: the BIP48 testnet keys of the three self-test phrases (abandon ... about, legal winner ..., letter advice ...).
@@ -17938,6 +18276,7 @@ function setGate(state, text, cls){
   document.getElementById("wpBtn").disabled = !on;
   document.getElementById("reuseBtn").disabled = !on;
   document.getElementById("childBtn").disabled = !on;
+  document.getElementById("xlBtn").disabled = !on;   // v2.18.0: Extra Life
   wdUpdate(); cdUpdate(); dmUpdate();
 }
 window.selfTestDone = (async function(){
@@ -38175,6 +38514,13 @@ async function ssOwnReview(bytes) {
       // SegWit v0: the amount is the PSBT's word only, and with more than one input a wallet can lower it across two signings
       else if (psbt.inputs.length > 1 && st !== "p2tr") W.push({ warn: true, t: "Input " + i + " (SegWit v0) comes without its full previous transaction, so its amount is the PSBT’s word only. A dishonest wallet that asks you to sign the same transaction twice can hide a larger fee this way. Prefer a PSBT that includes the full previous transactions; the page then checks them." });
     }
+  });
+  // v2.18.0: a timelocked or other miniscript coin (such as an Extra Life heir wallet) has a witness script that is not plain multisig.
+  // SeedSigner reads only single-key and plain multisig coins (embit's parse_multisig), so it cannot sign it: said plainly, by input.
+  psbt.inputs.forEach((inp, i) => {
+    if (!inp.witness_script) return;
+    let plain = true; try { SSPSBTParser._parse_multisig(inp.witness_script); } catch (e) { plain = false; }
+    if (!plain) W.push({ bad: true, t: "Input " + i + " spends from a timelocked or other miniscript wallet (such as an Extra Life heir wallet). This practice signer works like a SeedSigner, which signs only single-key and plain multisig coins, so it cannot sign this input. Sign it with a wallet that signs miniscript, such as Bitcoin Core (a descriptor wallet) or Liana." });
   });
   if (!signer || unreadable) return { W, signer, unreadable };
   const mineIn = psbt.inputs.filter((inp) => [...inp.bip32_derivations, ...inp.taproot_bip32_derivations].some((d) => hex(d.der.fingerprint) === sfp)).length;

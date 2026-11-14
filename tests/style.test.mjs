@@ -46,13 +46,14 @@ const STEPS = {
   msBox: { "msStartBtn": "msIntro", "ADD THIS KEY": "msRun", "msbBtn": "msDone" },               // set up, add each key, the finished wallet
   dmBox: { "dmBtn": "dmGoRow", "dmTourNext": "dmTour" },                                        // FORGE SEED, or NEXT while the guided practice runs (FORGE SEED is off then)
   ssBox: { "ssForgeBtn": "", "ssOwnGo": "ssOwnBox" },                                          // v2.17.0: FORGE SEED from the device, and Use it for real (HOLD UP TO THE DEVICE)
+  xlBox: { "xlBtn": "xlIntro", "xlTestBtn": "xlTestBox" },                                       // v2.18.0: make the Extra Life wallet, then test its backup (shown one at a time)
 };
 // Boxes with no main action, so no gold button: they show something, work as you type, or hold settings (their buttons, if
 // any, are COPY, SHOW, HIDE or PRINT, all gray). Listed here, so a tool box without its gold button anywhere else fails.
 const NO_ACTION = {
   rollStats: "shows the rolls", autoClearBox: "settings", rhBox: "settings", checkGuide: "instructions", explainBox: "shows the steps (gray SHOW)",
   addrBox: "shows addresses (gray COPY and QR)", seedQrBox: "shows the SeedQR (gray SHOW, PRINT)", watchBox: "shows keys (gray COPY and QR)", spBox: "shows an address",
-  coreBox: "shows commands (gray COPY)", msCoreBox: "shows commands (gray COPY)", walletView: "shows addresses (gray buttons)", planBox: "works as you type (gray PRINT)",
+  coreBox: "shows commands (gray COPY)", msCoreBox: "shows commands (gray COPY)", xlCoreBox: "shows commands (gray COPY)", walletView: "shows addresses (gray buttons)", planBox: "works as you type (gray PRINT)",
   payCheck: "works as you type", costBox: "works as you type", dlBox: "works when a file is picked",
 };
 const keyOf = (b) => b.id || label(b);
@@ -156,7 +157,7 @@ const CARD_GOLD = {
 const changelog = [...d.querySelectorAll("#tp-about details")].find((x) => /^Changelog$/.test(label(x.querySelector("summary") || x)));
 const visible = [];
 const QUOTED = /(^|[\s(])'[A-Za-z][^'\n]{0,60}[A-Za-z.!?]'(?=$|[\s.,;:!?)])/;   // 'a phrase in straight quotes'
-const OLD_APOS = 204, OLD_QUOTES = 37;   // the older script's straight apostrophes and quote marks (v2.15.0); never more
+const OLD_APOS = 202, OLD_QUOTES = 37;   // the older script's straight apostrophes and quote marks (v2.15.0); never more
 {
   const tw = d.createTreeWalker(d.body, 4);   // text nodes
   for (let n; (n = tw.nextNode());) {
