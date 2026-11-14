@@ -13899,6 +13899,7 @@ function msCheckDesc(body){
   return msDescSeen.get(body);
 }
 async function msCheckDescNow(body){
+  if(/\s/.test(body)) throw msErr("it has a space or a line break inside; Bitcoin Core refuses it (the explainer takes them out of what you paste, so paste it there)");
   const m = /^([a-z_]+)\((.*)\)$/s.exec(body); if(!m) throw msErr("this is not a descriptor (it should look like wsh(...) or tr(...))");
   const f = m[1], inner = m[2], parts = [], paths = {n: 0}, out = {f, parts, ik: null};
   const one = (t) => { if(msSplitArgs(t).length !== 1) throw msErr(f + "() takes one key"); return t.trim(); };

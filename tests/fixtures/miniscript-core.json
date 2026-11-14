@@ -1,5 +1,5 @@
 {
- "source": "Bitcoin Core 32.1 (bitcoind -connect=0, offline): getdescriptorinfo for the checksum or the error, then deriveaddresses with range [0,11] on each branch of <0;1>. Made for the v2.18.0 review. Keys: the master xpub of BIP32 test vector 1 (origin aaaaaaaa), its m/0H xpub (cccccccc) and the master xpub of test vector 2 (bbbbbbbb), with made-up origins, and BIP341's unspendable key H. Cases with an error are ones Core refuses (the x_ cases are probes: x_lead0 and x_mixOr are ones Core accepts).",
+ "source": "Bitcoin Core 32.1 (bitcoind -connect=0, offline): getdescriptorinfo for the checksum or the error, then deriveaddresses with range [0,11] on each branch of <0;1>. Made for the v2.18.0 review, and (gen_miniscript_core.mjs) for Extra Life and the reader's other rules. Keys: the master xpub of BIP32 test vector 1 (origin aaaaaaaa), its m/0H xpub (cccccccc) and the master xpub of test vector 2 (bbbbbbbb), with made-up origins, and BIP341's unspendable key H. Cases with an error are ones Core refuses (the x_ cases are probes: x_lead0 and x_mixOr are ones Core accepts).",
  "cases": {
   "older1": {
    "desc": "wsh(or_d(pk([aaaaaaaa/48h/0h/0h/2h]xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8/<0;1>/*),and_v(v:pkh([bbbbbbbb/48h/0h/0h/2h]xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB/<0;1>/*),older(1))))",
@@ -1172,6 +1172,474 @@
   "x_nonsane_heirOnly": {
    "desc": "wsh(or_b(pk([aaaaaaaa/48h/0h/0h/2h]xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8/<0;1>/*),a:older(100)))",
    "error": "or_b(pk([aaaaaaaa/48h/0h/0h/2h]xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8/0/*),a:older(100)) is invalid"
+  },
+  "heir_older1": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]xpub6FQya7zGhR92kacYsNnjreouvnHJMpXYsUXnW6NJJAJRCKsa26TzDy4LdnGhEurr3d6y1J8PJ7EEMKQp74XTqYvmGJNogYXSKDszYHtF8mX/<0;1>/*),older(1))))",
+   "checksum": "6cdc9ldy",
+   "receive": [
+    "bc1qexrag6cfwy7nctv3h3nhpjsv94mrq28dzfqkxp0dqgpny5upznfqzu7y02",
+    "bc1qx78wwlwz7mq33fsp49rjv0z5m83hf23x3pr9p406sehmpuw90qssetmcgy",
+    "bc1qsgtkpuff3l3j3v8scx67thymupvdqpu0ec7ef3ccy02q97p03p6qfvk3jn",
+    "bc1qen6xcavar9y0ulvzzyj88eyler6xc796dcss20fjf02mlc4qd7vqxsqhx9",
+    "bc1qnqfcfxka3q3ehxwwxxh7lsadvu60tke2n0n0zh745866wn6u095s48reac",
+    "bc1qfdwhfvc5avpt2ks4n8le3rj5ud6fdzx5qrz8xx9suppw30nzpzmszvry8z",
+    "bc1qhf3jt6xqaq9402kkfyxyz0f5jm55u2wcfl0g59crrx2rwa4ymexswlqyj0",
+    "bc1qz493d67pva8hffyf05wukp9ytzc0qt8npsa4mttzg9tq267yxf2srszdqe",
+    "bc1q365su050eds0p3gk6hgtndpcy5yvuldvjtt97zfz23yp0uee03cs2vttxn",
+    "bc1qeu7c2sdk58q5720nd2wqpz4pxtsgelzyuhuqj8n8dqk3r2h5xywqelz74e",
+    "bc1q04t2pm6nh4a8hdggrt6u6a6za7zmz3qenjt9nzdn9wmup4qek2nqhjl650",
+    "bc1q5ef4eagc49u8te3f5m8qthveflz98uzrvfaurfhm7yyz8rk3uraqwsgpvn"
+   ],
+   "change": [
+    "bc1ql0mvq5sx7qmmrwfpxrcyk6ql2ezrfqp8zvk4zgjt2zgcpa9y36vsppur7g",
+    "bc1qfdpl5f5upfetuwg9tryhvkg6yj75ukqpx6nt0mhv7c9svg27ftdssc3mqy",
+    "bc1q9gj4ddmwl6fryy7m4r05eehath5tq9t56yn24wasrtplnduxuyfs25kjp4",
+    "bc1qzty7gc0mp68h30ay8xnd2gr6g3wfj7sgml8ta705htmgjj58nczqgmtp2g",
+    "bc1q23djuq5q3jcff8jkm2k0u6kna35tc03x3pmvdkfehrwvcnww7uxqy6hjl9",
+    "bc1qa7g8krmx6u6ggquk390hq77vkuve9r8fqea7ajlypvqesx4d93qq029cke",
+    "bc1q990rf28msanx0z9nfajph6qa4wkegucezyx209glpwk5j7p5j49qz0udmv",
+    "bc1qc5pq6smhxz2u6e8fzjh2a6hxdlch9p855pk4h2sfnswllvsamn6qecjn7e",
+    "bc1q7r93wapwpdsppa52qyupwt2kzw4xqrwsepe8rgtvjsy5zq5ljz4q6y85zj",
+    "bc1qc8gjax98mx0q3s8ekc66tu5dru5kjctf3sm9wqxcpftvmz0chefs3skpwg",
+    "bc1qsjarecf2qnu4k96ug9s6jc7kp7gkh7fd7fz20ajlrlqmtc0hz62s4k9fnx",
+    "bc1qly2k99vvcahcqkr90jx754rypd0mlapytyey7pms5wlqnckunv0q9esaq5"
+   ]
+  },
+  "heir_older52560": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]xpub6FQya7zGhR92kacYsNnjreouvnHJMpXYsUXnW6NJJAJRCKsa26TzDy4LdnGhEurr3d6y1J8PJ7EEMKQp74XTqYvmGJNogYXSKDszYHtF8mX/<0;1>/*),older(52560))))",
+   "checksum": "xvrrk78y",
+   "receive": [
+    "bc1q7h2xauaf3frzj906u3ggfensnp9x2u30ph2pg67e53xfexf6eaksf8rp60",
+    "bc1qcs27575mups69wal23nkmr3a4gqcc3wmaers7mxne8mf75h8l60spxujg4",
+    "bc1qvn9elqdl3l7dxggnswpu6ngmhuz75xw7jt9u6m7nqk9z5y7x3rzs65ky8w",
+    "bc1qtzkax978tyykshvn5m5ew9qr5cpxwgpv98mltsah29hlazu205ysttz269",
+    "bc1qhj0q8g2qm0zrnjzt2x2szfaaw2zkl870sem6fk80hfxaujw7kagqscmc5d",
+    "bc1qumuv48sql4kvs2utwsqp7lx54vwn2ljvkkxl4d9tdztr36ayq57s3lvpd2",
+    "bc1qp72pvkpklwd8cmdk27nqfgvlqkurktnmzl0kxgkadalcwt3fs3dqvl0tjd",
+    "bc1q4ujpyaqedp7vav3yn4ylr2qmdgypj6dy7rkqpmdzmqxyk3eymcms2kkhp8",
+    "bc1qm69qvgnrg48xlfddnu5g5fpq9gsxhltsylu6xe9msaj8c86se04sxg5p3a",
+    "bc1qywzzgqgksf6syu6wtzam5vfy4qvehpauff78p8s89zuvl87k47uqyzvd7j",
+    "bc1qlpczzlg0q220zhxw79yzkgrs2u754v42tj0wuf46z5gwjeukpywsprk0uj",
+    "bc1qnvcj0qr7cr5v48ltyxnjvgz8pe7mnl07qzj8nqfwyqc7arzsl29s2394jc"
+   ],
+   "change": [
+    "bc1qr26ctst4raskd83fgenj7mhmhflakk7u2qj63fp2w5tnnhkzyd3ql3tq8n",
+    "bc1q6rq284nqf09cxvs9zmqnvje4pjsngqny8s4wnp93gnyp0r8lvdes5h6ll4",
+    "bc1qkc46nzxhfyftqtjky4fmmmtrf78c9q4axvndm6rqqyxsqnssf9zqan3e8h",
+    "bc1qlkxyjyll93ggh88kwrddzzwct2tx5w044axusfuj7yevzsud9xvqusekef",
+    "bc1qllgpna6sncck9wrpepq6tlherk5gsd8x6eanfu2zfk93enccpy8qj8773v",
+    "bc1qsuv3axp52qv460qjj45h8c6k664524yv8hhl63yjmc6gknsp0vesud03ww",
+    "bc1qlwhtdc0aha4m6mvej0w5v2ahturvjcf0uk3c4c3z9r9tmr2mfgwquzy2eh",
+    "bc1qhen0t9dgzrnz5jjk4qsczt0gwmukdjlj4pksh632wgrwetakeyrs9zktnl",
+    "bc1qttr5gfmzt4hvyk79j4f6fh00fz4lzaawvnycpeusyj2krcy7dnlsal24t4",
+    "bc1qwcx5uy06mctk6r0ml24ds8unljlzaaaple4q4ehagth0ps6n7q3sxudf5k",
+    "bc1qczwllftk0326u6dugvp75yqlcgplcu4sk4255476ykacvul4eq0qlmxe2y",
+    "bc1q5erpm8d45qa9aqy0auxtl3l0qw3ta0qsdeg35j9vcxm4mtjwsr4sfyh5ju"
+   ]
+  },
+  "heir_older65535": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]xpub6FQya7zGhR92kacYsNnjreouvnHJMpXYsUXnW6NJJAJRCKsa26TzDy4LdnGhEurr3d6y1J8PJ7EEMKQp74XTqYvmGJNogYXSKDszYHtF8mX/<0;1>/*),older(65535))))",
+   "checksum": "yzwmeawu",
+   "receive": [
+    "bc1qpje7yhf7mhnetl3znyc20yx8arquuwt7uht2jfwwy5shj9jal48q5pqapy",
+    "bc1qy32qu35kuk8fyvcvchyvc3j64g72rkex5jwzqueujf9szjn8nnmswealp4",
+    "bc1qjwrdg2dxhcluuj74ddzff0qj3k5lz92sadlqy54dk0w59n95rryq00p706",
+    "bc1qya9n7t8zchf0gzag8j4t0hjr5ldck063euxlxt002kxrw2yd4axq8vdxfn",
+    "bc1qa2ds28gl33l2x8vjheryvsng4h5eyxgrcdvwqtxh8k0un7zlm05sumgnup",
+    "bc1qrd3w8nf066cy0nrvrrpfk48tg74w8rlwnwkcrt4d6avrkyp90jxqdpcm0z",
+    "bc1qjzd0hqzqlfqg43keh5tesrz4luuznwxxy4pyrpk3cwwesam2u27sumstfd",
+    "bc1qz28r8mlzy20acsxk956jnwrua9fhua3pgeg0p8hmm6pv5eczx54qtqy3yc",
+    "bc1qa3j9nwlu4zvgmzyhjsry55dcc78l50d6gmyx3u6xeh5g94unfaqs3petnw",
+    "bc1qmntjf0a8kpjrhkfxa58697gpayh8ptkwd3ascrqrf9yt8x0njpdqcnze2p",
+    "bc1q4ry0msm2xc3h3h6dv9damufh305w09qrw2pyd3k40d9sh8cls07sn2sequ",
+    "bc1q9gjm04dpdceag4qhsm4akkzq3ddn867yea8mx7hdczc3lwgw0n4s4kwdyk"
+   ],
+   "change": [
+    "bc1qgu8hlnxgm4zzs5ttk2l7e2jh9vvyk8tsk48059uh52n52ag0cceqfx30ve",
+    "bc1qwhz9374s6l7aa7qlh0nqaxs5jflsrk50hz8myxglm2qp5nefvz7s97cjrw",
+    "bc1q2z0gyrag2h2qjzp8n8ynpcjseask43msxwmw6qyqd7yzzftwhr6shjcgec",
+    "bc1qpagvn9gwm866sgsf7lenf0uhw4ngqfdu70m74hz2sczkvatsppjsuj79q3",
+    "bc1qa7eqzc2svxdz6c86w42jzfeyxhlvtjf9prvwd6qmvwdzpqnqlpfszp2fj2",
+    "bc1qahttsx9pmu992e2g2zgzdjlfr6g6d5jt6zdpx5cwk9vmz6r0f29satlyf5",
+    "bc1qz6s8y5v26a37arn0c6gkqjvv72a35gxv47xh4vgurcg44whq09eqx4dye8",
+    "bc1q4lsamp3pex0m4km4v7qe5y8d2u3sp9698677pycpzf7yz4gqzursrg5c9x",
+    "bc1q2quf8r2yrrc3ku7dm9gq7nfg23htg4nu2ehd0h4wpr8wzm3nd8dsv68k0d",
+    "bc1qj9antftxzp2hfvt709uz952xh7v44uysfugq5v4lgglu4klxqveq9tlx7r",
+    "bc1q2xnhlgdwepepyuh032gqjg2xpmrqpmg38tc9ag8nmwqyhwz0capqn7cy6q",
+    "bc1qnz4crdyf3t3jv4mvv4zl0wegnh9xu90ynfp7lhe9qvwlczmydf8q8l079u"
+   ]
+  },
+  "heir_after1030000": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]xpub6FQya7zGhR92kacYsNnjreouvnHJMpXYsUXnW6NJJAJRCKsa26TzDy4LdnGhEurr3d6y1J8PJ7EEMKQp74XTqYvmGJNogYXSKDszYHtF8mX/<0;1>/*),after(1030000))))",
+   "checksum": "3rlujug5",
+   "receive": [
+    "bc1qdyvtagzsq54jzghsvn9525t6w47yy6pud6pamw79h4y307fvv62qrh3949",
+    "bc1qj20s4c7vlefrcsvpw3jl3hy2wgdgguwey723qsfkz9kq9vqkr5xqnsagwp",
+    "bc1qkj336sp4zwflgfx23tpey5kvp083vfs40yk9xy3sx4u7798vjuwqehd7e9",
+    "bc1qaq0mhqlavx7wn4prthvmqca837hgp6yrcc6udutktggxamdfh6as7wjk20",
+    "bc1quwvpkup6pdtqz6vc990vv42adjagqhg4fzzkggs3qvfz2sew6lqq5rl7k2",
+    "bc1q89ghwm6pnljl8egthujgvtrrwgja2f8telnvv87nnfx8av6m6p3sax2plu",
+    "bc1q5x77jdemk8u9t8z2ved58pv5e66gdk73y4s4a7fl82y7s63y9eaqky7a58",
+    "bc1qnxh4qa6adx5j99mhxjjwh0vfepxzy5n64zx003v20twykw9n3ccqlachkk",
+    "bc1qr0a4n5r63ncykyacs8cwh73yd807qd85m9nwp8zghnp5pzwgyv2s5j3jan",
+    "bc1q96yqvy9657ca9nlsvay6eg7929k889j8s820y4zga5mvsqyu07es9xa86h",
+    "bc1q79gva578u7l98npl9tqtc6gcvemqw8llks7ejtdn0xju9x07au4s4hw5e5",
+    "bc1qarap38jyjuvhygdkmtdptkl3m7qlal6c6gr2ck02hwknsjxqfhlqavskap"
+   ],
+   "change": [
+    "bc1qmudvwd2alsrdehrea33mdhhmjkrt93zfhcndkx3mt24wlyn6h89qcnhduu",
+    "bc1q7yvev64g3hwdvg47u67g8f2lyhw2grzxdgm906xk0l7s47pwxe4qs8rzm5",
+    "bc1qya5fff8jn7n5dn2swcpvxuspv09zctjcehac76t4dl2n94m39r3sjelxwt",
+    "bc1q0tgr6ej902k4xs0dwck90ypfq5nlmvlugkyamxpz75jy9tvke37qd72kcw",
+    "bc1qaja85r7z8u95whjcxszw0j9v6vfdrzcfwnch4dw6f6c7t4pa75ks2yr3t0",
+    "bc1qdzm4hgm2g7nyd9rgkv8h322mdycgzq3fa87e7v0pahetuhck7hwq8pqde3",
+    "bc1qwfwfn0tchf237ftfcc5mvqetcga44fwlp4zsq2znymw3l6k4s62skpy7pa",
+    "bc1q7je36kvl4tvrxh5rgzmkh7kexc7exc3z2dq5g5hvu8a7gf5mvk0s2grv0q",
+    "bc1qxqwqf5ws3szgfl0kz552euqtmz0n4eq0sqgygprjeevfuvllnd4q4menjz",
+    "bc1q5wxkdncfluzfjpjj4p0muek9yf6wg5mvydyjt59azsdlw8gupkps8rtq69",
+    "bc1qg5efq7lr3n3hnculeyccav3rvgfqpd8swucjsj74vnu60amhs6gqjzt3uu",
+    "bc1q7ut365k6pnduquw528nwg8gsr7e9l70c0zwmlh8y0z9kygv2l4dselxj28"
+   ]
+  },
+  "heir_after_date": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]xpub6FQya7zGhR92kacYsNnjreouvnHJMpXYsUXnW6NJJAJRCKsa26TzDy4LdnGhEurr3d6y1J8PJ7EEMKQp74XTqYvmGJNogYXSKDszYHtF8mX/<0;1>/*),after(1906502400))))",
+   "checksum": "j7xgmpug",
+   "receive": [
+    "bc1qwkw5qc8ypszdgnxetyyseafn3kzln28sunxrev8y79s8rmkf83ss99reym",
+    "bc1q84k83sc7f70zmx27u08ucyfezd38t3gsllwvnewz494gwrw8nvyslzkj9a",
+    "bc1qqn7s7cv9szjgm0dxke886hal3hrlk3q3j00wqysrf2dsamfffv7skeyuyr",
+    "bc1qs98rhn99k2aafvh6zwldsxk3caeazvsj8dgcapvcejccukw7v08qyex902",
+    "bc1qh9xcy56jdewejulx8tscvdwv33hl93avf9etfp5xuryvsrgl6dsq9hymt0",
+    "bc1q3rhrt8ncyz3m34slpf4peewrq258f83hxexg3uurm4ndhxurudfqjh9huy",
+    "bc1q4hrchszkstph3hd60ns5g2mkssa3yr365mqaaq3uqruxk2jeqgpsxcsjlp",
+    "bc1qg2wyvfagjxrrk6nv2k9unfm35lc2zgznazemqh8yd0dqfvygkuvss229yj",
+    "bc1qgvpplxtjrg9jdvl9rlm46z82lcntdcay9zthwcglp994re04nzesuqxt8k",
+    "bc1qg2qvjyszwn97yt0stnvjj5dp6rnqh7u9uwmmq40ake7qnju5cymqvenkyh",
+    "bc1qv03cumts5qzyzrl4es5x096rtjrx067c8wxdsmxn7halr5f96kvq30mssm",
+    "bc1qafmmrz7hpg4nwma0cd7g5nzdhwpd8h3nnw3xd8jy6qqm7chx5yasv8ms72"
+   ],
+   "change": [
+    "bc1qyd7kfw6n2yhrqh3vlsmqtcpsg25uqee9y9h6qj7yalrp4skesckqrv0m8d",
+    "bc1qvq2x6tmc9mhguj5zx6h4uz3csdzl7l04tqwgm23scww0qtnj4ltsrxetaj",
+    "bc1qw6yjga6elhcpsf8mdw8t7meg8mf68xqhe3cszp6nds32pcyyynxs4n0ps5",
+    "bc1q2jcvqe7d5626pn50e0cd8a3td0s3p4e9ndh5ccvx9tht4w8eyjgq7wrf8k",
+    "bc1qvwx36n6h3ymg27jcgsq95znyxgw9wj4pykzvxp645lh7azaqxvqsct6qn9",
+    "bc1q96gtfhrzfytsjkmje0e696stc5gfcesj37llvqwa8pfv89fuwxnqawttmj",
+    "bc1q5ptq9y2u30rav435y93gpg4u0g3vcgyp246ltgus7uez252a67dshpsxc0",
+    "bc1qja6xx8dyn77e268vspfkv0vx5j9wufgmjjd7cwa09aquhnps4f5swjchw2",
+    "bc1qpxvzp9gven0enkydayulxu6nh29p4f26jen6whzc9e8dvtc25zaques9qn",
+    "bc1qg7x4kgw5wewx8sg2kn7ck9pw3c902f78fjkhtejshrrd6kum088spp7ldk",
+    "bc1q3xa6y5r520vkv3c9zkxe5vl8tt4r2fcaq3nc7cy3cudwp98668ps9zk7n6",
+    "bc1qw9wtws964c87v35junpnugztrn8ex8kvslun7rtavmlhwaggyvls4uj34e"
+   ]
+  },
+  "heir_after499999999": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]xpub6FQya7zGhR92kacYsNnjreouvnHJMpXYsUXnW6NJJAJRCKsa26TzDy4LdnGhEurr3d6y1J8PJ7EEMKQp74XTqYvmGJNogYXSKDszYHtF8mX/<0;1>/*),after(499999999))))",
+   "checksum": "tzunhv7x",
+   "receive": [
+    "bc1qfczpmmcg22tmn9l4lp398ewllgg0j0mvqvz6sz00y77caf7q84kq2chyk8",
+    "bc1q96qzsvyfdt9fy05utc76m06z95y9upft8g224gpu0cfdjngfd83qyw6r6c",
+    "bc1q2slkxw25nhgkkkkxwz37ear5p5ce6fqm2tre5839zfpcvdudlwwsc8pwjw",
+    "bc1qgc0dj97n4mfa9c7vmc5gh70y0w7jet7gxj226c0306qw6zuw8y4sndaa5w",
+    "bc1qweqk7wcczfyuusaa5793gq7ycdk7aw79mug6aqw5ufrkp5w3wa4q6lkxrt",
+    "bc1qz3mj8g74x73yp8zwnv94rk6cwu797an3qz9kltgdtu2dugdn6ejq46xd0y",
+    "bc1quzxqq9j3vu6c0jf2tch63t7mj8uy48ysr374m6sr4ugak3emdvnqvqxztc",
+    "bc1qlhhsyqp49kwtetjadkvdaffjxzcxaw002vs4jehd9pgl4fec668snl2srz",
+    "bc1qzw4yvv9uc54rr65g9ej8fma5urmrwertjnxdetsn8pvr7em3dnrsusnsll",
+    "bc1qx22l4ltpkjerfznz65c8cyk0hu93wl24e9ev6d75cc8u0uwhrw5s28ux5d",
+    "bc1qyd7ze9p9x5n5xftghd9ps03epdne2n4esu2txk3v7yfkha7jumxqyy0phy",
+    "bc1qftlwvg6t9pey7pmyxpk7hm20d6zqf5jyn9ac9ue4pgfkl5wk5urs28ht27"
+   ],
+   "change": [
+    "bc1q56zux6py8ah2uzzjtkdrwg4cde2mrpthzsrwwmemxhtfv5pll7uqg7072k",
+    "bc1qfzr8rx79mhf7q5hqeahrde2lj0d6rv3eagqwwvzd2q26hr9678ms2scfaw",
+    "bc1qvxa3vfyedzk7jc6ytek02lhrhc3yw7ccwhpy86rajzvclexa704sf0hzlu",
+    "bc1qcpaej7ygpez62my7n3s3txqxny4h35rxah5zhfcj5w646h5cwgcq7pdqvp",
+    "bc1qt484ma98d4pskde6492r9vm2vgpprqep97yvt70qqkas46x5da4s5e9vfv",
+    "bc1qs7yy2ympn7vhjr5qcwgclq4gt5nunw0x64y7h755q9a4y6u8662qvzj8dz",
+    "bc1qfhxhl7adtn86ceveh799766l8mtr5yvsd6tnagmq7qt4tczkevzssvh8ax",
+    "bc1qq8sntazerq6avq5uhkgg27d0nuqz7lkgpqvvlv0t7xwhelxpxurqtj8nm0",
+    "bc1qpp4nejcv5kc762lrqv8hj7n79wzmk5e6kyxy3kn7hrpafxnplc7q7surjf",
+    "bc1qparvdcdzcshu4rdg3ls4z36aqkp3el6d9dmlwlg3fvlh3dns8rlshlt7xk",
+    "bc1qne4d5mc6cktqe437ssmxhxuuyd5y0glzz6yy88u2frclm9nm3xnsdf60q6",
+    "bc1q90yahqwsvuxtqss5hsqk25w42ej023q3e5pgarvq5dz68qmrkfjs4auhm2"
+   ]
+  },
+  "heir_same_seed": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<2;3>/*),older(52560))))",
+   "checksum": "0ccfc94j",
+   "receive": [
+    "bc1qkkkfzhh3m08k4j004dthjnwgpgky5aq3r4yf8gr8a7jasad9d20qktpc2y",
+    "bc1qunut094cs6n9x5um5wsxd52z3w2nut2akp8znv4ytajwuzpkhq4qqr47sr",
+    "bc1qemz064fdygefffmlmvqx7klpu8ut4ffv9czu7vrraak02ru04ldshw7ul3",
+    "bc1qew6hdu4week2eq0pnaayqvp7785umv76pv43hha59psrht44emmsem4wql",
+    "bc1q7x6pjz4yrtzchfvcmjnc0zlf22h5f4te3y80wjycuky500ur0e9qnhsk6c",
+    "bc1qf4zzlmupfeguyg2x0nfc0fg5sxq6na6c5q234gyrpq28cr3gepdsch2dp5",
+    "bc1qfgk9rtk0p3uc9ux4y7wn8596x03y468v8kldrq3n2795eteaeqsqucusts",
+    "bc1qhzr8g6ksxk2a02ja8p2l3ug733pjunyqa00ehr0m9kr8jghvqk5sqzc537",
+    "bc1qm5gnrsanufz42wt8kpapme0ggrx7vv6tyqwrxdnc7j60c3dgu9uqp984fc",
+    "bc1qzap7tspj2tl9rxxnx4ljrefsmsy7g5zqaqs7q3y5lws3920gaqdqdvf6ud",
+    "bc1q5v4nmyplt2ftyjczkuh9h464seqr7cqpujwleuuxuy7xp4q6sswqpmmrdt",
+    "bc1qultlyyev043vxl8p2hydc3gpnmefm8mddhwc56zk37jgega3vyjsxtwdea"
+   ],
+   "change": [
+    "bc1q9s3jrrvn2fvptgysx4qxklhvlypjppvkwqkz2utwtxq9f6ze348qj2g0zw",
+    "bc1qd9svqwna3kc2m0933k2ffxmr79k7v2kcckedmc5dtfqxz0fvt9uq0kuulr",
+    "bc1qc4lldurustwzpsj4vwdzrc35q6e0njazhd2ax7etjf95wpcc5wjq0c9gxv",
+    "bc1qm26u4u3av74yaptm8k9f8uh7m0wtcke2vkugdcfkzv6a7f0670nsyp5gga",
+    "bc1qvf6s4yu3qjjnxz5hydpac2vxvuepvhe97tj4xvhprd9nceyatagqcnu0fw",
+    "bc1qyusgpu8j69984336t7a3chmk2tpa76uvlrr7rzpjskll53zy8mwqs3xcch",
+    "bc1qukft2mkpl46ku057eta744p6hr6gckxya2qlpg07rgchkszcjv3qn9ar90",
+    "bc1q48w0dk52e5ca9mfnh66kc7pt4ffe9fgd5kelegeg73zzzqshzlssp38m92",
+    "bc1qngzlfa9s8qn0dpeevvdhz4yfr6xv3r2kn7v64l590kffk5rcmplq50d0h8",
+    "bc1qcmg5enr35nvygazzkx6wuz8awv43wpf9ra3fdlar4p47z8ympqtsgh72h3",
+    "bc1qppqdq49a6r80vgcpl4ellkq75szquum95nmqg2cq638evzrjz0wqn9t30s",
+    "bc1qhfvuyj9aa6egzsv7uz8thpu3fanstjyvlpkv7ffrf0z8cehlppusey4zwn"
+   ]
+  },
+  "heir_same_seed_acct1": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([73c5da0a/48h/0h/1h/2h]xpub6DzhyrnFFYQ1HimDiM388xHnDiRPNdZJFBmmxge3Y1WWcHLtMJLfRuhRHqnQCPbTj3fGKTuKFLHzzwpJkp5Dtc3UtLKZKaVZe1yqMBXd6Vk/<0;1>/*),older(52560))))",
+   "checksum": "jcye9pzt",
+   "receive": [
+    "bc1qn9pcwqwygx6p0652gm4z8ff2nzgeyqm236qksf8xrzr56tjh5k6q40nk8a",
+    "bc1qfcum0wre5e3tscvjurvyyd67yyk37um0jh8j8aktqr5n0m33p3ms8xjguj",
+    "bc1qt8gq9mqdhuuy3rqmt3taacd6wm8yeqewvq46dj0vxcy9e7lqkgxsdgk8hg",
+    "bc1qg57jrzc0eg9rre4tylq3zxlcama46kv8tw4c26ucuangssfcljxqtkla99",
+    "bc1qd3dxxgz335xcx3f7nctphqm7tns55nrxa2qxaxf2dn492zu2apqs9avnpm",
+    "bc1qf4wt9z6z49x8xngtg2ngu5wel4pyet8hsuz5kt3qcuv7tmuzslrsyt63vt",
+    "bc1q0ukwh0279yw3gz4argm83vdml9pkaalqnrp74tctvf2ap4ylgqpswa98wt",
+    "bc1q33n82azwge904a33l6ewhc4vvs2z9yj4nk940fqqrps8d3y8rk5sfca3lw",
+    "bc1qyw7uftw4cyxjtp88mgwqmzfd30uzh6qnkjmnue5yhxr3jt6mt7gqvh8smg",
+    "bc1quqkz43zq5nzr07q7utqnnzrg3tppm8nrxglhng5mtd4xpa0npv2sxedgu0",
+    "bc1qmg3jya6wzvjlc64r2k8f7sdxt7z6tnmjqlrua35pcpret8hkdpwskgtf83",
+    "bc1qhyy90x8tf4w5ny0nat8fjc8qtumdcr6wjrl7gx4swhh7n38v75lsvj9xrj"
+   ],
+   "change": [
+    "bc1qrt63sm7g6wnt46rfsvxwjc0tm2ue9v6h8qy58qanx3wg8raeduds7cyam5",
+    "bc1qktfx63f4dw9ds7tncr55epvd8q7ppclpqqgkpgs4nq4l2x50lhkqtkjlkk",
+    "bc1qy4zt9jxdqs7l5g9c97zx98njgexswx9fmacc6xgdean5mqajptks3y9fg5",
+    "bc1qvsg3ry2tpht7unherhaq9hjhgflcv0hjzgl679hp5ktrlkkz5j5qdd9yj6",
+    "bc1qrsccsv9j3suqtxtt3vk3jg7zyfwnw63q6gfwmzepk2h7psmguclsm2qwe4",
+    "bc1qhr3z0pv5fmcsy6detly3eyd85sxypaajaqwnxqtqvglgmkj4ta2s9f209t",
+    "bc1qmulxgq5waaamwfydzrulqldk55lkddcphsjw8g9lpnazapjtjrrq68sc5z",
+    "bc1q8gxq62ke06ssppzwx6g5pcqrhuya4c06luq3rzurhyxkuh3yxhlqg8msyv",
+    "bc1qmc6m68zxwj4cz8ata4vj2gfldq2lqjw35w0hqdcguvysqqh2syuq5gqk9x",
+    "bc1qx7h8dpz4gymd9d2s089hmh5cvwmkk2qy0g0pfnyp7px0suae36xslwncnu",
+    "bc1qy54xpa6kq0d7uq03jvexmtall782vxd0wufqfy9hmhntwzaqznys98rz88",
+    "bc1qwgp4p05erh2g9a88mz264tm3t7muj8p62f2m7z53k09hs7s7lceq8guyek"
+   ]
+  },
+  "heir_older65536": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]xpub6FQya7zGhR92kacYsNnjreouvnHJMpXYsUXnW6NJJAJRCKsa26TzDy4LdnGhEurr3d6y1J8PJ7EEMKQp74XTqYvmGJNogYXSKDszYHtF8mX/<0;1>/*),older(65536))))",
+   "checksum": "w8k5a2nf",
+   "receive": [
+    "bc1quregjgnz7y6099z7nj2thrycp48hea0hghtvw95ywgryq5fg3vnqezk26g",
+    "bc1qrz3jvdearrnnng0z26sj0rjt7mg6x35fkydvk0q53379xx4v0h9szc6g7k",
+    "bc1qafyj3es9f8fea3753v2ljdrgfcrzd2z87stpxrqf2ey8djudu60s22lcx2",
+    "bc1qnxrkswg65ntqp3shfh8hk8uu5w7xmefyqsm87f9chlhhn5hw8x8qtfvhhy",
+    "bc1qhgfdt4fc9yt2e3tyat0tjk3u4j3hlph8cjr97uk4d9qfjc8fvnesnnpqt0",
+    "bc1qreg7vyhhyem96x354u973k25e9nqam8gcs2yymten7dz0feh2aaq3ttk27",
+    "bc1qztt2f5ggl76xrpcwm3pvse9rzxsph60ytskhj32lhl2p78eg2gqssh9an0",
+    "bc1qgal3w40kpkvzs8kgz4z73dzxzkun7adywutc90lj057n5ec7r43sduc50t",
+    "bc1q0f88392kx34zx98kccj3ttqn6x7243c7eq3uzqrcqvy4k7vjulasrkv0xl",
+    "bc1qwnxefaf539mwrsf8608mt4et5e29mtsmz7re4cdx9mq0l5n5d50sp487sw",
+    "bc1qtza5x753pfkpn88kz3qhydlcfc8uufg9lw2nwxvpy5jaestujfzs263rw3",
+    "bc1qxncm66ljlsdmvydeu3lwn8whspeg5pq2amwcxqfnvs70xc57e5jsmw0x96"
+   ],
+   "change": [
+    "bc1qfm5s928dnz0qqtvfgvn9z9ekdha3pz7v0u90rqpp29j9v8vjsx5qxq9fc8",
+    "bc1q2er4se3cfq763cta9jt3qpgwph83rdls9vd2ueqphjf6nuw68xaqhueund",
+    "bc1qj37ycakprk35laknpgpy6dmvnp8anncj0g9gr6zmu5f9teq8d2ks33g4cs",
+    "bc1qsgrvarqn0nnykfs8eydz92l6cdstew2369mvwm4dc9qruevra0yqss7pnd",
+    "bc1qplhhjqhdf89hcjr48k33d0zjfm4770sckky2yn9sw4drj6qfhr8s2nqrpc",
+    "bc1q84zxp2l4dz7h72tcuuefm4gwpsmmpusfyahn9th9fjud6xnmpv3s0ptadq",
+    "bc1qn978wh65c0ad4zxn9d4004c0577pt0nthgn83j37qn2kg52vqyuscp639w",
+    "bc1qe2xvrrw494e2h5wkpjqrdnrd5ny42gryr42uk9l0x9p3yv82fljqyf88uf",
+    "bc1qmqxlth0clunmts80dd4j37fty6f6tqsfw3zvx8w36rh3c0uwhutql8avxv",
+    "bc1qqsvl92z9sgj2essqnywmce4nvqxgzlr8xpxgenwekhdvgqqfthxqn5tl94",
+    "bc1qzlwrxsa4tlvg7j64cq585wewnk272pqp2gnuagd9mpyzu029nhks6uycac",
+    "bc1qrqs65halr8jnza6xtg04jzwj4ryzn8d9vq3hx7m8t6um0w3c3rqqgsz7hf"
+   ]
+  },
+  "heir_older2147483647": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]xpub6FQya7zGhR92kacYsNnjreouvnHJMpXYsUXnW6NJJAJRCKsa26TzDy4LdnGhEurr3d6y1J8PJ7EEMKQp74XTqYvmGJNogYXSKDszYHtF8mX/<0;1>/*),older(2147483647))))",
+   "checksum": "frd7tw58",
+   "receive": [
+    "bc1qu8c8rj7v2dtfh3a9al5qr4n0d5xjttc29saycrmlyr3m4s5akndsaeq5rp",
+    "bc1qu0tfkrxencaexxz09nu5dv9cy0tmyx4xcrmjdz840aztxmtg8ltqt3xelm",
+    "bc1qtae40hghvjvrwc6hg39vyesawfegeswynp29zgslt2puvcacj9cqts7nem",
+    "bc1qxxf4a4w4ycgm5kqza3t4zqyd6nuhw5hu5uw42s76t2826f5y5edsu5f2nu",
+    "bc1q40vfd27d8rxn5vwn798g00ev0rly96zmny9tzsuj0sadfk2gvcuqwl8xu8",
+    "bc1qnp7dxp6a89quhhenga88aueqe22r3wu233mmpyvehuam7tqx37mscwazkr",
+    "bc1qnfum9rncrvs4zgmh670zx47yfy232v35vypvf279zkx7zzcj94eqqe35ev",
+    "bc1q68c9fgqzxzj8zc9hh02eljsg8t2xn042w5f008az8v3drzpxpkjq9qd4sd",
+    "bc1qxu3t2d70wkdncakvyyvm4ghr7dxuewc29fq3j5wyqn2ecst3gqaqjfgatd",
+    "bc1qxwnwjtantpsdx6u3z7546cdgppa40y5gkktcu5zve0x2plju9m0qlpj22h",
+    "bc1qe7mlz98m93lmgz7ms08lumj29rspt669fxpyp8t20sf8cutzlmtq573qyp",
+    "bc1qjyalp5gz8g7h6pavzmzth955tn5gwwk44am88xet3qdjqag565rs2mfseh"
+   ],
+   "change": [
+    "bc1qm40mdj7q27vqpegcag97sm6l0mulxv5c74xteltcjdjwm2m59sgqya3aqw",
+    "bc1q6f5xrlzptqwqyfdjs5tfs4ef4kpd5gky3ng370839ujeevvv5qwqrn0k6v",
+    "bc1qfy5c3wrzd3h027tsmc4mg24kn7m43n9rx73hwky7dg7mcnykrphq5vezn3",
+    "bc1qnkvqseruezcefl7pe2tpkvflzpxxdvuwylnt8y73whgxrz2dsz4quluvqn",
+    "bc1qsz5zvr6d02nr6rdfvnv5py6mwle7ucfv83eh7fqx034np977jghsa74e8y",
+    "bc1qgsjae72a73sctdnwew4ar2eemfh0fjjghjlu4ujllu8ua7aznkqs7eutef",
+    "bc1qxx6dvsgfv6xdvn7hw8hgygfsm37e2x4ek2uh6axwt4q6srr9760qhnnyt9",
+    "bc1qsvstnr7uj2w26yj57swskc3a3f2etge5ysr3fhgwvgyplt6sa96qxlvr2u",
+    "bc1quvd697f3tuun79tdn65x0thxaznsfxqx6r7mahjgkpjtlv4pdqmscwy4s2",
+    "bc1qxxz2f4ewjqw8upwkxq4fvxzh8qyhwv79526c3x62pc0nemakfxyq0t56sa",
+    "bc1q0f8tzmtanlxqcrh2xx3r8vw2u4cs5289uqfz2x28jlcjllp40ujqel762g",
+    "bc1qwapnsdv7fzda4y0zsagqk9j2q38f9dg0cr6v8myjuudc65jumm8su7ycpj"
+   ]
+  },
+  "x_heir_older0144": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]xpub6FQya7zGhR92kacYsNnjreouvnHJMpXYsUXnW6NJJAJRCKsa26TzDy4LdnGhEurr3d6y1J8PJ7EEMKQp74XTqYvmGJNogYXSKDszYHtF8mX/<0;1>/*),older(0144))))",
+   "checksum": "l6r8sau5",
+   "receive": [
+    "bc1qnutkj0ydqfhz87mzw5chqvt5j79cah3kdvuyysdmsn25vg6rvg3sza8sfr",
+    "bc1qv46xlaa2kvs4xj8q63ap3urunewrncqgmduuggz43462vsfh0jmsnhwyjv",
+    "bc1qz063lfjl67h2sv7ugy3tn76xgf286kuf5tgz6hfs87fwnugty77qdmqarn",
+    "bc1qggvn3yhcu94lm5qa5kdu3vxq7lq0mz0t6jzaxfr7e8qg9ya6yx0sdvyfx5",
+    "bc1qfcc4xm35uc8mxxrnd4n377hdwv93gxukzh5wmf3tqjgc0wptthxsthvdwq",
+    "bc1qdqanhp2lk65hcyg9lc04z0avt3e7jx4ejhl2597t5srt4cyzzyaq9qm58g",
+    "bc1qdczz6yft8udnznwtl7qj4u4ch2gmpjq0p2rq0nsd0uzqa40fz0fsgyv7n8",
+    "bc1qdx9n4j9eyd6fzzmr0r47hat9xl63r7yumaggvv7a7aq89useudsq0r5u2z",
+    "bc1qmjm6fcvyd6sulur7kytg9sjuchklwwvhzv30vxtc6tn9ay3279fs753xma",
+    "bc1qkkvk0vjagwc4e0qgfl5htj3l23j37s0chs2jm28fn0r0e50wzkkq7wau70",
+    "bc1qp50hdjz9mrzhvwphrpyeujzjdcs85t0xhy044sz74x574zsrey9q02kmk6",
+    "bc1qvvmsv5gkrgr0acajw9y03enfhypmneae2qfrthv9940age5xyhwqy5pawg"
+   ],
+   "change": [
+    "bc1qts5hm5gnvv4mxyktta6szq62s42xpcntfl385m28jzvqnkzfcrqsz5aadf",
+    "bc1qwtuvd6tx87d582q4vv28ggm2q9lg59m8zlk6adwfxelg5sml9cts7nv6ha",
+    "bc1qmfc8jprq9djm52tmpx3dsjv4dtazc2ku5l3vq4tjuya24aky6m4ssuttk5",
+    "bc1qmgj6azzur29syl5glrn2pjv60pm05wz8jgls6kpg9cwvr0y4cdhs7hx9c5",
+    "bc1qwt4p3ehle02z2llahsq9qvyzt502vrqf2u9lqr9mhv7aharmglrqemhse2",
+    "bc1qsjdjxq0axvefdejr3uvk6jk6l2jmzcmwsk6hvt4f7k788p863dzsw5lq6r",
+    "bc1q8ett3xrnv4rum6yd5vk0rqgzwnm93uven5fpw6s54m7v23gggxvqqjcfnh",
+    "bc1qe84sz36kedw8q5zk6wf3e80dwaps8svly283yhmssz0hd60cnfcsuj4e40",
+    "bc1qadxt4px5n8ga394wy2s5w8fu28awhlpt38yhdznuwtw9jpnhczvsegkfcl",
+    "bc1qhy2tuapvgmdzucj67mhcvgd03dn644wg3kslq4q94x5kjwrj6euszeu7zl",
+    "bc1qmfhml77yxfdcx0fkmwzd2ceheef24gkcg95f5jx3srhpaelc8crq8cvk2s",
+    "bc1qn3uvdgnvzsgj82x6355eq3unczndln9xsstq5s2965cvm6y2huhsthnlt7"
+   ]
+  },
+  "x_heir_plus": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]xpub6FQya7zGhR92kacYsNnjreouvnHJMpXYsUXnW6NJJAJRCKsa26TzDy4LdnGhEurr3d6y1J8PJ7EEMKQp74XTqYvmGJNogYXSKDszYHtF8mX/<0;1>/*),older(+5))))",
+   "error": "A function is needed within P2WSH"
+  },
+  "x_heir_neg": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]xpub6FQya7zGhR92kacYsNnjreouvnHJMpXYsUXnW6NJJAJRCKsa26TzDy4LdnGhEurr3d6y1J8PJ7EEMKQp74XTqYvmGJNogYXSKDszYHtF8mX/<0;1>/*),older(-5))))",
+   "error": "A function is needed within P2WSH"
+  },
+  "x_heir_space": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]xpub6FQya7zGhR92kacYsNnjreouvnHJMpXYsUXnW6NJJAJRCKsa26TzDy4LdnGhEurr3d6y1J8PJ7EEMKQp74XTqYvmGJNogYXSKDszYHtF8mX/<0;1>/*),older( 5))))",
+   "error": "A function is needed within P2WSH"
+  },
+  "x_heir_dup": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),older(52560))))",
+   "error": "or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/0/*),and_v(v:pkh([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/0/*),older(52560))) is not sane: contains duplicate public keys"
+  },
+  "x_heir_dup_first": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/0/*),older(52560))))",
+   "error": "or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/0/*),and_v(v:pkh([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/0/*),older(52560))) is not sane: contains duplicate public keys"
+  },
+  "x_heir_mixed": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]xpub6FQya7zGhR92kacYsNnjreouvnHJMpXYsUXnW6NJJAJRCKsa26TzDy4LdnGhEurr3d6y1J8PJ7EEMKQp74XTqYvmGJNogYXSKDszYHtF8mX/<0;1>/*),and_v(v:after(1030000),after(1906502400)))))",
+   "error": "and_v(v:after(1030000),after(1906502400)) is not sane: contains mixes of timelocks expressed in blocks and seconds"
+  },
+  "x_heir_nokey": {
+   "desc": "wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),older(52560)))",
+   "error": "or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/0/*),older(52560)) is not sane: witnesses without signature exist"
+  },
+  "x_heir_sh": {
+   "desc": "sh(or_d(pk([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]xpub6FQya7zGhR92kacYsNnjreouvnHJMpXYsUXnW6NJJAJRCKsa26TzDy4LdnGhEurr3d6y1J8PJ7EEMKQp74XTqYvmGJNogYXSKDszYHtF8mX/<0;1>/*),older(52560))))",
+   "error": "Miniscript expressions can only be used in wsh or tr."
+  },
+  "x_multi_dup": {
+   "desc": "wsh(multi(1,[aaaaaaaa/48h/0h/0h/2h]xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8/<0;1>/*,[aaaaaaaa/48h/0h/0h/2h]xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8/<0;1>/*))",
+   "checksum": "uusqtna3",
+   "receive": [
+    "bc1qk6hsetmj75njfgvrgypmzrumfs8ndrsufvra898gerj3nply469qxljuva",
+    "bc1qyqzaxhrg3fj8lmqf2an9333w893m476kgq02cg2hmwp0tudu45eslsgyre",
+    "bc1q0v002mnghvgevlmsf5ksvf9sp8mvvrs8uv8yy8h9qfrx9aq3nu0q2raj02",
+    "bc1qc373l23kada3avdt7dfqaexk942v587nn3j977h209mvyha0ph9swuhz4l",
+    "bc1qwtd6frnfkgqkpkv4hacflrf6yewvs2z49ljwj2gg2jsqm4kvjwms3eksv3",
+    "bc1qw9a8cdv6g3dny6yl3vnxnt8jn68gn254wdzezuvy0z4ayl4lp8es96k82k",
+    "bc1qdk5e7hmjgvt4xdc3yy004pjnreqdzp72t73jd08uqpnd00sugjsqd558ff",
+    "bc1qhtysn76p0w7kpvwze775e8k0cxlqajjv8pgjge9qc97767u7kqnqtng420",
+    "bc1qrvzr8w2vmyxg4t7szpjzgf3jn640jhpe66cwqxz28n87kcxyw8dqf2uh8d",
+    "bc1qaflcysdvna82l9jvvh6zhjesg8y6prjj65dr0p2rvz22fx6fslhq7asjcl",
+    "bc1qdqjhj3n3rvacsxvlx4mm6y66wpc6es2h62dnpgxjslll5qxs0qesmk8tc8",
+    "bc1qwjn6y7w5f5fskt4xqq9p4fkzrv3r23nxcc5qaqyxcaprv3auw3zsalw8g7"
+   ],
+   "change": [
+    "bc1qswa9vqfrv3vnjdyqjwe2xr4xcxn05dzhkunrexnley6ukywc8duqg387pp",
+    "bc1qwtywjep5cadtk8jlxk7dslxrswyqzhhgq02uf0m5hwz7gh3t5lwqm9ad9l",
+    "bc1qvsdd7rq9kdw2mwdfyzyvw0dfcykmw5y97xcfyyvjcksmcu7nu89qhh922u",
+    "bc1qyh2qqvknzegw7kkvq2dzfejxjf5ewa4uhvde3u2h6rqafjh247nsfwjfvz",
+    "bc1qg0fwc4ud4l5nm5ad7ccuvqjh0fae9pwdfgj97jhta7fuqt0uacrs8sx54l",
+    "bc1q57kpwulr4hf4hm5c3ct3e6pravvw5dyg88emr02t87m3wp3p30dszmqqr4",
+    "bc1qu0jlmjvn436pg5cwnsef7ywqqn5xrrz7hd7xzpt5yed6d44hrqyqvkua0x",
+    "bc1q5l3j8u92h4s9f97gakqqyweg5dzg567v29pphndmkluyrjd4tpaq2p62wj",
+    "bc1qyjscp957l57yc0jnj5drskw39etqt2snmd99ce4tu30z0a0vs32su6x5um",
+    "bc1q0dwt2k4fku45wje0l9ahn44u9m9j9pjcaz60t0zwwdlr4ha6hdzsru0kth",
+    "bc1qdu92tx4wm08d29g2whg3ln8qvutdka4zcsuyxxznmetsqruwza4s5prpag",
+    "bc1q5evycze2l5w8tlqcjepnymxlknjfe6klw3qcqp4q2fg72xq6r2dqhmxu4a"
+   ]
+  },
+  "x_sortedmulti_inner": {
+   "desc": "wsh(or_d(sortedmulti(1,[aaaaaaaa/48h/0h/0h/2h]xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8/<0;1>/*,[bbbbbbbb/48h/0h/0h/2h]xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB/<0;1>/*),and_v(v:pkh([73c5da0a/48h/0h/0h/2h]xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/<0;1>/*),older(10))))",
+   "error": "A function is needed within P2WSH"
+  },
+  "x_tr_one_leaf_braces": {
+   "desc": "tr([aaaaaaaa/48h/0h/0h/2h]xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8/<0;1>/*,{pk([bbbbbbbb/48h/0h/0h/2h]xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB/<0;1>/*)})",
+   "error": "tr(): expected ',' after script expression"
+  },
+  "x_tr_one_leaf": {
+   "desc": "tr([aaaaaaaa/48h/0h/0h/2h]xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8/<0;1>/*,pk([bbbbbbbb/48h/0h/0h/2h]xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB/<0;1>/*))",
+   "checksum": "4mtm8gkz",
+   "receive": [
+    "bc1p748fj9343uxnahk50mzhl2lzy5e4nsnljrfea078eqfsdkn48qcs8ggnkv",
+    "bc1pne3cv37vqar0xsyz6h8wt9ahr282kr7y59ztw2ndxsk2vd8l6rfsq54pfe",
+    "bc1ppkxq82xl48qwt8ydwywwapuhj5mepm3652ar3vdmnnh6f9dl266qjkwzn0",
+    "bc1ptchgjwpsh9cyhv7v3ux6fac09lqd5x6uzwyre7r69ngqduc7fulqly3mzy",
+    "bc1pylejr5345a5ek0lf9nf7nqn4dmu3jzcpxl4y5vg9l4mkdqavnvzsgqewue",
+    "bc1przu5x7cvfcl28mlmvex570t7jltsk39xw9rj3dz8gww8vpksqe9qst379p",
+    "bc1psqz6d6j3c4umjhhu62l79jqu8wntem4mk0smx2gvmuz638qmyu3qq4j44c",
+    "bc1p3eymyx9cueysas6ad4hltdgukzqyux06zywkcxqdgdr45s0x7uhsjcsdgc",
+    "bc1pkvlhavzhctecr677p5xeupap8m57ewkvfym6dq2ak9ylr0pjjsaqr3l99h",
+    "bc1pvrqmt29v8nh20xz840hmyrwf360d0tn9k3usg9u2vqac87d3g6fs7hst33",
+    "bc1puapwrp800shwupa5qn09rtkmd8737rr02x94z6mnc8qz97uv090s0r2j5r",
+    "bc1pue4nvlt3ypvzu8urkm9xx9zulvvhf46pxgwumw8wmqzrn548hgqqkv23a9"
+   ],
+   "change": [
+    "bc1p3429z048ce9ytdpfycdy3gjjt5f8gxcn2295fh9yghu32lg07p0qecrgd5",
+    "bc1phyf8xvvqnn394n02ntsa5zhse6vr99yx2uerez47zfu7saspwevsxfw2ua",
+    "bc1ptprdrp58un3yzkas79t8dgxsm8pw2stsnlgqa8z6nt0xnwedy73s4vfjl7",
+    "bc1p7a6d0jrg30awrytxy2kpvme08jeam8wdr5a34emdrgqcrxjfksjszvq7v2",
+    "bc1pcfs68zgfdncrykm8nmmke6vy5ta9uzsuev5m6x0cphf8ywvlqp2sf68zma",
+    "bc1pjmwe5ejxp6jg6690njl7ss3x4s6gqt3nj8qs9yxznjxujwacnmjq8me2kq",
+    "bc1pncu83g2cnwsgfa0r2apn4w7sv7dqczwajrzz4salkrg0zlkrku4sdrcsgx",
+    "bc1pv03n7zrtymj3ezvymrac0p6c32298lnv4n0p9u6crpqtgx8qtxqsduahtl",
+    "bc1plvywyqr3wcdkh893kv9jzkfygpyfpxy97aat4nqeu3u7kpuh7ddsa9nvkf",
+    "bc1p48kakkpft8mp0lr8xaeey27p9zsjwya0n60fxsuwt2u93jkcxdrquchraf",
+    "bc1p50cg0m3p2k5esncg3f00q9mtkquzxazu6mg5yex5ys6khey5fjmqfesvts",
+    "bc1p5ezwycaupgldmg6pzzuh4xnanwwdwpwvqy4x5ehpanj27l3r8xgq3pck8s"
+   ]
+  },
+  "x_multi_plus": {
+   "desc": "wsh(multi(+1,[aaaaaaaa/48h/0h/0h/2h]xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8/<0;1>/*,[bbbbbbbb/48h/0h/0h/2h]xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB/<0;1>/*))",
+   "error": "Multi threshold '+1' is not valid"
+  },
+  "x_thresh_k0": {
+   "desc": "wsh(thresh(0,pk([aaaaaaaa/48h/0h/0h/2h]xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8/<0;1>/*),s:pk([bbbbbbbb/48h/0h/0h/2h]xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB/<0;1>/*)))",
+   "error": "A function is needed within P2WSH"
+  },
+  "x_andv_extra": {
+   "desc": "wsh(and_v(v:pk([aaaaaaaa/48h/0h/0h/2h]xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8/<0;1>/*),v:pk([bbbbbbbb/48h/0h/0h/2h]xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB/<0;1>/*),older(100)))",
+   "error": "A function is needed within P2WSH"
   }
  }
 }

@@ -3057,7 +3057,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       for(const [k,c] of Object.entries(F)){
         let err=null, got=[]; try { for(const [br,i] of [[0,0],[0,11],[1,0],[1,11]]) got.push(await w.b138Address(c.desc,br,i,'main')); } catch(e){ err=e; }
         const ex=await w.msExplain(c.desc,null,'','');
-        if(c.error){ if(err&&err.vf&&ex.state==='bad'&&!/Cannot read|undefined|is not a function/.test(ex.text)) refused++; else bad.push(k+' accepted'); continue; }
+        if(c.error){ if(err&&err.vf&&(/\s/.test(c.desc)||ex.state==='bad')&&!/Cannot read|undefined|is not a function/.test(ex.text)) refused++; else bad.push(k+' accepted'); continue; }   // the explainer takes spaces and line breaks out of what is pasted
         const want=[c.receive[0],c.receive[11],c.change[0],c.change[11]];
         if(!err&&JSON.stringify(got)===JSON.stringify(want)&&w.descriptorChecksum(c.desc)===c.desc+'#'+c.checksum&&(ex.state==='ok'||/^WARNING: older\(/.test(ex.text))) good++; else bad.push(k+(err?' '+err.message:' differs'));
       }

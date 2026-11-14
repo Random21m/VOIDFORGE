@@ -488,7 +488,7 @@ async function probe(w, mutated, fast, only, hooks) {
       for (const [k, c] of Object.entries(F).filter(([, c2]) => c2.error)) {
         let e0 = null; try { await w.b138Address(c.desc, 0, 0, 'main'); } catch (e) { e0 = e; }
         const ex = await w.msExplain(c.desc, null, '', '');
-        if (!e0 || !e0.vf || ex.state !== 'bad') fails.push('reader: ' + k + ' is refused, as Bitcoin Core 32.1 refuses it (' + (e0 ? e0.message.slice(0, 50) : 'an address was given') + ')');
+        if (!e0 || !e0.vf || (ex.state !== 'bad' && !/\s/.test(c.desc))) fails.push('reader: ' + k + ' is refused, as Bitcoin Core 32.1 refuses it (' + (e0 ? e0.message.slice(0, 50) : 'an address was given') + ')');
       }
       const A = F.older52560.desc.match(/pk\((\[aaaaaaaa[^)]*)\)/)[1], B = F.older52560.desc.match(/pkh\((\[bbbbbbbb[^)]*)\)/)[1];
       const why = async (d) => { try { await w.msCheckDesc(d); return 'accepted'; } catch (e) { return e.message; } };
@@ -7638,6 +7638,7 @@ const M = [
   ["reader: parts that do not fit not named", "if(!root.type){ const b = msFirstBad(root, x => !x.type);", "if(false){ const b = msFirstBad(root, x => !x.type);"],
   ["reader: the BIP138 backup skips it", "  try { await msCheckDesc(body); } catch(e) { throw new Error(\"This descriptor cannot be used: \" + msWhy(e) + \". No wallet could import it, so a backup of it would not help; check it with Explain an inheritance or timelock wallet first.\"); }   // v2.18.0\n", ""],
   ["reader: a colon per wrapper accepted", "if(wrapped) throw msErr(\"the wrappers of a part are written together", "if(false) throw msErr(\"the wrappers of a part are written together"],
+  ["reader: a space inside accepted", "if(/\\s/.test(body)) throw msErr(\"it has a space or a line break inside", "if(false) throw msErr(\"it has a space or a line break inside"],
   ["reader: the address lister skips it", "  await msCheckDesc(body);   // v2.18.0: no address for a descriptor Bitcoin Core refuses (no wallet could import it)\n", ""],
   ["explainer: an older() Bitcoin reads differently not warned", "const o = msOlderOdd(c.n); if(o && !odd.includes(o)) odd.push(o);", "const o = msOlderOdd(c.n);"],
   ["explainer: after(N) by height from block N", "const first = \"from block \" + msGroup(n + 1)", "const first = \"from block \" + msGroup(n)"],
