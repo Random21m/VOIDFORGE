@@ -473,6 +473,91 @@ async function probe(w, mutated, fast, only, hooks) {
     }
     r = await run('dice', 12, D50);
   }
+  // v2.18.0 (the first review and Extra Life): one strict miniscript reader with Bitcoin Core 32.1's verdicts
+  // (tests/fixtures/miniscript-core.json), the explainer's words, the PSBT inspector's coin check and timelocks, seed words as pasted,
+  // the start notice, and Extra Life (scripts and addresses from @scure/btc-signer). It ends with the page wiped.
+  if (SEC(85, "v2.18.0: strict miniscript reader, PSBT timelocks and coin check, words as pasted, start notice, Extra Life")) {
+    try {
+      const AB_PHRASE = () => 'abandon '.repeat(11) + 'about', LW_PHRASE = () => 'legal winner thank year wave sausage worth useful legal winner thank yellow';
+      const F = JSON.parse(fs.readFileSync(new URL('./fixtures/miniscript-core.json', import.meta.url), 'utf8')).cases, U = (b) => new w.Uint8Array(b);
+      const le = (n, b) => { const o = []; let v = BigInt(n); for (let i = 0; i < b; i++) { o.push(Number(v & 255n)); v >>= 8n; } return o; };
+      for (const k of ['older52560', 'older65535', 'after500000000', 'thresh', 'liana2', 'tr3', 'shwsh']) {
+        const c = F[k]; let got = null; try { got = [await w.b138Address(c.desc, 0, 0, 'main'), await w.b138Address(c.desc, 1, 11, 'main')]; } catch (e) { got = [e.message]; }
+        if (got.join() !== [c.receive[0], c.change[11]].join() || w.descriptorChecksum(c.desc) !== c.desc + '#' + c.checksum) fails.push('reader: ' + k + ' gives Bitcoin Core 32.1\'s addresses and checksum');
+      }
+      for (const [k, c] of Object.entries(F).filter(([, c2]) => c2.error)) {
+        let e0 = null; try { await w.b138Address(c.desc, 0, 0, 'main'); } catch (e) { e0 = e; }
+        const ex = await w.msExplain(c.desc, null, '', '');
+        if (!e0 || !e0.vf || ex.state !== 'bad') fails.push('reader: ' + k + ' is refused, as Bitcoin Core 32.1 refuses it (' + (e0 ? e0.message.slice(0, 50) : 'an address was given') + ')');
+      }
+      const A = F.older52560.desc.match(/pk\((\[aaaaaaaa[^)]*)\)/)[1], B = F.older52560.desc.match(/pkh\((\[bbbbbbbb[^)]*)\)/)[1];
+      const why = async (d) => { try { await w.msCheckDesc(d); return 'accepted'; } catch (e) { return e.message; } };
+      if (!/needs no signature at all/.test(await why(`wsh(or_d(pk(${A}),older(100)))`))) fails.push('reader: a way to spend with no key is refused');
+      if (!/same key at the first address/.test(await why(`wsh(or_d(pk(${A}),and_v(v:pkh(${A.replace('/<0;1>/*', '/0/*')}),older(52560))))`))) fails.push('reader: two keys that are one key at the first address are refused');
+      if (!/do not fit together/.test(await why(`wsh(or_b(pk(${A}),a:older(100)))`))) fails.push('reader: parts that do not fit together are named so');
+      if (!/written together before one colon/.test(await why(`wsh(and_v(v:pk(${A}),d:v:older(10)))`)) || await why(`wsh(and_v(v:pk(${A}),dv:older(10)))`) !== 'accepted') fails.push('reader: wrappers with a colon each are refused, as Bitcoin Core refuses them; together they are read');
+      if (await why(`wsh(or_d(pk(${A}),and_v(v:pkh(${A.replace('<0;1>', '<2;3>')}),older(52560))))`) !== 'accepted') fails.push('reader: the same signer on its own <2;3> step is accepted');
+      { let m = ''; try { await w.b138Make(F.x_older0.desc, '1'.repeat(50)); } catch (e) { m = e.message; } if (!/^This descriptor cannot be used/.test(m)) fails.push('reader: a BIP138 backup of a descriptor Core refuses is refused'); }
+      // the explainer's words: 1 block, about 1 day, hours; after(N) by height from block N + 1; an older() Bitcoin reads differently
+      const X = async (lock, h) => (await w.msExplain(`wsh(or_d(pk(${A}),and_v(v:pkh(${B}),${lock})))`, h || null, '', ''));
+      if (!/only 1 block after each deposit \(about 10 minutes;/.test((await X('older(1)')).text) || !/144 blocks after each deposit \(about 1 day;/.test((await X('older(144)')).text) || !/16 blocks after each deposit \(about 3 hours;/.test((await X('older(16)')).text)) fails.push('explainer: 1 block, about 1 day, about 3 hours');
+      if (!/from block 900,001 \(after\(900000\)/.test((await X('after(900000)', 899000)).text)) fails.push('explainer: after(900000) is block 900,001');
+      { const o = await X('older(65536)'); if (o.state !== 'bad' || !/^WARNING: older\(65536\)/.test(o.text)) fails.push('explainer: older(65536) (no wait at all) is a warning'); }
+      if (!w.msHeight('0').err || !w.msHeight('99999999').warn || w.msHeight('975000').warn) fails.push('explainer: a height of 0 is refused, an impossible one warned');
+      // the PSBT inspector: a coin that disagrees with itself, relative timelocks, version 1, a script's older() one block short
+      const kp = HDKey.fromMasterSeed(mnemonicToSeedSync(AB_PHRASE())).derive("m/84'/0'/0'/0/0"), pay = btc.p2wpkh(kp.publicKey);
+      const prev = Uint8Array.from([...le(2, 4), 1, ...new Array(31).fill(0), 1, ...le(0, 4), 1, 0x51, ...le(0xffffffff, 4), 1, ...le(100000, 8), pay.script.length, ...pay.script, ...le(0, 4)]), pid = Buffer.from(nsha(nsha(prev))).reverse().toString('hex');
+      const mk = (seq, ver) => { const tx = new btc.Transaction({ version: ver }); tx.addInput({ txid: pid, index: 0, sequence: seq, nonWitnessUtxo: prev, witnessUtxo: { script: pay.script, amount: 100000n } }); tx.addOutputAddress('bc1qnjg0jd8228aq7egyzacy8cys3knf9xvrerkf9g', 90000n); return tx.toPSBT(); };
+      const rep = async (b) => w.psbtReport(await w.inspectPsbt(U(b), 'main'), null);
+      { const p = mk(0xfffffffd, 2), pat = le(100000, 8); let at = -1; for (let i = 0; i + 8 < p.length; i++) if (pat.every((x, j) => p[i + j] === x)) at = i; p.set(le(91000, 8), at);
+        const t1 = await rep(p); if (!/FAIL  INPUT 0 DISAGREES WITH ITSELF/.test(t1) || !/NO CLEAN VERDICT/.test(t1)) fails.push('psbt: a witness UTXO that disagrees with the full previous transaction is a FAIL'); }
+      { const t1 = await rep(mk(52560, 2)); if (!/RELATIVE TIMELOCK, input 0: it can be mined only 52,560 blocks/.test(t1)) fails.push('psbt: a relative timelock is named'); }
+      { const t1 = await rep(mk(52560, 1)); if (!/NOTE  Transaction version 1: relative timelocks are off/.test(t1)) fails.push('psbt: version 1 is warned about'); }
+      if (w.btcText(-1n) !== '-0.00000001 BTC (-1 sat)') fails.push('psbt: a negative amount keeps its sign (' + w.btcText(-1n) + ')');
+      // seed words as pasted
+      { const n = AB_PHRASE().split(' '), r1 = await w.checkPhrase(n.map((x, i) => (i + 1) + '. ' + x).join(' ')), r2 = await w.checkPhrase('​' + AB_PHRASE()), r3 = await w.checkPhrase(n.join(', '));
+        if (!r1.ok || !/the numbering/.test(r1.msg) || !r2.ok || !/1 invisible character/.test(r2.msg) || !r3.ok || !/commas/.test(r3.msg)) fails.push('words: numbering, invisible characters and commas are cleaned up, and said');
+        $('phrase').value = n.map((x, i) => (i + 1) + ') ' + x).join('\n'); await w.verify(); if ($('phrase').value !== AB_PHRASE()) fails.push('words: VERIFY puts the clean words back'); w.clearAll(); }
+      // the start notice: Tab stays in it, Escape does not close it, focus behind it comes back
+      { const tg = loadPage(mutated, () => {}); await ready(tg); const g = tg.document.getElementById('startGate'), go = tg.document.getElementById('sgGo'), body = g.querySelector('.sg-body');
+        const key = (k, sh) => tg.document.dispatchEvent(new tg.KeyboardEvent('keydown', { key: k, shiftKey: !!sh, bubbles: true, cancelable: true }));
+        go.focus(); key('Tab'); const a1 = tg.document.activeElement; key('Tab', true); const a2 = tg.document.activeElement; key('Tab', true); const a3 = tg.document.activeElement;
+        if (a1 !== body || a2 !== go || a3 !== body) fails.push('notice: Tab and Shift+Tab stay inside it');
+        tg.document.getElementById('rolls').focus(); if (tg.document.activeElement !== go) fails.push('notice: focus behind it comes back to its button');
+        body.focus(); key('Escape'); if (!tg.document.getElementById('startGate') || tg.document.activeElement !== go) fails.push('notice: Escape moves to the button and does not close it');
+        tg.close(); }
+      // Extra Life
+      const kO = HDKey.fromMasterSeed(mnemonicToSeedSync(AB_PHRASE())).derive("m/48'/0'/0'/2'"), kH = HDKey.fromMasterSeed(mnemonicToSeedSync(LW_PHRASE())).derive("m/48'/0'/0'/2'");
+      w.xlReset(); $('phrase').value = AB_PHRASE(); await w.xlFromWords('owner'); if ($('phrase').value !== '' || $('xlOwner').value !== '[73c5da0a/48h/0h/0h/2h]' + kO.publicExtendedKey) fails.push('Extra Life: the owner key from the words, which are wiped');
+      $('phrase').value = LW_PHRASE(); await w.xlFromWords('heir'); $('xlNow').value = '975000'; $('xlBlocks').value = '52560'; await w.xlMake();
+      const want = w.descriptorChecksum(`wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]${kO.publicExtendedKey}/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]${kH.publicExtendedKey}/<0;1>/*),older(52560))))`), X1 = w.eval('xl');
+      const ws = btc.Script.encode([kO.deriveChild(0).deriveChild(0).publicKey, 'CHECKSIG', 'IFDUP', 'NOTIF', 'DUP', 'HASH160', ripemd160(nsha(kH.deriveChild(0).deriveChild(0).publicKey)), 'EQUALVERIFY', 'CHECKSIGVERIFY', btc.ScriptNum().encode(52560n), 'CHECKSEQUENCEVERIFY', 'ENDIF']);
+      if ($('xlDesc').textContent !== want || !X1 || X1.recv[0] !== btc.p2wsh({ type: 'unknown', script: ws }).address) fails.push('Extra Life: the descriptor and its first address (@scure/btc-signer)');
+      $('xlTestIn').value = want.slice(0, -9); w.xlTest(); if ($('xlUse').style.display !== 'none') fails.push('Extra Life: a copy without the checksum does not show the addresses');
+      $('xlTestIn').value = want; w.xlTest(); if ($('xlUse').style.display !== '' || $('xlAddrs').children.length !== 10) fails.push('Extra Life: the tested copy shows the addresses');
+      $('xlDeps').value = '922500'; w.xlRefresh(); if (!/opens in block 975,060 [^\n]*Move or refresh it by block 970,740[^\n]*REFRESH NOW/.test($('xlRefresh').textContent)) fails.push('Extra Life: move or refresh by: deposit + N, and a refresh-by block');
+      if (!/sequence \(nSequence\) of 52560 on every input/.test(w.eval('xlSheetText()'))) fails.push('Extra Life: the sheet says what the heir\'s spend needs');
+      { const tx = new btc.Transaction({ version: 2, allowUnknownOutputs: true }), sp = btc.p2wsh({ type: 'unknown', script: ws });
+        const pv = Uint8Array.from([...le(2, 4), 1, ...new Array(31).fill(0), 1, ...le(0, 4), 1, 0x51, ...le(0xffffffff, 4), 1, ...le(100000, 8), sp.script.length, ...sp.script, ...le(0, 4)]);
+        tx.addInput({ txid: Buffer.from(nsha(nsha(pv))).reverse().toString('hex'), index: 0, sequence: 52559, witnessUtxo: { script: sp.script, amount: 100000n }, nonWitnessUtxo: pv, witnessScript: ws, bip32Derivation: [[kH.deriveChild(0).deriveChild(0).publicKey, { fingerprint: 0xb8688df1, path: btc.bip32Path("m/48'/0'/0'/2'/0/0") }]] });
+        tx.addOutputAddress('bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu', 99000n);
+        const t1 = await rep(tx.toPSBT()); if (!/older\(52560\) on at least one way to spend; this transaction does NOT meet it \(its sequence asks for only 52,559 blocks/.test(t1)) fails.push('Extra Life: the inspector says a heir spend one block short does not meet the wait');
+        const rv = await w.ssOwnReview(U(tx.toPSBT())); if (!rv.W.some((x) => x.bad && /spends from a timelocked or other miniscript wallet/.test(x.t))) fails.push('Extra Life: the practice signer says it cannot sign the heir path'); }
+      w.xlBack(); $('xlBlocks').value = '65536'; await w.xlMake(); if (!/up to 65,535 blocks/.test($('xlErr').textContent) || $('xlDone').style.display !== 'none') fails.push('Extra Life: older above 65,535 is refused');
+      $('xlBlocks').value = '1000'; await w.xlMake(); if (![...$('xlWarn').children].some((e) => /^SHORT WAIT/.test(e.textContent))) fails.push('Extra Life: a short wait is warned about'); w.xlBack();
+      $('xlBlocks').value = '52560'; $('xlHeir').value = $('xlOwner').value; await w.xlMake();
+      if (!/\/<2;3>\/\*\),older\(52560\)/.test($('xlDesc').textContent) || ![...$('xlWarn').children].some((e) => /^SAME SEED/.test(e.textContent))) fails.push('Extra Life: the same seed for owner and heir: /<2;3>/* and a warning'); w.xlBack();
+      $('xlClock').value = 'height'; $('xlAfterH').value = '500000000'; await w.xlMake(); if (!/as a date, not a block height/.test($('xlErr').textContent)) fails.push('Extra Life: a height of 500,000,000 or more is refused');
+      w.xlReset();
+      // the heir's steps and the executor letter for a timelocked wallet
+      $('plKind').value = 'xl'; $('plWait').value = '52,560 blocks after each deposit';
+      { let pr = ''; const P0 = w.print; w.print = () => { pr = w.document.getElementById('printOnly').textContent; }; try { await w.printInherit('heir'); const h = pr; await w.printInherit('letter'); const l = pr;
+        if (!/You need four things: your own words; the wallet’s descriptor/.test(h) || /restore a wallet from a seed phrase/.test(h)) fails.push('heir sheet: a timelocked wallet gets the heir’s own key, the descriptor, the wait and a miniscript wallet');
+        if (!/It is a timelocked inheritance wallet/.test(l)) fails.push('executor letter: a timelocked wallet is named'); } finally { w.print = P0; } }
+      w.planClear();
+    } catch (e) { fails.push('v2.18.0: the probe crashed: ' + e.message); }
+    w.clearAll();
+  }
   // v2.16.1 "Tools that work as in real life": your own words in the practice tools, regtest as its own network, the Network
   // menus of the wallet finders, a multisig key from CHECK A BACKUP. Expected values from @scure/bip32, @scure/bip39 and
   // @scure/btc-signer (regtest: testnet with bech32 "bcrt", Bitcoin Core chainparams.cpp CRegTestParams). It ends with the page
@@ -2835,9 +2920,9 @@ async function probe(w, mutated, fast, only, hooks) {
       if (!/no problems found/.test(gt) || /NO CLEAN VERDICT/.test(gt)) fails.push('verdict: a complete small-fee transaction has a clean result');
       if (!/data note: 5 bytes: 68656c6c6f = "hello"/.test(gt)) fails.push('op_return: data shown as hex and text');
       if (/= "/.test(await rep(mk(0xfffffffd, 0, 158000n, undefined, 'a\u0001b')))) fails.push('op_return: non-text data is not shown as text');
-      if (!/LOCKTIME: it cannot be mined before block 850000/.test(await rep(mk(0xfffffffd, 850000, 158000n)))) fails.push('locktime: block height shown');
-      if (!/LOCKTIME: it cannot be mined before 2023-11-14 22:13 UTC/.test(await rep(mk(0xfffffffd, 1700000000, 158000n)))) fails.push('locktime: date shown');
-      if (/LOCKTIME/.test(await rep(mk(0xffffffff, 850000, 158000n)))) fails.push('locktime: ignored when every input is final');
+      if (!/LOCKTIME: it can be mined in block 850,001 or later \(a locktime of 850000 must be below the block’s height\)\./.test(await rep(mk(0xfffffffd, 850000, 158000n)))) fails.push('locktime: block height shown (v2.18.0: the first block is the locktime + 1)');
+      if (!/LOCKTIME: it can be mined only once the network’s median time \(about an hour behind the clock\) passes 2023-11-14 22:13 UTC/.test(await rep(mk(0xfffffffd, 1700000000, 158000n)))) fails.push('locktime: date shown');
+      if (!/LOCKTIME: 850000, but every input’s sequence is final \(0xffffffff\), so Bitcoin ignores it\./.test(await rep(mk(0xffffffff, 850000, 158000n)))) fails.push('locktime: said to be ignored when every input is final');
       if (!/FAIL  The fee is 5% or more/.test(await rep(mk(0xfffffffd, 0, 150000n))) || !/NO CLEAN VERDICT/.test(await rep(mk(0xfffffffd, 0, 150000n)))) fails.push('verdict: fee of 5% or more blocks a clean result');
       if (/5% or more/.test(await rep(mk(0xfffffffd, 0, 150001n, [150001n + 7000n])))) fails.push('verdict: a fee under 5% is not flagged');
       if (!/FAIL  The outputs add up to MORE/.test(await rep(mk(0xfffffffd, 0, 200000n))) || !/NO CLEAN VERDICT/.test(await rep(mk(0xfffffffd, 0, 200000n)))) fails.push('verdict: outputs above inputs blocks a clean result');
@@ -5039,23 +5124,25 @@ async function probe(w, mutated, fast, only, hooks) {
       const key = (m) => { const r0 = HDKey.fromMasterSeed(mnemonicToSeedSync(m, '')); return '[' + r0.fingerprint.toString(16).padStart(8, '0') + '/48h/0h/0h/2h]' + r0.derive("m/48'/0'/0'/2'").publicExtendedKey + '/<0;1>/*'; };
       const A = key(AB), B = key(LW), C = key(LA), X = async (d, h = null, ph = AB) => w.msExplain(w.descriptorChecksum(d), h, ph, '');
       let r = await X(`wsh(or_d(pk(${A}),and_v(v:pkh(${B}),older(52560))))`);
-      if (r.state !== 'ok' || !/can be spent in 2 ways:\n1\. Key 1 \(fingerprint 73c5da0a\), at any time\.\n2\. Key 2 \(fingerprint b8688df1\), but only 52560 blocks after each deposit \(about 12 months\)\./.test(r.text)) fails.push('timelock: a Liana-style wallet is explained [' + r.text.slice(0, 200) + ']');
+      if (r.state !== 'ok' || !/can be spent in 2 ways:\n1\. Key 1 \(fingerprint 73c5da0a\), at any time\.\n2\. Key 2 \(fingerprint b8688df1\), but only 52,560 blocks after each deposit \(about 12 months; the earliest block is the deposit’s block \+ 52,560\)\./.test(r.text)) fails.push('timelock: a Liana-style wallet is explained [' + r.text.slice(0, 200) + ']');
       if (!/Key 1: fingerprint 73c5da0a  ← made by the words typed in CHECK A BACKUP/.test(r.text) || /Key 2: fingerprint b8688df1  ←/.test(r.text) || !/starts again whenever coins are moved/.test(r.text) || /A fixed block or date/.test(r.text)) fails.push('timelock: the typed words are named, and the relative lock explained');
       r = await X(`wsh(or_d(multi(2,${A},${B}),and_v(v:pk(${C}),after(950000))))`, 925000);
-      if (!/1\. 2 of Key 1 \(fingerprint 73c5da0a\), Key 2 \(fingerprint b8688df1\), at any time\./.test(r.text) || !/Key 3 \(fingerprint 28645006\), but only from block 950000, in about 6 months \(from block 925000\)/.test(r.text) || !/A fixed block or date does not restart/.test(r.text) || /starts again whenever/.test(r.text)) fails.push('timelock: multisig with a fixed block is explained');
-      r = await X(`wsh(and_v(v:pk(${A}),after(800000)))`, 925000); if (!/from block 800000, which is already past/.test(r.text)) fails.push('timelock: a past block is said');
-      r = await X(`wsh(and_v(v:pk(${A}),after(1893456000)))`); if (!/from 2030-01-01 \(a fixed date\)/.test(r.text)) fails.push('timelock: a date lock is a date');
-      r = await X(`wsh(and_v(v:pk(${A}),older(4194448)))`); if (!/about 1 days \(144 x 512 seconds\) after each deposit/.test(r.text)) fails.push('timelock: a time-based older() is in 512-second units');
-      r = await X(`wsh(andor(pk(${A}),older(1000),thresh(2,pk(${A}),s:pk(${B}),s:pk(${C}))))`);
-      if (!/spent in 4 ways/.test(r.text) || !/1\. Key 1 \(fingerprint 73c5da0a\), but only 1000 blocks after each deposit \(about 7 days\)\./.test(r.text) || !/4\. Key 2 \(fingerprint b8688df1\) and Key 3 \(fingerprint 28645006\), at any time\./.test(r.text)) fails.push('timelock: andor and thresh are expanded');
+      if (!/1\. 2 of Key 1 \(fingerprint 73c5da0a\), Key 2 \(fingerprint b8688df1\), at any time\./.test(r.text) || !/Key 3 \(fingerprint 28645006\), but only from block 950,001 \(after\(950000\): the first block that can hold the spend\), in about 6 months, counting from block 925,000/.test(r.text) || !/A fixed block or date does not restart/.test(r.text) || /starts again whenever/.test(r.text)) fails.push('timelock: multisig with a fixed block is explained');
+      r = await X(`wsh(and_v(v:pk(${A}),after(800000)))`, 925000); if (!/from block 800,001 \(after\(800000\): the first block that can hold the spend\), which is already past/.test(r.text)) fails.push('timelock: a past block is said');
+      r = await X(`wsh(and_v(v:pk(${A}),after(1893456000)))`); if (!/after 2030-01-01 00:00 UTC \(a fixed date;/.test(r.text)) fails.push('timelock: a date lock is a date');
+      r = await X(`wsh(and_v(v:pk(${A}),older(4194448)))`); if (!/144 units of 512 seconds \(about 20 hours\) after each deposit confirmed/.test(r.text)) fails.push('timelock: a time-based older() is in 512-second units');
+      const A1 = '[73c5da0a/48h/0h/1h/2h]' + HDKey.fromMasterSeed(mnemonicToSeedSync(AB, '')).derive("m/48'/0'/1'/2'").publicExtendedKey + '/<0;1>/*';   // v2.18.0: a key twice is refused, so account 1
+      r = await X(`wsh(andor(pk(${A}),older(1000),thresh(2,pk(${A1}),s:pk(${B}),s:pk(${C}))))`);
+      if (!/spent in 4 ways/.test(r.text) || !/1\. Key 1 \(fingerprint 73c5da0a\), but only 1,000 blocks after each deposit \(about 7 days;/.test(r.text) || !/4\. Key 3 \(fingerprint b8688df1\) and Key 4 \(fingerprint 28645006\), at any time\./.test(r.text)) fails.push('timelock: andor and thresh are expanded');
       r = await X(`tr(50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0,{and_v(v:pk(${A}),older(4320)),multi_a(2,${B},${C})})`);
       if (!/Taproot \(bc1p\.\.\.\) wallet can be spent in 2 ways/.test(r.text) || /key path/.test(r.text) || !/2\. 2 of Key 2/.test(r.text)) fails.push('timelock: a Taproot tree with an unspendable key path is explained');
-      r = await X(`tr(${A},{and_v(v:pk(${B}),older(4320))})`); if (!/1\. Key 1 \(fingerprint 73c5da0a\) alone, through the Taproot key path \(if it is a real key: [^)]*\), at any time/.test(r.text)) fails.push('timelock: a Taproot key path is listed');
+      r = await X(`tr(${A},and_v(v:pk(${B}),older(4320)))`);   // v2.18.0: one leaf without braces (Core refuses {X} with one part) if (!/1\. Key 1 \(fingerprint 73c5da0a\) alone, through the Taproot key path \(if it is a real key: [^)]*\), at any time/.test(r.text)) fails.push('timelock: a Taproot key path is listed');
       r = await X(`wsh(and_v(v:pk(${A}),sha256(${'ab'.repeat(32)})))`); if (!/plus a secret \(sha256 preimage\)/.test(r.text)) fails.push('timelock: a hash lock is named');
       r = await X(`wsh(and_v(v:pk(${A}),l:older(10)))`); if (!/spent in 2 ways/.test(r.text) && !/spent in 1 way/.test(r.text)) fails.push('timelock: l: wrappers are read');
       r = await w.msExplain(w.descriptorChecksum(`wsh(or_d(pk(${A}),older(10)))`).slice(0, -1) + 'x', null, '', ''); if (r.state !== 'bad' || !/checksum/.test(r.text)) fails.push('timelock: a wrong checksum is refused');
       r = await w.msExplain(`wpkh(${A})`, null, '', ''); if (r.state !== 'bad' || !/wsh\(\.\.\.\), sh\(wsh/.test(r.text)) fails.push('timelock: a plain wallet is pointed elsewhere');
       r = await w.msExplain(`wsh(foo(${A}))`, null, '', ''); if (r.state !== 'bad' || !/not something this page reads/.test(r.text)) fails.push('timelock: unknown fragments are refused');
+      r = await X(`wsh(or_d(pk(${A}),and_v(v:pkh(${A}),older(52560))))`); if (r.state !== 'bad' || !/the same key is used twice/.test(r.text)) fails.push('timelock: a key twice is refused (v2.18.0)');
       r = await X(`wsh(or_d(pk(${A}),and_v(v:pkh(${B}),older(52560))))`, null, ''); if (/←/.test(r.text)) fails.push('timelock: without words no key is claimed');
       $('msxIn').value = 'x'; $('msxStatus').textContent = 'y'; w.clearAll(); await new Promise((r2) => setTimeout(r2, 20)); if ($('msxIn').value !== '' || $('msxStatus').textContent !== '') fails.push('timelock: CLEAR ALL empties it'); }
     w.watchCheck(); if ($('watchStatus').textContent !== 'NO SIGN FOUND of extensions, translators or other scripts on this page right now.' || !/^That does not make it safe\./.test($('watchOut').textContent)) fails.push('watch check: no sign found, never safe');
@@ -5770,7 +5857,7 @@ const M = [
   ['psbt: output amount skipped (always 0)', 'const value=r.i64(), sl=r.varint(); tx.outs.push({value, script:r.bytes(sl)});', 'const value=(r.i64(),0n), sl=r.varint(); tx.outs.push({value, script:r.bytes(sl)});'],
   ["psbt: segwit marker of previous tx not handled", "const r=psbtReader(bytes); r.u32(); let n=r.varint(), seg=false;\n  if(n===0){ r.byte(); seg=true; n=r.varint(); }\n  for(let i=0;i<n;i++){ r.bytes(32); r.u32(); r.bytes(r.varint()); r.u32(); }\n  n=r.varint(); const outs=[];", "const r=psbtReader(bytes); r.u32(); let n=r.varint(), seg=false;\n  if(false){ r.byte(); seg=true; n=r.varint(); }\n  for(let i=0;i<n;i++){ r.bytes(32); r.u32(); r.bytes(r.varint()); r.u32(); }\n  n=r.varint(); const outs=[];"],
   ['psbt: previous transaction output chosen by the wrong index', 'psbtParseTxOutputs(nw.val)[tx.ins[i].vout]', 'psbtParseTxOutputs(nw.val)[0]'],
-  ['psbt: witness utxo amount and script swapped', 'inp.amount=q.i64(); inp.script=q.bytes(q.varint());', 'inp.script=q.bytes(q.varint()); inp.amount=q.i64();'],
+  ['psbt: witness utxo amount and script swapped', 'inp.wuAmount=q.i64(); inp.wuScript=q.bytes(q.varint());', 'inp.wuScript=q.bytes(q.varint()); inp.wuAmount=q.i64();'],
   ['psbt: legacy address pattern broken', 'script[23]===0x88 && script[24]===0xac', 'script[23]===0x88 && script[24]===0xad'],
   ['psbt: script-hash address pattern broken', 'script[0]===0xa9 && script[1]===20 && script[22]===0x87', 'script[0]===0xa9 && script[1]===20 && script[22]===0x88'],
   ['psbt: native SegWit key-hash pattern broken', 'script.length===22 && script[0]===0 && script[1]===20', 'script.length===23 && script[0]===0 && script[1]===20'],
@@ -6216,7 +6303,7 @@ const M = [
   ['word draw: CLEAR button leaves the flips', 'document.getElementById("wdWords").value = ""; document.getElementById("wdFlips").value = "";\n  wdWipe(); wdUpdate();', 'document.getElementById("wdWords").value = "";\n  wdWipe(); wdUpdate();'],
   ['word draw: wipe leaves the steps', 'function wdWipe(){ const o = document.getElementById("wdOut"); o.textContent = ""; o.style.display = "none"; }', 'function wdWipe(){ const o = document.getElementById("wdOut"); o.style.display = "none"; }'],
   ['word draw: wipe leaves the panel open', 'function wdWipe(){ const o = document.getElementById("wdOut"); o.textContent = ""; o.style.display = "none"; }', 'function wdWipe(){ const o = document.getElementById("wdOut"); o.textContent = ""; }'],
-  ['word draw: self-test gate does not refresh the button (typing refreshes it anyway)', '  document.getElementById("childBtn").disabled = !on;\n  wdUpdate(); cdUpdate(); dmUpdate();\n}', '  document.getElementById("childBtn").disabled = !on;\n  cdUpdate(); dmUpdate();\n}', true],
+  ['word draw: self-test gate does not refresh the button (typing refreshes it anyway)', '  document.getElementById("xlBtn").disabled = !on;   // v2.18.0: Extra Life\n  wdUpdate(); cdUpdate(); dmUpdate();\n}', '  document.getElementById("xlBtn").disabled = !on;   // v2.18.0: Extra Life\n  cdUpdate(); dmUpdate();\n}', true],
   ['word draw: not offered on guide step 1', '<details id="wdBox" data-g="1">', '<details id="wdBox" data-g="2">'],
   ['word draw: words rows missing', '  st.wordBits.forEach((b, i) => add((1 + i) + ".",', '  st.wordBits.slice(0, 0).forEach((b, i) => add((1 + i) + ".",'],
   ['word draw: flips row missing', '  add("Flips", st.flips + "  (" + st.flips.length + " bits)");\n', ''],
@@ -6391,8 +6478,8 @@ const M = [
   ['rbf: psbt threshold', 'res.ins.reduce((a,x)=>a+x.amount,0n)-res.totalOut : null;\n  res.rbf=res.ins.some(x=>x.seq<0xfffffffe);', 'res.ins.reduce((a,x)=>a+x.amount,0n)-res.totalOut : null;\n  res.rbf=res.ins.some(x=>x.seq<0xffffffff);'],
   ['rbf: raw threshold', 'res.fee=null;\n  res.rbf=res.ins.some(x=>x.seq<0xfffffffe);', 'res.fee=null;\n  res.rbf=res.ins.some(x=>x.seq<0xffffffff);'],
   ['rbf: wording flipped', 'res.rbf ? "REPLACEABLE (RBF): yes.', '!res.rbf ? "REPLACEABLE (RBF): yes.'],
-  ['locktime: shown when inputs final', 'res.locktime>0 && res.ins.some(x=>x.seq!==0xffffffff)', 'res.locktime>0'],
-  ['locktime: block or date', 'res.locktime<500000000', 'res.locktime<100000'],
+  ['locktime: not said to be ignored when inputs are final', 'L.push(!res.ins.some(x=>x.seq!==0xffffffff) ? "LOCKTIME: "', 'L.push(false ? "LOCKTIME: "'],
+  ['locktime: block or date', ': res.locktime<500000000 ? "LOCKTIME: it can be mined in block "', ': res.locktime<100000 ? "LOCKTIME: it can be mined in block "'],
   ['locktime: date format', '.slice(0,16).replace("T"," ")', '.slice(0,10).replace("T"," ")'],
   ['verdict: fee 5% line', 'add(res.fee*20n<res.totalOut, res.fee*20n<res.totalOut ?', 'add(res.fee*20n<res.totalOut*2n, res.fee*20n<res.totalOut*2n ?'],
   ['verdict: fee 5% too strict', 'add(res.fee*20n<res.totalOut, res.fee*20n<res.totalOut ?', 'add(res.fee*30n<res.totalOut, res.fee*30n<res.totalOut ?'],
@@ -6457,7 +6544,7 @@ const M = [
   ['multisig: depth not checked', 'if(key.depth !== 4 || key.childNum', 'if(key.childNum'],
   ['multisig: last step not checked', 'if(key.depth !== 4 || key.childNum !== ((script + 0x80000000) >>> 0)) throw', 'if(key.depth !== 4) throw'],
   ['multisig: path in the pasted line not checked', 'if(path && path !== want) throw', 'if(false) throw'],
-  ['multisig: path apostrophes not understood', '.replace(/[\'H]/g, "h")', ''],
+  ['multisig: path apostrophes not understood', '.replace(/[\'H]/g, "h"); t = o[3];', '; t = o[3];'],
   ['multisig: /0/* suffix not stripped', 't = t.replace(/\\/(?:<0;1>|[01])\\/\\*$/, "");', ''],
   ['multisig: pasted key stored without its fingerprint', 'ms.keys.push({fp, path: want, key, xpub, src: "pasted"});', 'ms.keys.push({fp: "00000000", path: want, key, xpub, src: "pasted"});'],
   ['multisig: pasted key counted as made here', 'src: "pasted"});', 'src: "made"});'],
@@ -6564,7 +6651,7 @@ const M = [
   ['sig: compare never fails', 'if(nr.length){ L.push("NONCE CHECK: FAIL.', 'if(false){ L.push("NONCE CHECK: FAIL.'],
   ['practice: word positions', 'if(got[i] !== w) bad.push(i+1);', 'if(got[i] !== w) bad.push(i);'],
   ['practice: count not checked', 'if(got.length !== expected.length)', 'if(false)'],
-  ['practice: case not ignored', 'typed.trim().toLowerCase().split(', 'typed.trim().split('],
+  ['practice: case not ignored', 'wordsClean(typed).text.trim().toLowerCase().split(', 'wordsClean(typed).text.trim().split('],
   ['practice: plural wording', '"Word" + (bad.length===1?"":"s")', '"Word"'],
   ['practice: word count plural', '"You typed " + got.length + " word" + (got.length===1?"":"s")', '"You typed " + got.length + " words"'],
   ['practice: hide keeps the words', 'document.getElementById("prWords").textContent=""; document.getElementById("prShow").style.display="none";\n  document.getElementById("prCheck").style.display="block";', 'document.getElementById("prShow").style.display="none";\n  document.getElementById("prCheck").style.display="block";'],
@@ -6584,7 +6671,11 @@ const M = [
   ['notice: touch devices still get the keyboard', 'if(!touch) document.getElementById("rolls").focus({preventScroll: true});', 'document.getElementById("rolls").focus({preventScroll: true});'],
   ['notice: touch is detected wrongly', 'window.matchMedia("(pointer: coarse)").matches', 'window.matchMedia("(pointer: fine)").matches'],
   ['notice: mouse devices lose the focus', 'if(!touch) document.getElementById("rolls").focus({preventScroll: true});', 'if(touch) document.getElementById("rolls").focus({preventScroll: true});'],
-  ['notice: Escape does nothing', 'if(e.key === "Escape" && document.getElementById("startGate")) startGateClose();', ''],
+  ['notice: Escape does not move to the button', 'if(e.key === "Escape"){ e.preventDefault(); startGateGo(); return; }', ''],
+  ['notice: Escape closes it without the acknowledgement (v2.18.0)', 'if(e.key === "Escape"){ e.preventDefault(); startGateGo(); return; }', 'if(e.key === "Escape"){ startGateClose(); return; }'],
+  ['notice: Tab leaves it (v2.18.0)', 'f[i < 0 ? (e.shiftKey ? f.length - 1 : 0) : (i + (e.shiftKey ? f.length - 1 : 1)) % f.length].focus({preventScroll: true});', ''],
+  ['notice: Shift+Tab goes forward (v2.18.0)', '(i + (e.shiftKey ? f.length - 1 : 1)) % f.length', '(i + 1) % f.length'],
+  ['notice: focus behind it stays there (v2.18.0)', 'if(startGateOpen() && !g.contains(e.target)) startGateGo();', ''],
   ['notice: never focuses the button', 'if(go) go.focus({preventScroll: true}); else', 'if(false) go.focus({preventScroll: true}); else'],
   ['multisig: reset leaves the QR on screen', 'ms = null; msHideQr();', 'ms = null;'],
   ['multisig: saved key shows no picture', 'if(k) showFpIcon(ic.id, k.fp);', ''],
@@ -6740,7 +6831,7 @@ const M = [
   ["drill: wrong words ignored", "if(wrong.length){ bad(", "if(false){ bad("],
   ["drill: position off by one", "if(w !== want[i]) wrong.push(i + 1);", "if(w !== want[i]) wrong.push(i);"],
   ["drill: reveals the right word", "if(w !== want[i]) wrong.push(i + 1);", "if(w !== want[i]) wrong.push((i + 1) + \" (\" + want[i] + \")\");"],
-  ["drill: capitals not accepted", "document.getElementById(\"drillWords\").value.trim().toLowerCase().split", "document.getElementById(\"drillWords\").value.trim().split"],
+  ["drill: capitals not accepted", "wordsClean(document.getElementById(\"drillWords\").value).text.trim().toLowerCase().split", "wordsClean(document.getElementById(\"drillWords\").value).text.trim().split"],
   ["drill: passphrase not checked", "if(drillCtx.pass && pw.normalize(\"NFKD\") !== drillCtx.pass.normalize(\"NFKD\")){", "if(false){"],
   ["drill: passphrase compared without normalization", "pw.normalize(\"NFKD\") !== drillCtx.pass.normalize(\"NFKD\")", "pw !== drillCtx.pass"],
   ["drill: stray passphrase accepted", "if(!drillCtx.pass && pw){", "if(false){"],
@@ -7395,7 +7486,7 @@ const M = [
   ["fixes: no change check before the report", "    await psbtCheckChange(res, root, fpw, net);", ""],
   ["fixes: PSBT v2 locktime from the fallback only", "    locktime=byH ? Math.max(...asks.map(x=>x.lockH)) : Math.max(...asks.map(x=>x.lockT)); }", "    }"],
   ["fixes: PSBT v2 sequence default wrong", ": 0xffffffff, lockH:th", ": 0xfffffffe, lockH:th"],
-  ["fixes: previous transaction not checked", "      if(id===tx.ins[i].txid){ const o=psbtParseTxOutputs(nw.val)", "      if(true){ const o=psbtParseTxOutputs(nw.val)"],
+  ["fixes: previous transaction not checked", "if(id!==tx.ins[i].txid) inp.prevMismatch=true; else { prevOut=", "if(false) inp.prevMismatch=true; else { prevOut="],
   ["fixes: wipe leaves rolls and passphrase in state", "  seedSig = null; passKey = null; exCtx = null;   // fixes release", "  // fixes release"],
   ["fixes: wipe leaves the public boxes", "  clearPsbt(true); clearCompare(true); clearSig(); clearReuse(); clearTypo(); clearMsx();   // fixes release", "  clearTypo(); clearMsx();   // fixes release"],
   ["fixes: signed messages skip the gate", "async function verifyMessageUi(){\n  if(!gateOk()) return;", "async function verifyMessageUi(){"],
@@ -7411,7 +7502,7 @@ const M = [
   ["fixes: address type of the path not checked", "if(paidAs && (!want || want === paidAs))", "if(paidAs)"],
   ["fixes: compare tool trusts a forged change", "    const all=shared>0 && rbfOk && feeOk && keptOk && !chBad;", "    const all=shared>0 && rbfOk && feeOk && keptOk;"],
   ["fixes: impossible PSBT v2 locktimes accepted", "if(!byH && !byT) throw new Error", "if(false) throw new Error"],
-  ["fixes: previous transaction unchecked next to a witness UTXO", "    if(nw && wu){ const id=", "    if(false){ const id="],
+  ["fixes: previous transaction unchecked next to a witness UTXO", "    if(nw){ const id=hex(", "    if(nw && !wu){ const id=hex("],
   ["fixes: duplicate PSBT records accepted", "if(seen.has(id)) throw new Error(\"This PSBT has the same record twice", "if(false) throw new Error(\"This PSBT has the same record twice"],
   ["fixes: no caveat for unchecked marks of another wallet", ": res.outs.some(x=>x.fps.length && x.change!==\"verified\") ? \" Not every change mark", ": false ? \" Not every change mark"],
   ["heir mode: does not open", "  c.style.display = \"\"; document.getElementById(\"heirBtn\").setAttribute(\"aria-expanded\", \"true\");", "  document.getElementById(\"heirBtn\").setAttribute(\"aria-expanded\", \"true\");"],
@@ -7528,13 +7619,49 @@ const M = [
   ["unmarked change: nothing coming back not said", "if(res.searched && spendable.length>=2 && !found.length", "if(false && spendable.length>=2 && !found.length"],
   ["unmarked change: one output warned", "spendable.length>=2 && !found.length", "spendable.length>=1 && !found.length"],
   ["unmarked change: searched without the words", "res.searched = !!root; if(!root) return res;", "res.searched = true; if(!root) return res;"],
-  ["timelock: or takes only the first branch", "case \"or_b\": case \"or_c\": case \"or_d\": case \"or_i\": return msPaths(n.args[0]).concat(msPaths(n.args[1]));", "case \"or_b\": case \"or_c\": case \"or_d\": case \"or_i\": return msPaths(n.args[0]);"],
-  ["timelock: and drops its second part", "return n.f === \"and_n\" ? msPaths({f: \"andor\", args: [n.args[0], n.args[1], {f: \"0\"}]}) : cross(msPaths(n.args[0]), msPaths(n.args[1]));", "return n.f === \"and_n\" ? msPaths({f: \"andor\", args: [n.args[0], n.args[1], {f: \"0\"}]}) : msPaths(n.args[0]);"],
-  ["timelock: andor misses its else branch", "case \"andor\": return cross(msPaths(n.args[0]), msPaths(n.args[1])).concat(msPaths(n.args[2]));", "case \"andor\": return cross(msPaths(n.args[0]), msPaths(n.args[1]));"],
+  ["timelock: or takes only the first branch", "case \"or_b\": case \"or_c\": case \"or_d\": case \"or_i\": return msPaths(n.subs[0]).concat(msPaths(n.subs[1]));", "case \"or_b\": case \"or_c\": case \"or_d\": case \"or_i\": return msPaths(n.subs[0]);"],
+  ["timelock: and drops its second part", "case \"and_v\": case \"and_b\": return cross(msPaths(n.subs[0]), msPaths(n.subs[1]));", "case \"and_v\": case \"and_b\": return msPaths(n.subs[0]);"],
+  ["timelock: andor misses its else branch", "case \"andor\": return cross(msPaths(n.subs[0]), msPaths(n.subs[1])).concat(msPaths(n.subs[2]));", "case \"andor\": return cross(msPaths(n.subs[0]), msPaths(n.subs[1]));"],
   ["timelock: thresh needs one fewer", "pick(0, k, [[]]); return out;", "pick(0, k - 1, [[]]); return out;"],
-  ["timelock: time-based older read as blocks", "if(n & (1 << 22)){ const s = (n & 0xffff) * 512;", "if(false){ const s = (n & 0xffff) * 512;"],
-  ["timelock: dates read as blocks", "if(n >= 500000000) return \"from \" + new Date(n * 1000)", "if(false) return \"from \" + new Date(n * 1000)"],
-  ["timelock: a past block called future", "if(n <= height) return \"from block \" + n + \", which is already past\";", ""],
+  ["timelock: time-based older read as blocks", "if(n & 0x400000) return msPl(v, \"unit\")", "if(false) return msPl(v, \"unit\")"],
+  ["timelock: dates read as blocks", "if(n >= 500000000) return \"after \" + new Date(n * 1000)", "if(false) return \"after \" + new Date(n * 1000)"],
+  ["timelock: a past block called future", "if(n <= height) return first + \", which is already past\";", ""],
+  // v2.18.0: the strict miniscript reader (Bitcoin Core 32.1's verdicts), the explainer, the PSBT inspector, words as pasted, Extra Life (section 85)
+  ["reader: older(0) accepted", "msInt(args[0], \"the number in \" + name + \"()\", 1, 2147483647)", "msInt(args[0], \"the number in \" + name + \"()\", 0, 2147483647)"],
+  ["reader: older(2^31) accepted", "msInt(args[0], \"the number in \" + name + \"()\", 1, 2147483647)", "msInt(args[0], \"the number in \" + name + \"()\", 1, 4294967295)"],
+  ["reader: numbers not in plain digits accepted", "if(!/^[0-9]+$/.test(t)) throw msErr(what + \" must be a whole number in plain digits", "if(false) throw msErr(what + \" must be a whole number in plain digits"],
+  ["reader: argument counts not checked", "const need = (k) => { if(args.length !== k) throw msErr(", "const need = (k) => { if(false) throw msErr("],
+  ["reader: blocks and seconds in one way accepted", "  if(!MS_HAS(root.type, \"k\")){ const b = msFirstBad(", "  if(false){ const b = msFirstBad("],
+  ["reader: and_v mixes timelocks", "I(MS_HAS(A, \"k\") && !msMix(x, y), \"k\"); break;\n    case \"and_b\":", "I(MS_HAS(A, \"k\"), \"k\"); break;\n    case \"and_b\":"],
+  ["reader: one key at the first address twice accepted", "if(seen.has(id)) throw msErr(\"two keys are the same key at the first address", "if(false) throw msErr(\"two keys are the same key at the first address"],
+  ["reader: a way with no key accepted", "if(!MS_HAS(root.type, \"s\")) throw msErr(", "if(false) throw msErr("],
+  ["reader: parts that do not fit not named", "if(!root.type){ const b = msFirstBad(root, x => !x.type);", "if(false){ const b = msFirstBad(root, x => !x.type);"],
+  ["reader: the BIP138 backup skips it", "  try { await msCheckDesc(body); } catch(e) { throw new Error(\"This descriptor cannot be used: \" + msWhy(e) + \". No wallet could import it, so a backup of it would not help; check it with Explain an inheritance or timelock wallet first.\"); }   // v2.18.0\n", ""],
+  ["reader: a colon per wrapper accepted", "if(wrapped) throw msErr(\"the wrappers of a part are written together", "if(false) throw msErr(\"the wrappers of a part are written together"],
+  ["reader: the address lister skips it", "  await msCheckDesc(body);   // v2.18.0: no address for a descriptor Bitcoin Core refuses (no wallet could import it)\n", ""],
+  ["explainer: an older() Bitcoin reads differently not warned", "const o = msOlderOdd(c.n); if(o && !odd.includes(o)) odd.push(o);", "const o = msOlderOdd(c.n);"],
+  ["explainer: after(N) by height from block N", "const first = \"from block \" + msGroup(n + 1)", "const first = \"from block \" + msGroup(n)"],
+  ["explainer: no hours", "  if(sec < 79200) return \"about \" + msPl(Math.round(sec / 3600), \"hour\");\n", ""],
+  ["explainer: block height 0 used", "if(v < 1) return {err: \"Block 0 is Bitcoin", "if(false) return {err: \"Block 0 is Bitcoin"],
+  ["psbt: a coin that disagrees with itself trusted", "if(prevOut && (prevOut.value!==inp.wuAmount || hex(prevOut.script)!==hex(inp.wuScript))) inp.utxoDisagree=", "if(false) inp.utxoDisagree="],
+  ["psbt: relative timelocks not named", "res.ins.forEach((x,i)=>{ const Q=seqLock(x.seq); if(!Q || !Q.n) return;", "res.ins.forEach((x,i)=>{ const Q=null; if(!Q || !Q.n) return;"],
+  ["psbt: version 1 not warned", "if(res.version<2 && res.ins.some(x=>{ const L=seqLock(x.seq); return L && L.n>0; }))", "if(false)"],
+  ["psbt: a sequence one short meets the script", "if(L.n<want.n) return \"its sequence asks for only \"", "if(L.n<want.n - 1) return \"its sequence asks for only \""],
+  ["psbt: a negative amount loses its sign in the brackets", "+\" BTC (\"+(neg?\"-\":\"\")+v+", "+\" BTC (\"+v+"],
+  ["words: the numbering kept", "const m = /^#?\\d{1,2}[.):\\-]?(\\D*)$/.exec(w); if(m){ num++; return m[1]; } return w;", "return w;"],
+  ["words: invisible characters kept", "if(inv){ t = t.replace(WORDS_INVISIBLE, \"\");", "if(inv){ t = t;"],
+  ["words: VERIFY keeps the numbered words", "  if(r.ok) r.expanded = true;   // VERIFY puts the clean words back in the box\n", ""],
+  ["Extra Life: a wait above 65,535 made", "if(n > XL_BLOCKS_MAX) throw new Error(", "if(false) throw new Error("],
+  ["Extra Life: a height of 500,000,000 taken as a height", "if(n >= 500000000) throw new Error(\"Bitcoin reads a lock of 500,000,000", "if(false) throw new Error(\"Bitcoin reads a lock of 500,000,000"],
+  ["Extra Life: a short wait not warned", "if(n < XL_SHORT) warn.push(\"SHORT WAIT", "if(false) warn.push(\"SHORT WAIT"],
+  ["Extra Life: the same seed not warned", "if(owner.fp === heir.fp) warn.push(\"SAME SEED", "if(false) warn.push(\"SAME SEED"],
+  ["Extra Life: the owner's key twice", "(same ? \"/<2;3>/*\" : \"/<0;1>/*\")", "\"/<0;1>/*\""],
+  ["Extra Life: a copy without the checksum passes the backup test", "  if(got === want){\n    xl.tested = true;", "  if(got === want || got === xl.body){\n    xl.tested = true;"],
+  ["Extra Life: refresh by one block early", "open = D + N, by = open - margin;", "open = D + N - 1, by = open - margin;"],
+  ["Extra Life: the words not wiped", "    msWipeChecked();\n    xlEl(\"xlWaitNote\")", "    xlEl(\"xlWaitNote\")"],
+  ["Extra Life: the practice signer says nothing about a miniscript coin", "    if (!plain) W.push({ bad: true, t: \"Input \" + i + \" spends from a timelocked", "    if (false) W.push({ bad: true, t: \"Input \" + i + \" spends from a timelocked"],
+  ["heir sheet: the timelocked steps never used", "const steps = st.xl ? [", "const steps = false ? ["],
+  ["executor letter: a timelocked wallet never named", "nobody to send a death certificate to. \" + (st.xl", "nobody to send a death certificate to. \" + (false"],
   ["timelock: the unspendable key path listed", "keyPath = shut ? null : ik;", "keyPath = ik;"],   // v2.11.0: shut comes from msIsNums (plain H or an xpub on H)
   ["timelock: the typed words never named", "(fpMine && x.fp === fpMine ? \"  \u2190 made by the words typed in CHECK A BACKUP\" : \"\")", "\"\""],
   ["timelock: the checksum not checked", "if(hashAt >= 0 && descriptorChecksum(body) !== t) return {state: \"bad\", text: \"The descriptor's checksum (after #) does not match, so it was changed or mistyped. Use Find a typo in a descriptor first.\"};", ""],
@@ -7869,7 +7996,7 @@ const M = [
   ["plates: ticks not counted as a secret", "document.getElementById(\"pnRdTicks\").value = n ? String(n) : \"\";", "document.getElementById(\"pnRdTicks\").value = \"\";"],
   ["plates: words filled without an input event", "ph.value = text; ph.dispatchEvent(new Event(\"input\", {bubbles: true}));", "ph.value = text;"],
   ["plates: other words replaced without asking", "if(ph.value.trim() && ph.value.trim() !== text && !confirm(", "if(false && !confirm("],
-  ["inheritance: new boxes not checked for secrets", "...st.copies.map(c => c.where), st.owner, st.heir, st.lawyer, st.where].join(\"\\n\")", "...st.copies.map(c => c.where)].join(\"\\n\")"],
+  ["inheritance: new boxes not checked for secrets", "...st.copies.map(c => c.where), st.owner, st.heir, st.lawyer, st.where, st.wait].join(\"\\n\")", "...st.copies.map(c => c.where)].join(\"\\n\")"],
   ["inheritance: fingerprint not checked", "if(st.fp && !/^[0-9a-f]{8}$/.test(st.fp)){ ihSay(", "if(false){ ihSay("],
   ["inheritance: key details from another wallet", "if(st.fp && fp !== st.fp) return {note:", "if(false) return {note:"],
   ["inheritance: heir steps leave out the passphrase", "(hasPass ? \", with the passphrase (\" + P.replace(/^Yes, /, \"kept \") + \")\" : \"\")", "\"\""],
@@ -8711,7 +8838,7 @@ const M = [
   ["passphrase practice: your own seed ignored", "  if(src === \"own\"){", "  if(false){"],
   ["passphrase practice: the seed made here ignored", "  if(src === \"made\") return hasSeed()", "  if(false) return hasSeed()"],
   ["passphrase practice: CLEAR leaves your seed words", "document.getElementById(\"ppSeed\").value = \"\";", ""],
-  ["multisig: the seed in CHECK A BACKUP not wiped", "    msWipeChecked();\n", ""],
+  ["multisig: the seed in CHECK A BACKUP not wiped", "    ms.mode = \"make\";\n    msWipeChecked();\n", "    ms.mode = \"make\";\n"],
   ["multisig: the passphrase in CHECK A BACKUP ignored", "await mnemonicToSeed(r.mnemonic, document.getElementById(\"verifyPass\").value), ms.type", "await mnemonicToSeed(r.mnemonic, \"\"), ms.type"],
   ["multisig: the same seed from CHECK A BACKUP twice", "if(dup >= 0){ eb.textContent = \"This is the same key as key \" + (dup + 1) + \" (fingerprint \" + w.fp + \"). Using one key twice would make the wallet weaker than it looks. Every", "if(false){ eb.textContent = \"This is the same key as key \" + (dup + 1) + \" (fingerprint \" + w.fp + \"). Using one key twice would make the wallet weaker than it looks. Every"],
   // v2.16.1 review (a fresh review of the v2.16.1 changes): probe section 81
