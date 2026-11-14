@@ -13222,91 +13222,354 @@ function clearTypo(){ typoRun++; document.getElementById("typoIn").value = ""; c
 const MS_NUMS = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";   // BIP341's unspendable internal key
 function msSplitArgs(s){   // "a,b(c,d),{e,f}" -> ["a", "b(c,d)", "{e,f}"]
   const out = []; let d = 0, cur = "";
-  for(const ch of s){ if(ch === "(" || ch === "{" || ch === "[") d++; if(ch === ")" || ch === "}" || ch === "]") d--; if(ch === "," && d === 0){ out.push(cur); cur = ""; } else cur += ch; }
-  if(d !== 0) throw new Error("the brackets do not match");
+  for(const ch of s){ if(ch === "(" || ch === "{" || ch === "[") d++; if(ch === ")" || ch === "}" || ch === "]") d--; if(d < 0) throw msErr("the brackets do not match"); if(ch === "," && d === 0){ out.push(cur); cur = ""; } else cur += ch; }
+  if(d !== 0) throw msErr("the brackets do not match");
   out.push(cur); return out;
 }
-function msParse(s){
-  s = s.trim(); const m = /^([a-z0-9]+:)?([a-z_0-9]+)\((.*)\)$/s.exec(s);
-  if(s === "0" || s === "1") return {f: s};
-  if(!m){ if(/^[a-z]+:[01]$/.test(s)) return {f: s.split(":")[1]}; return {f: "key", key: s}; }
-  const wrap = (m[1] || "").replace(":", ""), name = m[2], args = name === "tr" ? [m[3]] : msSplitArgs(m[3]);
+// ===== v2.18.0: one strict miniscript reader, shared by the explainer, the address lister (b138Address) and Extra Life =====
+// It refuses what Bitcoin Core 32 refuses (descriptor.cpp ParseScript; miniscript.h IsSane and IsNotSatisfiable): a number that is
+// not plain decimal digits; older() or after() outside 1 to 2^31 - 1; a wrong number of arguments; a k of 0 or above the number of
+// keys or parts; parts that do not fit together (the miniscript types B, V, K and W); a block lock and a time lock in one way to
+// spend; the same key twice; a way to spend that needs no key; a malleable script; a P2WSH script over 3600 bytes, 201 opcodes or
+// 100 witness items; and a script that can never be spent. Every refusal is a plain sentence (msErr), never a raw script error.
+function msErr(text){ const e = new Error(text); e.vf = true; return e; }
+function msWhy(e){ return e && e.vf ? e.message : "it is not a descriptor this page can read (check that it was copied whole)"; }
+function msShort(s){ s = String(s); return s.length > 60 ? s.slice(0, 40) + "…" + s.slice(-14) : s; }
+// A whole number in plain decimal digits (as Core's ToIntegral reads it: leading zeros are fine), from lo to hi.
+function msInt(t, what, lo, hi){
+  t = String(t).trim();
+  if(!/^[0-9]+$/.test(t)) throw msErr(what + " must be a whole number in plain digits (0 to 9), not “" + msShort(t) + "”; Bitcoin Core refuses it");
+  const v = t.replace(/^0+(?=.)/, "").length > 12 ? Infinity : parseInt(t, 10);
+  if(!(v >= lo && v <= hi)) throw msErr(what + " must be " + (hi === Infinity ? "at least " + lo : "from " + lo + " to " + hi) + ", not " + msShort(t) + "; Bitcoin Core refuses it");
+  return v;
+}
+// Miniscript types (the type table of miniscript.cpp ComputeType): B V K W are the basic types; z o n d u e f s m x are their
+// properties; g h i j say which kinds of timelock a part uses and k that no way to spend mixes them. A type is a string of letters.
+const MS_HAS = (t, s) => { for(const c of s) if(!t.includes(c)) return false; return true; };
+const MS_PICK = (t, s) => { let o = ""; for(const c of s) if(t.includes(c)) o += c; return o; };
+const msMix = (x, y) => (MS_HAS(x, "g") && MS_HAS(y, "h")) || (MS_HAS(x, "h") && MS_HAS(y, "g")) || (MS_HAS(x, "i") && MS_HAS(y, "j")) || (MS_HAS(x, "j") && MS_HAS(y, "i"));
+function msTypeOf(n, tap){
+  const [x = "", y = "", z = ""] = n.subs.map(s => s.type), I = (c, s) => c ? s : "", O = x + y, A = MS_PICK(x, y);
+  let t;
+  switch(n.f){
+    case "pk_k": t = "Konudemsxk"; break;
+    case "pk_h": t = "Knudemsxk"; break;
+    case "older": t = (n.n & 0x400000 ? "g" : "h") + "Bzfmxk"; break;
+    case "after": t = (n.n >= 500000000 ? "i" : "j") + "Bzfmxk"; break;
+    case "sha256": case "hash256": case "ripemd160": case "hash160": t = "Bonudmk"; break;
+    case "1": t = "Bzufmxk"; break;
+    case "0": t = "Bzudemsxk"; break;
+    case "multi": t = "Bnudemsk"; break;
+    case "multi_a": t = "Budemsk"; break;
+    case "a": t = I(MS_HAS(x, "B"), "W") + MS_PICK(x, "ghijkudfems") + "x"; break;
+    case "s": t = I(MS_HAS(x, "Bo"), "W") + MS_PICK(x, "ghijkudfemsx"); break;
+    case "c": t = I(MS_HAS(x, "K"), "B") + MS_PICK(x, "ghijkondfem") + "us"; break;
+    case "d": t = I(MS_HAS(x, "Vz"), "B") + I(MS_HAS(x, "z"), "o") + I(MS_HAS(x, "f"), "e") + MS_PICK(x, "ghijkms") + I(tap, "u") + "ndx"; break;
+    case "v": t = I(MS_HAS(x, "B"), "V") + MS_PICK(x, "ghijkzonms") + "fx"; break;
+    case "j": t = I(MS_HAS(x, "Bn"), "B") + I(MS_HAS(x, "f"), "e") + MS_PICK(x, "ghijkoums") + "ndx"; break;
+    case "n": t = MS_PICK(x, "ghijkBzondfems") + "ux"; break;
+    case "and_v": t = I(MS_HAS(x, "V"), MS_PICK(y, "KVB")) + MS_PICK(x, "n") + I(MS_HAS(x, "z"), MS_PICK(y, "n")) + I(MS_HAS(O, "z"), MS_PICK(O, "o")) + MS_PICK(A, "dmz") + MS_PICK(O, "s") + I(MS_HAS(y, "f") || MS_HAS(x, "s"), "f") + MS_PICK(y, "ux") + MS_PICK(O, "ghij") + I(MS_HAS(A, "k") && !msMix(x, y), "k"); break;
+    case "and_b": t = I(MS_HAS(y, "W"), MS_PICK(x, "B")) + I(MS_HAS(O, "z"), MS_PICK(O, "o")) + MS_PICK(x, "n") + I(MS_HAS(x, "z"), MS_PICK(y, "n")) + I(MS_HAS(A, "s"), MS_PICK(A, "e")) + MS_PICK(A, "dzm") + I(MS_HAS(A, "f") || MS_HAS(x, "sf") || MS_HAS(y, "sf"), "f") + MS_PICK(O, "s") + "ux" + MS_PICK(O, "ghij") + I(MS_HAS(A, "k") && !msMix(x, y), "k"); break;
+    case "or_b": t = I(MS_HAS(x, "Bd") && MS_HAS(y, "Wd"), "B") + I(MS_HAS(O, "z"), MS_PICK(O, "o")) + I(MS_HAS(O, "s") && MS_HAS(A, "e"), MS_PICK(A, "m")) + MS_PICK(A, "zse") + "dux" + MS_PICK(O, "ghij") + MS_PICK(A, "k"); break;
+    case "or_d": t = I(MS_HAS(x, "Bdu"), MS_PICK(y, "B")) + I(MS_HAS(y, "z"), MS_PICK(x, "o")) + I(MS_HAS(x, "e") && MS_HAS(O, "s"), MS_PICK(A, "m")) + MS_PICK(A, "zs") + MS_PICK(y, "ufde") + "x" + MS_PICK(O, "ghij") + MS_PICK(A, "k"); break;
+    case "or_c": t = I(MS_HAS(x, "Bdu"), MS_PICK(y, "V")) + I(MS_HAS(y, "z"), MS_PICK(x, "o")) + I(MS_HAS(x, "e") && MS_HAS(O, "s"), MS_PICK(A, "m")) + MS_PICK(A, "zs") + "fx" + MS_PICK(O, "ghij") + MS_PICK(A, "k"); break;
+    case "or_i": t = MS_PICK(A, "VBKufs") + I(MS_HAS(A, "z"), "o") + I(MS_HAS(O, "f"), MS_PICK(O, "e")) + I(MS_HAS(O, "s"), MS_PICK(A, "m")) + MS_PICK(O, "d") + "x" + MS_PICK(O, "ghij") + MS_PICK(A, "k"); break;
+    case "andor": { const YZ = MS_PICK(y, z), XYZ = x + YZ, A3 = MS_PICK(x, YZ), O3 = x + y + z;
+      t = I(MS_HAS(x, "Bdu"), MS_PICK(YZ, "BKV")) + MS_PICK(A3, "z") + I(MS_HAS(XYZ, "z"), MS_PICK(XYZ, "o")) + MS_PICK(YZ, "u") + I(MS_HAS(x, "s") || MS_HAS(y, "f"), MS_PICK(z, "fe")) + MS_PICK(z, "d") + I(MS_HAS(x, "e") && MS_HAS(O3, "s"), MS_PICK(A3, "m")) + MS_PICK(MS_PICK(z, x + y), "s") + "x" + MS_PICK(O3, "ghij") + I(MS_HAS(A3, "k") && !msMix(x, y), "k"); break; }
+    case "thresh": {
+      let allE = true, allM = true, args = 0, numS = 0, acc = "k"; const N = n.subs.length;
+      for(let i = 0; i < N; i++){ const s = n.subs[i].type;
+        if(!MS_HAS(s, i ? "Wdu" : "Bdu")) return "";
+        if(!MS_HAS(s, "e")) allE = false; if(!MS_HAS(s, "m")) allM = false; if(MS_HAS(s, "s")) numS++;
+        args += MS_HAS(s, "z") ? 0 : MS_HAS(s, "o") ? 1 : 2;
+        acc = MS_PICK(acc + s, "ghij") + I(MS_HAS(MS_PICK(acc, s), "k") && (n.k <= 1 || !msMix(acc, s)), "k");
+      }
+      t = "Bdu" + I(args === 0, "z") + I(args === 1, "o") + I(allE && numS === N, "e") + I(allE && allM && numS >= N - n.k, "m") + I(numS >= N - n.k + 1, "s") + acc; break;
+    }
+    default: t = "";
+  }
+  return /[BVKW]/.test(t) ? t : "";
+}
+// Size in bytes, opcodes counted against the 201 limit, and witness items (miniscript.h CalcOps and CalcStackSize). For each:
+// sat = to satisfy it, dsat = to dissatisfy it, null = it cannot be. In Taproot the run-time stack limit of 1000 is checked by the
+// witness items (the keys that multi_a pushes are not counted, so a giant multi_a can pass here and still be refused by Core).
+const msAdd = (...v) => v.some(x => x === null) ? null : v.reduce((a, b) => a + b, 0), msMax = (a, b) => a === null ? b : b === null ? a : Math.max(a, b);
+function msNumSize(v){ return v <= 16 ? 1 : 1 + b138Num(v).length; }
+function msCostOf(n, tap){
+  const [x, y, z] = n.subs, KS = tap ? 33 : 34, N = n.keys ? n.keys.length : 0;
+  const C = (size, oc, os, od, ss, sd) => ({size, oc, os, od, ss, sd});
+  switch(n.f){
+    case "0": return C(1, 0, null, 0, null, 0);
+    case "1": return C(1, 0, 0, null, 0, null);
+    case "pk_k": return C(KS, 0, 0, 0, 1, 1);
+    case "pk_h": return C(24, 3, 0, 0, 2, 2);
+    case "older": case "after": return C(msNumSize(n.n) + 1, 1, 0, null, 0, null);
+    case "sha256": case "hash256": return C(39, 4, 0, null, 1, null);
+    case "ripemd160": case "hash160": return C(27, 4, 0, null, 1, null);
+    case "multi": return C(msNumSize(n.k) + N * 34 + msNumSize(N) + 1, 1, N, N, n.k + 1, n.k + 1);
+    case "multi_a": return C(N * 34 + msNumSize(n.k) + 1, N + 1, 0, 0, N, N);
+    case "a": return C(x.size + 2, 2 + x.oc, x.os, x.od, x.ss, x.sd);
+    case "s": case "c": case "n": return C(x.size + 1, 1 + x.oc, x.os, x.od, x.ss, x.sd);
+    case "d": return C(x.size + 3, 3 + x.oc, x.os, 0, msAdd(1, x.ss), 1);
+    case "v": { const v = MS_HAS(x.type, "x") ? 1 : 0; return C(x.size + v, x.oc + v, x.os, null, x.ss, null); }
+    case "j": return C(x.size + 4, 4 + x.oc, x.os, 0, x.ss, 1);
+    case "and_v": return C(x.size + y.size, x.oc + y.oc, msAdd(x.os, y.os), null, msAdd(x.ss, y.ss), null);
+    case "and_b": return C(x.size + y.size + 1, 1 + x.oc + y.oc, msAdd(x.os, y.os), msAdd(x.od, y.od), msAdd(x.ss, y.ss), msAdd(x.sd, y.sd));
+    case "or_b": return C(x.size + y.size + 1, 1 + x.oc + y.oc, msMax(msAdd(x.os, y.od), msAdd(y.os, x.od)), msAdd(x.od, y.od), msMax(msAdd(x.sd, y.ss), msAdd(x.ss, y.sd)), msAdd(x.sd, y.sd));
+    case "or_c": return C(x.size + y.size + 2, 2 + x.oc + y.oc, msMax(x.os, msAdd(y.os, x.od)), null, msMax(x.ss, msAdd(x.sd, y.ss)), null);
+    case "or_d": return C(x.size + y.size + 3, 3 + x.oc + y.oc, msMax(x.os, msAdd(y.os, x.od)), msAdd(x.od, y.od), msMax(x.ss, msAdd(x.sd, y.ss)), msAdd(x.sd, y.sd));
+    case "or_i": return C(x.size + y.size + 3, 3 + x.oc + y.oc, msMax(x.os, y.os), msMax(x.od, y.od), msMax(msAdd(x.ss, 1), msAdd(y.ss, 1)), msMax(msAdd(x.sd, 1), msAdd(y.sd, 1)));
+    case "andor": return C(x.size + y.size + z.size + 3, 3 + x.oc + y.oc + z.oc, msMax(msAdd(y.os, x.os), msAdd(x.od, z.os)), msAdd(x.od, z.od), msMax(msAdd(x.ss, y.ss), msAdd(x.sd, z.ss)), msAdd(x.sd, z.sd));
+    case "thresh": {
+      let size = msNumSize(n.k) + 1 + n.subs.length - 1, oc = 0, os = [0], ss = [0];
+      for(const s of n.subs){ size += s.size; oc += s.oc + 1;
+        const step = (v, sat, dsat) => { const nx = [msAdd(v[0], dsat)]; for(let j = 1; j < v.length; j++) nx.push(msMax(msAdd(v[j], dsat), msAdd(v[j - 1], sat))); nx.push(msAdd(v[v.length - 1], sat)); return nx; };
+        os = step(os, s.os, s.od); ss = step(ss, s.ss, s.sd); }
+      return C(size, oc, os[n.k], os[0], ss[n.k], ss[0]);
+    }
+  }
+  return C(0, 0, null, null, null, null);
+}
+// One node of the tree: {f, subs, key, keys, k, n, text, type, cost...}. Wrappers t: l: u: and and_n are rewritten as miniscript
+// defines them (t:X = and_v(X,1), l:X = or_i(0,X), u:X = or_i(X,0), and_n(X,Y) = andor(X,Y,0)); pk() is c:pk_k() and pkh() c:pk_h().
+function msMake(f, subs, tap, extra){
+  const n = Object.assign({f, subs}, extra || {});
+  n.type = msTypeOf(n, tap); Object.assign(n, msCostOf(n, tap));
+  return n;
+}
+const MS_FRAGS = ["pk_k", "pk_h", "pk", "pkh", "older", "after", "sha256", "hash256", "ripemd160", "hash160", "and_v", "and_b", "and_n", "andor", "or_b", "or_c", "or_d", "or_i", "thresh", "multi", "multi_a", "sortedmulti", "sortedmulti_a"];
+function msNode(src, tap, top, depth){
+  if(depth > 200) throw msErr("it is nested too deeply");
+  const s = String(src).trim();
+  if(!s) throw msErr("a part is empty (two commas in a row, or empty brackets)");
+  const w = /^([a-z]+):(.+)$/s.exec(s);
+  if(w){
+    if(!/^[asctdvjnlu]+$/.test(w[1])) throw msErr("“" + msShort(w[1]) + ":” is not a miniscript wrapper (the wrappers are the letters a s c t d v j n l u)");
+    let node = msNode(w[2], tap, false, depth + 1);
+    for(const c of w[1].split("").reverse()){
+      if(c === "t") node = msMake("and_v", [node, msMake("1", [], tap)], tap);
+      else if(c === "l") node = msMake("or_i", [msMake("0", [], tap), node], tap);
+      else if(c === "u") node = msMake("or_i", [node, msMake("0", [], tap)], tap);
+      else node = msMake(c, [node], tap);
+      node.text = s;
+    }
+    return node;
+  }
+  if(s === "0" || s === "1") return Object.assign(msMake(s, [], tap), {text: s});
+  const m = /^([a-z_0-9]+)\((.*)\)$/s.exec(s);
+  if(!m || !MS_FRAGS.includes(m[1])) throw msErr("“" + msShort(m ? m[1] : s) + "” is not something this page reads: a miniscript part such as pk(), or_d() or older() is needed there");
+  const name = m[1], args = msSplitArgs(m[2]), sub = (i) => msNode(args[i], tap, false, depth + 1);
+  const need = (k) => { if(args.length !== k) throw msErr(name + "() takes " + k + " part" + (k > 1 ? "s" : "") + " but has " + args.length + " in “" + msShort(s) + "”; Bitcoin Core refuses it"); };
+  const keyArg = (t) => { t = t.trim(); if(!t || /[(){},]/.test(t)) throw msErr("“" + msShort(t) + "” is not a key"); return t; };
   let node;
-  if(/^(pk|pk_k|pk_h|pkh)$/.test(name)) node = {f: "pk", key: args[0].trim()};
-  else if(/^(sorted)?multi(_a)?$/.test(name)) node = {f: "multi", k: parseInt(args[0], 10), keys: args.slice(1).map(x => x.trim())};
-  else if(name === "older" || name === "after"){ const n = Number(args[0]); if(!Number.isInteger(n) || n < 1 || n > 0xffffffff) throw new Error(name + "() needs a whole number"); node = {f: name, n}; }
-  else if(/^(sha256|hash256|ripemd160|hash160)$/.test(name)) node = {f: "hash", kind: name};
-  else node = {f: name, args: args.map(msParse)};
-  // wrappers: l: and u: add an alternative that can never be taken (0); the others do not change who can spend
-  for(const c of wrap) if(c === "l" || c === "u") node = {f: "or_i", args: [node, {f: "0"}]};
+  switch(name){
+    case "pk_k": case "pk_h": need(1); node = msMake(name, [], tap, {key: keyArg(args[0])}); break;
+    case "pk": case "pkh": need(1); node = msMake("c", [Object.assign(msMake(name === "pk" ? "pk_k" : "pk_h", [], tap, {key: keyArg(args[0])}), {text: s})], tap); break;
+    case "older": case "after": need(1); node = msMake(name, [], tap, {n: msInt(args[0], "the number in " + name + "()", 1, 2147483647)}); break;
+    case "sha256": case "hash256": case "ripemd160": case "hash160": {
+      need(1); const L = /^(sha|hash2)/.test(name) ? 64 : 40, h = args[0].trim();
+      if(!new RegExp("^[0-9a-fA-F]{" + L + "}$").test(h)) throw msErr(name + "() needs a hash of " + L + " hex characters, not “" + msShort(h) + "”");
+      node = msMake(name, [], tap, {hash: h.toLowerCase()}); break;
+    }
+    case "and_v": case "and_b": case "or_b": case "or_c": case "or_d": case "or_i": need(2); node = msMake(name, [sub(0), sub(1)], tap); break;
+    case "and_n": need(2); node = msMake("andor", [sub(0), sub(1), msMake("0", [], tap)], tap); break;
+    case "andor": need(3); node = msMake("andor", [sub(0), sub(1), sub(2)], tap); break;
+    case "thresh": {
+      if(args.length < 2) throw msErr("thresh() needs a number and at least one part");
+      const k = msInt(args[0], "the number k in thresh(k, ...)", 1, Infinity);
+      if(k > args.length - 1) throw msErr("thresh(" + k + ", ...) asks for " + k + " of only " + (args.length - 1) + " parts; Bitcoin Core refuses it");
+      node = msMake("thresh", args.slice(1).map((a, i) => sub(i + 1)), tap, {k}); break;
+    }
+    case "multi": case "sortedmulti": case "multi_a": case "sortedmulti_a": {
+      const a = /_a$/.test(name), max = a ? 999 : 20;
+      if(a && !tap) throw msErr(name + "() works only inside tr(); outside it use multi()");
+      if(!a && tap) throw msErr(name + "() cannot be used inside tr(): Taproot uses multi_a()");
+      if(/^sorted/.test(name) && !top) throw msErr(name + "() can only be the whole script, not a part of a miniscript; use " + name.replace("sorted", "") + "() there");
+      if(args.length < 2) throw msErr(name + "() needs a number and at least one key");
+      const k = msInt(args[0], "the number k in " + name + "(k, ...)", 1, Infinity), keys = args.slice(1).map(keyArg);
+      if(keys.length > max) throw msErr(name + "() takes at most " + max + " keys, not " + keys.length + "; Bitcoin Core refuses it");
+      if(k > keys.length) throw msErr(name + "(" + k + ", ...) asks for " + k + " signatures from only " + keys.length + " key" + (keys.length === 1 ? "" : "s") + "; Bitcoin Core refuses it");
+      node = msMake(a ? "multi_a" : "multi", [], tap, {k, keys, sorted: /^sorted/.test(name), desc: top}); break;
+    }
+  }
+  node.text = s;
   return node;
+}
+function msWalk(n, f){ f(n); for(const s of n.subs) msWalk(s, f); }
+// The deepest part that lacks a property while its own parts have it (to name the place in an error).
+function msFirstBad(n, bad){ for(const s of n.subs){ const b = msFirstBad(s, bad); if(b) return b; } return bad(n) ? n : null; }
+// A whole miniscript (the inside of wsh() or one leaf of tr()): the tree, or a plain-word error for what Core would refuse.
+function msTree(src, ctx){
+  const tap = ctx === "tap", root = msNode(src, tap, true, 0), max = tap ? {size: Infinity, ops: Infinity, stack: 1000} : {size: 3600, ops: 201, stack: 100};
+  const where = (b) => b && b !== root ? " (at “" + msShort(b.text || "") + "”)" : "";
+  if(!root.type){ const b = msFirstBad(root, x => !x.type); throw msErr("its parts do not fit together as miniscript" + where(b) + ": a wrapper such as v: or s: is missing or extra, or a part is in the wrong place. Bitcoin Core refuses it"); }
+  if(!MS_HAS(root.type, "B")) throw msErr("“" + msShort(root.text) + "” is not a whole spending condition on its own (miniscript type B); Bitcoin Core refuses it");
+  if(root.size > max.size) throw msErr("its script is " + root.size + " bytes, more than the " + max.size + " a P2WSH wallet may have; Bitcoin Core refuses it");
+  if(!MS_HAS(root.type, "k")){ const b = msFirstBad(root, x => x.type && !MS_HAS(x.type, "k")); throw msErr("one way to spend needs a block-height lock and a time (date) lock together" + where(b) + ". No transaction can meet both, so that way could never be used; Bitcoin Core refuses it"); }
+  if(!root.desc){   // a miniscript must not name a key twice (descriptor-level multi() is not miniscript and is not checked so)
+    const seen = new Set(); msWalk(root, x => { for(const k of x.key ? [x.key] : x.keys || []){ if(seen.has(k)) throw msErr("the same key is used twice (“" + msShort(k) + "”); Bitcoin Core refuses it. Give the second use its own step, such as /<2;3>/* instead of /<0;1>/*"); seen.add(k); } });
+  }
+  if(!MS_HAS(root.type, "s")) throw msErr("one way to spend needs no signature at all (only a waiting time or a secret), so anyone could take the coins once it opens; Bitcoin Core refuses it");
+  if(!MS_HAS(root.type, "m")) throw msErr("it is malleable: someone could change how a spend is signed without the keys; Bitcoin Core refuses it");
+  if(root.os !== null && root.oc + root.os > max.ops) throw msErr("spending it would need " + (root.oc + root.os) + " opcodes, more than the " + max.ops + " allowed; Bitcoin Core refuses it");
+  if(root.ss !== null && root.ss > max.stack) throw msErr("spending it would need " + root.ss + " witness items, more than the " + max.stack + " allowed; Bitcoin Core refuses it");
+  if(root.ss === null) throw msErr("no way to spend it exists: the coins could never be moved; Bitcoin Core refuses it");
+  return root;
+}
+// The keys of one miniscript (or one key of a descriptor) checked as Core does: a valid key, compressed in SegWit and Taproot, x-only
+// only in Taproot, at most one <a;b> step each (all with the same number of choices), and no two keys that give the same public key at
+// the first address (descriptor.cpp KeyCompare; only inside a miniscript). ctx: "top" (pkh, pk, sh), "wsh" (SegWit) or "tap".
+async function msKeysOk(texts, ctx, dupCheck, paths){
+  const seen = new Map();
+  for(const t of texts){
+    let e; try { e = await b138KeyExpr(t); } catch(err) { throw msErr("the key “" + msShort(t) + "” is not valid: " + err.message); }
+    if(!e) throw msErr("“" + msShort(t) + "” is not a key (an xpub with its [fingerprint/path], or a public key in hex)");
+    if(e.lit && e.pub.length === 65 && ctx !== "top") throw msErr("the key “" + msShort(t) + "” is uncompressed, which SegWit and Taproot do not allow; Bitcoin Core refuses it");
+    if(e.lit && t.replace(/^\[[^\]]*\]/, "").length === 64 && ctx !== "tap") throw msErr("the key “" + msShort(t) + "” is a Taproot (x-only) key of 64 characters; outside tr() a key needs 66 (starting 02 or 03)");
+    const multi = e.steps.filter(s => Array.isArray(s));
+    if(multi.length > 1) throw msErr("the key “" + msShort(t) + "” has more than one <a;b> step; Bitcoin Core refuses it");
+    if(multi.length){ if(paths.n && paths.n !== multi[0].length) throw msErr("the keys’ <a;b> steps have different numbers of choices; Bitcoin Core refuses it"); paths.n = multi[0].length; }
+    if(!dupCheck) continue;
+    let id; try { id = hex(await b138Derive(e, 0, 0)); } catch(err) { id = "text:" + t; }
+    if(seen.has(id)) throw msErr("two keys are the same key at the first address (“" + msShort(seen.get(id)) + "” and “" + msShort(t) + "”); Bitcoin Core refuses it. Give the second use its own step, such as /<2;3>/* instead of /<0;1>/*");
+    seen.set(id, t);
+  }
+}
+function msKeysOf(root){ const out = []; msWalk(root, x => { if(x.key) out.push(x.key); if(x.keys) out.push(...x.keys); }); return out; }
+// The leaves of a Taproot script tree, checked: {A,B} has exactly two parts, at most 128 levels deep.
+function msTapLeaves(t, depth){
+  t = t.trim(); if(depth > 128) throw msErr("the Taproot script tree is more than 128 levels deep");
+  if(t[0] !== "{") return [t];
+  if(t[t.length - 1] !== "}") throw msErr("the braces of the Taproot script tree do not match");
+  const p = msSplitArgs(t.slice(1, -1)); if(p.length !== 2) throw msErr("a branch {A,B} of the Taproot script tree needs exactly two parts");
+  return msTapLeaves(p[0], depth + 1).concat(msTapLeaves(p[1], depth + 1));
+}
+// A whole descriptor (without its checksum), checked once and remembered: {f, parts: [{ctx, root}], ik}. It throws a plain-word
+// error for anything Core refuses. Descriptors it does not take apart (addr(), raw(), combo(), musig() ...) pass with no parts.
+const msDescSeen = new Map();
+function msCheckDesc(body){
+  body = String(body).trim().replace(/#[^#()]*$/, "");
+  if(!msDescSeen.has(body)){ if(msDescSeen.size > 200) msDescSeen.clear(); const p = msCheckDescNow(body); p.catch(() => {}); msDescSeen.set(body, p); }
+  return msDescSeen.get(body);
+}
+async function msCheckDescNow(body){
+  const m = /^([a-z_]+)\((.*)\)$/s.exec(body); if(!m) throw msErr("this is not a descriptor (it should look like wsh(...) or tr(...))");
+  const f = m[1], inner = m[2], parts = [], paths = {n: 0}, out = {f, parts, ik: null};
+  const one = (t) => { if(msSplitArgs(t).length !== 1) throw msErr(f + "() takes one key"); return t.trim(); };
+  const wsh = async (text) => { const root = msTree(text, "wsh"); await msKeysOk(msKeysOf(root), "wsh", !root.desc, paths); parts.push({ctx: "wsh", root}); };
+  if(f === "pk" || f === "pkh") await msKeysOk([one(inner)], "top", false, paths);
+  else if(f === "wpkh") await msKeysOk([one(inner)], "wsh", false, paths);
+  else if(f === "wsh") await wsh(inner);
+  else if(f === "sh"){
+    const im = /^([a-z_]+)\((.*)\)$/s.exec(inner.trim()), g = im ? im[1] : "";
+    if(g === "wpkh") await msKeysOk([one(im[2])], "wsh", false, paths);
+    else if(g === "wsh") await wsh(im[2]);
+    else if(g === "pk" || g === "pkh") await msKeysOk([one(im[2])], "top", false, paths);
+    else if(g === "multi" || g === "sortedmulti"){
+      const a = msSplitArgs(im[2]), keys = a.slice(1).map(x => x.trim()), k = msInt(a[0], "the number k in " + g + "(k, ...)", 1, Infinity);
+      if(!keys.length || keys.length > 20 || k > keys.length) throw msErr(g + "() needs 1 to 20 keys and a number k up to that; Bitcoin Core refuses it");
+      await msKeysOk(keys, "top", false, paths);
+      let size = msNumSize(k) + msNumSize(keys.length) + 1; for(const t of keys){ const e = await b138KeyExpr(t); size += e && e.lit && e.pub.length === 65 ? 66 : 34; }
+      if(size > 520) throw msErr("its script is " + size + " bytes, more than the 520 a P2SH address may have; Bitcoin Core refuses it (use wsh() for more keys)");
+    }
+    else throw msErr("inside sh(), Bitcoin Core reads only wpkh(), wsh(), multi(), sortedmulti(), pk() and pkh(); a miniscript goes in sh(wsh(...)) or wsh(...)");
+  }
+  else if(f === "tr"){
+    const a = msSplitArgs(inner); if(a.length > 2) throw msErr("tr() takes a key and at most one script tree");
+    out.ik = a[0].trim();
+    if(!/^musig\(/.test(out.ik)) await msKeysOk([out.ik], "tap", false, paths);
+    if(a.length === 2) for(const leaf of msTapLeaves(a[1], 0)){ const root = msTree(leaf, "tap"); await msKeysOk(msKeysOf(root), "tap", !root.desc, paths); parts.push({ctx: "tap", root}); }
+  }
+  return out;
 }
 // Every way to satisfy a node, as a list of paths; each path is a list of conditions. Capped, because thresh() can multiply them.
 const MS_MAX_PATHS = 64;
 function msPaths(n){
-  const cross = (A, B) => { const out = []; for(const a of A) for(const b of B){ out.push(a.concat(b)); if(out.length > MS_MAX_PATHS) throw new Error("this wallet has more than " + MS_MAX_PATHS + " ways to spend; too many to list"); } return out; };
+  const cross = (A, B) => { const out = []; for(const a of A) for(const b of B){ out.push(a.concat(b)); if(out.length > MS_MAX_PATHS) throw msErr("this wallet has more than " + MS_MAX_PATHS + " ways to spend; too many to list"); } return out; };
   switch(n.f){
     case "0": return [];
     case "1": return [[]];
-    case "pk": case "key": return [[{t: "key", key: n.key}]];
-    case "multi": return [[{t: "multi", k: n.k, keys: n.keys}]];
+    case "pk_k": case "pk_h": return [[{t: "key", key: n.key}]];
+    case "multi": case "multi_a": return [[{t: "multi", k: n.k, keys: n.keys}]];
     case "older": case "after": return [[{t: n.f, n: n.n}]];
-    case "hash": return [[{t: "hash", kind: n.kind}]];
-    case "and_v": case "and_b": case "and_n": return n.f === "and_n" ? msPaths({f: "andor", args: [n.args[0], n.args[1], {f: "0"}]}) : cross(msPaths(n.args[0]), msPaths(n.args[1]));
-    case "or_b": case "or_c": case "or_d": case "or_i": return msPaths(n.args[0]).concat(msPaths(n.args[1]));
-    case "andor": return cross(msPaths(n.args[0]), msPaths(n.args[1])).concat(msPaths(n.args[2]));
+    case "sha256": case "hash256": case "ripemd160": case "hash160": return [[{t: "hash", kind: n.f}]];
+    case "a": case "s": case "c": case "d": case "v": case "j": case "n": return msPaths(n.subs[0]);
+    case "and_v": case "and_b": return cross(msPaths(n.subs[0]), msPaths(n.subs[1]));
+    case "or_b": case "or_c": case "or_d": case "or_i": return msPaths(n.subs[0]).concat(msPaths(n.subs[1]));
+    case "andor": return cross(msPaths(n.subs[0]), msPaths(n.subs[1])).concat(msPaths(n.subs[2]));
     case "thresh": {
-      const k = parseInt(n.args[0].key || n.args[0].f, 10), subs = n.args.slice(1).map(msPaths); let out = [];
-      if(!Number.isInteger(k) || k < 1 || k > subs.length) throw new Error("thresh() needs a number from 1 to the number of parts");
-      const pick = (i, left, acc) => { if(left === 0){ out = out.concat(acc); if(out.length > MS_MAX_PATHS) throw new Error("too many ways to spend to list"); return; } if(subs.length - i < left) return; pick(i + 1, left - 1, cross(acc, subs[i])); pick(i + 1, left, acc); };
+      const k = n.k, subs = n.subs.map(msPaths); let out = [];
+      const pick = (i, left, acc) => { if(left === 0){ out = out.concat(acc); if(out.length > MS_MAX_PATHS) throw msErr("this wallet has more than " + MS_MAX_PATHS + " ways to spend; too many to list"); return; } if(subs.length - i < left) return; pick(i + 1, left - 1, cross(acc, subs[i])); pick(i + 1, left, acc); };
       pick(0, k, [[]]); return out;
     }
-    default: throw new Error("“" + n.f + "” is not something this page reads");
   }
+  throw msErr("“" + n.f + "” is not something this page reads");
 }
-function msTreeLeaves(t){ t = t.trim(); if(t[0] !== "{") return [t]; const inner = t.slice(1, -1); return msSplitArgs(inner).flatMap(msTreeLeaves); }
-// Waiting times in plain words. older(n): BIP68, a relative lock counted from each deposit; after(n): BIP65, a block or a date.
+// Waiting times in plain words (rough: a block is about 10 minutes). older(n): BIP68 and BIP112, a wait counted from the block that
+// confirmed each coin, so the spend can be in block (that height + n) at the earliest. after(n): BIP65, a block height below
+// 500,000,000 (the spend can be in block n + 1 at the earliest: a locktime must be below the height, as Core's IsFinalTx checks)
+// or else a Unix time that the median time of the last 11 blocks (BIP113, about an hour behind the clock) must pass.
+function msGroup(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+function msPl(n, w){ return msGroup(n) + " " + w + (n === 1 ? "" : "s"); }
+function msDur(sec){
+  const d = sec / 86400;
+  if(sec < 7200) return "about " + msPl(Math.max(1, Math.round(sec / 60)), "minute");
+  if(sec < 79200) return "about " + msPl(Math.round(sec / 3600), "hour");
+  if(d < 60) return "about " + msPl(Math.round(d), "day");
+  if(d < 730) return "about " + msPl(Math.round(d / 30.44), "month");
+  const y = d / 365.25; return "about " + (y < 10 ? String(Math.round(y * 10) / 10) : msGroup(Math.round(y))) + " years" + (y > 100 ? " (in practice, never)" : "");
+}
 function msOlderText(n){
-  if(n & (1 << 22)){ const s = (n & 0xffff) * 512; return "about " + Math.round(s / 86400) + " days (" + (n & 0xffff) + " x 512 seconds) after each deposit"; }
-  const b = n & 0xffff, d = b / 144;
-  return b + " blocks after each deposit (about " + (d >= 60 ? Math.round(d / 30.4) + " months" : Math.round(d) + " days") + ")" + (n > 0xffff ? " [the extra bits above 65535 are ignored by Bitcoin]" : "");
+  const v = n & 0xffff;
+  if(!v) return "with no wait at all (Bitcoin reads older(" + n + ") as 0)";
+  if(n & 0x400000) return msPl(v, "unit") + " of 512 seconds (" + msDur(v * 512) + ") after each deposit confirmed";
+  return msPl(v, "block") + " after each deposit (" + msDur(v * 600) + "; the earliest block is the deposit’s block + " + msGroup(v) + ")";
+}
+// older() values that Bitcoin reads differently from how they look: only the lowest 16 bits and the time flag (bit 22) count (BIP68).
+function msOlderOdd(n){
+  const v = n & 0xffff, extra = (n & ~0x40ffff) >>> 0;
+  if(!extra && v) return null;
+  return "older(" + n + ")" + (extra ? ": Bitcoin reads only its lowest 16 bits and the time flag, so it means older(" + (n & 0x40ffff) + ")" : "") + (v ? "" : (extra ? ", which is" : " is") + " no wait at all: that way to spend is open at once");
 }
 function msAfterText(n, height){
-  if(n >= 500000000) return "from " + new Date(n * 1000).toISOString().slice(0, 10) + " (a fixed date)";
-  if(!height) return "from block " + n + " (a fixed block height; type the current block height to see roughly when)";
-  if(n <= height) return "from block " + n + ", which is already past";
-  const days = (n - height) / 144; return "from block " + n + ", in about " + (days >= 60 ? Math.round(days / 30.4) + " months" : Math.round(days) + " days") + " (from block " + height + ")";
+  if(n >= 500000000) return "after " + new Date(n * 1000).toISOString().slice(0, 16).replace("T", " ") + " UTC (a fixed date; the network’s median time, about an hour behind the clock, must pass it)";
+  const first = "from block " + msGroup(n + 1) + " (after(" + n + "): the first block that can hold the spend)";
+  if(!height) return first + "; type the current block height to see roughly when";
+  if(n <= height) return first + ", which is already past";
+  return first + ", in " + msDur((n + 1 - height) * 600) + ", counting from block " + msGroup(height);
 }
 function msKeyId(k){ const m = /^\[([0-9a-fA-F]{8})/.exec(k); return {fp: m ? m[1].toLowerCase() : null, base: k.replace(/\/(<\d+;\d+>|\d+)\/\*$/, "").replace(/\/\*$/, "")}; }
 async function msExplain(raw, height, phrase, vp){
   const t = String(raw || "").replace(/\s+/g, "");
-  if(!t) return {state: "", text: "Paste the wallet's descriptor first (Liana: Settings, Wallet, the descriptor; Nunchuk: export the wallet configuration)."};
+  if(!t) return {state: "", text: "Paste the wallet’s descriptor first (Liana: Settings, Wallet, the descriptor; Nunchuk: export the wallet configuration)."};
   if(/[xyzYZtuvUV]prv[1-9A-HJ-NP-Za-km-z]{20,}/.test(t)) return {state: "bad", text: "This holds a PRIVATE key (xprv...). Never paste private keys here; use the wallet's public descriptor."};
   const hashAt = t.lastIndexOf("#"), body = hashAt < 0 ? t : t.slice(0, hashAt);
   if(hashAt >= 0 && descriptorChecksum(body) !== t) return {state: "bad", text: "The descriptor's checksum (after #) does not match, so it was changed or mistyped. Use Find a typo in a descriptor first."};
-  let paths, kind, keyPath = null, shut = false;
+  let paths = [], kind, keyPath = null, shut = false;
+  if(/^wsh\(/.test(body)) kind = "P2WSH (bc1q..., long)";
+  else if(/^sh\(wsh\(/.test(body)) kind = "P2SH-P2WSH (3...)";
+  else if(/^tr\(/.test(body)) kind = "Taproot (bc1p...)";
+  else return {state: "bad", text: "This explains wsh(...), sh(wsh(...)) and tr(...) descriptors, as inheritance and recovery wallets use. For a plain single-key or multisig wallet, see Is this seed in my wallet file? in CHECK A BACKUP."};
+  let chk; try { chk = await msCheckDesc(body); } catch(e) { return {state: "bad", text: "This descriptor cannot be used: " + msWhy(e) + "."}; }
   try {
-    let m;
-    if((m = /^wsh\((.*)\)$/s.exec(body))) { kind = "P2WSH (bc1q..., long)"; paths = msPaths(msParse(m[1])); }
-    else if((m = /^sh\(wsh\((.*)\)\)$/s.exec(body))) { kind = "P2SH-P2WSH (3...)"; paths = msPaths(msParse(m[1])); }
-    else if((m = /^tr\((.*)\)$/s.exec(body))) {
-      const parts = msSplitArgs(m[1]); kind = "Taproot (bc1p...)";
-      const ik = parts[0].trim(); shut = await msIsNums(ik); keyPath = shut ? null : ik;   // v2.11.0: an xpub on H (Taproot multisig, Liana, Nunchuk) is shut too
+    if(chk.f === "tr"){
+      const ik = chk.ik; shut = await msIsNums(ik); keyPath = shut ? null : ik;   // v2.11.0: an xpub on H (Taproot multisig, Liana, Nunchuk) is shut too
       paths = keyPath ? [[{t: "key", key: keyPath, keyPath: true}]] : [];
-      if(parts.length > 1) for(const leaf of msTreeLeaves(parts.slice(1).join(","))) paths = paths.concat(msPaths(msParse(leaf)));
-    } else return {state: "bad", text: "This explains wsh(...), sh(wsh(...)) and tr(...) descriptors, as inheritance and recovery wallets use. For a plain single-key or multisig wallet, see Is this seed in my wallet file? in CHECK A BACKUP."};
-  } catch(e) { return {state: "bad", text: "Could not read it: " + e.message + "."}; }
+    }
+    for(const p of chk.parts) paths = paths.concat(msPaths(p.root));
+  } catch(e) { return {state: "bad", text: "Could not list the ways to spend: " + msWhy(e) + "."}; }
   if(!paths.length) return {state: "bad", text: "No way to spend was found in this descriptor: the coins could never be moved. Check that it was copied whole."};
   // name the keys: Key 1, Key 2... (the same key in several places gets the same name)
   const names = new Map(); let fpMine = null;
   const nameOf = k => { const id = msKeyId(k); if(!names.has(id.base)) names.set(id.base, {n: names.size + 1, fp: id.fp}); const x = names.get(id.base); return "Key " + x.n + (x.fp ? " (fingerprint " + x.fp + ")" : ""); };
   if(phrase){ const r = await checkPhrase(phrase); if(r.ok) fpMine = await fingerprintFromSeed(await mnemonicToSeed(r.mnemonic, vp || "")); }
+  const odd = [];
   const lines = paths.map((p, i) => {
     const keys = [], waits = [], hashes = [];
     for(const c of p){
       if(c.t === "key") keys.push(nameOf(c.key) + (c.keyPath ? " alone, through the Taproot key path (if it is a real key: some wallets, such as Liana, put a key here that nobody can use; the wallet that made it can tell you)" : ""));
       else if(c.t === "multi") keys.push(c.k + " of " + c.keys.map(nameOf).join(", "));
-      else if(c.t === "older") waits.push(msOlderText(c.n));
+      else if(c.t === "older"){ waits.push(msOlderText(c.n)); const o = msOlderOdd(c.n); if(o && !odd.includes(o)) odd.push(o); }
       else if(c.t === "after") waits.push(msAfterText(c.n, height));
       else if(c.t === "hash") hashes.push("a secret (" + c.kind + " preimage)");
     }
@@ -13314,17 +13577,28 @@ async function msExplain(raw, height, phrase, vp){
   });
   const keyList = [...names.entries()].map(([b, x]) => "Key " + x.n + ": " + (x.fp ? "fingerprint " + x.fp : "no fingerprint given") + (fpMine && x.fp === fpMine ? "  ← made by the words typed in CHECK A BACKUP" : ""));
   const relative = paths.some(p => p.some(c => c.t === "older")), fixed = paths.some(p => p.some(c => c.t === "after"));
-  return {state: "ok", text: "This " + kind + " wallet can be spent in " + paths.length + " way" + (paths.length === 1 ? "" : "s") + ":\n" + lines.join("\n") + "\n\n" + keyList.join("\n") + (relative ? "\n\nA waiting time “after each deposit” starts again whenever coins are moved: sending them to a new address of the same wallet before the time is up keeps the later paths closed (Liana calls this refreshing the coins)." : "") + (fixed ? "\n\nA fixed block or date does not restart: once it has passed, that path stays open for good." : "") + (paths.some(p => p.some(c => c.t === "hash")) ? "\n\nA path that needs a secret (a hash preimage) can only be used by someone who knows that secret." : "") + (shut ? "\n\nNobody can spend with the Taproot internal key alone: it is BIP341's unspendable point H (or an extended key built on it), so every spend uses one of the ways above." : "")};
+  return {state: odd.length ? "bad" : "ok", text: (odd.length ? "WARNING: " + odd.join("; ") + ". The wait you see is not the wait Bitcoin applies.\n\n" : "") + "This " + kind + " wallet can be spent in " + paths.length + " way" + (paths.length === 1 ? "" : "s") + ":\n" + lines.join("\n") + "\n\n" + keyList.join("\n") + (relative ? "\n\nA waiting time “after each deposit” starts again whenever coins are moved: sending them to a new address of the same wallet before the time is up keeps the later paths closed (Liana calls this refreshing the coins)." : "") + (fixed ? "\n\nA fixed block or date does not restart: once it has passed, that path stays open for good." : "") + (paths.some(p => p.some(c => c.t === "hash")) ? "\n\nA path that needs a secret (a hash preimage) can only be used by someone who knows that secret." : "") + (shut ? "\n\nNobody can spend with the Taproot internal key alone: it is BIP341's unspendable point H (or an extended key built on it), so every spend uses one of the ways above." : "")};
 }
 let msxRun = 0;
 function msxWipe(){ msxRun++; const st = document.getElementById("msxStatus"); st.textContent = ""; st.className = "status"; }   // review: the result belongs to the inputs that made it
 async function msExplainUi(){
   if(!gateOk()) return;   // review: it works out fingerprints from the words typed above
-  const run = ++msxRun, st = document.getElementById("msxStatus"), h = document.getElementById("msxHeight").value.trim();
-  if(h && !/^\d{1,8}$/.test(h)){ st.className = "status bad"; st.textContent = "The block height is a whole number, such as 925000."; return; }
+  const run = ++msxRun, st = document.getElementById("msxStatus"), h = msHeight(document.getElementById("msxHeight").value);
+  if(h.err){ st.className = "status bad"; st.textContent = h.err; return; }
   st.className = "status"; st.textContent = "Reading...";
-  try { const r = await msExplain(document.getElementById("msxIn").value, h ? parseInt(h, 10) : null, document.getElementById("phrase").value, document.getElementById("verifyPass").value); if(run !== msxRun) return; st.className = "status " + r.state; st.textContent = r.text; }
-  catch(e) { if(run !== msxRun) return; st.className = "status bad"; st.textContent = "Could not read it: " + e.message; }
+  try { const r = await msExplain(document.getElementById("msxIn").value, h.v, document.getElementById("phrase").value, document.getElementById("verifyPass").value); if(run !== msxRun) return; st.className = "status " + r.state; st.textContent = r.text + (h.warn && r.state ? "\n\nNOTE: " + h.warn : ""); }
+  catch(e) { if(run !== msxRun) return; st.className = "status bad"; st.textContent = "Could not read it: " + msWhy(e) + "."; }
+}
+// v2.18.0: a typed current block height: whole digits and above 0 (block 0 is the first block, from 2009), with a warning when it is far
+// beyond what the chain can have reached by this computer's date (a block about every 10 minutes since 3 January 2009; blocks have in
+// fact come a little faster, hence the wide margin).
+function msHeight(t){
+  t = String(t == null ? "" : t).trim(); if(!t) return {v: null, warn: ""};
+  if(!/^\d{1,9}$/.test(t)) return {err: "The block height is a whole number, such as 925000."};
+  const v = parseInt(t, 10);
+  if(v < 1) return {err: "Block 0 is Bitcoin’s first block, from 2009. Type the current block height, such as 925000 (any block explorer or your wallet app shows it)."};
+  const est = Math.round((Date.now() / 1000 - 1231006505) / 600);
+  return {v, warn: v > est * 1.25 + 1000 ? "block " + msGroup(v) + " is far beyond the height Bitcoin can have reached by your computer’s date (roughly " + msGroup(est) + "). Check the number: the times above use it as typed." : ""};
 }
 function clearMsx(){ msxRun++; document.getElementById("msxIn").value = ""; document.getElementById("msxHeight").value = ""; const st = document.getElementById("msxStatus"); st.textContent = ""; st.className = "status"; }
 function clearReuse(){ document.getElementById("reuseIn").value = ""; const st = document.getElementById("reuseStatus"); st.textContent = ""; st.className = "status"; }
@@ -13850,7 +14124,7 @@ async function b138Ms(src, ctx, K){
   else if(s === "1") sc = [0x51];
   else if(!m) throw new Error("“" + s.slice(0, 24) + "” is not something this page reads");
   else {
-    const f = m[1], a = msSplitArgs(m[2]), sub = (i) => b138Ms(a[i], ctx, K), num = (i) => { const v = Number(a[i]); if(!Number.isInteger(v) || v < 0 || v > 0xffffffff) throw new Error(f + "() needs a whole number"); return v; };
+    const f = m[1], a = msSplitArgs(m[2]), sub = (i) => b138Ms(a[i], ctx, K), num = (i) => msInt(a[i], "the number in " + f + "()", 0, 2147483647);   // v2.18.0: plain digits only (msCheckDesc has already checked the ranges)
     const hashArg = (i, n) => { const h = a[i].trim(); if(!new RegExp("^[0-9a-fA-F]{" + 2 * n + "}$").test(h)) throw new Error(f + "() needs " + n + " bytes in hex"); return fromHex(h.toLowerCase()); };
     switch(f){
       case "pk_k": sc = [await K(a[0])]; break;
@@ -13933,6 +14207,7 @@ async function b138Net(desc){
 async function b138Address(desc, branch, index, net){
   const body = desc.trim().replace(/#[^#()]*$/, ""), N = NETS[net], m = /^([a-z]+)\((.*)\)$/s.exec(body);
   if(!m) throw new Error("this is not a descriptor");
+  await msCheckDesc(body);   // v2.18.0: no address for a descriptor Bitcoin Core refuses (no wallet could import it)
   const memo = new Map();
   const K = (ctx) => async (t) => {
     const key = t.trim(); if(!memo.has(key)){ const e = await b138KeyExpr(key); if(!e) throw new Error("“" + key.slice(0, 16) + "…” is not a key"); memo.set(key, await b138Derive(e, branch, index)); }
