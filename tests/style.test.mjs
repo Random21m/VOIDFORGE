@@ -77,7 +77,7 @@ const panelOf = (b, box, want) => { for (let p = b.parentElement; p && p !== box
 // gold button of its own panel (an element whose id ends in "Block"), or one of these, each in its own place ("" = anywhere in the card)
 const CARD_GOLD = {
   cardGen: { "FORGE SEED": "genRight", "NEXT →": "guidePanel", "ADD THIS KEY & WIPE THE SEED": "msBanner" },
-  cardCheck: { "VERIFY": "", "CHECK ADDRESS": "", "TRY ACCOUNTS 0 TO 20": "" },
+  cardCheck: { "VERIFY": "", "CHECK ADDRESS": "" },   // v2.18.0: TRY ACCOUNTS 0 TO 20 is gray, next to the gold CHECK ADDRESS (one gold per row)
 };
 {
   const bad = [], cards = [...d.querySelectorAll(".card")].filter((c) => TABS.some((t) => c.closest("#" + t)));
@@ -95,6 +95,12 @@ const CARD_GOLD = {
     for (const k of Object.keys(listed)) if (seen[k] !== 1) bad.push(c.id + ": " + k + " found " + (seen[k] || 0) + " times");
   }
   check("the cards: every gold button outside a tool box is the one main action of its panel (" + cards.length + " cards)", cards.length >= 3 && bad.length === 0, bad.join(" | "));
+}
+
+// ---- v2.18.0: a button row never shows two gold buttons side by side (the review found CHECK ADDRESS and TRY ACCOUNTS together)
+{
+  const bad = [...d.querySelectorAll(".btn-row")].filter((r) => TABS.some((t) => r.closest("#" + t)) && [...r.querySelectorAll(":scope > button")].filter(gold).length > 1);
+  check("one gold button per button row (" + d.querySelectorAll(".btn-row").length + " rows)", bad.length === 0, bad.map((r) => [...r.querySelectorAll(":scope > button")].filter(gold).map(label).join(" + ")).join(" | "));
 }
 
 // ---- every tool box has its one-line hint in the summary

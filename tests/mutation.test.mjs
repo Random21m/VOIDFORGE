@@ -3558,8 +3558,9 @@ async function probe(w, mutated, fast, only, hooks) {
     }
     { // main-action buttons are the primary cyan style, helper buttons stay gray secondary (v1.27.3)
       const doc = w.document;
-      const mains = ['drillStart', 'prStart', 'prCheckBtn', 'checkAddrBtn', 'checkAcctsBtn', 'reforgeWordsBtn', 'psbtBtn', 'cmpBtn', 'childBtn', 'forgeBtn', 'wpBtn', 'reuseBtn', 'sigBtn'];
+      const mains = ['drillStart', 'prStart', 'prCheckBtn', 'checkAddrBtn', 'reforgeWordsBtn', 'psbtBtn', 'cmpBtn', 'childBtn', 'forgeBtn', 'wpBtn', 'reuseBtn', 'sigBtn'];
       if (mains.some((id) => { const b = doc.getElementById(id); return !b || b.classList.contains('secondary'); })) fails.push('buttons: every main action button is primary cyan, not secondary');
+      if (!doc.getElementById('checkAcctsBtn').classList.contains('secondary')) fails.push('buttons: TRY ACCOUNTS 0 TO 20 is gray next to the gold CHECK ADDRESS (v2.18.0: one gold per row)');
       const helpers = [...doc.querySelectorAll('button')].filter((b) => /^(COPY|SHOW QR|HIDE|PRINT|UNDO)/i.test(b.textContent.trim()));
       if (helpers.length < 10 || !helpers.every((b) => b.classList.contains('secondary') || b.classList.contains('btn-clear') || b.classList.contains('print-btn'))) fails.push('buttons: small helper buttons stay gray secondary (or the same-grey print-btn/theme-toggle style)');
     }
