@@ -43,7 +43,7 @@ const w = loadPage(readHtml());
 ok(w.document.getElementById('wdatBtn').disabled, 'gate: READ WALLET FILE is off until the self-test passes');
 await ready(w);
 const $ = (id) => w.document.getElementById(id), sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-ok(/SELF-TEST PASSED \(155\/155\)/.test($('selfTestBadge').textContent) && !$('wdatBtn').disabled, 'self-test: passes 155/155, and READ WALLET FILE is on after it');
+ok(/SELF-TEST PASSED \(158\/158\)/.test($('selfTestBadge').textContent) && !$('wdatBtn').disabled, 'self-test: passes 158/158, and READ WALLET FILE is on after it');
 const unlock = (wl, pw, stop) => w.wdatUnlock(wl, pw, async () => {}, stop || (() => false));
 const fail = async (b) => { try { await w.wdatRead(b); return null; } catch (e) { return e; } };
 

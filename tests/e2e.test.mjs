@@ -27,6 +27,7 @@
 //     new:practice-backup-own-words, new:practice-passphrase-own-words, new:practice-wallet-own-words
 //                  Practice making a backup, Practice your passphrase and OPEN A PRACTICE WALLET take the person's own words
 //   v2.17.0 (E2E_GROUPS=new217): new217:load-online, new217:own-psbt, new217:fixes (see their notes below)
+//   v2.18.0 (E2E_GROUPS=new218): new218:extra-life, new218:polish (see their notes below)
 // Every wait polls the page's state with a generous limit (no fixed sleeps), so a busy machine makes the run slower, not flaky.
 // Run: node tests/e2e.test.mjs     (E2E_VIEWS=phone or desktop; E2E_GROUPS=make:dice,check to run some, E2E_GROUPS=new for the
 // NEW in v2.16.1 groups only, E2E_GROUPS=make for every method; E2E_SKIP_NEW=1 leaves the NEW groups out)
@@ -876,10 +877,70 @@ G['new217:fixes'] = async (t, h) => {
   t(note, 'with the practice signer switched off, the note under YOUR SEED no longer says it loads the seed');
   noErrors(t, h, 'review fixes');
 };
+// ================================================================ v2.18.0 (E2E_GROUPS=new218)
+// new218:extra-life  a person makes an Extra Life heir wallet by hand: the owner's and the heir's words typed in CHECK A BACKUP,
+//                    USE THE WORDS IN CHECK A BACKUP for each (the words are wiped there), the current block height, MAKE THE EXTRA
+//                    LIFE WALLET; the descriptor is the one @scure/bip32 gives (origins, /<0;1>/*, older(52560)), with its plain-
+//                    words reading; no address until the descriptor is typed back with its checksum; then the 10 receive addresses
+//                    are P2WSH addresses of the same script built by @scure/btc-signer; gold and gray buttons; no sideways scroll
+// new218:polish      at 320 px wide: no sideways scroll with the Damascus tab, Seed XOR and CHECK A BACKUP's boxes open, the Damascus
+//                    step labels whole; the start notice keeps the keyboard inside it and Escape does not close it
+G['new218:extra-life'] = async (t, h) => {
+  const { p } = h, OW = 'abandon '.repeat(11) + 'about', HW = 'legal winner thank year wave sausage worth useful legal winner thank yellow';
+  const kO = rootOf(OW).derive("m/48'/0'/0'/2'"), kH = rootOf(HW).derive("m/48'/0'/0'/2'");
+  const fromWords = async (words, who) => {
+    if (!await toTab(t, h, 'check', 'Extra Life ' + who)) return false;
+    const ph = p.locator('#phrase'); await ph.scrollIntoViewIfNeeded(); await ph.fill(words);
+    if (!await toTab(t, h, 'tools', 'Extra Life ' + who)) return false;
+    if (!await p.evaluate(() => document.getElementById('xlBox').open)) { const s = p.locator('#xlBox > summary'); await s.scrollIntoViewIfNeeded(); await press(h, s); }
+    const b = p.locator(who === 'owner' ? '#xlOwnerWords' : '#xlHeirWords'); await b.scrollIntoViewIfNeeded(); await press(h, b);
+    return until(() => p.evaluate((who) => document.getElementById(who === 'owner' ? 'xlOwner' : 'xlHeir').value.length > 100 && document.getElementById('phrase').value === '', who), 30000);
+  };
+  t(await fromWords(OW, 'owner'), 'the owner\'s words fill the owner\'s key line and are wiped from CHECK A BACKUP');
+  t(await fromWords(HW, 'heir'), 'the heir\'s words fill the heir\'s key line and are wiped from CHECK A BACKUP');
+  const now = p.locator('#xlNow'); await now.scrollIntoViewIfNeeded(); await now.fill('975000');
+  const btn = p.locator('#xlBtn'); await btn.scrollIntoViewIfNeeded();
+  const look = await p.evaluate(() => { const g = getComputedStyle(document.getElementById('xlBtn')).backgroundColor, w1 = getComputedStyle(document.getElementById('xlOwnerWords')).backgroundColor, f = getComputedStyle(document.getElementById('forgeBtn')).backgroundColor; return { gold: g === f, gray: w1 !== f, h: Math.round(document.getElementById('xlOwnerWords').getBoundingClientRect().height) }; });
+  t(look.gold && look.gray && look.h >= 24, 'MAKE THE EXTRA LIFE WALLET is gold, USE THE WORDS gray and at least 24 px tall (' + JSON.stringify(look) + ')');
+  await press(h, btn);
+  const desc = await until(() => p.evaluate(() => document.getElementById('xlDone').style.display !== 'none' && document.getElementById('xlDesc').textContent), 60000);
+  const body = `wsh(or_d(pk([73c5da0a/48h/0h/0h/2h]${kO.publicExtendedKey}/<0;1>/*),and_v(v:pkh([b8688df1/48h/0h/0h/2h]${kH.publicExtendedKey}/<0;1>/*),older(52560))))`;
+  t(typeof desc === 'string' && desc.startsWith(body + '#') && desc.length === body.length + 9, 'the descriptor is wsh(or_d(pk(OWNER),and_v(v:pkh(HEIR),older(52560)))) with origins, /<0;1>/* and a checksum, keys as @scure/bip32 gives them');
+  const plain = await p.textContent('#xlPlain'); t(/2\. Key 2 \(fingerprint b8688df1\), but only 52,560 blocks after each deposit/.test(plain), 'the plain-words reading names the heir\'s key and the wait');
+  t(await p.evaluate(() => document.getElementById('xlUse').style.display === 'none'), 'no address shows before the backup test');
+  const ti = p.locator('#xlTestIn'); await ti.scrollIntoViewIfNeeded(); await ti.fill(String(desc)); await press(h, p.locator('#xlTestBtn'));
+  const addrs = await until(() => p.evaluate(() => { const l = [...document.querySelectorAll('#xlAddrs li')].map((x) => x.textContent); return l.length === 10 ? l : null; }), 30000);
+  const h160 = (b) => createHash('ripemd160').update(createHash('sha256').update(b).digest()).digest();
+  const sc = (i) => btc.Script.encode([kO.deriveChild(0).deriveChild(i).publicKey, 'CHECKSIG', 'IFDUP', 'NOTIF', 'DUP', 'HASH160', h160(kH.deriveChild(0).deriveChild(i).publicKey), 'EQUALVERIFY', 'CHECKSIGVERIFY', btc.ScriptNum().encode(52560n), 'CHECKSEQUENCEVERIFY', 'ENDIF']);
+  t(!!addrs && addrs.every((a, i) => a === btc.p2wsh({ type: 'unknown', script: sc(i) }).address), 'after the backup test the 10 receive addresses are P2WSH addresses of the same script built by @scure/btc-signer');
+  const sw = await p.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+  t(sw[0] <= sw[1], 'no sideways scroll (' + sw.join(' / ') + ')');
+  noErrors(t, h, 'Extra Life');
+};
+G['new218:polish'] = async (t, h) => {
+  const { p } = h;
+  await p.setViewportSize({ width: 320, height: 640 });
+  const wide = () => p.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+  await toMethod(h, 'mt-damascus'); await p.evaluate(() => { for (const d of document.querySelectorAll('#tp-make details')) d.open = true; }); await sleep(300);
+  let s = await wide(); t(s[0] <= s[1], '320 px, Damascus with every box open: no sideways scroll (' + s.join(' / ') + ')');
+  const cut = await p.evaluate(() => [...document.querySelectorAll('#dmFBar button')].filter((b) => b.scrollWidth > b.clientWidth + 1).map((b) => b.textContent));
+  t(cut.length === 0, '320 px: the Damascus step labels are whole (' + cut.join(', ') + ')');
+  if (await toTab(t, h, 'tools', 'polish')) { await p.evaluate(() => { for (const d of document.querySelectorAll('#tp-tools details')) d.open = true; }); await sleep(300); s = await wide(); t(s[0] <= s[1], '320 px, EXTRA TOOLS with every box open (Seed XOR, Extra Life): no sideways scroll (' + s.join(' / ') + ')'); }
+  if (await toTab(t, h, 'check', 'polish')) { await p.evaluate(() => { for (const d of document.querySelectorAll('#tp-check details')) d.open = true; }); await sleep(300); s = await wide(); t(s[0] <= s[1], '320 px, CHECK A BACKUP with every box open: no sideways scroll (' + s.join(' / ') + ')'); }
+  // the start notice, in a fresh page: the keyboard stays inside, Escape does not close it
+  const q = await h.p.context().newPage(); await q.goto(FILE); await q.waitForFunction(() => /PASSED/.test((document.getElementById('selfTestBadge') || {}).textContent || ''), null, { timeout: 180000 });
+  const inside = []; for (let i = 0; i < 6; i++) { await q.keyboard.press(i % 3 === 2 ? 'Shift+Tab' : 'Tab'); inside.push(await q.evaluate(() => document.getElementById('startGate').contains(document.activeElement))); }
+  t(inside.every(Boolean), 'the start notice keeps Tab and Shift+Tab inside it (' + inside.join(',') + ')');
+  await q.keyboard.press('Escape'); t(await q.evaluate(() => !!document.getElementById('startGate') && document.activeElement.id === 'sgGo'), 'Escape does not close the start notice; it moves to its button');
+  await q.keyboard.press('Enter'); t(await until(() => q.evaluate(() => !document.getElementById('startGate')), 10000), 'Enter on the button closes it');
+  await q.close();
+  noErrors(t, h, 'polish');
+};
+
 // ================================================================ run
 const ORDER = ['make:dice', 'make:coin', 'make:words', 'make:cards', 'make:hex', 'make:damascus', 'make:dice24', 'followups', 'check', 'signer',
   'new:damascus-practice-sheet', 'new:damascus-guided-practice', 'new:damascus-worked-example', 'new:load-own-seed', 'new:load-practice-seed',
-  'new:practice-backup-own-words', 'new:practice-passphrase-own-words', 'new:practice-wallet-own-words', 'new217:load-online', 'new217:own-psbt', 'new217:fixes'];
+  'new:practice-backup-own-words', 'new:practice-passphrase-own-words', 'new:practice-wallet-own-words', 'new217:load-online', 'new217:own-psbt', 'new217:fixes', 'new218:extra-life', 'new218:polish'];
 const pick = process.env.E2E_GROUPS ? process.env.E2E_GROUPS.split(',') : null;   // a group's name, or the part before its colon (new, make)
 const wantGroups = ORDER.filter((g) => (!pick || pick.some((e) => g === e || g.startsWith(e + ':'))) && !(process.env.E2E_SKIP_NEW && NEW(g)));
 const wantViews = process.env.E2E_VIEWS ? process.env.E2E_VIEWS.split(',') : Object.keys(VIEWS);

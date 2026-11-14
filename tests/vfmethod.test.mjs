@@ -40,7 +40,7 @@ function check(name, ok, detail){
 const N = +(process.env.VF_RANDOM || 1000);   // random sheets per length
 const w = await ready(loadPage(readHtml()));
 const $ = (id) => w.document.getElementById(id);
-check("the page self-test passes 155/155 (141, 6 from v2.15.0 and 8 from v2.16.0)", /SELF-TEST PASSED \(155\/155\)/.test($("selfTestBadge").textContent), $("selfTestBadge").textContent);
+check("the page self-test passes 158/158 (141, 6 from v2.15.0, 8 from v2.16.0 and 3 from v2.18.0)", /SELF-TEST PASSED \(158\/158\)/.test($("selfTestBadge").textContent), $("selfTestBadge").textContent);
 
 // ---------- helpers
 // Seeded draws for the checks whose rare cases must replay: SHA-256 of "<name> seed <SEED> block k", 32-bit numbers, rejection.

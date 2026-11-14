@@ -288,6 +288,19 @@ for (const [m, n] of [[2, 3], [3, 5], [4, 7], [5, 8], [6, 9], [15, 15]]) {
   await sheet('Taproot multisig ' + m + '-of-' + n, () => msPrint());
 }
 await p.evaluate(() => msReset());   // practice mode (8b) can only change with no multisig wallet open
+// v2.18.0: the Extra Life sheet (the descriptor with its QR code, the owner's duty, the heir's four things, 10 + 10 addresses), for
+// older() and for after(), with the warnings of a public seed and the same seed
+for (const [clock, v, same] of [['older', '52560', false], ['older', '1000', true], ['height', '1030000', false], ['date', '2030-06-01', false]]) {
+  await p.evaluate(async ([clock, v, same, o, h]) => { xlReset(); document.getElementById('xlOwner').value = o; document.getElementById('xlHeir').value = same ? o : h; document.getElementById('xlNow').value = '975000';
+    document.getElementById('xlClock').value = clock; document.getElementById(clock === 'older' ? 'xlBlocks' : clock === 'height' ? 'xlAfterH' : 'xlAfterD').value = v; await xlMake(); }, [clock, v, same, '[' + cos[0].fp + '/48h/0h/0h/2h]' + cos[0].xpub, '[' + cos[1].fp + '/48h/0h/0h/2h]' + cos[1].xpub]);
+  ok(await p.evaluate(() => !!xl), 'Extra Life ' + clock + ' ' + v + (same ? ', same seed' : '') + ': made');
+  await sheet('Extra Life sheet, ' + clock + ' ' + v + (same ? ', same seed' : ''), () => xlPrint());
+}
+await p.evaluate(() => xlReset());
+// v2.18.0: the heir's steps and the executor letter for a timelocked wallet (an Extra Life heir key)
+await p.evaluate(() => { document.getElementById('plKind').value = 'xl'; document.getElementById('plWait').value = ('Qwz plk dvn tyx ').repeat(10).slice(0, 80); });
+for (const k of ['letter', 'heir']) await sheet('inheritance: ' + k + ', timelocked heir key', (k) => printInherit(k), k);
+await p.evaluate(() => { document.getElementById('plKind').value = 'words'; document.getElementById('plWait').value = ''; });
 
 // 7. Light theme, and the CHECK A BACKUP sheets with a passphrase.
 await p.evaluate(() => toggleTheme());
