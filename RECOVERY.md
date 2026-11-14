@@ -21,7 +21,7 @@ Never store the words as a photo, text, email, cloud note or password-manager en
 
 **The right words, but the wallet shows zero (v2.8.0).** Often the app is looking in a different place: another address type, account or derivation path, a passphrase that was or was not used, or an Electrum seed (not BIP39). In *Check a backup*, type the words (and passphrase), then one address you know the wallet received to, and press FIND MY WALLET in *My wallet shows zero: Wallet Detective*. It names the apps that use the matching settings and the steps to open it. Without an address, LIST FIRST ADDRESSES shows the first address of each common setting to look up on another device. Some wallets cannot be opened from their words with standard settings at all: Muun, Bitkey, Blockstream Green's two-factor accounts and Lightning wallets; use that app's own recovery. SLIP39 shares (20 or 33 words, newer Trezor devices) restore with a Trezor.
 
-**For family: I found a Bitcoin backup (v2.8.0).** Press I FOUND A BITCOIN BACKUP under the title for calm, step-by-step help. Nobody genuine will ever ask for the words.
+**For family: I found a Bitcoin backup (v2.8.0).** Press I FOUND A BITCOIN BACKUP under the title for calm, step-by-step help. Nobody genuine will ever ask for the words. If you also found a long line that starts with `wsh(` and has `older(` or `after(` in it, or a .bip138 file, it is a timelocked wallet: see *Extra Life* below (v2.18.0).
 
 **Check-up once a year.** Find each copy, type the words into *Check a backup* on an offline computer (or do the Restore drill), and check that the master fingerprint (with the passphrase, if you use one) still matches. Then press END SESSION.
 
@@ -89,6 +89,25 @@ A multisig wallet made with VOIDFORGE needs two things to be recovered: **M of t
 3. To spend, each signer uses its own seed in a signing device or wallet; VOIDFORGE's tools do not sign. Only its Practice signer signs, and it is for practice only: never give it a real seed.
 
 Key origin used: `m/48'/0'/<account>'/2'` for native SegWit (P2WSH) or `.../1'` for nested SegWit (P2SH-P2WSH); testnet uses `1'` instead of `0'`.
+
+## Extra Life: a timelocked key for your heir (v2.18.0)
+
+*Extra Life* (EXTRA TOOLS, MULTISIG WALLET card) makes one wallet with two ways to spend: **your key, at any time**, or **your heir's own key, but only after a wait**. Its descriptor is `wsh(or_d(pk(OWNER),and_v(v:pkh(HEIR),older(N))))` for a wait after each deposit, or the same with `after(N)` for a fixed block height or date, each key with its origin `[fingerprint/48h/0h/0h/2h]` and `/<0;1>/*`, and the checksum after `#`.
+
+**For the owner.**
+- With `older(N)`, the heir's key opens for each coin N blocks after the block that confirmed it: the earliest block the heir's spend can be in is that block + N (BIP68, BIP112). Every deposit, and the change of every payment, has its own clock. Move or refresh every coin before its wait ends (send it to a new address of the same wallet); the *Move or refresh by* list gives a rough date per deposit at about 144 blocks a day.
+- The wait is 1 to 65,535 blocks (about 455 days at most). A bigger number would be read by Bitcoin as a different, shorter wait, so VOIDFORGE refuses it. For longer, use a fixed block or date.
+- With `after(N)`, a block height N opens in block N + 1, and a date opens once the median time of the last 11 blocks (about an hour behind the clock) passes it (BIP65, BIP113). A fixed block or date never restarts: once it passes, the heir can spend for good, so move the coins to a new Extra Life wallet before then.
+- Give your heir a seed of their own. With the same seed for both keys, whoever has the words can spend at once and the wait adds nothing; VOIDFORGE warns about it.
+- **The descriptor is not a secret key, but losing it loses the coins**: the heir's words alone cannot find the wallet. Anyone who holds it sees every address and the balance. Print the Extra Life sheet, save the encrypted .bip138 file (it opens with your key or the heir's), and pass the backup check (type the descriptor back, checksum included) before you send any money: the addresses show only after that.
+
+**For the heir.** You need four things:
+1. Your own words (the heir's key). In an ordinary wallet app they open an **empty** wallet.
+2. The wallet's descriptor, from the Extra Life sheet or the .bip138 file (open it in *Check a backup*, *Open an encrypted descriptor backup*, with your words).
+3. The wait, as the sheet says. *Explain an inheritance or timelock wallet* (EXTRA TOOLS) names your key and the wait.
+4. A wallet that can spend a timelocked (miniscript) wallet with your key: Bitcoin Core (a descriptor wallet; import the descriptor with your private key in place of your xpub) or Liana. VOIDFORGE checked Bitcoin Core 32.1 on regtest. VOIDFORGE's practice signer cannot sign it (it works like a SeedSigner, which signs only single-key and plain multisig coins).
+
+The recovery spend must be transaction version 2 or more and carry the wait: a sequence (nSequence) of N on every input for `older(N)`, or a locktime (nLockTime) of N with a non-final sequence for `after(N)`. A miniscript wallet does this for you; *Inspect a transaction* shows whether a spend meets the wait. Before real money, practice the whole thing on testnet or regtest: make the wallet, fund it, wait out a short wait, and spend with the heir's key alone.
 
 ## Bitcoin Core watch-only import and Silent Payment addresses (v1.21.0)
 
