@@ -2570,7 +2570,8 @@ document.addEventListener("DOMContentLoaded", function(){ if(!document.body.clas
         <div class="ms-why">
           <div class="ms-why-i"><b>What it is.</b> One wallet with two keys and two ways to spend: <b>your key, at any time</b>, or <b>your heir&rsquo;s key, but only after a wait</b>. Your heir never holds your words, and cannot touch the coins while you keep them moving.</div>
           <div class="ms-why-i"><b>Your duty.</b> With a wait after each deposit, the heir&rsquo;s key opens for each coin once that coin has sat still for the wait. Moving a coin to a new address of the same wallet (a refresh) starts its wait again. With a fixed date or block, the heir&rsquo;s key opens for good on that day.</div>
-          <div class="ms-why-i"><b>What the heir needs.</b> Their own words, this wallet&rsquo;s descriptor (printed, and as a .bip138 file), the wait, and a wallet that can spend a timelocked (miniscript) wallet. Their words alone open an empty wallet in an ordinary app.</div>
+          <div class="ms-why-i"><b>What the heir needs.</b> Their own words, this wallet&rsquo;s descriptor (printed, and as a .bip138 file), the wait, and a wallet that can spend a timelocked (miniscript) wallet, such as Bitcoin Core or Liana. Their words alone open an empty wallet in an ordinary app.</div>
+          <div class="ms-why-i"><b>Its kind.</b> A native SegWit (P2WSH, bc1q...) wallet, the shape Liana uses. VOIDFORGE does not make a Taproot one: few signers can spend Taproot miniscript yet (the explainer reads both). This page&rsquo;s practice signer cannot sign it either, as a SeedSigner cannot.</div>
         </div>
         <p class="hint" style="margin:8px 0 6px;">Paste each key as the whole line a wallet or device exports for a multisig or miniscript wallet: <code>[fingerprint/48h/0h/0h/2h]xpub...</code>. Or type that person&rsquo;s words in CHECK A BACKUP and press USE THE WORDS IN CHECK A BACKUP: only the public key is kept, and the words are wiped from CHECK A BACKUP afterwards. Never paste a private key or seed words here.</p>
         <label for="xlOwner" class="xl-l">Your key (the owner, spends at any time)</label>
@@ -14723,6 +14724,7 @@ async function b138Make(raw, rolls){
   if(await descriptorHasSecret(t)) throw new Error("This holds a PRIVATE key. A BIP138 backup must hold only public keys: use the wallet's public descriptor.");
   const hashAt = t.lastIndexOf("#"), body = hashAt < 0 ? t : t.slice(0, hashAt);
   if(hashAt >= 0 && descriptorChecksum(body) !== t) throw new Error("The descriptor's checksum (after #) does not match, so it was changed or mistyped. Use Find a typo in a descriptor (EXTRA TOOLS) first.");
+  try { await msCheckDesc(body); } catch(e) { throw new Error("This descriptor cannot be used: " + msWhy(e) + ". No wallet could import it, so a backup of it would not help; check it with Explain an inheritance or timelock wallet first."); }   // v2.18.0
   const desc = descriptorChecksum(body), r = await b138Recipients([desc]);
   if(!r.keys.length) throw new Error("No key of this descriptor can lock a BIP138 backup: each one shows on the blockchain or is unspendable." + (r.notes.length ? "\n" + r.notes.join("\n") : ""));
   const R = String(rolls || "").replace(/\s+/g, "");
@@ -18341,7 +18343,7 @@ function startGateClose(){
 // v2.18.0: the notice is a modal dialog. Tab and Shift+Tab stay inside it, and focus that lands behind it comes back to its button.
 // It is an acknowledgement, so Escape does not close it: Escape moves to the button, which does.
 function startGateOpen(){ const g = document.getElementById("startGate"); return !!g && !document.body.classList.contains("sg-skip") && g.style.display !== "none"; }
-function startGateGo(){ const go = document.getElementById("sgGo"); if(go) go.focus({preventScroll: true}); }
+function startGateGo(){ const b = document.getElementById("sgGo"); if(b) b.focus({preventScroll: true}); }
 document.addEventListener("keydown", (e) => {
   if(!startGateOpen()) return;
   if(e.key === "Escape"){ e.preventDefault(); startGateGo(); return; }
