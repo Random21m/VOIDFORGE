@@ -13783,14 +13783,15 @@ function msMake(f, subs, tap, extra){
   return n;
 }
 const MS_FRAGS = ["pk_k", "pk_h", "pk", "pkh", "older", "after", "sha256", "hash256", "ripemd160", "hash160", "and_v", "and_b", "and_n", "andor", "or_b", "or_c", "or_d", "or_i", "thresh", "multi", "multi_a", "sortedmulti", "sortedmulti_a"];
-function msNode(src, tap, top, depth){
+function msNode(src, tap, top, depth, wrapped){
   if(depth > 200) throw msErr("it is nested too deeply");
   const s = String(src).trim();
   if(!s) throw msErr("a part is empty (two commas in a row, or empty brackets)");
   const w = /^([a-z]+):(.+)$/s.exec(s);
   if(w){
+    if(wrapped) throw msErr("the wrappers of a part are written together before one colon, such as dv:older(10), not with a colon each (“" + msShort(s) + "”); Bitcoin Core refuses it");
     if(!/^[asctdvjnlu]+$/.test(w[1])) throw msErr("“" + msShort(w[1]) + ":” is not a miniscript wrapper (the wrappers are the letters a s c t d v j n l u)");
-    let node = msNode(w[2], tap, false, depth + 1);
+    let node = msNode(w[2], tap, false, depth + 1, true);
     for(const c of w[1].split("").reverse()){
       if(c === "t") node = msMake("and_v", [node, msMake("1", [], tap)], tap);
       else if(c === "l") node = msMake("or_i", [msMake("0", [], tap), node], tap);
