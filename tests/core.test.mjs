@@ -8,7 +8,9 @@
 // - (v2.17.0) real regtest coins on every address type the practice signer signs (P2PKH, P2SH-P2WPKH, P2WPKH, P2TR key path, 2-of-3
 //   P2WSH and P2SH-P2WSH), each spent by a PSBT the practice signer's own Approve transaction signs: Core combines its trimmed PSBT
 //   with the original (and a second cosigner's for multisig), finalizes it, and testmempoolaccept accepts the transaction (Core's
-//   script verification); a message the practice signer signs is valid for Core's verifymessage.
+//   script verification); a message the practice signer signs is valid for Core's verifymessage;
+// - (v2.18.0) an Extra Life heir wallet made by the page: Core gives the same checksum and addresses, the heir's key alone (in a Core
+//   descriptor wallet, and again with @scure/btc-signer) spends a coin only once it has waited N blocks, and the owner's key at once.
 // Regtest uses the testnet address versions; its SegWit addresses start with bcrt1 where testnet's start with tb1, so those are
 // compared by their witness program.
 //
@@ -24,6 +26,8 @@ import { wordlist } from '@scure/bip39/wordlists/english';
 import { HDKey } from '@scure/bip32';
 import { bech32, bech32m } from '@scure/base';
 import * as btc from '@scure/btc-signer';
+import { ripemd160 } from '@noble/hashes/ripemd160';
+import { sha256 as nsha } from '@noble/hashes/sha256';
 import { loadPage, ready, readHtml, makeReporter } from './harness.mjs';
 
 const BIN = process.env.BITCOIN_BIN;
@@ -201,6 +205,70 @@ try {
       const a = btc.p2pkh(root.derive("m/44'/1'/0'/0/3").publicKey, REG).address;
       R.ok((await rpc('verifymessage', [a, v.signed_message, msg])) === true, 'practice signer: a message it signs (legacy address ' + a.slice(0, 10) + '...) is valid for Core\'s verifymessage'); }
     delete w.navigator.onLine; }
+  // ---- 6. v2.18.0 Extra Life: the page's timelocked heir wallet on regtest. Core accepts its descriptor (the same checksum and
+  // addresses); with older(N) the heir's key ALONE spends a coin only once it has waited: a spend made and signed by Core (a wallet
+  // holding only the heir's private key) is refused in the mempool (non-BIP68-final) while the tip is the coin's block + N - 2, and
+  // accepted at + N - 1 (so it can be in block + N, the page's "earliest block"); a second tool (@scure/btc-signer) signs the same
+  // heir spend; version 1 is refused (CSV fails); the owner's key spends at once. The page's inspector reads Core's PSBT.
+  { const REG = { bech32: 'bcrt', pubKeyHash: 0x6f, scriptHash: 0xc4, wif: 0xef }, N = 10, H = 0x80000000;
+    const ownerWords = entropyToMnemonic(nc.randomBytes(16), wordlist), heirWords = entropyToMnemonic(nc.randomBytes(16), wordlist);
+    const rO = HDKey.fromMasterSeed(mnemonicToSeedSync(ownerWords, '')), rH = HDKey.fromMasterSeed(mnemonicToSeedSync(heirWords, ''));
+    const kO = rO.derive("m/48'/1'/0'/2'"), kH = rH.derive("m/48'/1'/0'/2'");
+    w.xlReset(); $('xlNet').value = 'regtest';
+    $('phrase').value = ownerWords; await w.xlFromWords('owner'); $('phrase').value = heirWords; await w.xlFromWords('heir');
+    $('xlBlocks').value = String(N); await w.xlMake(); const X = w.eval('xl');
+    R.ok(!!X && !$('xlErr').textContent && /SHORT WAIT/.test($('xlWarn').textContent), 'Extra Life: the page makes a regtest heir wallet with older(' + N + ') (and warns that the wait is short)');
+    const info = await rpc('getdescriptorinfo', [X.desc]);
+    R.ok(X.desc.endsWith('#' + info.checksum) && info.isrange && !info.hasprivatekeys, 'Extra Life: Core accepts the descriptor and gives the same checksum (' + info.checksum + ')');
+    const one = (b) => X.body.split('/<0;1>/*').join('/' + b + '/*');
+    const ck = async (d) => d + '#' + (await rpc('getdescriptorinfo', [d])).checksum;
+    const cr = await rpc('deriveaddresses', [await ck(one(0)), [0, 9]]), cc = await rpc('deriveaddresses', [await ck(one(1)), [0, 9]]);
+    R.ok(cr.every((a, i) => a === X.recv[i]) && cc.every((a, i) => a === X.chg[i]), 'Extra Life: Core derives the same 10 receive and 10 change addresses as the page');
+    // a wallet that holds only the heir's private key (the owner's key public), as the heir's Extra Life sheet says
+    const tprvH = rH.derive("m/48'/1'/0'/2'").privateExtendedKey, fpH = rH.fingerprint.toString(16).padStart(8, '0');
+    const heirDesc = (b) => one(b).replace('[' + fpH + '/48h/1h/0h/2h]' + kH.publicExtendedKey, '[' + fpH + '/48h/1h/0h/2h]' + tprvH);
+    R.ok(heirDesc(0) !== one(0), 'Extra Life: the heir descriptor carries the heir\'s private key in place of the xpub');
+    await rpc('createwallet', ['heir', false, true]);
+    const imp = await rpc('importdescriptors', [[{ desc: await ck(heirDesc(0)), timestamp: 'now', active: true, internal: false, range: [0, 20] }, { desc: await ck(heirDesc(1)), timestamp: 'now', active: true, internal: true, range: [0, 20] }]], 'heir');
+    R.ok(imp.every((x) => x.success), 'Extra Life: Core imports the heir\'s descriptors (heir private key, owner public key) into a descriptor wallet');
+    const fund = async (a) => { const txid = await rpc('sendtoaddress', [a, 1.0], 'miner'); await mine(1); const raw = (await rpc('gettransaction', [txid], 'miner')).hex, dec = await rpc('decoderawtransaction', [raw]); return { txid, raw, vout: dec.vout.findIndex((o) => o.scriptPubKey.address === a), height: (await rpc('getblockcount')) }; };
+    const c0 = await fund(X.recv[0]), back = await rpc('getnewaddress', ['', 'bech32'], 'miner');
+    const coreSpend = async () => { const p = await rpc('walletcreatefundedpsbt', [[{ txid: c0.txid, vout: c0.vout, sequence: N }], [{ [back]: 0.9999 }], 0, { add_inputs: false, fee_rate: 10, changeAddress: X.chg[0] }], 'heir');
+      const s = await rpc('walletprocesspsbt', [p.psbt, true, 'ALL'], 'heir'); const f = await rpc('finalizepsbt', [s.psbt]); return { psbt: p.psbt, fin: f }; };
+    let sp = await coreSpend();
+    R.ok(sp.fin.complete, 'Extra Life: Core signs and finalizes the heir\'s spend (nSequence ' + N + ', version 2) with the heir\'s key alone');
+    { const rep = w.psbtReport(await w.inspectPsbt(w.psbtFromText(sp.psbt), 'regtest'), null);
+      R.ok(new RegExp('SCRIPT WAIT, input 0: its script has older\\(' + N + '\\) on at least one way to spend; this transaction meets it\\.').test(rep) && /RELATIVE TIMELOCK, input 0: it can be mined only 10 blocks/.test(rep), 'Extra Life: the page\'s inspector reads Core\'s heir PSBT: the relative timelock, and that it meets the script\'s older()'); }
+    await mine(N - 2);   // the tip is now the coin's block + N - 2
+    let acc = (await rpc('testmempoolaccept', [[sp.fin.hex]]))[0];
+    R.ok(acc.allowed === false && /non-BIP68-final/.test(acc['reject-reason'] || ''), 'Extra Life: before the wait the heir\'s spend is refused (' + (acc['reject-reason'] || 'allowed') + ') at the coin\'s block + ' + (N - 2));
+    await mine(1);       // + N - 1: the next block is + N, the earliest block the page names
+    acc = (await rpc('testmempoolaccept', [[sp.fin.hex]]))[0];
+    R.ok(acc.allowed === true, 'Extra Life: once the coin has waited, the heir\'s key alone spends it (accepted for block ' + (c0.height + N) + ' = the coin\'s block + ' + N + ') ' + (acc['reject-reason'] || ''));
+    // a second tool: @scure/btc-signer signs the same heir path from the heir's words; version 1 fails the CSV check
+    const owner0 = kO.deriveChild(0).deriveChild(0), heir0 = kH.deriveChild(0).deriveChild(0), heirPriv = rH.derive("m/48'/1'/0'/2'/0/0").privateKey;
+    const script = btc.Script.encode([owner0.publicKey, 'CHECKSIG', 'IFDUP', 'NOTIF', 'DUP', 'HASH160', ripemd160(nsha(heir0.publicKey)), 'EQUALVERIFY', 'CHECKSIGVERIFY', N, 'CHECKSEQUENCEVERIFY', 'ENDIF']);
+    const pay = btc.p2wsh({ type: 'unknown', script }, REG);
+    R.ok(pay.address === X.recv[0], 'Extra Life: @scure/btc-signer builds the same address from the same script');
+    const scureSpend = (ver, seq, sign) => { const tx = new btc.Transaction({ version: ver, allowUnknownInputs: true });
+      tx.addInput({ txid: c0.txid, index: c0.vout, sequence: seq, witnessUtxo: { script: pay.script, amount: 100000000n }, witnessScript: script });
+      tx.addOutputAddress(back, 99990000n, REG); tx.signIdx(sign, 0, [btc.SigHash.ALL]); const sig = tx.getInput(0).partialSig[0][1];
+      tx.updateInput(0, { finalScriptWitness: sign === heirPriv ? [sig, heir0.publicKey, new Uint8Array(0), script] : [sig, script] }, true); return Buffer.from(tx.extract()).toString("hex"); };
+    acc = (await rpc('testmempoolaccept', [[scureSpend(2, N, heirPriv)]]))[0];
+    R.ok(acc.allowed === true, 'Extra Life: a second tool (@scure/btc-signer) signs the heir\'s spend from the heir\'s words, and Core accepts it ' + (acc['reject-reason'] || ''));
+    acc = (await rpc('testmempoolaccept', [[scureSpend(1, N, heirPriv)]]))[0];
+    R.ok(acc.allowed === false, 'Extra Life: the same heir spend as transaction version 1 is refused (' + (acc['reject-reason'] || 'allowed') + ')');
+    acc = (await rpc('testmempoolaccept', [[scureSpend(2, N - 1, heirPriv)]]))[0];
+    R.ok(acc.allowed === false, 'Extra Life: a heir spend with nSequence ' + (N - 1) + ' is refused (' + (acc['reject-reason'] || 'allowed') + ')');
+    // the owner's key spends a fresh coin at once
+    { const c1 = await fund(X.recv[1]), o1 = kO.deriveChild(0).deriveChild(1), h1 = kH.deriveChild(0).deriveChild(1), oPriv = rO.derive("m/48'/1'/0'/2'/0/1").privateKey;
+      const s1 = btc.Script.encode([o1.publicKey, 'CHECKSIG', 'IFDUP', 'NOTIF', 'DUP', 'HASH160', ripemd160(nsha(h1.publicKey)), 'EQUALVERIFY', 'CHECKSIGVERIFY', N, 'CHECKSEQUENCEVERIFY', 'ENDIF']);
+      const p1 = btc.p2wsh({ type: 'unknown', script: s1 }, REG), tx = new btc.Transaction({ version: 2, allowUnknownInputs: true });
+      tx.addInput({ txid: c1.txid, index: c1.vout, sequence: 0xfffffffd, witnessUtxo: { script: p1.script, amount: 100000000n }, witnessScript: s1 }); tx.addOutputAddress(back, 99990000n, REG);
+      tx.signIdx(oPriv, 0, [btc.SigHash.ALL]); tx.updateInput(0, { finalScriptWitness: [tx.getInput(0).partialSig[0][1], s1] }, true);
+      acc = (await rpc('testmempoolaccept', [[Buffer.from(tx.extract()).toString("hex")]]))[0];
+      R.ok(p1.address === X.recv[1] && acc.allowed === true, 'Extra Life: the owner\'s key spends a coin at once, with no wait ' + (acc['reject-reason'] || '')); }
+    w.xlReset(); }
 } catch (e) { R.ok(false, 'the test stopped: ' + e.message); }
 stop();
 R.done('core');
