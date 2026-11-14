@@ -1951,7 +1951,8 @@ async function probe(w, mutated, fast, only, hooks) {
       const o = await w.b138Recipients(['tr(' + nx + '/<0;1>/*,pk(tpubDEPBvXvhta3pjVaKokqC3eeMQnszj9ehFaA2zD5nSdkaccwGAizu8jVB2NeSpvmP2P52MBoZvNCixqXRJnTyXx51FQzARR63tjxQSyP3Btw/<0;1>/*))']);
       if (o.keys.length !== 1 || H(o.keys[0]) !== 'ebd252ca0877aae09b9d058219682775aa3cbcd049c12f07832f2cf6a3b51708' || !o.notes.some((x) => /unspendable/.test(x))) fails.push('bip138: an xpub on the NUMS point is left out and named'); }
     if ([1, 5, 6, 11, 40, 200].map((n) => w.b138Bucket(n)).join() !== '5,5,10,20,40,255') fails.push('bip138: the decoy buckets are 5, 10, 20... up to 255');
-    { const A = FX('addresses.json'); for (const v of A.vectors) { const r0 = await w.b138Address(v.desc, 0, 1, v.net), c0 = v.change.length ? await w.b138Address(v.desc, 1, 0, v.net) : null;
+    { const A = FX('addresses.json'), at = async (d, b, i, net) => { try { return await w.b138Address(d, b, i, net); } catch (e) { return 'refused: ' + e.message; } };   // v2.18.0: a refusal is a failure, never a stop
+      for (const v of A.vectors) { const r0 = await at(v.desc, 0, 1, v.net), c0 = v.change.length ? await at(v.desc, 1, 0, v.net) : null;
         if (r0 !== v.receive[1] || (v.change.length && c0 !== v.change[0])) { fails.push('bip138: descriptor addresses equal embit\'s (' + v.desc.slice(0, 40) + ')'); break; } } }
     // making and opening, on the page
     const M3 = ['abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', 'legal winner thank year wave sausage worth useful legal winner thank yellow', 'letter advice cage absurd amount doctor acoustic avoid letter advice cage above'];

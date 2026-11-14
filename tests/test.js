@@ -49,6 +49,9 @@ function load(opts={}){
 const t9StepCur=(t)=>{ const c=t.d.querySelector('#stepBar li.cur'); return c?c.getAttribute('data-s'):''; };
 const blobText=(w,b)=>b.text?b.text():new Promise((res,rej)=>{const r=new w.FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsText(b);});
 const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.randomInt(6))).join('');
+// v2.18.0: each top-level part runs as part(async()=>{ ... })(): an error thrown in one part (say, a descriptor the page now refuses)
+// is a FAIL with its message, and the run goes on to the next part instead of stopping.
+const part=(f)=>()=>f().catch(e=>ok(false,'a part of the run stopped (the run goes on): '+String(e&&e.stack||e).split('\n').slice(0,3).join(' | ')));
 
 (async()=>{
   let t=load(); await t.ready(); await t.ready();
@@ -57,7 +60,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   ok(/^ALL \d+ TESTS PASSED/.test(t.$('testResults').textContent),'in-page SELF-TEST passes: '+t.$('testResults').textContent.split('\n')[0]);
   // address finder
   sweep(t);
-  await (async()=>{ const AB='abandon '.repeat(11)+'about'; t.$('phrase').value=AB; t.$('verifyPass').value='';
+  await part(async()=>{ const AB='abandon '.repeat(11)+'about'; t.$('phrase').value=AB; t.$('verifyPass').value='';
     const C=async(x,r)=>{ t.$('checkAddr').value=x; await t.w.checkAddress(r); return [t.$('addrCheckStatus').textContent,t.$('addrCheckStatus').className]; };
     let [tx,cl]=await C('bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu',4); ok(/^FOUND: this SegWit address is receive address #0 \(m\/84'\/0'\/0'\/0\/0\)/.test(tx)&&/ok/.test(cl),'address finder: SegWit receive #0 found');
     [tx,cl]=await C('bc1qnjg0jd8228aq7egyzacy8cys3knf9xvrerkf9g',4); ok(/receive address #1 /.test(tx),'address finder: SegWit receive #1 found');
@@ -69,7 +72,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t.$('phrase').value=''; t.$('checkAddr').value=''; t.$('addrCheckStatus').textContent=''; })();
   // Try accounts 0 to 20 (v1.33.0): finds which account an address belongs to, with and without the passphrase
   sweep(t);
-  await (async()=>{ const AB='abandon '.repeat(11)+'about'; const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  await part(async()=>{ const AB='abandon '.repeat(11)+'about'; const sleep=ms=>new Promise(r=>setTimeout(r,ms));
     const addrAt=async(pw,purpose,type,coin,acct,chain,i)=>{ const seed=await t.w.mnemonicToSeed(AB,pw); let [k,c]=await t.w.masterFromSeed(seed); for(const [n,h] of [[purpose,true],[coin,true],[acct,true],[chain,false],[i,false]]) [k,c]=await t.w.ckdPriv(k,c,n,h); return t.w.addressFromKey(type,k,coin===1?'test':'main'); };
     const st=()=>[t.$('addrCheckStatus').textContent,t.$('addrCheckStatus').className];
     const run=async(pw,x,mx,dp)=>{ t.$('phrase').value=AB; t.$('verifyPass').value=pw; t.$('checkAddr').value=x; await t.w.checkAllAccounts(mx,dp); return st(); };
@@ -97,7 +100,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t.$('phrase').value=''; t.$('checkAddr').value=''; t.$('verifyPass').value=''; t.$('addrCheckStatus').textContent=''; })();
   // SeedQR / CompactSeedQR input and BIP85 child seeds
   sweep(t);
-  await (async()=>{ const AB='abandon '.repeat(11)+'about'; const V=async x=>{ t.$('phrase').value=x; await t.w.verify(); return [t.$('verifyStatus').textContent.split('\n')[0], t.$('phrase').value]; };
+  await part(async()=>{ const AB='abandon '.repeat(11)+'about'; const V=async x=>{ t.$('phrase').value=x; await t.w.verify(); return [t.$('verifyStatus').textContent.split('\n')[0], t.$('phrase').value]; };
     let [m,box]=await V('0000'.repeat(11)+'0003'); ok(/^Valid 12-word BIP39 phrase \(read from a SeedQR digit string\)/.test(m)&&box===AB,'VERIFY reads a SeedQR digit string and shows the words');
     [m,box]=await V('7f'.repeat(16)); ok(/CompactSeedQR hex/.test(m)&&box==='legal winner thank year wave sausage worth useful legal winner thank yellow','VERIFY reads CompactSeedQR hex and shows the words');
     [m]=await V('2048'+'0000'.repeat(11)); ok(/above 2047/.test(m),'SeedQR number above 2047 is rejected');
@@ -243,7 +246,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   ok(t.$('testResults').textContent==='','SELF-TEST button: second press hides the results');
   // CLEAR is red, SELF-TEST is green, and both stay readable in dark and light themes (v1.26.2)
   sweep(t);
-  await (async()=>{ const css=html.match(/<style>[\s\S]*?<\/style>/)[0], hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+  await part(async()=>{ const css=html.match(/<style>[\s\S]*?<\/style>/)[0], hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
     const lum=c=>{const f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);};return .2126*f(c[0])+.7152*f(c[1])+.0722*f(c[2]);};
     const cr=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
     const mix=(fg,a,bg)=>fg.map((v,i)=>v*a+bg[i]*(1-a));
@@ -304,14 +307,14 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   ok(t.st.printed===1&&t.st.printCells.length===12&&words.split(' ').every((w,i)=>t.st.printCells[i]===String(i+1).padStart(2,'0')+w)&&!t.st.printHTML.includes('SECRETPASS')&&/print-seed/.test(t.st.printClass),'PRINT SEED prints numbered words + fingerprint only, no passphrase');
   t.w.dispatchEvent(new t.w.Event('afterprint')); ok(t.$('printOnly').textContent===''&&!t.d.body.classList.contains('print-seed'),'print area cleaned up after printing');
   sweep(t);
-  await (async()=>{ // Stamp sheet (v1.34.0): the first 4 letters of each word in capitals, for metal plates
+  await part(async()=>{ // Stamp sheet (v1.34.0): the first 4 letters of each word in capitals, for metal plates
     const p0=t.st.printed; t.st.alerts.length=0; t.w.printStamp(); const cells=t.st.printCells.slice(), txt=t.st.printHTML;
     ok(t.st.printed===p0+1&&cells.length===12&&words.split(' ').every((w,i)=>cells[i]===String(i+1).padStart(2,'0')+w.slice(0,4).toUpperCase())&&/print-seed/.test(t.st.printClass)&&/^VOIDFORGE STAMP SHEET/.test(txt),'PRINT STAMP SHEET prints each word as its first 4 letters in capitals');
     ok(!txt.includes('SECRETPASS')&&/Passphrase used: YES/.test(txt)&&txt.includes(t.$('fingerprint').textContent)&&/into VERIFY in CHECK A BACKUP/.test(txt)&&/No two BIP39 words start with the same 4 letters/.test(txt),'stamp sheet: fingerprint, passphrase yes/no without the passphrase, and how to get the words back');
     t.w.dispatchEvent(new t.w.Event('afterprint')); ok(t.$('printOnly').textContent==='','stamp sheet is cleaned up after printing');
     ok(!!t.$('stampBtn')&&/printStamp/.test(t.$('stampBtn').getAttribute('onclick')),'PRINT STAMP SHEET button is on the page'); })();
   sweep(t);
-  await (async()=>{ // Wallet view (v2.1.0): any valid 12 to 24 word phrase typed in the Check tab
+  await part(async()=>{ // Wallet view (v2.1.0): any valid 12 to 24 word phrase typed in the Check tab
     const AB='abandon '.repeat(11)+'about', sleep=ms=>new Promise(r=>setTimeout(r,ms));
     const until=async f=>{ for(let n=0;n<400&&!f();n++) await sleep(25); return f(); };
     const rows=()=>[...t.$('wvList').querySelectorAll('li')].map(li=>li.textContent);
@@ -356,7 +359,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t.$('phrase').value='abandon abandon'; await t.w.verify(); ok(t.$('walletView').style.display==='none','wallet view: an invalid phrase opens nothing');
     t.$('phrase').value=AB; await t.w.verify(); await until(()=>rows().length===20); t.w.wipeSeed(); ok(t.$('walletView').style.display==='none'&&t.$('wvList').textContent==='','wallet view: CLEAR ALL wipes it'); t=t0; })();
   sweep(t);
-  await (async()=>{ // v2.2.0: watch-only view, Electrum warning, payment request, backup checklist, key-reuse check
+  await part(async()=>{ // v2.2.0: watch-only view, Electrum warning, payment request, backup checklist, key-reuse check
     const AB='abandon '.repeat(11)+'about', sleep=ms=>new Promise(r=>setTimeout(r,ms));
     const until=async f=>{ for(let n=0;n<400&&!f();n++) await sleep(25); return f(); };
     const t0=t; t=load(); await t.ready(); t.st.alerts.length=0;
@@ -428,7 +431,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       r=await run('hello'); ok(/No extended public keys/.test(r),'key reuse: nothing to check is explained'); }
     t=t0; })();
   sweep(t);
-  await (async()=>{ // Roll sheet (v1.34.0): a blank numbered sheet for dice or coin, sized to the chosen mode and word count
+  await part(async()=>{ // Roll sheet (v1.34.0): a blank numbered sheet for dice or coin, sized to the chosen mode and word count
     const setMode=m=>{ t.d.querySelector('input[name="mode"][value="'+m+'"]').checked=true; }, setWords=n=>{ t.d.querySelector('input[name="words"][value="'+n+'"]').checked=true; };
     const sheet=()=>{ const p0=t.st.printed; t.w.printRollSheet(); const r={n:t.st.printed-p0,cells:t.st.printCells.slice(),txt:t.st.printHTML,cls:t.st.printClass}; t.w.dispatchEvent(new t.w.Event('afterprint')); return r; };
     let r=sheet(); ok(r.n===1&&r.cells.length===60&&r.cells.every((c,i)=>c===String(i+1))&&/^VOIDFORGE DICE ROLL SHEET/.test(r.txt)&&/50 rolls for a 12-word seed/.test(r.txt)&&/Roll one die and write its number \(1 to 6\)/.test(r.txt)&&/print-seed/.test(r.cls)&&!/1 means/.test(r.txt),'PRINT ROLL SHEET: 50 numbered boxes for 12 words of dice, then 10 more');
@@ -439,7 +442,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     setMode('dice'); r=sheet(); ok(/as secret as your seed/.test(r.txt)&&/shred/.test(r.txt)&&t.$('printOnly').textContent===''&&!t.d.body.classList.contains('print-seed'),'roll sheet: warns that a filled sheet is secret, and is cleaned up after printing');
     ok(!!t.$('rollSheetBtn')&&/printRollSheet/.test(t.$('rollSheetBtn').getAttribute('onclick')),'PRINT ROLL SHEET button is on the page'); })();
   sweep(t);
-  await (async()=>{ // Auto-clear (v1.34.0): optional wipe after idle time or when the tab is hidden (on a fresh page, so the wipe does not disturb the tests that follow)
+  await part(async()=>{ // Auto-clear (v1.34.0): optional wipe after idle time or when the tab is hidden (on a fresh page, so the wipe does not disturb the tests that follow)
     const keepT=t; t=load(); await t.ready();
     const sel=t.$('autoIdle'), chk=t.$('autoHide'), note=()=>t.$('autoNote').textContent, now=()=>Date.now(), MIN=60000;
     const arm=async()=>{ t.set(rnd(50)); t.$('passphrase').value='SECRETPASS'; t.$('passphrase2').value='SECRETPASS'; await t.w.generate(); t.$('verifyPass').value='VP'; t.$('reforgeWordsInput').value='abandon ?'; t.$('drillWords').value='abandon'; t.$('prInput').value='abandon'; t.$('checkAddr').value='bc1qx'; const ro=t.$('reforgeOut'); ro.textContent='found'; ro.style.display=''; const co=t.$('childOut'); co.textContent='child words'; co.style.display=''; };
@@ -467,7 +470,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     sel.value='0'; sel.dispatchEvent(new t.w.Event('change')); chk.checked=false; chk.dispatchEvent(new t.w.Event('change')); t.w.clearInterval=ci; t=keepT; })();
   // --- SeedQR / CompactSeedQR on screen, by hand and on paper ---
   sweep(t);
-  await (async()=>{ const keepT=t; t=load(); await t.ready(); t.set(rnd(50)); t.$('passphrase').value='SECRETPASS'; t.$('passphrase2').value='SECRETPASS'; await t.w.generate(); const sw=t.$('genResult').textContent.split('\n')[0];
+  await part(async()=>{ const keepT=t; t=load(); await t.ready(); t.set(rnd(50)); t.$('passphrase').value='SECRETPASS'; t.$('passphrase2').value='SECRETPASS'; await t.w.generate(); const sw=t.$('genResult').textContent.split('\n')[0];
     const sz=()=>{ const v=t.$('sqImg').querySelector('svg'); return v?Math.round(v.viewBox.baseVal.width)-8:0; }, gc=()=>t.$('sqGuideCaption').textContent;
     ok(t.$('seedQrBox').style.display==='','SeedQR box appears after FORGE');
     t.w.showSeedQr('seedqr'); ok(sz()===25&&t.$('sqBox').style.display===''&&/^SeedQR for these 12 words, 25 x 25 squares/.test(t.$('sqCaption').textContent),'SEEDQR draws a 25 x 25 code for 12 words');
@@ -504,7 +507,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t.words(24); t.set(rnd(99)); await t.w.generate(); t.w.showSeedQr('seedqr'); ok(sz()===29&&/24 words, 29 x 29/.test(t.$('sqCaption').textContent),'SEEDQR is 29 x 29 for 24 words'); t.w.openSqGuide(); ok(/^Block 1 of 25: rows 1 to 7, columns 1 to 7 of the 29 x 29/.test(gc()),'29 x 29 has 25 blocks'); for(let i=0;i<4;i++) t.w.sqGuideBlock(1); ok(/^Block 5 of 25: rows 1 to 7, columns 29 to 29/.test(gc()),'the last block column of a 29 x 29 code is one square wide'); t.w.showSeedQr('compact'); ok(sz()===25,'COMPACTSEEDQR is 25 x 25 for 24 words'); t.words(12);  t=keepT; })();
   // --- "How your seed was made" explainer ---
   sweep(t);
-  await (async()=>{ const keepT=t; t=load(); await t.ready(); t.set(rnd(50)); t.$('passphrase').value='SECRETPASS'; t.$('passphrase2').value='SECRETPASS'; await t.w.generate();
+  await part(async()=>{ const keepT=t; t=load(); await t.ready(); t.set(rnd(50)); t.$('passphrase').value='SECRETPASS'; t.$('passphrase2').value='SECRETPASS'; await t.w.generate();
     const wd=t.$('genResult').textContent.split('\n')[0].split(' '), ex=()=>t.$('exOut');
     ok(t.$('explainBox').style.display===''&&!t.$('explainBox').open&&ex().style.display==='none'&&ex().textContent==='','explainer box appears closed after FORGE, with nothing shown');
     await t.w.showExplain();
@@ -526,7 +529,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   t.w.downloadSeed(); const txt=await blobText(t.w,t.st.blob);
   ok(t.st.confirms>=2&&txt.includes(words)&&!txt.includes('SECRETPASS'),'DOWNLOAD seed asks first and omits passphrase');
   sweep(t);
-  await (async()=>{ // stale-result guard (v1.26.1): what is on screen always belongs to the inputs that made it
+  await part(async()=>{ // stale-result guard (v1.26.1): what is on screen always belongs to the inputs that made it
     const g=load(); await g.ready(); await g.ready();
     const seedOn=()=>g.$('genResult').dataset.seed==='1', fpOn=()=>/[0-9a-f]{8}/.test(g.$('fingerprint').textContent), adOn=()=>/bc1q/.test(g.$('address').textContent);
     const first=()=>g.$('genResult').textContent.split('\n')[0];
@@ -613,7 +616,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   ok(/SELF-TEST PASSED/.test(t.$('selfTestBadge').textContent)&&!t.$('forgeBtn').disabled&&!t.$('verifyBtn').disabled,'auto self-test runs on load and enables the tool');
   // v1.4: address, passphrase confirm, tap buttons
   sweep(t);
-  await (async()=>{ t.set('65515223131652132161133154444123616466443112153441'); t.$('passphrase').value=''; t.$('passphrase2').value=''; await t.w.generate();
+  await part(async()=>{ t.set('65515223131652132161133154444123616466443112153441'); t.$('passphrase').value=''; t.$('passphrase2').value=''; await t.w.generate();
     ok(/bc1q[0-9a-z]{38}/.test(t.$('address').textContent),'first receive address is shown after FORGE');
     ok(!/with passphrase/.test(t.$('address').textContent),'no passphrase label when no passphrase');
     { const wb=t.$('watchBox'); ok(wb.style.display===''&&/^zpub[1-9A-HJ-NP-Za-km-z]{100,}$/.test(t.$('wZpub').textContent)&&/^wpkh\(\[[0-9a-f]{8}\/84h\/0h\/0h\]xpub[1-9A-HJ-NP-Za-km-z]+\/0\/\*\)#[a-z0-9]{8}$/.test(t.$('wDescR').textContent)&&/\/1\/\*\)#/.test(t.$('wDescC').textContent),'watch-only box shows zpub and receive/change descriptors after FORGE'); }
@@ -756,7 +759,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   })();
   // v1.5.0: layout and clarity
   sweep(t);
-  await (async()=>{ t.set('65515223131652132161133154444123616466443112153441'); t.$('passphrase').value=''; t.$('passphrase2').value=''; await t.w.generate();
+  await part(async()=>{ t.set('65515223131652132161133154444123616466443112153441'); t.$('passphrase').value=''; t.$('passphrase2').value=''; await t.w.generate();
     const cells=[...t.d.querySelectorAll('#wordGrid .wcell')];
     ok(cells.length===12&&cells[0].textContent==='1.hole'&&cells[11].textContent==='12.path'&&t.$('wordGrid').style.display==='grid','seed words show as a numbered grid');
     ok(t.$('genResult').classList.contains('sr')&&t.$('genResult').dataset.seed==='1','plain-text result is kept (screen-reader only) and flagged as a seed');
@@ -820,7 +823,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   })();
   // v1.4.2: explicit passphrase line in print and download
   sweep(t);
-  await (async()=>{ t.set('65515223131652132161133154444123616466443112153441'); t.$('passphrase').value=''; t.$('passphrase2').value=''; await t.w.generate(); t.w.printSeed();
+  await part(async()=>{ t.set('65515223131652132161133154444123616466443112153441'); t.$('passphrase').value=''; t.$('passphrase2').value=''; await t.w.generate(); t.w.printSeed();
     ok(/Passphrase used: NO/.test(t.st.printHTML),'print says Passphrase used: NO when none');
     t.$('passphrase').value='SECRETPASS'; t.$('passphrase2').value='SECRETPASS'; await t.w.generate(); t.w.printSeed();
     ok(/Passphrase used: YES/.test(t.st.printHTML)&&!t.st.printHTML.includes('SECRETPASS'),'print says Passphrase used: YES without printing it');
@@ -831,7 +834,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   ok(t.d.querySelector('#topbar h1').textContent==='VOIDFORGE'&&!t.d.querySelector('.subtitle'),'header: the name VOIDFORGE, no second subtitle line');
   ok(t.$('coinHint').style.display==='none','coin hint hidden in dice mode');
   sweep(t);
-  await (async()=>{ const coin=t.d.querySelector('input[name="mode"][value="coin"]'); coin.checked=true; t.w.onModeChange(); ok(t.$('coinHint').style.display==='block'&&/heads = 1/.test(t.$('coinHint').textContent),'coin mode shows which side is 1 and to record the string'); const dice=t.d.querySelector('input[name="mode"][value="dice"]'); dice.checked=true; t.w.onModeChange(); ok(t.$('coinHint').style.display==='none','coin hint hides again in dice mode'); })();
+  await part(async()=>{ const coin=t.d.querySelector('input[name="mode"][value="coin"]'); coin.checked=true; t.w.onModeChange(); ok(t.$('coinHint').style.display==='block'&&/heads = 1/.test(t.$('coinHint').textContent),'coin mode shows which side is 1 and to record the string'); const dice=t.d.querySelector('input[name="mode"][value="dice"]'); dice.checked=true; t.w.onModeChange(); ok(t.$('coinHint').style.display==='none','coin hint hides again in dice mode'); })();
   ok(/^NETWORK: (ONLINE|OFFLINE)/.test(t.$('netTag').textContent),'network tag is always visible');
   t.$('rolls').value='1'.repeat(0)+'123456'.repeat(8)+'12'; t.$('rolls').oninput();
   ok(/\u2248 129 bits/.test(t.$('bitsNote').textContent)&&/IF every roll was fair/.test(t.$('bitsNote').textContent),'bits note shows about 129 bits for 50 rolls with fairness caveat');
@@ -845,13 +848,13 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   ok(tc.st.confirms===1&&tc.$('genResult').textContent==='—','FORGE on non-random input asks first and can be cancelled');
   // item 2: no crypto.subtle
   sweep(t);
-  await (async()=>{ const errs=[]; const dom=new (require('jsdom').JSDOM)(html,{runScripts:'dangerously',url:'https://x.org/',beforeParse(w){Object.defineProperty(w,'crypto',{value:{}});if(!w.TextEncoder)w.TextEncoder=TextEncoder;w.alert=m=>errs.push(m);w.addEventListener('error',e=>errs.push(e.message));}});
+  await part(async()=>{ const errs=[]; const dom=new (require('jsdom').JSDOM)(html,{runScripts:'dangerously',url:'https://x.org/',beforeParse(w){Object.defineProperty(w,'crypto',{value:{}});if(!w.TextEncoder)w.TextEncoder=TextEncoder;w.alert=m=>errs.push(m);w.addEventListener('error',e=>errs.push(e.message));}});
     await new Promise(r=>setTimeout(r,50)); const d=dom.window.document;
     ok(d.getElementById('fatalWarn').style.display==='block'&&d.getElementById('forgeBtn').disabled,'missing crypto.subtle: red banner shown, FORGE disabled');
     ok(!errs.some(e=>/Cannot read/.test(e)),'missing crypto.subtle: no uncaught exception'); })();
   // item 3: failed self-test disables the tool (tamper the wordlist)
   sweep(t);
-  await (async()=>{ const bad=html.replace('"abandon","ability"','"abandon","abilityX"'); const dom=new (require('jsdom').JSDOM)(bad,{runScripts:'dangerously',url:'https://x.org/',beforeParse(w){Object.defineProperty(w,'crypto',{value:nc.webcrypto});if(!w.TextEncoder)w.TextEncoder=TextEncoder;w.alert=()=>{};}});
+  await part(async()=>{ const bad=html.replace('"abandon","ability"','"abandon","abilityX"'); const dom=new (require('jsdom').JSDOM)(bad,{runScripts:'dangerously',url:'https://x.org/',beforeParse(w){Object.defineProperty(w,'crypto',{value:nc.webcrypto});if(!w.TextEncoder)w.TextEncoder=TextEncoder;w.alert=()=>{};}});
     await dom.window.selfTestDone; const d=dom.window.document;
     ok(/FAILED/.test(d.getElementById('selfTestBadge').textContent)&&d.getElementById('forgeBtn').disabled&&d.getElementById('verifyBtn').disabled,'tampered wordlist: self-test fails and tool is disabled'); })();
   // item 4: ignored characters + mode switch
@@ -862,20 +865,20 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // item 5 & 6: CSP, no links
   ok(/Content-Security-Policy/.test(html)&&/default-src 'none'/.test(html),'CSP meta present with default-src none');
   sweep(t);
-  await (async()=>{ const anchors=html.replace(/const WORDLIST = \[.*?\];/s,'').match(/<a\s[^>]*>/gi)||[]; ok(anchors.length===1&&anchors[0]==='<a href="https://random21m.github.io/VOIDFORGE/" target="_blank" rel="noopener noreferrer">','page contains exactly one link: the online practice copy, opening in a new tab with noopener noreferrer'); })();
+  await part(async()=>{ const anchors=html.replace(/const WORDLIST = \[.*?\];/s,'').match(/<a\s[^>]*>/gi)||[]; ok(anchors.length===1&&anchors[0]==='<a href="https://random21m.github.io/VOIDFORGE/" target="_blank" rel="noopener noreferrer">','page contains exactly one link: the online practice copy, opening in a new tab with noopener noreferrer'); })();
   // v1.2: only 12/24 words, no copy-seed button
   eq([...t.d.querySelectorAll('input[name=words]')].map(e=>e.value).join(','),'12,15,18,21,24','the 12, 15, 18, 21 and 24 word options are offered (v2.10.0)');
   ok(![...t.d.querySelectorAll('button')].some(b=>/COPY SEED/.test(b.textContent))&&typeof t.w.copyResult==='undefined','no copy-seed button or function');
   sweep(t);
-  await (async()=>{ const pb=t.$('privacyBox'); ok(!!pb&&/Privacy/.test(pb.querySelector('summary').textContent)&&pb.querySelectorAll('ul li').length===7&&!pb.querySelector('a,script,img,form,input'),'privacy box has seven points (one is the session note for the start notice) and no links or inputs');
+  await part(async()=>{ const pb=t.$('privacyBox'); ok(!!pb&&/Privacy/.test(pb.querySelector('summary').textContent)&&pb.querySelectorAll('ul li').length===7&&!pb.querySelector('a,script,img,form,input'),'privacy box has seven points (one is the session note for the start notice) and no links or inputs');
     const keys=[...html.matchAll(/localStorage\.setItem\("([^"]+)"/g)].map(m=>m[1]).sort().join(',');
     ok(keys==='voidforge-big,voidforge-theme'&&/Only two things are remembered/.test(pb.textContent),'privacy box: the page stores exactly the theme and text size, as the box says');
     ok(!/\b(fetch|XMLHttpRequest|WebSocket|sendBeacon)\s*\(/.test(html.replace(/const WORDLIST = \[.*?\];/s,'')),'privacy box: no network calls in the page'); })();
   sweep(t);
-  await (async()=>{ const sb=t.$('safetyBox'); ok(!!sb&&/Browser safety checklist/.test(sb.querySelector('summary').textContent)&&sb.querySelectorAll('ol li').length===8&&!sb.querySelector('script,img,form,input')&&sb.querySelectorAll('a').length===1,'browser safety checklist has eight items and no links or inputs');
+  await part(async()=>{ const sb=t.$('safetyBox'); ok(!!sb&&/Browser safety checklist/.test(sb.querySelector('summary').textContent)&&sb.querySelectorAll('ol li').length===8&&!sb.querySelector('script,img,form,input')&&sb.querySelectorAll('a').length===1,'browser safety checklist has eight items and no links or inputs');
     ok(/offline/i.test(sb.querySelectorAll('ol li')[0].textContent)&&/clipboard/i.test(sb.textContent)&&/translation/i.test(sb.textContent)&&/restart/i.test(sb.textContent),'checklist covers going offline, clipboard, translation and restarting'); })();
   sweep(t);
-  await (async()=>{ const B=t.d.body; if(!t.w.Element.prototype.scrollIntoView) t.w.Element.prototype.scrollIntoView=function(){};
+  await part(async()=>{ const B=t.d.body; if(!t.w.Element.prototype.scrollIntoView) t.w.Element.prototype.scrollIntoView=function(){};
     ok(!B.classList.contains('guided')&&!t.d.querySelector('.gh')&&/GUIDE ME/.test(t.$('guideBtn').textContent),'guide is off by default and hides nothing');
     t.w.toggleGuide(); t.w.guideStep(-4); ok(B.classList.contains('guided')&&t.$('rolls').classList.contains('gh')&&!t.$('wordRadios').classList.contains('gh'),'GUIDE ME shows one screen at a time');
     t.$('rolls').value=''; t.w.guideStep(1); ok(t.$('gNext').disabled,'guide: NEXT is locked until enough rolls');
@@ -887,7 +890,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     const terms=[...t.d.querySelectorAll('.term')]; ok(terms.length>=6&&terms.every(e=>e.tabIndex===0&&e.dataset.tip.length>40),'explained words are focusable and have a plain explanation');
     t.w.toggleSize(); ok(B.classList.contains('big'),'TEXT A+ enlarges the page'); t.w.toggleSize(); ok(!B.classList.contains('big'),'TEXT A- restores it'); })();
   sweep(t);
-  await (async()=>{
+  await part(async()=>{
     { const css=html.match(/<style>[\s\S]*?<\/style>/)[0], hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
       const lum=c=>{const f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);};return .2126*f(c[0])+.7152*f(c[1])+.0722*f(c[2]);};
       const cr=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
@@ -911,7 +914,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     { const die=t.$('brandDie'), h=t.d.querySelector('#topbar h1'); ok(!!die&&die.querySelectorAll('.dp').length===5&&die.querySelectorAll('.db').length===1&&!!h&&h.textContent==='VOIDFORGE'&&/#topbar h1[^{]*\{[^}]*color: var\(--goldtx\)[^}]*filter: none/.test(html)&&!t.$('logo')&&!/\n  \.logo \{/.test(html)&&typeof t.w.rollLogo==='undefined','header: one flat golden die and the gold name VOIDFORGE (the rolling 3D dice are gone)'); }
     t.$('rolls').value=''; })();
   sweep(t);
-  await (async()=>{ // Word draw: words drawn from physical tiles + coin flips -> standard BIP39, known answers
+  await part(async()=>{ // Word draw: words drawn from physical tiles + coin flips -> standard BIP39, known answers
     const wd=async(len,words,flips,pw='')=>{ t.$('wdLen').value=String(len); t.$('wdWords').value=words; t.$('wdFlips').value=flips; t.$('passphrase').value=pw; t.$('passphrase2').value=pw; t.w.wdUpdate(); const dis=t.$('wdBtn').disabled; await t.w.wdGenerate(); return {dis,res:t.$('genResult').textContent.split('\n')[0]}; };
     const A11='abandon '.repeat(11);
     let r=await wd(12,A11,'0000000'); ok(!r.dis&&r.res===A11+'about','word draw: eleven "abandon" + flips 0000000 gives the known all-zero seed');
@@ -929,25 +932,25 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t.w.clearAll(); await new Promise(x=>setTimeout(x,30)); ok(t.$('wdWords').value===''&&t.$('wdFlips').value===''&&t.$('wdOut').textContent===''&&t.$('wdOut').style.display==='none','CLEAR wipes the word draw boxes and steps');
     t.$('passphrase').value=''; t.$('passphrase2').value=''; })();
   sweep(t);
-  await (async()=>{ let threw=false; try{ await t.w.rollsToMnemonic('1'.repeat(62),13);}catch(e){threw=true;} ok(threw,'a 13-word seed (not a BIP39 length) is rejected'); })();
+  await part(async()=>{ let threw=false; try{ await t.w.rollsToMnemonic('1'.repeat(62),13);}catch(e){threw=true;} ok(threw,'a 13-word seed (not a BIP39 length) is rejected'); })();
   sweep(t);
-  await (async()=>{ const {entropyToMnemonic:e2m}=require('@scure/bip39'), {wordlist:wl}=require('@scure/bip39/wordlists/english'), R='352614'.repeat(17), nc2=require('crypto');   // v2.10.0 release run: every length keeps the right number of hash bytes
+  await part(async()=>{ const {entropyToMnemonic:e2m}=require('@scure/bip39'), {wordlist:wl}=require('@scure/bip39/wordlists/english'), R='352614'.repeat(17), nc2=require('crypto');   // v2.10.0 release run: every length keeps the right number of hash bytes
     const got=[]; for(const [n,b] of [[12,16],[15,20],[18,24],[21,28],[24,32]]) got.push((await t.w.rollsToMnemonic(R,n))===e2m(nc2.createHash('sha256').update(R).digest().subarray(0,b),wl));
     ok(got.every(Boolean),'dice seeds of 12, 15, 18, 21 and 24 words are the first 128, 160, 192, 224 and 256 bits of SHA-256 of the rolls (checked with @scure)'); })();
   ok(/Recovery notes/.test(html)&&/move the funds/.test(html),'changelog has recovery notes for removed modes');
   ok((await t.w.checkPhrase('abandon '.repeat(14)+'address')).ok,'VERIFY still accepts 15-word phrases from other tools');
   sweep(t);
-  await (async()=>{ const r=await t.w.checkPhrase('constructor '+'abandon '.repeat(10)+'about'); ok(!r.ok&&/^Unknown word: constructor \(word 1\): no BIP39 word is close\. /.test(r.msg),'VERIFY reports a JavaScript property name typed as a word as an unknown word (v1.28.0)'); })();
+  await part(async()=>{ const r=await t.w.checkPhrase('constructor '+'abandon '.repeat(10)+'about'); ok(!r.ok&&/^Unknown word: constructor \(word 1\): no BIP39 word is close\. /.test(r.msg),'VERIFY reports a JavaScript property name typed as a word as an unknown word (v1.28.0)'); })();
   sweep(t);
-  await (async()=>{ const tcn=load(); await tcn.ready(); tcn.mode('coin'); tcn.set('0101'); await tcn.w.generate(); ok(/flips/.test(tcn.$('genResult').textContent)&&!/rolls/.test(tcn.$('genResult').textContent),'coin-mode length message says flips'); })();
+  await part(async()=>{ const tcn=load(); await tcn.ready(); tcn.mode('coin'); tcn.set('0101'); await tcn.w.generate(); ok(/flips/.test(tcn.$('genResult').textContent)&&!/rolls/.test(tcn.$('genResult').textContent),'coin-mode length message says flips'); })();
   sweep(t);
-  await (async()=>{ const ts=load(); await ts.ready(); ts.set(rnd(50)); await ts.w.generate(); const w0=ts.$('genResult').textContent.split('\n')[0];
+  await part(async()=>{ const ts=load(); await ts.ready(); ts.set(rnd(50)); await ts.w.generate(); const w0=ts.$('genResult').textContent.split('\n')[0];
     await ts.w.sendToVerify();
     ok(ts.$('phrase').value===w0&&/Valid 12-word/.test(ts.$('verifyStatus').textContent),'SEND TO CHECK fills the VERIFY box and validates the seed');
     ok(ts.st.clip.length===0,'SEND TO CHECK does not touch the clipboard');
     const te=load(); await te.ready(); await te.w.sendToVerify(); ok(te.st.alerts.length===1&&te.$('phrase').value==='','SEND TO CHECK with no seed alerts and does nothing'); })();
   sweep(t);
-  await (async()=>{ // Multisig wizard: three known seeds -> known descriptor and addresses (made with @scure/bip32 + btc-signer), wipes, refusals
+  await part(async()=>{ // Multisig wizard: three known seeds -> known descriptor and addresses (made with @scure/bip32 + btc-signer), wipes, refusals
     const tm=load(); await tm.ready(); const $=tm.$, A11='abandon '.repeat(11);
     const mk=async(words,flips)=>{ $('wdLen').value='12'; $('wdWords').value=words; $('wdFlips').value=flips; tm.w.wdUpdate(); await tm.w.wdGenerate(); await new Promise(r=>setTimeout(r,1200)); };
     const seeds=[[A11,'0000000'],['legal winner thank year wave sausage worth useful legal winner thank','1111111'],['zoo '.repeat(11).trim(),'1111111']];
@@ -1011,7 +1014,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
 
   })();
   sweep(t);
-  await (async()=>{ const tp=load(); await tp.ready(); const $=tp.$;
+  await part(async()=>{ const tp=load(); await tp.ready(); const $=tp.$;
     eq((await tp.w.practiceMake(new tp.w.Uint8Array(16))).join(' '),'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about','practice: the phrase is a valid 12-word BIP39 phrase made from the entropy');
     const E=['abandon','ability','able','about'];
     ok(tp.w.practiceCompare(E,'abandon ability able about').ok&&tp.w.practiceCompare(E,'  ABANDON  ability\nable about ').ok,'practice: a correct copy matches (case and spacing do not matter)');
@@ -1034,7 +1037,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(!/getRandomValues|Math\.random|\.randomUUID|msCrypto/.test(html.replace(/const WORDLIST = \[.*?\];/s,'')),'the page contains no browser random-number call at all'); })();
   // ---- v1.25.0 layout: tabs, Your seed panel, step bar, word slots, dice wait ----
   sweep(t);
-  await (async()=>{ const tl=load({focusSpy:true}); await tl.ready(); const T=(n)=>tl.$('tp-'+n), on=(n)=>!T(n).classList.contains('tab-off'), sel=(n)=>tl.$('tab-'+n).getAttribute('aria-selected');
+  await part(async()=>{ const tl=load({focusSpy:true}); await tl.ready(); const T=(n)=>tl.$('tp-'+n), on=(n)=>!T(n).classList.contains('tab-off'), sel=(n)=>tl.$('tab-'+n).getAttribute('aria-selected');
     ok(['make','check','tools','about'].every(n=>on(n)===(n==='make')&&sel(n)===String(n==='make')),'tabs: Make a seed is open first, the other three are hidden');
     ok(tl.$('tabs').getAttribute('role')==='tablist'&&[...tl.$('tabs').querySelectorAll('button')].every(b=>b.getAttribute('role')==='tab'&&tl.$(b.getAttribute('aria-controls')).getAttribute('role')==='tabpanel'),'tabs: proper tablist, tab and tabpanel roles');
     tl.w.showTab('check'); ok(on('check')&&!on('make')&&sel('check')==='true'&&sel('make')==='false'&&tl.$('tab-check').tabIndex===0&&tl.$('tab-make').tabIndex===-1,'tabs: showTab opens one and closes the rest');
@@ -1075,7 +1078,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(!tl.$('tp-make').contains(tl.$('about'))&&tl.$('tp-tools').contains(tl.$('cardMulti'))&&tl.$('tp-tools').contains(tl.$('cardTools'))&&tl.$('tp-check').contains(tl.$('cardCheck')),'each card sits in the right tab');
   })();
   sweep(t);
-  await (async()=>{ const tc=load(); await tc.ready(); const big=()=>tc.$('bigCount'), sub=()=>tc.$('bigSub');
+  await part(async()=>{ const tc=load(); await tc.ready(); const big=()=>tc.$('bigCount'), sub=()=>tc.$('bigSub');
     ok(big().textContent==='0 / 50'&&/short/.test(big().className)&&/50 more rolls to go/.test(sub().textContent)&&/short/.test(sub().className),'counter: starts at 0 / 50, red, with how many rolls are left');
     tc.set(rnd(20,6)); ok(big().textContent==='20 / 50'&&/short/.test(big().className)&&/30 more rolls to go/.test(sub().textContent)&&/short/.test(tc.$('rollCount').className),'counter: stays red below the target');
     tc.set(rnd(49,6)); ok(big().textContent==='49 / 50'&&/short/.test(big().className)&&/1 more rolls? to go|1 more roll/.test(sub().textContent),'counter: still red one roll short');
@@ -1094,7 +1097,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     tc.w.wipeSeed(); ok(cur()==='done,cur,-,-,-'&&big().textContent==='0 / 50','step bar and counter go back to the start after wiping');
   })();
   sweep(t);
-  await (async()=>{ const ts=load(); await ts.ready(); const cells=()=>[...ts.$('wordGrid').children];
+  await part(async()=>{ const ts=load(); await ts.ready(); const cells=()=>[...ts.$('wordGrid').children];
     ok(cells().length===12&&cells().every(c=>c.classList.contains('empty')&&/^\d+\.$/.test(c.firstChild.textContent)&&c.lastChild.textContent==='\u2014')&&cells().map(c=>c.firstChild.textContent).join(' ')===Array.from({length:12},(_,i)=>(i+1)+'.').join(' '),'slots: twelve numbered empty slots show before anything is made');
     ok(ts.$('wordGrid').classList.contains('slots')&&!/display:\s*grid/.test(ts.$('wordGrid').getAttribute('style')||''),'slots: shown by a class, not by the inline style that reveals the secret note');
     ok(/#wordGrid\[style\*="display: grid"\] \+ #secretNote/.test(html)&&!/display:\s*grid/.test(ts.$('wordGrid').getAttribute('style')||''),'slots: the secret note rule still keys on real words only');
@@ -1108,7 +1111,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   })();
   ok([['make','MAKE','MAKE A SEED'],['check','CHECK','CHECK A BACKUP'],['tools','TOOLS','EXTRA TOOLS'],['about','ABOUT','ABOUT & HELP']].every(([t,sh,fl])=>html.includes('data-tab="'+t+'" aria-label="'+fl+'"><span class="lg">')&&html.includes('<span class="sh">'+sh+'</span>')),'tabs: every tab has a full name (screen readers, wide screens) and a short name for phones');
   sweep(t);
-  await (async()=>{ const tf2=load(); await tf2.ready(); const mk=(c)=>c.map((n,i)=>String(i+1).repeat(n)).join('');
+  await part(async()=>{ const tf2=load(); await tf2.ready(); const mk=(c)=>c.map((n,i)=>String(i+1).repeat(n)).join('');
     // reference values from scipy.stats.chisquare (independent library)
     const D=[[[5,5,5,5,5,5],0,1],[[8,6,4,5,3,4],3.2,0.669183],[[10,6,5,4,3,2],8,0.156236],[[12,8,4,3,2,1],17.6,0.003492],[[15,12,9,6,3,0],21,0.00081],[[20,5,2,1,1,1],56.4,0]];
     ok(D.every(([c,x,pv])=>{const r=tf2.w.faceTest(mk(c),false);return Math.abs(r.chi-x)<1e-6&&Math.abs(r.p-pv)<2e-6&&r.df===5;}),'fairness test: dice chi-square and p-value match scipy (5 degrees of freedom)');
@@ -1127,7 +1130,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     tf2.set('1'.repeat(15)+'0'.repeat(5)); ok(/\u03c7\u00b2 = 5\.00, 1 degree of freedom, p \u2248 0\.025\. Mildly unusual: a fair coin does this/.test((tf2.$('rcStat')||{}).textContent||''),'fairness test: coin result with its numbers and the word coin'); })();
 
   sweep(t);
-  await (async()=>{ const tw=load(); await tw.ready(); const F=(x)=>tw.w.wdFindWord(x);
+  await part(async()=>{ const tw=load(); await tw.ready(); const F=(x)=>tw.w.wdFindWord(x);
     // reference words from the python-mnemonic library's English list
     const W=[["1","abandon",1],["2048","zoo",2048],["257","cactus",257],["680","female",680],["3 A 7","female",680],["3-a-7","female",680],["1 0 0","abandon",1],["8 F F","zoo",2048],["2 0 0","cactus",257],["300","century",300],[" 300 ","century",300]];
     ok(W.every(([i,wd,n])=>{const r=F(i);return r.word===wd&&r.idx===n-1&&r.msg==='Word '+n+': '+wd;}),'word finder: numbers and D8 + hex dice give the right BIP39 words');
@@ -1137,7 +1140,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     tw.w.document.getElementById('wdFind').value='3 A 7'; tw.w.wdFind(); ok(tw.$('wdFound').textContent==='Word 680: female','word finder: shows the word on the page');
     ok(tw.$('wdFind').closest('#tp-make')!==null,'word finder: lives in the Make a seed tab'); })();
   sweep(t);
-  await (async()=>{ // v2.3.0 BitBox02 diceware: the table code in the word finder, ADD WORD, and the 24th word from 3 flips (T = 1, H = 0)
+  await part(async()=>{ // v2.3.0 BitBox02 diceware: the table code in the word finder, ADD WORD, and the 24th word from 3 flips (T = 1, H = 0)
     const tb=load(); await tb.ready(); const F=x=>tb.w.wdFindWord(x), WL=tb.w.eval('WORDLIST');
     const bbIdx=(c)=>{ const d=c.slice(0,5).split('').map(Number); return (((d[0]-1)*64+(d[1]-1)*16+(d[2]-1)*4+(d[3]-1))*8)+(d[4]-1)*2+(c[5]==='T'?1:0); };
     // the printed table rows that BitBox publishes: 1111 = abandon ... abstract, 2111 starts at divorce, 4444 ends at zoo
@@ -1171,7 +1174,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       tb.$('wdWords').value=made.split(' ').slice(0,23).join(' '); tb.w.wdUpdate(); await tb.w.wdGenerate(); tb.words(12); ok(!tb.w.hasSeed(),'Word draw: changing the word count clears the seed'); }
     ok(/Using BitBox02&rsquo;s diceware table\?/.test(html)&&/T as 1 and H as 0/.test(html)&&/HHH picks the first, TTT the eighth/.test(html),'BitBox02: the Word draw box explains the table codes and the 3 flips'); })();
   sweep(t);
-  await (async()=>{ // v2.3.0 Verify a signed message: official BIP322 vectors (bitcoin/bips) and Bitcoin Core's classic test vector, through the page
+  await part(async()=>{ // v2.3.0 Verify a signed message: official BIP322 vectors (bitcoin/bips) and Bitcoin Core's classic test vector, through the page
     const ts=load(); await ts.ready(); const V=(a,m,sg)=>ts.w.verifyMessage(a,m,sg);
     const CORE=['mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB','This is just a test message','INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0='];
     const W1='bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l', SE='smpAkcwRAIgM2gBAQqvZX15ZiysmKmQpDrG83avLIT492QBzLnQIxYCIBaTpOaD20qRlEylyxFSeEA2ba9YOixpX8z46TSDtS40ASECx/EgAxlkQpQ9hYjgGu6EBCPMVPwVIVJqO4XCsMvViHI=';
@@ -1227,7 +1230,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ts.w.clearSig(); ok(['sigAddr','sigMsg','sigSig','sigStatus'].every(id=>(ts.$(id).value||ts.$(id).textContent||'')===''),'signed message: CLEAR empties the box');
     ok(!/signMessage|function sign[A-Z]|privateKey/.test((html.match(/\/\/ ===== Verify a signed message[\s\S]*?function clearSig/)||[''])[0]),'signed message: the code only verifies (nothing that signs)'); })();
   sweep(t);
-  await (async()=>{ // v2.3.0 Keystone dice rules: every 6 counts as 0, 50 / 100 rolls or more, at most 256
+  await part(async()=>{ // v2.3.0 Keystone dice rules: every 6 counts as 0, 50 / 100 rolls or more, at most 256
     const tk=load(); await tk.ready(); const WL=tk.w.eval('WORDLIST'), bits=b=>[...b].map(x=>x.toString(2).padStart(8,'0')).join('');
     const mnK=(rolls,wc)=>{ const ent=nc.createHash('sha256').update(rolls.replace(/6/g,'0')).digest().subarray(0,wc===24?32:16), cs=bits(nc.createHash('sha256').update(ent).digest()).slice(0,ent.length/4); return (bits(ent)+cs).match(/.{11}/g).map(b=>WL[parseInt(b,2)]).join(' '); };
     const rules=v=>{ tk.$('diceRules').value=v; tk.$('diceRules').dispatchEvent(new tk.w.Event('change')); };
@@ -1256,7 +1259,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     tk.w.setMethod('words'); ok(tk.$('rulesRow').style.display==='none','Keystone: the menu is hidden in Word draw'); tk.w.setMethod('dice'); })();
   ok(/#cardGen \.gen-right \{ grid-column: 2; grid-row: 1 \/ span 2;[^}]*position: sticky/.test(html)&&/#cardGen \.gen-bottom \{ grid-column: 1; grid-row: 2;/.test(html),'layout: the sticky Your seed panel sits beside all the content and never slides over it (QR codes were hidden behind it)');
   sweep(t);
-  await (async()=>{ const tg=load(); await tg.ready(); const g=tg.$('startGate'), body=g.querySelector('.sg-body'), go=tg.$('sgGo');
+  await part(async()=>{ const tg=load(); await tg.ready(); const g=tg.$('startGate'), body=g.querySelector('.sg-body'), go=tg.$('sgGo');
     ok(!!body&&!body.contains(go)&&go.parentNode.classList.contains('sg-box')&&body.parentNode.classList.contains('sg-box'),'start notice: the I understand button sits outside the scrolling text, so it is always on screen (phones could not reach it)');
     ok(/#startGate \.sg-box \{[^}]*max-height: 100%; overflow: hidden; display: flex; flex-direction: column;/.test(html)&&/#startGate \.sg-body \{ flex: 1 1 auto; min-height: 0; overflow-y: auto;/.test(html)&&/#startGate \.sg-go, #startGate \.sg-foot \{ flex: none; \}/.test(html),'start notice: the box fits the screen, only the text scrolls, the button and footer never shrink or scroll away');
     ok(/#startGate \{ position: fixed; top: 0; right: 0; bottom: 0; left: 0;/.test(html)&&!/inset:/.test(html),'start notice: covers the screen with top/right/bottom/left (the inset shorthand fails on iOS before 14.1)');
@@ -1267,13 +1270,13 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   ok(/@media \(min-width: 861px\) \{ #cardGen \.gen-right \{ max-height: calc\(100vh - 92px\); overflow-y: auto;/.test(html),'layout: a tall Your seed panel scrolls inside itself so its bottom buttons (COPY, DOWNLOAD) stay reachable');
   ok(/#qrBox, #sqBox, #msQrBox \{ scroll-margin: 80px 0 20px; \}/.test(html),'layout: QR boxes keep clear of the sticky tab bar when scrolled to');
   sweep(t);
-  await (async()=>{ const tq=load(); await tq.ready(); const seen=[]; const spy=(id)=>{const el=tq.$(id); el.scrollIntoView=(o)=>seen.push([id,o&&o.block]);};
+  await part(async()=>{ const tq=load(); await tq.ready(); const seen=[]; const spy=(id)=>{const el=tq.$(id); el.scrollIntoView=(o)=>seen.push([id,o&&o.block]);};
     ['qrBox','sqBox'].forEach(spy); tq.w.document.getElementById('wDescR').textContent='wpkh(x)'; tq.w.showQr('wDescR','receive descriptor');
     ok(seen.length===1&&seen[0][0]==='qrBox'&&seen[0][1]==='nearest','QR: showing the watch-only QR scrolls it fully into view');
     tq.set(rnd(50)); await tq.w.generate(); tq.w.showSeedQr('seedqr'); ok(seen.length===2&&seen[1][0]==='sqBox'&&seen[1][1]==='nearest','QR: showing the SeedQR scrolls it fully into view'); })();
   ok(/\.tabs button\[aria-selected="true"\], body\.light \.tabs button\[aria-selected="true"\][^{]*\{[^}]*border-bottom-color: var\(--gold\)/.test(html),'tabs: the selected tab is marked with a gold underline in both themes');
   sweep(t);
-  await (async()=>{ const td=load(); await td.ready(); ok(td.d.body.classList.contains('dice-wait')&&!!td.$('startGate'),'dice: held back while the notice is open');
+  await part(async()=>{ const td=load(); await td.ready(); ok(td.d.body.classList.contains('dice-wait')&&!!td.$('startGate'),'dice: held back while the notice is open');
     td.w.startGateClose(); ok(!td.d.body.classList.contains('dice-wait'),'dice: released when the notice is closed with the button');
     const te=load(); await te.ready(); te.d.dispatchEvent(new te.w.KeyboardEvent('keydown',{key:'Escape'})); ok(te.d.body.classList.contains('dice-wait')&&!!te.$('startGate'),'dice: still held back after Escape (v2.18.0: the notice needs its button)');
     const tn=load(); await tn.ready(); tn.$('startGate').remove(); tn.d.dispatchEvent(new tn.w.Event('DOMContentLoaded')); ok(!tn.d.body.classList.contains('dice-wait'),'dice: not held back if there is no notice'); })();
@@ -1308,23 +1311,23 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
         ok(/function endSessionReload\(\)\{ location\.reload\(\); \}/.test(html),'END SESSION: the reload is a real page reload (the notice shows again, script memory starts fresh)'); }
       ok(/BEFORE YOU MAKE REAL KEYS/.test(tg.$('beforeCard').textContent)&&tg.$('beforeCard').querySelectorAll('.sg-item').length===3&&tg.$('beforeCard').closest('#tp-about')!==null&&/Read before real keys/.test(tg.$('strip').textContent),'the three warnings live in the About tab, reached from the one-line notice'); } }
   sweep(t);
-  await (async()=>{ const tc=load(); await tc.ready(); const h=await tc.w.sha256bytes(new TextEncoder().encode('123456'));
+  await part(async()=>{ const tc=load(); await tc.ready(); const h=await tc.w.sha256bytes(new TextEncoder().encode('123456'));
     const m24=await tc.w.entropyToMnemonic(h), m12=await tc.w.entropyToMnemonic(h.slice(0,16));
     ok(m24==='mirror reject rookie talk pudding throw happy era myth already payment own sentence push head sting video explain letter bomb casual hotel rather garment'&&m12==='mirror reject rookie talk pudding throw happy era myth already payment owner','Coldcard compatibility: its documented example (rolls 123456) gives the same 24 and 12 words'); })();
   // ===== v2.4.0: one-page prints, roll sheet extras, CHECK A BACKUP backups, QR and child prints, dice test, keyboard entry, typo helper, explain an address, summary =====
   sweep(t);
-  await (async()=>{ const css=html.slice(0,html.indexOf('</style>'));
+  await part(async()=>{ const css=html.slice(0,html.indexOf('</style>'));
     ok(/@page \{ margin: 12mm; \}/.test(css)&&/body\.print-seed > :not\(#printOnly\), body\.print-qr > :not\(#printQr\) \{ display: none !important; \}/.test(css)&&!/body\.print-seed \* \{ visibility: hidden/.test(css)&&!/body\.print-qr \* \{ visibility: hidden/.test(css),'print: everything but the sheet is removed from the layout (display: none), so no blank pages are printed');
     const tp=load(); await tp.ready(); ok(tp.$('printOnly').parentElement===tp.d.body&&tp.$('printQr').parentElement===tp.d.body,'print: both print areas sit directly in the page body, so the rule above leaves only the sheet');
     ok(/node tests\/print\.test\.mjs/.test(fs.readFileSync(path.join(__dirname,'..','.github','workflows','tests.yml'),'utf8')),'print: the one-page print test is in the GitHub Actions test workflow'); })();
   // the online practice copy (GitHub Pages from v2.15.0): the wrapper names only GitHub addresses, and the demo serves the released file only after SHA256SUMS and CID.txt check out
   sweep(t);
-  await (async()=>{ const dir=path.join(__dirname,'..','demo'), idx=fs.readFileSync(path.join(dir,'index.html'),'utf8'), ci=fs.readFileSync(path.join(__dirname,'..','.github','workflows','pages.yml'),'utf8');
+  await part(async()=>{ const dir=path.join(__dirname,'..','demo'), idx=fs.readFileSync(path.join(dir,'index.html'),'utf8'), ci=fs.readFileSync(path.join(__dirname,'..','.github','workflows','pages.yml'),'utf8');
     const links=[...idx.matchAll(/https?:\/\/[^\s"'<>)]+/g)].map(m=>m[0]);
     ok(links.length===1&&links[0]==='https://github.com/Random21m/VOIDFORGE/releases'&&/Only trust this address: <b>random21m\.github\.io\/VOIDFORGE<\/b>/.test(idx)&&!/gitlab/i.test(idx),'demo: the wrapper links only to the GitHub releases page and names the GitHub demo address');
     ok(!fs.existsSync(path.join(dir,'voidforge.html'))&&/sha256sum -c SHA256SUMS[\s\S]*CID\.txt[\s\S]*cp voidforge\.html public\/voidforge\.html[\s\S]*actions\/upload-pages-artifact@[\s\S]*actions\/deploy-pages@/.test(ci)&&/branches: \[main\]/.test(ci)&&/if: github\.ref == 'refs\/heads\/main'/.test(ci)&&!fs.existsSync(path.join(__dirname,'..','.gitlab-ci.yml')),'demo: GitHub Pages copies the released file from main, after checking SHA256SUMS and CID.txt (and .gitlab-ci.yml is gone)'); })();
   sweep(t);
-  await (async()=>{ const t4=load(); await t4.ready(); const $=t4.$, w=t4.w; w.startGateClose();
+  await part(async()=>{ const t4=load(); await t4.ready(); const $=t4.$, w=t4.w; w.startGateClose();
     const opts=()=>[...$('rsExtra').options].map(o=>o.value).join();
     const sheet=()=>{ const p0=t4.st.printed; w.printRollSheet(); const r={n:t4.st.printed-p0,cells:t4.st.printCells.slice(),txt:t4.st.printHTML,wide:t4.d.querySelectorAll('#printOnly .ps-roll20').length}; w.dispatchEvent(new w.Event('afterprint')); return r; };
     eq(opts(),'0,10,25,50','roll sheet: the extra-box menu offers none, 10, 25 or 50'); eq($('rsExtra').value,'10','roll sheet: 10 extra boxes by default (as in v2.3.0)');
@@ -1338,7 +1341,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t4.mode('coin'); $('rsExtra').value='50'; r=sheet(); ok(r.cells.length===306&&r.wide===2,'roll sheet: 24-word coin sheet with 50 extra (306 boxes) uses the compact layout');
     $('rsExtra').value='25'; eq(w.rsExtraCount(256),25,'roll sheet: without Keystone rules there is no Keystone cap'); })();
   sweep(t);
-  await (async()=>{ const t5=load(); await t5.ready(); const $=t5.$, w=t5.w; w.startGateClose();
+  await part(async()=>{ const t5=load(); await t5.ready(); const $=t5.$, w=t5.w; w.startGateClose();
     // Word draw sheet
     let p0=t5.st.printed; w.printWordSheet(); ok(t5.st.printed===p0+1&&t5.st.printCells.length===18&&t5.st.printCells[10]==='11'&&t5.st.printCells[11]==='Flip 1'&&t5.st.printCells[17]==='Flip 7'&&/^VOIDFORGE WORD DRAW SHEET/.test(t5.st.printHTML)&&/as secret as your seed/.test(t5.st.printHTML),'word draw sheet: 11 word boxes and 7 flip boxes for 12 words, with the secret warning'); w.dispatchEvent(new w.Event('afterprint'));
     $('wdLen').value='24'; p0=t5.st.printed; w.printWordSheet(); ok(t5.st.printCells.length===26&&t5.st.printCells[23]==='Flip 1'&&t5.st.printCells[25]==='Flip 3','word draw sheet: 23 word boxes and 3 flip boxes for 24 words'); w.dispatchEvent(new w.Event('afterprint')); $('wdLen').value='12';
@@ -1361,7 +1364,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t5.set(''); t5.mode('coin'); key('1'); key('0'); key('2'); eq($('rolls').value,'10','keyboard: coin mode takes only 1 and 0');
     ok(/press 1 on the keyboard; Backspace undoes the last one/.test(t5.d.querySelector('#tapRow button').title),'keyboard: the tap buttons say the keys work'); })();
   sweep(t);
-  await (async()=>{ const t7=load(); await t7.ready(); const $=t7.$, w=t7.w; w.startGateClose();
+  await part(async()=>{ const t7=load(); await t7.ready(); const $=t7.$, w=t7.w; w.startGateClose();
     // typo helper and 4-letter forms
     let r=await w.checkPhrase('abandon '.repeat(10)+'abandn about'); ok(!r.ok&&r.msg==='Unknown word: abandn (word 11): closest BIP39 word abandon. Check it on your backup.','typo helper: one unknown word gets the closest BIP39 word');
     r=await w.checkPhrase('abandon '.repeat(10)+'zzzzz xyzzy'); ok(!r.ok&&/^Unknown words: zzzzz \(word 11\): no BIP39 word is close; xyzzy \(word 12\): closest BIP39 word dizzy\. Check them on your backup\.$/.test(r.msg),'typo helper: several unknown words are listed together');
@@ -1416,7 +1419,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(!$('tp-about').classList.contains('tab-off')&&$('dictBox').open&&t7.d.querySelector('.dict-item.dict-hit dt').textContent==='Native SegWit'&&t7.d.querySelectorAll('.dict-hit').length===1,'dictionary links: a link opens the dictionary at that entry');
     ok(t7.d.querySelectorAll('#whatBox .what-list li').length===10&&t7.d.querySelectorAll('#whatBox .tag-secret').length===6&&t7.d.querySelectorAll('#whatBox .tag-public').length===3,'"What can someone do with this?": 10 items, 6 secret, 3 public, 1 private'); })();
   sweep(t);
-  await (async()=>{ const t8=load(); await t8.ready(); const $=t8.$, w=t8.w; w.startGateClose();
+  await part(async()=>{ const t8=load(); await t8.ready(); const $=t8.$, w=t8.w; w.startGateClose();
     t8.set('1'.repeat(25)+'2'.repeat(25)); await w.generate(); await w.passWork; await new Promise(r=>setTimeout(r,50));
     ok(/^This seed: 12 words from 50 dice rolls, SeedSigner and Coldcard dice rules, passphrase none, fingerprint [0-9a-f]{8}\.$/.test($('sumLine').textContent),'summary: one line at the top of the checklist says how the seed was made');
     let p0=t8.st.printed; w.printSummary(); const words=$('genResult').textContent.split('\n')[0].split(' ');
@@ -1443,7 +1446,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     w.clearChild(); t8.st.alerts.length=0; w.printChild(); ok($('childPrintRow').style.display==='none'&&/DERIVE first/.test(t8.st.alerts[0]),'child: HIDE removes the button and the printable result'); })();
   // ===== v2.4.0 review fixes =====
   sweep(t);
-  await (async()=>{ const t9=load(); await t9.ready(); const $=t9.$, w=t9.w; w.startGateClose();
+  await part(async()=>{ const t9=load(); await t9.ready(); const $=t9.$, w=t9.w; w.startGateClose();
     t9.set(rnd(50,6)); await w.generate(); await w.passWork; await new Promise(r=>setTimeout(r,50));
     // QR prints describe the code that was shown, and a change of network hides it at once
     w.showQr('wZpub','public key'); const snap=w.eval('qrShown'); $('wNet').value='test'; const rw=w.refreshWatch(); let p0=t9.st.printed; t9.st.alerts.length=0; w.printShownQr();
@@ -1475,7 +1478,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(/^bad .*contents are not two keys/.test(await X(w.bech32mText('sp',[0,...toW(2)])))&&/^bad .*contents are not two keys/.test(await X(w.bech32mText('sp',[31,...toW(66)])))&&/^ok Silent Payment address/.test(await X(w.bech32mText('sp',[1,...toW(70)])))&&/^bad .*contents are not two keys/.test(await X(w.bech32mText('sp',[1,...toW(60)]))),'explain: a Silent Payment address must hold two keys (66 bytes; version 31 is reserved)'); })();
   // ===== v2.4.0 second review fixes =====
   sweep(t);
-  await (async()=>{ const ta=load(); await ta.ready(); const $=ta.$, w=ta.w; w.startGateClose();
+  await part(async()=>{ const ta=load(); await ta.ready(); const $=ta.$, w=ta.w; w.startGateClose();
     const X=async a=>{ const r=await w.explainAddress(a); return r?r.level+' '+r.text:''; };
     ok(/^bad This descriptor holds a PRIVATE key/.test(await X('wpkh([73c5da0a/84h/0h/0h]xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi/0/*)'))&&/^bad This descriptor holds a PRIVATE key/.test(await X('wpkh(KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn)'))&&/^warn This is a descriptor/.test(await X('wpkh(xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8/0/*)')),'explain: a descriptor with an xprv or a WIF key is called SECRET; one with an xpub is not');
     ok(!/^ok/.test(await X(w.bech32Encode('constructor',0,new Uint8Array(20))))&&!/^ok/.test(await X(w.bech32Encode('__proto__',0,new Uint8Array(20)))),'explain: object property names are not networks');
@@ -1515,7 +1518,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(!/\(v2\.4\.0\)/.test(ta.d.querySelector('#childBox').textContent)&&/Nothing on its own/.test(ta.$('whatBox').textContent)&&/xpub, zpub or public descriptor/.test(ta.$('whatBox').textContent),'page text: no version numbers in the child box; the guide wording'); })();
   // ===== v2.4.0: no red flash while the page loads =====
   sweep(t);
-  await (async()=>{ const css=html.match(/<style>[\s\S]*?<\/style>/)[0], main=html.indexOf('<script>',html.indexOf('</style>'));
+  await part(async()=>{ const css=html.match(/<style>[\s\S]*?<\/style>/)[0], main=html.indexOf('<script>',html.indexOf('</style>'));
     ok(html.indexOf('document.documentElement.classList.add("js");')>0&&html.indexOf('document.documentElement.classList.add("js");')<html.indexOf('<style>'),'first paint: a tiny script in the head marks that scripts can run, before any style applies');
     ok(/\n  html\.js #noJs \{ display: none; \}\n/.test(css)&&/\n  html\.js body:not\(\.js-ok\) \.container \{ visibility: hidden; \}\n/.test(css),'first paint: the script-not-running notice and the half-built page stay hidden while the main script loads');
     ok(/<div id="noJs" role="alert">/.test(html)&&/\n  #onlineWarn, #fatalWarn, #noJs \{ background: transparent;/.test(css),'first paint: the script-not-running notice looks like the other warnings (no bright red box)');
@@ -1527,7 +1530,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     dom.window.close(); })();
   // ===== v2.5.0: backup plan and stress test, wallet birthday, practice mode, watch-only file, passphrase warning, secrets not selectable =====
   sweep(t);
-  await (async()=>{ const today=(()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
+  await part(async()=>{ const today=(()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
     const nextYear=(()=>{ const d=new Date(); const n=new Date(d.getFullYear()+1,d.getMonth(),d.getDate()); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0'); })();
     const css=html.slice(0,html.indexOf('</style>'));
     ok(html.indexOf('<li><b>2.5.0</b>')>0&&html.indexOf('<li><b>2.5.0</b>')<html.indexOf('<li><b>2.4.0</b>'),'v2.5.0: the changelog lists 2.5.0 first');
@@ -1666,7 +1669,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   })();
   // ===== v2.6.0: animated QR (UR + BBQr), UR/BBQr paste, custom paths, read-only private keys, check an address before you pay, future spending cost =====
   sweep(t);
-  await (async()=>{ const t6=load({confirm:true}); await t6.ready(); const $=t6.$, w=t6.w; w.startGateClose();
+  await part(async()=>{ const t6=load({confirm:true}); await t6.ready(); const $=t6.$, w=t6.w; w.startGateClose();
     const {HDKey}=require('@scure/bip32'); const {mnemonicToSeedSync}=require('@scure/bip39'); const btc=require('@scure/btc-signer'); const zlib=require('zlib'), nc=require('crypto');
     const until=async(f)=>{ for(let k=0;k<120&&!f();k++) await new Promise(r=>setTimeout(r,50)); };
     ok(html.indexOf('<li><b>2.6.0</b>')>0&&html.indexOf('<li><b>2.6.0</b>')<html.indexOf('<li><b>2.5.0</b>'),'v2.6.0: the changelog lists 2.6.0 first');
@@ -1768,7 +1771,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     t6.w.close();
   })();
   sweep(t);
-  await (async()=>{ // v2.6.0 review fixes: CLEAR ALL wipes Reforge and every box, practice-mode COPY ADDRESS and recorded-address check, Word draw download, P2WSH, password managers
+  await part(async()=>{ // v2.6.0 review fixes: CLEAR ALL wipes Reforge and every box, practice-mode COPY ADDRESS and recorded-address check, Word draw download, P2WSH, password managers
     const r=load(); await r.ready(); const $=r.$, w=r.w, AB='abandon '.repeat(11)+'about', sleep=ms=>new Promise(x=>setTimeout(x,ms));
     const MAIN0='bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu', TEST0='tb1q6rz28mcfaxtmd6v789l9rrlrusdprr9pqcpvkl', MAINP='bc1qv5rmq0kt9yz3pm36wvzct7p3x6mtgehjul0feu'; // @scure: m/84'/0'/0'/0/0, m/84'/1'/0'/0/0, and m/84'/0'/0'/0/0 with passphrase TREZOR
     const P2WSH='bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3'; // BIP173 sample: version 0, 32-byte program
@@ -1807,7 +1810,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     ok(['passphrase','passphrase2','verifyPass','reforgeWordsPass'].every(id=>$(id).getAttribute('autocomplete')==='new-password'),'passphrase boxes keep autocomplete="new-password", so a saved password is never filled in as a passphrase');
     r.w.close(); })();
   sweep(t);
-  await (async()=>{ // v2.7.0: dice passphrase, check your device's dice (and the test card), two wallets side by side, Roll together. Expected values from @scure.
+  await part(async()=>{ // v2.7.0: dice passphrase, check your device's dice (and the test card), two wallets side by side, Roll together. Expected values from @scure.
     const {entropyToMnemonic,mnemonicToSeedSync}=require('@scure/bip39'); const {wordlist}=require('@scure/bip39/wordlists/english'); const {HDKey}=require('@scure/bip32');
     const {bech32}=require('@scure/base'); const {ripemd160}=require('@noble/hashes/ripemd160'); const {sha256:nsha}=require('@noble/hashes/sha256');
     const shaB=s=>nc.createHash('sha256').update(s).digest(), sleep=ms=>new Promise(x=>setTimeout(x,ms)), until=async f=>{ for(let k=0;k<200&&!f();k++) await sleep(50); };
@@ -1879,7 +1882,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     { const names=w.eval('DICT').map(e=>e[0]); ok(['Device dice check','Dice passphrase','Roll together','Decoy wallet'].every(n=>names.includes(n)),'dictionary: Device dice check, Dice passphrase, Roll together and Decoy wallet'); }
     r.w.close(); })();
   sweep(t);
-  await (async()=>{ // v2.8.0: Wallet Detective, Is anything watching this page?, Heir mode. Expected addresses from @scure and node's own PBKDF2.
+  await part(async()=>{ // v2.8.0: Wallet Detective, Is anything watching this page?, Heir mode. Expected addresses from @scure and node's own PBKDF2.
     const {mnemonicToSeedSync}=require('@scure/bip39'); const {HDKey}=require('@scure/bip32');
     const {bech32,base58check,bech32m}=require('@scure/base'); const {ripemd160}=require('@noble/hashes/ripemd160'); const {sha256:nsha}=require('@noble/hashes/sha256');
     const b58=base58check(nsha), h160=b=>ripemd160(nsha(b)), sleep=ms=>new Promise(x=>setTimeout(x,ms));
@@ -1961,7 +1964,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     $('menuBox').open=true; $('watchMenuBtn').click(); ok(!$('menuBox').open&&!$('tp-about').classList.contains('tab-off')&&$('watchStatus').textContent!=='','watch check: the MENU button opens ABOUT & HELP and runs the check');
     r.w.close(); })();
   sweep(t);
-  await (async()=>{ // watch check with simulated extensions: each sign is named, the banner shows, and a removed script is still remembered
+  await part(async()=>{ // watch check with simulated extensions: each sign is named, the banner shows, and a removed script is still remembered
     const sleep=ms=>new Promise(x=>setTimeout(x,ms)); const T=async(f)=>{ const t=load(); await t.ready(); f(t.w,t.d,t.$); await sleep(450); const s=t.w.watchSigns(), b=t.$('watchWarn'); const res={s:s.join('\n'), banner:b.style.display==='block', btxt:b.textContent, t}; return res; };
     let x=await T((w,d,$)=>{ $('phrase').setAttribute('data-gramm','false'); d.body.appendChild(d.createElement('grammarly-extension')); });
     ok(/An attribute data-gramm on the page, as Grammarly \(a writing assistant\) adds\./.test(x.s)&&/An element <grammarly-extension> that this page never makes/.test(x.s)&&x.banner&&/^Something else may be reading or changing this page\. An attribute data-gramm .* \(and 1 more sign\) Browser extensions can read everything typed here, including seed words\. WHAT TO DO$/.test(x.btxt),'watch check: a writing assistant\'s attribute and element are found and the warning shows at the top');
@@ -1979,7 +1982,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     x=await T((w)=>{ for(let i=0;i<500;i++) w.document.body.appendChild(w.document.createElement('x-y')); });
     ok(x.t.w.vfWatchSeen.length<=200,'watch check: the early notes are capped at 200'); x.t.w.close(); })();
   sweep(t);
-  await (async()=>{ // Heir mode
+  await part(async()=>{ // Heir mode
     const t=load(); await t.ready(); const $=t.$, w=t.w;
     ok($('heirCard').style.display==='none'&&$('heirBtn').getAttribute('aria-expanded')==='false'&&$('heirBtn').className==='small'&&$('heirNew').closest('header'),'Heir mode: a gold I FOUND A BITCOIN BACKUP button under the title; the help is closed at first');
     $('heirBtn').click(); ok($('heirCard').style.display===''&&$('heirBtn').getAttribute('aria-expanded')==='true','Heir mode: the button opens the help');
@@ -1993,7 +1996,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     { const names=w.eval('DICT').map(e=>e[0]); ok(['Browser extension','Heir mode','Wallet Detective'].every(n=>names.includes(n)),'dictionary: Browser extension, Heir mode and Wallet Detective'); }
     w.close(); })();
   sweep(t);
-  await (async()=>{ // fixes release (v2.8.1): the full review's findings and the Test upgrade's. Expected values from @scure and btc-signer.
+  await part(async()=>{ // fixes release (v2.8.1): the full review's findings and the Test upgrade's. Expected values from @scure and btc-signer.
     const {mnemonicToSeedSync}=require('@scure/bip39'); const {HDKey}=require('@scure/bip32'); const btc=require('@scure/btc-signer');
     const sleep=ms=>new Promise(x=>setTimeout(x,ms)), r=load(); await r.ready(); const $=r.$, w=r.w, AB='abandon '.repeat(11)+'about';
     const root=HDKey.fromMasterSeed(mnemonicToSeedSync(AB,'')), fp=root.fingerprint, H=0x80000000, k=(p)=>root.derive(p).publicKey, att=HDKey.fromMasterSeed(nc.randomBytes(32)).derive('m/0/0').publicKey;
@@ -2093,7 +2096,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     r.w.close(); })();
   // v2.9.0: Cards & hex (expected words from @scure and Node's SHA-256; same text and method as Ian Coleman's BIP39 tool)
   sweep(t);
-  await (async()=>{ const {entropyToMnemonic}=require('@scure/bip39'); const {wordlist}=require('@scure/bip39/wordlists/english');
+  await part(async()=>{ const {entropyToMnemonic}=require('@scure/bip39'); const {wordlist}=require('@scure/bip39/wordlists/english');
     const r=load(); await r.ready(); const w=r.w, $=r.$; const SU={C:'♣',D:'♦',H:'♥',S:'♠'};
     const cs=t=>t.split(' ').map(x=>x[0]+SU[x[1]]).join(' '), expC=(t,n)=>entropyToMnemonic(nc.createHash('sha256').update(cs(t),'utf8').digest().subarray(0,n===24?32:16),wordlist);
     const C25='KS 3D 9H AC TC 5S JD 2H 8C QS 4D 7H 6C AH TS 9D 3C KH 5D JS 2S 8H QC 4H 7S', first=()=>$('genResult').textContent.split('\n')[0];
@@ -2113,7 +2116,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     r.w.close(); })();
   // v2.10.0: signature checks in Inspect a transaction and Compare two transactions (PSBTs signed by @scure/btc-signer)
   sweep(t);
-  await (async()=>{ const btc=require('@scure/btc-signer'); const {secp256k1}=require('@noble/curves/secp256k1');
+  await part(async()=>{ const btc=require('@scure/btc-signer'); const {secp256k1}=require('@noble/curves/secp256k1');
     const r=load(); await r.ready(); const w=r.w, $=r.$, sleep=ms=>new Promise(z=>setTimeout(z,ms));
     const k=nc.createHash('sha256').update('v2.10.0 unit').digest(), pub=secp256k1.getPublicKey(k,true), p=btc.p2wpkh(pub);
     const mk=()=>{ const tx=new btc.Transaction(); tx.addInput({txid:new Uint8Array(32).fill(9),index:0,witnessUtxo:{script:p.script,amount:100000n}}); tx.addOutput({script:btc.p2wpkh(secp256k1.getPublicKey(nc.createHash('sha256').update('pay').digest(),true)).script,amount:99000n}); return tx; };
@@ -2167,7 +2170,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // v2.10.0: Make new SLIP39 shares from dice (expected wallet from @scure/bip32 and btc-signer; the words themselves are checked
   // against the reference implementation in tests/slip39.test.mjs)
   sweep(t);
-  await (async()=>{ const {HDKey}=require('@scure/bip32'); const btc=require('@scure/btc-signer');
+  await part(async()=>{ const {HDKey}=require('@scure/bip32'); const btc=require('@scure/btc-signer');
     const r=load(); await r.ready(); const w=r.w, $=r.$, d=r.d;
     const mode=m=>{ d.querySelector('input[name=s39Mode][value='+m+']').checked=true; w.s39ModeChange(); };
     const R='123456'.repeat(9), ms=nc.createHash('sha256').update(R).digest().subarray(0,16), root=HDKey.fromMasterSeed(ms);
@@ -2218,7 +2221,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // v2.10.0: BIP138 encrypted descriptor backups. Official test vectors from bitcoin/bips (pinned in tests/fixtures/bip138/SOURCE.json),
   // addresses from embit (tests/fixtures/gen_bip138.py), ChaCha20-Poly1305 from Node's crypto, keys from @scure/bip32.
   sweep(t);
-  await (async()=>{ const FX=path.join(__dirname,'fixtures','bip138'), SRC=JSON.parse(fs.readFileSync(path.join(FX,'SOURCE.json'),'utf8')), V=n=>JSON.parse(fs.readFileSync(path.join(FX,n),'utf8'));
+  await part(async()=>{ const FX=path.join(__dirname,'fixtures','bip138'), SRC=JSON.parse(fs.readFileSync(path.join(FX,'SOURCE.json'),'utf8')), V=n=>JSON.parse(fs.readFileSync(path.join(FX,n),'utf8'));
     const {HDKey}=require('@scure/bip32'); const {mnemonicToSeedSync}=require('@scure/bip39');
     ok(SRC.commit==='346008db8943cb90c1e091eaac8277066d4dbee7'&&Object.keys(SRC.files).length===10&&Object.entries(SRC.files).every(([n,h])=>nc.createHash('sha256').update(fs.readFileSync(path.join(FX,n))).digest('hex')===h),'BIP138 vectors: all 10 files are the pinned bitcoin/bips ones (SHA-256 checked)');
     const r=load(); await r.ready(); const w=r.w, $=r.$, U=h=>Uint8Array.from(Buffer.from(h,'hex')), H=b=>Buffer.from(b).toString('hex'), te=s=>new w.TextEncoder().encode(s);
@@ -2269,8 +2272,9 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
       const one=w.b138Content([{type:1,bip:388,data:te(JSON.stringify(pv[0].document))}]).sets[0].desc;
       ok(p===pv.length&&one===w.descriptorChecksum('pkh('+pv[0].document.keys[0]+'/<0;1>/*)'),'BIP138 vectors: BIP388 wallet policy documents (version, keys and policy checked; @0/** becomes /<0;1>/*)'); }
     // descriptor addresses against embit
-    { const A=V('addresses.json'); let n=0, bad=0; for(const v of A.vectors){ for(let i=0;i<3;i++){ n++; if(await w.b138Address(v.desc,0,i,v.net)!==v.receive[i]) bad++; } for(let i=0;i<v.change.length;i++){ n++; if(await w.b138Address(v.desc,1,i,v.net)!==v.change[i]) bad++; } }
-      ok(bad===0&&A.vectors.length>=40,'descriptor addresses: '+n+' addresses of '+A.vectors.length+' descriptors (single key, multisig, miniscript, Taproot trees) equal embit\'s'); }
+    { const A=V('addresses.json'), at=async(d,b,i,net)=>{ try { return await w.b138Address(d,b,i,net); } catch(e){ return 'refused: '+e.message; } }; let n=0, bad=0; const why=[];   // v2.18.0: a refusal is counted and named, never a stop
+      for(const v of A.vectors){ for(let i=0;i<3;i++){ n++; const a=await at(v.desc,0,i,v.net); if(a!==v.receive[i]){ bad++; why.push(v.desc.slice(-30)+': '+a.slice(0,80)); } } for(let i=0;i<v.change.length;i++){ n++; const a=await at(v.desc,1,i,v.net); if(a!==v.change[i]){ bad++; why.push(v.desc.slice(-30)+': '+a.slice(0,80)); } } }
+      ok(bad===0&&A.vectors.length>=40,'descriptor addresses: '+n+' addresses of '+A.vectors.length+' descriptors (single key, multisig, miniscript, Taproot trees) equal embit\'s'+(why.length?' ('+[...new Set(why)].slice(0,3).join(' | ')+')':'')); }
     // the Multisig wallet card: SAVE ENCRYPTED DESCRIPTOR BACKUP, then CHECK A BACKUP opens it with any one key
     const M3=['abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about','legal winner thank year wave sausage worth useful legal winner thank yellow','letter advice cage absurd amount doctor acoustic avoid letter advice cage above'];
     const cos=M3.map(m=>{ const rt=HDKey.fromMasterSeed(mnemonicToSeedSync(m,'')); return {fp:rt.fingerprint.toString(16).padStart(8,'0'), x:rt.derive("m/48'/0'/0'/2'").publicExtendedKey}; });
@@ -2351,7 +2355,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     r.w.close(); })();
   // v2.10.0: Check a Coldcard seed mix (expected words: Coinkite's formula worked out here with Node's SHA-256, then @scure) and Was my seed made by a flawed device?
   sweep(t);
-  await (async()=>{ const {entropyToMnemonic,mnemonicToSeedSync}=require('@scure/bip39'); const {wordlist}=require('@scure/bip39/wordlists/english'); const {HDKey}=require('@scure/bip32'); const btc=require('@scure/btc-signer');
+  await part(async()=>{ const {entropyToMnemonic,mnemonicToSeedSync}=require('@scure/bip39'); const {wordlist}=require('@scure/bip39/wordlists/english'); const {HDKey}=require('@scure/bip32'); const btc=require('@scure/btc-signer');
     const r=load(); await r.ready(); const w=r.w, $=r.$, sleep=ms=>new Promise(res=>setTimeout(res,ms));
     const H=(...p)=>nc.createHash('sha256').update(Buffer.concat(p.map(x=>Buffer.from(x)))).digest();
     const mix=(trng,s,m,pur,n)=>H(H('CC\x01S'+pur+m,trng,H('CC\x01'+m,s))).subarray(0,n===12?16:32);
@@ -2411,7 +2415,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // v2.10.0: public example phrases (official vectors: tests/fixtures/bip39-vectors-english.json, from trezor/python-mnemonic at a pinned
   // commit; other phrases worked out here with @scure and Node's SHA-256), look-alike letters, and rolls typed twice
   sweep(t);
-  await (async()=>{ const {entropyToMnemonic}=require('@scure/bip39'); const {wordlist}=require('@scure/bip39/wordlists/english');
+  await part(async()=>{ const {entropyToMnemonic}=require('@scure/bip39'); const {wordlist}=require('@scure/bip39/wordlists/english');
     const r=load(); await r.ready(); const w=r.w, $=r.$, sleep=ms=>new Promise(res=>setTimeout(res,ms)), until=async(f,ms=8000)=>{ for(let t0=0;t0<ms&&!f();t0+=20) await sleep(20); };
     const VX=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures','bip39-vectors-english.json'),'utf8')).english, OFF='one of the official BIP39 test phrases';
     const E=(h)=>entropyToMnemonic(Buffer.from(h,'hex'),wordlist), H=(s,n)=>E(nc.createHash('sha256').update(s,'utf8').digest().subarray(0,n===24?32:16).toString('hex'));
@@ -2483,7 +2487,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // Hand-computed example: legal = 1020 = 512+256+128+64+32+16+8+4 (binary 001111111100, hex 3FC, octal 1774, Stackbit 1|0|2|0);
   // winner = 2016 (7E0, 3740); zoo = 2048 (punched alone); abandon = 1. Krux's own code is compared in tests/krux.test.mjs.
   sweep(t);
-  await (async()=>{ const r=load(); await r.ready(); const w=r.w, $=r.$, sleep=ms=>new Promise(x=>setTimeout(x,ms));
+  await part(async()=>{ const r=load(); await r.ready(); const w=r.w, $=r.$, sleep=ms=>new Promise(x=>setTimeout(x,ms));
     const LW='legal winner thank year wave sausage worth useful legal winner thank yellow', nums=LW.split(' ').map(x=>w.pnNum(x));
     eq(nums.join(' '),'1020 2016 1791 2040 1984 1534 2032 1920 1020 2016 1791 2041','plates: word numbers count from 1, as Krux does (legal = 1020)');
     eq(w.pnBits(1020).join('')+' '+w.pnBits(2048).join('')+' '+w.pnBits(1).join(''),'001111111100 100000000000 000000000001','plates: binary grid columns run 2048 down to 1; zoo punches 2048 alone');
@@ -2559,7 +2563,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // v2.10.0: old Electrum seeds (expected values from Electrum's own source and tests at commit 54ff65d, tests/fixtures/old-electrum.json
   // made by tests/fixtures/gen_old_electrum.py; also Node's SHA-256 and @noble/curves) and damaged words in Reforge
   sweep(t);
-  await (async()=>{ const OE=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures','old-electrum.json'),'utf8'));
+  await part(async()=>{ const OE=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures','old-electrum.json'),'utf8'));
     const {secp256k1}=require('@noble/curves/secp256k1'); const {ripemd160:rmd}=require('@noble/hashes/ripemd160');
     const {createBase58check}=require('@scure/base'), {sha256:nsha}=require('@noble/hashes/sha256'), b58c=createBase58check(nsha);
     const r=load(); await r.ready(); const w=r.w, $=r.$, sleep=ms=>new Promise(res=>setTimeout(res,ms));
@@ -2660,7 +2664,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // Expected words come from @scure/bip39 and Node's SHA-256; the raw-entropy answers come from Ian Coleman's own code at commit
   // de71c22 (tests/coleman.test.mjs runs that code on random decks).
   sweep(t);
-  await (async()=>{ const {entropyToMnemonic,validateMnemonic}=require('@scure/bip39'); const {wordlist}=require('@scure/bip39/wordlists/english');
+  await part(async()=>{ const {entropyToMnemonic,validateMnemonic}=require('@scure/bip39'); const {wordlist}=require('@scure/bip39/wordlists/english');
     const r=load(); await r.ready(); const w=r.w, $=r.$, first=()=>$('genResult').textContent.split('\n')[0];
     const len=n=>{ $('wordSel').value=String(n); $('wordSel').dispatchEvent(new w.Event('change')); };
     const sha=t=>nc.createHash('sha256').update(t,'utf8').digest(), SU={C:'♣',D:'♦',H:'♥',S:'♠'}, cs=t=>t.split(' ').map(x=>x[0]+SU[x[1]]).join(' ');
@@ -2743,7 +2747,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // v2.11.0: codex32 (BIP93) shares: check, combine and make (expected wallet from @scure/bip32 and btc-signer; the math itself
   // is checked against the BIP's vectors and three outside implementations in tests/codex32.test.mjs)
   sweep(t);
-  await (async()=>{ const {HDKey}=require('@scure/bip32'); const btc=require('@scure/btc-signer');
+  await part(async()=>{ const {HDKey}=require('@scure/bip32'); const btc=require('@scure/btc-signer');
     const r=load(); await r.ready(); const w=r.w, $=r.$, d=r.d;
     const mode=m=>{ d.querySelector('input[name=c32Mode][value='+m+']').checked=true; w.c32ModeChange(); };
     const A='MS12NAMEA320ZYXWVUTSRQPNMLKJHGFEDCAXRPP870HKKQRM', C='MS12NAMECACDEFGHJKLMNPQRSTUVWXYZ023FTR2GDZMPY6PN', ms2=Buffer.from('d1808e096b35b209ca12132b264662a5','hex');
@@ -2799,7 +2803,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // v2.11.0: Taproot multisig, tr(unspendable xpub, sortedmulti_a(M, keys at m/48'/coin'/0'/3')). Expected values from embit
   // (tests/fixtures/gen_taproot_multisig.py), @scure/bip32 + @scure/btc-signer (p2tr with a p2tr_ms leaf), and BIP387's own vectors.
   sweep(t);
-  await (async()=>{ const {mnemonicToSeedSync}=require('@scure/bip39'); const {HDKey}=require('@scure/bip32'); const btc=require('@scure/btc-signer'); const {bech32m}=require('@scure/base');
+  await part(async()=>{ const {mnemonicToSeedSync}=require('@scure/bip39'); const {HDKey}=require('@scure/bip32'); const btc=require('@scure/btc-signer'); const {bech32m}=require('@scure/base');
     const r=load(); await r.ready(); const $=r.$, w=r.w, HX=(b)=>Buffer.from(b).toString('hex');
     const F=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures','taproot-multisig','wallets.json'),'utf8')), NUMS='50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0';
     // 1. every fixture wallet (mainnet and testnet, 1-of-2, 2-of-3, 3-of-5): descriptors with checksums and 10+10 addresses equal embit's
@@ -2895,7 +2899,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // wipes and the camera, and in jsdom what the box reads and the warnings it gives (the signing itself: tests/oracle.test.mjs, the
   // whole flow in Chromium: tests/simulator.test.mjs, the guards: tests/mutation.test.mjs section 83)
   sweep(t);
-  await (async()=>{ const r=load(); await r.ready(); const $=r.$, w=r.w, d=w.document, names=w.eval('DICT').map(e=>e[0]), fs=require('fs');
+  await part(async()=>{ const r=load(); await r.ready(); const $=r.$, w=r.w, d=w.document, names=w.eval('DICT').map(e=>e[0]), fs=require('fs');
     const {HDKey}=require('@scure/bip32'), {mnemonicToSeedSync}=require('@scure/bip39'), btc=require('@scure/btc-signer');
     ok(html.indexOf('<li><b>2.17.0</b>')>0&&html.indexOf('<li><b>2.17.0</b>')<html.indexOf('<li><b>2.16.1</b>'),'v2.17.0: the changelog lists 2.17.0 first');
     { const li=html.slice(html.indexOf('<li><b>2.17.0</b>'),html.indexOf('<li><b>2.16.1</b>')); ok(/works fully for real/.test(li)&&/A browser is not a hardware signer/.test(li)&&/PRACTICE/.test(li)&&/LOAD INTO THE PRACTICE SIGNER<\/b> now loads a public or practice seed while the computer is online too/.test(li)&&/lessons<\/b> work with whatever seed/.test(li),'v2.17.0: the changelog entry names real signing, the warnings, PRACTICE, the online load and the lessons'); }
@@ -2917,7 +2921,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     r.w.close(); })();
   // v2.14.0: docs and page text for the Damascus method and the lessons (the method is tested in tests/vfmethod.test.mjs, the lessons in tests/simulator.test.mjs)
   sweep(t);
-  await (async()=>{ const r=load(); await r.ready(); const w=r.w, names=w.eval('DICT').map(e=>e[0]), fs=require('fs');
+  await part(async()=>{ const r=load(); await r.ready(); const w=r.w, names=w.eval('DICT').map(e=>e[0]), fs=require('fs');
     ok(html.indexOf('<li><b>2.16.1</b>')>0&&html.indexOf('<li><b>2.16.1</b>')<html.indexOf('<li><b>2.16.0</b>')&&html.indexOf('<li><b>2.16.0</b>')<html.indexOf('<li><b>2.15.0</b>')&&html.indexOf('<li><b>2.15.0</b>')<html.indexOf('<li><b>2.14.0</b>'),'v2.16.1: the changelog lists 2.16.1 first, then 2.16.0 and 2.15.0');
     ok(['Damascus method','Hammer sheet','Anvil sheet','Forge sheet','Hallmark','Assay','Practice transaction'].every(n=>names.includes(n)),'dictionary: Damascus method, Hammer, Anvil and Forge sheets, Hallmark, Assay and Practice transaction');
     ok(/voidforge-demo-2\.17\.0/.test(fs.readFileSync(path.join(__dirname,'..','demo','sw.js'),'utf8')),'v2.17.0: the demo cache name is bumped');
@@ -2925,14 +2929,14 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
     r.w.close(); })();
   // v2.13.0: docs and page text for the practice signer (the practice signer itself is tested in tests/simulator.test.mjs)
   sweep(t);
-  await (async()=>{ const r=load(); await r.ready(); const w=r.w, names=w.eval('DICT').map(e=>e[0]);
+  await part(async()=>{ const r=load(); await r.ready(); const w=r.w, names=w.eval('DICT').map(e=>e[0]);
     ok(html.indexOf('<li><b>2.13.0</b>')>0&&html.indexOf('<li><b>2.13.0</b>')<html.indexOf('<li><b>2.12.0</b>'),'v2.13.0: the changelog lists 2.13.0 first');
     ok(['Practice signer','SeedSigner+','PSBT (partly signed Bitcoin transaction)','Descriptor','SeedQR'].every(n=>names.includes(n)),'dictionary: Practice signer, SeedSigner+, PSBT, Descriptor and SeedQR');
     ok(/Practice signer/.test(html.match(/<summary>Hardware wallet: SeedSigner[\s\S]*?<\/details>/)[0]),'About: the SeedSigner recommendation points to the practice signer');
     r.w.close(); })();
   // v2.12.0: Open a signing device's backup (the full checks are in tests/devbackup.test.mjs and the mutation probe, section 71)
   sweep(t);
-  await (async()=>{ const r=load(); await r.ready(); const $=r.$, w=r.w, {HDKey}=require('@scure/bip32'), btc=require('@scure/btc-signer');
+  await part(async()=>{ const r=load(); await r.ready(); const $=r.$, w=r.w, {HDKey}=require('@scure/bip32'), btc=require('@scure/btc-signer');
     ok(html.indexOf('<li><b>2.12.0</b>')>0&&html.indexOf('<li><b>2.12.0</b>')<html.indexOf('<li><b>2.11.0</b>'),'v2.12.0: the changelog lists 2.12.0 first');
     ok(/SELF-TEST PASSED \(158\/158\)/.test($('selfTestBadge').textContent),'v2.14.0 to v2.18.0: the self-test has 158 checks (141, then 6 for the passphrase check, passphrase practice, Link as QR and re-hide, 8 for Electrum wallet files and any path, and wallet.dat files, and 3 from Bitcoin Core 32.1 for Extra Life and the strict miniscript reader)');
     { const names=w.eval('DICT').map(e=>e[0]); ok(['Coldcard backup (.7z)','Krux encrypted seed (KEF)','TAPSIGNER backup'].every(n=>names.includes(n)),'dictionary: Coldcard backup, Krux encrypted seed and TAPSIGNER backup'); }
@@ -2950,7 +2954,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // own words (7); regtest in the address checks, and practice mode named in the wallet file readers (9). Expected addresses from
   // @scure/bip32 and @scure/btc-signer.
   sweep(t);
-  await (async()=>{ const r=load(); await r.ready(); const $=r.$, w=r.w, st=r.st, {HDKey}=require('@scure/bip32'), bip39=require('@scure/bip39'), btc=require('@scure/btc-signer');
+  await part(async()=>{ const r=load(); await r.ready(); const $=r.$, w=r.w, st=r.st, {HDKey}=require('@scure/bip32'), bip39=require('@scure/bip39'), btc=require('@scure/btc-signer');
     const AB='abandon '.repeat(11)+'about', RT={...btc.TEST_NETWORK,bech32:'bcrt'}, root=(m,pw='')=>HDKey.fromMasterSeed(bip39.mnemonicToSeedSync(m,pw)), after=()=>w.dispatchEvent(new w.Event('afterprint'));
     w.startGateClose(); w.showTab('make'); w.setMethod('cards'); $('cdHex').value='000102030405060708090a0b0c0d0e0f'; w.cdUpdate(); await w.cdHexGenerate();
     const ban=$('ssfBan').textContent, fp=root(w.eval('madeMnemonic')).fingerprint.toString(16).padStart(8,'0');
@@ -3040,7 +3044,7 @@ const rnd=(n,k)=>Array.from({length:n},()=>String(k===2?nc.randomInt(2):1+nc.ran
   // a timelocked key for an heir. Known answers from Bitcoin Core 32.1 (tests/fixtures/miniscript-core.json), addresses and scripts
   // from @scure/btc-signer, PSBTs built with @scure/btc-signer. The regtest spend with the heir key: tests/core.test.mjs.
   sweep(t);
-  await (async()=>{ const r=load(); await r.ready(); const $=r.$, w=r.w, d=w.document, fs=require('fs');
+  await part(async()=>{ const r=load(); await r.ready(); const $=r.$, w=r.w, d=w.document, fs=require('fs');
     const {HDKey}=require('@scure/bip32'), {mnemonicToSeedSync}=require('@scure/bip39'), btc=require('@scure/btc-signer');
     const {ripemd160}=require('@noble/hashes/ripemd160'), {sha256:nsha}=require('@noble/hashes/sha256');
     const AB='abandon '.repeat(11)+'about', LW='legal winner thank year wave sausage worth useful legal winner thank yellow';

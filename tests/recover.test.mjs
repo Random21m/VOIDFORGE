@@ -61,7 +61,7 @@ function storageEncrypt(text, pw, magic = 'BIE1', squeeze = (t) => zlib.deflateS
 }
 
 const w = loadPage(html); const errors = []; w.addEventListener('error', (e) => errors.push(e.message));
-await ready(w);
+await ready(w); w.startGateClose();   // v2.18.0: the start notice is modal (focus stays in it), so it is closed first, as a person does
 const $ = (id) => w.document.getElementById(id), sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 ok(/^SELF-TEST PASSED \(158\/158\)$/.test($('selfTestBadge').textContent), 'the page self-test passes 158/158 (147, 5 for part A, 3 for wallet.dat files and 3 from Bitcoin Core 32.1 in v2.18.0): ' + $('selfTestBadge').textContent);
 const open = async (text, pw = '') => { w.ewClear(); $('ewIn').value = text; $('ewPass').value = pw; await w.ewOpenUi(); const g = w.eval('ewGot'); return { st: $('ewStatus').textContent, cls: $('ewStatus').className, out: $('ewOut').textContent, secret: g ? g.secret : '', words: g ? g.words : null }; };

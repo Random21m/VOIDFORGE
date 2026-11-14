@@ -47,7 +47,7 @@ T = [
  "wsh(or_d(pk(@0/<0;1>/*),and_v(v:pk(@1/<0;1>/*),n:older(5))))",
  "wsh(and_v(v:pk(@0/<0;1>/*),l:older(20)))",
  "wsh(and_v(v:pk(@0/<0;1>/*),u:older(20)))",
- "wsh(and_v(v:pk(@0/<0;1>/*),t:older(20)))",
+ "wsh(and_v(v:pk(@0/<0;1>/*),tv:older(20)))",   # v2.18.0: was t:older(20), which embit accepts but Bitcoin Core 32.1 refuses ("t:older(20) is invalid": t: needs a V part)
  "wsh(thresh(1,pk(@0/<0;1>/*),s:pk(@1/<0;1>/*)))",
  "wsh(and_v(v:pk(@0/<0;1>/*),older(65536)))",
  "tr(" + NUMS + ",{multi_a(2,@0/<0;1>/*,@1/<0;1>/*),and_v(v:pk(@2/<0;1>/*),after(1900000000))})",

@@ -21,6 +21,7 @@ const html = readHtml();
 // ---------------- Part 1: jsdom ----------------
 {
   const w = await ready(loadPage(html)), d = w.document, $ = (id) => d.getElementById(id), E = (s) => w.eval(s);
+  w.startGateClose();   // v2.18.0: the start notice is modal (focus stays in it), so it is closed first, as a person does
   ok(/PASSED/.test($('selfTestBadge').textContent), 'jsdom: the self-test passes (with the v2.15.0 entries)');
   const forge = async () => { $('rolls').value = D50; $('rolls').oninput && $('rolls').oninput(); await w.generate(); };
   const covered = (id) => $(id).style.filter === 'blur(9px)' && $(id).style.pointerEvents === 'none' && $(id).inert === true;
